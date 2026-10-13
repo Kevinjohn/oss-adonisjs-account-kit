@@ -11,6 +11,7 @@ test.group('managed transaction wrapper', (group) => {
   })
   group.each.setup(async () => {
     await resetSchema(kit.db)
+    await kit.limiter.clear()
   })
   group.teardown(async () => {
     await kit.close()
@@ -110,4 +111,39 @@ test.group('managed transaction wrapper', (group) => {
       assert.equal(current[0].timeout, 5000)
     })
   }).timeout(8000)
+
+  test('restores a custom SQLite busy timeout after success and ordinary errors', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const customKit = await bootTestApp({ sqliteBusyTimeout: 321, sqlitePoolMax: 1 })
+    try {
+      await resetSchema(customKit.db)
+      await transaction(customKit.db, async (trx) => {
+        const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
+        assert.equal(current[0].timeout, 0)
+      })
+      await customKit.db.transaction(async (trx) => {
+        const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
+        assert.equal(current[0].timeout, 321)
+      })
+
+      try {
+        await transaction(customKit.db, async (trx) => {
+          const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
+          assert.equal(current[0].timeout, 0)
+          throw new Error('terminal')
+        })
+        assert.fail('expected rejection')
+      } catch (error) {
+        assert.equal((error as Error).message, 'terminal')
+      }
+      await customKit.db.transaction(async (trx) => {
+        const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
+        assert.equal(current[0].timeout, 321)
+      })
+    } finally {
+      await customKit.close()
+    }
+  })
 })

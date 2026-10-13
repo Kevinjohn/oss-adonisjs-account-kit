@@ -17,7 +17,9 @@ export interface TestApp {
   close(): Promise<void>
 }
 
-export async function bootTestApp(): Promise<TestApp> {
+export async function bootTestApp(
+  options: { sqliteBusyTimeout?: number; sqlitePoolMax?: number } = {}
+): Promise<TestApp> {
   const client = process.env.DB_CLIENT ?? 'better-sqlite3'
   if (client !== 'pg' && client !== 'better-sqlite3') {
     throw new Error(`Unsupported DB_CLIENT: ${client}`)
@@ -45,12 +47,12 @@ export async function bootTestApp(): Promise<TestApp> {
           useNullAsDefault: true,
           pool: {
             min: 1,
-            max: 4,
+            max: options.sqlitePoolMax ?? 4,
             afterCreate(
               sqlite: { pragma(query: string): unknown },
               done: (error: Error | null, connection: unknown) => void
             ) {
-              sqlite.pragma('busy_timeout = 5000')
+              sqlite.pragma(`busy_timeout = ${options.sqliteBusyTimeout ?? 5000}`)
               done(null, sqlite)
             },
           },
@@ -85,7 +87,6 @@ export async function bootTestApp(): Promise<TestApp> {
     const limiter = await app.container.make('limiter.manager')
     if (sqliteFilename) {
       await db.connection().raw('PRAGMA journal_mode = WAL')
-      await db.connection().raw('PRAGMA busy_timeout = 5000')
     }
 
     return {

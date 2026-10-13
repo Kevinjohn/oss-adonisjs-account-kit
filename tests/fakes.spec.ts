@@ -11,6 +11,7 @@ test.group('database users adapter', (group) => {
   })
   group.each.setup(async () => {
     await resetSchema(kit.db)
+    await kit.limiter.clear()
   })
   group.teardown(async () => {
     await kit.close()
