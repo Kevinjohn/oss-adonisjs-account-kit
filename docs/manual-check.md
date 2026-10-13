@@ -16,7 +16,7 @@ The consumer applied eight migrations on each database: two API-kit base migrati
 - Email-change request required authentication and the current password. The confirmation went to the requested new mailbox, and the GET landing route did not consume the token. POST changed and verified the normalized email, notified the old address after commit, invalidated API access tokens, and rejected replay.
 - Authenticated routes rejected anonymous requests, and invalid request bodies received validation errors.
 
-Package validation passed on the same Node 24 toolchain:
+At the T8.1 checkpoint, package validation passed on the same Node 24 toolchain:
 
 ```sh
 DB_CLIENT=better-sqlite3 pnpm test        # 121 passed; includes lint
@@ -25,6 +25,18 @@ pnpm typecheck
 pnpm build
 ```
 
-Both database runs use the package test harness; the fresh consumer uses a distinct PostgreSQL database. The HTTP rehearsal used `pnpm exec node ace migration:run`, `pnpm typecheck`, and `pnpm exec node ace test --suite=functional` for each selected connection.
+These T8.1 totals precede the additional SQLite-only regression test documented under T8.2. Both database runs use the package test harness; the fresh consumer uses a distinct PostgreSQL database. The HTTP rehearsal used `pnpm exec node ace migration:run`, `pnpm typecheck`, and `pnpm exec node ace test --suite=functional` for each selected connection.
 
 The starter-kit fork, fork-derived stubs and documentation synchronization, browser checks, and owner application integration remain deferred to stage 7.
+
+## T8.2: upgrade an existing consumer
+
+Verified on 2026-10-13 in a second fresh official API-kit app. The app first installed the stage-3 package archive (SHA-256 `a98d746e90bef50bb71ba6d5bd4b0b138a302314bc2eeedcf998232b725606df`); the recovery baseline passed over real HTTP on SQLite and PostgreSQL. Before upgrade, both databases had seven migration-ledger rows, including all four package migrations, plus one verified baseline account.
+
+The app was then upgraded to the stage-6 candidate archive recorded above. The installed package resolved from that archive and remained version `0.0.0`. Candidate configure skipped the existing application config, provider, and all four migration files. The config SHA-256 remained `ae636bcaa3dfe5b93cdd6548b9c98045ec3458eb153cbce6c21a4712986ab4b8`, and migration runs reported no pending migrations on either database. The pre-existing verified account remained present. The recovery baseline passed again after upgrade on both dialects. A consumer-only role fixture migration was added after this check, leaving eight total migration rows, four belonging to the package.
+
+The upgraded app passed two functional HTTP tests on each dialect and passed consumer typecheck. The expanded workflow included resend and revoke through authenticated routes with authorization callbacks that perform ordinary database reads. Its SQLite pool used `min: 1` and `max: 4`, so those reads could use a separate connection while the package held a transaction. Email-change confirmation was delivered to the requested new address, with the change notice sent to the old address.
+
+Consumer versions were Node `24.19.0`, pnpm `11.23.0`, Core `7.6.0`, assembler `8.5.2`, Lucid `22.4.2`, Auth `10.1.0`, Knex `3.3.0`, Luxon `3.7.2`, better-sqlite3 `13.0.3` with SQLite `3.53.4`, pg `8.23.1`, and PostgreSQL `16.15`.
+
+After a SQLite-only package regression test was added, package source checks passed: 122 SQLite tests and 123 PostgreSQL tests, with lint included in each run; `pnpm typecheck` and `pnpm build` also passed. Runtime source was unchanged from stage 6; the consumer HTTP checks used the candidate archive. These totals are distinct from the T8.1 checkpoint above.
