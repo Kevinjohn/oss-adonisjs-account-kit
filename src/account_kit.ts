@@ -3,6 +3,7 @@ import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
+import { requestRecovery } from './recovery.js'
 import type {
   AccountKitConfig,
   AccountUser,
@@ -73,15 +74,17 @@ function notImplemented(): never {
 }
 
 export class AccountKit {
-  constructor(_deps: {
-    config: ResolvedConfig
-    db: Database
-    encryption: Encryption
-    limiter: LimiterService
-  }) {}
+  constructor(
+    private readonly deps: {
+      config: ResolvedConfig
+      db: Database
+      encryption: Encryption
+      limiter: LimiterService
+    }
+  ) {}
 
   readonly recovery = {
-    request: async (_input: RecoveryRequestInput): Promise<void> => notImplemented(),
+    request: (input: RecoveryRequestInput): Promise<void> => requestRecovery(this.deps, input),
     inspect: async (_input: RecoveryInspectInput): Promise<boolean> => notImplemented(),
     reset: async (_input: RecoveryResetInput): Promise<AccountUser> => notImplemented(),
   }
