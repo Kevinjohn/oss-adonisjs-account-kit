@@ -10,9 +10,43 @@ import {
   InvitationPendingError,
 } from './errors.js'
 import { toInvitation } from './rows.js'
-import { generateToken, hashToken } from './tokens.js'
+import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
-import type { Invitation, InvitationsSendInput, ResolvedConfig } from './types.js'
+import type {
+  Invitation,
+  InvitationsInspectInput,
+  InvitationsListInput,
+  InvitationsSendInput,
+  ResolvedConfig,
+} from './types.js'
+
+export async function listInvitations(
+  deps: { config: ResolvedConfig; db: Database },
+  input: InvitationsListInput
+): Promise<Invitation[]> {
+  const actor = await deps.config.users.findById(input.actorId)
+  if (!actor) throw new InvalidInputError('Unknown actor')
+  if ((await deps.config.authorize.listInvitations(actor)) !== true) throw new AuthorizationError()
+  const rows = await deps.db
+    .from('account_invitations')
+    .where('expires_at', '>', DateTime.utc().toISO())
+    .orderBy('created_at', 'asc')
+  return rows.map(toInvitation)
+}
+
+export async function inspectInvitation(
+  db: Database,
+  input: InvitationsInspectInput
+): Promise<Pick<Invitation, 'email' | 'role'> | null> {
+  if (!isTokenShaped(input.token)) return null
+  const row = await db
+    .from('account_invitations')
+    .select('email', 'role')
+    .where('token_hash', hashToken(input.token))
+    .where('expires_at', '>', DateTime.utc().toISO())
+    .first()
+  return row ? { email: row.email, role: row.role } : null
+}
 
 export async function sendInvitation(
   deps: { config: ResolvedConfig; db: Database },

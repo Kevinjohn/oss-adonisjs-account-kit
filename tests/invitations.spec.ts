@@ -258,3 +258,134 @@ test.group('invitations.send', (group) => {
     assert.lengthOf(await kit.db.from('account_invitations'), 2)
   })
 })
+
+test.group('invitations.list and inspect', (group) => {
+  let kit: Awaited<ReturnType<typeof bootTestApp>>
+  group.setup(async () => {
+    kit = await bootTestApp()
+  })
+  group.each.setup(async () => {
+    await resetSchema(kit)
+    await kit.limiter.clear()
+  })
+  group.teardown(async () => {
+    await kit.close()
+  })
+
+  async function createActor() {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    return kit.db.transaction((trx) =>
+      users.create(
+        { email: 'actor@example.test', password: 'password123', emailVerifiedAt: DateTime.utc() },
+        trx
+      )
+    )
+  }
+
+  function service(overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) {
+    const recorder = makeNotify()
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        notify: recorder.notify,
+        ...overrides,
+      })
+    )
+    return {
+      account: new AccountKit({
+        config,
+        db: kit.db,
+        limiter: kit.limiter,
+        encryption: null as never,
+      }),
+      recorder,
+    }
+  }
+
+  test('lists only live invitations in creation order without token material', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account } = service()
+    const first = await account.invitations.send({
+      actorId: actor.id,
+      email: 'first@example.test',
+      role: 'user',
+    })
+    const second = await account.invitations.send({
+      actorId: actor.id,
+      email: 'second@example.test',
+      role: 'admin',
+    })
+    const expired = await account.invitations.send({
+      actorId: actor.id,
+      email: 'expired@example.test',
+      role: 'user',
+    })
+    await kit.db
+      .from('account_invitations')
+      .where('id', first.id)
+      .update({ created_at: DateTime.utc().minus({ days: 2 }).toISO() })
+    await kit.db
+      .from('account_invitations')
+      .where('id', second.id)
+      .update({ created_at: DateTime.utc().minus({ days: 1 }).toISO() })
+    await kit.db
+      .from('account_invitations')
+      .where('id', expired.id)
+      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+    const listed = await account.invitations.list({ actorId: actor.id })
+    assert.deepEqual(
+      listed.map((item) => item.id),
+      [first.id, second.id]
+    )
+    assert.equal(listed[0].email, first.email)
+    assert.equal(listed[1].role, second.role)
+    assert.isUndefined((listed[0] as never as { tokenHash?: string }).tokenHash)
+  })
+
+  test('list requires a known actor and exact true authorization', async ({ assert }) => {
+    const actor = await createActor()
+    const { account } = service({
+      authorize: { ...allowAll, listInvitations: async () => undefined as never },
+    })
+    await assert.rejects(() => account.invitations.list({ actorId: 99999 }), InvalidInputError)
+    await assert.rejects(() => account.invitations.list({ actorId: actor.id }), AuthorizationError)
+  })
+
+  test('inspect reveals only the live email and role without consuming the token', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    await account.invitations.send({
+      actorId: actor.id,
+      email: '  PERSON@EXAMPLE.TEST ',
+      role: 'admin',
+    })
+    const raw = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    const expected = { email: 'person@example.test', role: 'admin' }
+    assert.deepEqual(await account.invitations.inspect({ token: raw }), expected)
+    assert.deepEqual(await account.invitations.inspect({ token: raw }), expected)
+    const row = await kit.db.from('account_invitations').where('token_hash', hashToken(raw)).first()
+    assert.isNotNull(row)
+  })
+
+  test('inspect returns null for malformed, unknown, and expired tokens without mutating rows', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    await account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
+    const raw = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    for (const value of [null, 42, '', 'invalid'])
+      assert.isNull(await account.invitations.inspect({ token: value as never }))
+    assert.isNull(await account.invitations.inspect({ token: 'a'.repeat(43) }))
+    await kit.db
+      .from('account_invitations')
+      .where('token_hash', hashToken(raw))
+      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+    assert.isNull(await account.invitations.inspect({ token: raw }))
+    assert.lengthOf(await kit.db.from('account_invitations'), 1)
+  })
+})
