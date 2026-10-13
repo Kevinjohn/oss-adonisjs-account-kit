@@ -14,10 +14,7 @@
   ],
   "main": "build/index.js",
   "exports": {
-    ".": "./build/index.js",
-    "./types": "./build/src/types.js",
-    "./errors": "./build/src/errors.js",
-    "./providers/account_kit_provider": "./build/providers/account_kit_provider.js"
+    ".": "./build/index.js"
   },
   "scripts": {
     "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
@@ -89,9 +86,7 @@
   "tsdown": {
     "entry": [
       "./index.ts",
-      "./configure.ts",
-      "./src/errors.ts",
-      "./providers/account_kit_provider.ts"
+      "./configure.ts"
     ],
     "outDir": "./build",
     "clean": true,

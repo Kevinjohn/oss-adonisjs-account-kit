@@ -20,6 +20,18 @@ The defaults match the repository's local PostgreSQL test service.
 
 For example, `DB_CLIENT=pg pnpm test` runs the same tests against PostgreSQL.
 
+The test users adapter stores normalized email addresses in a unique `email` column and hashes
+passwords through the booted application's hash service. Its transaction-aware methods use the
+supplied Lucid transaction. SQLite tests use WAL with a four-connection pool and a per-connection
+busy timeout of 5 seconds.
+
+Database-only work can use the internal `transaction(db, callback)` helper. The callback may be
+re-run after a SQLite busy error, so it must contain only transaction-bound database work;
+notifications and other side effects belong after the helper resolves. On SQLite, the helper
+temporarily disables the connection's blocking busy timeout, rolls back a busy attempt, waits
+asynchronously and retries the whole callback for up to 5 seconds. PostgreSQL uses Lucid's
+managed transaction directly.
+
 ```sh
 pnpm install
 pnpm lint

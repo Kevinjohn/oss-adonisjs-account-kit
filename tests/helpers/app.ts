@@ -7,10 +7,12 @@ import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import type { Database } from '@adonisjs/lucid/database'
 import type { ApplicationService } from '@adonisjs/core/types'
+import { Hash } from '@adonisjs/core/hash'
 
 export interface TestApp {
   app: ApplicationService
   db: Database
+  hash: Hash
   limiter: { clear(): Promise<void> }
   close(): Promise<void>
 }
@@ -79,6 +81,7 @@ export async function bootTestApp(): Promise<TestApp> {
     await app.init()
     await app.boot()
     const db = await app.container.make('lucid.db')
+    const hash = await app.container.make(Hash)
     const limiter = await app.container.make('limiter.manager')
     if (sqliteFilename) {
       await db.connection().raw('PRAGMA journal_mode = WAL')
@@ -88,6 +91,7 @@ export async function bootTestApp(): Promise<TestApp> {
     return {
       app,
       db,
+      hash,
       limiter,
       async close() {
         await ignitor.terminate()

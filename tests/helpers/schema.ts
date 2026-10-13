@@ -7,6 +7,7 @@ export async function resetSchema(db: Database): Promise<void> {
     table.increments('id').primary()
     table.string('email').notNullable().unique()
     table.string('password').nullable()
+    table.timestamp('email_verified_at').nullable()
     table.timestamp('created_at').notNullable()
   })
 }
