@@ -1,8 +1,18 @@
 import type { Encryption } from '@adonisjs/core/encryption'
+import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { DeliveryError, InvalidInputError } from './errors.js'
+import { DateTime } from 'luxon'
+import { lockUser, transaction } from './db.js'
+import { DeliveryError, InvalidInputError, InvalidTokenError } from './errors.js'
 import { consume } from './throttle.js'
-import type { ResolvedConfig, VerificationSendInput } from './types.js'
+import type {
+  ResolvedConfig,
+  VerificationCompleteInput,
+  VerificationSendInput,
+  UserId,
+} from './types.js'
+
+const VERIFICATION_PURPOSE = 'account-kit:verify-email'
 
 export async function sendVerification(
   deps: { config: ResolvedConfig; encryption: Encryption; limiter: LimiterService },
@@ -16,7 +26,7 @@ export async function sendVerification(
   const token = deps.encryption.encrypt(
     { userId: user.id, email: user.email },
     deps.config.ttl.verification,
-    'account-kit:verify-email'
+    VERIFICATION_PURPOSE
   )
   try {
     await deps.config.notify.verification(user, deps.config.urls.verification(token))
@@ -24,4 +34,26 @@ export async function sendVerification(
     throw new DeliveryError('Verification notification failed', { cause })
   }
   return 'sent'
+}
+
+export async function completeVerification(
+  deps: { config: ResolvedConfig; db: Database; encryption: Encryption },
+  input: VerificationCompleteInput
+): Promise<'verified' | 'already_verified'> {
+  if (typeof input.token !== 'string') throw new InvalidTokenError()
+  const payload: unknown = deps.encryption.decrypt(input.token, VERIFICATION_PURPOSE)
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+    throw new InvalidTokenError()
+  const { userId, email } = payload as { userId?: unknown; email?: unknown }
+  if ((typeof userId !== 'number' && typeof userId !== 'string') || typeof email !== 'string')
+    throw new InvalidTokenError()
+
+  return transaction(deps.db, async (trx) => {
+    await lockUser(trx, userId as UserId)
+    const user = await deps.config.users.findById(userId, trx, { forUpdate: true })
+    if (!user || user.email !== email) throw new InvalidTokenError()
+    if (user.emailVerifiedAt !== null) return 'already_verified'
+    await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
+    return 'verified'
+  })
 }
