@@ -494,53 +494,79 @@ test.group('recovery.reset', (group) => {
     assert,
   }) => {
     if (process.env.DB_CLIENT === 'pg') return
-    const { token } = await issue()
-    await kit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
-    const reader = await kit.db.transaction()
-    await reader.from('account_recovery_tokens').first()
+    const customKit = await bootTestApp({ sqlitePoolMax: 2 })
+    let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     let native: { inTransaction: boolean; exec(sql: string): void } | undefined
     let readerReleased = false
     let calls = 0
     let observedCommitted = false
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    const account = service(
-      {
-        onCredentialsChanged: async () => {
-          calls++
-          const row = await kit.db.from('users').first()
-          observedCommitted =
-            readerReleased &&
-            native?.inTransaction === false &&
-            (await kit.hash.verify(row.password, 'new-password123'))
-        },
-      },
-      {
-        ...users,
-        async setPassword(id, password, trx) {
-          native = await trx.getWriteClient().client.acquireConnection()
-          await users.setPassword(id, password, trx)
-        },
-      }
-    )
-    const release = new Promise<void>((resolve, reject) => {
-      setTimeout(async () => {
-        try {
-          await reader.commit()
-          readerReleased = true
-          resolve()
-        } catch (error) {
-          reject(error)
-        }
-      }, 80)
-    })
     try {
+      await resetSchema(customKit)
+      await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
+      const email = 'person@example.test'
+      const token = generateToken()
+      await customKit.db.table('users').insert({
+        email,
+        password: await customKit.hash.make('password123'),
+        email_verified_at: DateTime.utc().toISO(),
+        created_at: DateTime.utc().toISO(),
+      })
+      const user = await customKit.db.from('users').first()
+      await customKit.db.table('account_recovery_tokens').insert({
+        user_id: user.id,
+        email,
+        token_hash: hashToken(token),
+        expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
+        created_at: DateTime.utc().toISO(),
+      })
+      reader = await customKit.db.transaction()
+      await reader.from('account_recovery_tokens').first()
+      const users = makeUsersAdapter(customKit.db, customKit.hash)
+      const config = defineConfig(
+        makeConfig({
+          minRequestMs: 0,
+          users: {
+            ...users,
+            async setPassword(id, password, trx) {
+              native = await trx.getWriteClient().client.acquireConnection()
+              await users.setPassword(id, password, trx)
+            },
+          },
+          onCredentialsChanged: async () => {
+            calls++
+            const row = await customKit.db.from('users').first()
+            observedCommitted =
+              readerReleased &&
+              native?.inTransaction === false &&
+              (await customKit.hash.verify(row.password, 'new-password123'))
+          },
+        })
+      )
+      const account = new AccountKit({
+        config,
+        db: customKit.db,
+        limiter: customKit.limiter,
+        encryption: null as never,
+      })
+      const release = new Promise<void>((resolve, reject) => {
+        setTimeout(async () => {
+          try {
+            await reader!.commit()
+            readerReleased = true
+            resolve()
+          } catch (error) {
+            reject(error)
+          }
+        }, 80)
+      })
       await account.recovery.reset({ token, password: 'new-password123' })
       await release
       assert.equal(calls, 1)
       assert.isTrue(observedCommitted)
     } finally {
       if (native?.inTransaction) native.exec('ROLLBACK')
-      if (!reader.isCompleted) await reader.rollback()
+      if (reader && !reader.isCompleted) await reader.rollback()
+      await customKit.close()
     }
   }).timeout(8000)
 

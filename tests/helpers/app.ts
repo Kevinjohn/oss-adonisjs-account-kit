@@ -101,7 +101,7 @@ export async function bootTestApp(
     const hash = await app.container.make(Hash)
     const limiter = await app.container.make('limiter.manager')
     if (sqliteFilename) {
-      await db.connection().raw('PRAGMA journal_mode = WAL')
+      await db.connection().rawQuery('PRAGMA journal_mode = WAL').exec()
     }
 
     return {

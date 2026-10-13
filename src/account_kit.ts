@@ -5,6 +5,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
 import { inspectRecovery, requestRecovery, resetRecovery } from './recovery.js'
 import { completeVerification, sendVerification } from './verification.js'
+import { changePassword } from './credentials.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -116,8 +117,8 @@ export class AccountKit {
     revoke: (input: InvitationsRevokeInput): Promise<void> => revokeInvitation(this.deps, input),
   }
   readonly credentials = {
-    changePassword: async (_input: CredentialsChangePasswordInput): Promise<void> =>
-      notImplemented(),
+    changePassword: (input: CredentialsChangePasswordInput): Promise<void> =>
+      changePassword(this.deps, input),
     requestEmailChange: async (_input: CredentialsRequestEmailChangeInput): Promise<void> =>
       notImplemented(),
     completeEmailChange: async (

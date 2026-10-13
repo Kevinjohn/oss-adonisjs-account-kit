@@ -33,4 +33,24 @@ test.group('test application', (group) => {
       await trx.from('users').where('id', user.id).forUpdate().first()
     })
   })
+
+  test('starts independent pooled SQLite connections in WAL mode', async ({ assert }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const client = testApp.db.connection().getWriteClient().client
+    const first = (await client.acquireConnection()) as {
+      pragma: (statement: string, options: { simple: true }) => string
+    }
+    try {
+      const second = (await client.acquireConnection()) as typeof first
+      try {
+        assert.notEqual(first, second)
+        assert.equal(first.pragma('journal_mode', { simple: true }), 'wal')
+        assert.equal(second.pragma('journal_mode', { simple: true }), 'wal')
+      } finally {
+        await client.releaseConnection(second)
+      }
+    } finally {
+      await client.releaseConnection(first)
+    }
+  })
 })

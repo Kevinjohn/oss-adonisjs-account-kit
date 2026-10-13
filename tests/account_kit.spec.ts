@@ -80,12 +80,6 @@ test.group('account kit configuration and service surface', (group) => {
     })
     const cases: Array<() => Promise<unknown>> = [
       () =>
-        service.credentials.changePassword({
-          actorId: 1,
-          currentPassword: 'old',
-          newPassword: 'new',
-        }),
-      () =>
         service.credentials.requestEmailChange({
           actorId: 1,
           currentPassword: 'old',
@@ -93,7 +87,7 @@ test.group('account kit configuration and service surface', (group) => {
         }),
       () => service.credentials.completeEmailChange({ token: 'token' }),
     ]
-    assert.lengthOf(cases, 3)
+    assert.lengthOf(cases, 2)
     for (const invoke of cases) await assert.rejects(invoke, 'not implemented')
   })
 })
