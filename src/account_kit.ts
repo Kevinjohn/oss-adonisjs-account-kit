@@ -84,19 +84,17 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!Number.isSafeInteger(throttle.requests) || throttle.requests <= 0) {
     throw new Error('account_kit: throttle.requests must be a positive safe integer')
   }
-  let durationSeconds: number
+  let durationMs: number
   try {
-    durationSeconds = string.seconds.parse(throttle.duration)
+    durationMs = string.seconds.parse(throttle.duration) * 1000
   } catch (cause) {
     throw new Error('account_kit: throttle.duration must be a supported positive duration', {
       cause,
     })
   }
-  const durationMs = durationSeconds * 1000
   if (
-    !Number.isFinite(durationSeconds) ||
-    durationSeconds <= 0 ||
     !Number.isSafeInteger(durationMs) ||
+    durationMs <= 0 ||
     durationMs > MAX_LIMITER_DURATION_MS
   ) {
     throw new Error('account_kit: throttle.duration must be a limiter-representable duration')
@@ -105,12 +103,11 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!Number.isFinite(minRequestMs) || minRequestMs < 0) {
     throw new Error('account_kit: minRequestMs must be a finite non-negative number')
   }
-  return {
-    ...config,
-    ttl,
-    throttle,
-    minRequestMs,
+  const usersTable = config.usersTable ?? 'users'
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(usersTable)) {
+    throw new Error('account_kit: usersTable must be a plain SQL identifier')
   }
+  return { ...config, ttl, throttle, minRequestMs, usersTable }
 }
 
 export class AccountKit {
@@ -151,7 +148,7 @@ export class AccountKit {
       changePassword(this.deps, input),
     requestEmailChange: (input: CredentialsRequestEmailChangeInput): Promise<void> =>
       requestEmailChange(this.deps, input),
-    completeEmailChange: async (input: CredentialsCompleteEmailChangeInput): Promise<AccountUser> =>
+    completeEmailChange: (input: CredentialsCompleteEmailChangeInput): Promise<AccountUser> =>
       completeEmailChange(this.deps, input),
   }
 }

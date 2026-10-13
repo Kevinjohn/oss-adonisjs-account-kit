@@ -26,6 +26,12 @@ test('configures the package idempotently without replacing application-owned fi
       join(root, 'node_modules')
     )
 
+    const envPath = join(root, 'start', 'env.ts')
+    await mkdir(join(root, 'start'), { recursive: true })
+    await writeFile(
+      envPath,
+      "import { Env } from '@adonisjs/core/env'\n\nexport default await Env.create(new URL('../', import.meta.url), {\n  NODE_ENV: Env.schema.enum(['development', 'production', 'test'] as const),\n})\n"
+    )
     const configDirectory = join(root, 'config')
     const migrationsDirectory = join(root, 'database', 'migrations')
     await mkdir(configDirectory, { recursive: true })
@@ -59,6 +65,13 @@ test('configures the package idempotently without replacing application-owned fi
     const generatedConfig = await readFile(configPath, 'utf8')
     assert.include(generatedConfig, "from 'adonisjs-account-kit'")
     assert.include(generatedConfig, "from '#models/user'")
+    assert.include(generatedConfig, "env.get('APP_URL').endsWith('/')")
+    assert.include(generatedConfig, "new URL('account-kit/' + path")
+    const firstEnv = await readFile(envPath, 'utf8')
+    assert.equal(
+      firstEnv.match(/APP_URL: Env\.schema\.string\(\{ format: 'url', tld: false \}\)/g)?.length,
+      1
+    )
     assert.equal(await readFile(existingMigrationPath, 'utf8'), existingMigration)
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
@@ -102,6 +115,8 @@ test('configures the package idempotently without replacing application-owned fi
       ),
       generatedFiles
     )
+    const secondEnv = await readFile(envPath, 'utf8')
+    assert.equal(secondEnv, firstEnv)
     const secondRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')
     assert.equal(
       secondRcContents.match(/adonisjs-account-kit\/providers\/account_kit_provider/g)?.length,

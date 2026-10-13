@@ -13,7 +13,7 @@ export async function consume(
     await limiter.use({ ...options }).consume(`account-kit:${operation}:${key}`)
   } catch (error) {
     if (error instanceof errors.E_TOO_MANY_REQUESTS) {
-      throw new ThrottledError(error.response.availableIn, 'Too many requests', { cause: error })
+      throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
     }
     throw error
   }

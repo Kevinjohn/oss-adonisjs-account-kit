@@ -1,16 +1,17 @@
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
-import { consumeInvitationToken, lockInvitation, transaction, isUniqueViolation } from './db.js'
+import { consumeToken, lockRow, transaction, isUniqueViolation } from './db.js'
+import { deliver } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   AuthorizationError,
-  DeliveryError,
   EmailAlreadyRegisteredError,
   InvalidInputError,
   InvitationPendingError,
   InvalidTokenError,
 } from './errors.js'
-import { toInvitation } from './rows.js'
+import { isPasswordShaped } from './password.js'
+import { toInvitation, type InvitationDatabaseRow } from './rows.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
@@ -23,26 +24,40 @@ import type {
   InvitationsRevokeInput,
   InvitationsSendInput,
   ResolvedConfig,
+  Trx,
+  UserId,
 } from './types.js'
+
+async function requireActor(config: ResolvedConfig, actorId: UserId): Promise<AccountUser> {
+  const actor = await config.users.findById(actorId)
+  if (!actor) throw new InvalidInputError('Unknown actor')
+  return actor
+}
+
+/** Lock an invitation row and check the actor may manage it. */
+async function lockManagedInvitation(
+  config: ResolvedConfig,
+  trx: Trx,
+  actor: AccountUser,
+  invitationId: number
+): Promise<Invitation> {
+  await lockRow(trx, 'account_invitations', invitationId)
+  const row = await trx.from('account_invitations').where('id', invitationId).forUpdate().first()
+  if (!row) throw new InvalidTokenError()
+  const invitation = toInvitation(row)
+  if ((await config.authorize.manageInvitation(actor, invitation)) !== true)
+    throw new AuthorizationError()
+  return invitation
+}
 
 export async function resendInvitation(
   deps: { config: ResolvedConfig; db: Database },
   input: InvitationsResendInput
 ): Promise<Invitation> {
-  const actor = await deps.config.users.findById(input.actorId)
-  if (!actor) throw new InvalidInputError('Unknown actor')
+  const actor = await requireActor(deps.config, input.actorId)
   const token = generateToken()
   const invitation = await transaction(deps.db, async (trx) => {
-    await lockInvitation(trx, input.invitationId)
-    const row = await trx
-      .from('account_invitations')
-      .where('id', input.invitationId)
-      .forUpdate()
-      .first()
-    if (!row) throw new InvalidTokenError()
-    const current = toInvitation(row)
-    if ((await deps.config.authorize.manageInvitation(actor, current)) !== true)
-      throw new AuthorizationError()
+    const current = await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
     if ((await deps.config.authorize.invite(actor, current.role)) !== true)
       throw new AuthorizationError()
 
@@ -61,11 +76,9 @@ export async function resendInvitation(
     return toInvitation(updated)
   })
 
-  try {
-    await deps.config.notify.invitation(invitation, deps.config.urls.invitation(token))
-  } catch (cause) {
-    throw new DeliveryError('Invitation notification failed', { cause })
-  }
+  await deliver('Invitation notification failed', () =>
+    deps.config.notify.invitation(invitation, deps.config.urls.invitation(token))
+  )
   return invitation
 }
 
@@ -73,18 +86,9 @@ export async function revokeInvitation(
   deps: { config: ResolvedConfig; db: Database },
   input: InvitationsRevokeInput
 ): Promise<void> {
-  const actor = await deps.config.users.findById(input.actorId)
-  if (!actor) throw new InvalidInputError('Unknown actor')
+  const actor = await requireActor(deps.config, input.actorId)
   await transaction(deps.db, async (trx) => {
-    await lockInvitation(trx, input.invitationId)
-    const row = await trx
-      .from('account_invitations')
-      .where('id', input.invitationId)
-      .forUpdate()
-      .first()
-    if (!row) throw new InvalidTokenError()
-    if ((await deps.config.authorize.manageInvitation(actor, toInvitation(row))) !== true)
-      throw new AuthorizationError()
+    await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
     await trx.from('account_invitations').where('id', input.invitationId).delete()
   })
 }
@@ -93,18 +97,18 @@ export async function acceptInvitation(
   deps: { config: ResolvedConfig; db: Database },
   input: InvitationsAcceptInput
 ): Promise<AccountUser> {
-  if (
-    typeof input.password !== 'string' ||
-    input.password.length < 8 ||
-    input.password.length > 255
-  )
-    throw new InvalidInputError('Invalid password')
+  if (!isPasswordShaped(input.password)) throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
 
   try {
     return await transaction(deps.db, async (trx) => {
       const now = DateTime.utc()
-      const row = await consumeInvitationToken(trx, hashToken(input.token), now.toISO())
+      const row = await consumeToken<InvitationDatabaseRow>(
+        trx,
+        'account_invitations',
+        hashToken(input.token),
+        now.toISO()
+      )
       if (!row) throw new InvalidTokenError()
       if (await deps.config.users.findByEmail(row.email, trx))
         throw new EmailAlreadyRegisteredError()
@@ -119,7 +123,8 @@ export async function acceptInvitation(
       return reloaded
     })
   } catch (error) {
-    if (isUniqueViolation(error, 'users', 'email')) throw new EmailAlreadyRegisteredError()
+    if (isUniqueViolation(error, deps.config.usersTable, 'email'))
+      throw new EmailAlreadyRegisteredError()
     throw error
   }
 }
@@ -128,8 +133,7 @@ export async function listInvitations(
   deps: { config: ResolvedConfig; db: Database },
   input: InvitationsListInput
 ): Promise<Invitation[]> {
-  const actor = await deps.config.users.findById(input.actorId)
-  if (!actor) throw new InvalidInputError('Unknown actor')
+  const actor = await requireActor(deps.config, input.actorId)
   if ((await deps.config.authorize.listInvitations(actor)) !== true) throw new AuthorizationError()
   const rows = await deps.db
     .from('account_invitations')
@@ -160,8 +164,7 @@ export async function sendInvitation(
   if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
     throw new InvalidInputError('Invalid role')
   const email = normaliseEmail(input.email)
-  const actor = await deps.config.users.findById(input.actorId)
-  if (!actor) throw new InvalidInputError('Unknown actor')
+  const actor = await requireActor(deps.config, input.actorId)
   if ((await deps.config.authorize.invite(actor, input.role)) !== true)
     throw new AuthorizationError()
   if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
@@ -196,10 +199,8 @@ export async function sendInvitation(
     throw error
   }
 
-  try {
-    await deps.config.notify.invitation(invitation, deps.config.urls.invitation(token))
-  } catch (cause) {
-    throw new DeliveryError('Invitation notification failed', { cause })
-  }
+  await deliver('Invitation notification failed', () =>
+    deps.config.notify.invitation(invitation, deps.config.urls.invitation(token))
+  )
   return invitation
 }

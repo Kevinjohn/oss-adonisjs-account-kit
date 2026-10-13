@@ -1,24 +1,10 @@
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-import { lockUser, transaction } from '../src/db.js'
+import { lockRow, transaction } from '../src/db.js'
 import { isUniqueViolation } from '../src/db.js'
-
+import { useTestApp } from './helpers/app.js'
+import { resetSchema } from './helpers/schema.js'
 test.group('database helpers', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
   test('recognizes a real duplicate users.email violation on each database', async ({ assert }) => {
     const email = 'duplicate@example.test - UNIQUE constraint failed: users.email_alias'
@@ -69,7 +55,7 @@ test.group('database helpers', (group) => {
       releaseFirst = resolve
     })
     const first = transaction(kit.db, async (trx) => {
-      await lockUser(trx, id)
+      await lockRow(trx, 'users', id)
       await trx.from('users').where('id', id).update({ password: 'committed' })
       firstLocked()
       await firstHold
@@ -79,7 +65,7 @@ test.group('database helpers', (group) => {
     let secondFinished = false
     let secondPassword: string | undefined
     const second = transaction(kit.db, async (trx) => {
-      await lockUser(trx, id)
+      await lockRow(trx, 'users', id)
       const row = await trx.from('users').where('id', id).first()
       secondPassword = row.password
       secondFinished = true
@@ -94,10 +80,52 @@ test.group('database helpers', (group) => {
     assert.equal(secondPassword, 'committed')
   })
 
+  test('locks rows in the configured users table name on SQLite', async ({ assert }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+
+    const schema = kit.db.connection().schema
+    await schema.dropTableIfExists('account_email_changes')
+    await schema.dropTableIfExists('account_invitations')
+    await schema.dropTableIfExists('account_recovery_tokens')
+    await schema.dropTableIfExists('users')
+    await schema.dropTableIfExists('accounts')
+    await schema.createTable('accounts', (table) => {
+      table.increments('id')
+      table.string('email').notNullable().unique()
+    })
+    try {
+      await kit.db.table('accounts').insert({ email: 'renamed@example.test' })
+      const { id } = await kit.db.from('accounts').where('email', 'renamed@example.test').first()
+      await transaction(kit.db, async (trx) => {
+        await lockRow(trx, 'accounts', id)
+        const client = kit.db.connection().getWriteClient().client
+        const peer = await client.acquireConnection()
+        const timeout = peer.pragma('busy_timeout', { simple: true })
+        let conflict: unknown
+        try {
+          peer.pragma('busy_timeout = 0')
+          try {
+            peer.prepare('UPDATE "accounts" SET id = id WHERE id = ?').run(id)
+          } catch (error) {
+            conflict = error
+          }
+        } finally {
+          peer.pragma(`busy_timeout = ${timeout}`)
+          await client.releaseConnection(peer)
+        }
+        assert.equal((conflict as { code?: string } | undefined)?.code, 'SQLITE_BUSY')
+      })
+    } finally {
+      await schema.dropTableIfExists('accounts')
+      await resetSchema(kit)
+    }
+  })
+
   test('does not confuse an email-prefixed unique column with users.email', async ({ assert }) => {
     await kit.db.connection().schema.alterTable('users', (table) => {
       table.string('email_alias').unique()
     })
+    group.each.teardown(() => resetSchema(kit))
     await kit.db.table('users').insert({
       email: 'first@example.test',
       email_alias: 'same-alias',

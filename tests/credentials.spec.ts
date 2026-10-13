@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import type { AccountKit } from '../src/account_kit.js'
 import {
   DeliveryError,
   EmailAlreadyRegisteredError,
@@ -13,55 +13,23 @@ import {
 } from '../src/errors.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, AccountUser } from '../src/types.js'
-import { bootTestApp } from './helpers/app.js'
-import { makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
-
+import { useTestApp } from './helpers/app.js'
+import {
+  insertUser,
+  makeConfig,
+  makeNotify,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
 test.group('credentials', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createUser(social = false): Promise<AccountUser> {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    if (!social)
-      return kit.db.transaction((trx) =>
-        users.create(
-          {
-            email: 'person@example.test',
-            password: 'oldPassword123',
-            emailVerifiedAt: DateTime.utc(),
-          },
-          trx
-        )
-      )
-    const [id] = await kit.db
-      .table('users')
-      .insert({
-        email: 'person@example.test',
-        password: null,
-        email_verified_at: null,
-        created_at: DateTime.utc().toISO(),
-      })
-      .returning('id')
-    return (await users.findById(typeof id === 'object' ? id.id : id))!
-  }
+  const createUser = (social = false) =>
+    insertUser(kit, social ? { password: null, verified: false } : { password: 'oldPassword123' })
 
-  function service(overrides: Partial<AccountKitConfig> = {}) {
-    const { users, ...rest } = overrides
-    const config = defineConfig(
-      makeConfig({ users: users ?? makeUsersAdapter(kit.db, kit.hash), minRequestMs: 0, ...rest })
-    )
-    return new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption: null as never })
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) =>
+    makeService(kit, { minRequestMs: 0, ...overrides }).account
 
   async function seedTokens(user: AccountUser) {
     const now = DateTime.utc()
@@ -98,7 +66,7 @@ test.group('credentials', (group) => {
     })
     const call = recorder.calls.at(-1)!
     assertEmailChangeCall(call, user, newEmail)
-    return new URL(call.args[2] as string).pathname.split('/').at(-1)!
+    return tokenFrom(call.args[2])
   }
 
   function assertEmailChangeCall(
@@ -457,7 +425,8 @@ test.group('credentials', (group) => {
       attempted = resolve
     })
     const onQuery = (query: { sql: string }) => {
-      if (/select .*users.*for update|update users set id = id/i.test(query.sql)) attempted()
+      if (/select .*users.*for update|update ["`]?users["`]? set id = id/i.test(query.sql))
+        attempted()
     }
     knex.on('query', onQuery)
     try {
@@ -502,7 +471,7 @@ test.group('credentials', (group) => {
     const row = await kit.db.from('account_email_changes').first()
     assert.equal(row.current_email, user.email)
     assert.equal(row.new_email, 'new@example.test')
-    const token = new URL(recorder.calls[0].args[2] as string).pathname.split('/').at(-1)!
+    const token = tokenFrom(recorder.calls[0].args[2])
     assert.equal(row.token_hash, hashToken(token))
     const changed = await account.credentials.completeEmailChange({ token })
     assert.equal(changed.email, 'new@example.test')
@@ -1042,7 +1011,7 @@ test.group('credentials', (group) => {
     assert.lengthOf(await kit.db.from('account_email_changes'), 0)
   })
 
-  test('onCredentialsChanged failure prevents emailChanged and preserves the committed change', async ({
+  test('onCredentialsChanged failure still notifies the previous email and preserves the committed change', async ({
     assert,
   }) => {
     const user = await createUser()
@@ -1062,9 +1031,41 @@ test.group('credentials', (group) => {
       assert.instanceOf(error, PostCommitError)
       assert.equal((error as PostCommitError).cause, failure)
     }
-    assert.isFalse(recorder.calls.some((call) => call.method === 'emailChanged'))
+    const notice = recorder.calls.find((call) => call.method === 'emailChanged')
+    assert.isDefined(notice)
+    assert.equal(notice!.args[0], 'person@example.test')
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
     assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+  })
+
+  test('both post-commit failures are reported together in order', async ({ assert }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const noticeFailure = new Error('notice failed')
+    const callbackFailure = new Error('callback failed')
+    const account = service({
+      notify: {
+        ...recorder.notify,
+        async emailChanged() {
+          throw noticeFailure
+        },
+      },
+      onCredentialsChanged: async () => {
+        throw callbackFailure
+      },
+    })
+    const token = await issueEmailChange(account, user, recorder)
+    try {
+      await account.credentials.completeEmailChange({ token })
+      assert.fail('expected postcommit error')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      const cause = (error as PostCommitError).cause
+      assert.instanceOf(cause, AggregateError)
+      assert.deepEqual((cause as AggregateError).errors, [callbackFailure, noticeFailure])
+    }
+    const stored = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(stored.email, 'new@example.test')
   })
 })

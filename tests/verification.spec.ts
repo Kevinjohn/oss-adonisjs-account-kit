@@ -1,59 +1,32 @@
-import { DateTime } from 'luxon'
 import { test, timeTravel } from '@japa/runner'
-import { Encryption } from '@adonisjs/core/encryption'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { defineConfig } from '../src/account_kit.js'
 import {
   DeliveryError,
   InvalidInputError,
   InvalidTokenError,
   ThrottledError,
 } from '../src/errors.js'
-import { lockUser, transaction } from '../src/db.js'
+import { lockRow, transaction } from '../src/db.js'
 import type { AccountKitConfig } from '../src/types.js'
-import { bootTestApp } from './helpers/app.js'
-import { makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
-
+import { useTestApp } from './helpers/app.js'
+import {
+  accountKit,
+  insertUser,
+  makeConfig,
+  makeNotify,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
 test.group('verification.send', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  let encryption: Encryption
-  group.setup(async () => {
-    kit = await bootTestApp()
-    encryption = await kit.app.container.make(Encryption)
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createUser(verified = false) {
-    const [id] = await kit.db
-      .table('users')
-      .insert({
-        email: 'person@example.test',
-        password: await kit.hash.make('password123'),
-        email_verified_at: verified ? DateTime.utc().toISO() : null,
-        created_at: DateTime.utc().toISO(),
-      })
-      .returning('id')
-    return typeof id === 'object' ? id.id : id
+  const createUser = async (verified = false) => {
+    const user = await insertUser(kit, { verified })
+    return user.id
   }
 
-  function service(overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) {
-    const recorder = makeNotify()
-    const config = defineConfig(
-      makeConfig({
-        users: makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        ...overrides,
-      })
-    )
-    const account = new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption })
-    return { account, recorder }
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
   test('notifies an unverified user with an encrypted, purpose-bound payload', async ({
     assert,
@@ -65,12 +38,12 @@ test.group('verification.send', (group) => {
     assert.equal(recorder.calls[0].method, 'verification')
     const [user, url] = recorder.calls[0].args
     assert.equal((user as { id: number }).id, id)
-    const token = new URL(url as string).pathname.split('/').at(-1)!
-    assert.deepEqual(encryption.decrypt(token, 'account-kit:verify-email'), {
+    const token = tokenFrom(url)
+    assert.deepEqual(kit.encryption.decrypt(token, 'account-kit:verify-email'), {
       userId: id,
       email: 'person@example.test',
     })
-    assert.isNull(encryption.decrypt(token, 'wrong-purpose'))
+    assert.isNull(kit.encryption.decrypt(token, 'wrong-purpose'))
   })
 
   test('missing user rejects and verified user returns without throttling or notification', async ({
@@ -132,53 +105,20 @@ test.group('verification.send', (group) => {
 })
 
 test.group('verification.complete', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  let encryption: Encryption
-  group.setup(async () => {
-    kit = await bootTestApp()
-    encryption = await kit.app.container.make(Encryption)
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createUser() {
-    const [id] = await kit.db
-      .table('users')
-      .insert({
-        email: 'person@example.test',
-        password: await kit.hash.make('password123'),
-        email_verified_at: null,
-        created_at: DateTime.utc().toISO(),
-      })
-      .returning('id')
-    return typeof id === 'object' ? id.id : id
+  const createUser = async (verified = false) => {
+    const user = await insertUser(kit, { verified })
+    return user.id
   }
 
-  function service(overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) {
-    const recorder = makeNotify()
-    const config = defineConfig(
-      makeConfig({
-        users: makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        ...overrides,
-      })
-    )
-    return {
-      account: new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption }),
-      recorder,
-    }
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
   async function issue() {
     const id = await createUser()
     const { account, recorder } = service()
     await account.verification.send({ userId: id })
-    const token = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    const token = tokenFrom(recorder.calls[0].args[1])
     return { id, account, token }
   }
 
@@ -203,7 +143,7 @@ test.group('verification.complete', (group) => {
     const id = await createUser()
     const { account } = service()
     const payload = { userId: id, email: 'person@example.test' }
-    const wrongPurpose = encryption.encrypt(payload, '1h', 'different-purpose')
+    const wrongPurpose = kit.encryption.encrypt(payload, '1h', 'different-purpose')
     await assert.rejects(
       () => account.verification.complete({ token: wrongPurpose }),
       InvalidTokenError
@@ -215,7 +155,7 @@ test.group('verification.complete', (group) => {
   test('rejects an expired token', async ({ assert }) => {
     const id = await createUser()
     const { account } = service()
-    const expired = encryption.encrypt(
+    const expired = kit.encryption.encrypt(
       { userId: id, email: 'person@example.test' },
       '1h',
       'account-kit:verify-email'
@@ -242,7 +182,7 @@ test.group('verification.complete', (group) => {
       { userId: true, email: payload.email },
       { userId: id, email: 42 },
     ]) {
-      const token = encryption.encrypt(invalid, '1h', 'account-kit:verify-email')
+      const token = kit.encryption.encrypt(invalid, '1h', 'account-kit:verify-email')
       await assert.rejects(() => account.verification.complete({ token }), InvalidTokenError)
     }
     const row = await kit.db.from('users').where('id', id).first()
@@ -283,7 +223,7 @@ test.group('verification.complete', (group) => {
         },
       })
     )
-    const account = new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption })
+    const account = accountKit(kit, config)
     const verifying = account.verification.complete({ token })
     try {
       await ready
@@ -324,7 +264,7 @@ test.group('verification.complete', (group) => {
     })
     const users = makeUsersAdapter(kit.db, kit.hash)
     const changing = transaction(kit.db, async (trx) => {
-      await lockUser(trx, id)
+      await lockRow(trx, 'users', id)
       await users.findById(id, trx, { forUpdate: true })
       await users.setEmail(id, 'changed@example.test', trx)
       changeReady()
@@ -337,7 +277,7 @@ test.group('verification.complete', (group) => {
       attempted = resolve
     })
     const onQuery = (query: { sql: string }) => {
-      if (/update users set id = id|for update/i.test(query.sql)) attempted()
+      if (/update ["`]?users["`]? set id = id|for update/i.test(query.sql)) attempted()
     }
     knex.on('query', onQuery)
     try {

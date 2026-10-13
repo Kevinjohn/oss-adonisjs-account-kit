@@ -1,80 +1,60 @@
-/*
-|--------------------------------------------------------------------------
-| Configure hook
-|--------------------------------------------------------------------------
-|
-| The configure hook is called when someone runs "node ace configure <package>"
-| command. You are free to perform any operations inside this function to
-| configure the package.
-|
-| To make things easier, you have access to the underlying "Configure"
-| instance and you can use codemods to modify the source files.
-|
-*/
-
-import { readFile, readdir } from 'node:fs/promises'
+import { access, readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 
-const migrationNames = [
+export const migrationNames = [
   'create_account_recovery_tokens',
   'create_account_invitations',
   'create_account_email_changes',
   'add_email_verified_at_to_users',
 ]
 
-function report(command: Configure, status: 'created' | 'skipped', path: string) {
-  command.logger.info(`${status === 'created' ? 'Created' : 'Skipped'} ${path}`)
+function isMissing(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException).code === 'ENOENT'
 }
 
 export async function configure(command: Configure) {
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
-  const config = await codemods.makeUsingStub(command.stubsRoot, 'config/account_kit.stub', {
+  await codemods.makeUsingStub(command.stubsRoot, 'config/account_kit.stub', {
     config: { destination: command.app.makePath('config/account_kit.ts') },
   })
-  report(
-    command,
-    config.status === 'skipped' ? 'skipped' : 'created',
-    command.app.relativePath(config.destination)
-  )
 
-  const migrationsDirectory = command.app.makePath('database/migrations')
   let migrationFiles: string[] = []
   try {
-    migrationFiles = await readdir(migrationsDirectory)
+    migrationFiles = await readdir(command.app.makePath('database/migrations'))
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    if (!isMissing(error)) throw error
   }
 
   const timestamp = Date.now()
   for (const [index, name] of migrationNames.entries()) {
-    const pattern = new RegExp(`^.+_account_kit_${name}\\.ts$`)
-    if (migrationFiles.some((filename) => pattern.test(filename))) {
-      report(command, 'skipped', `database/migrations/*_account_kit_${name}.ts`)
+    const suffix = `_account_kit_${name}.ts`
+    if (migrationFiles.some((filename) => filename.endsWith(suffix))) {
+      command.logger.info(`Skipped database/migrations/*${suffix}`)
       continue
     }
-
-    const filename = `${timestamp + index}_account_kit_${name}.ts`
-    const result = await codemods.makeUsingStub(command.stubsRoot, `migrations/${name}.stub`, {
-      migration: { destination: command.app.makePath(`database/migrations/${filename}`) },
+    await codemods.makeUsingStub(command.stubsRoot, `migrations/${name}.stub`, {
+      migration: {
+        destination: command.app.makePath(`database/migrations/${timestamp + index}${suffix}`),
+      },
     })
-    report(
-      command,
-      result.status === 'skipped' ? 'skipped' : 'created',
-      command.app.relativePath(result.destination)
-    )
-    migrationFiles.push(filename)
   }
 
-  const providerPath = 'adonisjs-account-kit/providers/account_kit_provider'
-  const rcPath = command.app.makePath('adonisrc.ts')
-  let providerWasRegistered = false
+  await codemods.updateRcFile((rcFile) =>
+    rcFile.addProvider('adonisjs-account-kit/providers/account_kit_provider')
+  )
+
+  // The generated config builds links from APP_URL. Declare it in start/env.ts so a missing
+  // value fails at boot; defineEnvValidations leaves an existing declaration unchanged.
   try {
-    const rcContents = await readFile(rcPath, 'utf8')
-    providerWasRegistered = rcContents.includes(providerPath)
+    await access(command.app.makePath('start/env.ts'))
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    if (!isMissing(error)) throw error
+    command.logger.warning('start/env.ts not found; declare APP_URL as a validated URL manually')
+    return
   }
-  await codemods.updateRcFile((rcFile) => rcFile.addProvider(providerPath))
-  report(command, providerWasRegistered ? 'skipped' : 'created', 'adonisrc.ts provider')
+  await codemods.defineEnvValidations({
+    leadingComment: 'Variables for adonisjs-account-kit',
+    variables: { APP_URL: "Env.schema.string({ format: 'url', tld: false })" },
+  })
 }

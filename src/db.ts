@@ -1,6 +1,9 @@
 import { performance } from 'node:perf_hooks'
+import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
-import type { Trx, UserId } from './types.js'
+import { InvalidTokenError } from './errors.js'
+import { hashToken } from './tokens.js'
+import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
 
 const SQLITE_RETRY_MS = 10
 const SQLITE_DEADLINE_MS = 5000
@@ -24,7 +27,8 @@ export function isUniqueViolation(error: unknown, table: string, column: string)
 
   const details = error as { code?: unknown; constraint?: unknown; message?: unknown }
   if (details.code === '23505') {
-    return details.constraint === `${table}_${column}_unique`
+    // PostgreSQL stores at most 63 bytes of an identifier; configured table names are ASCII.
+    return details.constraint === `${table}_${column}_unique`.slice(0, 63)
   }
 
   if (details.code !== 'SQLITE_CONSTRAINT_UNIQUE' || typeof details.message !== 'string')
@@ -32,21 +36,57 @@ export function isUniqueViolation(error: unknown, table: string, column: string)
   const prefix = 'UNIQUE constraint failed: '
   const start = details.message.lastIndexOf(prefix)
   if (start < 0) return false
-  const columns = details.message
-    .slice(start + prefix.length)
-    .split(',')
-    .map((name) => name.trim())
-  return columns.length === 1 && columns[0] === `${table}.${column}`
+  // A multi-column index lists its columns comma-separated, so this only matches a single column.
+  return details.message.slice(start + prefix.length).trim() === `${table}.${column}`
 }
 
-export async function lockUser(trx: Trx, id: UserId): Promise<void> {
+/** SQLite has no row locks: a touch update takes the database write lock for the transaction. */
+export async function lockRow(trx: Trx, table: string, id: UserId): Promise<void> {
   if (trx.dialect.name !== 'better-sqlite3') return
-  await trx.rawQuery('update users set id = id where id = ?', [id]).exec()
+  await trx.rawQuery('update ?? set id = id where id = ?', [table, id]).exec()
 }
 
-export async function lockInvitation(trx: Trx, id: number): Promise<void> {
-  if (trx.dialect.name !== 'better-sqlite3') return
-  await trx.rawQuery('update account_invitations set id = id where id = ?', [id]).exec()
+type TokenTable = 'account_recovery_tokens' | 'account_email_changes' | 'account_invitations'
+
+/** Delete one unexpired token row and return it, or null when no live row matched. */
+export async function consumeToken<Row>(
+  trx: Trx,
+  table: TokenTable,
+  tokenHash: string,
+  now: string
+): Promise<Row | null> {
+  const result: unknown = await trx
+    .rawQuery(`delete from ${table} where token_hash = ? and expires_at > ? returning *`, [
+      tokenHash,
+      now,
+    ])
+    .exec()
+  // better-sqlite3 returns the rows directly; pg wraps them in a result object.
+  const rows = (Array.isArray(result) ? result : (result as { rows: Row[] }).rows) as Row[]
+  return rows[0] ?? null
+}
+
+/**
+ * Consume a user-bound token under the user's lock. Every credential operation locks the user
+ * before touching a token table, so the unlocked lookup only chooses the lock target; the
+ * consuming delete then revalidates the live token.
+ */
+export async function consumeUserToken<Row extends { user_id: UserId }>(
+  trx: Trx,
+  config: ResolvedConfig,
+  table: 'account_recovery_tokens' | 'account_email_changes',
+  token: string,
+  emailOf: (row: Row) => string
+): Promise<{ row: Row; user: AccountUser }> {
+  const tokenHash = hashToken(token)
+  const candidate = await trx.from(table).select('user_id').where('token_hash', tokenHash).first()
+  if (!candidate) throw new InvalidTokenError()
+  await lockRow(trx, config.usersTable, candidate.user_id)
+  const user = await config.users.findById(candidate.user_id, trx, { forUpdate: true })
+  const row = await consumeToken<Row>(trx, table, tokenHash, DateTime.utc().toISO())
+  if (!row || row.user_id !== candidate.user_id || !user || user.email !== emailOf(row))
+    throw new InvalidTokenError()
+  return { row, user }
 }
 
 async function commitTransaction(
@@ -89,63 +129,20 @@ async function commitTransaction(
   }
 }
 
-export async function consumeRecoveryToken(
+async function runAndCommit<T>(
   trx: Trx,
-  tokenHash: string,
-  now: string
-): Promise<{ user_id: UserId; email: string } | null> {
-  const result: unknown = await trx
-    .rawQuery(
-      'delete from account_recovery_tokens where token_hash = ? and expires_at > ? returning user_id, email',
-      [tokenHash, now]
-    )
-    .exec()
-  const rows = Array.isArray(result)
-    ? result
-    : (result as { rows: Array<{ user_id: UserId; email: string }> }).rows
-  return rows[0] ?? null
-}
-
-export async function consumeEmailChangeToken(
-  trx: Trx,
-  tokenHash: string,
-  now: string
-): Promise<{ user_id: UserId; current_email: string; new_email: string } | null> {
-  const result: unknown = await trx
-    .rawQuery(
-      'delete from account_email_changes where token_hash = ? and expires_at > ? returning *',
-      [tokenHash, now]
-    )
-    .exec()
-  const rows = Array.isArray(result)
-    ? result
-    : (result as { rows: Array<{ user_id: UserId; current_email: string; new_email: string }> })
-        .rows
-  return rows[0] ?? null
-}
-
-export async function consumeInvitationToken(
-  trx: Trx,
-  tokenHash: string,
-  now: string
-): Promise<{
-  id: number
-  email: string
-  role: string
-  inviter_id: UserId | null
-  token_hash: string
-  expires_at: Date | string
-  created_at: Date | string
-  updated_at: Date | string
-} | null> {
-  const result: unknown = await trx
-    .rawQuery(
-      'delete from account_invitations where token_hash = ? and expires_at > ? returning *',
-      [tokenHash, now]
-    )
-    .exec()
-  const rows = Array.isArray(result) ? result : (result as { rows: unknown[] }).rows
-  return rows[0] ?? null
+  callback: (trx: Trx) => Promise<T>,
+  onCommitted: () => void,
+  sqlite?: SQLiteConnection
+): Promise<T> {
+  try {
+    const result = await callback(trx)
+    await commitTransaction(trx, onCommitted, sqlite)
+    return result
+  } catch (error) {
+    if (!trx.isCompleted) await trx.rollback()
+    throw error
+  }
 }
 
 /** Run a database-only callback; callers perform notifications after this resolves. */
@@ -154,15 +151,7 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
   if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
 
   if (connection.dialect.name !== 'better-sqlite3') {
-    const trx = await connection.transaction()
-    try {
-      const result = await callback(trx)
-      await commitTransaction(trx, () => {})
-      return result
-    } catch (error) {
-      if (!trx.isCompleted) await trx.rollback()
-      throw error
-    }
+    return runAndCommit(await connection.transaction(), callback, () => {})
   }
   const client = connection.getWriteClient().client
 
@@ -179,20 +168,14 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
           undefined as never,
           { connection: sqlite } as never
         )) as Trx
-        try {
-          const result = await callback(trx)
-          await commitTransaction(
-            trx,
-            () => {
-              committed = true
-            },
-            sqlite
-          )
-          return result
-        } catch (error) {
-          if (!trx.isCompleted) await trx.rollback()
-          throw error
-        }
+        return await runAndCommit(
+          trx,
+          callback,
+          () => {
+            committed = true
+          },
+          sqlite
+        )
       } finally {
         if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
         if (timeout !== undefined) sqlite.pragma(`busy_timeout = ${timeout}`)

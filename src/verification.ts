@@ -2,15 +2,11 @@ import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import { lockUser, transaction } from './db.js'
-import { DeliveryError, InvalidInputError, InvalidTokenError } from './errors.js'
+import { lockRow, transaction } from './db.js'
+import { deliver } from './effects.js'
+import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { consume } from './throttle.js'
-import type {
-  ResolvedConfig,
-  VerificationCompleteInput,
-  VerificationSendInput,
-  UserId,
-} from './types.js'
+import type { ResolvedConfig, VerificationCompleteInput, VerificationSendInput } from './types.js'
 
 const VERIFICATION_PURPOSE = 'account-kit:verify-email'
 
@@ -28,11 +24,9 @@ export async function sendVerification(
     deps.config.ttl.verification,
     VERIFICATION_PURPOSE
   )
-  try {
-    await deps.config.notify.verification(user, deps.config.urls.verification(token))
-  } catch (cause) {
-    throw new DeliveryError('Verification notification failed', { cause })
-  }
+  await deliver('Verification notification failed', () =>
+    deps.config.notify.verification(user, deps.config.urls.verification(token))
+  )
   return 'sent'
 }
 
@@ -49,7 +43,7 @@ export async function completeVerification(
     throw new InvalidTokenError()
 
   return transaction(deps.db, async (trx) => {
-    await lockUser(trx, userId as UserId)
+    await lockRow(trx, deps.config.usersTable, userId)
     const user = await deps.config.users.findById(userId, trx, { forUpdate: true })
     if (!user || user.email !== email) throw new InvalidTokenError()
     if (user.emailVerifiedAt !== null) return 'already_verified'

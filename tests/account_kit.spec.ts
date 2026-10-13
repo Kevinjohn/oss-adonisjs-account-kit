@@ -1,21 +1,9 @@
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
 import { defineConfig } from '../src/account_kit.js'
-
+import { useTestApp } from './helpers/app.js'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 test.group('account kit configuration and service surface', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
   test('fills defaults while preserving supplied callbacks and nested overrides', ({ assert }) => {
     const input = makeConfig({
@@ -62,6 +50,15 @@ test.group('account kit configuration and service surface', (group) => {
     }
     for (const duration of ['soon', '0s', '1ms', '100000000d']) {
       assert.throws(() => defineConfig({ ...base, throttle: { duration } }))
+    }
+  })
+
+  test('defaults usersTable to users and rejects non-identifier names', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    assert.equal(defineConfig(base).usersTable, 'users')
+    assert.equal(defineConfig({ ...base, usersTable: 'accounts' }).usersTable, 'accounts')
+    for (const usersTable of ['', 'users; drop table users', '1users', 'app.users']) {
+      assert.throws(() => defineConfig({ ...base, usersTable }))
     }
   })
 

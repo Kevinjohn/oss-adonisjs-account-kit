@@ -7,9 +7,10 @@ import { defineConfig, type AccountUser, type Invitation, type Trx } from 'adoni
 import hash from '@adonisjs/core/services/hash'
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase()
-const appUrl = env.get('APP_URL')
+// A trailing slash keeps any path in APP_URL (for example https://example.com/portal).
+const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
 const accountUrl = (path: string, token: string) =>
-  new URL('/account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
+  new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
 
 const loadUser = async () => (await import('#models/user')).default
 const query = (User: typeof UserModel, trx?: Trx) =>
@@ -20,6 +21,15 @@ const toAccountUser = (user: UserModel): AccountUser => ({
   hasPassword: user.password !== null,
   emailVerifiedAt: user.emailVerifiedAt,
 })
+// Saving through the model keeps its hooks, such as password hashing in beforeSave.
+const updateUser = async (id: number | string, trx: Trx, change: (user: UserModel) => void) => {
+  const User = await loadUser()
+  const user = await query(User, trx).where('id', id).first()
+  if (!user) return
+  change(user)
+  user.useTransaction(trx)
+  await user.save()
+}
 
 const users = {
   async findByEmail(email: string, trx?: Trx, options?: { forUpdate?: boolean }) {
@@ -48,41 +58,31 @@ const users = {
     user.email = normalizeEmail(attrs.email)
     user.password = attrs.password
     user.emailVerifiedAt = attrs.emailVerifiedAt
-    // The User model's beforeSave hook must hash changed passwords.
     await user.save()
     return toAccountUser(user)
   },
 
   async setPassword(id: number | string, password: string, trx: Trx) {
-    const User = await loadUser()
-    const user = await User.query({ client: trx }).where('id', id).first()
-    if (!user) return
-    user.password = password
-    user.useTransaction(trx)
-    await user.save()
+    await updateUser(id, trx, (user) => {
+      user.password = password
+    })
   },
 
   async setEmail(id: number | string, email: string, trx: Trx) {
-    const User = await loadUser()
-    const user = await User.query({ client: trx }).where('id', id).first()
-    if (!user) return
-    user.email = normalizeEmail(email)
-    user.useTransaction(trx)
-    await user.save()
+    await updateUser(id, trx, (user) => {
+      user.email = normalizeEmail(email)
+    })
   },
 
   async markEmailVerified(id: number | string, at: DateTime, trx: Trx) {
-    const User = await loadUser()
-    const user = await User.query({ client: trx }).where('id', id).first()
-    if (!user) return
-    user.emailVerifiedAt = at
-    user.useTransaction(trx)
-    await user.save()
+    await updateUser(id, trx, (user) => {
+      user.emailVerifiedAt = at
+    })
   },
 
   async verifyPassword(id: number | string, password: string, trx: Trx) {
     const User = await loadUser()
-    const user = await User.query({ client: trx }).where('id', id).first()
+    const user = await query(User, trx).where('id', id).first()
     return typeof user?.password === 'string' && hash.verify(user.password, password)
   },
 }

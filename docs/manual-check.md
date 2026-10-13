@@ -115,3 +115,32 @@ then installed and tested through pnpm.
 The final source review found no remaining findings, nits or questions in these corrections.
 Release setup and hooks are prepared but no version, publish or hosted release command was run.
 Stage 7, starter/browser work, owner application integration and publication remain deferred.
+
+## T8.6: account-operation refactor and custom-table support
+
+The subsequent refactor shares token-consumption, password validation and post-commit effect
+helpers, reduces repeated test setup, validates recovery client keys, reports missing provider
+configuration, and preserves `APP_URL` subpaths. Email-change notices are attempted after a failing
+credential callback; multiple post-commit failures retain their order in an `AggregateError`.
+
+Custom-table support now quotes SQLite identifiers and maps PostgreSQL's stored constraint-name
+truncation. The application prerequisites describe all three foreign-key targets, both verification
+migration directions, and the PostgreSQL-specific 62-character table-name boundary. Configure
+continues to generate application-owned migrations for `users`; it does not rewrite existing ones.
+
+The custom-table regressions first reproduced a reserved SQLite table failure and a raw PostgreSQL
+unique error for a long table name. Four service cases now use `accounts`, `order`, and 54- and
+62-character names without a `users` table. They cover verification, invitation acceptance,
+recovery, password change, email change, real unique-error mapping and rollback. The conflict is
+injected within the adapter transaction for deterministic error coverage; the existing independent
+race tests continue to cover concurrency. A separate native-connection assertion verifies the
+custom-table write lock blocks another SQLite writer.
+
+Local validation passed on Node 24.19.0 and pnpm 11.23.0: lint, typecheck, build, three built-export
+tests, 138 SQLite tests and 139 PostgreSQL tests. The final code review found no remaining findings
+in the refactor and corrections. All PostgreSQL work used an isolated local database. No GitHub
+Actions, dependency changes, versioning, release, publication or deployment ran.
+
+These are source/build checks. The tarball hash and copied-consumer HTTP checks in T8.5 remain
+historical evidence for the earlier runtime; this task did not repeat package installation or the
+consumer/browser rehearsal. The existing dependency advisories and deferred stage-7 work remain.

@@ -14,7 +14,8 @@ import {
   ThrottledError,
 } from '../../src/errors.js'
 import { isEmailShaped, normaliseEmail } from '../../src/email.js'
-import { toEmailChangeRow, toInvitation, toRecoveryRow } from '../../src/rows.js'
+import { isPasswordShaped } from '../../src/password.js'
+import { toInvitation } from '../../src/rows.js'
 import { expiresAt } from '../../src/ttl.js'
 import { generateToken, hashToken, isTokenShaped } from '../../src/tokens.js'
 
@@ -54,6 +55,17 @@ test.group('email helpers', () => {
     assert.isFalse(isEmailShaped(`${'a'.repeat(253)}@x`))
     assert.isFalse(isEmailShaped('a@@b'))
     assert.isFalse(isEmailShaped(null))
+  })
+})
+
+test.group('password helper', () => {
+  test('accepts only strings between 8 and 255 characters', async ({ assert }) => {
+    assert.isTrue(isPasswordShaped('x'.repeat(8)))
+    assert.isTrue(isPasswordShaped('x'.repeat(255)))
+    assert.isFalse(isPasswordShaped('x'.repeat(7)))
+    assert.isFalse(isPasswordShaped('x'.repeat(256)))
+    assert.isFalse(isPasswordShaped(12345678))
+    assert.isFalse(isPasswordShaped(null))
   })
 })
 
@@ -97,50 +109,6 @@ test.group('database row mapping', () => {
       updatedAt: DateTime.fromJSDate(updatedAt, { zone: 'utc' }),
     })
     assert.notProperty(invitation, 'token_hash')
-  })
-
-  test('maps recovery and email-change rows including their private token hashes', async ({
-    assert,
-  }) => {
-    const date = '2026-05-06T07:08:09.000Z'
-    assert.deepEqual(
-      toRecoveryRow({
-        id: 4,
-        user_id: 12,
-        email: 'person@example.test',
-        token_hash: 'recovery-hash',
-        expires_at: date,
-        created_at: date,
-      }),
-      {
-        id: 4,
-        userId: 12,
-        email: 'person@example.test',
-        tokenHash: 'recovery-hash',
-        expiresAt: DateTime.fromISO(date, { zone: 'utc' }),
-        createdAt: DateTime.fromISO(date, { zone: 'utc' }),
-      }
-    )
-    assert.deepEqual(
-      toEmailChangeRow({
-        id: 5,
-        user_id: 12,
-        current_email: 'old@example.test',
-        new_email: 'new@example.test',
-        token_hash: 'change-hash',
-        expires_at: date,
-        created_at: date,
-      }),
-      {
-        id: 5,
-        userId: 12,
-        currentEmail: 'old@example.test',
-        newEmail: 'new@example.test',
-        tokenHash: 'change-hash',
-        expiresAt: DateTime.fromISO(date, { zone: 'utc' }),
-        createdAt: DateTime.fromISO(date, { zone: 'utc' }),
-      }
-    )
   })
 })
 

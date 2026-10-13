@@ -1,22 +1,7 @@
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-
+import { useTestApp } from './helpers/app.js'
 test.group('published account kit migrations', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
   test('creates the package tables and nullable user verification timestamp', async ({
     assert,

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { type AccountKit, defineConfig } from '../src/account_kit.js'
 import {
   AuthorizationError,
   DeliveryError,
@@ -12,49 +12,24 @@ import {
 import { hashToken } from '../src/tokens.js'
 import { transaction } from '../src/db.js'
 import type { AccountKitConfig, AccountUser } from '../src/types.js'
-import { bootTestApp } from './helpers/app.js'
-import { allowAll, makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
+import { bootTestApp, useTestApp } from './helpers/app.js'
+import {
+  accountKit,
+  allowAll,
+  insertUser,
+  makeConfig,
+  makeNotify,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
-
 test.group('invitations.send', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createActor(email = 'actor@example.test'): Promise<AccountUser> {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    return kit.db.transaction((trx) =>
-      users.create({ email, password: 'password123', emailVerifiedAt: DateTime.utc() }, trx)
-    )
-  }
+  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
 
-  function service(overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) {
-    const recorder = makeNotify()
-    const config = defineConfig(
-      makeConfig({
-        users: makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        ...overrides,
-      })
-    )
-    return {
-      account: new AccountKit({
-        config,
-        db: kit.db,
-        limiter: kit.limiter,
-        encryption: null as never,
-      }),
-      recorder,
-    }
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
   test('stores normalized email, opaque role, inviter, hash, and timestamps; notifies after commit', async ({
     assert,
@@ -88,7 +63,7 @@ test.group('invitations.send', (group) => {
     assert.lengthOf(recorder.calls, 1)
     const [notified, url] = recorder.calls[0].args
     assert.deepEqual(notified, invitation)
-    const raw = new URL(url as string).pathname.split('/').at(-1)!
+    const raw = tokenFrom(url)
     assert.match(raw, /^[A-Za-z0-9_-]{43}$/)
     const row = await kit.db.from('account_invitations').where('id', invitation.id).first()
     assert.equal(row.email, invitation.email)
@@ -262,47 +237,11 @@ test.group('invitations.send', (group) => {
 })
 
 test.group('invitations.list and inspect', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createActor() {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    return kit.db.transaction((trx) =>
-      users.create(
-        { email: 'actor@example.test', password: 'password123', emailVerifiedAt: DateTime.utc() },
-        trx
-      )
-    )
-  }
+  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
 
-  function service(overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) {
-    const recorder = makeNotify()
-    const config = defineConfig(
-      makeConfig({
-        users: makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        ...overrides,
-      })
-    )
-    return {
-      account: new AccountKit({
-        config,
-        db: kit.db,
-        limiter: kit.limiter,
-        encryption: null as never,
-      }),
-      recorder,
-    }
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
   test('lists only live invitations in creation order without token material', async ({
     assert,
@@ -365,7 +304,7 @@ test.group('invitations.list and inspect', (group) => {
       email: '  PERSON@EXAMPLE.TEST ',
       role: 'admin',
     })
-    const raw = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    const raw = tokenFrom(recorder.calls[0].args[1])
     const expected = { email: 'person@example.test', role: 'admin' }
     assert.deepEqual(await account.invitations.inspect({ token: raw }), expected)
     assert.deepEqual(await account.invitations.inspect({ token: raw }), expected)
@@ -379,7 +318,7 @@ test.group('invitations.list and inspect', (group) => {
     const actor = await createActor()
     const { account, recorder } = service()
     await account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
-    const raw = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    const raw = tokenFrom(recorder.calls[0].args[1])
     for (const value of [null, 42, '', 'invalid'])
       assert.isNull(await account.invitations.inspect({ token: value as never }))
     assert.isNull(await account.invitations.inspect({ token: 'a'.repeat(43) }))
@@ -393,48 +332,11 @@ test.group('invitations.list and inspect', (group) => {
 })
 
 test.group('invitations.accept', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createActor() {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    return kit.db.transaction((trx) =>
-      users.create(
-        { email: 'actor@example.test', password: 'password123', emailVerifiedAt: DateTime.utc() },
-        trx
-      )
-    )
-  }
+  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
 
-  function service(overrides: Partial<AccountKitConfig> = {}) {
-    const recorder = makeNotify()
-    const { users, ...rest } = overrides
-    const config = defineConfig(
-      makeConfig({
-        users: users ?? makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        ...rest,
-      })
-    )
-    return {
-      account: new AccountKit({
-        config,
-        db: kit.db,
-        limiter: kit.limiter,
-        encryption: null as never,
-      }),
-      recorder,
-    }
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
   async function issue(
     account: AccountKit,
@@ -444,7 +346,7 @@ test.group('invitations.accept', (group) => {
     role = 'admin'
   ) {
     const invitation = await account.invitations.send({ actorId, email, role })
-    const token = new URL(recorder.calls.at(-1)!.args[1] as string).pathname.split('/').at(-1)!
+    const token = tokenFrom(recorder.calls.at(-1)!.args[1])
     return { invitation, token }
   }
 
@@ -693,48 +595,11 @@ test.group('invitations.accept', (group) => {
 })
 
 test.group('invitations.resend and revoke', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  async function createActor() {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    return kit.db.transaction((trx) =>
-      users.create(
-        { email: 'actor@example.test', password: 'password123', emailVerifiedAt: DateTime.utc() },
-        trx
-      )
-    )
-  }
+  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
 
-  function service(overrides: Partial<AccountKitConfig> = {}) {
-    const recorder = makeNotify()
-    const { users, ...rest } = overrides
-    const config = defineConfig(
-      makeConfig({
-        users: users ?? makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        ...rest,
-      })
-    )
-    return {
-      account: new AccountKit({
-        config,
-        db: kit.db,
-        limiter: kit.limiter,
-        encryption: null as never,
-      }),
-      recorder,
-    }
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
   async function issue(
     account: AccountKit,
@@ -744,7 +609,7 @@ test.group('invitations.resend and revoke', (group) => {
     role = 'admin'
   ) {
     const invitation = await account.invitations.send({ actorId, email, role })
-    const token = new URL(recorder.calls.at(-1)!.args[1] as string).pathname.split('/').at(-1)!
+    const token = tokenFrom(recorder.calls.at(-1)!.args[1])
     return { invitation, token }
   }
 
@@ -759,7 +624,7 @@ test.group('invitations.resend and revoke', (group) => {
         ...recorder.notify,
         invitation: async (invitation, url) => {
           if (recorder.calls.length === 1) {
-            const raw = new URL(url).pathname.split('/').at(-1)!
+            const raw = tokenFrom(url)
             const committed = await kit.db
               .from('account_invitations')
               .where('id', invitation.id)
@@ -782,7 +647,7 @@ test.group('invitations.resend and revoke', (group) => {
     assert.equal(resent.createdAt.toISO(), original.createdAt.toISO())
     assert.isTrue(visibleAtNotification)
     assert.lengthOf(recorder.calls, 2)
-    const newToken = new URL(recorder.calls[1].args[1] as string).pathname.split('/').at(-1)!
+    const newToken = tokenFrom(recorder.calls[1].args[1])
     assert.notEqual(newToken, oldToken)
     const row = await kit.db.from('account_invitations').where('id', original.id).first()
     assert.equal(row.token_hash, hashToken(newToken))
@@ -817,7 +682,7 @@ test.group('invitations.resend and revoke', (group) => {
     assert.isTrue(renewed.expiresAt > DateTime.utc())
     assert.isNull(await account.invitations.inspect({ token }))
     await account.invitations.accept({
-      token: new URL(recorder.calls[1].args[1] as string).pathname.split('/').at(-1)!,
+      token: tokenFrom(recorder.calls[1].args[1]),
       password: 'password123',
     })
     await assert.rejects(
@@ -891,7 +756,7 @@ test.group('invitations.resend and revoke', (group) => {
       assert.instanceOf(error, DeliveryError)
       assert.instanceOf((error as DeliveryError).cause, Error)
     }
-    const newToken = new URL(recorder.calls[1].args[1] as string).pathname.split('/').at(-1)!
+    const newToken = tokenFrom(recorder.calls[1].args[1])
     assert.isNull(await account.invitations.inspect({ token: oldToken }))
     assert.deepEqual(await account.invitations.inspect({ token: newToken }), {
       email: invitation.email,
@@ -1023,12 +888,7 @@ test.group('invitations.resend and revoke', (group) => {
               },
             })
           )
-          const account = new AccountKit({
-            config,
-            db: customKit.db,
-            limiter: customKit.limiter,
-            encryption: null as never,
-          })
+          const account = accountKit(customKit, config)
           const invitation = await account.invitations.send({
             actorId: actor.id,
             email: 'first@example.test',
@@ -1051,10 +911,7 @@ test.group('invitations.resend and revoke', (group) => {
             .from('account_invitations')
             .where('id', invitation.id)
             .first()
-          assert.notEqual(
-            rotated.token_hash,
-            hashToken(new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!)
-          )
+          assert.notEqual(rotated.token_hash, hashToken(tokenFrom(recorder.calls[0].args[1])))
 
           policyReads.length = 0
           invitationReads.length = 0

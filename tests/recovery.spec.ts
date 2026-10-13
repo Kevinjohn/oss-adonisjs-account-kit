@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { defineConfig } from '../src/account_kit.js'
 import { requestRecovery } from '../src/recovery.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import {
@@ -12,47 +12,24 @@ import {
   ThrottledError,
 } from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
-import { bootTestApp } from './helpers/app.js'
-import { makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
+import { bootTestApp, useTestApp } from './helpers/app.js'
+import {
+  accountKit,
+  insertUser,
+  makeConfig,
+  makeNotify,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
-
 test.group('recovery.request', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  function service(overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    const config = defineConfig(makeConfig({ users, minRequestMs: 0, ...overrides }))
-    return {
-      users,
-      config,
-      account: new AccountKit({
-        config,
-        db: kit.db,
-        limiter: kit.limiter,
-        encryption: null as never,
-      }),
-    }
-  }
+  const service = (overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) =>
+    makeService(kit, { minRequestMs: 0, ...overrides })
 
-  async function createUser() {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    return kit.db.transaction((trx) =>
-      users.create(
-        { email: 'person@example.test', password: 'password123', emailVerifiedAt: DateTime.utc() },
-        trx
-      )
-    )
-  }
+  const createUser = () => insertUser(kit)
 
   test('unknown email returns void with no row or notification', async ({ assert }) => {
     const recorder = makeNotify()
@@ -77,7 +54,7 @@ test.group('recovery.request', (group) => {
     assert.lengthOf(recorder.calls, 1)
     const [notifiedUser, url] = recorder.calls[0].args
     assert.equal((notifiedUser as typeof user).id, user.id)
-    const raw = new URL(url as string).pathname.split('/').at(-1)!
+    const raw = tokenFrom(url)
     assert.match(raw, /^[A-Za-z0-9_-]{43}$/)
     const rows = await kit.db.from('account_recovery_tokens')
     assert.lengthOf(rows, 1)
@@ -108,7 +85,7 @@ test.group('recovery.request', (group) => {
     assert.lengthOf(rows, 1)
     const concurrentHashes = recorder.calls
       .slice(2)
-      .map((call) => hashToken(new URL(call.args[1] as string).pathname.split('/').at(-1)!))
+      .map((call) => hashToken(tokenFrom(call.args[1])))
     assert.include(concurrentHashes, rows[0].token_hash)
     assert.lengthOf(recorder.calls, 4)
   })
@@ -130,12 +107,7 @@ test.group('recovery.request', (group) => {
         minRequestMs: 0,
       })
     )
-    const account = new AccountKit({
-      config,
-      db: kit.db,
-      limiter: kit.limiter,
-      encryption: null as never,
-    })
+    const account = accountKit(kit, config)
     for (let index = 0; index < 5; index++)
       await account.recovery.request({ email: `unknown${index}@example.test`, clientKey: 'same' })
     try {
@@ -167,12 +139,7 @@ test.group('recovery.request', (group) => {
         minRequestMs: 0,
       })
     )
-    const account = new AccountKit({
-      config,
-      db: kit.db,
-      limiter: kit.limiter,
-      encryption: null as never,
-    })
+    const account = accountKit(kit, config)
     for (let index = 0; index < 5; index++)
       await account.recovery.request({ email: 'Person@Example.Test', clientKey: `client${index}` })
     try {
@@ -283,42 +250,38 @@ test.group('recovery.request', (group) => {
     }
     assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
   })
+
+  test('a missing or blank client key is rejected before any limiter bucket is used', async ({
+    assert,
+  }) => {
+    const { account } = service()
+    for (const clientKey of [undefined, '', '   ', 7]) {
+      try {
+        await account.recovery.request({ email: 'person@example.test', clientKey } as never)
+        assert.fail('expected invalid input')
+      } catch (error) {
+        assert.instanceOf(error, InvalidInputError)
+      }
+    }
+    for (let index = 0; index < 5; index++) {
+      await account.recovery.request({ email: `unknown${index}@example.test`, clientKey: 'ok' })
+    }
+  })
 })
 
 test.group('recovery.reset', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
-  function service(
-    overrides: Partial<Omit<AccountKitConfig, 'users'>> = {},
-    users = makeUsersAdapter(kit.db, kit.hash)
-  ) {
-    const config = defineConfig(makeConfig({ users, minRequestMs: 0, ...overrides }))
-    return new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption: null as never })
-  }
+  const service = (overrides: Partial<AccountKitConfig> = {}, users?: AccountKitConfig['users']) =>
+    makeService(kit, { minRequestMs: 0, users, ...overrides }).account
 
   async function issue(options: { verified?: boolean; password?: string | null } = {}) {
     const email = 'person@example.test'
-    const password = options.password === undefined ? 'password123' : options.password
-    await kit.db.table('users').insert({
-      email,
-      password: password === null ? null : await kit.hash.make(password),
-      email_verified_at: options.verified === false ? null : DateTime.utc().toISO(),
-      created_at: DateTime.utc().toISO(),
-    })
+    await insertUser(kit, { password: options.password, verified: options.verified !== false })
     const recorder = makeNotify()
     const account = service({ notify: recorder.notify })
     await account.recovery.request({ email, clientKey: 'reset-fixture' })
-    const token = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    const token = tokenFrom(recorder.calls[0].args[1])
     const user = await kit.db.from('users').first()
     return { account, token, user, recorder }
   }
@@ -560,12 +523,7 @@ test.group('recovery.reset', (group) => {
           },
         })
       )
-      const account = new AccountKit({
-        config,
-        db: customKit.db,
-        limiter: customKit.limiter,
-        encryption: null as never,
-      })
+      const account = accountKit(customKit, config)
       const release = new Promise<void>((resolve, reject) => {
         setTimeout(async () => {
           try {
@@ -611,17 +569,7 @@ test.group('recovery.reset', (group) => {
 })
 
 test.group('recovery.inspect', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
   async function issue() {
     const users = makeUsersAdapter(kit.db, kit.hash)
@@ -637,14 +585,9 @@ test.group('recovery.inspect', (group) => {
     )
     const recorder = makeNotify()
     const config = defineConfig(makeConfig({ users, notify: recorder.notify, minRequestMs: 0 }))
-    const account = new AccountKit({
-      config,
-      db: kit.db,
-      limiter: kit.limiter,
-      encryption: null as never,
-    })
+    const account = accountKit(kit, config)
     await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
-    const token = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    const token = tokenFrom(recorder.calls[0].args[1])
     return { account, token }
   }
 

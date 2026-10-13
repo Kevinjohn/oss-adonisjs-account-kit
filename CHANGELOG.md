@@ -23,8 +23,23 @@ package candidate; they do not represent a stable `1.0.0` release.
   asynchronously for up to five seconds; PostgreSQL does not retry. Transaction callbacks must
   keep writes inside the supplied transaction and avoid external side effects.
 - Documented consumer setup and local test workflows in `README.md`.
+- `usersTable` configuration option (default `users`) for applications whose user model uses
+  another table name; SQLite row locks and duplicate-email classification follow it.
 
 ### Fixed
+
+- A failing `onCredentialsChanged` callback no longer suppresses the `notify.emailChanged`
+  security notice after a committed email change; both post-commit effects run and a
+  `PostCommitError` carries one cause or an `AggregateError` of both.
+- `recovery.request` rejects a missing or blank `clientKey` with `InvalidInputError` instead of
+  throttling every caller in one shared bucket.
+- The provider throws a configuration error when `config/account_kit.ts` is missing instead of
+  failing later inside the first operation.
+- Generated URL callbacks keep any path in `APP_URL`, so applications served under a sub-path get
+  correct links. Configure declares `APP_URL` in `start/env.ts` when that file exists.
+- SQLite locks quote configured table names, including reserved identifiers. PostgreSQL duplicate
+  classification follows the database's 63-byte constraint-name limit. Custom-table setup documents
+  all application-owned migration targets and has service-level workflow and conflict coverage.
 
 - PostgreSQL commit failures reject the operation and suppress commit events and external effects.
   Both database clients reject package writes inside a global transaction.
@@ -42,7 +57,7 @@ package candidate; they do not represent a stable `1.0.0` release.
 ### Integration requirements
 
 - Applications provide a `UsersAdapter` that normalizes email addresses before storage and enforces
-  a unique email index (`users_email_unique` on PostgreSQL), hashes passwords, uses the supplied
+  a unique email index (`<usersTable>_email_unique` on PostgreSQL), hashes passwords, uses the supplied
   transaction for transaction-aware methods, and locks user rows on PostgreSQL when requested.
 - Applications configure required authorization, URL, notification, and invitation-acceptance
   callbacks. `onInvitationAccepted` performs application role assignment inside the transaction;
@@ -52,6 +67,9 @@ package candidate; they do not represent a stable `1.0.0` release.
 
 ### Validation
 
+- The account-operation refactor and custom-table corrections pass 138 SQLite tests, 139
+  PostgreSQL tests, lint, typecheck, build and three built-export tests. Four real-schema custom-table
+  cases cover reserved and long identifiers, migration adaptation, operations and duplicate rollback.
 - At accepted stage-6 source commit `64e154203c0bf1aaf36957e97f39f2d440aa2ccb`, package tests
   passed with 121 SQLite tests and 123 PostgreSQL tests. A later SQLite-only regression test raised
   the pre-correction totals to 122 SQLite tests and 123 PostgreSQL tests.

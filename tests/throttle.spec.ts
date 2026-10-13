@@ -1,21 +1,9 @@
 import { test } from '@japa/runner'
 import { ThrottledError } from '../src/errors.js'
 import { consume } from '../src/throttle.js'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-
+import { useTestApp } from './helpers/app.js'
 test.group('operation throttling', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
   test('separates operations sharing a client key and preserves limiter options', async ({
     assert,

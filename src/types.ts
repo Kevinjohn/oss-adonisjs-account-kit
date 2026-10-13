@@ -15,8 +15,11 @@ export interface AccountUser {
  * Adapter obligations:
  * - compare emails case-insensitively and store them trimmed and lowercase
  * - enforce a single-column unique index on the users table's email column;
- *   on PostgreSQL its constraint must be named `users_email_unique` so duplicate
- *   email races are mapped to EmailAlreadyRegisteredError
+ *   on PostgreSQL name its constraint `<usersTable>_email_unique` (PostgreSQL stores
+ *   the first 63 bytes) so duplicate email races map to EmailAlreadyRegisteredError
+ * - back the adapter with the table named by `usersTable` (default `users`); the package
+ *   locks rows in that table by `id` on SQLite; on PostgreSQL use at most 62 ASCII
+ *   characters to prevent the conventional unique-index name colliding with the table
  * - when `forUpdate` is true, select the user through `trx` with `FOR UPDATE` on PostgreSQL;
  *   SQLite uses a plain select after the package has acquired its write lock
  * - hash passwords in `create` and `setPassword`
@@ -71,6 +74,7 @@ export interface AccountKitConfig {
   }
   onInvitationAccepted: (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
   onCredentialsChanged?: (user: AccountUser) => Promise<void>
+  usersTable?: string
   ttl?: { recovery?: string; verification?: string; invitation?: string; emailChange?: string }
   throttle?: { requests?: number; duration?: string }
   minRequestMs?: number

@@ -2,19 +2,14 @@ import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
+import { migrationNames } from '../../configure.js'
 import type { TestApp } from './app.js'
-
-const migrationNames = [
-  'create_account_recovery_tokens',
-  'create_account_invitations',
-  'create_account_email_changes',
-  'add_email_verified_at_to_users',
-]
 
 export async function resetSchema(
   kit: TestApp,
-  options: { stringUserIds?: boolean } = {}
+  options: { stringUserIds?: boolean; usersTable?: string } = {}
 ): Promise<void> {
+  const usersTable = options.usersTable ?? 'users'
   const schema = kit.db.connection().schema
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
@@ -22,7 +17,8 @@ export async function resetSchema(
   await schema.dropTableIfExists('adonis_schema_versions')
   await schema.dropTableIfExists('adonis_schema')
   await schema.dropTableIfExists('users')
-  await schema.createTable('users', (table) => {
+  if (usersTable !== 'users') await schema.dropTableIfExists(usersTable)
+  await schema.createTable(usersTable, (table) => {
     if (options.stringUserIds) table.string('id', 36).primary()
     else table.increments('id')
     table.string('email').notNullable().unique()
@@ -47,16 +43,38 @@ export async function resetSchema(
       migration: { destination: join(kit.migrationDirectory, filename) },
     })
     // Applications with text/UUID IDs adapt their owned migration foreign keys.
-    const contents = options.stringUserIds
+    let contents = options.stringUserIds
       ? prepared.contents.replace(
           /table\.integer\('(user_id|inviter_id)'\)\.unsigned\(\)/g,
           "table.string('$1', 36)"
         )
       : prepared.contents
+    if (usersTable !== 'users')
+      contents = contents.replaceAll("'users'", JSON.stringify(usersTable))
     await writeFile(prepared.destination, contents)
   }
 
   const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
   await runner.run()
   if (runner.error) throw runner.error
+}
+
+const dataTables = [
+  'account_email_changes',
+  'account_invitations',
+  'account_recovery_tokens',
+  'users',
+]
+
+/** Empty every table and restart id sequences without touching the schema. */
+export async function clearRows(kit: TestApp): Promise<void> {
+  if (kit.db.connection().dialect.name !== 'better-sqlite3') {
+    await kit.db.rawQuery(`truncate ${dataTables.join(', ')} restart identity cascade`)
+    return
+  }
+  for (const table of dataTables) await kit.db.from(table).delete()
+  await kit.db.rawQuery(
+    `delete from sqlite_sequence where name in (${dataTables.map(() => '?').join(', ')})`,
+    dataTables
+  )
 }

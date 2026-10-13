@@ -1,24 +1,13 @@
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
 import { transaction } from '../src/db.js'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { defineConfig } from '../src/account_kit.js'
 import { DateTime } from 'luxon'
-
+import { bootTestApp, useTestApp } from './helpers/app.js'
+import { accountKit, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { resetSchema } from './helpers/schema.js'
 test.group('managed transaction wrapper', (group) => {
-  let kit: Awaited<ReturnType<typeof bootTestApp>>
-  group.setup(async () => {
-    kit = await bootTestApp()
-  })
-  group.each.setup(async () => {
-    await resetSchema(kit)
-    await kit.limiter.clear()
-  })
-  group.teardown(async () => {
-    await kit.close()
-  })
+  const kit = useTestApp(group)
 
   test('rejects an active global transaction without changing its connection or writes', async ({
     assert,
@@ -76,19 +65,17 @@ test.group('managed transaction wrapper', (group) => {
     const observer = kit.db.connection().getWriteClient()
     const before = await observer('users').where('id', user.id).first()
     let callbacks = 0
-    const account = new AccountKit({
-      config: defineConfig(
+    const account = accountKit(
+      kit,
+      defineConfig(
         makeConfig({
           users,
           onCredentialsChanged: async () => {
             callbacks++
           },
         })
-      ),
-      db: kit.db,
-      limiter: kit.limiter,
-      encryption: null as never,
-    })
+      )
+    )
     const outer = await kit.db.beginGlobalTransaction()
     try {
       await outer.from('users').where('id', user.id).update({ email_verified_at: null })
@@ -190,8 +177,9 @@ test.group('managed transaction wrapper', (group) => {
       const observer = kit.db.connection().getWriteClient()
       const before = await observer('users').where('id', user.id).first()
       let callbacks = 0
-      const account = new AccountKit({
-        config: defineConfig(
+      const account = accountKit(
+        kit,
+        defineConfig(
           makeConfig({
             users: {
               ...users,
@@ -204,11 +192,8 @@ test.group('managed transaction wrapper', (group) => {
               callbacks++
             },
           })
-        ),
-        db: kit.db,
-        limiter: kit.limiter,
-        encryption: null as never,
-      })
+        )
+      )
       let failure: unknown
       try {
         await account.credentials.changePassword({

@@ -1,12 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { bootTestApp } from './helpers/app.js'
-import { makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
+import { defineConfig } from '../src/account_kit.js'
 import type { UsersAdapter } from '../src/types.js'
-
+import { bootTestApp } from './helpers/app.js'
+import { accountKit, makeConfig, makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import { resetSchema } from './helpers/schema.js'
 test('account workflows support string user IDs with matching application-owned foreign keys', async ({
   assert,
 }) => {
@@ -39,12 +38,10 @@ test('account workflows support string user IDs with matching application-owned 
       )
     )
     const recorder = makeNotify()
-    const account = new AccountKit({
-      config: defineConfig(makeConfig({ users, notify: recorder.notify, minRequestMs: 0 })),
-      db: kit.db,
-      limiter: kit.limiter,
-      encryption: null as never,
-    })
+    const account = accountKit(
+      kit,
+      defineConfig(makeConfig({ users, notify: recorder.notify, minRequestMs: 0 }))
+    )
     const invitation = await account.invitations.send({
       actorId: actor.id,
       email: 'invited@example.test',
@@ -52,7 +49,7 @@ test('account workflows support string user IDs with matching application-owned 
     })
     assert.equal(invitation.inviterId, actor.id)
     const invitationCall = recorder.calls.find((call) => call.method === 'invitation')!
-    const invitationToken = new URL(invitationCall.args[1] as string).pathname.split('/').at(-1)!
+    const invitationToken = tokenFrom(invitationCall.args[1])
     const invited = await account.invitations.accept({
       token: invitationToken,
       password: 'invitedPassword123',
@@ -62,7 +59,7 @@ test('account workflows support string user IDs with matching application-owned 
 
     await account.recovery.request({ email: actor.email, clientKey: 'text-id-client' })
     const recoveryCall = recorder.calls.find((call) => call.method === 'recovery')!
-    const recoveryToken = new URL(recoveryCall.args[1] as string).pathname.split('/').at(-1)!
+    const recoveryToken = tokenFrom(recoveryCall.args[1])
     const reset = await account.recovery.reset({
       token: recoveryToken,
       password: 'resetPassword123',
@@ -74,7 +71,7 @@ test('account workflows support string user IDs with matching application-owned 
       newEmail: 'changed@example.test',
     })
     const emailCall = recorder.calls.find((call) => call.method === 'emailChangeConfirm')!
-    const emailToken = new URL(emailCall.args[2] as string).pathname.split('/').at(-1)!
+    const emailToken = tokenFrom(emailCall.args[2])
     const changed = await account.credentials.completeEmailChange({ token: emailToken })
     assert.equal(changed.id, actor.id)
     assert.equal(changed.email, 'changed@example.test')

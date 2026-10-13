@@ -31,13 +31,32 @@ settings in your environment before running migrations.
 
 The generated `config/account_kit.ts` expects the application model at `#models/user` to expose
 `email`, `password`, and nullable `emailVerifiedAt` fields mapped to `email`, `password`, and
-`email_verified_at`. Keep `email` unique; on PostgreSQL, name that constraint
-`users_email_unique`. Normalize it to trimmed lowercase before storing it. The generated
-adapter looks up that normalized value with exact indexed equality. Hash a
-changed password in a `beforeSave` hook; the generated API kit's `withAuthFinder(hash)` hook does
-this. The adapter assigns plaintext passwords through the model, so avoid hashing them again in the
-adapter. Set `APP_URL` to the application's base URL in `.env` and declare it in `start/env.ts`, for
-example `APP_URL: Env.schema.string({ format: 'url', tld: false })`. When using SQLite, enable
+`email_verified_at`. The package assumes that model's table is named `users`; when it is not, set
+`usersTable` in `defineConfig` so SQLite row locks and duplicate-email detection target the right
+table. Configure still generates migrations for `users`. Before running them for a different table,
+change `.inTable('users')` in the recovery-token, invitation, and email-change migrations to that
+table. Also change `schema.alterTable('users')` in both `up` and `down` of the verification migration.
+These generated migrations belong to your application; setting `usersTable` does not rewrite them.
+Keep `email` unique; on PostgreSQL, name that constraint `<usersTable>_email_unique`
+(`users_email_unique` by default). PostgreSQL stores the first 63 bytes when that name is longer.
+For PostgreSQL, keep `usersTable` to at most 62 ASCII characters: at 63 the truncated unique-index
+name would collide with the table's own relation name. This naming limit does not apply to SQLite.
+Normalize email to trimmed lowercase before storing it. The generated
+adapter looks up that normalized value with exact indexed equality, so before the first install on a
+database that already holds mixed-case or padded addresses, normalize the stored rows once:
+
+```sql
+UPDATE "users" SET email = LOWER(TRIM(email));
+```
+
+Use your configured table in this statement, with identifier quoting when needed.
+
+Hash a changed password in a `beforeSave` hook; the generated API kit's `withAuthFinder(hash)` hook
+does this. The adapter assigns plaintext passwords through the model, so avoid hashing them again in
+the adapter. Set `APP_URL` to the application's base URL in `.env`; it may include a path such as
+`https://example.com/portal`, and generated links are built under it. Configure declares `APP_URL`
+in `start/env.ts` as `Env.schema.string({ format: 'url', tld: false })` when that file exists and
+leaves an existing declaration unchanged. When using SQLite, enable
 `foreign_keys` for every database connection so the migration's `CASCADE` and `SET NULL` rules are
 enforced. In the generated API kit's `config/database.ts`, add this to the SQLite connection:
 
@@ -80,9 +99,10 @@ package transaction holds it.
 
 ## Password recovery
 
-The generated `urls.recovery` callback builds `/account-kit/recovery/<token>` from `APP_URL`; serve
+The generated `urls.recovery` callback builds `account-kit/recovery/<token>` under `APP_URL`; serve
 that path with a GET page-inspection action and a POST password-reset action. Add a separate POST
-endpoint for recovery requests. If your routes use a prefix, update `urls.recovery` to match it.
+endpoint for recovery requests. If your routes use a prefix beyond the `APP_URL` path, update
+`urls.recovery` to match it.
 
 The relevant `defineConfig` settings default to a one-hour recovery token, five requests per
 15 minutes for each client key and normalized email, and a 300 ms minimum duration for recovery
@@ -137,6 +157,8 @@ export default class ForgotPasswordController {
     const kit = await app.container.make(AccountKit)
 
     try {
+      // clientKey must be a non-empty string. Behind a reverse proxy, configure trusted
+      // proxies so request.ip() is the client address; otherwise every request shares one bucket.
       await kit.recovery.request({ email, clientKey: request.ip() })
     } catch (error) {
       if (error instanceof ThrottledError) {
@@ -195,9 +217,9 @@ through your normal flow after reset; do not treat the returned value as an auth
 
 ## Email verification
 
-The generated `urls.verification` callback builds `/account-kit/verification/<token>` from
-`APP_URL`. Serve that path as a token-completion page or endpoint; if your routes use a prefix,
-update the callback to match. Set `Referrer-Policy: no-referrer` on the token page so the link is
+The generated `urls.verification` callback builds `account-kit/verification/<token>` under
+`APP_URL`. Serve that path as a token-completion page or endpoint; if your routes use a prefix
+beyond the `APP_URL` path, update the callback to match. Set `Referrer-Policy: no-referrer` on the token page so the link is
 not sent as a referrer.
 
 The generated config sets `ttl.verification` to `1h` and the shared `throttle` to
@@ -244,7 +266,7 @@ callback fails, invitation consumption, user creation, and the role write roll b
 SQLite may retry a contended transaction, so keep this callback to database work through `trx` and
 leave mail or other external effects to post-commit notification callbacks.
 
-The generated invitation URL uses `/account-kit/invitation/<token>` from `APP_URL`; serve it with a
+The generated invitation URL builds `account-kit/invitation/<token>` under the path in `APP_URL`; serve it with a
 GET inspection page and a POST acceptance action. Set `Referrer-Policy: no-referrer` on token pages.
 The default invitation TTL is seven days (`ttl.invitation: '7d'`).
 
@@ -312,7 +334,7 @@ earlier pending email-change request for that user. A registered address throws
 request commits. After password proof and throttling, requesting the user's current normalized
 email is a no-op. A notification failure becomes `DeliveryError`, while the request remains stored.
 
-The generated email-change URL is `/account-kit/email-change/<token>` from `APP_URL`. Use GET only
+The generated email-change URL builds `account-kit/email-change/<token>` under the path in `APP_URL`. Use GET only
 to display a landing page with a confirmation action; there is no email-change inspection method.
 Set `Referrer-Policy: no-referrer` on the token page, then call `completeEmailChange` only from its
 POST action. Completion verifies the account still has the email address bound to the request,
@@ -335,9 +357,10 @@ onCredentialsChanged: async (accountUser) => {
 
 This callback receives an `AccountUser` value, not a Lucid model, so load the model when the callback
 runs. It runs after the database commit. When email change completes, `notify.emailChanged(previousEmail,
-user)` runs after `onCredentialsChanged`; both are post-commit. A thrown callback or notification
-error becomes `PostCommitError` with its original `cause`, and the committed credential change
-remains in place. Do not expose causes from either `DeliveryError` or `PostCommitError`; log them
+user)` runs after `onCredentialsChanged`; both are post-commit, and the notice is sent even when the
+callback throws. A thrown callback or notification error becomes `PostCommitError` whose `cause` is
+the original error, or an `AggregateError` holding both in that order when both fail. The committed
+credential change remains in place. Do not expose causes from either `DeliveryError` or `PostCommitError`; log them
 privately and return a generic public response. These operations do not terminate existing web
 sessions in v1.
 
@@ -359,7 +382,9 @@ For example, `DB_CLIENT=pg pnpm test` runs the same tests against PostgreSQL.
 
 The three generated migrations reference `users.id`; if that key uses a string or UUID type, change
 the user foreign-key column in each recovery-token, invitation, and email-change migration to the
-matching database type. The test users adapter stores normalized email addresses in a unique
+matching database type. For a custom user-table name, adapt those foreign-key targets and both
+verification-migration directions as described in [application prerequisites](#application-prerequisites).
+The test users adapter stores normalized email addresses in a unique
 `email` column (named `users_email_unique` on PostgreSQL) and hashes
 passwords through the booted application's hash service. Its transaction-aware methods use the
 supplied Lucid transaction. SQLite tests use WAL with a four-connection pool and a per-connection
@@ -370,7 +395,7 @@ re-run after a SQLite busy error, so it must contain only transaction-bound data
 notifications and other side effects belong after the helper resolves. On SQLite, the helper
 temporarily disables the connection's blocking busy timeout, rolls back a busy attempt, waits
 asynchronously and retries the whole callback for up to 5 seconds. PostgreSQL uses Lucid's
-managed transaction directly.
+root transactions with successful completion checked before commit effects run.
 
 ```sh
 pnpm install

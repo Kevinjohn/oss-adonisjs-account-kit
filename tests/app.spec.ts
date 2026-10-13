@@ -1,22 +1,7 @@
 import { test } from '@japa/runner'
-import { bootTestApp } from './helpers/app.js'
-import { resetSchema } from './helpers/schema.js'
-
+import { useTestApp } from './helpers/app.js'
 test.group('test application', (group) => {
-  let testApp: Awaited<ReturnType<typeof bootTestApp>>
-
-  group.setup(async () => {
-    testApp = await bootTestApp()
-  })
-
-  group.each.setup(async () => {
-    await resetSchema(testApp)
-    await testApp.limiter.clear()
-  })
-
-  group.teardown(async () => {
-    await testApp.close()
-  })
+  const testApp = useTestApp(group)
 
   test('boots with a resettable database and transaction support', async ({ assert }) => {
     await testApp.db.table('users').insert({

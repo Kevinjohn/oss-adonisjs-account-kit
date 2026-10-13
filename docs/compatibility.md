@@ -37,6 +37,12 @@ API consumer. Consumer typecheck and two functional HTTP tests per database pass
 new runtime. This does not repeat fresh-app generation or the original stage-3 upgrade rehearsal;
 see the T8.5 correction record in [manual verification](manual-check.md#t85-consolidated-review-corrections).
 
+The subsequent account-operation refactor and custom-table corrections pass 138 SQLite tests,
+139 PostgreSQL tests, lint, typecheck, build and three built-export tests on the same package-suite
+versions. Package installation and consumer HTTP checks were not repeated for that later runtime;
+the T8.6 [source verification record](manual-check.md#t86-account-operation-refactor-and-custom-table-support)
+distinguishes these checks from the historical tarball rehearsals.
+
 The upgrade began from the stage-3 package archive, which already had all four package migrations.
 Candidate configure preserved the existing config and provider, skipped those migrations, and
 added no package migration; migration runs reported no pending work and the verified baseline
@@ -50,10 +56,20 @@ drivers are used by the test setup and must be installed by consumer application
 corresponding Lucid database client.
 
 The generated adapter requires normalized lowercase email storage and a unique email index. On
-PostgreSQL that constraint must be named `users_email_unique`. Lookup uses exact equality so the
-ordinary email index can serve it.
+PostgreSQL name that constraint `<usersTable>_email_unique`, `users_email_unique` by default;
+PostgreSQL stores only the first 63 bytes of a longer name. Lookup uses exact equality so the
+ordinary email index can serve it; normalize pre-existing rows using the actual configured table.
+For the default, the statement is `UPDATE "users" SET email = LOWER(TRIM(email))`. The package
+locks and classifies duplicate emails against the table named by `usersTable` in `defineConfig`
+(default `users`).
+On PostgreSQL, `usersTable` must be at most 62 ASCII characters so the conventional unique-index
+name does not truncate to the table's own relation name; this is a PostgreSQL schema prerequisite.
 When `users.id` is a string or UUID, update the user foreign-key column in each of the three
 generated account tables to use the matching database type.
+For a different table name, the generated migrations also need all three `.inTable('users')`
+targets changed, plus `schema.alterTable('users')` in both directions of the verification migration.
+The `usersTable` setting controls runtime locking and duplicate classification; it does not rewrite
+application-owned migrations. See [application prerequisites](../README.md#application-prerequisites).
 
 Credential operations lock the user before consuming or modifying either token table, avoiding
 the former opposing user/token lock order. PostgreSQL does not retry transactions; general
