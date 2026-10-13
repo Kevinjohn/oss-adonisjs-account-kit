@@ -41,6 +41,8 @@ enforced. In the generated API kit's `config/database.ts`, add this to the SQLit
 
 ```ts
 pool: {
+  min: 1,
+  max: 4,
   afterCreate(connection, callback) {
     connection.pragma('foreign_keys = ON')
     callback(null, connection)
@@ -66,6 +68,12 @@ resettable database fixtures instead of wrapping package writes in a global tran
 SQLite can retry a contended transaction, so transaction callbacks may run again. Keep adapter
 writes and `onInvitationAccepted` database work inside the supplied `trx`, and leave notifications
 and other external effects until after the transaction commits.
+Invitation management authorization runs inside the package transaction and may be called again
+on a SQLite retry. Keep those callbacks read-only and retry-safe. Their signatures do not include
+the transaction; prefer permission state already loaded for the actor. If they make ordinary
+database reads through another connection, configure enough pool capacity and concurrency for
+that connection. A SQLite pool limited to one connection cannot serve those reads while the
+package transaction holds it.
 
 ## Password recovery
 
@@ -240,8 +248,12 @@ The generated config requires `authorize.invite(actor, role)`,
 `urls.invitation(token)`, and `notify.invitation(invitation, url)`. Each authorization callback
 must return exactly `true` to allow its action. Configure the URL callback to match your route and
 the notification callback to queue or send the invitation; the generated callback throws until
-you configure it. Send and resend notifications happen after their database commits; a failure
-becomes `DeliveryError` with the cause. The invitation row is already committed. A failed resend has
+you configure it. Resend calls `manageInvitation` and the current role's `invite` callback within
+its transaction; revoke calls `manageInvitation` there. Apply the transaction and pool guidance
+above to any database-backed policy checks.
+
+Send and resend notifications happen after their database commits; a failure becomes
+`DeliveryError` with the cause. The invitation row is already committed. A failed resend has
 already rotated the token, so the previous link is no longer valid.
 
 Use authenticated actions for sending, listing, resending, and revoking, passing the authenticated

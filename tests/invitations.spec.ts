@@ -962,6 +962,122 @@ test.group('invitations.resend and revoke', (group) => {
     )
   })
 
+  if (process.env.DB_CLIENT !== 'pg') {
+    test('database-backed management policy reads use another pooled SQLite connection', async ({
+      assert,
+    }) => {
+      const customKit = await bootTestApp({ sqlitePoolMax: 2 })
+      try {
+        await resetSchema(customKit)
+        const users = makeUsersAdapter(customKit.db, customKit.hash)
+        const actor = await customKit.db.transaction((trx) =>
+          users.create(
+            {
+              email: 'actor@example.test',
+              password: 'password123',
+              emailVerifiedAt: DateTime.utc(),
+            },
+            trx
+          )
+        )
+        const recorder = makeNotify()
+        const knex = customKit.db.connection().getWriteClient()
+        assert.equal(knex.client.pool.max, 2)
+        let policy: 'manage' | 'invite' | null = null
+        const policyReads: Array<{ policy: 'manage' | 'invite'; connection: string }> = []
+        const invitationReads: string[] = []
+        const onQuery = (query: { sql: string; __knexUid?: string }) => {
+          if (policy && /select .* from [`"]?users/i.test(query.sql))
+            policyReads.push({ policy, connection: query.__knexUid! })
+          else if (/select .* from [`"]?account_invitations/i.test(query.sql))
+            invitationReads.push(query.__knexUid!)
+        }
+        knex.on('query', onQuery)
+        try {
+          const readActor = async (id: AccountUser['id']) => {
+            const row = await customKit.db.from('users').where('id', id).first()
+            return row?.email === actor.email
+          }
+          const config = defineConfig(
+            makeConfig({
+              users,
+              notify: recorder.notify,
+              authorize: {
+                ...allowAll,
+                async manageInvitation(current, invitation) {
+                  policy = 'manage'
+                  try {
+                    return invitation.inviterId === current.id && (await readActor(current.id))
+                  } finally {
+                    policy = null
+                  }
+                },
+                async invite(current, role) {
+                  policy = 'invite'
+                  try {
+                    return role === 'user' && (await readActor(current.id))
+                  } finally {
+                    policy = null
+                  }
+                },
+              },
+            })
+          )
+          const account = new AccountKit({
+            config,
+            db: customKit.db,
+            limiter: customKit.limiter,
+            encryption: null as never,
+          })
+          const invitation = await account.invitations.send({
+            actorId: actor.id,
+            email: 'first@example.test',
+            role: 'user',
+          })
+          policyReads.length = 0
+          invitationReads.length = 0
+          const resent = await account.invitations.resend({
+            actorId: actor.id,
+            invitationId: invitation.id,
+          })
+          assert.equal(resent.id, invitation.id)
+          assert.deepEqual(
+            policyReads.map((read) => read.policy),
+            ['manage', 'invite']
+          )
+          assert.isNotEmpty(invitationReads)
+          for (const read of policyReads) assert.notEqual(read.connection, invitationReads[0])
+          const rotated = await customKit.db
+            .from('account_invitations')
+            .where('id', invitation.id)
+            .first()
+          assert.notEqual(
+            rotated.token_hash,
+            hashToken(new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!)
+          )
+
+          policyReads.length = 0
+          invitationReads.length = 0
+          await account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
+          assert.deepEqual(
+            policyReads.map((read) => read.policy),
+            ['manage']
+          )
+          assert.isNotEmpty(invitationReads)
+          assert.notEqual(policyReads[0].connection, invitationReads[0])
+          assert.lengthOf(
+            await customKit.db.from('account_invitations').where('id', invitation.id),
+            0
+          )
+        } finally {
+          knex.off('query', onQuery)
+        }
+      } finally {
+        await customKit.close()
+      }
+    })
+  }
+
   test('a held resend lock makes an independent acceptance lose the old token', async ({
     assert,
   }) => {

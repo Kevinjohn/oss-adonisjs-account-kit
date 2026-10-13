@@ -40,3 +40,33 @@ The upgraded app passed two functional HTTP tests on each dialect and passed con
 Consumer versions were Node `24.19.0`, pnpm `11.23.0`, Core `7.6.0`, assembler `8.5.2`, Lucid `22.4.2`, Auth `10.1.0`, Knex `3.3.0`, Luxon `3.7.2`, better-sqlite3 `13.0.3` with SQLite `3.53.4`, pg `8.23.1`, and PostgreSQL `16.15`.
 
 After a SQLite-only package regression test was added, package source checks passed: 122 SQLite tests and 123 PostgreSQL tests, with lint included in each run; `pnpm typecheck` and `pnpm build` also passed. Runtime source was unchanged from stage 6; the consumer HTTP checks used the candidate archive. These totals are distinct from the T8.1 checkpoint above.
+
+## T8.4: API and operation review
+
+The independent review completed on 2026-10-13 against the approved public API and operation
+specifications. No outstanding required fixes remain. The review identified a SQLite integration
+requirement: invitation management authorization can perform ordinary database reads only when
+another pool connection is available. The README now documents callback placement, retry safety,
+and connection capacity. An isolated two-connection regression verifies separate policy and
+transaction connections; the fresh and upgraded HTTP consumers exercise this pattern on both
+databases.
+
+The final source gates were 122 SQLite tests, 123 PostgreSQL tests, lint, typecheck, and build.
+Optional follow-ups remain:
+
+- **P2, optional:** PostgreSQL credential operations acquire user and token locks in different orders and can
+  propagate transient deadlock errors. Atomic state remains protected; PostgreSQL retries are
+  outside the approved transaction policy. See [password change](../src/credentials.ts#L40),
+  [recovery reset](../src/recovery.ts#L45), and [email-change completion](../src/credentials.ts#L125).
+- **P2, optional:** Validate [minRequestMs](../src/account_kit.ts#L78) as finite and non-negative. The current
+  contract accepts values such as `Infinity` and `NaN`; the default is 300 ms.
+- **P3, optional:** Strengthen [recovery rollback coverage](../tests/recovery.spec.ts#L447) with an adapter that
+  writes the password and then throws. The current recovery case throws before that write;
+  credential-change tests already cover write-then-throw behavior.
+- **P3, optional:** The [default email lookup](../stubs/config/account_kit.stub#L27) applies `LOWER(TRIM(email))`.
+  This may require an expression index for efficient lookup at larger user counts; no workload
+  performance claim was tested.
+
+The [dependency audit](compatibility.md#dependency-audit) still has 16 unresolved advisories.
+The current milestone completes package implementation and API-kit validation. Stage 7,
+fork/browser work, owner application integration, and publication remain deferred.
