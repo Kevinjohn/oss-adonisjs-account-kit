@@ -3,6 +3,9 @@ import { test } from '@japa/runner'
 import { bootTestApp } from './helpers/app.js'
 import { resetSchema } from './helpers/schema.js'
 import { transaction } from '../src/db.js'
+import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { DateTime } from 'luxon'
 
 test.group('managed transaction wrapper', (group) => {
   let kit: Awaited<ReturnType<typeof bootTestApp>>
@@ -17,13 +20,15 @@ test.group('managed transaction wrapper', (group) => {
     await kit.close()
   })
 
-  test('rejects an active SQLite global transaction without changing its connection or writes', async ({
+  test('rejects an active global transaction without changing its connection or writes', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
     const outer = await kit.db.beginGlobalTransaction()
-    const native = await outer.getWriteClient().client.acquireConnection()
-    const timeout = native.pragma('busy_timeout', { simple: true })
+    const native =
+      process.env.DB_CLIENT === 'pg'
+        ? null
+        : await outer.getWriteClient().client.acquireConnection()
+    const timeout = native?.pragma('busy_timeout', { simple: true })
     let callbackCalls = 0
     try {
       await outer
@@ -39,14 +44,187 @@ test.group('managed transaction wrapper', (group) => {
       }
       assert.instanceOf(failure, Error)
       assert.equal(callbackCalls, 0)
-      assert.isTrue(native.inTransaction)
-      assert.equal(native.pragma('busy_timeout', { simple: true }), timeout)
+      assert.isFalse(outer.isCompleted)
+      if (native) {
+        assert.isTrue(native.inTransaction)
+        assert.equal(native.pragma('busy_timeout', { simple: true }), timeout)
+      }
       assert.isNotNull(await outer.from('users').where('email', 'outer@example.test').first())
       assert.include(failure!.message, 'requires its own transaction')
       await kit.db.commitGlobalTransaction()
       assert.isNotNull(await kit.db.from('users').where('email', 'outer@example.test').first())
     } finally {
       if (!outer.isCompleted) await kit.db.rollbackGlobalTransaction()
+    }
+  })
+
+  test('rejects a credential write inside a PostgreSQL global transaction before callbacks or mutation', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT !== 'pg') return
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const user = await kit.db.transaction((trx) =>
+      users.create(
+        {
+          email: 'global@example.test',
+          password: 'originalPassword123',
+          emailVerifiedAt: DateTime.utc(),
+        },
+        trx
+      )
+    )
+    const observer = kit.db.connection().getWriteClient()
+    const before = await observer('users').where('id', user.id).first()
+    let callbacks = 0
+    const account = new AccountKit({
+      config: defineConfig(
+        makeConfig({
+          users,
+          onCredentialsChanged: async () => {
+            callbacks++
+          },
+        })
+      ),
+      db: kit.db,
+      limiter: kit.limiter,
+      encryption: null as never,
+    })
+    const outer = await kit.db.beginGlobalTransaction()
+    try {
+      await outer.from('users').where('id', user.id).update({ email_verified_at: null })
+      await assert.rejects(
+        () =>
+          account.credentials.changePassword({
+            actorId: user.id,
+            currentPassword: 'originalPassword123',
+            newPassword: 'changedPassword123',
+          }),
+        /requires its own transaction/
+      )
+      assert.equal(callbacks, 0)
+      const innerRow = await outer.from('users').where('id', user.id).first()
+      const externalRow = await observer('users').where('id', user.id).first()
+      assert.equal(innerRow.password, before.password)
+      assert.equal(externalRow.password, before.password)
+      await kit.db.rollbackGlobalTransaction()
+      assert.deepEqual(await observer('users').where('id', user.id).first(), before)
+    } finally {
+      if (!outer.isCompleted) await kit.db.rollbackGlobalTransaction()
+    }
+  })
+
+  test('rejects a PostgreSQL deferred-constraint COMMIT without commit events or durable writes', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT !== 'pg') return
+    await kit.db
+      .rawQuery(
+        'CREATE TABLE test_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
+      )
+      .exec()
+    let commits = 0
+    let rollbacks = 0
+    let afterCommits = 0
+    let afterRollbacks = 0
+    try {
+      let failure: unknown
+      try {
+        await transaction(kit.db, async (trx) => {
+          trx.on('commit', () => {
+            commits++
+          })
+          trx.on('rollback', () => {
+            rollbacks++
+          })
+          trx.after('commit', () => {
+            afterCommits++
+          })
+          trx.after('rollback', () => {
+            afterRollbacks++
+          })
+          await trx.table('test_deferred_commit').insert({ id: 1, user_id: -1 })
+          return 'claimed committed'
+        })
+      } catch (error) {
+        failure = error
+      }
+      assert.equal((failure as { code?: string })?.code, '23503')
+      assert.equal(commits, 0)
+      assert.equal(afterCommits, 0)
+      assert.equal(rollbacks, 1)
+      assert.equal(afterRollbacks, 1)
+      assert.lengthOf(await kit.db.from('test_deferred_commit'), 0)
+
+      await transaction(kit.db, async (trx) => {
+        await trx
+          .table('users')
+          .insert({ email: 'reused@example.test', created_at: DateTime.utc().toISO() })
+      })
+      assert.isNotNull(await kit.db.from('users').where('email', 'reused@example.test').first())
+    } finally {
+      await kit.db.connection().schema.dropTableIfExists('test_deferred_commit')
+    }
+  })
+
+  test('a PostgreSQL commit failure rejects password change and suppresses its post-commit callback', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT !== 'pg') return
+    await kit.db
+      .rawQuery(
+        'CREATE TABLE test_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
+      )
+      .exec()
+    try {
+      const users = makeUsersAdapter(kit.db, kit.hash)
+      const user = await kit.db.transaction((trx) =>
+        users.create(
+          {
+            email: 'deferred@example.test',
+            password: 'originalPassword123',
+            emailVerifiedAt: DateTime.utc(),
+          },
+          trx
+        )
+      )
+      const observer = kit.db.connection().getWriteClient()
+      const before = await observer('users').where('id', user.id).first()
+      let callbacks = 0
+      const account = new AccountKit({
+        config: defineConfig(
+          makeConfig({
+            users: {
+              ...users,
+              async setPassword(...args) {
+                await users.setPassword(...args)
+                await args[2].table('test_deferred_commit').insert({ id: 1, user_id: -1 })
+              },
+            },
+            onCredentialsChanged: async () => {
+              callbacks++
+            },
+          })
+        ),
+        db: kit.db,
+        limiter: kit.limiter,
+        encryption: null as never,
+      })
+      let failure: unknown
+      try {
+        await account.credentials.changePassword({
+          actorId: user.id,
+          currentPassword: 'originalPassword123',
+          newPassword: 'changedPassword123',
+        })
+      } catch (error) {
+        failure = error
+      }
+      assert.equal((failure as { code?: string })?.code, '23503')
+      assert.equal(callbacks, 0)
+      assert.deepEqual(await observer('users').where('id', user.id).first(), before)
+      assert.lengthOf(await observer('test_deferred_commit'), 0)
+    } finally {
+      await kit.db.connection().schema.dropTableIfExists('test_deferred_commit')
     }
   })
 

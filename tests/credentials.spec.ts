@@ -416,7 +416,7 @@ test.group('credentials', (group) => {
     }
   })
 
-  test('a password change and independent recovery reset leave exactly one final password', async ({
+  test('a password change and independent recovery reset serialize without a database error', async ({
     assert,
   }) => {
     const user = await createUser()
@@ -430,7 +430,11 @@ test.group('credentials', (group) => {
     const hold = new Promise<void>((resolve) => {
       releaseProof = resolve
     })
+    let callbackCalls = 0
     const account = service({
+      onCredentialsChanged: async () => {
+        callbackCalls++
+      },
       users: {
         ...users,
         async verifyPassword(...args) {
@@ -449,11 +453,11 @@ test.group('credentials', (group) => {
     await ready
     const knex = kit.db.connection().getWriteClient()
     let attempted!: () => void
-    const attemptedDelete = new Promise<void>((resolve) => {
+    const attemptedUserLock = new Promise<void>((resolve) => {
       attempted = resolve
     })
     const onQuery = (query: { sql: string }) => {
-      if (/delete from account_recovery_tokens/i.test(query.sql)) attempted()
+      if (/select .*users.*for update|update users set id = id/i.test(query.sql)) attempted()
     }
     knex.on('query', onQuery)
     try {
@@ -462,13 +466,17 @@ test.group('credentials', (group) => {
         password: 'resetPassword123',
       })
       void resetting.catch(() => {})
-      await attemptedDelete
+      await attemptedUserLock
       releaseProof()
       const results = await Promise.allSettled([changing, resetting])
       assert.lengthOf(
         results.filter((item) => item.status === 'fulfilled'),
         1
       )
+      assert.equal(results[0].status, 'fulfilled')
+      assert.equal(results[1].status, 'rejected')
+      if (results[1].status === 'rejected') assert.instanceOf(results[1].reason, InvalidTokenError)
+      assert.equal(callbackCalls, 1)
       const row = await kit.db.from('users').where('id', user.id).first()
       const changed = await kit.hash.verify(row.password, 'changedPassword123')
       const reset = await kit.hash.verify(row.password, 'resetPassword123')

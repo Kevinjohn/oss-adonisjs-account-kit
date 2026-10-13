@@ -27,11 +27,16 @@ export function isUniqueViolation(error: unknown, table: string, column: string)
     return details.constraint === `${table}_${column}_unique`
   }
 
-  return (
-    details.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
-    typeof details.message === 'string' &&
-    details.message.includes(`${table}.${column}`)
-  )
+  if (details.code !== 'SQLITE_CONSTRAINT_UNIQUE' || typeof details.message !== 'string')
+    return false
+  const prefix = 'UNIQUE constraint failed: '
+  const start = details.message.lastIndexOf(prefix)
+  if (start < 0) return false
+  const columns = details.message
+    .slice(start + prefix.length)
+    .split(',')
+    .map((name) => name.trim())
+  return columns.length === 1 && columns[0] === `${table}.${column}`
 }
 
 export async function lockUser(trx: Trx, id: UserId): Promise<void> {
@@ -44,17 +49,17 @@ export async function lockInvitation(trx: Trx, id: number): Promise<void> {
   await trx.rawQuery('update account_invitations set id = id where id = ?', [id]).exec()
 }
 
-async function commitSqlite(
+async function commitTransaction(
   trx: Trx,
-  sqlite: SQLiteConnection,
-  onCommitted: () => void
+  onCommitted: () => void,
+  sqlite?: SQLiteConnection
 ): Promise<void> {
   const knexTrx = trx.getWriteClient()
   const completion = knexTrx.executionPromise
   void completion.catch(() => {})
   const originalCommit = knexTrx.commit
 
-  // Knex resolves its COMMIT query even when SQLite rejects it. Lucid must not
+  // Knex can resolve its COMMIT query even when the database rejects it. Lucid must not
   // emit commit or run after-commit hooks until Knex's completion promise settles.
   knexTrx.commit = (async () => {
     try {
@@ -62,7 +67,10 @@ async function commitSqlite(
       await completion
       onCommitted()
     } catch (error) {
-      if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
+      if (sqlite?.inTransaction) sqlite.exec('ROLLBACK')
+      // Knex has completed and released the failed transaction. PostgreSQL has
+      // rolled it back; SQLite may need the native cleanup above. Emit Lucid's
+      // rollback lifecycle without sending another query through a closed client.
       const originalRollback = knexTrx.rollback
       knexTrx.rollback = (() => Promise.resolve()) as typeof originalRollback
       try {
@@ -142,13 +150,20 @@ export async function consumeInvitationToken(
 
 /** Run a database-only callback; callers perform notifications after this resolves. */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
-  if (db.config.connections[db.primaryConnectionName].client !== 'better-sqlite3') {
-    return db.transaction(callback)
-  }
-
   const connection = db.connection()
-  if (connection.isTransaction)
-    throw new Error('Account kit requires its own transaction on SQLite')
+  if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
+
+  if (connection.dialect.name !== 'better-sqlite3') {
+    const trx = await connection.transaction()
+    try {
+      const result = await callback(trx)
+      await commitTransaction(trx, () => {})
+      return result
+    } catch (error) {
+      if (!trx.isCompleted) await trx.rollback()
+      throw error
+    }
+  }
   const client = connection.getWriteClient().client
 
   const deadline = performance.now() + SQLITE_DEADLINE_MS
@@ -166,9 +181,13 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
         )) as Trx
         try {
           const result = await callback(trx)
-          await commitSqlite(trx, sqlite, () => {
-            committed = true
-          })
+          await commitTransaction(
+            trx,
+            () => {
+              committed = true
+            },
+            sqlite
+          )
           return result
         } catch (error) {
           if (!trx.isCompleted) await trx.rollback()

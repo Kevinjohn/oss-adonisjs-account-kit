@@ -11,7 +11,10 @@ const migrationNames = [
   'add_email_verified_at_to_users',
 ]
 
-export async function resetSchema(kit: TestApp): Promise<void> {
+export async function resetSchema(
+  kit: TestApp,
+  options: { stringUserIds?: boolean } = {}
+): Promise<void> {
   const schema = kit.db.connection().schema
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
@@ -20,7 +23,8 @@ export async function resetSchema(kit: TestApp): Promise<void> {
   await schema.dropTableIfExists('adonis_schema')
   await schema.dropTableIfExists('users')
   await schema.createTable('users', (table) => {
-    table.increments('id')
+    if (options.stringUserIds) table.string('id', 36).primary()
+    else table.increments('id')
     table.string('email').notNullable().unique()
     table.string('password').nullable()
     table.timestamp('created_at').notNullable()
@@ -42,7 +46,14 @@ export async function resetSchema(kit: TestApp): Promise<void> {
     const prepared = await stub.prepare({
       migration: { destination: join(kit.migrationDirectory, filename) },
     })
-    await writeFile(prepared.destination, prepared.contents)
+    // Applications with text/UUID IDs adapt their owned migration foreign keys.
+    const contents = options.stringUserIds
+      ? prepared.contents.replace(
+          /table\.integer\('(user_id|inviter_id)'\)\.unsigned\(\)/g,
+          "table.string('$1', 36)"
+        )
+      : prepared.contents
+    await writeFile(prepared.destination, contents)
   }
 
   const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })

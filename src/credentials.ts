@@ -122,11 +122,23 @@ export async function completeEmailChange(
   let changed: { user: AccountUser; previousEmail: string }
   try {
     changed = await transaction(deps.db, async (trx) => {
-      const row = await consumeEmailChangeToken(trx, hashToken(input.token), DateTime.utc().toISO())
-      if (!row) throw new InvalidTokenError()
-      await lockUser(trx, row.user_id)
-      const current = await deps.config.users.findById(row.user_id, trx, { forUpdate: true })
-      if (!current || current.email !== row.current_email) throw new InvalidTokenError()
+      const tokenHash = hashToken(input.token)
+      const candidate = await trx
+        .from('account_email_changes')
+        .select('user_id')
+        .where('token_hash', tokenHash)
+        .first()
+      if (!candidate) throw new InvalidTokenError()
+      await lockUser(trx, candidate.user_id)
+      const current = await deps.config.users.findById(candidate.user_id, trx, { forUpdate: true })
+      const row = await consumeEmailChangeToken(trx, tokenHash, DateTime.utc().toISO())
+      if (
+        !row ||
+        row.user_id !== candidate.user_id ||
+        !current ||
+        current.email !== row.current_email
+      )
+        throw new InvalidTokenError()
       if (await deps.config.users.findByEmail(row.new_email, trx))
         throw new EmailAlreadyRegisteredError()
 

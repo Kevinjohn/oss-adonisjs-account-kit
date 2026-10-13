@@ -41,32 +41,77 @@ Consumer versions were Node `24.19.0`, pnpm `11.23.0`, Core `7.6.0`, assembler `
 
 After a SQLite-only package regression test was added, package source checks passed: 122 SQLite tests and 123 PostgreSQL tests, with lint included in each run; `pnpm typecheck` and `pnpm build` also passed. Runtime source was unchanged from stage 6; the consumer HTTP checks used the candidate archive. These totals are distinct from the T8.1 checkpoint above.
 
-## T8.4: API and operation review
+## T8.4: API and operation review (historical, before consolidated review)
 
-The independent review completed on 2026-10-13 against the approved public API and operation
-specifications. No outstanding required fixes remain. The review identified a SQLite integration
+The earlier independent review completed on 2026-10-13 against the approved public API and operation
+specifications. Its conclusion that no outstanding required fixes remained describes that earlier
+review only; it was superseded by the consolidated review below. The review identified a SQLite integration
 requirement: invitation management authorization can perform ordinary database reads only when
 another pool connection is available. The README now documents callback placement, retry safety,
 and connection capacity. An isolated two-connection regression verifies separate policy and
 transaction connections; the fresh and upgraded HTTP consumers exercise this pattern on both
 databases.
 
-The final source gates were 122 SQLite tests, 123 PostgreSQL tests, lint, typecheck, and build.
-Optional follow-ups remain:
+That milestone's source gates were 122 SQLite tests, 123 PostgreSQL tests, lint, typecheck, and build.
+That review recorded these follow-ups, addressed by the corrections below:
 
-- **P2, optional:** PostgreSQL credential operations acquire user and token locks in different orders and can
+- **P2, optional:** PostgreSQL credential operations acquired user and token locks in different orders and could
   propagate transient deadlock errors. Atomic state remains protected; PostgreSQL retries are
   outside the approved transaction policy. See [password change](../src/credentials.ts#L40),
   [recovery reset](../src/recovery.ts#L45), and [email-change completion](../src/credentials.ts#L125).
-- **P2, optional:** Validate [minRequestMs](../src/account_kit.ts#L78) as finite and non-negative. The current
-  contract accepts values such as `Infinity` and `NaN`; the default is 300 ms.
+- **P2, optional:** Validate [minRequestMs](../src/account_kit.ts#L78) as finite and non-negative. The earlier
+  contract accepted values such as `Infinity` and `NaN`; the default is 300 ms.
 - **P3, optional:** Strengthen [recovery rollback coverage](../tests/recovery.spec.ts#L447) with an adapter that
-  writes the password and then throws. The current recovery case throws before that write;
+  writes the password and then throws. The earlier recovery case threw before that write;
   credential-change tests already cover write-then-throw behavior.
-- **P3, optional:** The [default email lookup](../stubs/config/account_kit.stub#L27) applies `LOWER(TRIM(email))`.
+- **P3, optional:** The [default email lookup](../stubs/config/account_kit.stub#L27) applied `LOWER(TRIM(email))`.
   This may require an expression index for efficient lookup at larger user counts; no workload
   performance claim was tested.
 
 The [dependency audit](compatibility.md#dependency-audit) still has 16 unresolved advisories.
 The current milestone completes package implementation and API-kit validation. Stage 7,
 fork/browser work, owner application integration, and publication remain deferred.
+
+## T8.5: consolidated review corrections
+
+The later review identified transaction and error-contract defects, recovery timing guidance,
+configuration hardening, test gaps and deferred release prerequisites. Corrections applied on
+2026-10-13 now pass 129 SQLite tests and 130 PostgreSQL tests, lint, typecheck, build and the two-test
+built-export smoke gate. The earlier counts and archive hashes above remain historical evidence.
+
+PostgreSQL regressions cover rejected deferred-constraint commits at the helper and public password
+operation, zero commit events/callbacks on failure, restored durable state, connection reuse, and
+rejection of active global transactions. Both dialects exercise the stricter password/reset race,
+recovery write-then-throw rollback and full invitation/recovery/email-change workflow with UUID
+strings and matching text foreign keys. SQLite also checks exact unique-column classification
+through Lucid's query-prefixed errors. The new bug regressions failed against the original behavior
+before their fixes were applied.
+
+Recovery retains its configured response-duration floor; it does not establish constant response
+timing. Prompt notification enqueueing and generic acknowledgements are application integration
+requirements. PostgreSQL retains no general transaction retry policy. The earlier optional
+follow-ups above are addressed; the recorded dependency advisories remain unresolved.
+
+The final repaired archive SHA-256 is
+`74396513d353372f63e2f427c36ff2c60c2b567b58992813eda725c6e60a2383`.
+A private copy of the retained configured API consumer installed this archive through pnpm with a
+frozen lockfile and dependency scripts disabled. Consumer `pnpm typecheck` passed, followed by two
+functional HTTP tests on SQLite and two on PostgreSQL. The copied adapter used the new normalized
+email equality lookup; the application's notification, role and credential callbacks were retained.
+Fresh migrations had already passed on the copied SQLite file and a separate PostgreSQL database.
+
+These checks exercised invitation acceptance, role assignment, authenticated resend/revoke,
+recovery acknowledgement/inspection/reset/replay, verification, password change/access-token
+revocation, and normalized email-change confirmation/notification/replay. This was a copied
+configured app, not a newly generated app or a repeat of the full stage-3 upgrade rehearsal.
+Earlier consumer passes and hashes remain historical evidence.
+
+An initial offline install lacked cached dependencies; it supplied only preliminary runtime checks
+using an extracted archive. The final normal pnpm installation and checks above supersede that
+limitation. The first test archive and final archive differ only in README constraint-name wording;
+runtime, declarations, stubs and package manifest were byte-identical. The final archive itself was
+then installed and tested through pnpm.
+
+The final source review found no remaining findings, nits or questions in these corrections.
+Release setup and hooks are prepared but no version, publish or hosted release command was run.
+Stage 7, starter/browser work, owner application integration and publication remain deferred.

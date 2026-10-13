@@ -24,12 +24,18 @@ version in each peer range has been verified.
 | SQLite (consumer app) | 3.53.4 | Native version bundled by consumer `better-sqlite3` |
 
 At the accepted stage-6 source commit, package tests passed with 121 SQLite tests and 123
-PostgreSQL tests. A later SQLite-only regression test raised the current package totals to 122 and
-123; runtime source is unchanged from the accepted stage-6 commit. Current build, lint, and
-typecheck pass. In the fresh and upgraded API-kit consumers, one HTTP workflow test per database
+PostgreSQL tests. A later SQLite-only regression test raised the pre-correction package totals to
+122 and 123. The subsequent review corrections pass 129 SQLite tests and 130 PostgreSQL tests;
+lint, typecheck, build and the two-test built-export smoke gate pass. Runtime source includes those
+corrections. In the earlier fresh and upgraded API-kit consumers, one HTTP workflow test per database
 passed in the fresh app and two per database passed after upgrade; consumer typecheck passed in
 both rehearsals. The consumer used the versions in this table plus Core 7.6.0, assembler 8.5.2,
 Lucid 22.4.2, Knex 3.3.0, Luxon 3.7.2, limiter 3.0.1, `pg` 8.23.1, and PostgreSQL 16.15.
+
+The repaired archive was subsequently installed through pnpm in a private copy of that configured
+API consumer. Consumer typecheck and two functional HTTP tests per database passed against the
+new runtime. This does not repeat fresh-app generation or the original stage-3 upgrade rehearsal;
+see the T8.5 correction record in [manual verification](manual-check.md#t85-consolidated-review-corrections).
 
 The upgrade began from the stage-3 package archive, which already had all four package migrations.
 Candidate configure preserved the existing config and provider, skipped those migrations, and
@@ -43,15 +49,23 @@ The consumer supplies the runtime peer packages listed above. The `pg` and `bett
 drivers are used by the test setup and must be installed by consumer applications that use the
 corresponding Lucid database client.
 
-PostgreSQL uses Lucid-managed transactions; transient database errors, including deadlocks under
-opposing credential operations, can propagate to the caller. SQLite retries write contention
-asynchronously within a five-second deadline. Package write helpers own their root transaction,
-so an active SQLite global transaction is rejected. Invitation resend and revoke authorization
-callbacks run while that transaction is active and may run again after a SQLite retry. If a
-callback reads through the ordinary SQLite connection pool, the pool must have capacity for that
-separate read; a one-connection pool will time out. Preload permission state where practical and
-size the pool for the app's concurrency. A larger pool alone does not guarantee capacity under
-arbitrary concurrent load. See the [transaction guidance](../README.md#package-transactions).
+The generated adapter requires normalized lowercase email storage and a unique email index. On
+PostgreSQL that constraint must be named `users_email_unique`. Lookup uses exact equality so the
+ordinary email index can serve it.
+When `users.id` is a string or UUID, update the user foreign-key column in each of the three
+generated account tables to use the matching database type.
+
+Credential operations lock the user before consuming or modifying either token table, avoiding
+the former opposing user/token lock order. PostgreSQL does not retry transactions; general
+transient database errors can still propagate to the caller. SQLite
+retries write contention asynchronously within a five-second deadline. Package write helpers own
+their root transaction, so an active global transaction is rejected on both dialects. Invitation
+resend and revoke authorization callbacks run while that transaction is active and may run again
+after a SQLite retry. If a callback reads through the ordinary SQLite connection pool, the pool
+must have capacity for that separate read; a one-connection pool will time out. Preload permission
+state where practical and size the pool for the app's concurrency. A larger pool alone does not
+guarantee capacity under arbitrary concurrent load. See the
+[transaction guidance](../README.md#package-transactions).
 
 ## Dependency audit
 

@@ -14,7 +14,9 @@ export interface AccountUser {
 /**
  * Adapter obligations:
  * - compare emails case-insensitively and store them trimmed and lowercase
- * - enforce a unique index on the users table's email column
+ * - enforce a single-column unique index on the users table's email column;
+ *   on PostgreSQL its constraint must be named `users_email_unique` so duplicate
+ *   email races are mapped to EmailAlreadyRegisteredError
  * - when `forUpdate` is true, select the user through `trx` with `FOR UPDATE` on PostgreSQL;
  *   SQLite uses a plain select after the package has acquired its write lock
  * - hash passwords in `create` and `setPassword`

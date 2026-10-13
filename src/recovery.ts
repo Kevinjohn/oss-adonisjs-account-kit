@@ -42,11 +42,20 @@ export async function resetRecovery(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
 
   const user = await transaction(deps.db, async (trx) => {
-    const row = await consumeRecoveryToken(trx, hashToken(input.token), DateTime.utc().toISO())
-    if (!row) throw new InvalidTokenError()
-    await lockUser(trx, row.user_id)
-    const current = await deps.config.users.findById(row.user_id, trx, { forUpdate: true })
-    if (!current || current.email !== row.email) throw new InvalidTokenError()
+    const tokenHash = hashToken(input.token)
+    const candidate = await trx
+      .from('account_recovery_tokens')
+      .select('user_id')
+      .where('token_hash', tokenHash)
+      .first()
+    if (!candidate) throw new InvalidTokenError()
+    // All credential operations lock the user before changing either token table.
+    // The unlocked lookup is only a hint; DELETE RETURNING revalidates the live token.
+    await lockUser(trx, candidate.user_id)
+    const current = await deps.config.users.findById(candidate.user_id, trx, { forUpdate: true })
+    const row = await consumeRecoveryToken(trx, tokenHash, DateTime.utc().toISO())
+    if (!row || row.user_id !== candidate.user_id || !current || current.email !== row.email)
+      throw new InvalidTokenError()
 
     await deps.config.users.setPassword(row.user_id, input.password, trx)
     if (current.emailVerifiedAt === null)

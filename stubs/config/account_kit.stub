@@ -24,7 +24,7 @@ const toAccountUser = (user: UserModel): AccountUser => ({
 const users = {
   async findByEmail(email: string, trx?: Trx, options?: { forUpdate?: boolean }) {
     const User = await loadUser()
-    const builder = query(User, trx).whereRaw('LOWER(TRIM(email)) = ?', [normalizeEmail(email)])
+    const builder = query(User, trx).where('email', normalizeEmail(email))
     if (options?.forUpdate) builder.forUpdate()
     const user = await builder.first()
     return user ? toAccountUser(user) : null

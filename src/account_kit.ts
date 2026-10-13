@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import string from '@adonisjs/core/helpers/string'
 import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
@@ -35,6 +36,8 @@ import type {
   VerificationSendInput,
 } from './types.js'
 
+const MAX_LIMITER_DURATION_MS = 2_147_483_647
+
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const required: Array<[string, unknown]> = [
     ['users.findByEmail', config?.users?.findByEmail],
@@ -61,6 +64,12 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   for (const [name, callback] of required) {
     if (typeof callback !== 'function') throw new Error(`account_kit: ${name} must be a function`)
   }
+  if (
+    config.onCredentialsChanged !== undefined &&
+    typeof config.onCredentialsChanged !== 'function'
+  ) {
+    throw new Error('account_kit: onCredentialsChanged must be a function when supplied')
+  }
   const ttl = {
     recovery: config.ttl?.recovery ?? '1h',
     verification: config.ttl?.verification ?? '1h',
@@ -68,14 +77,39 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     emailChange: config.ttl?.emailChange ?? '1h',
   }
   for (const value of Object.values(ttl)) expiresAt(DateTime.utc(), value)
+  const throttle = {
+    requests: config.throttle?.requests ?? 5,
+    duration: config.throttle?.duration ?? '15m',
+  }
+  if (!Number.isSafeInteger(throttle.requests) || throttle.requests <= 0) {
+    throw new Error('account_kit: throttle.requests must be a positive safe integer')
+  }
+  let durationSeconds: number
+  try {
+    durationSeconds = string.seconds.parse(throttle.duration)
+  } catch (cause) {
+    throw new Error('account_kit: throttle.duration must be a supported positive duration', {
+      cause,
+    })
+  }
+  const durationMs = durationSeconds * 1000
+  if (
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0 ||
+    !Number.isSafeInteger(durationMs) ||
+    durationMs > MAX_LIMITER_DURATION_MS
+  ) {
+    throw new Error('account_kit: throttle.duration must be a limiter-representable duration')
+  }
+  const minRequestMs = config.minRequestMs ?? 300
+  if (!Number.isFinite(minRequestMs) || minRequestMs < 0) {
+    throw new Error('account_kit: minRequestMs must be a finite non-negative number')
+  }
   return {
     ...config,
     ttl,
-    throttle: {
-      requests: config.throttle?.requests ?? 5,
-      duration: config.throttle?.duration ?? '15m',
-    },
-    minRequestMs: config.minRequestMs ?? 300,
+    throttle,
+    minRequestMs,
   }
 }
 

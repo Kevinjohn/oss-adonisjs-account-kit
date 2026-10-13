@@ -440,11 +440,27 @@ test.group('recovery.reset', (group) => {
     const { token, user } = await issue()
     const users = makeUsersAdapter(kit.db, kit.hash)
     const failure = new Error('setPassword failed')
+    let callbackCalls = 0
+    const emailChange = {
+      user_id: user.id,
+      current_email: user.email,
+      new_email: 'next@example.test',
+      token_hash: hashToken(generateToken()),
+      expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
+      created_at: DateTime.utc().toISO(),
+    }
+    await kit.db.table('account_email_changes').insert(emailChange)
+    const emailChangeRows = await kit.db.from('account_email_changes')
     const account = service(
-      {},
+      {
+        onCredentialsChanged: async () => {
+          callbackCalls++
+        },
+      },
       {
         ...users,
-        setPassword: async () => {
+        setPassword: async (id, password, trx) => {
+          await users.setPassword(id, password, trx)
           throw failure
         },
       }
@@ -455,6 +471,8 @@ test.group('recovery.reset', (group) => {
     )
     assert.equal(await storedPassword(), user.password)
     assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.deepEqual(await kit.db.from('account_email_changes'), emailChangeRows)
+    assert.equal(callbackCalls, 0)
   })
 
   test('social-only unverified account gains its first password and verification; pending email change is removed', async ({

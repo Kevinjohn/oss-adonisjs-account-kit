@@ -31,7 +31,9 @@ settings in your environment before running migrations.
 
 The generated `config/account_kit.ts` expects the application model at `#models/user` to expose
 `email`, `password`, and nullable `emailVerifiedAt` fields mapped to `email`, `password`, and
-`email_verified_at`. Keep `email` unique and normalize it to trimmed lowercase when saving. Hash a
+`email_verified_at`. Keep `email` unique; on PostgreSQL, name that constraint
+`users_email_unique`. Normalize it to trimmed lowercase before storing it. The generated
+adapter looks up that normalized value with exact indexed equality. Hash a
 changed password in a `beforeSave` hook; the generated API kit's `withAuthFinder(hash)` hook does
 this. The adapter assigns plaintext passwords through the model, so avoid hashing them again in the
 adapter. Set `APP_URL` to the application's base URL in `.env` and declare it in `start/env.ts`, for
@@ -60,14 +62,15 @@ pnpm typecheck
 
 ### Package transactions
 
-Account Kit write methods manage their own transactions. On SQLite, do not call them inside an
-already-active global transaction; the package rejects that usage. In tests, use isolated or
-resettable database fixtures instead of wrapping package writes in a global transaction such as
-`wrapInGlobalTransaction`.
+Account Kit write methods manage their own root transactions. Do not call them inside an
+already-active global transaction on either SQLite or PostgreSQL; the package rejects that usage.
+In tests, use isolated or resettable database fixtures instead of wrapping package writes in a
+global transaction such as `wrapInGlobalTransaction`.
 
 SQLite can retry a contended transaction, so transaction callbacks may run again. Keep adapter
 writes and `onInvitationAccepted` database work inside the supplied `trx`, and leave notifications
-and other external effects until after the transaction commits.
+and other external effects until after the transaction commits. PostgreSQL does not retry
+transactions; transient database errors can propagate to the caller.
 Invitation management authorization runs inside the package transaction and may be called again
 on a SQLite retry. Keep those callbacks read-only and retry-safe. Their signatures do not include
 the transaction; prefer permission state already loaded for the actor. If they make ordinary
@@ -92,10 +95,12 @@ minRequestMs: 300,
 ```
 
 Configure `notify.recovery(user, url)` in `config/account_kit.ts`; the generated placeholder throws
-until replaced. Queue or send the message from this callback. It runs after the token transaction
-commits, and a callback failure becomes `DeliveryError`. Do not return its cause to the requester.
-The callback can use your application's queue or mail service; the package does not add a Mail
-dependency.
+until replaced. Enqueue the message promptly from this callback; it runs after the token transaction
+commits, and a callback failure becomes `DeliveryError`. The configured minimum request duration is
+a floor, not a constant-time or non-enumeration guarantee: slow lookups, contention, queueing, or
+synchronous delivery can make known-account requests take longer. Do not return the callback cause
+to the requester. The callback can use your application's queue or mail service; the package does
+not add a Mail dependency.
 
 Put request and reset validators in `app/validators/recovery.ts`. Choose password length and
 confirmation rules to match your application's policy:
@@ -352,7 +357,10 @@ The defaults match the repository's local PostgreSQL test service.
 
 For example, `DB_CLIENT=pg pnpm test` runs the same tests against PostgreSQL.
 
-The test users adapter stores normalized email addresses in a unique `email` column and hashes
+The three generated migrations reference `users.id`; if that key uses a string or UUID type, change
+the user foreign-key column in each recovery-token, invitation, and email-change migration to the
+matching database type. The test users adapter stores normalized email addresses in a unique
+`email` column (named `users_email_unique` on PostgreSQL) and hashes
 passwords through the booted application's hash service. Its transaction-aware methods use the
 supplied Lucid transaction. SQLite tests use WAL with a four-connection pool and a per-connection
 busy timeout of 5 seconds.

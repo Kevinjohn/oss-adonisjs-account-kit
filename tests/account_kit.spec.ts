@@ -47,6 +47,27 @@ test.group('account kit configuration and service surface', (group) => {
     assert.throws(() => defineConfig({ ...base, users: { ...base.users, create: null } } as never))
     assert.throws(() => defineConfig({ ...base, ttl: { verification: 'soon' } }))
     assert.throws(() => defineConfig({ ...base, ttl: { invitation: '0s' } }))
+    assert.throws(() => defineConfig({ ...base, ttl: { recovery: '1000000000d' } }))
+  })
+
+  test('rejects invalid recovery timing and throttle configuration', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    for (const minRequestMs of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+      assert.throws(() => defineConfig({ ...base, minRequestMs }))
+    }
+    assert.equal(defineConfig({ ...base, minRequestMs: 0 }).minRequestMs, 0)
+
+    for (const requests of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+      assert.throws(() => defineConfig({ ...base, throttle: { requests } }))
+    }
+    for (const duration of ['soon', '0s', '1ms', '100000000d']) {
+      assert.throws(() => defineConfig({ ...base, throttle: { duration } }))
+    }
+  })
+
+  test('rejects a supplied non-function credential callback', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    assert.throws(() => defineConfig({ ...base, onCredentialsChanged: 'not a callback' } as never))
   })
 
   test('uses defaults when nested optional values are explicitly undefined', ({ assert }) => {

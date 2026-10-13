@@ -68,6 +68,7 @@ test.group('expiration helper', () => {
     const now = DateTime.utc()
     assert.throws(() => expiresAt(now, '0s'))
     assert.throws(() => expiresAt(now, 'soon'))
+    assert.throws(() => expiresAt(now, '100000000000000000000d'))
   })
 })
 

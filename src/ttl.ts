@@ -14,5 +14,9 @@ export function expiresAt(now: DateTime, ttl: string): DateTime {
     throw new InvalidInputError('TTL must be a positive duration string')
   }
 
-  return now.plus({ seconds })
+  const expiration = now.plus({ seconds })
+  if (!expiration.isValid) {
+    throw new InvalidInputError('TTL must produce a valid expiration date')
+  }
+  return expiration
 }

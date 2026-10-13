@@ -21,12 +21,11 @@ test.group('database helpers', (group) => {
   })
 
   test('recognizes a real duplicate users.email violation on each database', async ({ assert }) => {
-    await kit.db.table('users').insert({ email: 'duplicate@example.test', created_at: new Date() })
+    const email = 'duplicate@example.test - UNIQUE constraint failed: users.email_alias'
+    await kit.db.table('users').insert({ email, created_at: new Date() })
     let duplicateError: unknown
     try {
-      await kit.db
-        .table('users')
-        .insert({ email: 'duplicate@example.test', created_at: new Date() })
+      await kit.db.table('users').insert({ email, created_at: new Date() })
       assert.fail('expected the unique index to reject a duplicate email')
     } catch (error) {
       duplicateError = error
@@ -93,5 +92,40 @@ test.group('database helpers', (group) => {
 
     assert.isTrue(secondWaitedForLock)
     assert.equal(secondPassword, 'committed')
+  })
+
+  test('does not confuse an email-prefixed unique column with users.email', async ({ assert }) => {
+    await kit.db.connection().schema.alterTable('users', (table) => {
+      table.string('email_alias').unique()
+    })
+    await kit.db.table('users').insert({
+      email: 'first@example.test',
+      email_alias: 'same-alias',
+      created_at: new Date(),
+    })
+    let failure: unknown
+    try {
+      await kit.db.table('users').insert({
+        email: 'second@example.test',
+        email_alias: 'same-alias',
+        created_at: new Date(),
+      })
+    } catch (error) {
+      failure = error
+    }
+    assert.isDefined(failure)
+    assert.isFalse(isUniqueViolation(failure, 'users', 'email'))
+  })
+
+  test('recognizes only the documented PostgreSQL email constraint identity', ({ assert }) => {
+    assert.isTrue(
+      isUniqueViolation({ code: '23505', constraint: 'users_email_unique' }, 'users', 'email')
+    )
+    assert.isFalse(
+      isUniqueViolation({ code: '23505', constraint: 'users_email_key' }, 'users', 'email')
+    )
+    assert.isFalse(
+      isUniqueViolation({ code: '23505', constraint: 'other_users_email_unique' }, 'users', 'email')
+    )
   })
 })

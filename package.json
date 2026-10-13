@@ -25,6 +25,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
+    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=provider.spec.ts",
     "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",
     "precompile": "pnpm lint",
@@ -105,6 +106,10 @@
     "target": "esnext"
   },
   "release-it": {
+    "hooks": {
+      "before:bump": "pnpm version ${version} --no-git-tag-version --allow-same-version",
+      "before:release": "pnpm publish --access public --provenance --no-git-checks"
+    },
     "git": {
       "requireCleanWorkingDir": true,
       "requireUpstream": true,
@@ -116,10 +121,7 @@
     "github": {
       "release": true
     },
-    "npm": {
-      "publish": true,
-      "skipChecks": true
-    },
+    "npm": false,
     "plugins": {
       "@release-it/conventional-changelog": {
         "preset": {
