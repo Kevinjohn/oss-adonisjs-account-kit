@@ -4,6 +4,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
 import { inspectRecovery, requestRecovery, resetRecovery } from './recovery.js'
+import { sendVerification } from './verification.js'
 import type {
   AccountKitConfig,
   AccountUser,
@@ -90,8 +91,8 @@ export class AccountKit {
     reset: (input: RecoveryResetInput): Promise<AccountUser> => resetRecovery(this.deps, input),
   }
   readonly verification = {
-    send: async (_input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
-      notImplemented(),
+    send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
+      sendVerification(this.deps, input),
     complete: async (_input: VerificationCompleteInput): Promise<'verified' | 'already_verified'> =>
       notImplemented(),
   }
