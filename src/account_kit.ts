@@ -9,6 +9,8 @@ import {
   acceptInvitation,
   inspectInvitation,
   listInvitations,
+  resendInvitation,
+  revokeInvitation,
   sendInvitation,
 } from './invitations.js'
 import type {
@@ -109,8 +111,9 @@ export class AccountKit {
       inspectInvitation(this.deps.db, input),
     accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
       acceptInvitation(this.deps, input),
-    resend: async (_input: InvitationsResendInput): Promise<Invitation> => notImplemented(),
-    revoke: async (_input: InvitationsRevokeInput): Promise<void> => notImplemented(),
+    resend: (input: InvitationsResendInput): Promise<Invitation> =>
+      resendInvitation(this.deps, input),
+    revoke: (input: InvitationsRevokeInput): Promise<void> => revokeInvitation(this.deps, input),
   }
   readonly credentials = {
     changePassword: async (_input: CredentialsChangePasswordInput): Promise<void> =>

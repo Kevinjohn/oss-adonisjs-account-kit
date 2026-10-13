@@ -691,3 +691,373 @@ test.group('invitations.accept', (group) => {
     })
   }
 })
+
+test.group('invitations.resend and revoke', (group) => {
+  let kit: Awaited<ReturnType<typeof bootTestApp>>
+  group.setup(async () => {
+    kit = await bootTestApp()
+  })
+  group.each.setup(async () => {
+    await resetSchema(kit)
+    await kit.limiter.clear()
+  })
+  group.teardown(async () => {
+    await kit.close()
+  })
+
+  async function createActor() {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    return kit.db.transaction((trx) =>
+      users.create(
+        { email: 'actor@example.test', password: 'password123', emailVerifiedAt: DateTime.utc() },
+        trx
+      )
+    )
+  }
+
+  function service(overrides: Partial<AccountKitConfig> = {}) {
+    const recorder = makeNotify()
+    const { users, ...rest } = overrides
+    const config = defineConfig(
+      makeConfig({
+        users: users ?? makeUsersAdapter(kit.db, kit.hash),
+        notify: recorder.notify,
+        ...rest,
+      })
+    )
+    return {
+      account: new AccountKit({
+        config,
+        db: kit.db,
+        limiter: kit.limiter,
+        encryption: null as never,
+      }),
+      recorder,
+    }
+  }
+
+  async function issue(
+    account: AccountKit,
+    recorder: ReturnType<typeof makeNotify>,
+    actorId: AccountUser['id'],
+    email = 'person@example.test',
+    role = 'admin'
+  ) {
+    const invitation = await account.invitations.send({ actorId, email, role })
+    const token = new URL(recorder.calls.at(-1)!.args[1] as string).pathname.split('/').at(-1)!
+    return { invitation, token }
+  }
+
+  test('resend rotates the token after commit, preserves invitation identity, and the new link works', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    let visibleAtNotification = false
+    const { account } = service({
+      notify: {
+        ...recorder.notify,
+        invitation: async (invitation, url) => {
+          if (recorder.calls.length === 1) {
+            const raw = new URL(url).pathname.split('/').at(-1)!
+            const committed = await kit.db
+              .from('account_invitations')
+              .where('id', invitation.id)
+              .first()
+            visibleAtNotification = committed?.token_hash === hashToken(raw)
+          }
+          await recorder.notify.invitation(invitation, url)
+        },
+      },
+    })
+    const { invitation: original, token: oldToken } = await issue(account, recorder, actor.id)
+    const resent = await account.invitations.resend({
+      actorId: actor.id,
+      invitationId: original.id,
+    })
+    assert.equal(resent.id, original.id)
+    assert.equal(resent.email, original.email)
+    assert.equal(resent.role, original.role)
+    assert.equal(resent.inviterId, original.inviterId)
+    assert.equal(resent.createdAt.toISO(), original.createdAt.toISO())
+    assert.isTrue(visibleAtNotification)
+    assert.lengthOf(recorder.calls, 2)
+    const newToken = new URL(recorder.calls[1].args[1] as string).pathname.split('/').at(-1)!
+    assert.notEqual(newToken, oldToken)
+    const row = await kit.db.from('account_invitations').where('id', original.id).first()
+    assert.equal(row.token_hash, hashToken(newToken))
+    assert.isFalse(Object.values(row).includes(newToken))
+    assert.isNull(await account.invitations.inspect({ token: oldToken }))
+    assert.deepEqual(await account.invitations.inspect({ token: newToken }), {
+      email: original.email,
+      role: original.role,
+    })
+    await assert.rejects(
+      () => account.invitations.accept({ token: oldToken, password: 'password123' }),
+      InvalidTokenError
+    )
+    const accepted = await account.invitations.accept({ token: newToken, password: 'password123' })
+    assert.equal(accepted.email, original.email)
+  })
+
+  test('resend renews an expired invitation and rejects accepted or missing ids', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    const { invitation, token } = await issue(account, recorder, actor.id)
+    await kit.db
+      .from('account_invitations')
+      .where('id', invitation.id)
+      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+    const renewed = await account.invitations.resend({
+      actorId: actor.id,
+      invitationId: invitation.id,
+    })
+    assert.isTrue(renewed.expiresAt > DateTime.utc())
+    assert.isNull(await account.invitations.inspect({ token }))
+    await account.invitations.accept({
+      token: new URL(recorder.calls[1].args[1] as string).pathname.split('/').at(-1)!,
+      password: 'password123',
+    })
+    await assert.rejects(
+      () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      InvalidTokenError
+    )
+    await assert.rejects(
+      () => account.invitations.resend({ actorId: actor.id, invitationId: 99999 }),
+      InvalidTokenError
+    )
+  })
+
+  test('resend requires exact manage and current stored-role grant before any rotation', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account: sender, recorder } = service()
+    const { invitation, token } = await issue(sender, recorder, actor.id)
+    const initial = await kit.db.from('account_invitations').where('id', invitation.id).first()
+    const managedDenied = service({
+      authorize: { ...allowAll, manageInvitation: async () => undefined as never },
+    }).account
+    await assert.rejects(
+      () => managedDenied.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      AuthorizationError
+    )
+    const roles: string[] = []
+    const grantDenied = service({
+      authorize: {
+        ...allowAll,
+        invite: async (_actor, role) => {
+          roles.push(role)
+          return role === 'user'
+        },
+      },
+    }).account
+    await assert.rejects(
+      () => grantDenied.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      AuthorizationError
+    )
+    assert.deepEqual(roles, ['admin'])
+    const missingGrant = service({
+      authorize: { ...allowAll, invite: async () => undefined as never },
+    }).account
+    await assert.rejects(
+      () => missingGrant.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      AuthorizationError
+    )
+    await assert.rejects(
+      () => sender.invitations.resend({ actorId: 99999, invitationId: invitation.id }),
+      InvalidInputError
+    )
+    const unchanged = await kit.db.from('account_invitations').where('id', invitation.id).first()
+    assert.equal(unchanged.token_hash, initial.token_hash)
+    assert.deepEqual(await sender.invitations.inspect({ token }), {
+      email: invitation.email,
+      role: invitation.role,
+    })
+  })
+
+  test('delivery and URL failures leave the new token committed', async ({ assert }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    const { account } = service({ notify: recorder.notify })
+    const { invitation, token: oldToken } = await issue(account, recorder, actor.id)
+    recorder.failOn('invitation')
+    try {
+      await account.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
+      assert.fail('expected delivery failure')
+    } catch (error) {
+      assert.instanceOf(error, DeliveryError)
+      assert.instanceOf((error as DeliveryError).cause, Error)
+    }
+    const newToken = new URL(recorder.calls[1].args[1] as string).pathname.split('/').at(-1)!
+    assert.isNull(await account.invitations.inspect({ token: oldToken }))
+    assert.deepEqual(await account.invitations.inspect({ token: newToken }), {
+      email: invitation.email,
+      role: invitation.role,
+    })
+    const urlFailure = new Error('invitation URL failed')
+    const defaults = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    const broken = service({
+      urls: {
+        ...defaults.urls,
+        invitation: () => {
+          throw urlFailure
+        },
+      },
+    }).account
+    try {
+      await broken.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
+      assert.fail('expected URL failure')
+    } catch (error) {
+      assert.instanceOf(error, DeliveryError)
+      assert.equal((error as DeliveryError).cause, urlFailure)
+    }
+    assert.isNull(await account.invitations.inspect({ token: newToken }))
+    assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
+  })
+
+  test('revoke checks management permission, deletes the row, and cannot repeat', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    const { invitation, token } = await issue(account, recorder, actor.id)
+    const denied = service({
+      authorize: { ...allowAll, manageInvitation: async () => false },
+    }).account
+    await assert.rejects(
+      () => denied.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
+      AuthorizationError
+    )
+    const missingPermission = service({
+      authorize: { ...allowAll, manageInvitation: async () => undefined as never },
+    }).account
+    await assert.rejects(
+      () =>
+        missingPermission.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
+      AuthorizationError
+    )
+    assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
+    assert.isUndefined(
+      await account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
+    )
+    assert.lengthOf(await kit.db.from('account_invitations').where('id', invitation.id), 0)
+    await assert.rejects(
+      () => account.invitations.accept({ token, password: 'password123' }),
+      InvalidTokenError
+    )
+    await assert.rejects(
+      () => account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
+      InvalidTokenError
+    )
+    await assert.rejects(
+      () => account.invitations.revoke({ actorId: actor.id, invitationId: 99999 }),
+      InvalidTokenError
+    )
+    await assert.rejects(
+      () => account.invitations.revoke({ actorId: 99999, invitationId: invitation.id }),
+      InvalidInputError
+    )
+  })
+
+  test('a held resend lock makes an independent acceptance lose the old token', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    let manageReady!: () => void
+    let releaseManage!: () => void
+    const ready = new Promise<void>((resolve) => {
+      manageReady = resolve
+    })
+    const hold = new Promise<void>((resolve) => {
+      releaseManage = resolve
+    })
+    const { account, recorder } = service({
+      authorize: {
+        ...allowAll,
+        manageInvitation: async () => {
+          manageReady()
+          await hold
+          return true
+        },
+      },
+    })
+    const { invitation, token } = await issue(account, recorder, actor.id)
+    const resending = account.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
+    const knex = kit.db.connection().getWriteClient()
+    let attempted!: () => void
+    const attemptedDelete = new Promise<void>((resolve) => {
+      attempted = resolve
+    })
+    const onQuery = (query: { sql: string }) => {
+      if (/delete from account_invitations/i.test(query.sql)) attempted()
+    }
+    knex.on('query', onQuery)
+    try {
+      await ready
+      const accepting = account.invitations.accept({ token, password: 'password123' })
+      void accepting.catch(() => {})
+      await attemptedDelete
+      releaseManage()
+      const rotated = await resending
+      await assert.rejects(() => accepting, InvalidTokenError)
+      assert.equal(rotated.id, invitation.id)
+      assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
+      assert.isNull(await account.invitations.inspect({ token }))
+    } finally {
+      releaseManage()
+      knex.off('query', onQuery)
+      await resending.catch(() => {})
+    }
+  }).timeout(6000)
+
+  if (process.env.DB_CLIENT === 'pg') {
+    test('holds a PostgreSQL row lock through the permission callback', async ({ assert }) => {
+      const actor = await createActor()
+      let manageReady!: () => void
+      let releaseManage!: () => void
+      const ready = new Promise<void>((resolve) => {
+        manageReady = resolve
+      })
+      const hold = new Promise<void>((resolve) => {
+        releaseManage = resolve
+      })
+      const { account, recorder } = service({
+        authorize: {
+          ...allowAll,
+          manageInvitation: async () => {
+            manageReady()
+            await hold
+            return true
+          },
+        },
+      })
+      const { invitation } = await issue(account, recorder, actor.id)
+      const resending = account.invitations.resend({
+        actorId: actor.id,
+        invitationId: invitation.id,
+      })
+      try {
+        await ready
+        let conflict: unknown
+        try {
+          await transaction(kit.db, (trx) =>
+            trx
+              .rawQuery('SELECT id FROM account_invitations WHERE id = ? FOR UPDATE NOWAIT', [
+                invitation.id,
+              ])
+              .exec()
+          )
+        } catch (error) {
+          conflict = error
+        }
+        assert.equal((conflict as { code?: string } | undefined)?.code, '55P03')
+      } finally {
+        releaseManage()
+        await resending
+      }
+    })
+  }
+})

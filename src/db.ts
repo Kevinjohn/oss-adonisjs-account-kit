@@ -39,6 +39,11 @@ export async function lockUser(trx: Trx, id: UserId): Promise<void> {
   await trx.rawQuery('update users set id = id where id = ?', [id]).exec()
 }
 
+export async function lockInvitation(trx: Trx, id: number): Promise<void> {
+  if (trx.dialect.name !== 'better-sqlite3') return
+  await trx.rawQuery('update account_invitations set id = id where id = ?', [id]).exec()
+}
+
 async function commitSqlite(
   trx: Trx,
   sqlite: SQLiteConnection,

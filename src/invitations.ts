@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
-import { consumeInvitationToken, transaction, isUniqueViolation } from './db.js'
+import { consumeInvitationToken, lockInvitation, transaction, isUniqueViolation } from './db.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   AuthorizationError,
@@ -19,9 +19,75 @@ import type {
   InvitationsAcceptInput,
   InvitationsInspectInput,
   InvitationsListInput,
+  InvitationsResendInput,
+  InvitationsRevokeInput,
   InvitationsSendInput,
   ResolvedConfig,
 } from './types.js'
+
+export async function resendInvitation(
+  deps: { config: ResolvedConfig; db: Database },
+  input: InvitationsResendInput
+): Promise<Invitation> {
+  const actor = await deps.config.users.findById(input.actorId)
+  if (!actor) throw new InvalidInputError('Unknown actor')
+  const token = generateToken()
+  const invitation = await transaction(deps.db, async (trx) => {
+    await lockInvitation(trx, input.invitationId)
+    const row = await trx
+      .from('account_invitations')
+      .where('id', input.invitationId)
+      .forUpdate()
+      .first()
+    if (!row) throw new InvalidTokenError()
+    const current = toInvitation(row)
+    if ((await deps.config.authorize.manageInvitation(actor, current)) !== true)
+      throw new AuthorizationError()
+    if ((await deps.config.authorize.invite(actor, current.role)) !== true)
+      throw new AuthorizationError()
+
+    const now = DateTime.utc()
+    const [updated] = await trx
+      .getWriteClient()
+      .table('account_invitations')
+      .where('id', input.invitationId)
+      .update({
+        token_hash: hashToken(token),
+        expires_at: expiresAt(now, deps.config.ttl.invitation).toISO(),
+        updated_at: now.toISO(),
+      })
+      .returning('*')
+    if (!updated) throw new InvalidTokenError()
+    return toInvitation(updated)
+  })
+
+  try {
+    await deps.config.notify.invitation(invitation, deps.config.urls.invitation(token))
+  } catch (cause) {
+    throw new DeliveryError('Invitation notification failed', { cause })
+  }
+  return invitation
+}
+
+export async function revokeInvitation(
+  deps: { config: ResolvedConfig; db: Database },
+  input: InvitationsRevokeInput
+): Promise<void> {
+  const actor = await deps.config.users.findById(input.actorId)
+  if (!actor) throw new InvalidInputError('Unknown actor')
+  await transaction(deps.db, async (trx) => {
+    await lockInvitation(trx, input.invitationId)
+    const row = await trx
+      .from('account_invitations')
+      .where('id', input.invitationId)
+      .forUpdate()
+      .first()
+    if (!row) throw new InvalidTokenError()
+    if ((await deps.config.authorize.manageInvitation(actor, toInvitation(row))) !== true)
+      throw new AuthorizationError()
+    await trx.from('account_invitations').where('id', input.invitationId).delete()
+  })
+}
 
 export async function acceptInvitation(
   deps: { config: ResolvedConfig; db: Database },
