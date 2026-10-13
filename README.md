@@ -56,6 +56,119 @@ pnpm exec node ace migration:run
 pnpm typecheck
 ```
 
+## Password recovery
+
+The generated `urls.recovery` callback builds `/account-kit/recovery/<token>` from `APP_URL`; serve
+that path with a GET page-inspection action and a POST password-reset action. Add a separate POST
+endpoint for recovery requests. If your routes use a prefix, update `urls.recovery` to match it.
+
+The relevant `defineConfig` settings default to a one-hour recovery token, five requests per
+15 minutes for each client key and normalized email, and a 300 ms minimum duration for recovery
+requests:
+
+```ts
+ttl: { recovery: '1h' },
+throttle: { requests: 5, duration: '15m' },
+minRequestMs: 300,
+```
+
+Configure `notify.recovery(user, url)` in `config/account_kit.ts`; the generated placeholder throws
+until replaced. Queue or send the message from this callback. It runs after the token transaction
+commits, and a callback failure becomes `DeliveryError`. Do not return its cause to the requester.
+The callback can use your application's queue or mail service; the package does not add a Mail
+dependency.
+
+Put request and reset validators in `app/validators/recovery.ts`. Choose password length and
+confirmation rules to match your application's policy:
+
+```ts
+import vine from '@vinejs/vine'
+
+export const recoveryRequestValidator = vine.compile(
+  vine.object({ email: vine.string().trim().email().maxLength(254) })
+)
+
+export const recoveryResetValidator = vine.compile(
+  vine.object({
+    password: vine.string().minLength(12).maxLength(128).confirmed({ as: 'password_confirmation' }),
+    password_confirmation: vine.string().minLength(12).maxLength(128),
+  })
+)
+```
+
+In `app/controllers/forgot_password_controller.ts`, use one public acknowledgement for a known or
+unknown email, including when delivery fails. Throttling can return a generic 429 with `Retry-After`:
+
+```ts
+import app from '@adonisjs/core/services/app'
+import type { HttpContext } from '@adonisjs/core/http'
+import { AccountKit, DeliveryError, ThrottledError } from 'adonisjs-account-kit'
+import { recoveryRequestValidator } from '#validators/recovery'
+
+const acknowledgement = { message: 'If the account exists, recovery instructions will be sent.' }
+
+export default class ForgotPasswordController {
+  async store({ request, response }: HttpContext) {
+    const { email } = await request.validateUsing(recoveryRequestValidator)
+    const kit = await app.container.make(AccountKit)
+
+    try {
+      await kit.recovery.request({ email, clientKey: request.ip() })
+    } catch (error) {
+      if (error instanceof ThrottledError) {
+        response.header('Retry-After', String(error.retryAfterSeconds))
+        return response.tooManyRequests({ message: 'Please wait before trying again.' })
+      }
+      if (!(error instanceof DeliveryError)) throw error
+    }
+
+    return response.accepted(acknowledgement)
+  }
+}
+```
+
+In `app/controllers/reset_password_controller.ts`, inspect without consuming on GET, then consume
+the token on POST. Set `Referrer-Policy: no-referrer` on both token responses so the bearer token is
+not sent as a referrer. Replace the valid GET response with your page or SPA handoff:
+
+```ts
+import app from '@adonisjs/core/services/app'
+import type { HttpContext } from '@adonisjs/core/http'
+import { AccountKit, InvalidTokenError } from 'adonisjs-account-kit'
+import { recoveryResetValidator } from '#validators/recovery'
+
+const invalidLink = { message: 'This recovery link is invalid or expired.' }
+
+export default class ResetPasswordController {
+  async show({ params, response }: HttpContext) {
+    response.header('Referrer-Policy', 'no-referrer')
+    const kit = await app.container.make(AccountKit)
+    if (!(await kit.recovery.inspect({ token: params.token }))) {
+      return response.unprocessableEntity(invalidLink)
+    }
+    return response.ok({ valid: true })
+  }
+
+  async store({ params, request, response }: HttpContext) {
+    response.header('Referrer-Policy', 'no-referrer')
+    const { password } = await request.validateUsing(recoveryResetValidator)
+    const kit = await app.container.make(AccountKit)
+
+    try {
+      await kit.recovery.reset({ token: params.token, password })
+    } catch (error) {
+      if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)
+      throw error
+    }
+
+    return response.accepted({ message: 'Password reset. You can now sign in.' })
+  }
+}
+```
+
+Recovery reset returns an `AccountUser` value, not a Lucid model or session. Let the user sign in
+through your normal flow after reset; do not treat the returned value as an authenticated session.
+
 Tests use SQLite by default and need no database service. SQLite is stored in a temporary file
 with WAL enabled so tests can use separate connections. To run the suite against PostgreSQL,
 start a local PostgreSQL 16 database and set `DB_CLIENT=pg` plus the connection variables below.
