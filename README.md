@@ -169,6 +169,48 @@ export default class ResetPasswordController {
 Recovery reset returns an `AccountUser` value, not a Lucid model or session. Let the user sign in
 through your normal flow after reset; do not treat the returned value as an authenticated session.
 
+## Email verification
+
+The generated `urls.verification` callback builds `/account-kit/verification/<token>` from
+`APP_URL`. Serve that path as a token-completion page or endpoint; if your routes use a prefix,
+update the callback to match. Set `Referrer-Policy: no-referrer` on the token page so the link is
+not sent as a referrer.
+
+The generated config sets `ttl.verification` to `1h` and the shared `throttle` to
+`{ requests: 5, duration: '15m' }`. Verification sends are keyed by user ID. The generated
+`notify.verification(user, url)`
+placeholder throws until configured. Queue or send the message from that callback. A callback
+failure becomes `DeliveryError` with the original error in `cause`; log it privately and return a
+generic response rather than exposing the cause.
+
+With a resolved `AccountKit` instance named `kit`, send a verification link only from an
+authenticated action, using that user's ID:
+
+```ts
+const result = await kit.verification.send({ userId })
+// 'sent' or 'already_verified'
+```
+
+An unknown user ID throws `InvalidInputError`. Already-verified users return
+`'already_verified'` without another notification. The callback receives the user's `AccountUser`
+value and the configured verification URL.
+
+The link is encrypted for the `account-kit:verify-email` purpose and expires at the configured TTL.
+Completion checks that the token's user ID and email still match the current account, so a link
+issued before an email change cannot verify the new address. A malformed, expired, wrong-purpose,
+or stale-address token throws `InvalidTokenError`.
+
+Call completion from the public token endpoint with the token from the URL and the resolved `kit`:
+
+```ts
+const result = await kit.verification.complete({ token })
+// 'verified' on the first visit; 'already_verified' on a repeat visit
+```
+
+Completion is repeatable: revisiting a valid link returns `'already_verified'` after the first
+successful verification. Do not treat this result as a sign-in or promise that existing sessions
+have ended.
+
 Tests use SQLite by default and need no database service. SQLite is stored in a temporary file
 with WAL enabled so tests can use separate connections. To run the suite against PostgreSQL,
 start a local PostgreSQL 16 database and set `DB_CLIENT=pg` plus the connection variables below.
