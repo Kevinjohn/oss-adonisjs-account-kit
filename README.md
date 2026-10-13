@@ -211,6 +211,57 @@ Completion is repeatable: revisiting a valid link returns `'already_verified'` a
 successful verification. Do not treat this result as a sign-in or promise that existing sessions
 have ended.
 
+## Invitations
+
+Invitations let an authorized actor invite an unregistered email with an application-defined role.
+The `role` is an opaque string to the package; assign it to the new user in the required
+`onInvitationAccepted(user, invitation, trx)` callback, using the supplied transaction. If the
+callback fails, invitation consumption, user creation, and the role write roll back together.
+SQLite may retry a contended transaction, so keep this callback to database work through `trx` and
+leave mail or other external effects to post-commit notification callbacks.
+
+The generated invitation URL uses `/account-kit/invitation/<token>` from `APP_URL`; serve it with a
+GET inspection page and a POST acceptance action. Set `Referrer-Policy: no-referrer` on token pages.
+The default invitation TTL is seven days (`ttl.invitation: '7d'`).
+
+The generated config requires `authorize.invite(actor, role)`,
+`authorize.manageInvitation(actor, invitation)`, `authorize.listInvitations(actor)`,
+`urls.invitation(token)`, and `notify.invitation(invitation, url)`. Each authorization callback
+must return exactly `true` to allow its action. Configure the URL callback to match your route and
+the notification callback to queue or send the invitation; the generated callback throws until
+you configure it. Send and resend notifications happen after their database commits; a failure
+becomes `DeliveryError` with the cause. The invitation row is already committed. A failed resend has
+already rotated the token, so the previous link is no longer valid.
+
+Use authenticated actions for sending, listing, resending, and revoking, passing the authenticated
+actor's ID. The methods are:
+
+```ts
+await kit.invitations.send({ actorId, email, role })
+await kit.invitations.list({ actorId })
+await kit.invitations.inspect({ token })
+await kit.invitations.accept({ token, password })
+await kit.invitations.resend({ actorId, invitationId })
+await kit.invitations.revoke({ actorId, invitationId })
+```
+
+`inspect` is public and non-consuming; return its invitation email and role to render the
+confirmation page. `accept` consumes the token on POST and returns an `AccountUser`; the accepted
+email is verified. The application owns password policy and confirmation validation.
+
+Sending to an email that already belongs to a registered user throws
+`EmailAlreadyRegisteredError`; the actor can be told to invite a different address. A pending
+invitation for the same email throws `InvitationPendingError`. Acceptance also rejects an email
+that became registered after the invitation was sent, and rolls the invitation consumption back.
+The inviter's permissions are not rechecked when the recipient accepts. The invitation remains
+bounded by its expiry, an authorized revoke, or a resend. Resending checks both `manageInvitation` and the current
+`invite(actor, invitation.role)` grant, so permission for the role must still exist. Listing also
+requires `listInvitations` and returns only unexpired invitations.
+
+Invitation writes manage their own transactions, and SQLite rejects these operations while a global
+transaction is active. Do not wrap them in a test transaction such as `wrapInGlobalTransaction`; use
+isolated or resettable database fixtures instead.
+
 Tests use SQLite by default and need no database service. SQLite is stored in a temporary file
 with WAL enabled so tests can use separate connections. To run the suite against PostgreSQL,
 start a local PostgreSQL 16 database and set `DB_CLIENT=pg` plus the connection variables below.
