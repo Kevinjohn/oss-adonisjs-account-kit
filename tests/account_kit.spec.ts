@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { bootTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
-import { AccountKit, defineConfig } from '../src/account_kit.js'
+import { defineConfig } from '../src/account_kit.js'
 
 test.group('account kit configuration and service surface', (group) => {
   let kit: Awaited<ReturnType<typeof bootTestApp>>
@@ -68,26 +68,5 @@ test.group('account kit configuration and service surface', (group) => {
       emailChange: '1h',
     })
     assert.deepEqual(resolved.throttle, { requests: 5, duration: '15m' })
-  })
-
-  test('exposes all operation placeholders with the public input shapes', async ({ assert }) => {
-    const config = defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
-    const service = new AccountKit({
-      config,
-      db: kit.db,
-      encryption: null as never,
-      limiter: kit.limiter,
-    })
-    const cases: Array<() => Promise<unknown>> = [
-      () =>
-        service.credentials.requestEmailChange({
-          actorId: 1,
-          currentPassword: 'old',
-          newEmail: 'b@example.test',
-        }),
-      () => service.credentials.completeEmailChange({ token: 'token' }),
-    ]
-    assert.lengthOf(cases, 2)
-    for (const invoke of cases) await assert.rejects(invoke, 'not implemented')
   })
 })

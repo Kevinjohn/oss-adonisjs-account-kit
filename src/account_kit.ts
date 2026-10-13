@@ -5,7 +5,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
 import { inspectRecovery, requestRecovery, resetRecovery } from './recovery.js'
 import { completeVerification, sendVerification } from './verification.js'
-import { changePassword } from './credentials.js'
+import { changePassword, completeEmailChange, requestEmailChange } from './credentials.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -79,10 +79,6 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   }
 }
 
-function notImplemented(): never {
-  throw new Error('not implemented')
-}
-
 export class AccountKit {
   constructor(
     private readonly deps: {
@@ -119,10 +115,9 @@ export class AccountKit {
   readonly credentials = {
     changePassword: (input: CredentialsChangePasswordInput): Promise<void> =>
       changePassword(this.deps, input),
-    requestEmailChange: async (_input: CredentialsRequestEmailChangeInput): Promise<void> =>
-      notImplemented(),
-    completeEmailChange: async (
-      _input: CredentialsCompleteEmailChangeInput
-    ): Promise<AccountUser> => notImplemented(),
+    requestEmailChange: (input: CredentialsRequestEmailChangeInput): Promise<void> =>
+      requestEmailChange(this.deps, input),
+    completeEmailChange: async (input: CredentialsCompleteEmailChangeInput): Promise<AccountUser> =>
+      completeEmailChange(this.deps, input),
   }
 }

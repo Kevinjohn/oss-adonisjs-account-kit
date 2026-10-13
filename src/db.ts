@@ -98,6 +98,24 @@ export async function consumeRecoveryToken(
   return rows[0] ?? null
 }
 
+export async function consumeEmailChangeToken(
+  trx: Trx,
+  tokenHash: string,
+  now: string
+): Promise<{ user_id: UserId; current_email: string; new_email: string } | null> {
+  const result: unknown = await trx
+    .rawQuery(
+      'delete from account_email_changes where token_hash = ? and expires_at > ? returning *',
+      [tokenHash, now]
+    )
+    .exec()
+  const rows = Array.isArray(result)
+    ? result
+    : (result as { rows: Array<{ user_id: UserId; current_email: string; new_email: string }> })
+        .rows
+  return rows[0] ?? null
+}
+
 export async function consumeInvitationToken(
   trx: Trx,
   tokenHash: string,
