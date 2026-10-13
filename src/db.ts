@@ -5,6 +5,12 @@ import type { Trx, UserId } from './types.js'
 const SQLITE_RETRY_MS = 10
 const SQLITE_DEADLINE_MS = 5000
 
+interface SQLiteConnection {
+  inTransaction: boolean
+  exec(sql: string): void
+  pragma(sql: string, options?: { simple: boolean }): unknown
+}
+
 function isBusy(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -33,6 +39,60 @@ export async function lockUser(trx: Trx, id: UserId): Promise<void> {
   await trx.rawQuery('update users set id = id where id = ?', [id]).exec()
 }
 
+async function commitSqlite(
+  trx: Trx,
+  sqlite: SQLiteConnection,
+  onCommitted: () => void
+): Promise<void> {
+  const knexTrx = trx.getWriteClient()
+  const completion = knexTrx.executionPromise
+  void completion.catch(() => {})
+  const originalCommit = knexTrx.commit
+
+  // Knex resolves its COMMIT query even when SQLite rejects it. Lucid must not
+  // emit commit or run after-commit hooks until Knex's completion promise settles.
+  knexTrx.commit = (async () => {
+    try {
+      await originalCommit.call(knexTrx)
+      await completion
+      onCommitted()
+    } catch (error) {
+      if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
+      const originalRollback = knexTrx.rollback
+      knexTrx.rollback = (() => Promise.resolve()) as typeof originalRollback
+      try {
+        await trx.rollback()
+      } finally {
+        knexTrx.rollback = originalRollback
+      }
+      throw error
+    }
+  }) as typeof originalCommit
+
+  try {
+    await trx.commit()
+  } finally {
+    knexTrx.commit = originalCommit
+  }
+}
+
+export async function consumeRecoveryToken(
+  trx: Trx,
+  tokenHash: string,
+  now: string
+): Promise<{ user_id: UserId; email: string } | null> {
+  const result: unknown = await trx
+    .rawQuery(
+      'delete from account_recovery_tokens where token_hash = ? and expires_at > ? returning user_id, email',
+      [tokenHash, now]
+    )
+    .exec()
+  const rows = Array.isArray(result)
+    ? result
+    : (result as { rows: Array<{ user_id: UserId; email: string }> }).rows
+  return rows[0] ?? null
+}
+
 /** Run a database-only callback; callers perform notifications after this resolves. */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   if (db.config.connections[db.primaryConnectionName].client !== 'better-sqlite3') {
@@ -41,19 +101,34 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
 
   const deadline = performance.now() + SQLITE_DEADLINE_MS
   for (;;) {
+    let committed = false
     try {
-      return await db.transaction(async (trx) => {
-        const timeoutResult = await trx.rawQuery('PRAGMA busy_timeout').exec()
-        const timeout = Number(timeoutResult[0].timeout)
-        await trx.rawQuery('PRAGMA busy_timeout = 0').exec()
+      const client = db.connection().getWriteClient().client
+      const sqlite = (await client.acquireConnection()) as SQLiteConnection
+      let timeout: number | undefined
+      try {
+        timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
+        sqlite.pragma('busy_timeout = 0')
+        const trx = (await db
+          .connection()
+          .transaction(undefined as never, { connection: sqlite } as never)) as Trx
         try {
-          return await callback(trx)
-        } finally {
-          await trx.rawQuery(`PRAGMA busy_timeout = ${timeout}`).exec()
+          const result = await callback(trx)
+          await commitSqlite(trx, sqlite, () => {
+            committed = true
+          })
+          return result
+        } catch (error) {
+          if (!trx.isCompleted) await trx.rollback()
+          throw error
         }
-      })
+      } finally {
+        if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
+        if (timeout !== undefined) sqlite.pragma(`busy_timeout = ${timeout}`)
+        await client.releaseConnection(sqlite)
+      }
     } catch (error) {
-      if (!isBusy(error) || performance.now() >= deadline) throw error
+      if (committed || !isBusy(error) || performance.now() >= deadline) throw error
       await new Promise((resolve) =>
         setTimeout(resolve, Math.min(SQLITE_RETRY_MS, Math.max(0, deadline - performance.now())))
       )

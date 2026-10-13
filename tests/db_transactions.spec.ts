@@ -146,4 +146,181 @@ test.group('managed transaction wrapper', (group) => {
       await customKit.close()
     }
   })
+
+  test('DELETE-journal commit contention yields to a reader and commits before returning', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const customKit = await bootTestApp({ sqliteBusyTimeout: 5000, sqlitePoolMax: 2 })
+    let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
+    let native:
+      | {
+          inTransaction: boolean
+          exec(sql: string): void
+          pragma(sql: string, options?: { simple: boolean }): unknown
+        }
+      | undefined
+    let commits = 0
+    let afterCommits = 0
+    let eventSawOpenTransaction = false
+    try {
+      await resetSchema(customKit)
+      await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
+      await customKit.db.table('users').insert({
+        email: 'commit@example.test',
+        created_at: new Date().toISOString(),
+      })
+      reader = await customKit.db.transaction()
+      await reader.from('users').first()
+      let releasedAt = 0
+      const started = performance.now()
+      const release = new Promise<void>((resolve, reject) => {
+        setTimeout(async () => {
+          releasedAt = performance.now() - started
+          try {
+            await reader!.commit()
+            resolve()
+          } catch (error) {
+            reject(error)
+          }
+        }, 80)
+      })
+      await transaction(customKit.db, async (trx) => {
+        native = await trx.getWriteClient().client.acquireConnection()
+        trx.on('commit', () => {
+          commits++
+          eventSawOpenTransaction ||= native!.inTransaction
+        })
+        trx.after('commit', () => {
+          afterCommits++
+        })
+        await trx
+          .from('users')
+          .where('email', 'commit@example.test')
+          .update({ email: 'committed@example.test' })
+      })
+      await release
+      assert.isBelow(releasedAt, 500)
+      assert.isFalse(native!.inTransaction)
+      assert.equal(native!.pragma('busy_timeout', { simple: true }), 5000)
+      assert.equal(commits, 1)
+      assert.equal(afterCommits, 1)
+      assert.isFalse(eventSawOpenTransaction)
+      assert.isNotNull(
+        await customKit.db.from('users').where('email', 'committed@example.test').first()
+      )
+      await customKit.db.transaction(async (trx) => {
+        const timeout = await trx.rawQuery('PRAGMA busy_timeout').exec()
+        assert.equal(timeout[0].timeout, 5000)
+      })
+    } finally {
+      if (native?.inTransaction) native.exec('ROLLBACK')
+      if (reader && !reader.isCompleted) await reader.rollback()
+      await customKit.close()
+    }
+  }).timeout(8000)
+
+  test('DELETE-journal commit exhaustion rolls back and releases its pooled connection', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const customKit = await bootTestApp({ sqliteBusyTimeout: 5000, sqlitePoolMax: 2 })
+    let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
+    const natives: Array<{
+      inTransaction: boolean
+      exec(sql: string): void
+      pragma(sql: string, options?: { simple: boolean }): unknown
+    }> = []
+    let commits = 0
+    let rollbacks = 0
+    let afterCommits = 0
+    let afterRollbacks = 0
+    try {
+      await resetSchema(customKit)
+      await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
+      await customKit.db
+        .table('users')
+        .insert({ email: 'before@example.test', created_at: new Date().toISOString() })
+      reader = await customKit.db.transaction()
+      await reader.from('users').first()
+      const started = performance.now()
+      try {
+        await transaction(customKit.db, async (trx) => {
+          natives.push(await trx.getWriteClient().client.acquireConnection())
+          trx.on('commit', () => {
+            commits++
+          })
+          trx.on('rollback', () => {
+            rollbacks++
+          })
+          trx.after('commit', () => {
+            afterCommits++
+          })
+          trx.after('rollback', () => {
+            afterRollbacks++
+          })
+          await trx
+            .from('users')
+            .where('email', 'before@example.test')
+            .update({ email: 'after@example.test' })
+        })
+        assert.fail('expected SQLITE_BUSY')
+      } catch (error) {
+        for (const native of natives) assert.isFalse(native.inTransaction)
+        assert.equal((error as { code?: string }).code, 'SQLITE_BUSY')
+      }
+      assert.isAtLeast(performance.now() - started, 4900)
+      assert.isBelow(performance.now() - started, 6500)
+      assert.isAbove(natives.length, 1)
+      for (const native of natives) {
+        assert.isFalse(native.inTransaction)
+        assert.equal(native.pragma('busy_timeout', { simple: true }), 5000)
+      }
+      assert.equal(commits, 0)
+      assert.equal(afterCommits, 0)
+      assert.equal(rollbacks, natives.length)
+      assert.equal(afterRollbacks, natives.length)
+      await reader.commit()
+      assert.isNotNull(
+        await customKit.db.from('users').where('email', 'before@example.test').first()
+      )
+      assert.isNull(await customKit.db.from('users').where('email', 'after@example.test').first())
+      await customKit.db.transaction(async (trx) => {
+        const timeout = await trx.rawQuery('PRAGMA busy_timeout').exec()
+        assert.equal(timeout[0].timeout, 5000)
+        await trx
+          .table('users')
+          .insert({ email: 'reused@example.test', created_at: new Date().toISOString() })
+      })
+    } finally {
+      for (const native of natives) if (native.inTransaction) native.exec('ROLLBACK')
+      if (reader && !reader.isCompleted) await reader.rollback()
+      await customKit.close()
+    }
+  }).timeout(8000)
+
+  test('a busy-coded commit listener error does not replay committed writes', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const failure = Object.assign(new Error('after commit failed'), { code: 'SQLITE_BUSY' })
+    let attempts = 0
+    try {
+      await transaction(kit.db, async (trx) => {
+        attempts++
+        await trx.table('users').insert({
+          email: 'once@example.test',
+          created_at: new Date().toISOString(),
+        })
+        trx.on('commit', () => {
+          throw failure
+        })
+      })
+      assert.fail('expected listener failure')
+    } catch (error) {
+      assert.equal(error, failure)
+    }
+    assert.equal(attempts, 1)
+    assert.lengthOf(await kit.db.from('users').where('email', 'once@example.test'), 1)
+  })
 })

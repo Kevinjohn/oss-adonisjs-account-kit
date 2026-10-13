@@ -4,13 +4,19 @@ import { DateTime } from 'luxon'
 import { safeTiming } from '@adonisjs/core/helpers'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { transaction } from './db.js'
+import { consumeRecoveryToken, lockUser, transaction } from './db.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
-import { DeliveryError, InvalidInputError } from './errors.js'
+import { DeliveryError, InvalidInputError, InvalidTokenError, PostCommitError } from './errors.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
-import type { RecoveryInspectInput, RecoveryRequestInput, ResolvedConfig } from './types.js'
+import type {
+  AccountUser,
+  RecoveryInspectInput,
+  RecoveryRequestInput,
+  RecoveryResetInput,
+  ResolvedConfig,
+} from './types.js'
 
 export async function inspectRecovery(db: Database, input: RecoveryInspectInput): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
@@ -21,6 +27,42 @@ export async function inspectRecovery(db: Database, input: RecoveryInspectInput)
     .where('expires_at', '>', DateTime.utc().toISO())
     .first()
   return row !== null
+}
+
+export async function resetRecovery(
+  deps: { config: ResolvedConfig; db: Database },
+  input: RecoveryResetInput
+): Promise<AccountUser> {
+  if (
+    typeof input.password !== 'string' ||
+    input.password.length < 8 ||
+    input.password.length > 255
+  )
+    throw new InvalidInputError('Invalid password')
+  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+
+  const user = await transaction(deps.db, async (trx) => {
+    const row = await consumeRecoveryToken(trx, hashToken(input.token), DateTime.utc().toISO())
+    if (!row) throw new InvalidTokenError()
+    await lockUser(trx, row.user_id)
+    const current = await deps.config.users.findById(row.user_id, trx, { forUpdate: true })
+    if (!current || current.email !== row.email) throw new InvalidTokenError()
+
+    await deps.config.users.setPassword(row.user_id, input.password, trx)
+    if (current.emailVerifiedAt === null)
+      await deps.config.users.markEmailVerified(row.user_id, DateTime.utc(), trx)
+    await trx.from('account_email_changes').where('user_id', row.user_id).delete()
+    const reloaded = await deps.config.users.findById(row.user_id, trx)
+    if (!reloaded) throw new InvalidTokenError()
+    return reloaded
+  })
+
+  try {
+    await deps.config.onCredentialsChanged?.(user)
+  } catch (cause) {
+    throw new PostCommitError('Credentials changed but the callback failed', { cause })
+  }
+  return user
 }
 
 export async function requestRecovery(
