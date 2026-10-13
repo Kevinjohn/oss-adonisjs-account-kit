@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { requestRecovery } from '../src/recovery.js'
-import { hashToken } from '../src/tokens.js'
+import { generateToken, hashToken } from '../src/tokens.js'
 import { DeliveryError, InvalidInputError, ThrottledError } from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { bootTestApp } from './helpers/app.js'
@@ -276,5 +276,75 @@ test.group('recovery.request', (group) => {
       assert.instanceOf(error, InvalidInputError)
     }
     assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+  })
+})
+
+test.group('recovery.inspect', (group) => {
+  let kit: Awaited<ReturnType<typeof bootTestApp>>
+  group.setup(async () => {
+    kit = await bootTestApp()
+  })
+  group.each.setup(async () => {
+    await resetSchema(kit)
+    await kit.limiter.clear()
+  })
+  group.teardown(async () => {
+    await kit.close()
+  })
+
+  async function issue() {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    await kit.db.transaction((trx) =>
+      users.create(
+        {
+          email: 'person@example.test',
+          password: 'password123',
+          emailVerifiedAt: DateTime.utc(),
+        },
+        trx
+      )
+    )
+    const recorder = makeNotify()
+    const config = defineConfig(makeConfig({ users, notify: recorder.notify, minRequestMs: 0 }))
+    const account = new AccountKit({
+      config,
+      db: kit.db,
+      limiter: kit.limiter,
+      encryption: null as never,
+    })
+    await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
+    const token = new URL(recorder.calls[0].args[1] as string).pathname.split('/').at(-1)!
+    return { account, token }
+  }
+
+  test('valid token remains valid on repeated inspection without consumption', async ({
+    assert,
+  }) => {
+    const { account, token } = await issue()
+    assert.isTrue(await account.recovery.inspect({ token }))
+    assert.isTrue(await account.recovery.inspect({ token }))
+    const rows = await kit.db.from('account_recovery_tokens')
+    assert.lengthOf(rows, 1)
+    assert.equal(rows[0].token_hash, hashToken(token))
+  })
+
+  test('expired token is rejected', async ({ assert }) => {
+    const { account, token } = await issue()
+    await kit.db.from('account_recovery_tokens').update({
+      expires_at: DateTime.utc().minus({ minutes: 1 }).toISO(),
+    })
+    assert.isFalse(await account.recovery.inspect({ token }))
+    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+  })
+
+  test('unknown and malformed tokens return false before malformed values reach hashing or the database', async ({
+    assert,
+  }) => {
+    const { account } = await issue()
+    assert.isFalse(await account.recovery.inspect({ token: generateToken() }))
+    for (const token of [null, undefined, 42, {}, [], '', 'a'.repeat(42), '!'.repeat(43)]) {
+      assert.isFalse(await account.recovery.inspect({ token: token as never }))
+    }
+    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
   })
 })

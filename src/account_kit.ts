@@ -3,7 +3,7 @@ import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
-import { requestRecovery } from './recovery.js'
+import { inspectRecovery, requestRecovery } from './recovery.js'
 import type {
   AccountKitConfig,
   AccountUser,
@@ -85,7 +85,8 @@ export class AccountKit {
 
   readonly recovery = {
     request: (input: RecoveryRequestInput): Promise<void> => requestRecovery(this.deps, input),
-    inspect: async (_input: RecoveryInspectInput): Promise<boolean> => notImplemented(),
+    inspect: (input: RecoveryInspectInput): Promise<boolean> =>
+      inspectRecovery(this.deps.db, input),
     reset: async (_input: RecoveryResetInput): Promise<AccountUser> => notImplemented(),
   }
   readonly verification = {

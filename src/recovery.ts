@@ -8,9 +8,20 @@ import { transaction } from './db.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { DeliveryError, InvalidInputError } from './errors.js'
 import { consume } from './throttle.js'
-import { generateToken, hashToken } from './tokens.js'
+import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
-import type { RecoveryRequestInput, ResolvedConfig } from './types.js'
+import type { RecoveryInspectInput, RecoveryRequestInput, ResolvedConfig } from './types.js'
+
+export async function inspectRecovery(db: Database, input: RecoveryInspectInput): Promise<boolean> {
+  if (!isTokenShaped(input.token)) return false
+  const row = await db
+    .from('account_recovery_tokens')
+    .select(db.raw('1'))
+    .where('token_hash', hashToken(input.token))
+    .where('expires_at', '>', DateTime.utc().toISO())
+    .first()
+  return row !== null
+}
 
 export async function requestRecovery(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },

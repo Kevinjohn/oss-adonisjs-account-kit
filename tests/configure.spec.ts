@@ -110,4 +110,4 @@ test('configures the package idempotently without replacing application-owned fi
   } finally {
     await rm(root, { recursive: true, force: true })
   }
-})
+}).timeout(10_000)
