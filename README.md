@@ -56,6 +56,17 @@ pnpm exec node ace migration:run
 pnpm typecheck
 ```
 
+### Package transactions
+
+Account Kit write methods manage their own transactions. On SQLite, do not call them inside an
+already-active global transaction; the package rejects that usage. In tests, use isolated or
+resettable database fixtures instead of wrapping package writes in a global transaction such as
+`wrapInGlobalTransaction`.
+
+SQLite can retry a contended transaction, so transaction callbacks may run again. Keep adapter
+writes and `onInvitationAccepted` database work inside the supplied `trx`, and leave notifications
+and other external effects until after the transaction commits.
+
 ## Password recovery
 
 The generated `urls.recovery` callback builds `/account-kit/recovery/<token>` from `APP_URL`; serve
@@ -258,9 +269,60 @@ bounded by its expiry, an authorized revoke, or a resend. Resending checks both 
 `invite(actor, invitation.role)` grant, so permission for the role must still exist. Listing also
 requires `listInvitations` and returns only unexpired invitations.
 
-Invitation writes manage their own transactions, and SQLite rejects these operations while a global
-transaction is active. Do not wrap them in a test transaction such as `wrapInGlobalTransaction`; use
-isolated or resettable database fixtures instead.
+## Credential changes
+
+Use the authenticated user's ID as `actorId` for both authenticated methods. The package checks the
+current password before changing a password or requesting an email change. Both operations share the
+per-user identity throttle, which defaults to five attempts per 15 minutes. The application remains
+responsible for its password policy and confirmation fields.
+
+```ts
+await kit.credentials.changePassword({ actorId, currentPassword, newPassword })
+await kit.credentials.requestEmailChange({ actorId, currentPassword, newEmail })
+await kit.credentials.completeEmailChange({ token })
+```
+
+Both authenticated methods require an existing password and throw `NoPasswordError` for a
+social-only account. That user can set their first password through the recovery flow. A wrong or
+missing current password throws `IdentityNotConfirmedError`. After a successful password change,
+pending recovery and email-change links are invalidated. Recovery resets also invalidate pending
+email-change links.
+
+`requestEmailChange` normalizes the new address, requires current-password proof, and replaces any
+earlier pending email-change request for that user. A registered address throws
+`EmailAlreadyRegisteredError`. The default `ttl.emailChange` is one hour. The generated
+`notify.emailChangeConfirm(user, newEmail, url)` callback throws until configured; it runs after the
+request commits. After password proof and throttling, requesting the user's current normalized
+email is a no-op. A notification failure becomes `DeliveryError`, while the request remains stored.
+
+The generated email-change URL is `/account-kit/email-change/<token>` from `APP_URL`. Use GET only
+to display a landing page with a confirmation action; there is no email-change inspection method.
+Set `Referrer-Policy: no-referrer` on the token page, then call `completeEmailChange` only from its
+POST action. Completion verifies the account still has the email address bound to the request,
+changes and verifies the new address, invalidates pending recovery links, and returns an
+`AccountUser`. Completion is single-use; malformed, expired, replayed, or stale links throw
+`InvalidTokenError`. A new request replaces an earlier link, and a stale current-email binding
+cannot be used.
+
+After a recovery reset, password change, or completed email change commits, the optional
+`onCredentialsChanged(user)` callback can revoke application credentials. For an API kit with
+access tokens, one option is to delete all tokens for that user:
+
+```ts
+onCredentialsChanged: async (accountUser) => {
+  const User = (await import('#models/user')).default
+  const user = await User.find(accountUser.id)
+  if (user) await User.accessTokens.deleteAll(user)
+},
+```
+
+This callback receives an `AccountUser` value, not a Lucid model, so load the model when the callback
+runs. It runs after the database commit. When email change completes, `notify.emailChanged(previousEmail,
+user)` runs after `onCredentialsChanged`; both are post-commit. A thrown callback or notification
+error becomes `PostCommitError` with its original `cause`, and the committed credential change
+remains in place. Do not expose causes from either `DeliveryError` or `PostCommitError`; log them
+privately and return a generic public response. These operations do not terminate existing web
+sessions in v1.
 
 Tests use SQLite by default and need no database service. SQLite is stored in a temporary file
 with WAL enabled so tests can use separate connections. To run the suite against PostgreSQL,
