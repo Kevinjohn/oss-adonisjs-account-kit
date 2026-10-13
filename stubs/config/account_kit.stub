@@ -2,7 +2,7 @@
 
 import { DateTime } from 'luxon'
 import env from '#start/env'
-import User from '#models/user'
+import type UserModel from '#models/user'
 import { defineConfig, type AccountUser, type Invitation, type Trx } from 'adonisjs-account-kit'
 import hash from '@adonisjs/core/services/hash'
 
@@ -11,8 +11,10 @@ const appUrl = env.get('APP_URL')
 const accountUrl = (path: string, token: string) =>
   new URL('/account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
 
-const query = (trx?: Trx) => (trx ? User.query({ client: trx }) : User.query())
-const toAccountUser = (user: User): AccountUser => ({
+const loadUser = async () => (await import('#models/user')).default
+const query = (User: typeof UserModel, trx?: Trx) =>
+  trx ? User.query({ client: trx }) : User.query()
+const toAccountUser = (user: UserModel): AccountUser => ({
   id: user.id,
   email: user.email,
   hasPassword: user.password !== null,
@@ -21,14 +23,16 @@ const toAccountUser = (user: User): AccountUser => ({
 
 const users = {
   async findByEmail(email: string, trx?: Trx, options?: { forUpdate?: boolean }) {
-    const builder = query(trx).whereRaw('LOWER(TRIM(email)) = ?', [normalizeEmail(email)])
+    const User = await loadUser()
+    const builder = query(User, trx).whereRaw('LOWER(TRIM(email)) = ?', [normalizeEmail(email)])
     if (options?.forUpdate) builder.forUpdate()
     const user = await builder.first()
     return user ? toAccountUser(user) : null
   },
 
   async findById(id: number | string, trx?: Trx, options?: { forUpdate?: boolean }) {
-    const builder = query(trx).where('id', id)
+    const User = await loadUser()
+    const builder = query(User, trx).where('id', id)
     if (options?.forUpdate) builder.forUpdate()
     const user = await builder.first()
     return user ? toAccountUser(user) : null
@@ -38,6 +42,7 @@ const users = {
     attrs: { email: string; password: string; emailVerifiedAt: DateTime },
     trx: Trx
   ) {
+    const User = await loadUser()
     const user = new User()
     user.useTransaction(trx)
     user.email = normalizeEmail(attrs.email)
@@ -49,6 +54,7 @@ const users = {
   },
 
   async setPassword(id: number | string, password: string, trx: Trx) {
+    const User = await loadUser()
     const user = await User.query({ client: trx }).where('id', id).first()
     if (!user) return
     user.password = password
@@ -57,6 +63,7 @@ const users = {
   },
 
   async setEmail(id: number | string, email: string, trx: Trx) {
+    const User = await loadUser()
     const user = await User.query({ client: trx }).where('id', id).first()
     if (!user) return
     user.email = normalizeEmail(email)
@@ -65,6 +72,7 @@ const users = {
   },
 
   async markEmailVerified(id: number | string, at: DateTime, trx: Trx) {
+    const User = await loadUser()
     const user = await User.query({ client: trx }).where('id', id).first()
     if (!user) return
     user.emailVerifiedAt = at
@@ -73,6 +81,7 @@ const users = {
   },
 
   async verifyPassword(id: number | string, password: string, trx: Trx) {
+    const User = await loadUser()
     const user = await User.query({ client: trx }).where('id', id).first()
     return typeof user?.password === 'string' && hash.verify(user.password, password)
   },

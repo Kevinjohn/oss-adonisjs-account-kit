@@ -4,17 +4,57 @@ Account recovery, email verification, invitations and credential changes for Ado
 
 Development requires Node 24 or newer and pnpm.
 
+## Install
+
+Until the package is published, install a local tarball. Run the first two commands in this repository,
+then create the app and run the remaining commands from `/tmp`:
+
+```sh
+pnpm build
+pnpm pack --pack-destination /tmp
+cd /tmp
+pnpm create adonisjs@latest scratch --kit=api --pkg=pnpm
+cd scratch
+pnpm exec node ace add @adonisjs/limiter
+pnpm add /tmp/adonisjs-account-kit-0.0.0.tgz
+pnpm exec node ace configure adonisjs-account-kit
+```
+
+Before running the migrations and typecheck, complete the application prerequisites below. The
+generated migration adds the nullable `email_verified_at` column; with Lucid schema generation
+enabled, running migrations also regenerates the `UserSchema` declaration. The generated API kit's
+SQLite setup works without a database service. For PostgreSQL, install the driver with
+`pnpm add pg`, configure a `pg` connection in `config/database.ts`, and provide its connection
+settings in your environment before running migrations.
+
 ## Application prerequisites
 
 The generated `config/account_kit.ts` expects the application model at `#models/user` to expose
 `email`, `password`, and nullable `emailVerifiedAt` fields mapped to `email`, `password`, and
-`email_verified_at`. Keep `email` unique and normalize it to trimmed lowercase when saving. Add a
-`beforeSave` hook that hashes a changed password; the adapter assigns plaintext passwords through
-the model so the same hook covers account creation and password changes without hashing twice.
-The published migration adds the nullable verification column. Set `APP_URL` to the application's
-base URL so the generated link callbacks can build absolute URLs.
-When using SQLite, ensure `foreign_keys` is enabled for every database connection so the migration's
-`CASCADE` and `SET NULL` rules are enforced.
+`email_verified_at`. Keep `email` unique and normalize it to trimmed lowercase when saving. Hash a
+changed password in a `beforeSave` hook; the generated API kit's `withAuthFinder(hash)` hook does
+this. The adapter assigns plaintext passwords through the model, so avoid hashing them again in the
+adapter. Set `APP_URL` to the application's base URL in `.env` and declare it in `start/env.ts`, for
+example `APP_URL: Env.schema.string({ format: 'url', tld: false })`. When using SQLite, enable
+`foreign_keys` for every database connection so the migration's `CASCADE` and `SET NULL` rules are
+enforced. In the generated API kit's `config/database.ts`, add this to the SQLite connection:
+
+```ts
+pool: {
+  afterCreate(connection, callback) {
+    connection.pragma('foreign_keys = ON')
+    callback(null, connection)
+  },
+},
+```
+
+After setting `APP_URL`, completing the User model prerequisites, and enabling SQLite foreign keys
+when applicable, run the migrations and typecheck:
+
+```sh
+pnpm exec node ace migration:run
+pnpm typecheck
+```
 
 Tests use SQLite by default and need no database service. SQLite is stored in a temporary file
 with WAL enabled so tests can use separate connections. To run the suite against PostgreSQL,
