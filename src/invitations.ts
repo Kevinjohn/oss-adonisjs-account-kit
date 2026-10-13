@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
-import { transaction, isUniqueViolation } from './db.js'
+import { consumeInvitationToken, transaction, isUniqueViolation } from './db.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   AuthorizationError,
@@ -8,17 +8,55 @@ import {
   EmailAlreadyRegisteredError,
   InvalidInputError,
   InvitationPendingError,
+  InvalidTokenError,
 } from './errors.js'
 import { toInvitation } from './rows.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
   Invitation,
+  AccountUser,
+  InvitationsAcceptInput,
   InvitationsInspectInput,
   InvitationsListInput,
   InvitationsSendInput,
   ResolvedConfig,
 } from './types.js'
+
+export async function acceptInvitation(
+  deps: { config: ResolvedConfig; db: Database },
+  input: InvitationsAcceptInput
+): Promise<AccountUser> {
+  if (
+    typeof input.password !== 'string' ||
+    input.password.length < 8 ||
+    input.password.length > 255
+  )
+    throw new InvalidInputError('Invalid password')
+  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+
+  try {
+    return await transaction(deps.db, async (trx) => {
+      const now = DateTime.utc()
+      const row = await consumeInvitationToken(trx, hashToken(input.token), now.toISO())
+      if (!row) throw new InvalidTokenError()
+      if (await deps.config.users.findByEmail(row.email, trx))
+        throw new EmailAlreadyRegisteredError()
+
+      const user = await deps.config.users.create(
+        { email: row.email, password: input.password, emailVerifiedAt: now },
+        trx
+      )
+      await deps.config.onInvitationAccepted(user, toInvitation(row), trx)
+      const reloaded = await deps.config.users.findById(user.id, trx)
+      if (!reloaded) throw new InvalidTokenError()
+      return reloaded
+    })
+  } catch (error) {
+    if (isUniqueViolation(error, 'users', 'email')) throw new EmailAlreadyRegisteredError()
+    throw error
+  }
+}
 
 export async function listInvitations(
   deps: { config: ResolvedConfig; db: Database },

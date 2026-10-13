@@ -79,7 +79,6 @@ test.group('account kit configuration and service surface', (group) => {
       limiter: kit.limiter,
     })
     const cases: Array<() => Promise<unknown>> = [
-      () => service.invitations.accept({ token: 'token', password: 'password123' }),
       () => service.invitations.resend({ actorId: 1, invitationId: 1 }),
       () => service.invitations.revoke({ actorId: 1, invitationId: 1 }),
       () =>
@@ -96,7 +95,7 @@ test.group('account kit configuration and service surface', (group) => {
         }),
       () => service.credentials.completeEmailChange({ token: 'token' }),
     ]
-    assert.lengthOf(cases, 6)
+    assert.lengthOf(cases, 5)
     for (const invoke of cases) await assert.rejects(invoke, 'not implemented')
   })
 })

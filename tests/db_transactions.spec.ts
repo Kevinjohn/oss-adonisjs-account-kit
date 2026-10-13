@@ -17,6 +17,39 @@ test.group('managed transaction wrapper', (group) => {
     await kit.close()
   })
 
+  test('rejects an active SQLite global transaction without changing its connection or writes', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const outer = await kit.db.beginGlobalTransaction()
+    const native = await outer.getWriteClient().client.acquireConnection()
+    const timeout = native.pragma('busy_timeout', { simple: true })
+    let callbackCalls = 0
+    try {
+      await outer
+        .table('users')
+        .insert({ email: 'outer@example.test', created_at: new Date().toISOString() })
+      let failure: Error | undefined
+      try {
+        await transaction(kit.db, async () => {
+          callbackCalls++
+        })
+      } catch (error) {
+        failure = error as Error
+      }
+      assert.instanceOf(failure, Error)
+      assert.equal(callbackCalls, 0)
+      assert.isTrue(native.inTransaction)
+      assert.equal(native.pragma('busy_timeout', { simple: true }), timeout)
+      assert.isNotNull(await outer.from('users').where('email', 'outer@example.test').first())
+      assert.include(failure!.message, 'requires its own transaction')
+      await kit.db.commitGlobalTransaction()
+      assert.isNotNull(await kit.db.from('users').where('email', 'outer@example.test').first())
+    } finally {
+      if (!outer.isCompleted) await kit.db.rollbackGlobalTransaction()
+    }
+  })
+
   test('propagates a non-busy error once and rolls back', async ({ assert }) => {
     let attempts = 0
     try {

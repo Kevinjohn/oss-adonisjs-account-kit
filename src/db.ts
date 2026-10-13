@@ -93,25 +93,54 @@ export async function consumeRecoveryToken(
   return rows[0] ?? null
 }
 
+export async function consumeInvitationToken(
+  trx: Trx,
+  tokenHash: string,
+  now: string
+): Promise<{
+  id: number
+  email: string
+  role: string
+  inviter_id: UserId | null
+  token_hash: string
+  expires_at: Date | string
+  created_at: Date | string
+  updated_at: Date | string
+} | null> {
+  const result: unknown = await trx
+    .rawQuery(
+      'delete from account_invitations where token_hash = ? and expires_at > ? returning *',
+      [tokenHash, now]
+    )
+    .exec()
+  const rows = Array.isArray(result) ? result : (result as { rows: unknown[] }).rows
+  return rows[0] ?? null
+}
+
 /** Run a database-only callback; callers perform notifications after this resolves. */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   if (db.config.connections[db.primaryConnectionName].client !== 'better-sqlite3') {
     return db.transaction(callback)
   }
 
+  const connection = db.connection()
+  if (connection.isTransaction)
+    throw new Error('Account kit requires its own transaction on SQLite')
+  const client = connection.getWriteClient().client
+
   const deadline = performance.now() + SQLITE_DEADLINE_MS
   for (;;) {
     let committed = false
     try {
-      const client = db.connection().getWriteClient().client
       const sqlite = (await client.acquireConnection()) as SQLiteConnection
       let timeout: number | undefined
       try {
         timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
         sqlite.pragma('busy_timeout = 0')
-        const trx = (await db
-          .connection()
-          .transaction(undefined as never, { connection: sqlite } as never)) as Trx
+        const trx = (await connection.transaction(
+          undefined as never,
+          { connection: sqlite } as never
+        )) as Trx
         try {
           const result = await callback(trx)
           await commitSqlite(trx, sqlite, () => {

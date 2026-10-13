@@ -5,7 +5,12 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
 import { inspectRecovery, requestRecovery, resetRecovery } from './recovery.js'
 import { completeVerification, sendVerification } from './verification.js'
-import { inspectInvitation, listInvitations, sendInvitation } from './invitations.js'
+import {
+  acceptInvitation,
+  inspectInvitation,
+  listInvitations,
+  sendInvitation,
+} from './invitations.js'
 import type {
   AccountKitConfig,
   AccountUser,
@@ -102,7 +107,8 @@ export class AccountKit {
     list: (input: InvitationsListInput): Promise<Invitation[]> => listInvitations(this.deps, input),
     inspect: (input: InvitationsInspectInput): Promise<Pick<Invitation, 'email' | 'role'> | null> =>
       inspectInvitation(this.deps.db, input),
-    accept: async (_input: InvitationsAcceptInput): Promise<AccountUser> => notImplemented(),
+    accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
+      acceptInvitation(this.deps, input),
     resend: async (_input: InvitationsResendInput): Promise<Invitation> => notImplemented(),
     revoke: async (_input: InvitationsRevokeInput): Promise<void> => notImplemented(),
   }
