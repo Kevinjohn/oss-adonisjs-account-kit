@@ -5,6 +5,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
 import { inspectRecovery, requestRecovery, resetRecovery } from './recovery.js'
 import { completeVerification, sendVerification } from './verification.js'
+import { sendInvitation } from './invitations.js'
 import type {
   AccountKitConfig,
   AccountUser,
@@ -97,7 +98,7 @@ export class AccountKit {
       completeVerification(this.deps, input),
   }
   readonly invitations = {
-    send: async (_input: InvitationsSendInput): Promise<Invitation> => notImplemented(),
+    send: (input: InvitationsSendInput): Promise<Invitation> => sendInvitation(this.deps, input),
     list: async (_input: InvitationsListInput): Promise<Invitation[]> => notImplemented(),
     inspect: async (
       _input: InvitationsInspectInput
