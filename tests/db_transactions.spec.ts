@@ -10,7 +10,7 @@ test.group('managed transaction wrapper', (group) => {
     kit = await bootTestApp()
   })
   group.each.setup(async () => {
-    await resetSchema(kit.db)
+    await resetSchema(kit)
     await kit.limiter.clear()
   })
   group.teardown(async () => {
@@ -118,7 +118,7 @@ test.group('managed transaction wrapper', (group) => {
     if (process.env.DB_CLIENT === 'pg') return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 321, sqlitePoolMax: 1 })
     try {
-      await resetSchema(customKit.db)
+      await resetSchema(customKit)
       await transaction(customKit.db, async (trx) => {
         const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
         assert.equal(current[0].timeout, 0)

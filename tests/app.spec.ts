@@ -10,7 +10,7 @@ test.group('test application', (group) => {
   })
 
   group.each.setup(async () => {
-    await resetSchema(testApp.db)
+    await resetSchema(testApp)
     await testApp.limiter.clear()
   })
 

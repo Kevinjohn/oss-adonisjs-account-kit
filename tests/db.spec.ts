@@ -12,7 +12,7 @@ test.group('database helpers', (group) => {
   })
 
   group.each.setup(async () => {
-    await resetSchema(kit.db)
+    await resetSchema(kit)
     await kit.limiter.clear()
   })
 

@@ -4,6 +4,18 @@ Account recovery, email verification, invitations and credential changes for Ado
 
 Development requires Node 24 or newer and pnpm.
 
+## Application prerequisites
+
+The generated `config/account_kit.ts` expects the application model at `#models/user` to expose
+`email`, `password`, and nullable `emailVerifiedAt` fields mapped to `email`, `password`, and
+`email_verified_at`. Keep `email` unique and normalize it to trimmed lowercase when saving. Add a
+`beforeSave` hook that hashes a changed password; the adapter assigns plaintext passwords through
+the model so the same hook covers account creation and password changes without hashing twice.
+The published migration adds the nullable verification column. Set `APP_URL` to the application's
+base URL so the generated link callbacks can build absolute URLs.
+When using SQLite, ensure `foreign_keys` is enabled for every database connection so the migration's
+`CASCADE` and `SET NULL` rules are enforced.
+
 Tests use SQLite by default and need no database service. SQLite is stored in a temporary file
 with WAL enabled so tests can use separate connections. To run the suite against PostgreSQL,
 start a local PostgreSQL 16 database and set `DB_CLIENT=pg` plus the connection variables below.

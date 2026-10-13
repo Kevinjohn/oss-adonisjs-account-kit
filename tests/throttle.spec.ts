@@ -10,7 +10,7 @@ test.group('operation throttling', (group) => {
     kit = await bootTestApp()
   })
   group.each.setup(async () => {
-    await resetSchema(kit.db)
+    await resetSchema(kit)
     await kit.limiter.clear()
   })
   group.teardown(async () => {

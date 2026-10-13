@@ -8,7 +8,7 @@ test.group('account kit provider', () => {
   test('resolves one class-bound service with all namespaces', async ({ assert }) => {
     const kit = await bootTestApp({ accountKitProvider: 'source' })
     try {
-      await resetSchema(kit.db)
+      await resetSchema(kit)
       await kit.limiter.clear()
       kit.app.config.set(
         'account_kit',
@@ -42,7 +42,7 @@ test.group('account kit provider', () => {
       assert.isFunction(provider.default)
       const kit = await bootTestApp({ accountKitProvider: 'build' })
       try {
-        await resetSchema(kit.db)
+        await resetSchema(kit)
         await kit.limiter.clear()
         kit.app.config.set(
           'account_kit',

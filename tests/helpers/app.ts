@@ -15,6 +15,8 @@ export interface TestApp {
   db: Database
   hash: Hash
   limiter: LimiterService
+  appRootPath: string
+  migrationDirectory: string
   close(): Promise<void>
 }
 
@@ -32,6 +34,8 @@ export async function bootTestApp(
   const sqliteDirectory =
     client === 'better-sqlite3' ? await mkdtemp(join(tmpdir(), 'account-kit-')) : null
   const sqliteFilename = sqliteDirectory ? join(sqliteDirectory, 'test.sqlite') : undefined
+  const appRootPath = fileURLToPath(new URL('../..', import.meta.url))
+  const migrationDirectory = await mkdtemp(join(tmpdir(), 'account-kit-migrations-'))
 
   const connection =
     client === 'pg'
@@ -45,6 +49,7 @@ export async function bootTestApp(
             database: process.env.DB_DATABASE ?? 'account_kit_test',
           },
           pool: { min: 1, max: 4 },
+          migrations: { paths: [migrationDirectory] },
         }
       : {
           client: 'better-sqlite3' as const,
@@ -58,9 +63,11 @@ export async function bootTestApp(
               done: (error: Error | null, connection: unknown) => void
             ) {
               sqlite.pragma(`busy_timeout = ${options.sqliteBusyTimeout ?? 5000}`)
+              sqlite.pragma('foreign_keys = ON')
               done(null, sqlite)
             },
           },
+          migrations: { paths: [migrationDirectory] },
         }
 
   const factory = new IgnitorFactory()
@@ -84,9 +91,7 @@ export async function bootTestApp(
       },
     })
 
-  const ignitor = factory.create(
-    new URL(`file://${fileURLToPath(new URL('../..', import.meta.url))}/`)
-  )
+  const ignitor = factory.create(new URL(`file://${appRootPath}/`))
   const app = ignitor.createApp('console')
 
   try {
@@ -104,14 +109,18 @@ export async function bootTestApp(
       db,
       hash,
       limiter,
+      appRootPath,
+      migrationDirectory,
       async close() {
         await ignitor.terminate()
         if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
+        await rm(migrationDirectory, { recursive: true, force: true })
       },
     }
   } catch (error) {
     await ignitor.terminate()
     if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
+    await rm(migrationDirectory, { recursive: true, force: true })
     throw error
   }
 }

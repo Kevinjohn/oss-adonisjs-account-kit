@@ -1,0 +1,108 @@
+{{{ exports({ to: config.destination }) }}}
+
+import { DateTime } from 'luxon'
+import env from '#start/env'
+import User from '#models/user'
+import { defineConfig, type AccountUser, type Invitation, type Trx } from 'adonisjs-account-kit'
+import hash from '@adonisjs/core/services/hash'
+
+const normalizeEmail = (email: string) => email.trim().toLowerCase()
+const appUrl = env.get('APP_URL')
+const accountUrl = (path: string, token: string) =>
+  new URL('/account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
+
+const query = (trx?: Trx) => (trx ? User.query({ client: trx }) : User.query())
+const toAccountUser = (user: User): AccountUser => ({
+  id: user.id,
+  email: user.email,
+  hasPassword: user.password !== null,
+  emailVerifiedAt: user.emailVerifiedAt,
+})
+
+const users = {
+  async findByEmail(email: string, trx?: Trx, options?: { forUpdate?: boolean }) {
+    const builder = query(trx).whereRaw('LOWER(TRIM(email)) = ?', [normalizeEmail(email)])
+    if (options?.forUpdate) builder.forUpdate()
+    const user = await builder.first()
+    return user ? toAccountUser(user) : null
+  },
+
+  async findById(id: number | string, trx?: Trx, options?: { forUpdate?: boolean }) {
+    const builder = query(trx).where('id', id)
+    if (options?.forUpdate) builder.forUpdate()
+    const user = await builder.first()
+    return user ? toAccountUser(user) : null
+  },
+
+  async create(
+    attrs: { email: string; password: string; emailVerifiedAt: DateTime },
+    trx: Trx
+  ) {
+    const user = new User()
+    user.useTransaction(trx)
+    user.email = normalizeEmail(attrs.email)
+    user.password = attrs.password
+    user.emailVerifiedAt = attrs.emailVerifiedAt
+    // The User model's beforeSave hook must hash changed passwords.
+    await user.save()
+    return toAccountUser(user)
+  },
+
+  async setPassword(id: number | string, password: string, trx: Trx) {
+    const user = await User.query({ client: trx }).where('id', id).first()
+    if (!user) return
+    user.password = password
+    user.useTransaction(trx)
+    await user.save()
+  },
+
+  async setEmail(id: number | string, email: string, trx: Trx) {
+    const user = await User.query({ client: trx }).where('id', id).first()
+    if (!user) return
+    user.email = normalizeEmail(email)
+    user.useTransaction(trx)
+    await user.save()
+  },
+
+  async markEmailVerified(id: number | string, at: DateTime, trx: Trx) {
+    const user = await User.query({ client: trx }).where('id', id).first()
+    if (!user) return
+    user.emailVerifiedAt = at
+    user.useTransaction(trx)
+    await user.save()
+  },
+
+  async verifyPassword(id: number | string, password: string, trx: Trx) {
+    const user = await User.query({ client: trx }).where('id', id).first()
+    return typeof user?.password === 'string' && hash.verify(user.password, password)
+  },
+}
+
+const notConfigured = (method: string) => async () => {
+  throw new Error('account_kit: configure notify.' + method)
+}
+
+export default defineConfig({
+  users,
+  authorize: {
+    invite: async () => false,
+    manageInvitation: async () => false,
+    listInvitations: async () => false,
+  },
+  urls: {
+    recovery: (token) => accountUrl('recovery', token),
+    verification: (token) => accountUrl('verification', token),
+    invitation: (token) => accountUrl('invitation', token),
+    emailChange: (token) => accountUrl('email-change', token),
+  },
+  notify: {
+    recovery: notConfigured('recovery'),
+    verification: notConfigured('verification'),
+    invitation: notConfigured('invitation'),
+    emailChangeConfirm: notConfigured('emailChangeConfirm'),
+    emailChanged: notConfigured('emailChanged'),
+  },
+  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
+    // Assign the invitation role here when the application has a role field.
+  },
+})
