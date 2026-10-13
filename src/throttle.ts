@@ -1,10 +1,10 @@
-import { errors, type LimiterManager } from '@adonisjs/limiter'
-import type { LimiterManagerStoreFactory } from '@adonisjs/limiter/types'
+import { errors } from '@adonisjs/limiter'
+import type { LimiterService } from '@adonisjs/limiter/types'
 import { ThrottledError } from './errors.js'
 import type { ResolvedConfig } from './types.js'
 
 export async function consume(
-  limiter: LimiterManager<Record<string, LimiterManagerStoreFactory>>,
+  limiter: LimiterService,
   operation: string,
   key: string,
   options: ResolvedConfig['throttle']

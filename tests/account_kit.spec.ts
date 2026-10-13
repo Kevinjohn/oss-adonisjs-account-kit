@@ -1,12 +1,17 @@
 import { test } from '@japa/runner'
 import { bootTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { resetSchema } from './helpers/schema.js'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 
 test.group('account kit configuration and service surface', (group) => {
   let kit: Awaited<ReturnType<typeof bootTestApp>>
   group.setup(async () => {
     kit = await bootTestApp()
+  })
+  group.each.setup(async () => {
+    await resetSchema(kit.db)
+    await kit.limiter.clear()
   })
   group.teardown(async () => {
     await kit.close()
@@ -44,13 +49,34 @@ test.group('account kit configuration and service surface', (group) => {
     assert.throws(() => defineConfig({ ...base, ttl: { invitation: '0s' } }))
   })
 
+  test('uses defaults when nested optional values are explicitly undefined', ({ assert }) => {
+    const input = makeConfig({
+      users: makeUsersAdapter(kit.db, kit.hash),
+      ttl: {
+        recovery: undefined,
+        verification: undefined,
+        invitation: undefined,
+        emailChange: undefined,
+      },
+      throttle: { requests: undefined, duration: undefined },
+    })
+    const resolved = defineConfig(input)
+    assert.deepEqual(resolved.ttl, {
+      recovery: '1h',
+      verification: '1h',
+      invitation: '7d',
+      emailChange: '1h',
+    })
+    assert.deepEqual(resolved.throttle, { requests: 5, duration: '15m' })
+  })
+
   test('exposes all operation placeholders with the public input shapes', async ({ assert }) => {
     const config = defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
     const service = new AccountKit({
       config,
       db: kit.db,
       encryption: null as never,
-      limiter: kit.limiter as never,
+      limiter: kit.limiter,
     })
     const cases: Array<() => Promise<unknown>> = [
       () => service.recovery.request({ email: 'a@example.test', clientKey: 'client' }),

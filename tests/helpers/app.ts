@@ -8,17 +8,22 @@ import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import type { Database } from '@adonisjs/lucid/database'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { Hash } from '@adonisjs/core/hash'
+import type { LimiterService } from '@adonisjs/limiter/types'
 
 export interface TestApp {
   app: ApplicationService
   db: Database
   hash: Hash
-  limiter: { clear(): Promise<void> }
+  limiter: LimiterService
   close(): Promise<void>
 }
 
 export async function bootTestApp(
-  options: { sqliteBusyTimeout?: number; sqlitePoolMax?: number } = {}
+  options: {
+    sqliteBusyTimeout?: number
+    sqlitePoolMax?: number
+    accountKitProvider?: 'source' | 'build'
+  } = {}
 ): Promise<TestApp> {
   const client = process.env.DB_CLIENT ?? 'better-sqlite3'
   if (client !== 'pg' && client !== 'better-sqlite3') {
@@ -66,6 +71,11 @@ export async function bootTestApp(
         providers: [
           () => import('@adonisjs/lucid/database_provider'),
           () => import('@adonisjs/limiter/limiter_provider'),
+          ...(options.accountKitProvider === 'source'
+            ? [() => import('../../providers/account_kit_provider.js')]
+            : options.accountKitProvider === 'build'
+              ? [() => import('adonisjs-account-kit/providers/account_kit_provider')]
+              : []),
         ],
       },
       config: {

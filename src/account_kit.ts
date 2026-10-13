@@ -1,8 +1,7 @@
 import { DateTime } from 'luxon'
 import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterManager } from '@adonisjs/limiter'
-import type { LimiterManagerStoreFactory } from '@adonisjs/limiter/types'
+import type { LimiterService } from '@adonisjs/limiter/types'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -52,17 +51,19 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     if (typeof callback !== 'function') throw new Error(`account_kit: ${name} must be a function`)
   }
   const ttl = {
-    recovery: '1h',
-    verification: '1h',
-    invitation: '7d',
-    emailChange: '1h',
-    ...config.ttl,
+    recovery: config.ttl?.recovery ?? '1h',
+    verification: config.ttl?.verification ?? '1h',
+    invitation: config.ttl?.invitation ?? '7d',
+    emailChange: config.ttl?.emailChange ?? '1h',
   }
   for (const value of Object.values(ttl)) expiresAt(DateTime.utc(), value)
   return {
     ...config,
     ttl,
-    throttle: { requests: 5, duration: '15m', ...config.throttle },
+    throttle: {
+      requests: config.throttle?.requests ?? 5,
+      duration: config.throttle?.duration ?? '15m',
+    },
     minRequestMs: config.minRequestMs ?? 300,
   }
 }
@@ -76,7 +77,7 @@ export class AccountKit {
     config: ResolvedConfig
     db: Database
     encryption: Encryption
-    limiter: LimiterManager<Record<string, LimiterManagerStoreFactory>>
+    limiter: LimiterService
   }) {}
 
   readonly recovery = {

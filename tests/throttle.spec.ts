@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { ThrottledError } from '../src/errors.js'
 import { consume } from '../src/throttle.js'
 import { bootTestApp } from './helpers/app.js'
+import { resetSchema } from './helpers/schema.js'
 
 test.group('operation throttling', (group) => {
   let kit: Awaited<ReturnType<typeof bootTestApp>>
@@ -9,6 +10,7 @@ test.group('operation throttling', (group) => {
     kit = await bootTestApp()
   })
   group.each.setup(async () => {
+    await resetSchema(kit.db)
     await kit.limiter.clear()
   })
   group.teardown(async () => {
@@ -19,11 +21,11 @@ test.group('operation throttling', (group) => {
     assert,
   }) => {
     const options = { requests: 1, duration: '15m' }
-    await consume(kit.limiter as never, 'recovery:client', 'same', options)
-    await consume(kit.limiter as never, 'verification:send', 'same', options)
+    await consume(kit.limiter, 'recovery:client', 'same', options)
+    await consume(kit.limiter, 'verification:send', 'same', options)
     assert.deepEqual(options, { requests: 1, duration: '15m' })
     try {
-      await consume(kit.limiter as never, 'recovery:client', 'same', options)
+      await consume(kit.limiter, 'recovery:client', 'same', options)
       assert.fail('expected throttle rejection')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
