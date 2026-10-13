@@ -14,7 +14,9 @@
   ],
   "main": "build/index.js",
   "exports": {
-    ".": "./build/index.js"
+    ".": "./build/index.js",
+    "./types": "./build/src/types.js",
+    "./errors": "./build/src/errors.js"
   },
   "scripts": {
     "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
@@ -86,7 +88,9 @@
   "tsdown": {
     "entry": [
       "./index.ts",
-      "./configure.ts"
+      "./configure.ts",
+      "./src/types.ts",
+      "./src/errors.ts"
     ],
     "outDir": "./build",
     "clean": true,
