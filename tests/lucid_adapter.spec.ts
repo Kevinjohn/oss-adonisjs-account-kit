@@ -3,7 +3,8 @@ import { DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { defineConfig } from '../src/config.js'
 import { lockUser, transaction } from '../src/db.js'
-import type { UsersAdapter } from '../src/types.js'
+import type { Trx, UsersAdapter } from '../src/types.js'
+import type { AdapterContractFixture } from '../testing/adapter_contract.js'
 import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
 import LucidUser from './fixtures/lucid_user.js'
 import { useTestApp } from './helpers/app.js'
@@ -52,7 +53,7 @@ test.group('maintained Lucid adapter', (group) => {
     const metadata = await lucidAdapter.resolveMetadata()
     assert.deepEqual(metadata, { table: 'users', primaryKey: 'id' })
 
-    const contractFixture = {
+    const contractFixture: AdapterContractFixture = {
       adapter,
       registrationData: { fullName: 'Contract User' },
       transaction: (callback) => transaction(kit.db, callback),
@@ -122,6 +123,20 @@ test.group('maintained Lucid adapter', (group) => {
         })
       )
 
+    const verificationShadows = new WeakMap<Trx, { id: number | string; at: DateTime }>()
+    await rejectsBrokenAdapter(
+      brokenAdapter({
+        async markEmailVerified(id, at, trx) {
+          verificationShadows.set(trx, { id, at })
+        },
+        async findById(id, trx) {
+          const user = await adapter.findById(id, trx)
+          const shadow = trx ? verificationShadows.get(trx) : undefined
+          return user && shadow?.id === id ? { ...user, emailVerifiedAt: shadow.at } : user
+        },
+      }),
+      'non-persisting-verification-setter'
+    )
     await rejectsBrokenAdapter(brokenAdapter({ async setEmail() {} }), 'no-op-email-setter')
     await rejectsBrokenAdapter(
       brokenAdapter({
@@ -131,10 +146,6 @@ test.group('maintained Lucid adapter', (group) => {
         },
       }),
       'non-normalizing-email-setter'
-    )
-    await rejectsBrokenAdapter(
-      brokenAdapter({ async markEmailVerified() {} }),
-      'non-persisting-verification-setter'
     )
   })
 
