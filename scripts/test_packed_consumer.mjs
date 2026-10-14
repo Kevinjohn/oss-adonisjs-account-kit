@@ -51,6 +51,9 @@ if (prepareOnly && mode !== 'fresh') {
 if (mode === 'minimum' && compatibility !== 'minimum') {
   throw new Error('--mode=minimum requires --compatibility=minimum')
 }
+if (compatibility === 'minimum' && mode !== 'minimum') {
+  throw new Error('--compatibility=minimum requires --mode=minimum')
+}
 if (!['sqlite', 'postgres'].includes(database)) throw new Error(`Unknown database: ${database}`)
 if (!['minimum', 'latest'].includes(compatibility)) {
   throw new Error(`Unknown compatibility set: ${compatibility}`)
