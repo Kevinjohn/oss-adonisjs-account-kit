@@ -1,5 +1,6 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep the transaction-aware Lucid query and result together in the adapter callbacks. */
 
+import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import {
   createLucidAdapter,
@@ -35,7 +36,9 @@ async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
 export default defineConfig({
   users,
   limiterSecret: env.get('APP_KEY').release(),
-  throttle: { requests: 100, duration: '15m' },
+  // The functional suite sends many requests from one client; production keeps the package
+  // default of five requests per 15 minutes.
+  ...(app.inTest ? { throttle: { requests: 100, duration: '15m' } } : {}),
   authorize: {
     invite: async (actor, role, context) => role !== 'owner' && isOwner(actor.id, context?.trx),
     manageInvitation: async (actor, _invitation, context) => isOwner(actor.id, context?.trx),
