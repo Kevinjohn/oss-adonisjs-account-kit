@@ -1,0 +1,161 @@
+{
+  "name": "adonisjs-account-kit",
+  "description": "Account recovery, verification, invitations and credential changes for AdonisJS",
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "type": "module",
+  "files": [
+    "build",
+    "docs",
+    "examples/api",
+    "!build/bin",
+    "!build/tests",
+    "SECURITY.md"
+  ],
+  "main": "build/index.js",
+  "exports": {
+    ".": "./build/index.js",
+    "./types": "./build/src/types.js",
+    "./errors": "./build/src/errors.js",
+    "./providers/account_kit_provider": "./build/providers/account_kit_provider.js",
+    "./adapters/lucid": "./build/adapters/lucid.js",
+    "./testing/adapter_contract": "./build/testing/adapter_contract.js",
+    "./services/main": "./build/services/main.js",
+    "./commands": "./build/commands/main.js"
+  },
+  "scripts": {
+    "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
+    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=provider.spec.ts",
+    "pretest": "pnpm lint",
+    "test": "c8 pnpm quick:test",
+    "precompile": "pnpm lint",
+    "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
+    "postcompile": "pnpm copy:templates",
+    "build": "pnpm compile",
+    "release": "release-it",
+    "version": "pnpm build",
+    "prepublishOnly": "pnpm build",
+    "test:consumer": "node scripts/test_packed_consumer.mjs",
+    "test:adapter": "pnpm quick:test --files=lucid_adapter.spec.ts"
+  },
+  "keywords": [
+    "adonisjs",
+    "accounts",
+    "recovery",
+    "verification",
+    "invitations"
+  ],
+  "author": "Kevinjohn Gallagher",
+  "license": "MIT",
+  "devDependencies": {
+    "@adonisjs/assembler": "^8.0.0",
+    "@adonisjs/core": "^7.0.1",
+    "@adonisjs/eslint-config": "^3.0.0",
+    "@adonisjs/prettier-config": "^1.4.5",
+    "@adonisjs/tsconfig": "^2.0.0",
+    "@japa/assert": "^4.2.0",
+    "@japa/runner": "^5.3.0",
+    "@poppinss/ts-exec": "^1.4.4",
+    "@release-it/conventional-changelog": "^10.0.5",
+    "@types/node": "^25.3.5",
+    "c8": "^11.0.0",
+    "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.0.3",
+    "prettier": "^3.8.1",
+    "release-it": "^19.2.4",
+    "tsdown": "^0.21.0",
+    "typescript": "^5.9.3",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/limiter": "^3.0.0",
+    "luxon": "^3.0.0",
+    "@types/luxon": "^3.0.0",
+    "pg": "^8.0.0",
+    "better-sqlite3": "^12.0.0"
+  },
+  "peerDependencies": {
+    "@adonisjs/core": "^7.0.0",
+    "@adonisjs/assembler": "^8.0.0",
+    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/limiter": "^3.0.0",
+    "luxon": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@adonisjs/assembler": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "tsdown": {
+    "entry": [
+      "./index.ts",
+      "./configure.ts",
+      "./src/types.ts",
+      "./src/errors.ts",
+      "./providers/account_kit_provider.ts",
+      "./adapters/lucid.ts",
+      "./testing/adapter_contract.ts",
+      "./services/main.ts",
+      "./commands/main.ts",
+      "./commands/prune.ts"
+    ],
+    "outDir": "./build",
+    "clean": true,
+    "format": "esm",
+    "minify": "dce-only",
+    "fixedExtension": false,
+    "dts": false,
+    "treeshake": false,
+    "sourcemaps": false,
+    "target": "esnext"
+  },
+  "release-it": {
+    "hooks": {
+      "before:bump": "pnpm version ${version} --no-git-tag-version --allow-same-version",
+      "before:release": "pnpm publish --access public --provenance --no-git-checks"
+    },
+    "git": {
+      "requireCleanWorkingDir": true,
+      "requireUpstream": true,
+      "commitMessage": "chore(release): ${version}",
+      "tagAnnotation": "v${version}",
+      "push": true,
+      "tagName": "v${version}"
+    },
+    "github": {
+      "release": true
+    },
+    "npm": false,
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": {
+          "name": "angular"
+        }
+      }
+    }
+  },
+  "c8": {
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "exclude": [
+      "tests/**"
+    ]
+  },
+  "prettier": "@adonisjs/prettier-config",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git"
+  },
+  "packageManager": "pnpm@11.23.0"
+}

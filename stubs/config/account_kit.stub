@@ -1,0 +1,48 @@
+{{{ exports({ to: config.destination }) }}}
+
+import env from '#start/env'
+import { createLucidAdapter, defineConfig, type AccountUser, type Invitation, type Trx } from 'adonisjs-account-kit'
+
+// A trailing slash keeps any APP_URL path, for example https://example.com/portal.
+const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
+const accountUrl = (path: string, token: string) =>
+  new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
+
+const users = createLucidAdapter(async () => (await import('#models/user')).default)
+
+const notConfigured = (method: string) => async () => {
+  throw new Error('account_kit: configure notify.' + method)
+}
+
+export default defineConfig({
+  users,
+  limiterSecret: env.get('APP_KEY').release(),
+  authorize: {
+    invite: async () => false,
+    manageInvitation: async () => false,
+    listInvitations: async () => false,
+  },
+  urls: {
+    recovery: (token) => accountUrl('recovery', token),
+    verification: (token) => accountUrl('verification', token),
+    invitation: (token) => accountUrl('invitation', token),
+    emailChange: (token) => accountUrl('email-change', token),
+  },
+  notify: {
+    recovery: notConfigured('recovery'),
+    verification: notConfigured('verification'),
+    invitation: notConfigured('invitation'),
+    emailChangeConfirm: notConfigured('emailChangeConfirm'),
+    emailChanged: notConfigured('emailChanged'),
+    passwordReset: notConfigured('passwordReset'),
+    passwordChanged: notConfigured('passwordChanged'),
+  },
+  // Choose your revocation policy explicitly. For API tokens/outbox, see examples/api.
+  // Applications without revocable credentials may deliberately replace this with a no-op.
+  onCredentialsChangedTransaction: async () => {
+    throw new Error('account_kit: implement the application credential-revocation policy')
+  },
+  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
+    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.stub')
+  },
+})
