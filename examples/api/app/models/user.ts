@@ -9,6 +9,7 @@ import env from '#start/env'
 
 export default class User extends compose(UserSchema, withAuthFinder(hash)) {
   static table = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
+  static selfAssignPrimaryKey = (env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer') !== 'integer'
   static accessTokens = DbAccessTokensProvider.forModel(User)
   declare currentAccessToken?: AccessToken
 

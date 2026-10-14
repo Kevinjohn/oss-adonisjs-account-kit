@@ -68,7 +68,8 @@ request data; the example maps a validated name and never spreads request fields
 ## Application prerequisites
 
 - The user model exposes `id`, `email`, `password`, and nullable `emailVerifiedAt`, mapped to the
-  corresponding database columns. `id` is the physical primary-key column.
+  corresponding database columns. `id` is the physical primary-key column. Models that assign
+  string/UUID keys must enable Lucid’s `selfAssignPrimaryKey` policy; see the custom schema guide.
 - Email is stored trimmed and lowercase, and has a single-column unique constraint. The Lucid
   adapter compares normalized email values with indexed equality. PostgreSQL duplicate-email
   classification discovers the table's single-column email unique index through the catalog;
