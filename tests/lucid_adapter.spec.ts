@@ -52,7 +52,7 @@ test.group('maintained Lucid adapter', (group) => {
     const metadata = await lucidAdapter.resolveMetadata()
     assert.deepEqual(metadata, { table: 'users', primaryKey: 'id' })
 
-    await assertUsersAdapterContract({
+    const contractFixture = {
       adapter,
       registrationData: { fullName: 'Contract User' },
       transaction: (callback) => transaction(kit.db, callback),
@@ -99,12 +99,42 @@ test.group('maintained Lucid adapter', (group) => {
         await writerTransaction
         assert.match(String(writerError), /rollback lock probe/)
       },
-    })
+    }
+
+    await assertUsersAdapterContract(contractFixture)
 
     assert.equal(
       LucidUser.hashCalls,
       3,
       'successful create, duplicate create attempt, and setPassword each run the model hook once'
+    )
+
+    const brokenAdapter = (overrides: Partial<UsersAdapter>): UsersAdapter => ({
+      ...adapter,
+      ...overrides,
+    })
+    const rejectsBrokenAdapter = (broken: UsersAdapter, suffix: string) =>
+      assert.rejects(() =>
+        assertUsersAdapterContract({
+          ...contractFixture,
+          adapter: broken,
+          emailPrefix: `broken-${suffix}-${Date.now()}`,
+        })
+      )
+
+    await rejectsBrokenAdapter(brokenAdapter({ async setEmail() {} }), 'no-op-email-setter')
+    await rejectsBrokenAdapter(
+      brokenAdapter({
+        async setEmail(id, email, trx) {
+          await adapter.setEmail(id, email, trx)
+          await trx.from('users').where('id', id).update({ email: email.trim().toUpperCase() })
+        },
+      }),
+      'non-normalizing-email-setter'
+    )
+    await rejectsBrokenAdapter(
+      brokenAdapter({ async markEmailVerified() {} }),
+      'non-persisting-verification-setter'
     )
   })
 

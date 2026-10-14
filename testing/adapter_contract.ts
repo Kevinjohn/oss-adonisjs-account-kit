@@ -113,7 +113,38 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   assertSameUser(await fixture.adapter.findById(created.id), created)
   assert.equal(await fixture.adapter.findByEmail(changedEmail), null)
 
-  const changedVerifiedAt = verifiedAt.plus({ minutes: 1 })
+  const normalizedChangedEmail = `${prefix}-committed@example.test`
+  const changedEmailInput = ` ${normalizedChangedEmail.toUpperCase()} `
+  const afterEmailChange = await fixture.transaction(async (trx) => {
+    await fixture.adapter.setEmail(created.id, changedEmailInput, trx)
+    const read = await fixture.adapter.findById(created.id, trx)
+    assert.ok(read)
+    assert.equal(read.email, normalizedChangedEmail, 'setEmail should normalize addresses')
+    const newEmailLookup = await fixture.adapter.findByEmail(normalizedChangedEmail, trx)
+    assert.equal(
+      newEmailLookup?.id,
+      created.id,
+      'setEmail should update the email lookup inside the transaction'
+    )
+    assert.equal(
+      await fixture.adapter.findByEmail(email, trx),
+      null,
+      'the old address should stop resolving inside the transaction'
+    )
+    return read
+  })
+  assert.equal(afterEmailChange.email, normalizedChangedEmail)
+  const committedEmailChange = await fixture.adapter.findById(created.id)
+  const committedEmailLookup = await fixture.adapter.findByEmail(normalizedChangedEmail)
+  assertSameUser(committedEmailChange, afterEmailChange)
+  assert.equal(
+    committedEmailLookup?.id,
+    created.id,
+    'setEmail should persist the normalized address after commit'
+  )
+  assert.equal(await fixture.adapter.findByEmail(email), null)
+
+  const changedVerifiedAt = afterEmailChange.emailVerifiedAt!.plus({ minutes: 1 })
   await assert.rejects(
     fixture.transaction(async (trx) => {
       await fixture.adapter.markEmailVerified(created.id, changedVerifiedAt, trx)
@@ -123,21 +154,40 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     }),
     /verification rollback/
   )
-  assertSameUser(await fixture.adapter.findById(created.id), created)
+  assertSameUser(await fixture.adapter.findById(created.id), afterEmailChange)
 
-  await fixture.assertLockBlocksWriter(created.id, (trx) =>
-    fixture.acquireAccountLock(created.id, trx)
+  const afterVerification = await fixture.transaction(async (trx) => {
+    await fixture.adapter.markEmailVerified(created.id, changedVerifiedAt, trx)
+    const read = await fixture.adapter.findById(created.id, trx)
+    assert.equal(read?.emailVerifiedAt?.toMillis(), changedVerifiedAt.toMillis())
+    return read
+  })
+  const committedVerification = await fixture.adapter.findById(created.id)
+  assertSameUser(committedVerification, afterVerification)
+  assert.equal(
+    committedVerification?.emailVerifiedAt?.toMillis(),
+    changedVerifiedAt.toMillis(),
+    'markEmailVerified should persist its value after commit'
+  )
+
+  await fixture.assertLockBlocksWriter(afterVerification.id, (trx) =>
+    fixture.acquireAccountLock(afterVerification.id, trx)
   )
 
   const nextPassword = 'contract-password-two'
-  await fixture.transaction((trx) => fixture.adapter.setPassword(created.id, nextPassword, trx))
-  const updatedStoredPassword = await fixture.storedPassword(created.id)
+  await fixture.transaction((trx) =>
+    fixture.adapter.setPassword(afterVerification.id, nextPassword, trx)
+  )
+  const updatedStoredPassword = await fixture.storedPassword(afterVerification.id)
   assert.ok(updatedStoredPassword)
   assert.notEqual(updatedStoredPassword, nextPassword)
   assert.equal(await fixture.verifyPassword(updatedStoredPassword, nextPassword), true)
   assert.equal(await fixture.verifyPassword(updatedStoredPassword, password), false)
   await fixture.transaction(async (trx) => {
-    assert.equal(await fixture.adapter.verifyPassword(created.id, nextPassword, trx), true)
-    assert.equal(await fixture.adapter.verifyPassword(created.id, password, trx), false)
+    assert.equal(
+      await fixture.adapter.verifyPassword(afterVerification.id, nextPassword, trx),
+      true
+    )
+    assert.equal(await fixture.adapter.verifyPassword(afterVerification.id, password, trx), false)
   })
 }
