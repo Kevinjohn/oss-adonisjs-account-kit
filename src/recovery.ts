@@ -1,10 +1,11 @@
 import { performance } from 'node:perf_hooks'
+import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { consumeUserToken, transaction } from './db.js'
-import { afterCommit, deliver } from './effects.js'
+import { afterCommit, postCommit } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordShaped } from './password.js'
@@ -37,6 +38,7 @@ export async function resetRecovery(
 ): Promise<AccountUser> {
   if (!isPasswordShaped(input.password)) throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+  const operationId = randomUUID()
 
   const user = await transaction(deps.db, async (trx) => {
     const { row, user: current } = await consumeUserToken<{ user_id: UserId; email: string }>(
@@ -53,11 +55,20 @@ export async function resetRecovery(
     await trx.from('account_email_changes').where('user_id', row.user_id).delete()
     const reloaded = await deps.config.users.findById(row.user_id, trx)
     if (!reloaded) throw new InvalidTokenError()
+    await deps.config.onCredentialsChangedTransaction?.(
+      reloaded,
+      { operation: 'password_reset', operationId, userId: reloaded.id },
+      trx
+    )
     return reloaded
   })
 
-  await afterCommit('Credentials changed but the callback failed', () =>
-    deps.config.onCredentialsChanged?.(user)
+  const context = { operation: 'password_reset' as const, operationId, userId: user.id }
+  await afterCommit(
+    'Credentials changed but a follow-up failed',
+    () => deps.config.onCredentialsChanged?.(user, context),
+    () => deps.config.notify.passwordReset(user, context),
+    () => deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId })
   )
   return user
 }
@@ -73,12 +84,27 @@ export async function requestRecovery(
       throw new InvalidInputError('Invalid client key')
     const email = normaliseEmail(input.email)
 
-    await consume(deps.limiter, 'recovery:client', input.clientKey, deps.config.throttle)
-    await consume(deps.limiter, 'recovery:email', email, deps.config.throttle)
+    await consume(
+      deps.limiter,
+      'recovery:client',
+      input.clientKey,
+      deps.config.throttle,
+      deps.config.limiterSecret,
+      deps.config.limiterNamespace
+    )
+    await consume(
+      deps.limiter,
+      'recovery:email',
+      email,
+      deps.config.throttle,
+      deps.config.limiterSecret,
+      deps.config.limiterNamespace
+    )
     const user = await deps.config.users.findByEmail(email)
     if (!user) return
 
     const token = generateToken()
+    const operationId = randomUUID()
     const now = DateTime.utc()
     await transaction(deps.db, async (trx) => {
       await trx
@@ -94,9 +120,21 @@ export async function requestRecovery(
         .merge(['email', 'token_hash', 'expires_at', 'created_at'])
     })
 
-    await deliver('Recovery notification failed', () =>
-      deps.config.notify.recovery(user, deps.config.urls.recovery(token))
-    )
+    await postCommit('Recovery follow-up failed', [
+      {
+        kind: 'delivery',
+        run: () => deps.config.notify.recovery(user, deps.config.urls.recovery(token)),
+      },
+      {
+        kind: 'observer',
+        run: () =>
+          deps.config.onLifecycleEvent?.({
+            type: 'recovery.requested',
+            userId: user.id,
+            operationId,
+          }),
+      },
+    ])
   } finally {
     // Every exit, including a throw, waits out the configured floor. Timers can wake early,
     // so keep waiting until the floor has actually passed.

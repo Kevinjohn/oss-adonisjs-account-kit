@@ -8,16 +8,22 @@
   "type": "module",
   "files": [
     "build",
-    "stubs",
+    "docs",
+    "examples/api",
     "!build/bin",
-    "!build/tests"
+    "!build/tests",
+    "SECURITY.md"
   ],
   "main": "build/index.js",
   "exports": {
     ".": "./build/index.js",
     "./types": "./build/src/types.js",
     "./errors": "./build/src/errors.js",
-    "./providers/account_kit_provider": "./build/providers/account_kit_provider.js"
+    "./providers/account_kit_provider": "./build/providers/account_kit_provider.js",
+    "./adapters/lucid": "./build/adapters/lucid.js",
+    "./testing/adapter_contract": "./build/testing/adapter_contract.js",
+    "./services/main": "./build/services/main.js",
+    "./commands": "./build/commands/main.js"
   },
   "scripts": {
     "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
@@ -34,7 +40,9 @@
     "build": "pnpm compile",
     "release": "release-it",
     "version": "pnpm build",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "test:consumer": "node scripts/test_packed_consumer.mjs",
+    "test:adapter": "pnpm quick:test --files=lucid_adapter.spec.ts"
   },
   "keywords": [
     "adonisjs",
@@ -64,7 +72,7 @@
     "release-it": "^19.2.4",
     "tsdown": "^0.21.0",
     "typescript": "^5.9.3",
-    "@adonisjs/lucid": "^22.0.0",
+    "@adonisjs/lucid": "^22.4.2",
     "@adonisjs/limiter": "^3.0.0",
     "luxon": "^3.0.0",
     "@types/luxon": "^3.0.0",
@@ -74,7 +82,7 @@
   "peerDependencies": {
     "@adonisjs/core": "^7.0.0",
     "@adonisjs/assembler": "^8.0.0",
-    "@adonisjs/lucid": "^22.0.0",
+    "@adonisjs/lucid": "^22.4.2",
     "@adonisjs/limiter": "^3.0.0",
     "luxon": "^3.0.0"
   },
@@ -93,7 +101,12 @@
       "./configure.ts",
       "./src/types.ts",
       "./src/errors.ts",
-      "./providers/account_kit_provider.ts"
+      "./providers/account_kit_provider.ts",
+      "./adapters/lucid.ts",
+      "./testing/adapter_contract.ts",
+      "./services/main.ts",
+      "./commands/main.ts",
+      "./commands/prune.ts"
     ],
     "outDir": "./build",
     "clean": true,

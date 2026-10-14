@@ -4,6 +4,8 @@ import type { Database } from '@adonisjs/lucid/database'
 import { AccountKit, defineConfig } from '../../src/account_kit.js'
 import type {
   AccountKitConfig,
+  NotificationCallbacks,
+  AuthorizationCallbacks,
   AccountUser,
   Invitation,
   Trx,
@@ -71,31 +73,33 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
   }
 }
 
-export type NotifyCall = { method: keyof AccountKitConfig['notify']; args: unknown[] }
+export type NotifyCall = { method: keyof NotificationCallbacks; args: unknown[] }
 export function makeNotify() {
   const calls: NotifyCall[] = []
-  let failing: keyof AccountKitConfig['notify'] | null = null
+  let failing: keyof NotificationCallbacks | null = null
   const record = async (method: NotifyCall['method'], ...args: unknown[]) => {
     calls.push({ method, args })
     if (failing === method) throw new Error(`notify.${method} failed`)
   }
-  const notify: AccountKitConfig['notify'] = {
+  const notify: NotificationCallbacks = {
     recovery: (user, url) => record('recovery', user, url),
     verification: (user, url) => record('verification', user, url),
     invitation: (invitation, url) => record('invitation', invitation, url),
     emailChangeConfirm: (user, newEmail, url) => record('emailChangeConfirm', user, newEmail, url),
     emailChanged: (previousEmail, user) => record('emailChanged', previousEmail, user),
+    passwordReset: (user, context) => record('passwordReset', user, context),
+    passwordChanged: (user, context) => record('passwordChanged', user, context),
   }
   return {
     notify,
     calls,
-    failOn(method: keyof AccountKitConfig['notify'] | null) {
+    failOn(method: keyof NotificationCallbacks | null) {
       failing = method
     },
   }
 }
 
-const authorize = (value: boolean): AccountKitConfig['authorize'] => ({
+const authorize = (value: boolean): AuthorizationCallbacks => ({
   invite: async () => value,
   manageInvitation: async () => value,
   listInvitations: async () => value,
@@ -108,6 +112,7 @@ export function makeConfig(
 ): AccountKitConfig {
   const { notify } = makeNotify()
   return {
+    limiterSecret: 'test_only_shared_limiter_secret_32_bytes',
     authorize: allowAll,
     urls: {
       recovery: (token) => `https://example.test/recovery/${token}`,

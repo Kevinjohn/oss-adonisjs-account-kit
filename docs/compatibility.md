@@ -1,107 +1,72 @@
-# Compatibility
+# Compatibility and validation
 
-This package remains an unpublished `0.0.0` candidate. The versions below are the concrete
-environment used for the package-side validation at accepted stage-6 commit
-`64e154203c0bf1aaf36957e97f39f2d440aa2ccb`. They are tested points, not a claim that every
-version in each peer range has been verified.
+This is an unpublished `0.0.0` candidate. The table records concrete tested points and declared
+peer ranges separately; testing one point does not verify every version in a range.
 
-| Component | Tested version | Declared support |
-| --- | --- | --- |
-| Node.js | 24.19.0 | `>=24.0.0` |
-| pnpm | 11.23.0 | Repository package manager |
-| `@adonisjs/core` | 7.6.0 | peer `^7.0.0` |
-| `@adonisjs/lucid` | 22.4.2 | peer `^22.0.0` |
-| `@adonisjs/limiter` | 3.0.1 | peer `^3.0.0` |
-| Luxon | 3.7.2 | peer `^3.0.0` |
-| `@adonisjs/assembler` | 8.5.2 | optional peer `^8.0.0` (configure tooling) |
-| Knex | 3.3.0 | Lucid transitive dependency; no package peer range |
-| `pg` | 8.23.1 | PostgreSQL test driver; no package peer range |
-| PostgreSQL | 16.15 | Tested database server |
-| `better-sqlite3` (package suite) | 12.11.1 | SQLite test driver; no package peer range |
-| SQLite (package suite) | 3.53.2 | Native version bundled by tested `better-sqlite3` |
-| `@adonisjs/auth` (consumer app) | 10.1.0 | Consumer rehearsal dependency |
-| `better-sqlite3` (consumer app) | 13.0.3 | Consumer rehearsal driver; no package peer range |
-| SQLite (consumer app) | 3.53.4 | Native version bundled by consumer `better-sqlite3` |
+| Component             | Tested point | Declared support                             |
+| --------------------- | ------------ | -------------------------------------------- |
+| Node.js               | 24.21.0      | `>=24.0.0`                                   |
+| pnpm                  | 11.23.0      | Repository package manager                   |
+| `@adonisjs/core`      | 7.6.0        | peer `^7.0.0`                                |
+| `@adonisjs/lucid`     | 22.4.2       | peer `^22.4.2`                               |
+| `@adonisjs/limiter`   | 3.0.1        | peer `^3.0.0`                                |
+| Luxon                 | 3.7.2        | peer `^3.0.0`                                |
+| `@adonisjs/assembler` | 8.5.2        | optional peer `^8.0.0` for configure tooling |
 
-At the accepted stage-6 source commit, package tests passed with 121 SQLite tests and 123
-PostgreSQL tests. A later SQLite-only regression test raised the pre-correction package totals to
-122 and 123. The subsequent review corrections pass 129 SQLite tests and 130 PostgreSQL tests;
-lint, typecheck, build and the two-test built-export smoke gate pass. Runtime source includes those
-corrections. In the earlier fresh and upgraded API-kit consumers, one HTTP workflow test per database
-passed in the fresh app and two per database passed after upgrade; consumer typecheck passed in
-both rehearsals. The consumer used the versions in this table plus Core 7.6.0, assembler 8.5.2,
-Lucid 22.4.2, Knex 3.3.0, Luxon 3.7.2, limiter 3.0.1, `pg` 8.23.1, and PostgreSQL 16.15.
+The package minimum matrix uses Core 7.0.0, assembler 8.0.0, Lucid 22.4.2, limiter 3.0.0 and
+Luxon 3.0.0. Lucid 22.0.0 fails recovery issuance on both databases because its transaction
+insert builder does not expose `onConflict`; the supported floor is therefore 22.4.2. The complete
+HTTP reference application uses the latest compatible set, including Core 7.6.0 and assembler
+8.5.2. Concrete installed-consumer outcomes are recorded in [verification](verification.md).
+Testing these points does not verify every version within the declared ranges. The
+`pg` and `better-sqlite3` drivers are supplied by applications and depend on the selected Lucid
+dialect; the package does not declare them as runtime peers.
 
-The repaired archive was subsequently installed through pnpm in a private copy of that configured
-API consumer. Consumer typecheck and two functional HTTP tests per database passed against the
-new runtime. This does not repeat fresh-app generation or the original stage-3 upgrade rehearsal;
-see the T8.5 correction record in [manual verification](manual-check.md#t85-consolidated-review-corrections).
+## Database expectations
 
-The subsequent account-operation refactor and custom-table corrections pass 138 SQLite tests,
-139 PostgreSQL tests, lint, typecheck, build and three built-export tests on the same package-suite
-versions. Package installation and consumer HTTP checks were not repeated for that later runtime;
-the T8.6 [source verification record](manual-check.md#t86-account-operation-refactor-and-custom-table-support)
-distinguishes these checks from the historical tarball rehearsals.
+PostgreSQL and SQLite are supported. The generated schema uses integer user IDs by default; run
+configure with `--user-id-type=string` or `--user-id-type=uuid` when appropriate. Match the generated
+foreign-key column types to the application schema and inspect all migrations before running them.
+The package requires a unique email constraint and normalized lowercase storage. PostgreSQL
+duplicate classification discovers a single-column email unique index from the catalog by default;
+configure `emailConstraint` when relying on a custom constraint name. The Lucid adapter derives the
+model's table and requires the physical primary-key column to be `id` on the default connection.
 
-The upgrade began from the stage-3 package archive, which already had all four package migrations.
-Candidate configure preserved the existing config and provider, skipped those migrations, and
-added no package migration; migration runs reported no pending work and the verified baseline
-account remained present. A separate consumer role-fixture migration was added later. See the
-[manual consumer verification record](manual-check.md) for the workflow coverage and archive
-details. Stage-7 fork-derived stubs, browser checks, and owner application integration remain
-deferred.
+SQLite applications must enable foreign keys on every connection. Package writes acquire a
+package-owned transaction lock using `account_transaction_lock`; the fifth configure migration
+creates this table. SQLite write-contention retries can rerun transaction callbacks, so callbacks
+must be safe to repeat. PostgreSQL does not retry transactions. See
+[transaction guidance](usage.md#transactions-and-callbacks) and the
+[upgrade guide](upgrade.md#existing-installations).
 
-The consumer supplies the runtime peer packages listed above. The `pg` and `better-sqlite3`
-drivers are used by the test setup and must be installed by consumer applications that use the
-corresponding Lucid database client.
+## Dependency audit assessment
 
-The generated adapter requires normalized lowercase email storage and a unique email index. On
-PostgreSQL name that constraint `<usersTable>_email_unique`, `users_email_unique` by default;
-PostgreSQL stores only the first 63 bytes of a longer name. Lookup uses exact equality so the
-ordinary email index can serve it; normalize pre-existing rows using the actual configured table.
-For the default, the statement is `UPDATE "users" SET email = LOWER(TRIM(email))`. The package
-locks and classifies duplicate emails against the table named by `usersTable` in `defineConfig`
-(default `users`).
-On PostgreSQL, `usersTable` must be at most 62 ASCII characters so the conventional unique-index
-name does not truncate to the table's own relation name; this is a PostgreSQL schema prerequisite.
-When `users.id` is a string or UUID, update the user foreign-key column in each of the three
-generated account tables to use the matching database type.
-For a different table name, the generated migrations also need all three `.inTable('users')`
-targets changed, plus `schema.alterTable('users')` in both directions of the verification migration.
-The `usersTable` setting controls runtime locking and duplicate classification; it does not rewrite
-application-owned migrations. See [application prerequisites](../README.md#application-prerequisites).
+Audits of the candidate and the fresh SQLite consumer install were run on 2026-10-14 with pnpm
+11.23.0 under Node 24.21.0. The candidate's full audit reported 16 advisories (7 high, 6 moderate,
+3 low, no critical); all were development-tool paths. Fourteen advisories affect `undici 6.23.0`
+through `release-it 19.2.4` and `@release-it/conventional-changelog 10.0.6`. Their IDs are
+GHSA-f269-vfmq-vjvj, GHSA-2mjp-6q6p-2qxm, GHSA-vrm6-8vpv-qv8q, GHSA-v9p9-hfj2-hcw8,
+GHSA-4992-7rv2-5pvq, GHSA-p88m-4jfj-68fv, GHSA-vxpw-j846-p89q, GHSA-g8m3-5g58-fq7m,
+GHSA-8xcm-r25x-g524, GHSA-m8rv-5g2x-5cg5, GHSA-v3r7-h72x-cjcm, GHSA-35p6-xmwp-9g52,
+GHSA-r53p-7pc4-xj5r, and GHSA-rfgv-xxqx-mfg5. The audit lists fixes from `undici 6.24.0` to
+`6.28.1`; `6.28.1` satisfies all listed ranges. `basic-ftp 5.3.1` has high advisory
+[GHSA-c475-qrg2-pj4r](https://github.com/advisories/GHSA-c475-qrg2-pj4r), via the same release-tool
+tree, with a patched version listed at `6.2.1`.
 
-Credential operations lock the user before consuming or modifying either token table, avoiding
-the former opposing user/token lock order. PostgreSQL does not retry transactions; general
-transient database errors can still propagate to the caller. SQLite
-retries write contention asynchronously within a five-second deadline. Package write helpers own
-their root transaction, so an active global transaction is rejected on both dialects. Invitation
-resend and revoke authorization callbacks run while that transaction is active and may run again
-after a SQLite retry. If a callback reads through the ordinary SQLite connection pool, the pool
-must have capacity for that separate read; a one-connection pool will time out. Preload permission
-state where practical and size the pool for the app's concurrency. A larger pool alone does not
-guarantee capacity under arbitrary concurrent load. See the
-[transaction guidance](../README.md#package-transactions).
+The consumer audit changes the previous production-risk assessment: its full audit and
+`pnpm audit --prod` each report high advisory
+[GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) in `braces 3.0.3`, with no
+patched version published in the audit data. The path is through the optional Adonis assembler
+peer, then `fast-glob > micromatch > braces`; the consumer uses assembler `8.5.2`. Although
+assembler is a build/configuration tool and the inspected `fast-glob` call handles configured
+metadata-file globs during build, the consumer's production audit still reports this optional-peer
+path. The trace did not find an account-request-time path from account inputs to that parser. This
+does not assess arbitrary application use of the parser or attacker-controlled build configuration.
 
-## Dependency audit
+The candidate's `pnpm audit --prod` reports no dependencies because runtime packages are peers;
+that result alone does not assess a consumer installation. Consumers should audit their complete
+installed tree, including resolved peers. No dependency was upgraded for this assessment. See
+[verification](verification.md) for check evidence.
 
-`pnpm audit` on 2026-10-13 against the candidate lockfile reported 16 advisories: 7 high, 6
-moderate, and 3 low, with no critical advisories. The reported paths are:
-
-- `undici 6.23.0`: 14 advisories (5 high, 6 moderate, 3 low) through `release-it` and
-  `@release-it/conventional-changelog`; these are release-tool dependencies.
-- `basic-ftp 5.3.1`: one high advisory, [GHSA-c475-qrg2-pj4r](https://github.com/advisories/GHSA-c475-qrg2-pj4r),
-  through `release-it`'s proxy-agent dependency chain.
-- `braces 3.0.3`: one high advisory, [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm),
-  through `fast-glob > micromatch > braces`. This tree reaches assembler via Adonis peer packages;
-  the advisory has no published patched version according to the audit result.
-
-`pnpm audit --prod` reported zero dependencies and zero advisories because this package declares
-runtime peers rather than production dependencies. That result omits the consumer's installed
-peer dependency tree and is not a clean-audit claim. Consumers should audit their full install,
-including runtime peers.
-
-In the inspected versions, assembler passes configured metadata and package-copy glob patterns to
-`fast-glob`, whose brace expansion reaches `braces`. The package's account inputs are not passed
-to that parser by this package. This static trace found no request-time account-input path to the
-advisory; it does not assess arbitrary consumer code or attacker-controlled build configuration.
+Earlier stage-by-stage manual-check notes remain in [manual-check.md](manual-check.md) as historical
+provenance. Use the maintained verification record for current checks and outstanding evidence.

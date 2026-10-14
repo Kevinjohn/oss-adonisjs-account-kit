@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import { consumeUserToken, isUniqueViolation, lockRow, transaction } from './db.js'
-import { afterCommit, deliver } from './effects.js'
+import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
+import { afterCommit, postCommit } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
@@ -32,8 +33,8 @@ async function confirmActor(
   actorId: UserId,
   currentPassword: unknown
 ): Promise<AccountUser> {
-  await lockRow(trx, config.usersTable, actorId)
-  const actor = await config.users.findById(actorId, trx, { forUpdate: true })
+  await lockUser(trx, config, actorId)
+  const actor = await config.users.findById(actorId, trx)
   if (!actor) throw new InvalidInputError('Unknown actor')
   if (!actor.hasPassword) throw new NoPasswordError()
   if (
@@ -51,7 +52,15 @@ export async function changePassword(
 ): Promise<void> {
   if (!isPasswordShaped(input.newPassword)) throw new InvalidInputError('Invalid new password')
 
-  await consume(deps.limiter, 'identity:user', String(input.actorId), deps.config.throttle)
+  await consume(
+    deps.limiter,
+    'identity:user',
+    String(input.actorId),
+    deps.config.throttle,
+    deps.config.limiterSecret,
+    deps.config.limiterNamespace
+  )
+  const operationId = randomUUID()
   const user = await transaction(deps.db, async (trx) => {
     const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
     await deps.config.users.setPassword(actor.id, input.newPassword, trx)
@@ -59,11 +68,20 @@ export async function changePassword(
     await trx.from('account_email_changes').where('user_id', actor.id).delete()
     const reloaded = await deps.config.users.findById(actor.id, trx)
     if (!reloaded) throw new InvalidInputError('Unknown actor')
+    await deps.config.onCredentialsChangedTransaction?.(
+      reloaded,
+      { operation: 'password_change', operationId, userId: reloaded.id },
+      trx
+    )
     return reloaded
   })
 
-  await afterCommit('Credentials changed but the callback failed', () =>
-    deps.config.onCredentialsChanged?.(user)
+  const context = { operation: 'password_change' as const, operationId, userId: user.id }
+  await afterCommit(
+    'Credentials changed but a follow-up failed',
+    () => deps.config.onCredentialsChanged?.(user, context),
+    () => deps.config.notify.passwordChanged(user, context),
+    () => deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
   )
 }
 
@@ -73,9 +91,17 @@ export async function requestEmailChange(
 ): Promise<void> {
   if (!isEmailShaped(input.newEmail)) throw new InvalidInputError('Invalid email')
   const newEmail = normaliseEmail(input.newEmail)
-  await consume(deps.limiter, 'identity:user', String(input.actorId), deps.config.throttle)
+  await consume(
+    deps.limiter,
+    'identity:user',
+    String(input.actorId),
+    deps.config.throttle,
+    deps.config.limiterSecret,
+    deps.config.limiterNamespace
+  )
 
   const token = generateToken()
+  const operationId = randomUUID()
   const actor = await transaction(deps.db, async (trx) => {
     const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
     if (newEmail === current.email) return null
@@ -98,9 +124,22 @@ export async function requestEmailChange(
   })
   if (!actor) return
 
-  await deliver('Email change notification failed', () =>
-    deps.config.notify.emailChangeConfirm(actor, newEmail, deps.config.urls.emailChange(token))
-  )
+  await postCommit('Email change follow-up failed', [
+    {
+      kind: 'delivery',
+      run: () =>
+        deps.config.notify.emailChangeConfirm(actor, newEmail, deps.config.urls.emailChange(token)),
+    },
+    {
+      kind: 'observer',
+      run: () =>
+        deps.config.onLifecycleEvent?.({
+          type: 'email_change.requested',
+          userId: actor.id,
+          operationId,
+        }),
+    },
+  ])
 }
 
 interface EmailChangeRow {
@@ -114,6 +153,7 @@ export async function completeEmailChange(
   input: CredentialsCompleteEmailChangeInput
 ): Promise<AccountUser> {
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+  const operationId = randomUUID()
 
   let changed: { user: AccountUser; previousEmail: string }
   try {
@@ -133,19 +173,31 @@ export async function completeEmailChange(
       await trx.from('account_recovery_tokens').where('user_id', user.id).delete()
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
+      await deps.config.onCredentialsChangedTransaction?.(
+        reloaded,
+        { operation: 'email_change', operationId, userId: reloaded.id },
+        trx
+      )
       return { user: reloaded, previousEmail: row.current_email }
     })
   } catch (error) {
-    if (isUniqueViolation(error, deps.config.usersTable, 'email'))
+    if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
       throw new EmailAlreadyRegisteredError()
     throw error
   }
 
   // The previous address learns about the change whether or not the callback succeeds.
+  const context = { operation: 'email_change' as const, operationId, userId: changed.user.id }
   await afterCommit(
-    'Email changed but the callback failed',
-    () => deps.config.onCredentialsChanged?.(changed.user),
-    () => deps.config.notify.emailChanged(changed.previousEmail, changed.user)
+    'Email changed but a follow-up failed',
+    () => deps.config.onCredentialsChanged?.(changed.user, context),
+    () => deps.config.notify.emailChanged(changed.previousEmail, changed.user),
+    () =>
+      deps.config.onLifecycleEvent?.({
+        type: 'email_change.completed',
+        userId: changed.user.id,
+        operationId,
+      })
   )
   return changed.user
 }

@@ -1,91 +1,14 @@
 {{{ exports({ to: config.destination }) }}}
 
-import { DateTime } from 'luxon'
 import env from '#start/env'
-import type UserModel from '#models/user'
-import { defineConfig, type AccountUser, type Invitation, type Trx } from 'adonisjs-account-kit'
-import hash from '@adonisjs/core/services/hash'
+import { createLucidAdapter, defineConfig, type AccountUser, type Invitation, type Trx } from 'adonisjs-account-kit'
 
-const normalizeEmail = (email: string) => email.trim().toLowerCase()
-// A trailing slash keeps any path in APP_URL (for example https://example.com/portal).
+// A trailing slash keeps any APP_URL path, for example https://example.com/portal.
 const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
 const accountUrl = (path: string, token: string) =>
   new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
 
-const loadUser = async () => (await import('#models/user')).default
-const query = (User: typeof UserModel, trx?: Trx) =>
-  trx ? User.query({ client: trx }) : User.query()
-const toAccountUser = (user: UserModel): AccountUser => ({
-  id: user.id,
-  email: user.email,
-  hasPassword: user.password !== null,
-  emailVerifiedAt: user.emailVerifiedAt,
-})
-// Saving through the model keeps its hooks, such as password hashing in beforeSave.
-const updateUser = async (id: number | string, trx: Trx, change: (user: UserModel) => void) => {
-  const User = await loadUser()
-  const user = await query(User, trx).where('id', id).first()
-  if (!user) return
-  change(user)
-  user.useTransaction(trx)
-  await user.save()
-}
-
-const users = {
-  async findByEmail(email: string, trx?: Trx, options?: { forUpdate?: boolean }) {
-    const User = await loadUser()
-    const builder = query(User, trx).where('email', normalizeEmail(email))
-    if (options?.forUpdate) builder.forUpdate()
-    const user = await builder.first()
-    return user ? toAccountUser(user) : null
-  },
-
-  async findById(id: number | string, trx?: Trx, options?: { forUpdate?: boolean }) {
-    const User = await loadUser()
-    const builder = query(User, trx).where('id', id)
-    if (options?.forUpdate) builder.forUpdate()
-    const user = await builder.first()
-    return user ? toAccountUser(user) : null
-  },
-
-  async create(
-    attrs: { email: string; password: string; emailVerifiedAt: DateTime },
-    trx: Trx
-  ) {
-    const User = await loadUser()
-    const user = new User()
-    user.useTransaction(trx)
-    user.email = normalizeEmail(attrs.email)
-    user.password = attrs.password
-    user.emailVerifiedAt = attrs.emailVerifiedAt
-    await user.save()
-    return toAccountUser(user)
-  },
-
-  async setPassword(id: number | string, password: string, trx: Trx) {
-    await updateUser(id, trx, (user) => {
-      user.password = password
-    })
-  },
-
-  async setEmail(id: number | string, email: string, trx: Trx) {
-    await updateUser(id, trx, (user) => {
-      user.email = normalizeEmail(email)
-    })
-  },
-
-  async markEmailVerified(id: number | string, at: DateTime, trx: Trx) {
-    await updateUser(id, trx, (user) => {
-      user.emailVerifiedAt = at
-    })
-  },
-
-  async verifyPassword(id: number | string, password: string, trx: Trx) {
-    const User = await loadUser()
-    const user = await query(User, trx).where('id', id).first()
-    return typeof user?.password === 'string' && hash.verify(user.password, password)
-  },
-}
+const users = createLucidAdapter(async () => (await import('#models/user')).default)
 
 const notConfigured = (method: string) => async () => {
   throw new Error('account_kit: configure notify.' + method)
@@ -93,6 +16,7 @@ const notConfigured = (method: string) => async () => {
 
 export default defineConfig({
   users,
+  limiterSecret: env.get('APP_KEY').release(),
   authorize: {
     invite: async () => false,
     manageInvitation: async () => false,
@@ -110,8 +34,15 @@ export default defineConfig({
     invitation: notConfigured('invitation'),
     emailChangeConfirm: notConfigured('emailChangeConfirm'),
     emailChanged: notConfigured('emailChanged'),
+    passwordReset: notConfigured('passwordReset'),
+    passwordChanged: notConfigured('passwordChanged'),
+  },
+  // Choose your revocation policy explicitly. For API tokens/outbox, see examples/api.
+  // Applications without revocable credentials may deliberately replace this with a no-op.
+  onCredentialsChangedTransaction: async () => {
+    throw new Error('account_kit: implement the application credential-revocation policy')
   },
   onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
-    // Assign the invitation role here when the application has a role field.
+    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.stub')
   },
 })

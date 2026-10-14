@@ -1,3 +1,3 @@
 import { configPkg } from '@adonisjs/eslint-config'
 
-export default configPkg({ ignores: ['stubs/**'] })
+export default configPkg({ ignores: ['stubs/**', 'examples/**'] })

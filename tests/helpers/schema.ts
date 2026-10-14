@@ -2,7 +2,7 @@ import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import { migrationNames } from '../../configure.js'
+import { migrationNames, migrationSchema } from '../../configure.js'
 import type { TestApp } from './app.js'
 
 export async function resetSchema(
@@ -11,6 +11,7 @@ export async function resetSchema(
 ): Promise<void> {
   const usersTable = options.usersTable ?? 'users'
   const schema = kit.db.connection().schema
+  await schema.dropTableIfExists('account_transaction_lock')
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
   await schema.dropTableIfExists('account_recovery_tokens')
@@ -40,18 +41,12 @@ export async function resetSchema(
     const filename = `${timestamp + index}_account_kit_${name}.ts`
     const stub = await stubs.build(`migrations/${name}.stub`, { source: stubsRoot })
     const prepared = await stub.prepare({
-      migration: { destination: join(kit.migrationDirectory, filename) },
+      migration: {
+        ...migrationSchema(usersTable, options.stringUserIds ? 'string' : 'integer'),
+        destination: join(kit.migrationDirectory, filename),
+      },
     })
-    // Applications with text/UUID IDs adapt their owned migration foreign keys.
-    let contents = options.stringUserIds
-      ? prepared.contents.replace(
-          /table\.integer\('(user_id|inviter_id)'\)\.unsigned\(\)/g,
-          "table.string('$1', 36)"
-        )
-      : prepared.contents
-    if (usersTable !== 'users')
-      contents = contents.replaceAll("'users'", JSON.stringify(usersTable))
-    await writeFile(prepared.destination, contents)
+    await writeFile(prepared.destination, prepared.contents)
   }
 
   const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })

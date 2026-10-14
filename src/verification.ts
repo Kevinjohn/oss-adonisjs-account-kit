@@ -1,9 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import { lockRow, transaction } from './db.js'
-import { deliver } from './effects.js'
+import { lockUser, transaction } from './db.js'
+import { deliver, postCommit } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { consume } from './throttle.js'
 import type { ResolvedConfig, VerificationCompleteInput, VerificationSendInput } from './types.js'
@@ -18,7 +19,14 @@ export async function sendVerification(
   if (!user) throw new InvalidInputError('Unknown user')
   if (user.emailVerifiedAt !== null) return 'already_verified'
 
-  await consume(deps.limiter, 'verification:user', String(user.id), deps.config.throttle)
+  await consume(
+    deps.limiter,
+    'verification:user',
+    String(user.id),
+    deps.config.throttle,
+    deps.config.limiterSecret,
+    deps.config.limiterNamespace
+  )
   const token = deps.encryption.encrypt(
     { userId: user.id, email: user.email },
     deps.config.ttl.verification,
@@ -42,12 +50,23 @@ export async function completeVerification(
   if ((typeof userId !== 'number' && typeof userId !== 'string') || typeof email !== 'string')
     throw new InvalidTokenError()
 
-  return transaction(deps.db, async (trx) => {
-    await lockRow(trx, deps.config.usersTable, userId)
-    const user = await deps.config.users.findById(userId, trx, { forUpdate: true })
+  const operationId = randomUUID()
+  const outcome = await transaction(deps.db, async (trx) => {
+    await lockUser(trx, deps.config, userId)
+    const user = await deps.config.users.findById(userId, trx)
     if (!user || user.email !== email) throw new InvalidTokenError()
     if (user.emailVerifiedAt !== null) return 'already_verified'
     await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
     return 'verified'
   })
+  if (outcome === 'verified') {
+    await postCommit('Verification follow-up failed', [
+      {
+        kind: 'observer',
+        run: () =>
+          deps.config.onLifecycleEvent?.({ type: 'verification.completed', userId, operationId }),
+      },
+    ])
+  }
+  return outcome
 }

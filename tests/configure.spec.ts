@@ -64,7 +64,7 @@ test('configures the package idempotently without replacing application-owned fi
     await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
     const generatedConfig = await readFile(configPath, 'utf8')
     assert.include(generatedConfig, "from 'adonisjs-account-kit'")
-    assert.include(generatedConfig, "from '#models/user'")
+    assert.include(generatedConfig, "import('#models/user')")
     assert.include(generatedConfig, "env.get('APP_URL').endsWith('/')")
     assert.include(generatedConfig, "new URL('account-kit/' + path")
     const firstEnv = await readFile(envPath, 'utf8')
@@ -76,7 +76,7 @@ test('configures the package idempotently without replacing application-owned fi
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
     let migrationFiles = firstMigrationFiles.sort()
-    assert.lengthOf(migrationFiles, 4)
+    assert.lengthOf(migrationFiles, 5)
     assert.deepEqual(
       migrationFiles
         .map((filename) => filename.replace(/^.*_account_kit_/, '').replace(/\.ts$/, ''))
@@ -86,6 +86,7 @@ test('configures the package idempotently without replacing application-owned fi
         'create_account_email_changes',
         'create_account_invitations',
         'create_account_recovery_tokens',
+        'create_account_transaction_lock',
       ]
     )
     const firstRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')

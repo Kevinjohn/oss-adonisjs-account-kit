@@ -231,7 +231,7 @@ test.group('managed transaction wrapper', (group) => {
     assert.isNull(await kit.db.from('users').where('email', 'error@example.test').first())
   })
 
-  test('retries the whole SQLite transaction asynchronously after an overlapping write', async ({
+  test('waits asynchronously for the SQLite writer before entering the callback', async ({
     assert,
   }) => {
     if (process.env.DB_CLIENT === 'pg') return
@@ -252,15 +252,20 @@ test.group('managed transaction wrapper', (group) => {
     })
     await firstReady
     let attempts = 0
+    let firstReleased = false
     const second = transaction(kit.db, async (trx) => {
       attempts++
+      assert.isTrue(firstReleased)
       await trx
         .table('users')
         .insert({ email: 'second@example.test', created_at: new Date().toISOString() })
     })
-    setTimeout(releaseFirst, 80)
+    setTimeout(() => {
+      firstReleased = true
+      releaseFirst()
+    }, 80)
     await Promise.all([first, second])
-    assert.isAtLeast(attempts, 2)
+    assert.equal(attempts, 1)
     assert.lengthOf(await kit.db.from('users'), 2)
   })
 
@@ -338,6 +343,38 @@ test.group('managed transaction wrapper', (group) => {
         const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
         assert.equal(current[0].timeout, 321)
       })
+    } finally {
+      await customKit.close()
+    }
+  })
+
+  test('requires the installed SQLite lock singleton before entering a one-connection callback', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const customKit = await bootTestApp({ sqlitePoolMax: 1 })
+    try {
+      await resetSchema(customKit)
+      await customKit.db.from('account_transaction_lock').where('id', 1).delete()
+      let entered = false
+      await assert.rejects(
+        () =>
+          transaction(customKit.db, async () => {
+            entered = true
+          }),
+        /transaction lock row is missing/
+      )
+      assert.isFalse(entered)
+      await customKit.db.table('account_transaction_lock').insert({ id: 1, version: 0 })
+      await transaction(customKit.db, async () => {
+        entered = true
+      })
+      assert.isTrue(entered)
+      await customKit.db.connection().schema.dropTable('account_transaction_lock')
+      await assert.rejects(
+        () => transaction(customKit.db, async () => {}),
+        /transaction lock is missing; run the account_transaction_lock migration/
+      )
     } finally {
       await customKit.close()
     }

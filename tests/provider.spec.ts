@@ -1,3 +1,4 @@
+import { Kernel } from '@adonisjs/core/ace'
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
@@ -21,6 +22,12 @@ test.group('account kit provider', (group) => {
   })
 
   // A fresh app: the shared one has already cached the singleton.
+  test('exports the container singleton from the service entry point', async ({ assert }) => {
+    const service = await import('../services/main.js')
+    const resolved = await kit.app.container.make(AccountKit)
+    assert.equal(service.default, resolved)
+  })
+
   test('refuses to build the service when the config file is missing', async ({ assert }) => {
     const fresh = await bootTestApp({ accountKitProvider: 'source' })
     try {
@@ -39,12 +46,19 @@ test.group('account kit provider', (group) => {
       const types = await import('adonisjs-account-kit/types')
       const errors = await import('adonisjs-account-kit/errors')
       const provider = await import('adonisjs-account-kit/providers/account_kit_provider')
+      const adapter = await import('adonisjs-account-kit/adapters/lucid')
+      const contract = await import('adonisjs-account-kit/testing/adapter_contract')
+      const commands = await import('adonisjs-account-kit/commands')
       assert.isFunction(root.AccountKit)
       assert.isFunction(root.defineConfig)
       assert.isFunction(root.configure)
       assert.lengthOf(Object.keys(types), 0)
       assert.isFunction(errors.ThrottledError)
       assert.isFunction(provider.default)
+      assert.isFunction(adapter.createLucidAdapter)
+      assert.isFunction(contract.assertUsersAdapterContract)
+      assert.isFunction(commands.getMetaData)
+      assert.isFunction(commands.getCommand)
       const built = await bootTestApp({ accountKitProvider: 'build' })
       try {
         await resetSchema(built)
@@ -57,6 +71,17 @@ test.group('account kit provider', (group) => {
         const second = await built.app.container.make(root.AccountKit)
         assert.equal(first, second)
         assert.instanceOf(first, root.AccountKit)
+        const service = await import('adonisjs-account-kit/services/main')
+        assert.equal(service.default, first)
+
+        const metadata = await commands.getMetaData()
+        const pruneMetadata = metadata.find((item) => item.commandName === 'account-kit:prune')
+        assert.isDefined(pruneMetadata)
+        const pruneCommand = await commands.getCommand(pruneMetadata!)
+        assert.isNotNull(pruneCommand)
+        const ace = new Kernel(built.app)
+        ace.addLoader(commands as never)
+        await ace.handle(['account-kit:prune', '--dry-run'])
       } finally {
         await built.close()
       }

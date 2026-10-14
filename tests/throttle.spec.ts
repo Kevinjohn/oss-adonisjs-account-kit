@@ -9,11 +9,11 @@ test.group('operation throttling', (group) => {
     assert,
   }) => {
     const options = { requests: 1, duration: '15m' }
-    await consume(kit.limiter, 'recovery:client', 'same', options)
-    await consume(kit.limiter, 'verification:send', 'same', options)
+    await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32))
+    await consume(kit.limiter, 'verification:send', 'same', options, 'a'.repeat(32))
     assert.deepEqual(options, { requests: 1, duration: '15m' })
     try {
-      await consume(kit.limiter, 'recovery:client', 'same', options)
+      await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32))
       assert.fail('expected throttle rejection')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
@@ -38,7 +38,13 @@ test.group('operation throttling', (group) => {
       }),
     }
     try {
-      await consume(limiter as never, 'recovery:client', 'same', { requests: 1, duration: '15m' })
+      await consume(
+        limiter as never,
+        'recovery:client',
+        'same',
+        { requests: 1, duration: '15m' },
+        'a'.repeat(32)
+      )
       assert.fail('expected failure')
     } catch (error) {
       assert.equal(error, failure)

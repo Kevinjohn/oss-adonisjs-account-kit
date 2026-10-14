@@ -11,21 +11,25 @@ export interface AccountUser {
   emailVerifiedAt: DateTime | null
 }
 
+export interface UsersAdapterMetadata {
+  table: string
+  primaryKey: 'id'
+  emailConstraint?: string
+}
+
+export interface AuthorizationContext {
+  trx?: Trx
+}
+
 /**
- * Adapter obligations:
- * - compare emails case-insensitively and store them trimmed and lowercase
- * - enforce a single-column unique index on the users table's email column;
- *   on PostgreSQL name its constraint `<usersTable>_email_unique` (PostgreSQL stores
- *   the first 63 bytes) so duplicate email races map to EmailAlreadyRegisteredError
- * - back the adapter with the table named by `usersTable` (default `users`); the package
- *   locks rows in that table by `id` on SQLite; on PostgreSQL use at most 62 ASCII
- *   characters to prevent the conventional unique-index name colliding with the table
- * - when `forUpdate` is true, select the user through `trx` with `FOR UPDATE` on PostgreSQL;
- *   SQLite uses a plain select after the package has acquired its write lock
- * - hash passwords in `create` and `setPassword`
- * - run every method that receives `trx` through that transaction
+ * Custom adapters normalize stored email and enforce a single-column unique email index.
+ * Configure physical table/constraint metadata, use the default connection, hash passwords,
+ * and run every method receiving trx through that transaction. The package owns physical
+ * row locks; legacy forUpdate arguments remain additive compatibility parameters.
+ * The maintained Lucid adapter derives metadata and preserves model save hooks.
  */
 export interface UsersAdapter {
+  resolveMetadata?(): Promise<UsersAdapterMetadata>
   findByEmail(
     email: string,
     trx?: Trx,
@@ -33,7 +37,12 @@ export interface UsersAdapter {
   ): Promise<AccountUser | null>
   findById(id: UserId, trx?: Trx, options?: { forUpdate?: boolean }): Promise<AccountUser | null>
   create(
-    attrs: { email: string; password: string; emailVerifiedAt: DateTime },
+    attrs: {
+      email: string
+      password: string
+      emailVerifiedAt: DateTime
+      registrationData?: unknown
+    },
     trx: Trx
   ): Promise<AccountUser>
   setPassword(id: UserId, password: string, trx: Trx): Promise<void>
@@ -52,38 +61,123 @@ export interface Invitation {
   updatedAt: DateTime
 }
 
+export type Capability = 'recovery' | 'verification' | 'invitations' | 'credentials'
+export type CredentialOperation = 'password_reset' | 'password_change' | 'email_change'
+
+export interface CredentialChangeContext {
+  operation: CredentialOperation
+  operationId: string
+  userId: UserId
+}
+
+export type LifecycleEvent =
+  | {
+      type:
+        | 'verification.completed'
+        | 'recovery.requested'
+        | 'password.reset'
+        | 'password.changed'
+        | 'email_change.requested'
+        | 'email_change.completed'
+      userId: UserId
+      operationId: string
+    }
+  | {
+      type: 'invitation.sent' | 'invitation.resent' | 'invitation.revoked'
+      invitationId: number
+      operationId: string
+    }
+  | { type: 'invitation.accepted'; invitationId: number; userId: UserId; operationId: string }
+
+export interface AuthorizationCallbacks {
+  invite(actor: AccountUser, role: string, context?: AuthorizationContext): Promise<boolean>
+  manageInvitation(
+    actor: AccountUser,
+    invitation: Invitation,
+    context?: AuthorizationContext
+  ): Promise<boolean>
+  listInvitations(actor: AccountUser, context?: AuthorizationContext): Promise<boolean>
+}
+export interface UrlCallbacks {
+  recovery(token: string): string
+  verification(token: string): string
+  invitation(token: string): string
+  emailChange(token: string): string
+}
+export interface NotificationCallbacks {
+  recovery(user: AccountUser, url: string): Promise<void>
+  verification(user: AccountUser, url: string): Promise<void>
+  invitation(invitation: Invitation, url: string): Promise<void>
+  emailChangeConfirm(user: AccountUser, newEmail: string, url: string): Promise<void>
+  emailChanged(previousEmail: string, user: AccountUser): Promise<void>
+  passwordReset(user: AccountUser, context: CredentialChangeContext): Promise<void>
+  passwordChanged(user: AccountUser, context: CredentialChangeContext): Promise<void>
+}
+export interface ThrottleBudget {
+  requests: number
+  duration: string
+}
+export interface InvitationThrottle {
+  sendActor: ThrottleBudget
+  sendRecipient: ThrottleBudget
+  resendActor: ThrottleBudget
+  resendInvitation: ThrottleBudget
+}
+
 export interface AccountKitConfig {
   users: UsersAdapter
-  authorize: {
-    invite(actor: AccountUser, role: string): Promise<boolean>
-    manageInvitation(actor: AccountUser, invitation: Invitation): Promise<boolean>
-    listInvitations(actor: AccountUser): Promise<boolean>
-  }
-  urls: {
-    recovery(token: string): string
-    verification(token: string): string
-    invitation(token: string): string
-    emailChange(token: string): string
-  }
-  notify: {
-    recovery(user: AccountUser, url: string): Promise<void>
-    verification(user: AccountUser, url: string): Promise<void>
-    invitation(invitation: Invitation, url: string): Promise<void>
-    emailChangeConfirm(user: AccountUser, newEmail: string, url: string): Promise<void>
-    emailChanged(previousEmail: string, user: AccountUser): Promise<void>
-  }
-  onInvitationAccepted: (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
-  onCredentialsChanged?: (user: AccountUser) => Promise<void>
+  enabled?: Capability[]
+  authorize?: Partial<AuthorizationCallbacks>
+  urls: Partial<UrlCallbacks>
+  notify: Partial<NotificationCallbacks>
+  onInvitationAccepted?: (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
+  onCredentialsChanged?: (user: AccountUser, context: CredentialChangeContext) => Promise<void>
+  onCredentialsChangedTransaction?: (
+    user: AccountUser,
+    context: CredentialChangeContext,
+    trx: Trx
+  ) => Promise<void>
+  onLifecycleEvent?: (event: LifecycleEvent) => Promise<void>
   usersTable?: string
+  emailConstraint?: string
+  limiterSecret: string
+  limiterNamespace?: string
   ttl?: { recovery?: string; verification?: string; invitation?: string; emailChange?: string }
-  throttle?: { requests?: number; duration?: string }
+  throttle?: Partial<ThrottleBudget>
+  invitationThrottle?: Partial<InvitationThrottle>
   minRequestMs?: number
 }
 
-export interface ResolvedConfig extends Required<Omit<AccountKitConfig, 'onCredentialsChanged'>> {
-  onCredentialsChanged?: AccountKitConfig['onCredentialsChanged']
+export interface ResolvedConfig extends Omit<
+  AccountKitConfig,
+  | 'enabled'
+  | 'authorize'
+  | 'urls'
+  | 'notify'
+  | 'onInvitationAccepted'
+  | 'usersTable'
+  | 'limiterNamespace'
+  | 'ttl'
+  | 'throttle'
+  | 'invitationThrottle'
+  | 'minRequestMs'
+> {
+  enabled: Capability[]
+  authorize: AuthorizationCallbacks
+  urls: UrlCallbacks
+  notify: NotificationCallbacks
+  onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
+  usersTable: string
+  limiterNamespace: string
   ttl: Required<NonNullable<AccountKitConfig['ttl']>>
-  throttle: Required<NonNullable<AccountKitConfig['throttle']>>
+  throttle: ThrottleBudget
+  invitationThrottle: InvitationThrottle
+  minRequestMs: number
+}
+
+export interface InvitationPage {
+  items: Invitation[]
+  nextCursor: string | null
 }
 
 export interface RecoveryRequestInput {
@@ -110,6 +204,8 @@ export interface InvitationsSendInput {
 }
 export interface InvitationsListInput {
   actorId: UserId
+  limit?: number
+  cursor?: string
 }
 export interface InvitationsInspectInput {
   token: string
@@ -117,6 +213,7 @@ export interface InvitationsInspectInput {
 export interface InvitationsAcceptInput {
   token: string
   password: string
+  registrationData?: unknown
 }
 export interface InvitationsResendInput {
   actorId: UserId

@@ -7,6 +7,7 @@ import {
   EmailAlreadyRegisteredError,
   InvalidInputError,
   InvitationPendingError,
+  InvitationNotFoundError,
   InvalidTokenError,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
@@ -116,9 +117,25 @@ test.group('invitations.send', (group) => {
   test('rejects invalid raw email and role boundaries', async ({ assert }) => {
     const actor = await createActor()
     const { account } = service()
-    for (const email of [null, 'a@b@c', 'ab', 'x'.repeat(255)])
+    const recorder = makeNotify()
+    const { account: strictAccount } = service({ notify: recorder.notify })
+    for (const email of [
+      null,
+      'a@b@c',
+      'ab',
+      '@ab',
+      'ab@',
+      '  @  ',
+      'a b@example.test',
+      'x'.repeat(255),
+    ])
       await assert.rejects(
-        () => account.invitations.send({ actorId: actor.id, email: email as never, role: 'user' }),
+        () =>
+          strictAccount.invitations.send({
+            actorId: actor.id,
+            email: email as never,
+            role: 'user',
+          }),
         InvalidInputError
       )
     for (const role of [null, '', 'a'.repeat(65)])
@@ -132,6 +149,7 @@ test.group('invitations.send', (group) => {
         InvalidInputError
       )
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
+    assert.lengthOf(recorder.calls, 0)
     const boundary = await account.invitations.send({
       actorId: actor.id,
       email: 'new@example.test',
@@ -277,12 +295,13 @@ test.group('invitations.list and inspect', (group) => {
       .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
     const listed = await account.invitations.list({ actorId: actor.id })
     assert.deepEqual(
-      listed.map((item) => item.id),
+      listed.items.map((item) => item.id),
       [first.id, second.id]
     )
-    assert.equal(listed[0].email, first.email)
-    assert.equal(listed[1].role, second.role)
-    assert.isUndefined((listed[0] as never as { tokenHash?: string }).tokenHash)
+    assert.equal(listed.items[0].email, first.email)
+    assert.equal(listed.items[1].role, second.role)
+    assert.isNull(listed.nextCursor)
+    assert.isUndefined((listed.items[0] as never as { tokenHash?: string }).tokenHash)
   })
 
   test('list requires a known actor and exact true authorization', async ({ assert }) => {
@@ -489,6 +508,32 @@ test.group('invitations.accept', (group) => {
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
   })
 
+  test('the generated invitation hook setup error rolls back user creation and token consumption', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const setupError = new Error(
+      'account_kit: implement onInvitationAccepted in config/account_kit.stub'
+    )
+    const { account, recorder } = service({
+      onInvitationAccepted: async () => {
+        throw setupError
+      },
+    })
+    const { invitation, token } = await issue(account, recorder, actor.id)
+
+    try {
+      await account.invitations.accept({ token, password: 'newPassword123' })
+      assert.fail('expected invitation hook setup error')
+    } catch (error) {
+      assert.equal(error, setupError)
+    }
+
+    assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
+    assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
+    assert.lengthOf(recorder.calls, 1)
+  })
+
   test('independent concurrent accepts yield one user and one invalid token', async ({
     assert,
   }) => {
@@ -687,11 +732,11 @@ test.group('invitations.resend and revoke', (group) => {
     })
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      InvalidTokenError
+      InvitationNotFoundError
     )
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: 99999 }),
-      InvalidTokenError
+      InvitationNotFoundError
     )
   })
 
@@ -815,11 +860,11 @@ test.group('invitations.resend and revoke', (group) => {
     )
     await assert.rejects(
       () => account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      InvalidTokenError
+      InvitationNotFoundError
     )
     await assert.rejects(
       () => account.invitations.revoke({ actorId: actor.id, invitationId: 99999 }),
-      InvalidTokenError
+      InvitationNotFoundError
     )
     await assert.rejects(
       () => account.invitations.revoke({ actorId: 99999, invitationId: invitation.id }),
@@ -903,7 +948,7 @@ test.group('invitations.resend and revoke', (group) => {
           assert.equal(resent.id, invitation.id)
           assert.deepEqual(
             policyReads.map((read) => read.policy),
-            ['manage', 'invite']
+            ['manage', 'invite', 'manage', 'invite']
           )
           assert.isNotEmpty(invitationReads)
           for (const read of policyReads) assert.notEqual(read.connection, invitationReads[0])
@@ -947,12 +992,15 @@ test.group('invitations.resend and revoke', (group) => {
     const hold = new Promise<void>((resolve) => {
       releaseManage = resolve
     })
+    let manageReads = 0
     const { account, recorder } = service({
       authorize: {
         ...allowAll,
         manageInvitation: async () => {
-          manageReady()
-          await hold
+          if (++manageReads === 2) {
+            manageReady()
+            await hold
+          }
           return true
         },
       },
@@ -965,7 +1013,12 @@ test.group('invitations.resend and revoke', (group) => {
       attempted = resolve
     })
     const onQuery = (query: { sql: string }) => {
-      if (/delete from account_invitations/i.test(query.sql)) attempted()
+      if (
+        (process.env.DB_CLIENT === 'pg' && /delete from account_invitations/i.test(query.sql)) ||
+        (process.env.DB_CLIENT !== 'pg' &&
+          /update account_transaction_lock set version = version/i.test(query.sql))
+      )
+        attempted()
     }
     knex.on('query', onQuery)
     try {
@@ -997,12 +1050,15 @@ test.group('invitations.resend and revoke', (group) => {
       const hold = new Promise<void>((resolve) => {
         releaseManage = resolve
       })
+      let manageReads = 0
       const { account, recorder } = service({
         authorize: {
           ...allowAll,
           manageInvitation: async () => {
-            manageReady()
-            await hold
+            if (++manageReads === 2) {
+              manageReady()
+              await hold
+            }
             return true
           },
         },

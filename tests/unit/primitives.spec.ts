@@ -46,14 +46,19 @@ test.group('email helpers', () => {
     assert.equal(normaliseEmail('  Person@Example.TEST  '), 'person@example.test')
   })
 
-  test('checks only the shared email length and single-at-sign shape', async ({ assert }) => {
+  test('normalizes before checking email length and address shape', async ({ assert }) => {
     assert.isTrue(isEmailShaped('a@b'))
-    assert.isTrue(isEmailShaped('@ab'))
-    assert.isTrue(isEmailShaped('ab@'))
     assert.isTrue(isEmailShaped(`${'a'.repeat(252)}@x`))
+    assert.isTrue(isEmailShaped(`  ${'a'.repeat(252)}@x  `))
     assert.isFalse(isEmailShaped('a@'))
     assert.isFalse(isEmailShaped(`${'a'.repeat(253)}@x`))
     assert.isFalse(isEmailShaped('a@@b'))
+    assert.isFalse(isEmailShaped('@ab'))
+    assert.isFalse(isEmailShaped('ab@'))
+    assert.isFalse(isEmailShaped('  @  '))
+    assert.isFalse(isEmailShaped('a b@example.test'))
+    assert.isFalse(isEmailShaped('a@exa mple.test'))
+    assert.isFalse(isEmailShaped(`${' '.repeat(513)}a@b`))
     assert.isFalse(isEmailShaped(null))
   })
 })
@@ -125,12 +130,12 @@ test.group('account kit errors', () => {
       DeliveryError,
       PostCommitError,
     ]
-    assert.isTrue(new AccountKitError('base').code === 'AccountKitError')
+    assert.isTrue(new AccountKitError('base').code === 'E_ACCOUNT_KIT')
     for (const ErrorType of errorTypes) {
       const error = new ErrorType('operation failed')
       assert.instanceOf(error, AccountKitError)
       assert.equal(error.name, ErrorType.name)
-      assert.equal(error.code, ErrorType.name)
+      assert.equal(error.code, ErrorType.code)
     }
     assert.equal(new ThrottledError(17).retryAfterSeconds, 17)
     const cause = new Error('callback failed')

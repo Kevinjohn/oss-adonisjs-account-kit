@@ -57,18 +57,18 @@ That review recorded these follow-ups, addressed by the corrections below:
 
 - **P2, optional:** PostgreSQL credential operations acquired user and token locks in different orders and could
   propagate transient deadlock errors. Atomic state remains protected; PostgreSQL retries are
-  outside the approved transaction policy. See [password change](../src/credentials.ts#L40),
-  [recovery reset](../src/recovery.ts#L45), and [email-change completion](../src/credentials.ts#L125).
-- **P2, optional:** Validate [minRequestMs](../src/account_kit.ts#L78) as finite and non-negative. The earlier
+  outside the approved transaction policy. See [password change](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/credentials.ts#L40),
+  [recovery reset](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/recovery.ts#L45), and [email-change completion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/credentials.ts#L125).
+- **P2, optional:** Validate [minRequestMs](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/account_kit.ts#L78) as finite and non-negative. The earlier
   contract accepted values such as `Infinity` and `NaN`; the default is 300 ms.
-- **P3, optional:** Strengthen [recovery rollback coverage](../tests/recovery.spec.ts#L447) with an adapter that
+- **P3, optional:** Strengthen [recovery rollback coverage](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/tests/recovery.spec.ts#L447) with an adapter that
   writes the password and then throws. The earlier recovery case threw before that write;
   credential-change tests already cover write-then-throw behavior.
-- **P3, optional:** The [default email lookup](../stubs/config/account_kit.stub#L27) applied `LOWER(TRIM(email))`.
+- **P3, optional:** The [default email lookup](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/stubs/config/account_kit.stub#L27) applied `LOWER(TRIM(email))`.
   This may require an expression index for efficient lookup at larger user counts; no workload
   performance claim was tested.
 
-The [dependency audit](compatibility.md#dependency-audit) still has 16 unresolved advisories.
+The [dependency audit](compatibility.md#dependency-audit-assessment) still has 16 unresolved advisories.
 The current milestone completes package implementation and API-kit validation. Stage 7,
 fork/browser work, owner application integration, and publication remain deferred.
 

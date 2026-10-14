@@ -425,7 +425,11 @@ test.group('credentials', (group) => {
       attempted = resolve
     })
     const onQuery = (query: { sql: string }) => {
-      if (/select .*users.*for update|update ["`]?users["`]? set id = id/i.test(query.sql))
+      if (
+        /select .*users.*for update|update ["`]?account_transaction_lock["`]? set version = version/i.test(
+          query.sql
+        )
+      )
         attempted()
     }
     knex.on('query', onQuery)
@@ -482,8 +486,18 @@ test.group('credentials', (group) => {
     assert,
   }) => {
     const user = await createUser()
-    const account = service()
-    for (const newEmail of [null, 'a@', 'a@@b', 'x'.repeat(255)])
+    const recorder = makeNotify()
+    const account = service({ notify: recorder.notify })
+    for (const newEmail of [
+      null,
+      'a@',
+      'a@@b',
+      '@ab',
+      'ab@',
+      '  @  ',
+      'a b@example.test',
+      'x'.repeat(255),
+    ])
       await assert.rejects(
         () =>
           account.credentials.requestEmailChange({
@@ -493,6 +507,8 @@ test.group('credentials', (group) => {
           }),
         InvalidInputError
       )
+    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(recorder.calls, 0)
     for (const currentPassword of [undefined, '', 'incorrect'])
       await assert.rejects(
         () =>

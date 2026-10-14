@@ -37,7 +37,9 @@ test.group('recovery.request', (group) => {
     assert.isUndefined(
       await account.recovery.request({ email: 'unknown@example.test', clientKey: 'first' })
     )
-    assert.isUndefined(await account.recovery.request({ email: ' @ ', clientKey: 'second' }))
+    assert.isUndefined(
+      await account.recovery.request({ email: 'missing@example.test', clientKey: 'second' })
+    )
     assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
     assert.lengthOf(recorder.calls, 0)
   })
@@ -241,14 +243,15 @@ test.group('recovery.request', (group) => {
   }).timeout(4000)
 
   test('invalid email throws InvalidInputError', async ({ assert }) => {
-    const { account } = service()
-    try {
-      await account.recovery.request({ email: 'invalid', clientKey: 'first' })
-      assert.fail('expected invalid input')
-    } catch (error) {
-      assert.instanceOf(error, InvalidInputError)
-    }
+    const recorder = makeNotify()
+    const { account } = service({ notify: recorder.notify })
+    for (const email of ['invalid', '@ab', 'ab@', '  @  ', 'a b@example.test'])
+      await assert.rejects(
+        () => account.recovery.request({ email, clientKey: 'first' }),
+        InvalidInputError
+      )
     assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(recorder.calls, 0)
   })
 
   test('a missing or blank client key is rejected before any limiter bucket is used', async ({

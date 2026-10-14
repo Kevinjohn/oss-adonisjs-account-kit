@@ -277,7 +277,8 @@ test.group('verification.complete', (group) => {
       attempted = resolve
     })
     const onQuery = (query: { sql: string }) => {
-      if (/update ["`]?users["`]? set id = id|for update/i.test(query.sql)) attempted()
+      if (/update account_transaction_lock set version = version|for update/i.test(query.sql))
+        attempted()
     }
     knex.on('query', onQuery)
     try {

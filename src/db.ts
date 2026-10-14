@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import { InvalidTokenError } from './errors.js'
 import { hashToken } from './tokens.js'
-import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
+import type { AccountUser, ResolvedConfig, Trx, UserId, UsersAdapterMetadata } from './types.js'
 
 const SQLITE_RETRY_MS = 10
 const SQLITE_DEADLINE_MS = 5000
@@ -40,10 +40,82 @@ export function isUniqueViolation(error: unknown, table: string, column: string)
   return details.message.slice(start + prefix.length).trim() === `${table}.${column}`
 }
 
-/** SQLite has no row locks: a touch update takes the database write lock for the transaction. */
+/** Physical metadata is explicit for custom adapters and model-derived for the maintained adapter. */
+export async function userMetadata(config: ResolvedConfig): Promise<UsersAdapterMetadata> {
+  const metadata = config.users.resolveMetadata
+    ? await config.users.resolveMetadata()
+    : {
+        table: config.usersTable,
+        primaryKey: 'id' as const,
+        emailConstraint: config.emailConstraint,
+      }
+  if (metadata.primaryKey !== 'id' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(metadata.table))
+    throw new Error(
+      'account_kit: adapter metadata must use a plain table name and physical id column'
+    )
+  return metadata
+}
+
+/** SQLite holds its writer lock from transaction start; PostgreSQL locks physical rows here. */
 export async function lockRow(trx: Trx, table: string, id: UserId): Promise<void> {
-  if (trx.dialect.name !== 'better-sqlite3') return
-  await trx.rawQuery('update ?? set id = id where id = ?', [table, id]).exec()
+  if (trx.dialect.name === 'better-sqlite3') return
+  await trx.from(table).select('id').where('id', id).forUpdate().first()
+}
+
+export async function lockUser(trx: Trx, config: ResolvedConfig, id: UserId): Promise<void> {
+  const metadata = await userMetadata(config)
+  await lockRow(trx, metadata.table, id)
+}
+
+/** Identify only the actual unique email index; unrelated unique failures retain their identity. */
+export async function isUserEmailUniqueViolation(
+  error: unknown,
+  config: ResolvedConfig,
+  db: Database
+): Promise<boolean> {
+  if (!error || typeof error !== 'object') return false
+  const details = error as { code?: string; constraint?: string }
+  if (details.code !== '23505' && details.code !== 'SQLITE_CONSTRAINT_UNIQUE') return false
+  const metadata = await userMetadata(config)
+  if (details.code !== '23505') return isUniqueViolation(error, metadata.table, 'email')
+  const explicit = config.emailConstraint ?? metadata.emailConstraint
+  if (explicit !== undefined) return details.constraint === explicit
+  const result = await db.rawQuery(
+    `select idx.relname as name
+       from pg_index i
+       join pg_class tbl on tbl.oid = i.indrelid
+       join pg_class idx on idx.oid = i.indexrelid
+       join pg_namespace ns on ns.oid = tbl.relnamespace
+       join pg_attribute col on col.attrelid = tbl.oid and col.attnum = i.indkey[0]
+      where tbl.relname = ? and ns.nspname = current_schema()
+        and i.indisunique and i.indnkeyatts = 1
+        and i.indexprs is null and i.indpred is null and col.attname = 'email'`,
+    [metadata.table]
+  )
+  return result.rows.some((row: { name: string }) => row.name === details.constraint)
+}
+
+async function lockSQLiteTransaction(trx: Trx): Promise<void> {
+  let rows: Array<{ id: number }>
+  try {
+    rows = await trx
+      .rawQuery('update account_transaction_lock set version = version where id = 1 returning id')
+      .exec()
+  } catch (error) {
+    if (
+      (error as { code?: string; message?: string }).code === 'SQLITE_ERROR' &&
+      (error as Error).message.includes('no such table: account_transaction_lock')
+    ) {
+      throw new Error(
+        'Account kit SQLite transaction lock is missing; run the account_transaction_lock migration',
+        { cause: error }
+      )
+    }
+    throw error
+  }
+  if (rows.length !== 1) {
+    throw new Error('Account kit SQLite transaction lock row is missing; restore singleton id=1')
+  }
 }
 
 type TokenTable = 'account_recovery_tokens' | 'account_email_changes' | 'account_invitations'
@@ -81,8 +153,8 @@ export async function consumeUserToken<Row extends { user_id: UserId }>(
   const tokenHash = hashToken(token)
   const candidate = await trx.from(table).select('user_id').where('token_hash', tokenHash).first()
   if (!candidate) throw new InvalidTokenError()
-  await lockRow(trx, config.usersTable, candidate.user_id)
-  const user = await config.users.findById(candidate.user_id, trx, { forUpdate: true })
+  await lockUser(trx, config, candidate.user_id)
+  const user = await config.users.findById(candidate.user_id, trx)
   const row = await consumeToken<Row>(trx, table, tokenHash, DateTime.utc().toISO())
   if (!row || row.user_id !== candidate.user_id || !user || user.email !== emailOf(row))
     throw new InvalidTokenError()
@@ -170,7 +242,10 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
         )) as Trx
         return await runAndCommit(
           trx,
-          callback,
+          async (sqliteTrx) => {
+            await lockSQLiteTransaction(sqliteTrx)
+            return callback(sqliteTrx)
+          },
           () => {
             committed = true
           },

@@ -13,8 +13,8 @@ test.group('account kit configuration and service surface', (group) => {
     })
     const resolved = defineConfig(input)
     assert.equal(resolved.users, input.users)
-    assert.equal(resolved.authorize, input.authorize)
-    assert.equal(resolved.notify, input.notify)
+    assert.deepEqual(resolved.authorize, input.authorize)
+    assert.deepEqual(resolved.notify, input.notify)
     assert.deepEqual(resolved.ttl, {
       recovery: '2h',
       verification: '1h',
