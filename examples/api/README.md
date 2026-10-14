@@ -17,9 +17,11 @@ maintained candidate config and exception handler as documented manual upgrade s
 booting and typechecking the candidate. The candidate-phase test verifies the recovered password,
 user data, role assignment, and application migration record survived.
 
-Before adapting these routes, configure trusted proxy addresses so `request.ip()` cannot be spoofed;
-the recovery limiter uses that value as its client key. Keep `APP_URL` on HTTPS in production so
-generated links are secure. These example routes use bearer-token authentication. If you adapt
+Before adapting these routes, configure trusted proxy addresses so `request.ip()` cannot be spoofed.
+Login allows five attempts per normalized email and 20 attempts per client in 15 minutes; limiter keys
+are HMACs derived from `APP_KEY` and do not persist email addresses or client IPs. The recovery limiter
+also uses `request.ip()` as its client key. Keep `APP_URL` on HTTPS in production so generated links
+are secure. These example routes use bearer-token authentication. If you adapt
 them to cookie-authenticated browser sessions, enable and validate CSRF protection for state-changing
 requests rather than assuming JSON content types provide it.
 

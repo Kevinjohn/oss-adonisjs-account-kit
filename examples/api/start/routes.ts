@@ -10,6 +10,7 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
+import { loginClientThrottle, loginThrottle } from '#start/limiter'
 
 router.get('/', () => {
   return { hello: 'world' }
@@ -41,7 +42,9 @@ router
     router
       .group(() => {
         router.post('signup', [controllers.NewAccount, 'store'])
-        router.post('login', [controllers.AccessTokens, 'store'])
+        router
+          .post('login', [controllers.AccessTokens, 'store'])
+          .use([loginClientThrottle, loginThrottle])
       })
       .prefix('auth')
       .as('auth')

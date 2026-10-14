@@ -1,17 +1,18 @@
 import vine from '@vinejs/vine'
+import { password } from '#validators/password'
 
 export const recoveryRequestValidator = vine.compile(
   vine.object({ email: vine.string().trim().toLowerCase().email().maxLength(254) })
 )
 export const passwordValidator = vine.compile(
   vine.object({
-    password: vine.string().minLength(8).maxLength(128),
+    password: password(),
     passwordConfirmation: vine.string().sameAs('password'),
   })
 )
 export const invitationAcceptValidator = vine.compile(
   vine.object({
-    password: vine.string().minLength(8).maxLength(128),
+    password: password(),
     passwordConfirmation: vine.string().sameAs('password'),
     fullName: vine.string().trim().minLength(1).maxLength(100),
   })
@@ -31,7 +32,7 @@ export const invitationListValidator = vine.compile(
 export const credentialChangeValidator = vine.compile(
   vine.object({
     currentPassword: vine.string().minLength(1),
-    newPassword: vine.string().minLength(8).maxLength(128),
+    newPassword: password(),
     newPasswordConfirmation: vine.string().sameAs('newPassword'),
   })
 )
