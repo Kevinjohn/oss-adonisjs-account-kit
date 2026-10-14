@@ -2,11 +2,20 @@
 
 Validation uses Node 24 and pnpm. Local checks are authoritative; the repository workflows remain manual and were not dispatched.
 
-The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 199
-SQLite tests, 199 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
+The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 205
+SQLite tests, 205 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
 model hooks, central locking, transaction cleanup, bounded pagination, limiter privacy, credential
 effects and pruning. Installed-consumer outcomes are recorded separately for the exact archive;
 package test totals alone do not establish distribution compatibility.
+
+The review fixes add regression coverage for early consumer-mode rejection, standalone dotenv
+ignore rules, bounded cursor decoding, expiry-filtered indexed pagination, and normalized setter
+values that survive commit. The copied environment template boots with its SQLite default after
+an application key is supplied. The API fixture adds three authentication tests to its two existing
+HTTP workflows: normalized known/unknown login limits, the client budget across rotating identities,
+and the shared 128-character password boundary. Login keeps legacy passwords usable without an
+input length cap. The independent review found no remaining correctness or security findings in
+this tactical change.
 
 ## Reproducible checks
 

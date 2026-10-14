@@ -28,6 +28,42 @@ SQLite package writes require the new `account_transaction_lock` table. Apply it
 deploying code that uses the new transaction path. The table is package-owned and independent of
 application user rows.
 
+## Invitation listing index
+
+New invitation migrations create `account_invitations_created_at_id_expires_at_index` on
+`(created_at, id, expires_at)`. Configure preserves existing migrations, so installations created
+with an earlier invitation migration need a new application-owned migration to add this index.
+Do not edit an already-applied migration. After confirming the index is absent, add:
+
+```ts
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  async up() {
+    this.schema.alterTable('account_invitations', (table) => {
+      table.index(
+        ['created_at', 'id', 'expires_at'],
+        'account_invitations_created_at_id_expires_at_index'
+      )
+    })
+  }
+
+  async down() {
+    this.schema.alterTable('account_invitations', (table) => {
+      table.dropIndex(
+        ['created_at', 'id', 'expires_at'],
+        'account_invitations_created_at_id_expires_at_index'
+      )
+    })
+  }
+}
+```
+
+This index supports creation-order pagination without sorting the entire table. Expiry remains a
+filter, so a page can still scan many expired entries; keep the expired-invitation pruning job
+running as described in [operations](operations.md). Page size caps the returned data, not the
+number of database entries examined.
+
 ## Breaking contract updates
 
 - **Limiter secret is required.** `limiterSecret` must be a stable string of at least 32 bytes. Use
