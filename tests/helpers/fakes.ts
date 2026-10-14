@@ -1,0 +1,159 @@
+import { DateTime } from 'luxon'
+import type { Hash } from '@adonisjs/core/hash'
+import type { Database } from '@adonisjs/lucid/database'
+import { AccountKit, defineConfig } from '../../src/account_kit.js'
+import type {
+  AccountKitConfig,
+  NotificationCallbacks,
+  AuthorizationCallbacks,
+  AccountUser,
+  Invitation,
+  Trx,
+  UserId,
+  UsersAdapter,
+} from '../../src/types.js'
+import type { TestApp } from './app.js'
+
+/** `returning('id')` yields a bare id on SQLite and `{ id }` on PostgreSQL. */
+export const unwrapId = (value: unknown): UserId =>
+  (typeof value === 'object' && value !== null ? (value as { id: UserId }).id : value) as UserId
+
+export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users'): UsersAdapter {
+  const query = (trx?: Trx) => trx ?? db.connection()
+  const toUser = (row: Record<string, unknown> | undefined): AccountUser | null =>
+    row
+      ? {
+          id: row.id as UserId,
+          email: row.email as string,
+          hasPassword: row.password !== null,
+          emailVerifiedAt: row.email_verified_at
+            ? DateTime.fromJSDate(new Date(row.email_verified_at as string), { zone: 'utc' })
+            : null,
+        }
+      : null
+  return {
+    async findByEmail(email, trx, options) {
+      const builder = query(trx).from(usersTable).where('email', email.trim().toLowerCase())
+      if (options?.forUpdate) builder.forUpdate()
+      return toUser(await builder.first())
+    },
+    async findById(id, trx, options) {
+      const builder = query(trx).from(usersTable).where('id', id)
+      if (options?.forUpdate) builder.forUpdate()
+      return toUser(await builder.first())
+    },
+    async create(attrs, trx) {
+      const [id] = await trx
+        .table(usersTable)
+        .insert({
+          email: attrs.email.trim().toLowerCase(),
+          password: await hash.make(attrs.password),
+          email_verified_at: attrs.emailVerifiedAt.toISO(),
+          created_at: DateTime.utc().toISO(),
+        })
+        .returning('id')
+      return (await this.findById(unwrapId(id), trx))!
+    },
+    async setPassword(id, password, trx) {
+      await trx
+        .from(usersTable)
+        .where('id', id)
+        .update({ password: await hash.make(password) })
+    },
+    async setEmail(id, email, trx) {
+      await trx.from(usersTable).where('id', id).update({ email: email.trim().toLowerCase() })
+    },
+    async markEmailVerified(id, at, trx) {
+      await trx.from(usersTable).where('id', id).update({ email_verified_at: at.toISO() })
+    },
+    async verifyPassword(id, password, trx) {
+      const row = await trx.from(usersTable).where('id', id).first()
+      return typeof row?.password === 'string' && (await hash.verify(row.password, password))
+    },
+  }
+}
+
+export type NotifyCall = { method: keyof NotificationCallbacks; args: unknown[] }
+export function makeNotify() {
+  const calls: NotifyCall[] = []
+  let failing: keyof NotificationCallbacks | null = null
+  const record = async (method: NotifyCall['method'], ...args: unknown[]) => {
+    calls.push({ method, args })
+    if (failing === method) throw new Error(`notify.${method} failed`)
+  }
+  const notify: NotificationCallbacks = {
+    recovery: (user, url) => record('recovery', user, url),
+    verification: (user, url) => record('verification', user, url),
+    invitation: (invitation, url) => record('invitation', invitation, url),
+    emailChangeConfirm: (user, newEmail, url) => record('emailChangeConfirm', user, newEmail, url),
+    emailChanged: (previousEmail, user) => record('emailChanged', previousEmail, user),
+    passwordReset: (user, context) => record('passwordReset', user, context),
+    passwordChanged: (user, context) => record('passwordChanged', user, context),
+  }
+  return {
+    notify,
+    calls,
+    failOn(method: keyof NotificationCallbacks | null) {
+      failing = method
+    },
+  }
+}
+
+const authorize = (value: boolean): AuthorizationCallbacks => ({
+  invite: async () => value,
+  manageInvitation: async () => value,
+  listInvitations: async () => value,
+})
+export const allowAll = authorize(true)
+export const denyAll = authorize(false)
+
+export function makeConfig(
+  overrides: Pick<AccountKitConfig, 'users'> & Partial<Omit<AccountKitConfig, 'users'>>
+): AccountKitConfig {
+  const { notify } = makeNotify()
+  return {
+    limiterSecret: 'test_only_shared_limiter_secret_32_bytes',
+    authorize: allowAll,
+    urls: {
+      recovery: (token) => `https://example.test/recovery/${token}`,
+      verification: (token) => `https://example.test/verification/${token}`,
+      invitation: (token) => `https://example.test/invitation/${token}`,
+      emailChange: (token) => `https://example.test/email-change/${token}`,
+    },
+    notify,
+    onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {},
+    ...overrides,
+  }
+}
+
+/** Insert a user row directly; `password: null` makes a social-only account. */
+export async function insertUser(
+  kit: TestApp,
+  options: { email?: string; password?: string | null; verified?: boolean } = {}
+): Promise<AccountUser> {
+  const { email = 'person@example.test', password = 'password123', verified = true } = options
+  const [id] = await kit.db
+    .table('users')
+    .insert({
+      email,
+      password: password === null ? null : await kit.hash.make(password),
+      email_verified_at: verified ? DateTime.utc().toISO() : null,
+      created_at: DateTime.utc().toISO(),
+    })
+    .returning('id')
+  return (await makeUsersAdapter(kit.db, kit.hash).findById(unwrapId(id)))!
+}
+
+export const accountKit = (kit: TestApp, config: ReturnType<typeof defineConfig>) =>
+  new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption: kit.encryption })
+
+/** A service over the database adapter with its own notification recorder. */
+export function makeService(kit: TestApp, overrides: Partial<AccountKitConfig> = {}) {
+  const recorder = makeNotify()
+  const { users = makeUsersAdapter(kit.db, kit.hash), ...rest } = overrides
+  const config = defineConfig(makeConfig({ users, notify: recorder.notify, ...rest }))
+  return { account: accountKit(kit, config), recorder, config, users }
+}
+
+/** The token is the last path segment of every URL built by `makeConfig`. */
+export const tokenFrom = (url: unknown) => new URL(url as string).pathname.split('/').at(-1)!
