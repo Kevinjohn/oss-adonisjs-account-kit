@@ -40,6 +40,8 @@ import type {
   UserId,
 } from './types.js'
 
+const MAX_INVITATION_CURSOR_LENGTH = 512
+
 async function requireActor(config: ResolvedConfig, actorId: UserId): Promise<AccountUser> {
   const actor = await config.users.findById(actorId)
   if (!actor) throw new InvalidInputError('Unknown actor')
@@ -226,6 +228,7 @@ export async function listInvitations(
   let position: { createdAt: string; id: number } | null = null
   if (input.cursor !== undefined) {
     try {
+      if (input.cursor.length > MAX_INVITATION_CURSOR_LENGTH) throw new Error('invalid')
       const decoded = JSON.parse(Buffer.from(input.cursor, 'base64url').toString('utf8'))
       if (
         !Array.isArray(decoded) ||

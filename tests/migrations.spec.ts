@@ -31,6 +31,17 @@ test.group('published account kit migrations', (group) => {
       'created_at',
       'updated_at',
     ])
+    if (kit.db.connection().dialect.name === 'better-sqlite3') {
+      const invitationIndexes = await kit.db
+        .rawQuery("PRAGMA index_list('account_invitations')")
+        .exec()
+      assert.isTrue(
+        invitationIndexes.some(
+          (index: { name: string }) =>
+            index.name === 'account_invitations_created_at_id_expires_at_index'
+        )
+      )
+    }
     const emailChangeColumnInfo = await kit.db.connection().columnsInfo('account_email_changes')
     const emailChangeColumns = Object.keys(emailChangeColumnInfo)
     assert.deepEqual(emailChangeColumns, [
@@ -42,6 +53,33 @@ test.group('published account kit migrations', (group) => {
       'expires_at',
       'created_at',
     ])
+  })
+
+  test('indexes invitation listing in timestamp and id order', async ({ assert }) => {
+    if (kit.db.connection().dialect.name !== 'better-sqlite3') return
+    const now = new Date().toISOString()
+    const rows = Array.from({ length: 1000 }, (_, index) => ({
+      email: `person${index}@example.test`,
+      role: 'member',
+      token_hash: `${index}`.padStart(64, '0'),
+      expires_at: index % 2 === 0 ? '2999-01-01T00:00:00.000Z' : '2000-01-01T00:00:00.000Z',
+      created_at: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+      updated_at: now,
+    }))
+    for (let index = 0; index < rows.length; index += 100) {
+      await kit.db.table('account_invitations').insert(rows.slice(index, index + 100))
+    }
+
+    const plan = await kit.db
+      .rawQuery(
+        'EXPLAIN QUERY PLAN SELECT * FROM account_invitations WHERE expires_at > ? ORDER BY created_at ASC, id ASC LIMIT 26',
+        [now]
+      )
+      .exec()
+    const details = plan.map((step: { detail: string }) => step.detail).join(' ')
+
+    assert.include(details, 'account_invitations_created_at_id_expires_at_index')
+    assert.notInclude(details, 'USE TEMP B-TREE FOR ORDER BY')
   })
 
   test('enforces unique keys and the configured user deletion rules', async ({ assert }) => {
