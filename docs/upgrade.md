@@ -15,9 +15,13 @@ rewrite them to match new options or schemas.
 3. Compare the preserved `config/account_kit.ts` with the current generated stub and update it
    manually. Add the required `limiterSecret`, preferably the stable `APP_KEY`; update callbacks,
    adapter construction, and capability configuration as needed.
-4. Review generated migrations against the application schema, then run migrations in a controlled
+4. Update the application-owned HTTP integration after installing the candidate. Adopt the new
+   `accountErrorResponse` export in the central exception handler and update pagination consumers
+   and recovery failure handling. The upgrade fixture keeps its baseline-compatible handler until
+   this explicit integration step.
+5. Review generated migrations against the application schema, then run migrations in a controlled
    deployment. The package cannot rewrite already-applied schema.
-5. Typecheck and run package-specific consumer tests before deployment. Verify that the limiter
+6. Typecheck and run package-specific consumer tests before deployment. Verify that the limiter
    secret and namespace are consistent across application instances.
 
 SQLite package writes require the new `account_transaction_lock` table. Apply its migration before

@@ -10,9 +10,12 @@ or reuses this checkout's `node_modules`.
 Use the repository's `test:consumer` script to run it. A separate baseline tarball is required to
 run the upgrade scenario. PostgreSQL runs require the dedicated `account_kit_consumer` database;
 the harness resets its `public` schema before each independent scenario.
-The upgrade scenario hashes the baseline config and migration files, verifies configure preserves
-them, then applies the maintained candidate config as the documented manual upgrade step before
-booting and typechecking the candidate.
+The upgrade scenario uses an application-owned handler compatible with the preserved baseline
+package, then exercises recovery through its preserved config and adapter before hashing the
+baseline config and migration files. It verifies configure preserves them, then applies the
+maintained candidate config and exception handler as documented manual upgrade steps before
+booting and typechecking the candidate. The candidate-phase test verifies the recovered password,
+user data, role assignment, and application migration record survived.
 
 Before adapting these routes, configure trusted proxy addresses so `request.ip()` cannot be spoofed;
 the recovery limiter uses that value as its client key. Keep `APP_URL` on HTTPS in production so

@@ -404,7 +404,9 @@ async function runUpgrade(candidate, baseline, runName) {
   await mkdir(join(appRoot, 'tmp'), { recursive: true })
   const env = databaseEnvironment(appRoot)
   const configPath = join(appRoot, 'config/account_kit.ts')
+  const handlerPath = join(appRoot, 'app/exceptions/handler.ts')
   await copyFile(join(appRoot, 'upgrade/baseline_account_kit.ts'), configPath)
+  await copyFile(join(appRoot, 'upgrade/baseline_handler.ts'), handlerPath)
   for (const migration of await packageMigrations(appRoot)) await rm(migration)
   const baselineInstall = await installArchive(appRoot, baseline)
   await resetExclusivePostgresSchema(appRoot)
@@ -446,7 +448,9 @@ async function runUpgrade(candidate, baseline, runName) {
     )
   }
   await copyFile(join(fixtureRoot, 'config/account_kit.ts'), configPath)
+  await copyFile(join(fixtureRoot, 'app/exceptions/handler.ts'), handlerPath)
   const manuallyUpdatedConfigSha256 = await digest(configPath)
+  const manuallyUpdatedHandlerSha256 = await digest(handlerPath)
   run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
   run('pnpm', ['run', 'migrate'], appRoot, env)
   run('pnpm', ['run', 'format'], appRoot, env)
@@ -464,6 +468,7 @@ async function runUpgrade(candidate, baseline, runName) {
     candidateInstall,
     preservedBaselineConfigSha256: configBeforeUpgrade,
     manuallyUpdatedConfigSha256,
+    manuallyUpdatedHandlerSha256,
   }
 }
 
