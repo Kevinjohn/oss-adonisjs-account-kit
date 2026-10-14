@@ -63,6 +63,19 @@ metadata-file globs during build, the consumer's production audit still reports 
 path. The trace did not find an account-request-time path from account inputs to that parser. This
 does not assess arbitrary application use of the parser or attacker-controlled build configuration.
 
+The exact minimum installation separately reports two high and one moderate advisory, including
+`braces` above. Luxon `3.0.0` has high
+[GHSA-3xq5-wjfh-ppjc](https://github.com/advisories/GHSA-3xq5-wjfh-ppjc), affecting untrusted inputs
+to `DateTime.fromRFC2822`; the patched 3.x floor is `3.2.1`. Core `7.0.0` has moderate
+[GHSA-6qvv-pj99-48qm](https://github.com/advisories/GHSA-6qvv-pj99-48qm), affecting
+`response.redirect().back()` and `response.redirect('back')`. Its metadata lists Core `7.3.1` as
+patched, while its remediation recommends `^7.4.0`. Account Kit does not call the affected Luxon
+method, and the API reference returns JSON without these redirects. This trace does not assess
+other consumer application code. Compatibility floors describe verified behavior, not a security
+guarantee: use the tested latest-compatible Core `7.6.0` and Luxon `3.7.2` for production rather
+than the older minimum test points. Those latest versions have neither direct advisory; the
+optional assembler and release-tool advisories above remain unresolved.
+
 The candidate's `pnpm audit --prod` reports no dependencies because runtime packages are peers;
 that result alone does not assess a consumer installation. Consumers should audit their complete
 installed tree, including resolved peers. No dependency was upgraded for this assessment. See
