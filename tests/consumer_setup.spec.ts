@@ -46,20 +46,23 @@ test('consumer gitignore hides dotenv files while keeping the example template v
 }) => {
   const root = await mkdtemp(join(tmpdir(), 'account-kit-consumer-ignore-'))
   try {
-    await writeFile(join(root, '.gitignore'), await readFile(join(repoRoot, '.gitignore')))
-    await writeFile(join(root, '.env'), '')
-    await writeFile(join(root, '.env.local'), '')
+    await writeFile(
+      join(root, '.gitignore'),
+      await readFile(join(repoRoot, 'examples/api/.gitignore'))
+    )
+    const dotenvFiles = ['.env', '.env.local', '.env.production', '.env.test', '.env.staging']
+    await Promise.all(dotenvFiles.map((file) => writeFile(join(root, file), '')))
     await writeFile(join(root, '.env.example'), '')
     const initialized = spawnSync('git', ['init', '--quiet'], { cwd: root })
     assert.equal(initialized.status, 0)
-    const ignored = ['.env', '.env.local'].map((file) =>
+    const ignored = dotenvFiles.map((file) =>
       spawnSync('git', ['check-ignore', '--quiet', file], { cwd: root })
     )
     const example = spawnSync('git', ['check-ignore', '--quiet', '.env.example'], { cwd: root })
 
     assert.deepEqual(
       ignored.map(({ status }) => status),
-      [0, 0]
+      [0, 0, 0, 0, 0]
     )
     assert.equal(example.status, 1)
   } finally {
