@@ -67,13 +67,9 @@
       "minScore": 0
     },
     "verificationRequired": true,
-    "unverifiedActions": [
-      "logout",
-      "verificationResend",
-      "passwordReset"
-    ],
+    "unverifiedActions": ["logout", "verificationResend", "passwordReset"],
     "invitationPermissionHook": false,
-    "accessRestrictionHook": false
+    "accessRestrictionHook": true
   },
   "social": {
     "status": "not-applicable",
