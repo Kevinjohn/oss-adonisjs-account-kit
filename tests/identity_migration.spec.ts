@@ -98,10 +98,15 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
         created_at: now,
       })
       .returning('id')
+    const [inactiveChangingId] = await kit.db
+      .table('users')
+      .insert({ email: 'inactive-changing@example.test', password: 'hash', created_at: now })
+      .returning('id')
     const id = (value: unknown) =>
       typeof value === 'object' && value !== null ? (value as { id: number }).id : (value as number)
     const resetToken = generateToken(32)
     const emailToken = generateToken(32)
+    const inactiveEmailToken = generateToken(32)
     const future = new Date(Date.now() + 3600_000).toISOString()
     await kit.db.table('password_reset_tokens').insert({
       user_id: id(inactiveId),
@@ -119,6 +124,14 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       expires_at: future,
       created_at: now,
     })
+    await kit.db.table('account_email_changes').insert({
+      user_id: id(inactiveChangingId),
+      current_email: 'inactive-changing@example.test',
+      new_email: 'inactive-next@example.test',
+      token_hash: hashToken(inactiveEmailToken),
+      expires_at: future,
+      created_at: now,
+    })
     const [staleId] = await kit.db
       .table('users')
       .insert({ email: 'stale@example.test', password: 'hash', created_at: now })
@@ -131,25 +144,39 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       expires_at: future,
       created_at: now,
     })
-    assert.lengthOf(await kit.db.from('account_email_changes'), 2)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 3)
     await assert.rejects(() => writeMigrations(evolution, 100), /proof no longer matches its user/)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 2)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 3)
     await kit.db.from('account_email_changes').where('user_id', id(staleId)).delete()
     await writeMigrations(evolution, 100)
     const inactive = await kit.db.from('users').where('id', id(inactiveId)).first()
     const active = await kit.db.from('users').where('id', id(activeId)).first()
     const changing = await kit.db.from('users').where('id', id(changingId)).first()
+    const inactiveChanging = await kit.db.from('users').where('id', id(inactiveChangingId)).first()
     assert.equal(inactive.unverified_email, inactive.email)
     assert.isNull(active.unverified_email)
     assert.equal(changing.email, 'changing@example.test')
     assert.equal(changing.unverified_email, 'next@example.test')
+    assert.equal(inactiveChanging.email, 'inactive-next@example.test')
+    assert.equal(inactiveChanging.unverified_email, 'inactive-next@example.test')
+    assert.isNull(inactiveChanging.email_verified_at)
     const reset = await kit.db.from('password_reset_tokens').first()
     assert.equal(reset.tokenable_id, id(inactiveId))
     assert.equal(reset.hash, hashToken(resetToken))
-    const change = await kit.db.from('email_verification_tokens').first()
+    const change = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', id(changingId))
+      .first()
     assert.equal(change.tokenable_id, id(changingId))
     assert.equal(change.hash, hashToken(emailToken))
     assert.equal(change.purpose, 'email_change')
+    const inactiveChange = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', id(inactiveChangingId))
+      .first()
+    assert.equal(inactiveChange.hash, hashToken(inactiveEmailToken))
+    assert.equal(inactiveChange.current_email, 'inactive-next@example.test')
+    assert.equal(inactiveChange.purpose, 'email_change')
     assert.lengthOf(await kit.db.from('application_roles').where('user_id', id(changingId)), 1)
     await kit.db.from('users').where('id', id(activeId)).update({ password: null })
     const passwordless = await kit.db.from('users').where('id', id(activeId)).first()
@@ -166,6 +193,11 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       token: emailToken,
     })
     assert.equal(changedUser.email, 'next@example.test')
+    const inactiveChangedUser = await account.emailPasswordManagement.completeEmailChange({
+      token: inactiveEmailToken,
+    })
+    assert.equal(inactiveChangedUser.email, 'inactive-next@example.test')
+    assert.isNull(inactiveChangedUser.unverifiedEmail)
   } finally {
     await kit.db.connection().schema.dropTableIfExists('application_roles')
     await kit.close()
