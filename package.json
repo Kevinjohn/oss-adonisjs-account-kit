@@ -42,7 +42,11 @@
     "version": "pnpm build",
     "prepublishOnly": "pnpm build",
     "test:consumer": "node scripts/test_packed_consumer.mjs",
-    "test:adapter": "pnpm quick:test --files=lucid_adapter.spec.ts"
+    "test:adapter": "pnpm quick:test --files=lucid_adapter.spec.ts",
+    "pg:start": "bash bin/pg.sh start",
+    "pg:stop": "bash bin/pg.sh stop",
+    "test:pg": "bash bin/pg.sh test",
+    "test:pg-service": "node --test scripts/test_pg_service.mjs"
   },
   "keywords": [
     "adonisjs",
