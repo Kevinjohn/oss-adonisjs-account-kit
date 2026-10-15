@@ -54,7 +54,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   const activation = await client
     .post(`/api/v1/auth/email-verification/${encodeURIComponent(registrationToken)}`)
     .json({ password: 'ClaimantPass123!', passwordConfirmation: 'ClaimantPass123!' })
-  assert.equal(activation.body().result, 'verified')
+  assert.equal((activation.body() as { result: string }).result, 'verified')
   assert.isNull((await User.findByOrFail('email', registered.email)).unverifiedEmail)
   notifications.reset()
   assert.isString(registrationBody.data.token)

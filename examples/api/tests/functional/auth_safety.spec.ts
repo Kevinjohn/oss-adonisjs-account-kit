@@ -36,14 +36,14 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   })
   assert.equal(signup.status(), 200, JSON.stringify(signup.body()))
   const token = responseBody<{ data: { token: string } }>(signup).data.token
-  const blocked = await client.get('/account-kit/invitations').bearerToken(token)
+  const blocked = await client.get('/api/v1/account/invitations').bearerToken(token)
   assert.equal(blocked.status(), 403)
   assert.equal((blocked.body() as unknown as { code: string }).code, 'unverified_email')
   const provision = notifications.events.find((event) => event.kind === 'verification')
   assert.isDefined(provision)
   const proof = new URL(provision!.value).pathname.split('/').at(-1)!
   const claim = await client
-    .post(`/account-kit/verification/${proof}`)
+    .post(`/api/v1/auth/email-verification/${proof}`)
     .json({ password: 'ClaimantPass123!', passwordConfirmation: 'ClaimantPass123!' })
   assert.equal(claim.status(), 200, JSON.stringify(claim.body()))
   const previousToken = await client.get('/api/v1/account/profile').bearerToken(token)
@@ -82,7 +82,10 @@ test('committed signup delivery and observer failures return recovery guidance',
     notifications.failVerification = false
     notifications.failLifecycle = false
     notifications.events.length = 0
-    const suppressed = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    const suppressed = await client
+      .post('/api/v1/account/email-verification/send')
+      .loginAs(user)
+      .json({})
     assert.equal(suppressed.status(), 200, JSON.stringify(suppressed.body()))
     assert.equal((suppressed.body() as { result: string }).result, 'sent')
     assert.lengthOf(notifications.events, 0)
@@ -90,7 +93,10 @@ test('committed signup delivery and observer failures return recovery guidance',
       .from('email_verification_tokens')
       .where('tokenable_id', user.id)
       .update({ created_at: new Date(Date.now() - 120_000).toISOString() })
-    const resent = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    const resent = await client
+      .post('/api/v1/account/email-verification/send')
+      .loginAs(user)
+      .json({})
     assert.equal(resent.status(), 200, JSON.stringify(resent.body()))
     assert.equal((resent.body() as { result: string }).result, 'sent')
     assert.isTrue(notifications.events.some((event) => event.kind === 'verification'))

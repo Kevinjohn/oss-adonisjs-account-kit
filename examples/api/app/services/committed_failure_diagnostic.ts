@@ -1,4 +1,4 @@
-import { DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { DeliveryError, type PostCommitError } from 'adonisjs-account-kit'
 
 type SafeLogger = { error: (details: object, message: string) => void }
 
