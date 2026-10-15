@@ -7,6 +7,7 @@ import hash from '@adonisjs/core/services/hash'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { dispatchAccountKitOutbox } from '#services/account_kit_outbox'
+import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 
 const tokenFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
 const responseBody = <T>(response: { body(): unknown }) => response.body() as T
@@ -102,19 +103,35 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   assert.equal(notifications.events.filter((event) => event.kind === 'recovery').length, 1)
 
   notifications.failRecovery = true
-  const failedDelivery = await client
-    .post('/api/v1/auth/password-reset')
-    .json({ email: 'recovery@example.test' })
+  const delivery = await captureFollowUpDiagnostics(() =>
+    client.post('/api/v1/auth/password-reset').json({ email: 'recovery@example.test' })
+  )
+  const failedDelivery = delivery.result
   notifications.failRecovery = false
   assert.equal(failedDelivery.status(), 202)
   assert.deepEqual(failedDelivery.body(), known.body())
+  assert.deepEqual(delivery.entries, [
+    {
+      event: 'account_kit_follow_up_failed',
+      operation: 'password_reset.request',
+      failure: 'delivery',
+    },
+  ])
   notifications.failLifecycle = true
-  const failedObserver = await client
-    .post('/api/v1/auth/password-reset')
-    .json({ email: 'recovery@example.test' })
+  const observer = await captureFollowUpDiagnostics(() =>
+    client.post('/api/v1/auth/password-reset').json({ email: 'recovery@example.test' })
+  )
+  const failedObserver = observer.result
   notifications.failLifecycle = false
   assert.equal(failedObserver.status(), 202)
   assert.deepEqual(failedObserver.body(), known.body())
+  assert.deepEqual(observer.entries, [
+    {
+      event: 'account_kit_follow_up_failed',
+      operation: 'password_reset.request',
+      failure: 'post_commit',
+    },
+  ])
   const finalRecoveryRequest = await client
     .post('/api/v1/auth/password-reset')
     .json({ email: 'recovery@example.test' })

@@ -10,6 +10,7 @@ import AuthMiddleware from '#middleware/auth_middleware'
 import env from '#start/env'
 import accountKitConfig from '#config/account_kit'
 import { referencePasswordLimits } from '#validators/password'
+import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 
 const responseBody = <T>(response: { body(): unknown }) => response.body() as T
 
@@ -73,14 +74,23 @@ test('committed signup delivery and observer failures return recovery guidance',
     notifications.failVerification = failure === 'delivery'
     notifications.failLifecycle = failure === 'observer'
     const email = `committed-${failure}-${randomUUID()}@example.test`
-    const response = await client.post('/api/v1/auth/signup').json({
-      fullName: 'Committed Signup',
-      email,
-      password: 'CommittedPass123!',
-      passwordConfirmation: 'CommittedPass123!',
-    })
+    const { result: response, entries } = await captureFollowUpDiagnostics(() =>
+      client.post('/api/v1/auth/signup').json({
+        fullName: 'Committed Signup',
+        email,
+        password: 'CommittedPass123!',
+        passwordConfirmation: 'CommittedPass123!',
+      })
+    )
     assert.equal(response.status(), 202, JSON.stringify(response.body()))
     assert.isTrue((response.body() as unknown as { accountCreated: boolean }).accountCreated)
+    assert.deepEqual(entries, [
+      {
+        event: 'account_kit_follow_up_failed',
+        operation: 'registration.signup',
+        failure: failure === 'delivery' ? 'delivery' : 'post_commit',
+      },
+    ])
     const user = await User.findByOrFail('email', email)
     const proofs = await db.from('email_verification_tokens').where('tokenable_id', user.id)
     assert.lengthOf(proofs, 1)
@@ -130,14 +140,23 @@ test('committed signup survives credential throttling and guard failure', async 
       }),
     })
     try {
-      const response = await client.post('/api/v1/auth/signup').json({
-        fullName: 'Committed Signup',
-        email,
-        password: 'CommittedPass123!',
-        passwordConfirmation: 'CommittedPass123!',
-      })
+      const { result: response, entries } = await captureFollowUpDiagnostics(() =>
+        client.post('/api/v1/auth/signup').json({
+          fullName: 'Committed Signup',
+          email,
+          password: 'CommittedPass123!',
+          passwordConfirmation: 'CommittedPass123!',
+        })
+      )
       assert.equal(response.status(), 202, JSON.stringify(response.body()))
       assert.isTrue((response.body() as { accountCreated: boolean }).accountCreated)
+      assert.deepEqual(entries, [
+        {
+          event: 'account_kit_follow_up_failed',
+          operation: 'registration.credential_establish',
+          failure: 'credential_establishment',
+        },
+      ])
       const user = await User.findByOrFail('email', email)
       const proofs = await db.from('email_verification_tokens').where('tokenable_id', user.id)
       assert.lengthOf(proofs, 1)
@@ -261,7 +280,13 @@ test('signup accepts a password within the shared 256 character limit', async ({
   assert,
 }) => {
   if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
-  assert.deepEqual(accountKitConfig.passwordPolicy, referencePasswordLimits)
+  assert.equal(accountKitConfig.passwordPolicy.minLength, referencePasswordLimits.minLength)
+  assert.equal(accountKitConfig.passwordPolicy.maxLength, referencePasswordLimits.maxLength)
+  assert.isFalse(accountKitConfig.passwordPolicy.letters)
+  assert.isFalse(accountKitConfig.passwordPolicy.mixedCase)
+  assert.isFalse(accountKitConfig.passwordPolicy.numbers)
+  assert.isFalse(accountKitConfig.passwordPolicy.symbols)
+  assert.equal(accountKitConfig.passwordPolicy.minScore, 0)
   assert.deepEqual(referencePasswordLimits, { minLength: 8, maxLength: 256 })
   await limiter.clear(['memory'])
   const password = 'LongPassword123!'.padEnd(256, 'x')

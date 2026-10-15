@@ -3,17 +3,28 @@ import type { HttpContext } from '@adonisjs/core/http'
 /** Prefer JSON:API only when the request accepts it with nonzero, leading quality. */
 export function wantsJsonApi(accept: string | undefined): boolean {
   if (!accept) return false
-  let jsonApiQuality = 0
-  let jsonQuality = 0
+  const ranges: Array<{ mediaType: string; quality: number }> = []
   for (const range of accept.split(',')) {
     const [mediaType, ...parameters] = range.split(';').map((part) => part.trim().toLowerCase())
     const qualityParameter = parameters.find((part) => part.startsWith('q='))
     const quality = qualityParameter ? Number(qualityParameter.slice(2)) : 1
     if (!Number.isFinite(quality) || quality < 0 || quality > 1) continue
-    if (mediaType === 'application/vnd.api+json') jsonApiQuality = Math.max(jsonApiQuality, quality)
-    if (mediaType === 'application/json') jsonQuality = Math.max(jsonQuality, quality)
+    ranges.push({ mediaType, quality })
   }
-  return jsonApiQuality > 0 && jsonApiQuality >= jsonQuality
+  const qualityFor = (mediaType: string) => {
+    for (const candidate of [mediaType, 'application/*', '*/*']) {
+      const matches = ranges.filter((range) => range.mediaType === candidate)
+      if (matches.length > 0) return Math.max(...matches.map((match) => match.quality))
+    }
+    return 0
+  }
+  const jsonApi = qualityFor('application/vnd.api+json')
+  const json = qualityFor('application/json')
+  return (
+    ranges.some((range) => range.mediaType === 'application/vnd.api+json' && range.quality > 0) &&
+    jsonApi > 0 &&
+    jsonApi >= json
+  )
 }
 
 /** Public example responses for proof links and account errors. */

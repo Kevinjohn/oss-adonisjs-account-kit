@@ -158,6 +158,15 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.deepEqual(excluded.body(), {
     errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
+  const wildcard = await client
+    .post('/api/v1/auth/login')
+    .header('accept', 'application/*;q=1, application/vnd.api+json;q=0.5')
+    .json({ email, password: 'WrongPass123!' })
+  assert.equal(wildcard.status(), 401)
+  assert.notInclude(wildcard.header('content-type'), 'application/vnd.api+json')
+  assert.deepEqual(wildcard.body(), {
+    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+  })
   const validation = await client
     .post('/api/v1/auth/login')
     .json({ email: 'invalid', password: '' })
