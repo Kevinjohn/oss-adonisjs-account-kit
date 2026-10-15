@@ -307,20 +307,21 @@ async function executePending<Credential>(
           })
         if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
       }
+      let result: { account: CurrentAccount; credential: Credential }
       try {
-        const result = await kit.authentication.login(
+        result = await kit.authentication.login(
           { email: input.email, password: input.password, clientKey: request.ip() },
           options.guard.forRequest(context)
         )
-        return response.created({
-          account: await represent(result.account),
-          ...(options.guard.strategy === 'access_tokens'
-            ? { token: options.guard.publicCredential!(result.credential) }
-            : {}),
-        })
       } catch {
         return response.created({ registered: true, authenticated: false })
       }
+      return response.created({
+        account: await represent(result.account),
+        ...(options.guard.strategy === 'access_tokens'
+          ? { token: options.guard.publicCredential!(result.credential) }
+          : {}),
+      })
     }
     case 'auth.emailVerification.inspect':
       return (await kit.emailVerification.inspect({ token: params.token }))
