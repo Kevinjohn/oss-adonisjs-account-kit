@@ -118,6 +118,10 @@ test.group('capability configuration', (group) => {
       /invitationThrottle\.sendRecipient\.duration/
     )
     assert.throws(
+      () => defineConfig({ ...base, onRecoveryIssuedTransaction: 'invalid' } as never),
+      /onRecoveryIssuedTransaction must be a function/
+    )
+    assert.throws(
       () =>
         defineConfig({
           ...base,

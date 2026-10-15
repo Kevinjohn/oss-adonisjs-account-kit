@@ -106,6 +106,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     'onInvitationAccepted',
     'onCredentialsChanged',
     'onCredentialsChangedTransaction',
+    'onRecoveryIssuedTransaction',
     'onLifecycleEvent',
   ] as const) {
     if (config[hook] !== undefined && typeof config[hook] !== 'function')

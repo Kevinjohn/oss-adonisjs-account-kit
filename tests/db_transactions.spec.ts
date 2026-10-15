@@ -1,6 +1,7 @@
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
 import { transaction } from '../src/db.js'
+import { PostCommitError } from '../src/errors.js'
 import { defineConfig } from '../src/account_kit.js'
 import { DateTime } from 'luxon'
 import { bootTestApp, useTestApp } from './helpers/app.js'
@@ -532,6 +533,114 @@ test.group('managed transaction wrapper', (group) => {
     }
   }).timeout(8000)
 
+  test('pool-one failed native rollback releases the reservation before a queued read and next write', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const customKit = await bootTestApp({ sqlitePoolMax: 1 })
+    const client = customKit.db.connection().getWriteClient().client
+    const native = (await client.acquireConnection()) as {
+      exec(sql: string): void
+      inTransaction: boolean
+    }
+    const original = native.exec.bind(native)
+    const rollbackFault = new Error('native rollback failed')
+    native.exec = (sql) => {
+      if (sql === 'ROLLBACK') throw rollbackFault
+      original(sql)
+    }
+    await client.releaseConnection(native)
+    let entered!: () => void
+    const started = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let resume!: () => void
+    const held = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    try {
+      await resetSchema(customKit)
+      const writing = transaction(customKit.db, async () => {
+        entered()
+        await held
+        throw new Error('work failed')
+      })
+      await started
+      const reading = customKit.db.from('users').first()
+      resume()
+      await assert.rejects(() => writing)
+      assert.isNull(await reading)
+      await customKit.db
+        .table('users')
+        .insert({ email: 'bruce@example.test', created_at: new Date().toISOString() })
+      assert.isNotNull(
+        await customKit.db.from('users').where('email', 'bruce@example.test').first()
+      )
+    } finally {
+      native.exec = original
+      await customKit.close()
+    }
+  }).timeout(5000)
+
+  test('pool-one committed timeout restoration fault keeps outcome known and drains queued work', async ({
+    assert,
+  }) => {
+    if (process.env.DB_CLIENT === 'pg') return
+    const customKit = await bootTestApp({ sqlitePoolMax: 1 })
+    const client = customKit.db.connection().getWriteClient().client
+    await resetSchema(customKit)
+    const native = (await client.acquireConnection()) as {
+      pragma(sql: string, options?: { simple: boolean }): unknown
+    }
+    const original = native.pragma.bind(native)
+    const restoreFault = new Error('timeout restoration failed')
+    native.pragma = (sql, options) => {
+      if (sql === 'busy_timeout = 5000') throw restoreFault
+      return original(sql, options)
+    }
+    await client.releaseConnection(native)
+    let entered!: () => void
+    const started = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let resume!: () => void
+    const held = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    let attempts = 0
+    try {
+      const writing = transaction(customKit.db, async (trx) => {
+        attempts++
+        await trx
+          .table('users')
+          .insert({ email: 'diana@example.test', created_at: new Date().toISOString() })
+        entered()
+        await held
+      })
+      await started
+      const reading = customKit.db.from('users').where('email', 'diana@example.test').first()
+      resume()
+      try {
+        await writing
+        assert.fail('expected postcommit fault')
+      } catch (error) {
+        assert.instanceOf(error, PostCommitError)
+        assert.equal((error as PostCommitError).cause, restoreFault)
+      }
+      assert.equal(attempts, 1)
+      assert.isNotNull(await reading)
+      await customKit.db
+        .table('users')
+        .insert({ email: 'clark@example.test', created_at: new Date().toISOString() })
+      assert.isNotNull(
+        await customKit.db.from('users').where('email', 'clark@example.test').first()
+      )
+    } finally {
+      native.pragma = original
+      await customKit.close()
+    }
+  }).timeout(5000)
+
   test('a busy-coded commit listener error does not replay committed writes', async ({
     assert,
   }) => {
@@ -551,7 +660,8 @@ test.group('managed transaction wrapper', (group) => {
       })
       assert.fail('expected listener failure')
     } catch (error) {
-      assert.equal(error, failure)
+      assert.instanceOf(error, PostCommitError)
+      assert.equal((error as PostCommitError).cause, failure)
     }
     assert.equal(attempts, 1)
     assert.lengthOf(await kit.db.from('users').where('email', 'once@example.test'), 1)

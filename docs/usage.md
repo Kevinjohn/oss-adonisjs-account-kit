@@ -85,9 +85,20 @@ application permission records; lock mutable permission rows through `trx` when 
 policy requires serialization. The limiter runs outside the write transaction to avoid a
 same-database limiter deadlock with a one-connection SQLite pool.
 
+`onRecoveryIssuedTransaction(user, trx)` is an optional recovery-issuance hook. After the
+issuance limiter and initial email lookup, the package starts its root transaction, locks and
+reloads that user, confirms the requested email still matches, and replaces the token before
+calling the hook. The hook can check current authority and eligibility and write an audit or
+command claim through `trx`. Throwing rolls back the replacement, preserving the previous link.
+SQLite may retry the callback, so keep it database-only and repeatable. URL generation,
+notification and bearer capture run only after a verified commit.
+
 `onInvitationAccepted(user, invitation, trx)` runs inside the acceptance transaction. Use `trx`
 for all application writes, such as role assignment. Throwing rolls back both the account and
 application writes.
+
+The package admits passwords of 8–256 UTF-16 units without changing their bytes. Applications
+may enforce their own narrower policy before calling it.
 
 Use `onCredentialsChangedTransaction(user, context, trx)` for token/session revocation that must
 commit atomically with a password or email change. The context contains `operation`,
