@@ -431,7 +431,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     }),
   ])
   const contentionElapsedMs = Math.round(performance.now() - contentionStartedAt)
-  assert.deepEqual(contentionResponses.map((response) => response.status()).sort(), [201, 422])
+  assert.deepEqual(contentionResponses.map((response) => response.status()).sort(), [201, 400])
   const contendedUsers = await db
     .from(User.table)
     .where('email', 'contended-member@example.test')

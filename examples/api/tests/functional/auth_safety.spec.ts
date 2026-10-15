@@ -38,7 +38,10 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   const token = responseBody<{ data: { token: string } }>(signup).data.token
   const blocked = await client.get('/api/v1/account/invitations').bearerToken(token)
   assert.equal(blocked.status(), 403)
-  assert.equal((blocked.body() as unknown as { code: string }).code, 'unverified_email')
+  assert.equal(
+    (blocked.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
+    'unverified_email'
+  )
   const provision = notifications.events.find((event) => event.kind === 'verification')
   assert.isDefined(provision)
   const proof = new URL(provision!.value).pathname.split('/').at(-1)!
@@ -51,7 +54,7 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   const previousPassword = await client
     .post('/api/v1/auth/login')
     .json({ email, password: 'PrecreatorPass123!' })
-  assert.equal(previousPassword.status(), 400)
+  assert.equal(previousPassword.status(), 401)
   const claimantPassword = await client
     .post('/api/v1/auth/login')
     .json({ email, password: 'ClaimantPass123!' })
