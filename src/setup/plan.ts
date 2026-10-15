@@ -613,6 +613,7 @@ function managedRoutesSource(choices: SetupChoices): string {
     'registerManagedRoutes(router, {',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
+    `  verificationRequired: ${choices.policy.verificationRequired},`,
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
     '})',
@@ -638,7 +639,7 @@ function managedGuardSource(choices: SetupChoices): string {
   ].join('\n')
 }
 
-function managedAccessMiddlewareSource(): string {
+function managedAccessMiddlewareSource(choices: SetupChoices): string {
   return [
     "import app from '@adonisjs/core/services/app'",
     "import { AccountKit } from 'adonisjs-account-kit'",
@@ -648,7 +649,7 @@ function managedAccessMiddlewareSource(): string {
     'export default managedAccountMiddleware({',
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
-    '  active: true,',
+    `  active: ${choices.policy.verificationRequired},`,
     '})',
     '',
   ].join('\n')
@@ -724,7 +725,9 @@ function accountConfigSource(choices: SetupChoices): string {
     '',
     'export default defineConfig({',
     '  users,',
-    `  usersTable: ${JSON.stringify(choices.user.table)},`,
+    ...(choices.user.adapter === 'custom'
+      ? [`  usersTable: ${JSON.stringify(choices.user.table)},`]
+      : []),
     `  enabled: ${JSON.stringify(serviceCapabilities)},`,
     `  registration: { availability: ${JSON.stringify(choices.policy.registration)}${choices.policy.registrationFields.length ? ', mapFields: mapRegistrationFields' : ''} },`,
     `  passwordPolicy: ${JSON.stringify(choices.policy.password)},`,
@@ -1005,11 +1008,14 @@ export async function planSetup(
       state.existingChoices?.authentication ? managedGuardSource(state.existingChoices) : null,
       'Adapt the selected existing AdonisJS guard'
     )
-    addChange(
+    ownedChange(
       changes,
       state,
       'app/middleware/account_kit_access_middleware.ts',
-      managedAccessMiddlewareSource(),
+      managedAccessMiddlewareSource(choices),
+      state.existingChoices?.authentication && state.existingChoices.managed.length
+        ? managedAccessMiddlewareSource(state.existingChoices)
+        : null,
       'Offer the same account revision and restriction gate to application-owned routes'
     )
     ownedChange(
