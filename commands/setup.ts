@@ -69,6 +69,13 @@ export default class SetupAccountKit extends BaseCommand {
             (await ask('Managed endpoint groups, comma separated')) || choices.features.join(','),
             'managed'
           )
+    const excluded = await ask('Managed endpoint exclusions, comma separated (optional)')
+    choices.managedExcept = excluded
+      ? (excluded
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean) as NonNullable<SetupChoices['managedExcept']>)
+      : []
     choices.routePrefix = (await ask('Managed route prefix (/account)')) || choices.routePrefix
     choices.user.model = (await ask('User model import (#models/user)')) || choices.user.model
     choices.user.table = (await ask('User table (users)')) || choices.user.table
