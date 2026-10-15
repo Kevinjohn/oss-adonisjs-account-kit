@@ -21,6 +21,7 @@ This project has no published releases yet. The current candidate remains versio
 - `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
 - `users.credentials_changed_at` (column) invalidates existing browser sessions and login attempts using superseded account evidence.
 - The API example provides session CSRF bootstrap, browser logout, and selected-guard access middleware for protected routes.
+- The session reference makes CSRF bootstrap responses non-cacheable and documents browser setup and application-route revocation.
 - Inactive accounts may correct an unconfirmed email through the limited credential gate while verified routes still reject them.
 - The API example checks token abilities before sending invitations and returns `missing_ability` for a token without permission.
 - Read-only activation and email-change proof inspection methods check current account state without consuming a link.

@@ -5,7 +5,8 @@ import { loginValidator } from '#validators/user'
 import { sessionGuard } from '#services/account_kit_guards'
 
 export default class SessionController {
-  csrf({ request }: HttpContext) {
+  csrf({ request, response }: HttpContext) {
+    response.header('Cache-Control', 'no-store')
     return { csrfToken: request.csrfToken }
   }
 
