@@ -40,7 +40,10 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
       password: 'SessionPass123!',
     })
   assert.equal(denied.status(), 403)
-  assert.equal((denied.body() as unknown as { errors: [{ code: string }] }).errors[0].code, 'E_BAD_CSRF_TOKEN')
+  assert.equal(
+    (denied.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
+    'E_BAD_CSRF_TOKEN'
+  )
 
   const login = await client
     .post('/api/v1/auth/login')
