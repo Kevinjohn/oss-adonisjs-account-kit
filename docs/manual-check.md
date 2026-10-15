@@ -8,7 +8,7 @@ Toolchain and consumer versions: Node `24.19.0`, pnpm `11.23.0`, AdonisJS Core `
 
 The consumer applied eight migrations on each database: two API-kit base migrations, four package migrations, the limiter table migration, and one consumer-only role fixture migration. Consumer typecheck passed. One real HTTP Japa workflow test passed on each dialect. The SQLite pool was configured with `min: 1` and `max: 4`. Invite and management authorization callbacks performed normal database reads to validate the actor. It covered:
 
-- Recovery requests for known, unknown, and notification-failure cases all returned the same 202 acknowledgement. Invalid email input was rejected. Repeated GET inspection preserved the token, reset stored a verified account with a new hashed password, and replay was rejected. Recovery, verification, invitation inspection, invitation acceptance, and email-change token responses set `Referrer-Policy: no-referrer`.
+- Password reset requests for known, unknown, and notification-failure cases all returned the same 202 acknowledgement. Invalid email input was rejected. Repeated GET inspection preserved the token, reset stored a verified account with a new hashed password, and replay was rejected. Password reset, verification, invitation inspection, invitation acceptance, and email-change token responses set `Referrer-Policy: no-referrer`.
 - Verification sending required authentication; completion returned `verified` and then `already_verified`, and a later send returned `already_verified` without a second notification.
 - Invitation sending required authentication. Inspection did not consume the link. Acceptance created a verified user with a hashed password, and the application role callback wrote its assignment through the supplied transaction. Replay was rejected. The confirmation was sent to the invited mailbox.
 - Invitation resend and revoke both ran through authenticated HTTP routes. The management callback queried the actor through the ordinary database connection; the larger SQLite pool supported that lookup while the package held its write transaction. Resend rotated the token, the old link failed, and the new link remained usable until revoke.
@@ -31,9 +31,9 @@ The starter-kit fork, fork-derived stubs and documentation synchronization, brow
 
 ## T8.2: upgrade an existing consumer
 
-Verified on 2026-10-13 in a second fresh official API-kit app. The app first installed the stage-3 package archive (SHA-256 `a98d746e90bef50bb71ba6d5bd4b0b138a302314bc2eeedcf998232b725606df`); the recovery baseline passed over real HTTP on SQLite and PostgreSQL. Before upgrade, both databases had seven migration-ledger rows, including all four package migrations, plus one verified baseline account.
+Verified on 2026-10-13 in a second fresh official API-kit app. The app first installed the stage-3 package archive (SHA-256 `a98d746e90bef50bb71ba6d5bd4b0b138a302314bc2eeedcf998232b725606df`); the password reset baseline passed over real HTTP on SQLite and PostgreSQL. Before upgrade, both databases had seven migration-ledger rows, including all four package migrations, plus one verified baseline account.
 
-The app was then upgraded to the stage-6 candidate archive recorded above. The installed package resolved from that archive and remained version `0.0.0`. Candidate configure skipped the existing application config, provider, and all four migration files. The config SHA-256 remained `ae636bcaa3dfe5b93cdd6548b9c98045ec3458eb153cbce6c21a4712986ab4b8`, and migration runs reported no pending migrations on either database. The pre-existing verified account remained present. The recovery baseline passed again after upgrade on both dialects. A consumer-only role fixture migration was added after this check, leaving eight total migration rows, four belonging to the package.
+The app was then upgraded to the stage-6 candidate archive recorded above. The installed package resolved from that archive and remained version `0.0.0`. Candidate configure skipped the existing application config, provider, and all four migration files. The config SHA-256 remained `ae636bcaa3dfe5b93cdd6548b9c98045ec3458eb153cbce6c21a4712986ab4b8`, and migration runs reported no pending migrations on either database. The pre-existing verified account remained present. The password reset baseline passed again after upgrade on both dialects. A consumer-only role fixture migration was added after this check, leaving eight total migration rows, four belonging to the package.
 
 The upgraded app passed two functional HTTP tests on each dialect and passed consumer typecheck. The expanded workflow included resend and revoke through authenticated routes with authorization callbacks that perform ordinary database reads. Its SQLite pool used `min: 1` and `max: 4`, so those reads could use a separate connection while the package held a transaction. Email-change confirmation was delivered to the requested new address, with the change notice sent to the old address.
 
@@ -58,11 +58,11 @@ That review recorded these follow-ups, addressed by the corrections below:
 - **P2, optional:** PostgreSQL credential operations acquired user and token locks in different orders and could
   propagate transient deadlock errors. Atomic state remains protected; PostgreSQL retries are
   outside the approved transaction policy. See [password change](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/credentials.ts#L40),
-  [recovery reset](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/recovery.ts#L45), and [email-change completion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/credentials.ts#L125).
+  [password reset completion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/recovery.ts#L45), and [email-change completion](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/credentials.ts#L125).
 - **P2, optional:** Validate [minRequestMs](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/src/account_kit.ts#L78) as finite and non-negative. The earlier
   contract accepted values such as `Infinity` and `NaN`; the default is 300 ms.
-- **P3, optional:** Strengthen [recovery rollback coverage](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/tests/recovery.spec.ts#L447) with an adapter that
-  writes the password and then throws. The earlier recovery case threw before that write;
+- **P3, optional:** Strengthen [password reset rollback coverage](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/tests/recovery.spec.ts#L447) with an adapter that
+  writes the password and then throws. The earlier password reset case threw before that write;
   credential-change tests already cover write-then-throw behavior.
 - **P3, optional:** The [default email lookup](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/stubs/config/account_kit.stub#L27) applied `LOWER(TRIM(email))`.
   This may require an expression index for efficient lookup at larger user counts; no workload
@@ -74,7 +74,7 @@ fork/browser work, owner application integration, and publication remain deferre
 
 ## T8.5: consolidated review corrections
 
-The later review identified transaction and error-contract defects, recovery timing guidance,
+The later review identified transaction and error-contract defects, password reset timing guidance,
 configuration hardening, test gaps and deferred release prerequisites. Corrections applied on
 2026-10-13 now pass 129 SQLite tests and 130 PostgreSQL tests, lint, typecheck, build and the two-test
 built-export smoke gate. The earlier counts and archive hashes above remain historical evidence.
@@ -82,12 +82,12 @@ built-export smoke gate. The earlier counts and archive hashes above remain hist
 PostgreSQL regressions cover rejected deferred-constraint commits at the helper and public password
 operation, zero commit events/callbacks on failure, restored durable state, connection reuse, and
 rejection of active global transactions. Both dialects exercise the stricter password/reset race,
-recovery write-then-throw rollback and full invitation/recovery/email-change workflow with UUID
+password reset write-then-throw rollback and full invitation/password reset/email-change workflow with UUID
 strings and matching text foreign keys. SQLite also checks exact unique-column classification
 through Lucid's query-prefixed errors. The new bug regressions failed against the original behavior
 before their fixes were applied.
 
-Recovery retains its configured response-duration floor; it does not establish constant response
+Password reset retains its configured response-duration floor; it does not establish constant response
 timing. Prompt notification enqueueing and generic acknowledgements are application integration
 requirements. PostgreSQL retains no general transaction retry policy. The earlier optional
 follow-ups above are addressed; the recorded dependency advisories remain unresolved.
@@ -101,7 +101,7 @@ email equality lookup; the application's notification, role and credential callb
 Fresh migrations had already passed on the copied SQLite file and a separate PostgreSQL database.
 
 These checks exercised invitation acceptance, role assignment, authenticated resend/revoke,
-recovery acknowledgement/inspection/reset/replay, verification, password change/access-token
+password reset acknowledgement/inspection/reset/replay, verification, password change/access-token
 revocation, and normalized email-change confirmation/notification/replay. This was a copied
 configured app, not a newly generated app or a repeat of the full stage-3 upgrade rehearsal.
 Earlier consumer passes and hashes remain historical evidence.
@@ -119,7 +119,7 @@ Stage 7, starter/browser work, owner application integration and publication rem
 ## T8.6: account-operation refactor and custom-table support
 
 The subsequent refactor shares token-consumption, password validation and post-commit effect
-helpers, reduces repeated test setup, validates recovery client keys, reports missing provider
+helpers, reduces repeated test setup, validates password reset client keys, reports missing provider
 configuration, and preserves `APP_URL` subpaths. Email-change notices are attempted after a failing
 credential callback; multiple post-commit failures retain their order in an `AggregateError`.
 
@@ -131,7 +131,7 @@ continues to generate application-owned migrations for `users`; it does not rewr
 The custom-table regressions first reproduced a reserved SQLite table failure and a raw PostgreSQL
 unique error for a long table name. Four service cases now use `accounts`, `order`, and 54- and
 62-character names without a `users` table. They cover verification, invitation acceptance,
-recovery, password change, email change, real unique-error mapping and rollback. The conflict is
+password reset, password change, email change, real unique-error mapping and rollback. The conflict is
 injected within the adapter transaction for deterministic error coverage; the existing independent
 race tests continue to cover concurrency. A separate native-connection assertion verifies the
 custom-table write lock blocks another SQLite writer.

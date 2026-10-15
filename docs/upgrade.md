@@ -5,19 +5,56 @@ pagination, registration mapping, and generated schema. Review each item before 
 installed package. Configure deliberately skips existing config and migration files; it does not
 rewrite them to match new options or schemas.
 
+## Vocabulary alignment
+
+D24 permits breaking contract changes before first publication, with no compatibility layer.
+Apply the [Unreleased rename list](../CHANGELOG.md#unreleased) to service calls, input imports,
+capability values, URL/notification callbacks, expiry configuration and lifecycle listeners.
+Replace `ttl` with `expiresIn`, using `passwordReset` and `emailVerification` inside it; existing
+string lifetimes retain their meaning and positive numeric values represent seconds. Keep
+credential-revocation hooks and all `E_ACCOUNT_KIT_*` error codes unchanged.
+
+The reset-token table changes from `account_recovery_tokens` to `password_reset_tokens`.
+For an existing installation, configure preserves the old applied migration and may generate a
+new `*_account_kit_create_password_reset_tokens.ts`. Before running it, replace that new file's
+create/drop operations with the following application-owned rename migration. Do not edit an
+already-applied migration or create a second empty reset-token table:
+
+```ts
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  async up() {
+    this.schema.renameTable('account_recovery_tokens', 'password_reset_tokens')
+  }
+
+  async down() {
+    this.schema.renameTable('password_reset_tokens', 'account_recovery_tokens')
+  }
+}
+```
+
+Use a maintenance window so old and new package versions do not access different table names.
+Preserve every existing column and row, including hashes, expiry timestamps and outstanding
+proofs. Apply the rename before starting the new application code; restore the old code with the
+reverse table rename if rolling back. Fresh installations use the generated create-table migration.
+The email-change table, verification-state model, token columns, default lifetimes and secret
+length remain unchanged; their later design decisions are outside this vocabulary change.
+
 ## Existing installations
 
 1. Build and install the candidate tarball using the package's normal pnpm workflow. Keep a copy of
    the current application-owned config and migrations for review.
 2. Run `pnpm exec node ace configure adonisjs-account-kit`. Existing config is preserved. Existing
    migration files with recognized names are skipped; configure creates only missing migrations,
-   including the new fifth migration `create_account_transaction_lock`.
+   including `create_account_transaction_lock`. For an older reset-token table, apply the
+   vocabulary migration instructions above instead of running the generated create-table operation.
 3. Compare the preserved `config/account_kit.ts` with the current generated stub and update it
    manually. Add the required `limiterSecret`, preferably the stable `APP_KEY`; update callbacks,
    adapter construction, and capability configuration as needed.
 4. Update the application-owned HTTP integration after installing the candidate. Adopt the new
    `accountErrorResponse` export in the central exception handler and update pagination consumers
-   and recovery failure handling. The upgrade fixture keeps its baseline-compatible handler until
+   and password reset failure handling. The upgrade fixture keeps its baseline-compatible handler until
    this explicit integration step.
 5. Review generated migrations against the application schema, then run migrations in a controlled
    deployment. The package cannot rewrite already-applied schema.
@@ -87,12 +124,12 @@ number of database entries examined.
 - **Credential revocation can be transactional.** Prefer
   `onCredentialsChangedTransaction(user, context, trx)` when revocations must commit atomically.
   It is mutually exclusive with `onCredentialsChanged(user, context)`, the legacy post-commit hook.
-  Dedicated `notify.passwordReset` and `notify.passwordChanged` callbacks cover user notices.
+  Dedicated `notify.passwordResetCompleted` and `notify.passwordChanged` callbacks cover user notices.
 - **Lifecycle callbacks expose identifiers.** `onLifecycleEvent` receives safe event names and
   IDs after commit. Tokens, addresses, and notification URLs are excluded. A durable consumer must
   persist an outbox record inside the relevant transaction.
 - **Post-commit failure means committed state.** `PostCommitError.committed` is `true`; do not treat
-  it as a rollback or blindly repeat the mutation. Recovery request handlers must suppress both
+  it as a rollback or blindly repeat the mutation. Password reset request handlers must suppress both
   `DeliveryError` and `PostCommitError` and return the generic acknowledgement.
 - **HTTP error contracts use package metadata.** Map `E_ACCOUNT_KIT_*` codes and status centrally.
   Missing and denied invitation-management requests use the same not-found code/body. Do not expose

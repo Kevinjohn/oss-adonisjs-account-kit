@@ -2,8 +2,8 @@
 
 Validation uses Node 24 and pnpm. Local checks are authoritative; the repository workflows remain manual and were not dispatched.
 
-The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 205
-SQLite tests, 205 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
+The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 220
+SQLite tests, 220 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
 model hooks, central locking, transaction cleanup, bounded pagination, limiter privacy, credential
 effects and pruning. Installed-consumer outcomes are recorded separately for the exact archive;
 package test totals alone do not establish distribution compatibility.
@@ -33,6 +33,32 @@ pnpm test:consumer -- --database=postgres
 pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=sqlite
 pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=postgres
 ```
+
+### Vocabulary alignment: 15 October 2026
+
+The vocabulary implementation at `0853199e67a75e44cc3c7b901cd463b5a24c1437` passes on Node
+24.21.0 and pnpm 11.23.0: lint, typecheck, build, 220 SQLite tests, 220 PostgreSQL 16.15 tests,
+61 PostgreSQL service tests and four built-export tests. Lint, typecheck, build and SQLite tests
+emit no warnings. The final source tree also passes the repository formatter.
+
+Fresh packed API consumers pass on SQLite and PostgreSQL, including generated-config typechecking,
+idempotent configure, migrations, application lint/format/typecheck and all five HTTP tests on
+each database. Both runs installed the same archive, SHA-256
+`e879716648eb1cf4bb14e35f931fbc913a078b5fe079727aa548db43bd304ca3`.
+The PostgreSQL test server was stopped after validation. Later documentation-only changes do not
+change the verified implementation; this archive is local test evidence, not a published package.
+
+The numeric-seconds expiry helper test and the real encrypted email-verification proof test were
+each shown to fail without their numeric handling. The latter accepts a proof after 59 minutes
+and rejects it after 61 minutes for a 3600-second setting. Each mutation was restored before
+integrated validation. Independent review's required expiry correction and optional missing-notice
+validation coverage were addressed; no required findings remain.
+
+Historical upgrade validation was not rerun. Its current fixture consumes a reset token before
+upgrade, so it does not prove redemption of an outstanding token after the table rename. That
+additional coverage remains optional follow-up. The existing documentation archive allowlist also
+includes ignored planning documents; exclude private material before package publication. Neither
+follow-up changes the vocabulary implementation, and no package publication was performed.
 
 ### Local PostgreSQL package tests
 
@@ -142,7 +168,7 @@ the pull request; historical development archives do not count as evidence for i
 
 The latest-compatible API fixture exercises fresh and upgraded applications on both databases,
 including all HTTP flows, required profile data, string/UUID IDs and a custom table, confirmations,
-non-disclosing recovery responses, permission failures, scanner-safe inspection, token revocation,
+non-disclosing password reset responses, permission failures, scanner-safe inspection, token revocation,
 and retryable outbox delivery. The exact-floor consumer independently typechecks the public
 package API and exercises rollback, deferred commit failure, post-commit failure and concurrent
 acceptance on both databases. See [compatibility](compatibility.md) for the distinct dependency sets.

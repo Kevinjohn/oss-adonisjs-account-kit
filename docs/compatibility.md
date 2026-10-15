@@ -14,7 +14,7 @@ peer ranges separately; testing one point does not verify every version in a ran
 | `@adonisjs/assembler` | 8.5.2        | optional peer `^8.0.0` for configure tooling |
 
 The package minimum matrix uses Core 7.0.0, assembler 8.0.0, Lucid 22.4.2, limiter 3.0.0 and
-Luxon 3.0.0. Lucid 22.0.0 fails recovery issuance on both databases because its transaction
+Luxon 3.0.0. Lucid 22.0.0 fails password reset issuance on both databases because its transaction
 insert builder does not expose `onConflict`; the supported floor is therefore 22.4.2. The complete
 HTTP reference application uses the latest compatible set, including Core 7.6.0 and assembler
 8.5.2. Concrete installed-consumer outcomes are recorded in [verification](verification.md).
