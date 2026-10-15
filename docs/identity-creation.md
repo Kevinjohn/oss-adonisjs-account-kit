@@ -33,7 +33,10 @@ once in the transaction. Password-reset proof rows remain in `password_reset_tok
 An inactive user's email change updates both addresses and supersedes an earlier activation
 proof. An active user's change leaves the confirmed address in place until completion; requesting
 the confirmed address again cancels a pending change. Activation resend cannot replace a pending
-email-change proof.
+email-change proof. Password reset and password change cancel a distinct pending change while
+preserving an equal pending address until an inactive account completes verification. Changing an
+inactive account's confirmed address calls the transaction-aware credential revocation hook in
+that write transaction.
 
 The package-owned `social_identities` table stores provider and subject metadata, with a unique
 `(provider, provider_user_id)` key and cascading user foreign key. It stores no provider access
