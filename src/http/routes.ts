@@ -50,6 +50,16 @@ export interface ExistingRoute {
   method: string
   path: string
   name?: string
+  /** Parsed by Adonis when available; retains inherited parameter constraints. */
+  tokens?: readonly RoutePatternToken[]
+  matchers?: Record<string, { match?: RegExp }>
+}
+
+export interface RoutePatternToken {
+  type: 0 | 1 | 2 | 3
+  val: string
+  end: string
+  matcher?: RegExp
 }
 
 const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] = [
@@ -211,26 +221,42 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
   },
 ]
 
-function overlappingPaths(first: string, second: string): boolean {
-  const segments = (path: string) => path.replace(/\/+$/, '').split('/').filter(Boolean)
-  const left = segments(first)
-  const right = segments(second)
-  const optional = (part: string) => part.startsWith(':') && part.endsWith('?')
-  const wildcard = (part: string) => part === '*'
-  const parameterSuffix = (part: string): string | null => {
-    if (!part.startsWith(':')) return null
-    const name = part.slice(1).replace(/\?$/, '')
-    const dot = name.indexOf('.')
-    return dot === -1 ? '' : name.slice(dot)
-  }
-  const compatible = (a: string, b: string): boolean => {
-    const aSuffix = parameterSuffix(a)
-    const bSuffix = parameterSuffix(b)
-    if (aSuffix === null && bSuffix === null) return a === b
-    if (aSuffix === null) return a.endsWith(bSuffix!) && a.length > bSuffix!.length
-    if (bSuffix === null) return b.endsWith(aSuffix) && b.length > aSuffix.length
-    return aSuffix.endsWith(bSuffix) || bSuffix.endsWith(aSuffix)
-  }
+function pathTokens(path: string, matchers: ExistingRoute['matchers'] = {}): RoutePatternToken[] {
+  return path
+    .replace(/\/+$/, '')
+    .split('/')
+    .filter(Boolean)
+    .map((part) => {
+      if (part === '*') return { type: 2, val: part, end: '' }
+      if (!part.startsWith(':')) return { type: 0, val: part, end: '' }
+      const name = part.slice(1)
+      const dot = name.indexOf('.')
+      const key = name.slice(0, dot === -1 ? undefined : dot).replace(/\?$/, '')
+      return {
+        type: part.includes('?') ? 3 : 1,
+        val: key,
+        end: dot === -1 ? '' : name.slice(dot),
+        matcher: matchers?.[key]?.match,
+      }
+    })
+}
+
+function overlapsSegment(left: RoutePatternToken, right: RoutePatternToken): boolean {
+  const accepts = (token: RoutePatternToken, value: string) =>
+    value.endsWith(token.end) &&
+    (!token.matcher ||
+      new RegExp(token.matcher.source, token.matcher.flags.replace(/[gy]/g, '')).test(value))
+  if (left.type === 0 && right.type === 0) return left.val === right.val
+  if (left.type === 0) return accepts(right, left.val)
+  if (right.type === 0) return accepts(left, right.val)
+  // Managed parameters have no additional matcher; a constrained application
+  // parameter may still intersect them when their literal suffixes intersect.
+  return left.end.endsWith(right.end) || right.end.endsWith(left.end)
+}
+
+function overlappingPaths(existing: ExistingRoute, managedPath: string): boolean {
+  const left = existing.tokens ?? pathTokens(existing.path, existing.matchers)
+  const right = pathTokens(managedPath)
   const visited = new Set<string>()
 
   function intersects(i: number, j: number): boolean {
@@ -240,17 +266,19 @@ function overlappingPaths(first: string, second: string): boolean {
     if (i === left.length && j === right.length) return true
     // Adonis may omit a trailing run of optional parameters, not an optional
     // parameter followed by a required or static segment.
-    if (i < left.length && left.slice(i).every(optional) && intersects(i + 1, j)) return true
-    if (j < right.length && right.slice(j).every(optional) && intersects(i, j + 1)) return true
-    if (i < left.length && wildcard(left[i])) {
+    const skippable = (tokens: readonly RoutePatternToken[], index: number) =>
+      tokens.slice(index).every((token) => token.type === 3 && token.end === '')
+    if (i < left.length && skippable(left, i) && intersects(i + 1, j)) return true
+    if (j < right.length && skippable(right, j) && intersects(i, j + 1)) return true
+    if (i < left.length && left[i].type === 2) {
       // A wildcard must consume at least one trailing segment.
       if (j < right.length && (intersects(i + 1, j + 1) || intersects(i, j + 1))) return true
     }
-    if (j < right.length && wildcard(right[j])) {
+    if (j < right.length && right[j].type === 2) {
       if (i < left.length && (intersects(i + 1, j + 1) || intersects(i + 1, j))) return true
     }
     if (i === left.length || j === right.length) return false
-    return compatible(left[i], right[j]) && intersects(i + 1, j + 1)
+    return overlapsSegment(left[i], right[j]) && intersects(i + 1, j + 1)
   }
 
   return intersects(0, 0)
@@ -289,8 +317,7 @@ export function planManagedRoutes(
   for (const route of result) {
     const collision = existing.find(
       (candidate) =>
-        candidate.method.toUpperCase() === route.method &&
-        overlappingPaths(candidate.path, route.path)
+        candidate.method.toUpperCase() === route.method && overlappingPaths(candidate, route.path)
     )
     if (collision)
       throw new Error(
@@ -310,7 +337,7 @@ export function assertManagedRouteCollisions(
       (candidate) =>
         candidate.name !== `accountKit.${route.name}` &&
         candidate.method.toUpperCase() === route.method &&
-        overlappingPaths(candidate.path, route.path)
+        overlappingPaths(candidate, route.path)
     )
     if (collision)
       throw new Error(
