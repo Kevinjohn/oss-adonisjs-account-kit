@@ -208,6 +208,7 @@ test.group('maintained notifications', () => {
     assert.isFalse(unsafe.ready)
     assert.include(unsafe.problems.join(' '), 'HTTPS')
     assert.include(unsafe.problems.join(' '), 'worker')
+    assert.include(unsafe.problems.join(' '), 'passwordReset destination')
     const durable = notificationReadiness({
       environment: 'production',
       delivery: 'durable',
@@ -237,6 +238,17 @@ test.group('maintained notifications', () => {
     })
     assert.isFalse(capture.ready)
     assert.include(capture.problems.join(' '), 'transport')
+    const discard = notificationReadiness({
+      environment: 'production',
+      delivery: 'best-effort',
+      transport: 'discard',
+      backendOrigin: 'https://api.example.test',
+      actionOrigin: 'https://app.example.test',
+      enabled: ['passwordReset'],
+      destinations: { passwordReset: 'reset' },
+    })
+    assert.isFalse(discard.ready)
+    assert.include(discard.problems.join(' '), 'transport')
   })
 })
 
