@@ -134,7 +134,10 @@ export async function updateProfile(
   if (input.email !== undefined && !isEmailShaped(input.email))
     throw new InvalidInputError('Invalid email')
   const newEmail = input.email === undefined ? undefined : normaliseEmail(input.email)
-  const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
+  const registrationData =
+    input.registrationData === undefined
+      ? undefined
+      : await mapRegistrationFields(deps.config, input.registrationData)
   await consume(
     deps.limiter,
     'identity:user',
