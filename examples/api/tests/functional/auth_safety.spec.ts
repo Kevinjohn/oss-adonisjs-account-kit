@@ -300,7 +300,10 @@ test('a bearer token without the invitation ability cannot send an invitation', 
     .bearerToken(token.value!.release())
     .json({ email: `invitee-${randomUUID()}@example.test`, role: 'member' })
   assert.equal(response.status(), 403)
-  assert.equal(responseBody<{ code: string }>(response).code, 'missing_ability')
+  assert.equal(
+    responseBody<{ errors: [{ code: string }] }>(response).errors[0].code,
+    'missing_ability'
+  )
 })
 
 test('bearer login uses the real token guard and password changes revoke issued tokens', async ({

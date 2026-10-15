@@ -136,6 +136,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   const inspectTwo = await client.get(recoveryPath)
   assert.equal(inspectOne.status(), 200)
   assert.equal(inspectOne.header('referrer-policy'), 'no-referrer')
+  assert.equal(inspectOne.header('cache-control'), 'no-store')
   assert.deepEqual(inspectOne.body(), inspectTwo.body())
   assert.equal(
     (
@@ -200,7 +201,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
         passwordConfirmation: 'AnotherPass123!',
       })
     ).status(),
-    422
+    400
   )
   assert.equal((await client.post('/account-kit/recovery').json({ email: 'bad' })).status(), 422)
   const postCommitRequest = await client
@@ -215,13 +216,8 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     .json({ password: 'CommittedReset123!', passwordConfirmation: 'CommittedReset123!' })
   notifications.failPasswordReset = false
   assert.equal(postCommitRequest.status(), 202)
-  assert.equal(postCommitResponse.status(), 500)
-  const postCommitBody = responseBody<{ code: string; committed: boolean; cause?: unknown }>(
-    postCommitResponse
-  )
-  assert.equal(postCommitBody.code, 'E_ACCOUNT_KIT_POST_COMMIT')
-  assert.equal(postCommitBody.committed, true)
-  assert.notProperty(postCommitBody, 'cause')
+  assert.equal(postCommitResponse.status(), 202)
+  assert.deepEqual(postCommitResponse.body(), { message: 'Password reset.' })
   const pendingOutbox = await db
     .from('account_kit_outbox')
     .where('operation', 'password_reset')
@@ -275,18 +271,21 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     notifications.events.find((event) => event.kind === 'verification')!.value
   )
   const verificationPath = `/account-kit/verification/${encodeURIComponent(verificationToken)}`
-  const verificationFirst = await client
-    .post(verificationPath)
-    .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+  const verificationFirst = await client.get(verificationPath)
   assert.equal(verificationFirst.header('referrer-policy'), 'no-referrer')
-  assert.equal((verificationFirst.body() as { result: string }).result, 'verified')
+  assert.equal(verificationFirst.header('cache-control'), 'no-store')
+  assert.deepEqual(verificationFirst.body(), { confirmation: true })
+  const verificationComplete = await client
+    .post(verificationPath)
+    .json({ password: 'ClaimedVerify123!', passwordConfirmation: 'ClaimedVerify123!' })
+  assert.equal((verificationComplete.body() as { result: string }).result, 'verified')
   assert.equal(
     (
       await client
         .post(verificationPath)
-        .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+        .json({ password: 'ClaimedVerify123!', passwordConfirmation: 'ClaimedVerify123!' })
     ).status(),
-    422
+    400
   )
   assert.equal(
     (
@@ -341,6 +340,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   const invitationInspect = await client.get(invitationPath)
   assert.equal((invitationInspect.body() as { email: string }).email, 'new-member@example.test')
   assert.equal(invitationInspect.header('referrer-policy'), 'no-referrer')
+  assert.equal(invitationInspect.header('cache-control'), 'no-store')
   assert.deepEqual((await client.get(invitationPath)).body(), invitationInspect.body())
   assert.equal(
     (
@@ -383,7 +383,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
         fullName: 'Other Member',
       })
     ).status(),
-    422
+    400
   )
   assert.equal(
     (
@@ -445,9 +445,15 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
       .loginAs(inviter)
       .json({})
     assert.equal(invalidResend.status(), 422)
-    assert.equal(responseBody<{ code: string }>(invalidResend).code, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.equal(
+      responseBody<{ errors: [{ code: string }] }>(invalidResend).errors[0].code,
+      'E_ACCOUNT_KIT_INVALID_INPUT'
+    )
     assert.equal(invalidRevoke.status(), 422)
-    assert.equal(responseBody<{ code: string }>(invalidRevoke).code, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.equal(
+      responseBody<{ errors: [{ code: string }] }>(invalidRevoke).errors[0].code,
+      'E_ACCOUNT_KIT_INVALID_INPUT'
+    )
   }
   const originalResendToken = tokenFrom(
     notifications.events.filter((event) => event.kind === 'invitation').at(-1)!.value
@@ -465,7 +471,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     (
       await client.get(`/account-kit/invitation/${encodeURIComponent(originalResendToken)}`)
     ).status(),
-    422
+    400
   )
   assert.equal(
     (await client.get(`/account-kit/invitation/${encodeURIComponent(resentToken)}`)).status(),
@@ -495,7 +501,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   assert.equal(revoked.status(), 204)
   assert.equal(
     (await client.get(`/account-kit/invitation/${encodeURIComponent(resentToken)}`)).status(),
-    422
+    400
   )
 
   const passwordUser = await User.create({
@@ -572,7 +578,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     })
   assert.equal(badProof.status(), 403)
   assert.equal(
-    responseBody<{ code: string }>(badProof).code,
+    responseBody<{ errors: [{ code: string }] }>(badProof).errors[0].code,
     'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
   )
 
@@ -604,13 +610,16 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   assert.equal(emailNotice.recipient, 'new-address@example.test')
   const emailToken = tokenFrom(emailNotice.value)
   const emailPath = `/account-kit/email-change/${encodeURIComponent(emailToken)}`
-  assert.equal((await client.get(emailPath)).header('referrer-policy'), 'no-referrer')
+  const emailInspect = await client.get(emailPath)
+  assert.equal(emailInspect.header('referrer-policy'), 'no-referrer')
+  assert.equal(emailInspect.header('cache-control'), 'no-store')
   await emailUser.refresh()
   assert.equal(emailUser.email, 'old-address@example.test')
   const emailComplete = await client.post(emailPath).json({})
   assert.equal(emailComplete.status(), 200)
   assert.equal((emailComplete.body() as { email: string }).email, 'new-address@example.test')
   assert.equal((emailComplete.body() as { verified: boolean }).verified, true)
+  assert.equal((await client.get(emailPath)).status(), 400)
   assert.equal(notifications.events.filter((event) => event.kind === 'emailChanged').length, 1)
   assert.equal(
     notifications.events.find((event) => event.kind === 'emailChanged')!.recipient,
@@ -623,7 +632,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     .first()
   assert.isNull(emailChangeOutbox)
   assert.equal(await dispatchAccountKitOutbox(), 0)
-  assert.equal((await client.post(emailPath).json({})).status(), 422)
+  assert.equal((await client.post(emailPath).json({})).status(), 400)
   assert.equal(
     Number(
       (

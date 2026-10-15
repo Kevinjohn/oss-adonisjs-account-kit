@@ -18,36 +18,35 @@ router.get('/', () => {
   return { hello: 'world' }
 })
 
-router.post('/account-kit/recovery', [controllers.AccountKit, 'recoveryRequest'])
-router.get('/account-kit/recovery/:token', [controllers.AccountKit, 'recoveryInspect'])
-router.post('/account-kit/recovery/:token', [controllers.AccountKit, 'recoveryReset'])
-router.get('/account-kit/invitation/:token', [controllers.AccountKit, 'invitationInspect'])
-router.post('/account-kit/invitation/:token', [controllers.AccountKit, 'invitationAccept'])
-router.get('/account-kit/email-change/:token', [controllers.AccountKit, 'emailChangeInspect'])
-router.post('/account-kit/email-change/:token', [controllers.AccountKit, 'emailChangeComplete'])
+router.post('/account-kit/recovery', [controllers.PasswordResets, 'request'])
+router.get('/account-kit/recovery/:token', [controllers.PasswordResets, 'inspect'])
+router.post('/account-kit/recovery/:token', [controllers.PasswordResets, 'complete'])
+router
+  .post('/account-kit/verification/send', [controllers.EmailVerifications, 'send'])
+  .use(middleware.auth())
+  .use(middleware.accountAccess())
+router.get('/account-kit/verification/:token', [controllers.EmailVerifications, 'inspect'])
+router.post('/account-kit/verification/:token', [controllers.EmailVerifications, 'complete'])
+router.get('/account-kit/invitation/:token', [controllers.Invitations, 'inspect'])
+router.post('/account-kit/invitation/:token', [controllers.Invitations, 'accept'])
+router.get('/account-kit/email-change/:token', [controllers.Profile, 'inspectEmailChange'])
+router.post('/account-kit/email-change/:token', [controllers.Profile, 'completeEmailChange'])
 router
   .group(() => {
-    router.post('/invitations', [controllers.AccountKit, 'invitationSend'])
-    router.get('/invitations', [controllers.AccountKit, 'invitationList'])
-    router.post('/invitations/:id/resend', [controllers.AccountKit, 'invitationResend'])
-    router.delete('/invitations/:id', [controllers.AccountKit, 'invitationRevoke'])
-    router.post('/credentials/password', [controllers.AccountKit, 'changePassword'])
+    router.post('/invitations', [controllers.Invitations, 'send'])
+    router.get('/invitations', [controllers.Invitations, 'list'])
+    router.post('/invitations/:id/resend', [controllers.Invitations, 'resend'])
+    router.delete('/invitations/:id', [controllers.Invitations, 'revoke'])
+    router.post('/credentials/password', [controllers.AccountPassword, 'update'])
   })
   .prefix('/account-kit')
   .use(middleware.auth())
   .use(middleware.verifiedAccount())
 
 router
-  .post('/account-kit/credentials/email', [controllers.AccountKit, 'requestEmailChange'])
+  .post('/account-kit/credentials/email', [controllers.Profile, 'requestEmailChange'])
   .use(middleware.auth())
   .use(middleware.accountAccess())
-
-router
-  .post('/account-kit/verification/send', [controllers.AccountKit, 'verificationSend'])
-  .use(middleware.auth())
-  .use(middleware.accountAccess())
-
-router.post('/account-kit/verification/:token', [controllers.AccountKit, 'verificationComplete'])
 
 router
   .group(() => {

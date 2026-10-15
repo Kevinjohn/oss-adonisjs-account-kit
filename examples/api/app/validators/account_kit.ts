@@ -10,6 +10,12 @@ export const passwordValidator = vine.compile(
     passwordConfirmation: vine.string().sameAs('password'),
   })
 )
+export const verificationCompleteValidator = vine.compile(
+  vine.object({
+    password: password(),
+    passwordConfirmation: vine.string().sameAs('password'),
+  })
+)
 export const invitationAcceptValidator = vine.compile(
   vine.object({
     password: password(),

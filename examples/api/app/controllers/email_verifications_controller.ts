@@ -1,0 +1,42 @@
+import app from '@adonisjs/core/services/app'
+import type { HttpContext } from '@adonisjs/core/http'
+import { AccountKit, DeliveryError, InvalidTokenError, PostCommitError } from 'adonisjs-account-kit'
+import { verificationCompleteValidator } from '#validators/account_kit'
+import { proofFailure, proofHeaders } from '#services/http_responses'
+
+export default class EmailVerificationsController {
+  async send({ auth, response }: HttpContext) {
+    const actor = await auth.getUserOrFail()
+    const kit = await app.container.make(AccountKit)
+    try {
+      const result = await kit.emailVerification.send({ userId: actor.id })
+      return response.ok({ result })
+    } catch (error) {
+      if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        return response.ok({ result: 'sent' })
+      }
+      throw error
+    }
+  }
+
+  async inspect(ctx: HttpContext) {
+    proofHeaders(ctx)
+    return ctx.response.ok({ confirmation: true })
+  }
+
+  async complete(ctx: HttpContext) {
+    proofHeaders(ctx)
+    await ctx.request.validateUsing(verificationCompleteValidator)
+    const kit = await app.container.make(AccountKit)
+    try {
+      const result = await kit.emailVerification.complete({ token: ctx.params.token })
+      return ctx.response.ok({ result })
+    } catch (error) {
+      if (error instanceof InvalidTokenError) return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+      if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        return ctx.response.ok({ result: 'verified' })
+      }
+      throw error
+    }
+  }
+}
