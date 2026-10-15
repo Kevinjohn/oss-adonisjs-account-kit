@@ -38,6 +38,10 @@ fixture owns them under `/api/v1`:
 The fixture selects either the existing `web` session guard or `api` access-token guard through
 `ACCOUNT_KIT_AUTH_STRATEGY`.
 
+For browser sessions, the reference cookie uses `SameSite=Lax`, so this setup is intended for a
+same-site browser deployment. A CORS origin allowlist alone does not enable cross-site cookies; do
+not infer that a cross-site browser deployment is supported from CORS configuration.
+
 Account Kit is available from the AdonisJS container after its provider is configured:
 
 ```ts
@@ -119,10 +123,17 @@ request validator remains the source of field-level 422 errors.
 Preserve operation-specific disclosure rules. Password-reset requests return the same acknowledgement
 for known and unknown addresses, even after committed notification failure. A throttled request
 does not replace the live reset proof; a later successful issuance rotates it. Proof tokens travel
-in path segments, so redact proof paths, full URLs, and `Authorization` headers from application,
-proxy, tracing, and error logs. For committed failures, use a safe operation marker in application
-logs and return the success or recovery response appropriate to that operation; do not retry a
-mutation as if it rolled back. See
+in path segments, so redact token values on all four complete proof routes—not just matching path
+suffixes—in application, proxy, tracing, and error logs:
+
+- `/api/v1/auth/password-reset/:token`
+- `/api/v1/auth/email-verification/:token`
+- `/api/v1/auth/email-change/:token`
+- `/api/v1/auth/invitations/:token`
+
+Also redact full URLs and `Authorization` headers. For committed failures, use a safe operation marker
+in application logs and return the success or recovery response appropriate to that operation; do
+not retry a mutation as if it rolled back. See
 [HTTP and error handling](usage.md#http-and-error-handling),
 [token responses](../examples/api/TOKENS.md#how-it-works), and
 [notifications](notifications.md) for the current contracts.
