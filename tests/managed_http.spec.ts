@@ -3,6 +3,8 @@ import type { HttpContext, Router } from '@adonisjs/core/http'
 import { AccountKit } from '../src/account_kit.js'
 import { DeliveryError, InvalidSessionError, ThrottledError } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
+import { useTestApp } from './helpers/app.js'
+import { insertUser, makeService } from './helpers/fakes.js'
 
 function fixture() {
   const routes = new Map<string, (context: HttpContext) => Promise<unknown>>()
@@ -65,6 +67,53 @@ function fixture() {
 }
 
 test.group('managed HTTP dispatch', () => {
+  test('verification policy can allow inactive accounts while retaining current-account checks', async ({
+    assert,
+  }) => {
+    const account = {
+      id: 7,
+      email: 'a@example.test',
+      unverifiedEmail: 'a@example.test',
+      hasPassword: true,
+      active: false,
+    }
+    const inputs: unknown[] = []
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {} },
+      authentication: {
+        current: async (input: unknown) => {
+          inputs.push(input)
+          return account
+        },
+        requireActive: async () => {
+          throw new Error('verification required')
+        },
+      },
+      invitations: { send: async () => ({ id: 5 }) },
+    } as unknown as AccountKit
+    for (const verificationRequired of [undefined, false]) {
+      const { router, routes, context } = fixture()
+      registerManagedRoutes(router, {
+        prefix: '/api/v1',
+        kit: async () => kit,
+        guard: {
+          strategy: 'access_tokens',
+          name: 'api',
+          forRequest: () => ({}) as never,
+          current: async () => ({ userId: 7, tokenId: 11 }),
+        },
+        enabled: ['invitations'],
+        verificationRequired,
+      })
+      const run = () => routes.get('POST /api/v1/account/invitations')!(context())
+      if (verificationRequired === false) {
+        assert.deepEqual(await run(), { status: 201, body: { id: 5 } })
+        assert.deepEqual(inputs.pop(), { userId: 7, tokenId: 11 })
+      } else {
+        await assert.rejects(run, /verification required/)
+      }
+    }
+  })
   test('rejects a different named guard even when its strategy matches', ({ assert }) => {
     const kit = new AccountKit({
       config: { authentication: { guard: 'web', strategy: 'session' } },
@@ -879,5 +928,54 @@ test.group('managed HTTP dispatch', () => {
     })
     const output = await routes.get('POST /api/v1/account/email-verification/send')!(context())
     assert.deepEqual(output, { status: 202, body: { committed: true } })
+  })
+})
+
+test.group('managed HTTP verification policy with live account state', (group) => {
+  const app = useTestApp(group)
+
+  test('optional verification permits inactive access but rejects restricted and stale credentials', async ({
+    assert,
+  }) => {
+    const user = await insertUser(app, { verified: false })
+    const { account } = makeService(app, {
+      authentication: {
+        strategy: 'session',
+        guard: 'web',
+        canAccess: async (candidate, trx) => {
+          const row = await trx
+            .from('users')
+            .select('disabled_at')
+            .where('id', candidate.id)
+            .first()
+          return !row?.disabled_at
+        },
+      },
+    })
+    const { router, routes, context } = fixture()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => account,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: user.id, revision: null }),
+      },
+      enabled: ['invitations'],
+      verificationRequired: false,
+    })
+    const run = () => routes.get('GET /api/v1/account/invitations')!(context())
+    assert.equal(((await run()) as { status: number }).status, 200)
+
+    await app.db
+      .from('users')
+      .where('id', user.id)
+      .update({ disabled_at: new Date().toISOString() })
+    assert.equal(((await run()) as { status: number }).status, 401)
+
+    await app.db.from('users').where('id', user.id).update({ disabled_at: null })
+    await account.authentication.changeRestriction({ userId: user.id, change: async () => {} })
+    assert.equal(((await run()) as { status: number }).status, 401)
   })
 })
