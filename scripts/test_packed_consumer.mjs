@@ -409,7 +409,7 @@ async function runUpgrade(candidate, baseline, runName) {
   const configPath = join(appRoot, 'config/account_kit.ts')
   const handlerPath = join(appRoot, 'app/exceptions/handler.ts')
   const controllerPath = join(appRoot, 'app/controllers/account_kit_controller.ts')
-  await copyFile(join(appRoot, 'upgrade/baseline_account_kit.ts'), configPath)
+  await copyFile(join(appRoot, 'upgrade/baseline_account_kit.stub'), configPath)
   await copyFile(join(appRoot, 'upgrade/baseline_handler.ts'), handlerPath)
   // Only the temporary historical fixture uses the baseline package vocabulary.
   const controller = await readFile(controllerPath, 'utf8')
