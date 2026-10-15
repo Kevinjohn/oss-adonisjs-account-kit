@@ -125,7 +125,11 @@ test.group('registration', (group) => {
   }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     assert.throws(
-      () => defineConfig(makeConfig({ users, enabled: ['registration'] })),
+      () => defineConfig(makeConfig({ users, enabled: ['registration'], registration: undefined })),
+      'registration.availability must be open, closed, or application'
+    )
+    assert.throws(
+      () => defineConfig(makeConfig({ users, registration: undefined })),
       'registration.availability must be open, closed, or application'
     )
     const service = makeService(kit, {

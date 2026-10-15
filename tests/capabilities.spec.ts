@@ -12,6 +12,7 @@ test.group('capability configuration', (group) => {
     const input: AccountKitConfig = {
       users: makeUsersAdapter(kit.db, kit.hash),
       enabled: ['passwordReset'],
+      registration: { availability: 'open' },
       urls: { passwordReset: (token) => `https://example.test/recovery/${token}` },
       notify: {
         passwordResetProvision: async () => {},
