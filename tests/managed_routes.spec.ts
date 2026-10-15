@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { planManagedRoutes } from '../src/http/routes.js'
+import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
 
 test.group('managed route plan', () => {
   test('publishes the named Phase 1 paths and submission methods', ({ assert }) => {
@@ -110,6 +110,27 @@ test.group('managed route plan', () => {
           { method: 'POST', path: '/api/v1/auth/login', name: 'application.login' },
         ]),
       /POST \/api\/v1\/auth\/login.*application\.login/
+    )
+  })
+
+  test('detects static paths intersecting managed parameters before and after commit', ({
+    assert,
+  }) => {
+    const selection = {
+      prefix: '/api/v1',
+      strategy: 'session' as const,
+      enabled: ['passwordReset'] as const,
+    }
+    const existing = [
+      { method: 'GET', path: '/api/v1/auth/password-reset/specific', name: 'application.specific' },
+    ]
+    assert.throws(() => planManagedRoutes(selection, existing), /application\.specific/)
+    const managed = planManagedRoutes(selection)
+    assert.throws(() => assertManagedRouteCollisions(managed, existing), /application\.specific/)
+    assert.doesNotThrow(() =>
+      assertManagedRouteCollisions(managed, [
+        { method: 'GET', path: '/api/v1/auth/password-reset/specific/extra' },
+      ])
     )
   })
 

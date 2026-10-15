@@ -45,6 +45,38 @@ export interface ManagedRequestBodies {
 
 export type ManagedRequestBody<Name extends ManagedEndpointName> = ManagedRequestBodies[Name]
 
+/** Query parameters are separate from JSON request bodies. */
+export interface ManagedQueries {
+  'auth.signup': undefined
+  'auth.csrf': undefined
+  'auth.login': undefined
+  'auth.passwordReset.request': undefined
+  'auth.passwordReset.inspect': undefined
+  'auth.passwordReset.complete': undefined
+  'auth.emailVerification.inspect': undefined
+  'auth.emailVerification.complete': undefined
+  'auth.invitation.inspect': undefined
+  'auth.invitation.accept': undefined
+  'auth.emailChange.inspect': undefined
+  'auth.emailChange.complete': undefined
+  'account.logout': undefined
+  'account.profile.show': undefined
+  'account.profile.update': undefined
+  'account.password.change': undefined
+  'account.emailVerification.send': undefined
+  'account.invitation.send': undefined
+  'account.invitation.list': { limit?: number; cursor?: string }
+  'account.invitation.resend': undefined
+  'account.invitation.revoke': undefined
+}
+
+export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name]
+
+/** A write committed, but a post-commit callback or delivery failed. */
+export interface ManagedCommittedSuccess {
+  committed: true
+}
+
 /** Base response bodies before application-owned account representation is added. */
 export interface ManagedSuccessBodies {
   'auth.signup':
@@ -53,22 +85,23 @@ export interface ManagedSuccessBodies {
   'auth.login': { account: CurrentAccount; token?: string }
   'auth.passwordReset.request': { message: string }
   'auth.passwordReset.inspect': { valid: true }
-  'auth.passwordReset.complete': { reset: true }
+  'auth.passwordReset.complete': { reset: true } | ManagedCommittedSuccess
   'auth.emailVerification.inspect': { valid: true }
-  'auth.emailVerification.complete': { verified: true }
+  'auth.emailVerification.complete': { verified: true } | ManagedCommittedSuccess
   'auth.invitation.inspect': { email: string; role: string }
-  'auth.invitation.accept': { account: CurrentAccount }
+  'auth.invitation.accept': { account: CurrentAccount } | ManagedCommittedSuccess
   'auth.emailChange.inspect': { valid: true }
-  'auth.emailChange.complete': { account: CurrentAccount }
+  'auth.emailChange.complete': { account: CurrentAccount } | ManagedCommittedSuccess
   'account.logout': undefined
   'account.profile.show': { account: CurrentAccount }
-  'account.profile.update': { account: CurrentAccount }
-  'account.password.change': { changed: true }
-  'account.emailVerification.send': { result: 'sent' | 'already_verified' }
-  'account.invitation.send': { id: number }
+  'account.profile.update': { account: CurrentAccount } | ManagedCommittedSuccess
+  'account.password.change': { changed: true } | ManagedCommittedSuccess
+  'account.emailVerification.send':
+    { result: 'sent' | 'already_verified' } | ManagedCommittedSuccess
+  'account.invitation.send': { id: number } | ManagedCommittedSuccess
   'account.invitation.list': InvitationPage
-  'account.invitation.resend': { id: number }
-  'account.invitation.revoke': undefined
+  'account.invitation.resend': { id: number } | ManagedCommittedSuccess
+  'account.invitation.revoke': undefined | ManagedCommittedSuccess
 }
 
 export type ManagedSuccessBody<Name extends ManagedEndpointName> = ManagedSuccessBodies[Name]
@@ -78,7 +111,11 @@ type CompleteInventory =
     ? Exclude<keyof ManagedSuccessBodies, ManagedEndpointName> extends never
       ? Exclude<ManagedEndpointName, keyof ManagedRequestBodies> extends never
         ? Exclude<keyof ManagedRequestBodies, ManagedEndpointName> extends never
-          ? true
+          ? Exclude<ManagedEndpointName, keyof ManagedQueries> extends never
+            ? Exclude<keyof ManagedQueries, ManagedEndpointName> extends never
+              ? true
+              : never
+            : never
           : never
         : never
       : never

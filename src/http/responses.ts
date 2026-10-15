@@ -81,10 +81,14 @@ export function managedErrorResponse(
     status = 401
     code = 'E_INVALID_CREDENTIALS'
     message = 'Authentication failed.'
-  } else if (error instanceof UnverifiedEmailError || error instanceof IdentityNotConfirmedError) {
+  } else if (error instanceof UnverifiedEmailError) {
     status = 403
     code = 'unverified_email'
     message = 'Email verification is required.'
+  } else if (error instanceof IdentityNotConfirmedError) {
+    status = 403
+    code = 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
+    message = 'Current identity proof could not be confirmed.'
   } else if (
     error instanceof InvitationNotFoundError ||
     error instanceof InvitationManagementDeniedError
@@ -119,10 +123,12 @@ export function managedErrorResponse(
   return {
     status,
     contentType: jsonApi ? 'application/vnd.api+json' : 'application/json',
-    headers:
-      error instanceof ThrottledError
+    headers: {
+      Vary: 'Accept',
+      ...(error instanceof ThrottledError
         ? { 'Retry-After': String(Math.max(1, Math.ceil(error.retryAfterSeconds))) }
-        : {},
+        : {}),
+    },
     body: {
       errors: [jsonApi ? { code, title: publicMessage } : { code, message: publicMessage }],
     },

@@ -14,7 +14,12 @@ import type {
   CurrentAccount,
   CurrentAccountInput,
 } from '../types.js'
-import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
+import {
+  managedErrorResponse,
+  proofHeaders,
+  type ManagedErrorResponse,
+  type ManagedMessage,
+} from './responses.js'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
@@ -99,6 +104,25 @@ function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
 }
 
+function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
+  for (const [name, value] of Object.entries(mapped.headers)) {
+    if (name.toLowerCase() !== 'vary') {
+      context.response.header(name, value)
+      continue
+    }
+    const existing = context.response.getHeader('Vary')
+    const terms = existing
+      ? String(existing)
+          .split(',')
+          .map((term) => term.trim())
+      : []
+    if (terms.includes('*')) continue
+    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
+    context.response.header('Vary', terms.join(', '))
+  }
+  context.response.header('Content-Type', mapped.contentType)
+}
+
 function invalidProof(
   context: HttpContext,
   proof: 'password' | 'email' | 'invitation',
@@ -109,7 +133,7 @@ function invalidProof(
     accept: context.request.header('accept'),
     message,
   })!
-  context.response.header('Content-Type', mapped.contentType)
+  applyMappedHeaders(context, mapped)
   return context.response.status(mapped.status).send(mapped.body)
 }
 
@@ -137,6 +161,14 @@ function currentAccount(user: AccountUser): CurrentAccount {
     hasPassword: user.hasPassword,
     active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
   }
+}
+
+function recoveryDiagnostic(
+  context: HttpContext,
+  operation: ManagedEndpointName,
+  outcome: 'delivery_failed' | 'followup_failed' | 'authentication_failed' | 'representation_failed'
+): void {
+  context.logger?.warn({ operation, outcome }, 'Managed account operation needs reconciliation')
 }
 
 async function execute<Credential>(
@@ -169,7 +201,7 @@ async function execute<Credential>(
     try {
       return await represent(value)
     } catch {
-      context.logger?.error('Account representation failed after credential issuance')
+      recoveryDiagnostic(context, route.name, 'representation_failed')
       return safeAccount(value)
     }
   }
@@ -204,6 +236,11 @@ async function execute<Credential>(
         await kit.passwordReset.request({ email, clientKey: request.ip() })
       } catch (error) {
         if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+        recoveryDiagnostic(
+          context,
+          route.name,
+          error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
+        )
       }
       return response.accepted({ message: 'If the account exists, instructions will be sent.' })
     }
@@ -235,7 +272,7 @@ async function execute<Credential>(
         password: input.password,
         registrationData: 'registrationData' in input ? input.registrationData : undefined,
       })
-      return response.created({ account: await represent(currentAccount(user)) })
+      return response.created({ account: await representIssued(currentAccount(user)) })
     }
     case 'account.password.change': {
       const { currentPassword, newPassword } = await request.validateUsing(passwordChangeValidator)
@@ -272,7 +309,7 @@ async function execute<Credential>(
       await kit.invitations.revoke({ actorId: actorId!, invitationId: invitationId(params.id) })
       return response.noContent()
     default:
-      return executePending(route, context, options, kit, actorId, represent, representIssued)
+      return executePending(route, context, options, kit, actorId, representIssued)
   }
 }
 
@@ -282,7 +319,6 @@ async function executePending<Credential>(
   options: ManagedRoutesOptions<Credential>,
   kit: AccountKit,
   actorId: CurrentAccount['id'] | undefined,
-  represent: (value: CurrentAccount) => Promise<Record<string, unknown>> | Record<string, unknown>,
   representIssued: (value: CurrentAccount) => Promise<Record<string, unknown>>
 ): Promise<unknown> {
   const { request, response, params } = context
@@ -309,6 +345,11 @@ async function executePending<Credential>(
             ],
           })
         if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+        recoveryDiagnostic(
+          context,
+          route.name,
+          error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
+        )
       }
       let result: { account: CurrentAccount; credential: Credential }
       try {
@@ -317,6 +358,7 @@ async function executePending<Credential>(
           options.guard.forRequest(context)
         )
       } catch {
+        recoveryDiagnostic(context, route.name, 'authentication_failed')
         return response.created({ registered: true, authenticated: false })
       }
       return response.created({
@@ -343,7 +385,7 @@ async function executePending<Credential>(
         : invalidProof(context, 'email', options.extensions?.message)
     case 'auth.emailChange.complete': {
       const user = await kit.emailPasswordManagement.completeEmailChange({ token: params.token })
-      return response.ok({ account: await represent(currentAccount(user)) })
+      return response.ok({ account: await representIssued(currentAccount(user)) })
     }
     case 'account.profile.update': {
       const input = options.extensions?.profile
@@ -353,9 +395,9 @@ async function executePending<Credential>(
         actorId: actorId!,
         currentPassword: input.currentPassword,
         email: input.email,
-        registrationData: 'registrationData' in input ? input.registrationData : undefined,
+        ...('registrationData' in input ? { registrationData: input.registrationData } : {}),
       })
-      return response.ok({ account: await represent(currentAccount(user)) })
+      return response.ok({ account: await representIssued(currentAccount(user)) })
     }
     default:
       throw new Error(`Unhandled managed endpoint: ${route.name}`)
@@ -399,8 +441,14 @@ export function registerManagedRoutes<Credential>(
           if (
             route.method !== 'GET' &&
             (error instanceof PostCommitError || error instanceof DeliveryError)
-          )
+          ) {
+            recoveryDiagnostic(
+              context,
+              route.name,
+              error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
+            )
             return context.response.accepted({ committed: true })
+          }
           const mapped = managedErrorResponse(error, {
             accept: context.request.header('accept'),
             message: options.extensions?.message,
@@ -413,9 +461,7 @@ export function registerManagedRoutes<Credential>(
               : undefined,
           })
           if (!mapped) throw error
-          for (const [name, value] of Object.entries(mapped.headers))
-            context.response.header(name, value)
-          context.response.header('Content-Type', mapped.contentType)
+          applyMappedHeaders(context, mapped)
           return context.response.status(mapped.status).send(mapped.body)
         }
       })
