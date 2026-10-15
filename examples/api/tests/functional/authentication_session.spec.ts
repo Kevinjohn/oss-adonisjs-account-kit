@@ -15,6 +15,32 @@ function rawCookies(response: { header(name: string): string | string[] | undefi
     .join('; ')
 }
 
+function pauseNextSessionLookup(userId: number | string) {
+  const original = User.findOrFail
+  const lookup = original.bind(User)
+  let signalPaused!: () => void
+  let signalResume!: () => void
+  const paused = new Promise<void>((resolve) => (signalPaused = resolve))
+  const resume = new Promise<void>((resolve) => (signalResume = resolve))
+  let waiting = true
+  Reflect.set(User, 'findOrFail', async (id: number | string) => {
+    const found = await lookup(id)
+    if (waiting && String(id) === String(userId)) {
+      waiting = false
+      signalPaused()
+      await resume
+    }
+    return found
+  })
+  return {
+    paused,
+    release() {
+      Reflect.set(User, 'findOrFail', original)
+      signalResume()
+    },
+  }
+}
+
 test('session login needs CSRF, rotates the session, and logout rejects the old cookie', async ({
   client,
   assert,
@@ -68,6 +94,16 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
   assert.notProperty(profileData, 'password')
   assert.notProperty(profileData, 'credentialsChangedAt')
 
+  const otherBootstrap = await client.get('/api/v1/auth/csrf')
+  const otherLogin = await client
+    .post('/api/v1/auth/login')
+    .header('cookie', rawCookies(otherBootstrap))
+    .header('x-csrf-token', (otherBootstrap.body() as { csrfToken: string }).csrfToken)
+    .json({ email: user.email, password: 'SessionPass123!' })
+  assert.equal(otherLogin.status(), 200)
+  const otherSession = rawCookies(otherLogin)
+  assert.notEqual(otherSession, rawCookies(login))
+
   const logoutCsrf = await client.get('/api/v1/auth/csrf').header('cookie', rawCookies(login))
   const logout = await client
     .post('/api/v1/account/logout')
@@ -76,6 +112,11 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
   assert.equal(logout.status(), 200)
   const oldSession = await client.get('/api/v1/account/profile').header('cookie', rawCookies(login))
   assert.equal(oldSession.status(), 401)
+  const survivingSession = await client
+    .get('/api/v1/account/profile')
+    .header('cookie', otherSession)
+  assert.equal(survivingSession.status(), 200)
+  assert.equal((survivingSession.body() as unknown as { data: { id: number } }).data.id, user.id)
   const repeatCsrf = await client.get('/api/v1/auth/csrf').header('cookie', rawCookies(login))
   const repeatedLogout = await client
     .post('/api/v1/account/logout')
@@ -163,6 +204,105 @@ test('password reset rejects pre-existing sessions on an application-owned route
     .header('x-csrf-token', (newCsrf.body() as { csrfToken: string }).csrfToken)
     .json({ email: user.email, password: 'ReplacementPass123!' })
   assert.equal(freshLogin.status(), 200)
+})
+
+test('a committed reset rejects a login paused inside the real session guard', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  notifications.reset()
+  const user = await User.create({
+    fullName: 'Pending Reset Login',
+    email: `pending-reset-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  const requestCsrf = await client.get('/api/v1/auth/csrf')
+  const requested = await client
+    .post('/api/v1/auth/password-reset')
+    .header('cookie', rawCookies(requestCsrf))
+    .header('x-csrf-token', (requestCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ email: user.email })
+  assert.equal(requested.status(), 202)
+  const token = tokenFrom(notifications.events.find((event) => event.kind === 'recovery')!.value)
+  const loginCsrf = await client.get('/api/v1/auth/csrf')
+  const barrier = pauseNextSessionLookup(user.id)
+  let pendingLogin
+  try {
+    pendingLogin = (async () =>
+      client
+        .post('/api/v1/auth/login')
+        .header('cookie', rawCookies(loginCsrf))
+        .header('x-csrf-token', (loginCsrf.body() as { csrfToken: string }).csrfToken)
+        .json({ email: user.email, password: 'OriginalPass123!' }))()
+    await barrier.paused
+    const completionCsrf = await client.get('/api/v1/auth/csrf')
+    const reset = await client
+      .post(`/api/v1/auth/password-reset/${encodeURIComponent(token)}`)
+      .header('cookie', rawCookies(completionCsrf))
+      .header('x-csrf-token', (completionCsrf.body() as { csrfToken: string }).csrfToken)
+      .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+    assert.equal(reset.status(), 202, JSON.stringify(reset.body()))
+  } finally {
+    barrier.release()
+  }
+  const rejected = await pendingLogin
+  assert.equal(rejected.status(), 401, JSON.stringify(rejected.body()))
+  const replayCookies = rawCookies(rejected) || rawCookies(loginCsrf)
+  const replay = await client.get('/api/v1/account/profile').header('cookie', replayCookies)
+  assert.equal(replay.status(), 401)
+})
+
+test('fresh-password claim rejects a login paused inside the real session guard', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  notifications.reset()
+  const email = `pending-claim-${randomUUID()}@example.test`
+  const signupCsrf = await client.get('/api/v1/auth/csrf')
+  const signup = await client
+    .post('/api/v1/auth/signup')
+    .header('cookie', rawCookies(signupCsrf))
+    .header('x-csrf-token', (signupCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({
+      fullName: 'Pending Claim Login',
+      email,
+      password: 'OriginalPass123!',
+      passwordConfirmation: 'OriginalPass123!',
+    })
+  assert.equal(signup.status(), 200, JSON.stringify(signup.body()))
+  const user = await User.findByOrFail('email', email)
+  const proof = notifications.events.findLast(
+    (event) => event.kind === 'verification' && event.recipient === email
+  )
+  assert.isDefined(proof)
+  const loginCsrf = await client.get('/api/v1/auth/csrf')
+  const barrier = pauseNextSessionLookup(user.id)
+  let pendingLogin
+  try {
+    pendingLogin = (async () =>
+      client
+        .post('/api/v1/auth/login')
+        .header('cookie', rawCookies(loginCsrf))
+        .header('x-csrf-token', (loginCsrf.body() as { csrfToken: string }).csrfToken)
+        .json({ email, password: 'OriginalPass123!' }))()
+    await barrier.paused
+    const completionCsrf = await client.get('/api/v1/auth/csrf')
+    const claim = await client
+      .post(`/api/v1/auth/email-verification/${encodeURIComponent(tokenFrom(proof!.value))}`)
+      .header('cookie', rawCookies(completionCsrf))
+      .header('x-csrf-token', (completionCsrf.body() as { csrfToken: string }).csrfToken)
+      .json({ password: 'ClaimedPass123!', passwordConfirmation: 'ClaimedPass123!' })
+    assert.equal(claim.status(), 200, JSON.stringify(claim.body()))
+  } finally {
+    barrier.release()
+  }
+  const rejected = await pendingLogin
+  assert.equal(rejected.status(), 401, JSON.stringify(rejected.body()))
+  const replayCookies = rawCookies(rejected) || rawCookies(loginCsrf)
+  const replay = await client.get('/api/v1/account/profile').header('cookie', replayCookies)
+  assert.equal(replay.status(), 401)
 })
 
 test('inactive session may request activation but cannot use verified routes', async ({
