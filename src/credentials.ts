@@ -2,14 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import {
-  committedResult,
-  consumeUserToken,
-  isUserEmailUniqueViolation,
-  lockUser,
-  transaction,
-} from './db.js'
-import { afterCommit, postCommit } from './effects.js'
+import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
+import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
@@ -17,7 +11,7 @@ import {
   InvalidInputError,
   InvalidTokenError,
   NoPasswordError,
-  PostCommitError,
+  type PostCommitError,
 } from './errors.js'
 import { isPasswordShaped } from './password.js'
 import { consume } from './throttle.js'
@@ -68,10 +62,8 @@ export async function changePassword(
     deps.config.limiterNamespace
   )
   const operationId = randomUUID()
-  let user: AccountUser
-  let committedFault: PostCommitError | undefined
-  try {
-    user = await transaction(deps.db, async (trx) => {
+  const { value: user, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
       const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
       await deps.config.users.setPassword(actor.id, input.newPassword, trx)
       await trx.from('account_recovery_tokens').where('user_id', actor.id).delete()
@@ -85,29 +77,18 @@ export async function changePassword(
       )
       return reloaded
     })
-  } catch (error) {
-    const saved = committedResult<AccountUser>(error)
-    if (!saved) throw error
-    user = saved.value
-    committedFault = error as PostCommitError
-  }
+  )
 
   const context = { operation: 'password_change' as const, operationId, userId: user.id }
-  try {
-    await afterCommit(
+  await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
+    afterCommit(
       'Credentials changed but a follow-up failed',
       () => deps.config.onCredentialsChanged?.(user, context),
       () => deps.config.notify.passwordChanged(user, context),
       () =>
         deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
     )
-  } catch (error) {
-    if (!committedFault) throw error
-    throw new PostCommitError('Credentials changed but follow-ups failed', {
-      cause: new AggregateError([committedFault.cause, (error as Error).cause ?? error]),
-    })
-  }
-  if (committedFault) throw committedFault
+  )
 }
 
 export async function requestEmailChange(
@@ -127,44 +108,56 @@ export async function requestEmailChange(
 
   const token = generateToken()
   const operationId = randomUUID()
-  const actor = await transaction(deps.db, async (trx) => {
-    const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
-    if (newEmail === current.email) return null
-    if (await deps.config.users.findByEmail(newEmail, trx)) throw new EmailAlreadyRegisteredError()
+  const { value: actor, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
+      if (newEmail === current.email) return null
+      if (await deps.config.users.findByEmail(newEmail, trx))
+        throw new EmailAlreadyRegisteredError()
 
-    const now = DateTime.utc()
-    await trx
-      .table('account_email_changes')
-      .insert({
-        user_id: current.id,
-        current_email: current.email,
-        new_email: newEmail,
-        token_hash: hashToken(token),
-        expires_at: expiresAt(now, deps.config.ttl.emailChange).toISO(),
-        created_at: now.toISO(),
-      })
-      .onConflict('user_id')
-      .merge(['current_email', 'new_email', 'token_hash', 'expires_at', 'created_at'])
-    return current
-  })
-  if (!actor) return
+      const now = DateTime.utc()
+      await trx
+        .table('account_email_changes')
+        .insert({
+          user_id: current.id,
+          current_email: current.email,
+          new_email: newEmail,
+          token_hash: hashToken(token),
+          expires_at: expiresAt(now, deps.config.ttl.emailChange).toISO(),
+          created_at: now.toISO(),
+        })
+        .onConflict('user_id')
+        .merge(['current_email', 'new_email', 'token_hash', 'expires_at', 'created_at'])
+      return current
+    })
+  )
+  if (!actor) {
+    if (fault) throw fault
+    return
+  }
 
-  await postCommit('Email change follow-up failed', [
-    {
-      kind: 'delivery',
-      run: () =>
-        deps.config.notify.emailChangeConfirm(actor, newEmail, deps.config.urls.emailChange(token)),
-    },
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'email_change.requested',
-          userId: actor.id,
-          operationId,
-        }),
-    },
-  ])
+  await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
+    postCommit('Email change follow-up failed', [
+      {
+        kind: 'delivery',
+        run: () =>
+          deps.config.notify.emailChangeConfirm(
+            actor,
+            newEmail,
+            deps.config.urls.emailChange(token)
+          ),
+      },
+      {
+        kind: 'observer',
+        run: () =>
+          deps.config.onLifecycleEvent?.({
+            type: 'email_change.requested',
+            userId: actor.id,
+            operationId,
+          }),
+      },
+    ])
+  )
 }
 
 interface EmailChangeRow {
@@ -181,30 +174,33 @@ export async function completeEmailChange(
   const operationId = randomUUID()
 
   let changed: { user: AccountUser; previousEmail: string }
+  let fault: PostCommitError | undefined
   try {
-    changed = await transaction(deps.db, async (trx) => {
-      const { row, user } = await consumeUserToken<EmailChangeRow>(
-        trx,
-        deps.config,
-        'account_email_changes',
-        input.token,
-        (candidate) => candidate.current_email
-      )
-      if (await deps.config.users.findByEmail(row.new_email, trx))
-        throw new EmailAlreadyRegisteredError()
+    ;({ value: changed, fault } = await settleCommitted(
+      transaction(deps.db, async (trx) => {
+        const { row, user } = await consumeUserToken<EmailChangeRow>(
+          trx,
+          deps.config,
+          'account_email_changes',
+          input.token,
+          (candidate) => candidate.current_email
+        )
+        if (await deps.config.users.findByEmail(row.new_email, trx))
+          throw new EmailAlreadyRegisteredError()
 
-      await deps.config.users.setEmail(user.id, row.new_email, trx)
-      await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-      await trx.from('account_recovery_tokens').where('user_id', user.id).delete()
-      const reloaded = await deps.config.users.findById(user.id, trx)
-      if (!reloaded) throw new InvalidTokenError()
-      await deps.config.onCredentialsChangedTransaction?.(
-        reloaded,
-        { operation: 'email_change', operationId, userId: reloaded.id },
-        trx
-      )
-      return { user: reloaded, previousEmail: row.current_email }
-    })
+        await deps.config.users.setEmail(user.id, row.new_email, trx)
+        await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
+        await trx.from('account_recovery_tokens').where('user_id', user.id).delete()
+        const reloaded = await deps.config.users.findById(user.id, trx)
+        if (!reloaded) throw new InvalidTokenError()
+        await deps.config.onCredentialsChangedTransaction?.(
+          reloaded,
+          { operation: 'email_change', operationId, userId: reloaded.id },
+          trx
+        )
+        return { user: reloaded, previousEmail: row.current_email }
+      })
+    ))
   } catch (error) {
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
       throw new EmailAlreadyRegisteredError()
@@ -213,16 +209,18 @@ export async function completeEmailChange(
 
   // The previous address learns about the change whether or not the callback succeeds.
   const context = { operation: 'email_change' as const, operationId, userId: changed.user.id }
-  await afterCommit(
-    'Email changed but a follow-up failed',
-    () => deps.config.onCredentialsChanged?.(changed.user, context),
-    () => deps.config.notify.emailChanged(changed.previousEmail, changed.user),
-    () =>
-      deps.config.onLifecycleEvent?.({
-        type: 'email_change.completed',
-        userId: changed.user.id,
-        operationId,
-      })
+  await finishCommitted(fault, 'Email changed but follow-ups failed', () =>
+    afterCommit(
+      'Email changed but a follow-up failed',
+      () => deps.config.onCredentialsChanged?.(changed.user, context),
+      () => deps.config.notify.emailChanged(changed.previousEmail, changed.user),
+      () =>
+        deps.config.onLifecycleEvent?.({
+          type: 'email_change.completed',
+          userId: changed.user.id,
+          operationId,
+        })
+    )
   )
   return changed.user
 }
