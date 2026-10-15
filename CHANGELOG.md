@@ -47,7 +47,7 @@ This project has no published releases yet. The current candidate remains versio
 - `emailVerification` (adapter capability contract) requires `UsersAdapter.setPassword` to replace an earlier password during inactive activation.
 - The generated `enabled` (config key) and the runtime default omit invitations; applications opt in explicitly.
 - Password and confirmed-email changes and password resets now delete all user access tokens transactionally in token mode or advance the browser-session revision in session mode.
-- Activation and email-change resends within one minute keep the existing proof and acknowledgement without another message.
+- Repeated activation or same-pending-address requests within one minute preserve the existing live proof and acknowledgement without another message.
 - Inactive-account email replacement now sends an activation link that requires a fresh password to claim the account.
 
 - `UsersAdapter.create({ email, password, emailVerifiedAt, registrationData? })` → `UsersAdapter.create({ email, unverifiedEmail, password, registrationData? })` (export contract).
