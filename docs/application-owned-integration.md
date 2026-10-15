@@ -1,8 +1,14 @@
 # Application-owned integration
 
-Use this guide when the application owns its HTTP routes and controllers and calls Account Kit's
-public account operations. Account Kit does not register these routes, choose the application's
-response format, or replace its authentication guard. The [API consumer example](../examples/api/README.md)
+Use this guide for the service-integration mode, where the application owns its HTTP routes and
+controllers and calls Account Kit's public account operations. The product roadmap also includes a
+separate optional managed-backend mode, explicitly enabled during onboarding, where the package
+maintains the HTTP backend while frontends remain application-owned. This guide describes the
+service-integration mode and does not claim that managed setup is available or validated. Choosing
+the existing `web` session or `api` access-token guard below is an authentication choice within the
+application-owned mode, not a choice between consumption modes. Account Kit does not register these
+application-owned routes, choose the application's response format, or replace its authentication
+guard. The [API consumer example](../examples/api/README.md)
 shows a complete AdonisJS application. Its [route table](../examples/api/start/routes.ts),
 [session reference](../examples/api/SESSION.md), and
 [access-token reference](../examples/api/TOKENS.md) give the concrete paths, payloads, guard setup,
@@ -74,17 +80,26 @@ const actor = await auth.getUserOrFail()
 const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
 const kit = await app.container.make(AccountKit)
 
-await kit.emailPasswordManagement.changePassword({
-  actorId: actor.id,
-  currentPassword,
-  newPassword,
-})
+try {
+  await kit.emailPasswordManagement.changePassword({
+    actorId: actor.id,
+    currentPassword,
+    newPassword,
+  })
+} catch (error) {
+  if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+  reportCommittedFailure(logger, error, 'account_password.change')
+}
 
 return response.ok({ changed: true })
 ```
 
-The example's [password-change action](../examples/api/app/controllers/account_password_controller.ts)
-uses this service contract.
+Import `DeliveryError` and `PostCommitError` from `adonisjs-account-kit`, and
+`reportCommittedFailure` from the reference diagnostic helper. The logger is the request logger. This
+handling matters because a delivery or observer error can be reported after the password change and
+credential revocation have committed; return the success response and do not invite a retry as if the
+change rolled back. The example's [password-change action](../examples/api/app/controllers/account_password_controller.ts)
+uses this service contract and safe diagnostic.
 
 The signup route follows the same boundary: validate the email, password, confirmation and
 application fields, then call `kit.registration.register({ email, password, registrationData })`.
@@ -117,8 +132,9 @@ diagnosis.
 
 For example, an invalid login is a 401 with code `E_ACCOUNT_KIT_INVALID_CREDENTIALS`; the same
 safe response covers a missing account, wrong password, passwordless account, or denied access.
-Proof failures use `E_INVALID_PASSWORD_TOKEN` or `E_INVALID_EMAIL_TOKEN` as appropriate. The
-request validator remains the source of field-level 422 errors.
+Proof failures use `E_INVALID_PASSWORD_TOKEN` for reset links, `E_INVALID_EMAIL_TOKEN` for activation
+and email-change links, and `E_ACCOUNT_KIT_INVALID_TOKEN` for invitation inspect/accept. The request
+validator remains the source of field-level 422 errors.
 
 Preserve operation-specific disclosure rules. Password-reset requests return the same acknowledgement
 for known and unknown addresses, even after committed notification failure. A throttled request
@@ -226,10 +242,14 @@ Normal framework, package, database, and mail tooling may be used to perform the
 Mark a task complete only when the evaluator performs it successfully under these rules; otherwise
 record it as blocked or failed. Record the candidate revision, runtime, database, guard
 configuration, permitted guidance and assistance, steps, observed outcomes, errors, and named
-limitations. For a blocking failure, record the exact failure and documentation or contract gap, fix
-the candidate or state the limitation, then rerun the affected task against the corrected candidate.
-An unresolved failure remains a failure; do not count observation alone as success or select new
-criteria after seeing the result.
+limitations. Record every instance of assistance outside the permitted published documentation,
+including source inspection and author or maintainer help, and name every affected task; a task that
+needed such assistance is failed even if the assisted attempt later completed. For a blocking
+failure, record the exact failure and documentation or contract gap, fix the candidate or state the
+limitation, then rerun the affected task against the corrected candidate. An unresolved failure
+remains a failure; do not count observation alone as success or select new criteria after seeing the
+result. Each unresolved limitation requires explicit product-owner acceptance before release, and
+that acceptance does not relabel a failed task as passed.
 
 Record package setup time separately from provider credential acquisition, mail-service
 configuration, and frontend work. Do not convert an untested duration into a product guarantee.
