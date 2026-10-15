@@ -101,7 +101,7 @@ export function managedErrorResponse(
     code = 'E_ACCOUNT_KIT_THROTTLED'
     message = 'Too many requests.'
   } else if (error instanceof InvalidInputError) {
-    status = 400
+    status = 422
     code = 'E_ACCOUNT_KIT_INVALID_INPUT'
     message = 'Account request rejected.'
   } else if (error.status >= 400 && error.status < 500) {

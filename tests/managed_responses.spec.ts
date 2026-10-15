@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import {
   InvalidCredentialsError,
+  InvalidInputError,
   InvalidTokenError,
   PostCommitError,
   ThrottledError,
@@ -37,6 +38,23 @@ test.group('managed HTTP responses', () => {
         body: { errors: [{ code: 'E_ACCOUNT_KIT_THROTTLED', title: 'Too many requests.' }] },
       }
     )
+  })
+
+  test('maps configured field-policy failures to safe 422 responses', ({ assert }) => {
+    for (const detail of [
+      'registrationData.fullName is required',
+      'registrationData.fullName must be string',
+      'registrationData.password is not allowed',
+    ]) {
+      assert.deepEqual(managedErrorResponse(new InvalidInputError(detail)), {
+        status: 422,
+        headers: {},
+        contentType: 'application/json',
+        body: {
+          errors: [{ code: 'E_ACCOUNT_KIT_INVALID_INPUT', message: 'Account request rejected.' }],
+        },
+      })
+    }
   })
 
   test('honors quality zero and customizes wording without changing a code', ({ assert }) => {
