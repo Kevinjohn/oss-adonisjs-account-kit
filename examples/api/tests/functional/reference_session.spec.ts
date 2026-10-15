@@ -95,6 +95,18 @@ test('session signup, activation and a new login complete through application-ow
       passwordConfirmation: 'InitialPass123!',
     })
   assert.equal(signup.status(), 200, JSON.stringify(signup.body()))
+  const duplicateCsrf = await client.get('/api/v1/auth/csrf')
+  const duplicate = await client
+    .post('/api/v1/auth/signup')
+    .header('cookie', cookies(duplicateCsrf))
+    .header('x-csrf-token', (duplicateCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({
+      fullName: 'Different Session User',
+      email: email.toUpperCase(),
+      password: 'DifferentPass123!',
+      passwordConfirmation: 'DifferentPass123!',
+    })
+  assert.equal(duplicate.status(), 422)
   const limitedSession = cookies(signup)
   assert.equal(
     (await client.get('/api/v1/account/profile').header('cookie', limitedSession)).status(),
