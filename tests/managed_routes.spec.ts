@@ -134,6 +134,37 @@ test.group('managed route plan', () => {
     )
   })
 
+  test('rejects optional and wildcard application patterns during planning and commit', ({
+    assert,
+  }) => {
+    const selection = {
+      prefix: '/api/v1',
+      strategy: 'session' as const,
+      enabled: ['authentication'] as const,
+    }
+    const managed = planManagedRoutes(selection)
+    for (const [path, name] of [
+      ['/api/v1/auth/:action?', 'application.optional'],
+      ['/api/v1/auth/*', 'application.wildcard'],
+    ] as const) {
+      const existing = [{ method: 'POST', path, name }]
+      assert.throws(
+        () => planManagedRoutes(selection, existing),
+        new RegExp(name.replace('.', '\\.'))
+      )
+      assert.throws(
+        () => assertManagedRouteCollisions(managed, existing),
+        new RegExp(name.replace('.', '\\.'))
+      )
+    }
+    assert.doesNotThrow(() =>
+      planManagedRoutes(selection, [
+        { method: 'POST', path: '/api/v1/unrelated/*' },
+        { method: 'POST', path: '/api/v1/other/:action?' },
+      ])
+    )
+  })
+
   test('rejects duplicate managed groups, unknown endpoints, and malformed prefixes', ({
     assert,
   }) => {
