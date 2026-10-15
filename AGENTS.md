@@ -11,4 +11,5 @@
 ## Checks
 
 - Run the repository scripts, not the bare tools: `pnpm lint`, `pnpm typecheck`, `pnpm build`,
-  `pnpm quick:test` (SQLite), and the PostgreSQL run from `README.md` when a server is available.
+  `pnpm quick:test` (SQLite), `pnpm test:pg-service`, and `pnpm test:pg` (local PostgreSQL 16
+  required; see docs/verification.md for the external-server alternative).
