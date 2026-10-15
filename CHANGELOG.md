@@ -41,6 +41,7 @@ This project has no published releases yet. The current candidate remains versio
 - An inactive account's email change now updates both confirmed and pending addresses and invalidates the prior proof (service contract).
 - Password reset and password change now cancel a distinct pending email change in the same transaction (service contract).
 - Inactive-account email changes now run the configured credential revocation hook when the confirmed address changes, transactionally or after commit (service contract).
+- Activation completion still delivers `verification.completed` after a committed transaction cleanup failure, then reports the committed fault.
 
 - `recovery (capability)` → `passwordReset` (config key).
 - `verification (capability)` → `emailVerification` (config key).

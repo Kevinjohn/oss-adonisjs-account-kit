@@ -37,10 +37,10 @@ async function tableExists(kit: Awaited<ReturnType<typeof bootTestApp>>, table: 
     .first())
 }
 
-test('generates and rolls back migrations for every user ID type and reserved custom table', async ({
-  assert,
-}) => {
-  for (const userIdType of idTypes) {
+for (const userIdType of idTypes) {
+  test(`generates and rolls back migrations for ${userIdType} IDs and reserved custom table`, async ({
+    assert,
+  }) => {
     const usersTable = reservedUsersTable[userIdType]
     const kit = await bootTestApp()
     try {
@@ -144,6 +144,24 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       const reloaded = await adapter.findById(created.id)
       assert.equal(reloaded?.unverifiedEmail, created.email)
 
+      const identity = {
+        user_id: created.id,
+        provider: 'example',
+        provider_user_id: `subject-${userIdType}`,
+        email_verified: false,
+        created_at: new Date(),
+        updated_at: new Date(),
+      }
+      await kit.db.table('social_identities').insert(identity)
+      const orphanId = userIdType === 'integer' ? 999999 : randomUUID()
+      await assert.rejects(() =>
+        kit.db
+          .table('social_identities')
+          .insert({ ...identity, user_id: orphanId, provider_user_id: `orphan-${userIdType}` })
+      )
+      await kit.db.from(usersTable).where('id', created.id).delete()
+      assert.lengthOf(await kit.db.from('social_identities').where('user_id', created.id), 0)
+
       const down = new MigrationRunner(kit.db, kit.app, {
         direction: 'down',
         step: migrationNames.length,
@@ -176,8 +194,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       }
       await kit.close()
     }
-  }
-}).timeout(30_000)
+  }).timeout(30_000)
+}
 
 test('migration schema quotes reserved table names and selects each supported ID column type', async ({
   assert,

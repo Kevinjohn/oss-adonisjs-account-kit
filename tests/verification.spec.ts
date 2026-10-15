@@ -266,6 +266,44 @@ test.group('emailVerification.complete', (group) => {
     assert.isNull(row.unverified_email)
   })
 
+  test('reports a committed cleanup fault after delivering the completion event once', async ({
+    assert,
+  }) => {
+    const { id, token } = await issue()
+    const events: unknown[] = []
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        onLifecycleEvent: async (event) => {
+          events.push(event)
+        },
+      })
+    )
+    const account = accountKit(
+      { ...kit, db: faultAfterCommit(kit.db, new Error('listener failed after commit')) },
+      config
+    )
+    try {
+      await account.emailVerification.complete({ token })
+      assert.fail('expected committed cleanup failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+    }
+    const user = await kit.db.from('users').where('id', id).first()
+    assert.isNotNull(user.email_verified_at)
+    assert.isNull(user.unverified_email)
+    assert.lengthOf(await kit.db.from('email_verification_tokens').where('tokenable_id', id), 0)
+    assert.deepEqual(
+      events.map((event) => (event as { type: string }).type),
+      ['verification.completed']
+    )
+    await assert.rejects(
+      () => makeService(kit).account.emailVerification.complete({ token }),
+      InvalidTokenError
+    )
+  })
+
   test('rejects an unknown proof', async ({ assert }) => {
     const id = await createUser()
     const { account } = service()

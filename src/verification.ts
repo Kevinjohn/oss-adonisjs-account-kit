@@ -74,37 +74,41 @@ export async function completeVerification(
 ): Promise<'verified'> {
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
-  const outcome = await transaction(deps.db, async (trx) => {
-    const { user } = await consumeUserToken<{
-      tokenable_id: UserId
-      email: string
-      current_email: string
-      purpose: string
-    }>(
-      trx,
-      deps.config,
-      'email_verification_tokens',
-      input.token,
-      (proof, current) =>
-        proof.purpose === 'activation' &&
-        current.unverifiedEmail === current.email &&
-        current.unverifiedEmail === proof.email &&
-        current.email === proof.current_email
-    )
-    await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-    await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
-    return user.id
-  })
-  await postCommit('Verification follow-up failed', [
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'verification.completed',
-          userId: outcome,
-          operationId,
-        }),
-    },
-  ])
+  const { value: outcome, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      const { user } = await consumeUserToken<{
+        tokenable_id: UserId
+        email: string
+        current_email: string
+        purpose: string
+      }>(
+        trx,
+        deps.config,
+        'email_verification_tokens',
+        input.token,
+        (proof, current) =>
+          proof.purpose === 'activation' &&
+          current.unverifiedEmail === current.email &&
+          current.unverifiedEmail === proof.email &&
+          current.email === proof.current_email
+      )
+      await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
+      await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
+      return user.id
+    })
+  )
+  await finishCommitted(fault, 'Verification committed but follow-up failed', () =>
+    postCommit('Verification follow-up failed', [
+      {
+        kind: 'observer',
+        run: () =>
+          deps.config.onLifecycleEvent?.({
+            type: 'verification.completed',
+            userId: outcome,
+            operationId,
+          }),
+      },
+    ])
+  )
   return 'verified'
 }
