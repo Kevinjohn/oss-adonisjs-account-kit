@@ -20,6 +20,9 @@ This project has no published releases yet. The current candidate remains versio
 - Read-only activation and email-change proof inspection methods check current account state without consuming a link.
 - `emailPasswordManagement.updateProfile` writes only mapped registration fields and optional pending email under one current-password-protected transaction.
 
+- Maintained account email templates and AdonisJS Mail `sendLater` callbacks for action links and credential notices.
+- Trusted configured-origin action links with base-path preservation and production HTTPS checks.
+- Explicit `delivery` classification and notification readiness checks for transport, destinations, and application-owned durable delivery.
 - `users.unverified_email` (column) records a pending address; active state follows the confirmed/pending pair.
 - `email_verification_tokens` (table) stores hashed, expiring, single-use activation and email-change proofs.
 - `social_identities` (table) stores unique provider subjects and user-linked identity metadata without credentials.
