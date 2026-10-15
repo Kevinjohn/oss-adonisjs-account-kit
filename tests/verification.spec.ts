@@ -104,10 +104,13 @@ test.group('emailVerification.send', (group) => {
     assert.approximately(new Date(proof.expires_at).valueOf() - issuedAt, 1200_000, 2000)
     assert.isString(token)
     timeTravel(new Date(new Date(proof.expires_at).valueOf() - 1000))
-    assert.equal(await account.emailVerification.complete({ token }), 'verified')
+    assert.equal(
+      await account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      'verified'
+    )
     timeTravel(new Date(new Date(secondProof.expires_at).valueOf() + 1))
     await assert.rejects(
-      () => account.emailVerification.complete({ token: secondToken }),
+      () => account.emailVerification.complete({ token: secondToken, password: 'NewPassword123' }),
       InvalidTokenError
     )
   })
@@ -120,10 +123,13 @@ test.group('emailVerification.send', (group) => {
     await account.emailVerification.send({ userId: id })
     const latestToken = tokenFrom(recorder.calls[1].args[1])
     await assert.rejects(
-      () => account.emailVerification.complete({ token: oldToken }),
+      () => account.emailVerification.complete({ token: oldToken, password: 'NewPassword123' }),
       InvalidTokenError
     )
-    assert.equal(await account.emailVerification.complete({ token: latestToken }), 'verified')
+    assert.equal(
+      await account.emailVerification.complete({ token: latestToken, password: 'NewPassword123' }),
+      'verified'
+    )
   })
 
   test('delivers activation after a committed cleanup fault', async ({ assert }) => {
@@ -226,11 +232,17 @@ test.group('emailVerification.complete', (group) => {
         callbacks++
       },
     }).account
-    assert.equal(await withCallback.emailVerification.complete({ token }), 'verified')
+    assert.equal(
+      await withCallback.emailVerification.complete({ token, password: 'NewPassword123' }),
+      'verified'
+    )
     const verified = await kit.db.from('users').where('id', id).first()
     assert.isNotNull(verified.email_verified_at)
-    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
-    assert.equal(callbacks, 0)
+    await assert.rejects(
+      () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      InvalidTokenError
+    )
+    assert.equal(callbacks, 1)
   })
 
   test('activation invalidates an outstanding password-reset proof', async ({ assert }) => {
@@ -241,7 +253,13 @@ test.group('emailVerification.complete', (group) => {
     await account.passwordReset.request({ email: 'person@example.test', clientKey: 'reset-client' })
     const resetToken = tokenFrom(recorder.calls.at(-1)!.args[1])
     assert.lengthOf(await kit.db.from('password_reset_tokens').where('tokenable_id', id), 1)
-    assert.equal(await account.emailVerification.complete({ token: activationToken }), 'verified')
+    assert.equal(
+      await account.emailVerification.complete({
+        token: activationToken,
+        password: 'NewPassword123',
+      }),
+      'verified'
+    )
     await assert.rejects(
       () => account.passwordReset.reset({ token: resetToken, password: 'newPassword123' }),
       InvalidTokenError
@@ -260,7 +278,10 @@ test.group('emailVerification.complete', (group) => {
     })
     await account.emailVerification.send({ userId: id })
     const token = tokenFrom(recorder.calls[0].args[1])
-    assert.equal(await account.emailVerification.complete({ token }), 'verified')
+    assert.equal(
+      await account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      'verified'
+    )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNotNull(row.email_verified_at)
     assert.isNull(row.unverified_email)
@@ -284,7 +305,7 @@ test.group('emailVerification.complete', (group) => {
       config
     )
     try {
-      await account.emailVerification.complete({ token })
+      await account.emailVerification.complete({ token, password: 'NewPassword123' })
       assert.fail('expected committed cleanup failure')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -299,7 +320,8 @@ test.group('emailVerification.complete', (group) => {
       ['verification.completed']
     )
     await assert.rejects(
-      () => makeService(kit).account.emailVerification.complete({ token }),
+      () =>
+        makeService(kit).account.emailVerification.complete({ token, password: 'NewPassword123' }),
       InvalidTokenError
     )
   })
@@ -309,7 +331,7 @@ test.group('emailVerification.complete', (group) => {
     const { account } = service()
     const wrongPurpose = generateToken()
     await assert.rejects(
-      () => account.emailVerification.complete({ token: wrongPurpose }),
+      () => account.emailVerification.complete({ token: wrongPurpose, password: 'NewPassword123' }),
       InvalidTokenError
     )
     const row = await kit.db.from('users').where('id', id).first()
@@ -320,7 +342,7 @@ test.group('emailVerification.complete', (group) => {
     const { id, account, token: expired } = await issue()
     timeTravel(new Date(Date.now() + 3_600_001))
     await assert.rejects(
-      () => account.emailVerification.complete({ token: expired }),
+      () => account.emailVerification.complete({ token: expired, password: 'NewPassword123' }),
       InvalidTokenError
     )
     const row = await kit.db.from('users').where('id', id).first()
@@ -332,11 +354,13 @@ test.group('emailVerification.complete', (group) => {
     const { account } = service()
     for (const value of [null, 42, '', 'not-encrypted'])
       await assert.rejects(
-        () => account.emailVerification.complete({ token: value as never }),
+        () =>
+          account.emailVerification.complete({ token: value as never, password: 'NewPassword123' }),
         InvalidTokenError
       )
     await assert.rejects(
-      () => account.emailVerification.complete({ token: 'a'.repeat(43) }),
+      () =>
+        account.emailVerification.complete({ token: 'a'.repeat(43), password: 'NewPassword123' }),
       InvalidTokenError
     )
     const row = await kit.db.from('users').where('id', id).first()
@@ -349,11 +373,17 @@ test.group('emailVerification.complete', (group) => {
       .from('users')
       .where('id', id)
       .update({ email: 'changed@example.test', unverified_email: 'changed@example.test' })
-    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
+    await assert.rejects(
+      () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      InvalidTokenError
+    )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
     await kit.db.from('users').where('id', id).delete()
-    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
+    await assert.rejects(
+      () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      InvalidTokenError
+    )
   })
 
   test('holds the user lock while checking the current email', async ({ assert }) => {
@@ -381,7 +411,7 @@ test.group('emailVerification.complete', (group) => {
       })
     )
     const account = accountKit(kit, config)
-    const verifying = account.emailVerification.complete({ token })
+    const verifying = account.emailVerification.complete({ token, password: 'NewPassword123' })
     try {
       await ready
       await assert.rejects(async () => {
@@ -440,7 +470,7 @@ test.group('emailVerification.complete', (group) => {
     }
     knex.on('query', onQuery)
     try {
-      const verifying = account.emailVerification.complete({ token })
+      const verifying = account.emailVerification.complete({ token, password: 'NewPassword123' })
       await attemptedLock
       releaseChange()
       await changing

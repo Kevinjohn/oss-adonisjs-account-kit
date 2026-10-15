@@ -22,7 +22,7 @@ import {
   type PostCommitError,
 } from './errors.js'
 import { consume } from './throttle.js'
-import { isPasswordShaped } from './password.js'
+import { isPasswordAllowed } from './password.js'
 import { toInvitation, type InvitationDatabaseRow } from './rows.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -169,7 +169,8 @@ export async function acceptInvitation(
   deps: { config: ResolvedConfig; db: Database },
   input: InvitationsAcceptInput
 ): Promise<AccountUser> {
-  if (!isPasswordShaped(input.password)) throw new InvalidInputError('Invalid password')
+  if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
+    throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
 

@@ -19,6 +19,7 @@ const capabilities: Capability[] = [
   'emailVerification',
   'invitations',
   'emailPasswordManagement',
+  'registration',
 ]
 const adapterMethods: Record<Capability, string[]> = {
   passwordReset: [
@@ -39,6 +40,7 @@ const adapterMethods: Record<Capability, string[]> = {
     'markEmailVerified',
     'verifyPassword',
   ],
+  registration: ['findByEmail', 'findById', 'create'],
 }
 const requiredHooks: Record<Capability, string[]> = {
   passwordReset: [
@@ -61,6 +63,7 @@ const requiredHooks: Record<Capability, string[]> = {
     'notify.emailChanged',
     'notify.passwordChanged',
   ],
+  registration: ['urls.emailVerification', 'notify.accountActivationProvision'],
 }
 
 function budget(
@@ -94,7 +97,7 @@ function disabled(): never {
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!config || typeof config !== 'object' || !config.users || typeof config.users !== 'object')
     throw new Error('account_kit: users adapter must be configured')
-  const enabled = config.enabled ?? capabilities
+  const enabled = config.enabled ?? capabilities.filter((name) => name !== 'registration')
   if (
     !Array.isArray(enabled) ||
     new Set(enabled).size !== enabled.length ||
@@ -118,6 +121,12 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       if (typeof (parent as Record<string, unknown> | undefined)?.[parts.at(-1)!] !== 'function')
         throw new Error(`account_kit: ${path} must be a function`)
     }
+  }
+  if (enabled.includes('registration')) {
+    if (!config.registration || !['open', 'closed', 'application'].includes(config.registration.availability))
+      throw new Error('account_kit: registration.availability must be open, closed, or application')
+    if (config.registration.mapFields !== undefined && typeof config.registration.mapFields !== 'function')
+      throw new Error('account_kit: registration.mapFields must be a function')
   }
   for (const hook of [
     'onInvitationAccepted',
@@ -168,6 +177,24 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const tokenSecretLength = config.tokenSecretLength ?? 40
   if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)
     throw new Error('account_kit: tokenSecretLength must be an integer from 16 to 64')
+  const passwordPolicy = {
+    minLength: config.passwordPolicy?.minLength ?? 8,
+    maxLength: config.passwordPolicy?.maxLength ?? null,
+    letters: config.passwordPolicy?.letters ?? false,
+    mixedCase: config.passwordPolicy?.mixedCase ?? false,
+    numbers: config.passwordPolicy?.numbers ?? false,
+    symbols: config.passwordPolicy?.symbols ?? false,
+    minScore: config.passwordPolicy?.minScore ?? 0,
+  }
+  if (config.passwordPolicy !== undefined && (!config.passwordPolicy || typeof config.passwordPolicy !== 'object' || Array.isArray(config.passwordPolicy)))
+    throw new Error('account_kit: passwordPolicy must be an object')
+  if (!Number.isSafeInteger(passwordPolicy.minLength) || passwordPolicy.minLength < 8 || passwordPolicy.minLength > 256 ||
+      (passwordPolicy.maxLength !== null && (!Number.isSafeInteger(passwordPolicy.maxLength) || passwordPolicy.maxLength > 256 || passwordPolicy.maxLength < passwordPolicy.minLength)))
+    throw new Error('account_kit: passwordPolicy lengths must stay within 8–256 and minLength must not exceed maxLength')
+  if (!Number.isSafeInteger(passwordPolicy.minScore) || passwordPolicy.minScore < 0 || passwordPolicy.minScore > 4)
+    throw new Error('account_kit: passwordPolicy.minScore must be an integer from 0 to 4')
+  for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
+    if (typeof passwordPolicy[key] !== 'boolean') throw new Error(`account_kit: passwordPolicy.${key} must be boolean`)
   let authentication: ResolvedAuthenticationConfig | undefined
   if (config.authentication !== undefined) {
     const auth = config.authentication
@@ -243,6 +270,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     minRequestMs,
     tokenSecretLength,
     authentication,
+    passwordPolicy,
     usersTable,
     limiterNamespace,
     authorize: {
