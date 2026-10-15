@@ -25,13 +25,114 @@ pnpm typecheck
 pnpm build
 pnpm quick:test
 pnpm test:built-exports
-DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_DATABASE=account_kit_test pnpm test
+pnpm test:pg-service
+pnpm test:pg
 pnpm test:adapter
 pnpm test:consumer -- --database=sqlite
 pnpm test:consumer -- --database=postgres
 pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=sqlite
 pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=postgres
 ```
+
+### Local PostgreSQL package tests
+
+Use Node 24 (`nvm use`) and installed PostgreSQL 16 binaries. On macOS, install them with
+`brew install postgresql@16`; the wrapper also supports a PostgreSQL 16 `pg_ctl` on PATH with
+its companion utilities in the same directory. It does not install software or use Homebrew
+services. Run `pnpm test:pg-service` for the isolated lifecycle regression checks.
+
+`pnpm test:pg` starts the checkout's disposable server, runs the package suite and stops the
+server on success, failure or interruption. Selectors are forwarded:
+`pnpm test:pg --files=db.spec.ts`. A cluster explicitly started with `pnpm pg:start` is preserved;
+managed tests refuse it until `pnpm pg:stop`.
+
+| Setting  | Managed value              |
+| -------- | -------------------------- |
+| Host     | `127.0.0.1`                |
+| Port     | `DB_PORT`, default `55432` |
+| User     | `account_kit`              |
+| Password | empty                      |
+| Database | `account_kit_test`         |
+
+Only `DB_PORT` configures the managed wrapper. It uses trust authentication, UTF-8, C locale,
+loopback TCP without Unix sockets, and `fsync=off`. Data at `tmp/pg16` persists for reuse and is
+disposable; logs are at `tmp/pg16.log`. Never store application or consumer data there.
+Mutating commands hold a nonblocking checkout lock at `tmp/pg16.lock` throughout tests and cleanup.
+Another checkout's cluster or an unrelated listener is never adopted.
+Ownership checks verify the executable, complete managed command and physical process directory.
+Process directory inspection uses macOS's built-in `/usr/sbin/lsof` or Linux `/proc`; Linux
+also resolves the physical executable through `/proc`. Unavailable or ambiguous inspection
+fails closed rather than stopping the process. Other platforms are rejected before startup.
+
+For repeated runs, when other connection variables are unset or have their defaults:
+
+```sh
+pnpm pg:start
+DB_CLIENT=pg pnpm quick:test
+pnpm pg:stop
+
+DB_PORT=55433 pnpm pg:start
+DB_PORT=55433 DB_CLIENT=pg pnpm quick:test
+DB_PORT=55433 pnpm pg:stop
+```
+
+For a shell with connection overrides, use the full fixed connection values when testing an
+explicitly started cluster:
+
+```sh
+DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_PASSWORD= DB_DATABASE=account_kit_test pnpm quick:test --files=db.spec.ts
+```
+
+`bash bin/pg.sh status` reports the owned cluster's state (exit 0 running, 3 stopped). Readiness
+at the selected port is diagnostic only. `bash bin/pg.sh reset` stops and deletes only the owned
+disposable data, initializes it again and leaves a fresh server running; use `pnpm pg:stop`
+afterward. Wrong-version or incomplete data requires this explicit reset.
+
+After SIGKILL or power loss, a stale lock is intentionally retained. Inspect `tmp/pg16.lock/owner`
+and check that PID with `ps` and `kill -0`. Only after establishing that its owner no longer exists,
+remove the owner file and empty lock directory, then run `pnpm pg:stop`. A missing owner file or
+an uninspectable/live PID requires inspecting running script processes before removal. Never use
+recursive deletion to bypass a busy command; ordinary reset does not reclaim a stale lock.
+
+For an externally managed PostgreSQL 16 server, set `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`
+and `DB_DATABASE`, then run `DB_CLIENT=pg pnpm quick:test` (or `pnpm test` for lint and coverage).
+The wrapper always targets its owned cluster. Packed-consumer checks provision separate databases;
+these package checks do not satisfy their distinct validation gate.
+
+### Local service verification: 15 October 2026
+
+These results were produced from uncommitted service/tooling changes on branch
+`local-postgresql-tests`, based on `9776e938bbcb7c4c196b8bcbe0e2639e1dc7e206`. They are not
+results for the clean base alone. The environment was macOS Bash 3.2, Node 24.21.0, pnpm 11.23.0
+and PostgreSQL 16.15 (Homebrew), using the default managed port 55432.
+
+The integrated commands passed: `bash -n bin/pg.sh`, the scoped Prettier check, `pnpm lint`,
+`pnpm typecheck`, `pnpm build`, `DB_CLIENT=better-sqlite3 pnpm quick:test` (205 tests),
+`pnpm test:pg-service` (60 tests), `pnpm test:pg` (205 tests) and
+`DB_CLIENT=better-sqlite3 pnpm test:built-exports` (four tests).
+
+Real-service checks also passed for repeated start/stop, preserving a standalone cluster,
+refusing a different port without changing its server, reset with database creation, invocation
+from `tests/`, hostile PG*/DB_* settings, a live non-PostgreSQL listener, missing binaries and
+wrong-version reset recovery. A temporary failing Japa test produced exit 1 with 205 passing
+tests and one deliberate failure; cleanup still completed. Selector forwarding selected only
+`db.spec.ts`. A directly spawned wrapper interrupted with SIGINT exited 130, terminated the
+runner's process group, stopped its server and removed its lock. Temporary tests and markers
+were removed. Managed runs ended with status 3, no owned server and no lock. The regression
+harness additionally covered TERM, repeated signals during cleanup, overlapping commands,
+shutdown failures, stale locks and foreign process/path identities, including a directory name
+that would otherwise make flattened process arguments ambiguous. A TERM-resistant descendant
+exercised forced termination. The corrected service and real acceptance checks were rerun after
+ownership hardening. `DB_PORT=055432` started and reused the real server on decimal port 55432;
+both its PID file and SQL `show port` confirmed that value, followed by successful cleanup.
+Linux executable/directory inspection and early unsupported-platform refusal have deterministic
+fake-inspection regression coverage; real PostgreSQL service verification was on macOS only.
+
+The package allowlist is unchanged and excludes the root service script, regression harness
+and managed data/logs. The consumer matrix and hosted CI were not rerun for this tooling change;
+their earlier evidence remains separate.
+
+### Packed-consumer checks
 
 The consumer harness writes an `evidence.json` record with the candidate revision, archive digest,
 concrete dependency/database versions and each command outcome. A packed installation must
