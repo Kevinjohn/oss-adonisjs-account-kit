@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHmac, hkdfSync, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import limiter from '@adonisjs/limiter/services/main'
 import db from '@adonisjs/lucid/services/db'
@@ -6,9 +6,20 @@ import app from '@adonisjs/core/services/app'
 import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
 import AuthMiddleware from '#middleware/auth_middleware'
-import { clientRateLimitKey, identityRateLimitKey } from '#start/limiter'
+import env from '#start/env'
+import { notifications } from '#services/account_kit_notifications'
 
 const responseBody = <T>(response: { body(): unknown }) => response.body() as T
+
+function storedLoginKey(operation: string, value: string) {
+  const secret = env.get('APP_KEY').release()
+  const derived = Buffer.from(
+    hkdfSync('sha256', secret, 'adonisjs-account-kit', 'limiter-key-v1', 32)
+  )
+  return `account-kit:v1:${createHmac('sha256', derived)
+    .update(JSON.stringify(['default', operation, value]))
+    .digest('hex')}`
+}
 
 test('login limits known and unknown identities independently after normalization', async ({
   client,
@@ -17,17 +28,6 @@ test('login limits known and unknown identities independently after normalizatio
   await limiter.clear(['memory'])
   const identity = randomUUID()
   const email = `login-safety-${identity}@example.test`
-  const address = 'known-client@example.test'
-  assert.equal(
-    identityRateLimitKey('192.0.2.10', ` ${address.toUpperCase()} `),
-    identityRateLimitKey('192.0.2.10', address)
-  )
-  assert.notEqual(
-    identityRateLimitKey('192.0.2.10', address),
-    identityRateLimitKey('192.0.2.11', address)
-  )
-  assert.notEqual(clientRateLimitKey('192.0.2.10'), clientRateLimitKey('192.0.2.11'))
-  assert.notInclude(identityRateLimitKey('192.0.2.10', address), address)
   const user = await User.create({
     fullName: 'Login Safety User',
     email,
@@ -53,6 +53,20 @@ test('login limits known and unknown identities independently after normalizatio
     })
     assert.equal(failedLogin.status(), 400)
   }
+  const clientKey = storedLoginKey('login:client', '127.0.0.1')
+  const identityKey = storedLoginKey('login:identity', `127.0.0.1\0${email}`)
+  const clientBudget = limiter.use({ requests: 10, duration: '1m' })
+  const identityBudget = limiter.use({ requests: 5, duration: '1m', blockDuration: '20m' })
+  const storedClient = await clientBudget.get(clientKey)
+  const storedIdentity = await identityBudget.get(identityKey)
+  assert.equal(storedClient?.remaining, 5)
+  assert.equal(storedIdentity?.remaining, 1)
+  assert.isNull(
+    await identityBudget.get(storedLoginKey('login:identity', `127.0.0.1\0${email.toUpperCase()}`))
+  )
+  assert.isNull(await clientBudget.get(storedLoginKey('login:client', '192.0.2.11')))
+  assert.isNull(await clientBudget.get(`login:client:127.0.0.1`))
+  assert.notInclude(identityKey, email)
   const normalizedIdentityLimit = await client.post('/api/v1/auth/login').json({
     email: email.toUpperCase(),
     password: 'wrong-password',
@@ -128,6 +142,25 @@ test('login limits each client across rotating identities', async ({ client, ass
     password: 'wrong-password',
   })
   assert.equal(limitedClient.status(), 429)
+})
+
+test('a bearer token without the invitation ability cannot send an invitation', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const user = await User.create({
+    fullName: 'Limited Token User',
+    email: `limited-token-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  const token = await User.accessTokens.create(user, ['profile:read'], { expiresIn: '1d' })
+  const response = await client
+    .post('/account-kit/invitations')
+    .bearerToken(token.value!.release())
+    .json({ email: `invitee-${randomUUID()}@example.test`, role: 'member' })
+  assert.equal(response.status(), 403)
+  assert.equal(responseBody<{ code: string }>(response).code, 'missing_ability')
 })
 
 test('bearer login uses the real token guard and password changes revoke issued tokens', async ({
@@ -234,5 +267,70 @@ test('an in-flight bearer request is denied when its token is revoked after guar
   } finally {
     resume()
     AuthMiddleware.prototype.handle = original
+  }
+})
+
+test('real token issuance cannot survive a reset committed on either side of creation', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const kit = await app.container.make(AccountKit)
+  for (const order of ['token-first', 'reset-first'] as const) {
+    const user = await User.create({
+      fullName: 'Reset Race User',
+      email: `reset-race-${order}-${randomUUID()}@example.test`,
+      password: 'OriginalPass123!',
+    })
+    await kit.passwordReset.request({ email: user.email, clientKey: randomUUID() })
+    const notice = notifications.events.findLast(
+      (event) => event.kind === 'recovery' && event.recipient === user.email
+    )
+    if (!notice) throw new Error('Missing reset proof')
+    const proof = decodeURIComponent(new URL(notice.value).pathname.split('/').at(-1)!)
+    let release!: () => void
+    let entered!: () => void
+    const paused = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const atIssuance = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    let tokenValue: string | undefined
+    const pending = kit.authentication.login(
+      { email: user.email, password: 'OriginalPass123!', clientKey: randomUUID() },
+      {
+        strategy: 'access_tokens',
+        name: 'api',
+        async establish() {
+          if (order === 'reset-first') {
+            entered()
+            await paused
+          }
+          const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1d' })
+          tokenValue = token.value!.release()
+          if (order === 'token-first') {
+            entered()
+            await paused
+          }
+          return { identifier: token.identifier }
+        },
+        async terminate(credential) {
+          if (credential) await User.accessTokens.delete(user, credential.identifier)
+        },
+      }
+    )
+    await atIssuance
+    assert.lengthOf(
+      await db.from('auth_access_tokens').where('tokenable_id', user.id),
+      order === 'token-first' ? 1 : 0
+    )
+    await kit.passwordReset.reset({ token: proof, password: 'ReplacementPass123!' })
+    release()
+    await assert.rejects(() => pending, 'Invalid email or password')
+    assert.isString(tokenValue)
+    assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
+    const replay = await client.get('/api/v1/account/profile').bearerToken(tokenValue!)
+    assert.equal(replay.status(), 401)
   }
 })
