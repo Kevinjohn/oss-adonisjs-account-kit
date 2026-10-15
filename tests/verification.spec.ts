@@ -64,6 +64,24 @@ test.group('emailVerification.send', (group) => {
     assert.notEqual(proof.hash, token)
   })
 
+  test('issues by pending-email state even when audit timestamps disagree', async ({ assert }) => {
+    const inactiveId = await createUser()
+    const active = await insertUser(kit, { verified: true, email: 'active@example.test' })
+    const activeId = active.id
+    await kit.db
+      .from('users')
+      .where('id', inactiveId)
+      .update({ email_verified_at: new Date().toISOString() })
+    await kit.db.from('users').where('id', activeId).update({ email_verified_at: null })
+
+    const { account, recorder } = service()
+    assert.equal(await account.emailVerification.send({ userId: activeId }), 'already_verified')
+    assert.equal(await account.emailVerification.send({ userId: inactiveId }), 'sent')
+    assert.lengthOf(recorder.calls, 1)
+    assert.equal((recorder.calls[0].args[0] as { id: number }).id, inactiveId)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
+  })
+
   test('interprets numeric verification expiry as seconds when issuing a proof', async ({
     assert,
   }) => {
