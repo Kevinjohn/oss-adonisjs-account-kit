@@ -1,5 +1,5 @@
 import { pruneExpired, type PruneInput } from './maintenance.js'
-import { CapabilityDisabledError } from './errors.js'
+import { AuthorizationError, CapabilityDisabledError } from './errors.js'
 import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
@@ -77,6 +77,15 @@ export class AccountKit {
 
   /** Shared-store, secret-keyed client budget for managed proof URL requests. */
   readonly managedHttp = {
+    assertPublicRegistration: (): void => {
+      const registration = (
+        this.deps.config as ResolvedConfig & {
+          registration?: { availability: 'open' | 'closed' | 'application' }
+        }
+      ).registration
+      if (registration?.availability !== 'open')
+        throw new AuthorizationError('Public registration is unavailable')
+    },
     assertGuard: (guard: { name: string; strategy: 'session' | 'access_tokens' }): void => {
       const selected = this.deps.config.authentication
       if (!selected || selected.guard !== guard.name || selected.strategy !== guard.strategy)

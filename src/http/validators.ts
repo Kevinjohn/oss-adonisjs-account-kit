@@ -34,7 +34,7 @@ export const profileUpdateValidator = vine.compile(
 export const invitationSendValidator = vine.compile(
   vine.object({
     email: email(),
-    role: vine.string().trim().minLength(1),
+    role: vine.string().trim().minLength(1).maxLength(64),
   })
 )
 export const invitationAcceptValidator = vine.compile(
@@ -45,7 +45,7 @@ export const invitationAcceptValidator = vine.compile(
 )
 export const invitationListValidator = vine.compile(
   vine.object({
-    limit: vine.number().min(1).max(100).optional(),
+    limit: vine.number().withoutDecimals().min(1).max(100).optional(),
     cursor: vine.string().optional(),
   })
 )

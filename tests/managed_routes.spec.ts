@@ -75,6 +75,32 @@ test.group('managed route plan', () => {
     )
   })
 
+  test('session-only write selections include CSRF bootstrap unless explicitly replaced', ({
+    assert,
+  }) => {
+    for (const capability of ['registration', 'passwordReset', 'invitations'] as const) {
+      const routes = planManagedRoutes({
+        prefix: '/api/v1',
+        strategy: 'session',
+        enabled: [capability],
+      })
+      assert.isTrue(routes.some((route) => route.name === 'auth.csrf'))
+    }
+    const excluded = planManagedRoutes({
+      prefix: '/api/v1',
+      strategy: 'session',
+      enabled: ['registration'],
+      except: ['auth.csrf'],
+    })
+    assert.isFalse(excluded.some((route) => route.name === 'auth.csrf'))
+    const token = planManagedRoutes({
+      prefix: '/api/v1',
+      strategy: 'access_tokens',
+      enabled: ['registration'],
+    })
+    assert.isFalse(token.some((route) => route.name === 'auth.csrf'))
+  })
+
   test('rejects a colliding application route before registering any managed route', ({
     assert,
   }) => {

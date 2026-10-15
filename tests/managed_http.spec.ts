@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import type { HttpContext, Router } from '@adonisjs/core/http'
 import { AccountKit } from '../src/account_kit.js'
-import { DeliveryError, InvalidSessionError } from '../src/errors.js'
+import { DeliveryError, InvalidSessionError, ThrottledError } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
 
 function fixture() {
@@ -78,6 +78,122 @@ test.group('managed HTTP dispatch', () => {
       () => kit.managedHttp.assertGuard({ name: 'web', strategy: 'access_tokens' }),
       /configured existing authentication guard/
     )
+  })
+  test('public registration is allowed only by shared open availability', ({ assert }) => {
+    for (const availability of ['closed', 'application'] as const) {
+      const kit = new AccountKit({ config: { registration: { availability } } } as never)
+      assert.throws(
+        () => kit.managedHttp.assertPublicRegistration(),
+        /Public registration is unavailable/
+      )
+    }
+    const open = new AccountKit({ config: { registration: { availability: 'open' } } } as never)
+    assert.doesNotThrow(() => open.managedHttp.assertPublicRegistration())
+  })
+  test('application-owned registration never reaches the managed signup service', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    let created = false
+    const kit = new AccountKit({
+      config: {
+        registration: { availability: 'application' },
+        authentication: { guard: 'web', strategy: 'session' },
+      },
+    } as never)
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () =>
+        ({
+          managedHttp: { ...kit.managedHttp, consume: async () => {} },
+          registration: {
+            register: async () => {
+              created = true
+            },
+          },
+        }) as unknown as AccountKit,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 1, revision: null }),
+      },
+      enabled: ['registration'],
+    })
+    const ctx = context()
+    Object.assign(ctx.request, { csrfToken: 'proof' })
+    const output = await routes.get('POST /api/v1/auth/signup')!(ctx)
+    assert.equal((output as { status: number }).status, 403)
+    assert.isFalse(created)
+  })
+  test('the managed budget is shared and secret-keyed across service instances', async ({
+    assert,
+  }) => {
+    const seen = new Map<string, number>()
+    const limiter = {
+      use: () => ({
+        consume: async (key: string) => {
+          assert.notInclude(key, '192.0.2.1')
+          const count = (seen.get(key) ?? 0) + 1
+          seen.set(key, count)
+          if (count > 1) throw new ThrottledError(15)
+        },
+      }),
+    }
+    const deps = {
+      config: {
+        throttle: { requests: 1, duration: '15m' },
+        limiterSecret: 'a'.repeat(32),
+        limiterNamespace: 'managed-test',
+      },
+      limiter,
+    }
+    const first = new AccountKit(deps as never)
+    const second = new AccountKit(deps as never)
+    await first.managedHttp.consume({ endpoint: 'auth.signup', clientKey: '192.0.2.1' })
+    await assert.rejects(
+      () => second.managedHttp.consume({ endpoint: 'auth.signup', clientKey: '192.0.2.1' }),
+      ThrottledError
+    )
+    await second.managedHttp.consume({
+      endpoint: 'auth.passwordReset.inspect',
+      clientKey: '192.0.2.1',
+    })
+    assert.equal(seen.size, 2)
+  })
+  test('signup exhaustion rejects before account creation', async ({ assert }) => {
+    const { router, routes, context } = fixture()
+    let created = false
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () =>
+        ({
+          managedHttp: {
+            assertGuard: () => {},
+            assertPublicRegistration: () => {},
+            consume: async () => {
+              throw new ThrottledError(12)
+            },
+          },
+          registration: {
+            register: async () => {
+              created = true
+            },
+          },
+        }) as unknown as AccountKit,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 1, revision: null }),
+      },
+      enabled: ['registration'],
+    })
+    const ctx = context()
+    Object.assign(ctx.request, { csrfToken: 'proof' })
+    const output = await routes.get('POST /api/v1/auth/signup')!(ctx)
+    assert.equal((output as { status: number }).status, 429)
+    assert.isFalse(created)
   })
   test('excludes a named route and rejects a second registration before mutating router', ({
     assert,
@@ -306,7 +422,11 @@ test.group('managed HTTP dispatch', () => {
       prefix: '/api/v1',
       kit: async () =>
         ({
-          managedHttp: { assertGuard: () => {} },
+          managedHttp: {
+            assertGuard: () => {},
+            assertPublicRegistration: () => {},
+            consume: async () => {},
+          },
           registration: {
             register: async () => {
               calls.push('register')
@@ -361,7 +481,11 @@ test.group('managed HTTP dispatch', () => {
       prefix: '/api/v1',
       kit: async () =>
         ({
-          managedHttp: { assertGuard: () => {} },
+          managedHttp: {
+            assertGuard: () => {},
+            assertPublicRegistration: () => {},
+            consume: async () => {},
+          },
           registration: {
             register: async () => {
               throw new DeliveryError('mail unavailable')
@@ -397,7 +521,11 @@ test.group('managed HTTP dispatch', () => {
       prefix: '/api/v1',
       kit: async () =>
         ({
-          managedHttp: { assertGuard: () => {} },
+          managedHttp: {
+            assertGuard: () => {},
+            assertPublicRegistration: () => {},
+            consume: async () => {},
+          },
           registration: { register: async () => {} },
           authentication: {
             login: async () => ({
@@ -427,10 +555,21 @@ test.group('managed HTTP dispatch', () => {
     })
     const ctx = context()
     Object.assign(ctx.request, { csrfToken: 'proof' })
-    await assert.rejects(
-      () => routes.get('POST /api/v1/auth/signup')!(ctx),
-      /representation failed/
-    )
+    const logged: string[] = []
+    Object.assign(ctx, { logger: { error: (message: string) => logged.push(message) } })
+    assert.deepEqual(await routes.get('POST /api/v1/auth/signup')!(ctx), {
+      status: 201,
+      body: {
+        account: {
+          id: 7,
+          email: 'a@example.test',
+          unverifiedEmail: 'a@example.test',
+          hasPassword: true,
+          active: false,
+        },
+      },
+    })
+    assert.lengthOf(logged, 1)
   })
 
   test('session login fails closed without Shield CSRF state', async ({ assert }) => {
@@ -501,6 +640,134 @@ test.group('managed HTTP dispatch', () => {
     assert.equal(inspected, 1)
     assert.equal(limited, 1)
     assert.deepEqual(ctx.headers, { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' })
+  })
+
+  test('all proof GET and POST routes consume the real managed budget and set protective headers', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const keys: string[] = []
+    const real = new AccountKit({
+      config: {
+        authentication: { guard: 'api', strategy: 'access_tokens' },
+        throttle: { requests: 20, duration: '15m' },
+        limiterSecret: 'a'.repeat(32),
+        limiterNamespace: 'proof-test',
+      },
+      limiter: {
+        use: () => ({
+          consume: async (key: string) => {
+            keys.push(key)
+          },
+        }),
+      },
+    } as never)
+    const user = {
+      id: 7,
+      email: 'a@example.test',
+      unverifiedEmail: null,
+      hasPassword: true,
+      emailVerifiedAt: null,
+    }
+    const kit = {
+      managedHttp: real.managedHttp,
+      passwordReset: { inspect: async () => true, reset: async () => {} },
+      emailVerification: { inspect: async () => true, complete: async () => 'verified' },
+      emailPasswordManagement: {
+        inspectEmailChange: async () => true,
+        completeEmailChange: async () => user,
+      },
+      invitations: {
+        inspect: async () => ({ email: user.email, role: 'member' }),
+        accept: async () => user,
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, tokenId: 1 }),
+      },
+      enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'invitations'],
+    })
+    for (const path of [
+      '/api/v1/auth/password-reset/:token',
+      '/api/v1/auth/email-verification/:token',
+      '/api/v1/auth/invitations/:token',
+      '/api/v1/auth/email-change/:token',
+    ]) {
+      for (const method of ['GET', 'POST']) {
+        const ctx = context({ token: 'proof' })
+        await routes.get(`${method} ${path}`)!(ctx)
+        assert.equal(ctx.headers['Cache-Control'], 'no-store')
+        assert.equal(ctx.headers['Referrer-Policy'], 'no-referrer')
+      }
+    }
+    assert.equal(keys.length, 8)
+    assert.equal(new Set(keys).size, 8)
+    assert.isTrue(keys.every((key) => !key.includes('192.0.2.1')))
+  })
+
+  test('account writes return only their documented response bodies', async ({ assert }) => {
+    const { router, routes, context } = fixture()
+    const account = {
+      id: 7,
+      email: 'a@example.test',
+      unverifiedEmail: null,
+      hasPassword: true,
+      active: true,
+    }
+    const user = { ...account, emailVerifiedAt: null, passwordHash: 'never expose' }
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {} },
+      authentication: {
+        current: async () => account,
+        requireActive: async () => account,
+        logout: async () => {},
+      },
+      emailPasswordManagement: {
+        updateProfile: async () => user,
+        changePassword: async () => {},
+      },
+      emailVerification: { send: async () => 'sent' },
+      invitations: {
+        send: async () => ({ id: 2 }),
+        list: async () => ({ items: [], nextCursor: null }),
+        resend: async () => ({ id: 2 }),
+        revoke: async () => {},
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        publicCredential: () => 'opaque',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, tokenId: 11 }),
+        logoutCredential: async () => ({ userId: 7, identifier: 11 }),
+      },
+      enabled: ['authentication', 'emailPasswordManagement', 'emailVerification', 'invitations'],
+    })
+    const expected: Array<[string, number, unknown]> = [
+      ['POST /api/v1/account/logout', 204, undefined],
+      ['PATCH /api/v1/account/profile', 200, { account }],
+      ['POST /api/v1/account/password', 200, { changed: true }],
+      ['POST /api/v1/account/email-verification/send', 200, { result: 'sent' }],
+      ['POST /api/v1/account/invitations', 201, { id: 2 }],
+      ['GET /api/v1/account/invitations', 200, { items: [], nextCursor: null }],
+      ['POST /api/v1/account/invitations/:id/resend', 200, { id: 2 }],
+      ['DELETE /api/v1/account/invitations/:id', 204, undefined],
+    ]
+    for (const [route, status, body] of expected) {
+      const output = await routes.get(route)!(context({ id: '2' }))
+      assert.equal((output as { status: number }).status, status)
+      assert.deepEqual((output as { body?: unknown }).body, body)
+    }
   })
 
   test('post-commit notification failure remains a successful write response', async ({

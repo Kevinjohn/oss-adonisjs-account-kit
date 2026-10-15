@@ -17,7 +17,32 @@ import {
 export interface ManagedErrorResponse {
   status: number
   headers: Record<string, string>
+  contentType: 'application/json' | 'application/vnd.api+json'
   body: { errors: Array<{ code: string; message: string } | { code: string; title: string }> }
+}
+
+export type ManagedMessage = (code: string, defaultMessage: string) => string
+
+function prefersJsonApi(accept?: string): boolean {
+  if (!accept) return false
+  const quality = (type: string) => {
+    const match = accept
+      .split(',')
+      .map((part) =>
+        part
+          .trim()
+          .split(';')
+          .map((value) => value.trim())
+      )
+      .find(([mediaType]) => mediaType?.toLowerCase() === type)
+    if (!match) return 0
+    const q = match.slice(1).find((parameter) => parameter?.toLowerCase().startsWith('q='))
+    if (!q) return 1
+    const value = Number(q.slice(2))
+    return Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0
+  }
+  const jsonApi = quality('application/vnd.api+json')
+  return jsonApi > 0 && jsonApi >= quality('application/json')
 }
 
 export function proofHeaders(): Record<string, string> {
@@ -27,7 +52,11 @@ export function proofHeaders(): Record<string, string> {
 /** Package errors are deliberately translated without exposing internal messages or causes. */
 export function managedErrorResponse(
   error: unknown,
-  options: { accept?: string; proof?: 'password' | 'email' | 'invitation' } = {}
+  options: {
+    accept?: string
+    proof?: 'password' | 'email' | 'invitation'
+    message?: ManagedMessage
+  } = {}
 ): ManagedErrorResponse | null {
   if (error instanceof PostCommitError) return null
   if (!(error instanceof AccountKitError)) return null
@@ -35,7 +64,7 @@ export function managedErrorResponse(
   let status = 500
   let code = 'E_ACCOUNT_KIT_OPERATION_FAILED'
   let message = 'Account operation failed.'
-  if (error instanceof InvalidTokenError || (options.proof && error instanceof InvalidInputError)) {
+  if (error instanceof InvalidTokenError) {
     status = 400
     code =
       options.proof === 'email'
@@ -81,18 +110,17 @@ export function managedErrorResponse(
     message = 'Account request rejected.'
   }
 
+  const jsonApi = prefersJsonApi(options.accept)
+  const publicMessage = options.message?.(code, message) ?? message
   return {
     status,
+    contentType: jsonApi ? 'application/vnd.api+json' : 'application/json',
     headers:
       error instanceof ThrottledError
         ? { 'Retry-After': String(Math.max(1, Math.ceil(error.retryAfterSeconds))) }
         : {},
     body: {
-      errors: [
-        options.accept?.includes('application/vnd.api+json')
-          ? { code, title: message }
-          : { code, message },
-      ],
+      errors: [jsonApi ? { code, title: publicMessage } : { code, message: publicMessage }],
     },
   }
 }
