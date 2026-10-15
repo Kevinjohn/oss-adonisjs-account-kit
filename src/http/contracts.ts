@@ -3,7 +3,12 @@ import type { ManagedEndpointName } from './routes.js'
 
 /** Default request bodies; `:token` and `:id` values are URL path parameters. */
 export interface ManagedRequestBodies {
-  'auth.signup': { email: string; password: string; passwordConfirmation: string }
+  'auth.signup': {
+    email: string
+    password: string
+    passwordConfirmation: string
+    registrationData?: Record<string, unknown>
+  }
   'auth.csrf': undefined
   'auth.login': { email: string; password: string }
   'auth.passwordReset.request': { email: string }
@@ -12,12 +17,20 @@ export interface ManagedRequestBodies {
   'auth.emailVerification.inspect': undefined
   'auth.emailVerification.complete': { password: string; passwordConfirmation: string }
   'auth.invitation.inspect': undefined
-  'auth.invitation.accept': { password: string; passwordConfirmation: string }
+  'auth.invitation.accept': {
+    password: string
+    passwordConfirmation: string
+    registrationData?: Record<string, unknown>
+  }
   'auth.emailChange.inspect': undefined
   'auth.emailChange.complete': undefined
   'account.logout': undefined
   'account.profile.show': undefined
-  'account.profile.update': { currentPassword: string; email?: string }
+  'account.profile.update': {
+    currentPassword: string
+    email?: string
+    registrationData?: Record<string, unknown>
+  }
   'account.password.change': {
     currentPassword: string
     newPassword: string

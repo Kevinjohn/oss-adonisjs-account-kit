@@ -2,6 +2,7 @@ import vine from '@vinejs/vine'
 
 const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
 const password = () => vine.string().minLength(8).maxLength(256)
+const registrationData = () => vine.record(vine.any()).optional()
 
 export const loginValidator = vine.compile(vine.object({ email: email(), password: vine.string() }))
 export const signupValidator = vine.compile(
@@ -9,6 +10,7 @@ export const signupValidator = vine.compile(
     email: email(),
     password: password(),
     passwordConfirmation: vine.string().sameAs('password'),
+    registrationData: registrationData(),
   })
 )
 export const passwordResetRequestValidator = vine.compile(vine.object({ email: email() }))
@@ -29,6 +31,7 @@ export const profileUpdateValidator = vine.compile(
   vine.object({
     currentPassword: vine.string().minLength(1),
     email: email().optional(),
+    registrationData: registrationData(),
   })
 )
 export const invitationSendValidator = vine.compile(
@@ -41,6 +44,7 @@ export const invitationAcceptValidator = vine.compile(
   vine.object({
     password: password(),
     passwordConfirmation: vine.string().sameAs('password'),
+    registrationData: registrationData(),
   })
 )
 export const invitationListValidator = vine.compile(

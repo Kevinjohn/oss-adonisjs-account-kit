@@ -1,9 +1,39 @@
 import { test } from '@japa/runner'
-import { invitationListValidator, invitationSendValidator } from '../src/http/validators.js'
+import {
+  invitationAcceptValidator,
+  invitationListValidator,
+  invitationSendValidator,
+  profileUpdateValidator,
+  signupValidator,
+} from '../src/http/validators.js'
 import { InvalidInputError } from '../src/errors.js'
 import { managedErrorResponse } from '../src/http/responses.js'
 
 test.group('managed request validation', () => {
+  test('default field validators preserve configured registration data for service mapping', async ({
+    assert,
+  }) => {
+    const registrationData = { fullName: 'New User' }
+    for (const [validator, input] of [
+      [
+        signupValidator,
+        { email: 'a@example.test', password: 'password123', passwordConfirmation: 'password123' },
+      ],
+      [invitationAcceptValidator, { password: 'password123', passwordConfirmation: 'password123' }],
+      [profileUpdateValidator, { currentPassword: 'password123' }],
+    ] as const) {
+      const omitted = await validator.validate(input)
+      assert.isFalse(Object.hasOwn(omitted, 'registrationData'))
+      const output = await validator.validate({ ...input, registrationData })
+      assert.deepEqual(output.registrationData, registrationData)
+      try {
+        await validator.validate({ ...input, registrationData: ['bad'] })
+        assert.fail('expected object validation failure')
+      } catch (error) {
+        assert.equal((error as { status?: number }).status, 422)
+      }
+    }
+  })
   test('invitation role is bounded at the HTTP boundary', async ({ assert }) => {
     try {
       await invitationSendValidator.validate({ email: 'a@example.test', role: 'x'.repeat(65) })
