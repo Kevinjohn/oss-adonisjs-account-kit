@@ -688,13 +688,17 @@ test.group('onboarding plan and apply', (group) => {
     await writeFile(join(root, 'start/routes.ts'), "// import './account_kit_routes.js'\n")
     await writeFile(
       join(root, 'adonisrc.ts'),
-      "export default { providers: [ /* () => import('@adonisjs/limiter/limiter_provider') */ ] }\n"
+      "// providers: [ ignored ]\nexport default { providers: [ /* () => import('@adonisjs/limiter/limiter_provider') */ ] }\n"
     )
     const plan = await planSetup(choices, await inspectSetup(root))
     assert.equal(plan.changes.find(({ path }) => path === 'start/routes.ts')?.action, 'update')
     assert.include(
       plan.changes.find(({ path }) => path === 'adonisrc.ts')!.content,
       "    () => import('@adonisjs/limiter/limiter_provider'),"
+    )
+    assert.include(
+      plan.changes.find(({ path }) => path === 'adonisrc.ts')!.content,
+      '// providers: [ ignored ]\nexport default { providers: [\n'
     )
     await writeFile(join(root, 'start/routes.ts'), 'registerManagedRoutes(router, {})\n')
     const duplicate = await planSetup(choices, await inspectSetup(root))

@@ -879,7 +879,8 @@ function planArrayImports(
   imports: string[]
 ) {
   const previous = state.files[path]
-  if (previous === undefined || !previous.includes(marker)) {
+  const markerIndex = previous === undefined ? -1 : withoutComments(previous).indexOf(marker)
+  if (previous === undefined || markerIndex < 0) {
     diagnostic(
       diagnostics,
       path,
@@ -907,16 +908,18 @@ function planArrayImports(
     path,
     action: 'update',
     expected: previous,
-    content: previous.replace(
-      marker,
-      `${marker}\n${missing.map((name) => `    () => import('${name}'),`).join('\n')}`
-    ),
+    content:
+      previous.slice(0, markerIndex + marker.length) +
+      `\n${missing.map((name) => `    () => import('${name}'),`).join('\n')}` +
+      previous.slice(markerIndex + marker.length),
     reason: 'Register required framework providers or middleware',
   })
 }
 
 function withoutComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm, '$1')
+  return source.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm, (comment) =>
+    comment.replace(/[^\n]/g, ' ')
+  )
 }
 
 function planRouterMiddleware(
