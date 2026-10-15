@@ -99,6 +99,9 @@ With Mail's default in-memory messenger, a later transport failure emits the
 `queued:mail:error` event. Subscribe in the application and record a private, redacted failure
 with an operation correlation ID where available; queue acceptance alone cannot prove recipient
 delivery. The Mail event itself does not carry the Account Kit operation ID.
+Mail's normal `mail:queueing` and `mail:queued` events also include rendered message bodies
+and bearer-proof URLs. Never log entire Mail lifecycle event payloads; allowlist only safe
+diagnostic fields such as message kind, transport outcome, and an application correlation ID.
 
 For durable delivery, the application must persist a notification intent in the same transaction
 as the account change and send it from an application-owned worker after commit. Here is the
