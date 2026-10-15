@@ -19,6 +19,7 @@ import {
   updateProfile,
 } from './credentials.js'
 import { consume } from './throttle.js'
+import { isPasswordAllowed } from './password.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -77,13 +78,10 @@ export class AccountKit {
 
   /** Shared-store, secret-keyed client budget for managed proof URL requests. */
   readonly managedHttp = {
+    passwordAllowed: (value: unknown): value is string =>
+      isPasswordAllowed(value, this.deps.config.passwordPolicy),
     assertPublicRegistration: (): void => {
-      const registration = (
-        this.deps.config as ResolvedConfig & {
-          registration?: { availability: 'open' | 'closed' | 'application' }
-        }
-      ).registration
-      if (registration?.availability !== 'open')
+      if (this.deps.config.registration.availability !== 'open')
         throw new AuthorizationError('Public registration is unavailable')
     },
     assertGuard: (guard: { name: string; strategy: 'session' | 'access_tokens' }): void => {
