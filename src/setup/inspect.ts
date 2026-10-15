@@ -38,14 +38,6 @@ async function readOptional(root: string, relative: string): Promise<string | nu
   }
 }
 
-function existingGuards(source: string): string[] {
-  const match = source.match(/guards\s*:\s*\{([\s\S]*?)\n\s*\}/)
-  if (!match) return []
-  return [...match[1].matchAll(/(?:^|[\s,{])([A-Za-z_][\w]*|['"][^'"]+['"])\s*:/gm)].map(
-    ([, name]) => name.replace(/^['"]|['"]$/g, '')
-  )
-}
-
 function guardStrategies(source: string): SetupInspection['guardStrategies'] {
   const strategies: SetupInspection['guardStrategies'] = {}
   for (const match of source.matchAll(
@@ -69,7 +61,15 @@ function databaseKind(source: string): SetupInspection['database'] {
   if (!source) return 'unknown'
   const sqlite = /(?:client\s*:\s*['"](?:better-sqlite3|sqlite3)['"]|sqlite)/i.test(source)
   const postgres = /(?:client\s*:\s*['"](?:pg|postgres)['"]|postgres)/i.test(source)
-  if (sqlite && postgres) return 'unknown'
+  if (sqlite && postgres) {
+    const literal = source.match(/\bconnection\s*:\s*['"]([^'"]+)['"]/)?.[1]
+    const selected =
+      literal ??
+      (/env\.get\(['"]DB_CONNECTION['"]\)/.test(source) ? process.env.DB_CONNECTION : undefined)
+    if (selected === 'sqlite') return 'sqlite'
+    if (selected === 'pg' || selected === 'postgres') return 'postgres'
+    return 'unknown'
+  }
   if (sqlite) return 'sqlite'
   if (postgres) return 'postgres'
   return 'unsupported'
@@ -139,7 +139,7 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
       files['config/account_kit.ts'] || files['config/account_kit_setup.json']
     ),
     files,
-    guards: existingGuards(files['config/auth.ts'] ?? ''),
+    guards: Object.keys(guardStrategies(files['config/auth.ts'] ?? '')),
     guardStrategies: guardStrategies(files['config/auth.ts'] ?? ''),
     guardModels: guardModels(files['config/auth.ts'] ?? ''),
     database: databaseKind(files['config/database.ts'] ?? ''),

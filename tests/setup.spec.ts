@@ -743,6 +743,46 @@ test.group('onboarding plan and apply', (group) => {
     )
   })
 
+  test('inspects both conventional guards across nested provider objects', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/auth.ts'),
+      `export default defineConfig({
+  guards: {
+    api: tokensGuard({ provider: tokensUserProvider({ tokens: 'accessTokens', model: () => import('#models/user') }) }),
+    web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }),
+  },
+})\n`
+    )
+    const state = await inspectSetup(root)
+    assert.includeMembers(state.guards, ['api', 'web'])
+    const plan = await planSetup(choices, state, { timestamp: 1234 })
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'authentication.guard'
+    )
+  })
+
+  test('resolves a selected named database from conventional multi-connection config', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "export default { connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3' }, pg: { client: 'pg' } } }\n"
+    )
+    const before = process.env.DB_CONNECTION
+    try {
+      process.env.DB_CONNECTION = 'sqlite'
+      assert.equal((await inspectSetup(root)).database, 'sqlite')
+      process.env.DB_CONNECTION = 'pg'
+      assert.equal((await inspectSetup(root)).database, 'postgres')
+    } finally {
+      if (before === undefined) delete process.env.DB_CONNECTION
+      else process.env.DB_CONNECTION = before
+    }
+  })
+
   test('managed middleware follows body parsing and refuses a server middleware placement', async ({
     assert,
   }) => {
@@ -763,6 +803,36 @@ test.group('onboarding plan and apply', (group) => {
     assert.include(
       plan.diagnostics.map(({ field }) => field),
       'start/kernel.ts'
+    )
+  })
+
+  test('generated managed and application-owned gates follow verification policy', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.policy.verificationRequired = false
+    let plan = await planSetup(choices, await inspectSetup(root), { apply: true, timestamp: 1234 })
+    assert.include(
+      plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content,
+      'verificationRequired: false'
+    )
+    assert.include(
+      plan.changes.find(({ path }) => path === 'app/middleware/account_kit_access_middleware.ts')!
+        .content,
+      'active: false'
+    )
+    await applySetup(root, plan)
+    choices.policy.verificationRequired = true
+    choices.features.push('emailVerification')
+    plan = await planSetup(choices, await inspectSetup(root), { apply: true, timestamp: 1234 })
+    assert.equal(
+      plan.changes.find(({ path }) => path === 'app/middleware/account_kit_access_middleware.ts')!
+        .action,
+      'update'
+    )
+    assert.include(
+      plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content,
+      'verificationRequired: true'
     )
   })
 
