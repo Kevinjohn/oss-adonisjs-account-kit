@@ -21,13 +21,14 @@ const capabilities: Capability[] = [
 ]
 const adapterMethods: Record<Capability, string[]> = {
   passwordReset: ['findByEmail', 'findById', 'setPassword', 'markEmailVerified'],
-  emailVerification: ['findById', 'markEmailVerified'],
+  emailVerification: ['findById', 'setEmail', 'markEmailVerified'],
   invitations: ['findByEmail', 'findById', 'create'],
   emailPasswordManagement: [
     'findByEmail',
     'findById',
     'setPassword',
     'setEmail',
+    'setUnverifiedEmail',
     'markEmailVerified',
     'verifyPassword',
   ],
@@ -157,6 +158,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const minRequestMs = config.minRequestMs ?? 300
   if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
     throw new Error('account_kit: minRequestMs must be a finite non-negative number')
+  const tokenSecretLength = config.tokenSecretLength ?? 40
+  if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)
+    throw new Error('account_kit: tokenSecretLength must be an integer from 16 to 64')
   if (
     config.users.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
@@ -181,6 +185,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throttle,
     invitationThrottle,
     minRequestMs,
+    tokenSecretLength,
     usersTable,
     limiterNamespace,
     authorize: {

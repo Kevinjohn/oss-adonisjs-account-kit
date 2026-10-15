@@ -7,6 +7,7 @@ export type UserId = number | string
 export interface AccountUser {
   id: UserId
   email: string
+  unverifiedEmail: string | null
   hasPassword: boolean
   emailVerifiedAt: DateTime | null
 }
@@ -39,14 +40,15 @@ export interface UsersAdapter {
   create(
     attrs: {
       email: string
-      password: string
-      emailVerifiedAt: DateTime
+      unverifiedEmail: string | null
+      password: string | null
       registrationData?: unknown
     },
     trx: Trx
   ): Promise<AccountUser>
   setPassword(id: UserId, password: string, trx: Trx): Promise<void>
   setEmail(id: UserId, email: string, trx: Trx): Promise<void>
+  setUnverifiedEmail(id: UserId, email: string | null, trx: Trx): Promise<void>
   markEmailVerified(id: UserId, at: DateTime, trx: Trx): Promise<void>
   verifyPassword(id: UserId, password: string, trx: Trx): Promise<boolean>
 }
@@ -153,6 +155,7 @@ export interface AccountKitConfig {
   throttle?: Partial<ThrottleBudget>
   invitationThrottle?: Partial<InvitationThrottle>
   minRequestMs?: number
+  tokenSecretLength?: number
 }
 
 export interface ResolvedConfig extends Omit<
@@ -180,6 +183,7 @@ export interface ResolvedConfig extends Omit<
   throttle: ThrottleBudget
   invitationThrottle: InvitationThrottle
   minRequestMs: number
+  tokenSecretLength: number
 }
 
 export interface InvitationPage {

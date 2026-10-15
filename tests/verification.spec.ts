@@ -28,9 +28,7 @@ test.group('emailVerification.send', (group) => {
 
   const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
-  test('notifies an unverified user with an encrypted, purpose-bound payload', async ({
-    assert,
-  }) => {
+  test('notifies an unverified user with a stored hashed proof', async ({ assert }) => {
     const id = await createUser()
     const { account, recorder } = service({ expiresIn: { emailVerification: '2h' } })
     assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
@@ -39,11 +37,9 @@ test.group('emailVerification.send', (group) => {
     const [user, url] = recorder.calls[0].args
     assert.equal((user as { id: number }).id, id)
     const token = tokenFrom(url)
-    assert.deepEqual(kit.encryption.decrypt(token, 'account-kit:verify-email'), {
-      userId: id,
-      email: 'person@example.test',
-    })
-    assert.isNull(kit.encryption.decrypt(token, 'wrong-purpose'))
+    const proof = await kit.db.from('email_verification_tokens').where('tokenable_id', id).first()
+    assert.equal(proof.email, 'person@example.test')
+    assert.notEqual(proof.hash, token)
   })
 
   test('interprets numeric verification expiry as seconds when issuing a proof', async ({
@@ -55,13 +51,10 @@ test.group('emailVerification.send', (group) => {
     assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
     const token = tokenFrom(recorder.calls[0].args[1])
 
-    timeTravel(new Date(issuedAt + 59 * 60 * 1000))
-    assert.deepEqual(kit.encryption.decrypt(token, 'account-kit:verify-email'), {
-      userId: id,
-      email: 'person@example.test',
-    })
-    timeTravel(new Date(issuedAt + 61 * 60 * 1000))
-    assert.isNull(kit.encryption.decrypt(token, 'account-kit:verify-email'))
+    const proof = await kit.db.from('email_verification_tokens').where('tokenable_id', id).first()
+    assert.equal(proof.hash.length, 64)
+    assert.approximately(new Date(proof.expires_at).valueOf() - issuedAt, 3600_000, 2000)
+    assert.isString(token)
   })
 
   test('missing user rejects and verified user returns without throttling or notification', async ({
@@ -153,15 +146,14 @@ test.group('emailVerification.complete', (group) => {
     assert.equal(await withCallback.emailVerification.complete({ token }), 'verified')
     const verified = await kit.db.from('users').where('id', id).first()
     assert.isNotNull(verified.email_verified_at)
-    assert.equal(await account.emailVerification.complete({ token }), 'already_verified')
+    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
     assert.equal(callbacks, 0)
   })
 
-  test('rejects a token encrypted for another purpose', async ({ assert }) => {
+  test('rejects an unknown proof', async ({ assert }) => {
     const id = await createUser()
     const { account } = service()
-    const payload = { userId: id, email: 'person@example.test' }
-    const wrongPurpose = kit.encryption.encrypt(payload, '1h', 'different-purpose')
+    const wrongPurpose = 'a'.repeat(43)
     await assert.rejects(
       () => account.emailVerification.complete({ token: wrongPurpose }),
       InvalidTokenError
@@ -171,13 +163,7 @@ test.group('emailVerification.complete', (group) => {
   })
 
   test('rejects an expired token', async ({ assert }) => {
-    const id = await createUser()
-    const { account } = service()
-    const expired = kit.encryption.encrypt(
-      { userId: id, email: 'person@example.test' },
-      '1h',
-      'account-kit:verify-email'
-    )
+    const { id, account, token: expired } = await issue()
     timeTravel(new Date(Date.now() + 3_600_001))
     await assert.rejects(
       () => account.emailVerification.complete({ token: expired }),
@@ -190,29 +176,25 @@ test.group('emailVerification.complete', (group) => {
   test('rejects malformed and wrong-shaped tokens', async ({ assert }) => {
     const id = await createUser()
     const { account } = service()
-    const payload = { userId: id, email: 'person@example.test' }
     for (const value of [null, 42, '', 'not-encrypted'])
       await assert.rejects(
         () => account.emailVerification.complete({ token: value as never }),
         InvalidTokenError
       )
-    for (const invalid of [
-      null,
-      [],
-      {},
-      { userId: true, email: payload.email },
-      { userId: id, email: 42 },
-    ]) {
-      const token = kit.encryption.encrypt(invalid, '1h', 'account-kit:verify-email')
-      await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
-    }
+    await assert.rejects(
+      () => account.emailVerification.complete({ token: 'a'.repeat(43) }),
+      InvalidTokenError
+    )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
   })
 
   test('rejects a prior-email token and a deleted user', async ({ assert }) => {
     const { id, account, token } = await issue()
-    await kit.db.from('users').where('id', id).update({ email: 'changed@example.test' })
+    await kit.db
+      .from('users')
+      .where('id', id)
+      .update({ email: 'changed@example.test', unverified_email: 'changed@example.test' })
     await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
@@ -288,6 +270,7 @@ test.group('emailVerification.complete', (group) => {
       await lockRow(trx, 'users', id)
       await users.findById(id, trx, { forUpdate: true })
       await users.setEmail(id, 'changed@example.test', trx)
+      await users.setUnverifiedEmail(id, 'changed@example.test', trx)
       changeReady()
       await holdChange
     })

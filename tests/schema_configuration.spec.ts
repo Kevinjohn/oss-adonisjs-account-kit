@@ -42,6 +42,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       const schema = kit.db.connection().schema
       for (const table of [
         'account_email_changes',
+        'email_verification_tokens',
+        'social_identities',
         'account_invitations',
         'password_reset_tokens',
         'account_transaction_lock',
@@ -55,6 +57,7 @@ test('generates and rolls back migrations for every user ID type and reserved cu
         else if (userIdType === 'uuid') table.uuid('id').primary()
         else table.string('id', 254).primary()
         table.string('email', 254).notNullable().unique()
+        table.string('password').notNullable()
       })
 
       await symlink(
@@ -84,7 +87,9 @@ test('generates and rolls back migrations for every user ID type and reserved cu
 
       assert.isTrue(await tableExists(kit, 'password_reset_tokens'))
       assert.isTrue(await tableExists(kit, 'account_invitations'))
-      assert.isTrue(await tableExists(kit, 'account_email_changes'))
+      assert.isTrue(await tableExists(kit, 'email_verification_tokens'))
+      assert.isTrue(await tableExists(kit, 'social_identities'))
+      assert.isFalse(await tableExists(kit, 'account_email_changes'))
 
       const down = new MigrationRunner(kit.db, kit.app, {
         direction: 'down',
@@ -96,6 +101,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       for (const table of [
         'account_transaction_lock',
         'account_email_changes',
+        'email_verification_tokens',
+        'social_identities',
         'account_invitations',
         'password_reset_tokens',
       ]) {
@@ -105,6 +112,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
     } finally {
       for (const table of [
         'account_email_changes',
+        'email_verification_tokens',
+        'social_identities',
         'account_invitations',
         'password_reset_tokens',
         'account_transaction_lock',

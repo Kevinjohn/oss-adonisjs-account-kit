@@ -20,8 +20,9 @@ test('account workflows support string user IDs with matching application-owned 
         await trx.table('users').insert({
           id,
           email: attrs.email.trim().toLowerCase(),
-          password: await kit.hash.make(attrs.password),
-          email_verified_at: attrs.emailVerifiedAt.toISO(),
+          password: attrs.password === null ? null : await kit.hash.make(attrs.password),
+          unverified_email: attrs.unverifiedEmail,
+          email_verified_at: null,
           created_at: DateTime.utc().toISO(),
         })
         return (await base.findById(id, trx))!
@@ -32,7 +33,7 @@ test('account workflows support string user IDs with matching application-owned 
         {
           email: 'actor@example.test',
           password: 'originalPassword123',
-          emailVerifiedAt: DateTime.utc(),
+          unverifiedEmail: null,
         },
         trx
       )
@@ -77,7 +78,7 @@ test('account workflows support string user IDs with matching application-owned 
     assert.equal(changed.email, 'changed@example.test')
     await kit.db.from('users').where('id', actor.id).delete()
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   } finally {
     await kit.close()
   }
