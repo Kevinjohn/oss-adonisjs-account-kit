@@ -8,10 +8,16 @@ import {
   requestPasswordReset,
   completePasswordReset,
 } from './password_reset.js'
-import { completeVerification, sendVerification } from './verification.js'
-import { changePassword, completeEmailChange, requestEmailChange } from './credentials.js'
 import { authenticationService } from './authentication.js'
 import { register } from './registration.js'
+import { completeVerification, inspectVerification, sendVerification } from './verification.js'
+import {
+  changePassword,
+  completeEmailChange,
+  inspectEmailChange,
+  requestEmailChange,
+  updateProfile,
+} from './credentials.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -24,7 +30,9 @@ import type {
   AccountUser,
   ChangePasswordInput,
   CompleteEmailChangeInput,
+  InspectEmailChangeInput,
   RequestEmailChangeInput,
+  UpdateProfileInput,
   Invitation,
   InvitationPage,
   Capability,
@@ -40,6 +48,7 @@ import type {
   ResolvedConfig,
   RegistrationInput,
   VerificationCompleteInput,
+  VerificationInspectInput,
   VerificationSendInput,
 } from './types.js'
 
@@ -78,13 +87,15 @@ export class AccountKit {
     request: (input: PasswordResetRequestInput): Promise<void> =>
       this.enabled('passwordReset', () => requestPasswordReset(this.deps, input)),
     inspect: (input: PasswordResetInspectInput): Promise<boolean> =>
-      this.enabled('passwordReset', () => inspectPasswordReset(this.deps.db, input)),
+      this.enabled('passwordReset', () => inspectPasswordReset(this.deps, input)),
     reset: (input: PasswordResetCompleteInput): Promise<AccountUser> =>
       this.enabled('passwordReset', () => completePasswordReset(this.deps, input)),
   }
   readonly emailVerification = {
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
       this.enabled('emailVerification', () => sendVerification(this.deps, input)),
+    inspect: (input: VerificationInspectInput): Promise<boolean> =>
+      this.enabled('emailVerification', () => inspectVerification(this.deps, input)),
     complete: (input: VerificationCompleteInput): Promise<'verified'> =>
       this.enabled('emailVerification', () => completeVerification(this.deps, input)),
   }
@@ -107,6 +118,10 @@ export class AccountKit {
       this.enabled('emailPasswordManagement', () => changePassword(this.deps, input)),
     requestEmailChange: (input: RequestEmailChangeInput): Promise<void> =>
       this.enabled('emailPasswordManagement', () => requestEmailChange(this.deps, input)),
+    updateProfile: (input: UpdateProfileInput): Promise<AccountUser> =>
+      this.enabled('emailPasswordManagement', () => updateProfile(this.deps, input)),
+    inspectEmailChange: (input: InspectEmailChangeInput): Promise<boolean> =>
+      this.enabled('emailPasswordManagement', () => inspectEmailChange(this.deps, input)),
     completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
       this.enabled('emailPasswordManagement', () => completeEmailChange(this.deps, input)),
   }

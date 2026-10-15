@@ -555,6 +555,228 @@ test.group('emailPasswordManagement', (group) => {
     assert.isNotNull(changed.emailVerifiedAt)
   })
 
+  test('email-change inspection preserves proof and resend suppresses within a minute', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const account = service({ notify: recorder.notify })
+    const request = () =>
+      account.emailPasswordManagement.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'oldPassword123',
+        newEmail: 'new@example.test',
+      })
+    await request()
+    const token = tokenFrom(recorder.calls[0].args[2])
+    assert.isTrue(await account.emailPasswordManagement.inspectEmailChange({ token }))
+    await request()
+    assert.lengthOf(recorder.calls, 1)
+    assert.isTrue(await account.emailPasswordManagement.inspectEmailChange({ token }))
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .update({
+        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+      })
+    await request()
+    assert.lengthOf(recorder.calls, 2)
+    assert.isFalse(await account.emailPasswordManagement.inspectEmailChange({ token }))
+    assert.isTrue(
+      await account.emailPasswordManagement.inspectEmailChange({
+        token: tokenFrom(recorder.calls[1].args[2]),
+      })
+    )
+  })
+
+  test('requesting the confirmed address cancels the pending change and its proof', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const account = service({ notify: recorder.notify })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newEmail: 'new@example.test',
+    })
+    const token = tokenFrom(recorder.calls[0].args[2])
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newEmail: user.email,
+    })
+    assert.lengthOf(recorder.calls, 1)
+    assert.isFalse(await account.emailPasswordManagement.inspectEmailChange({ token }))
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isNull(row.unverified_email)
+  })
+
+  test('email-change inspection rejects proof when pending account state differs', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const account = service({ notify: recorder.notify })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newEmail: 'new@example.test',
+    })
+    const token = tokenFrom(recorder.calls[0].args[2])
+    await kit.db.from('users').where('id', user.id).update({
+      unverified_email: 'other@example.test',
+    })
+    assert.isFalse(await account.emailPasswordManagement.inspectEmailChange({ token }))
+  })
+
+  test('profile updates map only configured fields and preserve pending email when omitted', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const received: Array<Record<string, unknown>> = []
+    const recorder = makeNotify()
+    const account = service({
+      notify: recorder.notify,
+      users: {
+        ...users,
+        async updateRegistrationData(_id, data) {
+          received.push(data)
+        },
+      },
+      registration: {
+        availability: 'closed',
+        mapFields: (input) => ({ fullName: (input as { name: string }).name }),
+      },
+    })
+    const updated = await account.emailPasswordManagement.updateProfile({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      registrationData: { name: 'Person', role: 'admin' },
+    })
+    assert.equal(updated.email, user.email)
+    assert.deepEqual(received, [{ fullName: 'Person' }])
+    assert.lengthOf(recorder.calls, 0)
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isNull(row.unverified_email)
+    const pending = await account.emailPasswordManagement.updateProfile({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      email: 'new@example.test',
+      registrationData: { name: 'Another Person' },
+    })
+    assert.equal(pending.email, user.email)
+    assert.equal(pending.unverifiedEmail, 'new@example.test')
+    assert.deepEqual(received, [{ fullName: 'Person' }, { fullName: 'Another Person' }])
+    assert.equal(recorder.calls[0].method, 'emailChangeProvision')
+  })
+
+  test('profile field failure rolls back a simultaneous pending-address request', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const account = service({
+      users: {
+        ...users,
+        async updateRegistrationData(_id, _data, trx) {
+          await trx.from('users').where('id', user.id).update({ email_verified_at: null })
+          throw new Error('profile write failed')
+        },
+      },
+      registration: {
+        availability: 'closed',
+        mapFields: () => ({ fullName: 'Person' }),
+      },
+    })
+    await assert.rejects(
+      () =>
+        account.emailPasswordManagement.updateProfile({
+          actorId: user.id,
+          currentPassword: 'oldPassword123',
+          email: 'new@example.test',
+          registrationData: { name: 'Person' },
+        }),
+      /profile write failed/
+    )
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.email, user.email)
+    assert.isNull(row.unverified_email)
+    assert.isNotNull(row.email_verified_at)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
+  })
+
+  test('profile writes reject unconfigured and protected fields before adapter writes', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let writes = 0
+    const adapter = {
+      ...users,
+      async updateRegistrationData() {
+        writes++
+      },
+    }
+    const account = service({ users: adapter })
+    await assert.rejects(
+      () =>
+        account.emailPasswordManagement.updateProfile({
+          actorId: user.id,
+          currentPassword: 'oldPassword123',
+          registrationData: { role: 'admin' },
+        }),
+      InvalidInputError
+    )
+    const configured = service({
+      users: adapter,
+      registration: {
+        availability: 'closed',
+        mapFields: () => ({ role: 'admin' }),
+      },
+    })
+    await assert.rejects(
+      () =>
+        configured.emailPasswordManagement.updateProfile({
+          actorId: user.id,
+          currentPassword: 'oldPassword123',
+          registrationData: { fullName: 'Person' },
+        }),
+      InvalidInputError
+    )
+    assert.equal(writes, 0)
+  })
+
+  test('inactive address replacement requires activation and a fresh password', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { password: 'oldPassword123', verified: false })
+    const recorder = makeNotify()
+    const account = service({ notify: recorder.notify })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newEmail: 'new@example.test',
+    })
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.email, 'new@example.test')
+    assert.equal(row.unverified_email, 'new@example.test')
+    assert.equal(recorder.calls[0].method, 'accountActivationProvision')
+    const token = tokenFrom(recorder.calls[0].args[1])
+    await assert.rejects(
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
+      InvalidTokenError
+    )
+    const { account: verification } = makeService(kit, { notify: recorder.notify })
+    assert.equal(
+      await verification.emailVerification.complete({ token, password: 'freshPassword123' }),
+      'verified'
+    )
+    const active = await kit.db.from('users').where('id', user.id).first()
+    assert.isNull(active.unverified_email)
+  })
+
   test('request validates raw email before throttle and rejects missing or wrong proof', async ({
     assert,
   }) => {
