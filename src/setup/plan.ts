@@ -13,7 +13,7 @@ import type {
 } from './types.js'
 import { featureNames } from './types.js'
 import { parseSetupChoices } from './parse.js'
-import { planManagedRoutes, type ManagedRoute } from '../http/routes.js'
+import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
 
 const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']['destinations']>> =
   {
@@ -28,14 +28,20 @@ const envName = /^[A-Z][A-Z0-9_]*$/
 const sqlName = /^[A-Za-z_][A-Za-z0-9_]*$/
 const routePrefix = /^\/[A-Za-z0-9/_-]*$/
 
-function selectedManagedRoutes(choices: SetupChoices): ManagedRoute[] {
+function selectedManagedRoutes(
+  choices: SetupChoices,
+  existing: readonly ExistingRoute[] = []
+): ManagedRoute[] {
   if (!choices.managed.length || !choices.authentication) return []
-  return planManagedRoutes({
-    prefix: choices.routePrefix,
-    strategy: choices.authentication.strategy,
-    enabled: choices.managed,
-    except: choices.managedExcept ?? [],
-  })
+  return planManagedRoutes(
+    {
+      prefix: choices.routePrefix,
+      strategy: choices.authentication.strategy,
+      enabled: choices.managed,
+      except: choices.managedExcept ?? [],
+    },
+    existing
+  )
 }
 
 function diagnostic(
@@ -146,18 +152,22 @@ function validate(
       'Select only known endpoint names for the selected strategy and managed groups'
     )
   }
-  if (
-    managedRoutes.some(({ method, path }) =>
-      state.routeDefinitions.some(
-        (route) => (route.method === method || route.method === 'ANY') && route.path === path
+  if (managedRoutes.length) {
+    const existing = state.routeDefinitions.flatMap((route) =>
+      route.method === 'ANY'
+        ? (['GET', 'POST', 'PATCH', 'DELETE'] as const).map((method) => ({ ...route, method }))
+        : [route]
+    )
+    try {
+      selectedManagedRoutes(choices, existing)
+    } catch (error) {
+      diagnostic(
+        diagnostics,
+        'routePrefix',
+        `${(error as Error).message}; exclude the selected endpoint or change the application route`
       )
-    )
-  )
-    diagnostic(
-      diagnostics,
-      'routePrefix',
-      'An application route collides with a selected managed method and path; exclude that endpoint or change the application route'
-    )
+    }
+  }
   if (choices.user.connection !== 'default')
     diagnostic(diagnostics, 'user.connection', 'Only the default Lucid connection is supported')
   if (state.connection === 'unsupported')

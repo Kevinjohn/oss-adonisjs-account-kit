@@ -607,6 +607,67 @@ test.group('onboarding plan and apply', (group) => {
     )
   })
 
+  test('setup preflight uses managed route overlap semantics and preserved constraints', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('authentication')
+    choices.managed.push('authentication')
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      "router.post('/account/auth/:action?', handler)\n"
+    )
+    const inspected = await inspectSetup(root)
+    const inspectedPlan = await planSetup(choices, inspected)
+    assert.include(
+      inspectedPlan.diagnostics.map(({ field }) => field),
+      'routePrefix'
+    )
+    const state = await inspectSetup(root)
+    for (const [path, overlaps] of [
+      ['/account/auth/:action?', true],
+      ['/account/auth/*', true],
+      ['/account/auth/:action-name', true],
+      ['/account/auth/login/:tail?', true],
+      ['/account/auth/login/*', false],
+      ['/account/auth/login/:tail.json?', false],
+    ] as const) {
+      state.routeDefinitions = [{ method: 'POST', path }]
+      const plan = await planSetup(choices, state)
+      assert.equal(
+        plan.diagnostics.some(({ field }) => field === 'routePrefix'),
+        overlaps,
+        path
+      )
+    }
+    state.routeDefinitions = [
+      { method: 'ANY', path: '/account/auth/:action?', name: 'application.catchAll' },
+    ]
+    const catchAll = await planSetup(choices, state)
+    assert.include(
+      catchAll.diagnostics.map(({ field }) => field),
+      'routePrefix'
+    )
+    state.routeDefinitions = [
+      {
+        method: 'POST',
+        path: '/account/auth/:id',
+        matchers: { id: { match: /^[0-9]+$/ } },
+      },
+    ]
+    const numeric = await planSetup(choices, state)
+    assert.notInclude(
+      numeric.diagnostics.map(({ field }) => field),
+      'routePrefix'
+    )
+    state.routeDefinitions[0].matchers = { id: { match: /^login$/ } }
+    const matching = await planSetup(choices, state)
+    assert.include(
+      matching.diagnostics.map(({ field }) => field),
+      'routePrefix'
+    )
+  })
+
   test('persisted named exclusion supports an application-owned replacement across preview, apply and check', async ({
     assert,
   }) => {

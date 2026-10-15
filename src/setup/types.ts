@@ -1,4 +1,4 @@
-import type { ManagedEndpointName } from '../http/routes.js'
+import type { ExistingRoute, ManagedEndpointName } from '../http/routes.js'
 
 export const featureNames = [
   'registration',
@@ -98,7 +98,7 @@ export interface SetupInspection {
   migrationNames: string[]
   existingPrefix: string | null
   routePaths: string[]
-  routeDefinitions: Array<{ method: string; path: string }>
+  routeDefinitions: ExistingRoute[]
   existingChoices: SetupChoices | null
 }
 
