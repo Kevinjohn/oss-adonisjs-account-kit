@@ -12,6 +12,34 @@ The `mail` pillar stores environment variable **names** for the sender, transpor
 
 To use your own notification transport, set `mail.integration` to `custom`, `mail.senderEnv` and `mail.transportEnv` to `null`, and provide `app/services/account_kit_notifications.ts` exporting `accountKitNotifications: Partial<NotificationCallbacks>` from the package root. Implement `passwordResetProvision`, `accountActivationProvision`, `emailChangeProvision`, `emailChanged`, `passwordResetCompleted`, and `passwordChanged` for the five-service examples; invitations also require `invitationProvision`. Provision callbacks receive an action URL and must hand it to a real delivery transport. A local file capture can help inspect links in development, but it is not message delivery or a production-ready transport. `delivery: durable` additionally requires an application-owned queue or outbox with a verified worker, retries, and terminal-failure handling.
 
+The following complete callback shape writes a **development-only** private capture file. Use it to inspect links locally, then replace `capture` with your configured delivery operation before deployment. Do not commit the capture file or treat it as sent mail. The `NotificationCallbacks` import supplies the parameter types: provision callbacks receive `(user, url)`, except invitation `(invitation, url)` and email change `(user, newEmail, url)`; the notice callbacks receive `(previousEmail, user)` for `emailChanged` and `(user, context)` for password notices.
+
+```ts
+// app/services/account_kit_notifications.ts
+import { appendFile, mkdir } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import app from '@adonisjs/core/services/app'
+import type { NotificationCallbacks } from 'adonisjs-account-kit'
+
+async function capture(kind: keyof NotificationCallbacks, recipient: string, url?: string) {
+  if (app.inProduction) throw new Error('Configure account message delivery before production')
+  const path = app.makePath('tmp', 'account-kit-notifications.jsonl')
+  await mkdir(dirname(path), { recursive: true })
+  await appendFile(path, JSON.stringify({ kind, recipient, url }) + '\n', { mode: 0o600 })
+}
+
+export const accountKitNotifications: NotificationCallbacks = {
+  passwordResetProvision: (user, url) => capture('passwordResetProvision', user.email, url),
+  accountActivationProvision: (user, url) =>
+    capture('accountActivationProvision', user.unverifiedEmail ?? user.email, url),
+  invitationProvision: (invitation, url) => capture('invitationProvision', invitation.email, url),
+  emailChangeProvision: (_user, newEmail, url) => capture('emailChangeProvision', newEmail, url),
+  emailChanged: (previousEmail, _user) => capture('emailChanged', previousEmail),
+  passwordResetCompleted: (user, _context) => capture('passwordResetCompleted', user.email),
+  passwordChanged: (user, _context) => capture('passwordChanged', user.email),
+}
+```
+
 The policy pillar records registration as `open`, `closed`, or `application`. Additional `registrationFields` each name an application-owned model property, a primitive type, whether it is required, and an optional string `maxLength`. Generated validation and mapping admit only those fields; protected account properties and unknown request fields are rejected. Password policy uses `minLength` (default 8), `maxLength` (default null), `letters`, `mixedCase`, `numbers`, `symbols` (all false), and `minScore` (default 0). Setup rejects limits above the service's 256-character ceiling or a maximum below the minimum. Login verification of existing passwords is independent of the new-password policy. Invitation permission and restricted-account hooks are application policies; setup blocks affected activation when they are missing. Every selection with `authentication` must set `policy.accessRestrictionHook` to true and provide `app/services/account_kit_policy.ts` exporting `accountKitPolicy` with an async `canAccess(user, trx)` function that evaluates your restricted-account rule and returns a boolean. Set the flag to false only when no authentication strategy is selected. The API example sets it to true; create the callback module before running its preview. The callback must reflect your real application policy rather than a placeholder that always allows access. Selecting invitations also requires that export to provide `authorize` and `onInvitationAccepted` callbacks. Setup imports this application-owned service but does not write a default allow-all policy.
 
 Social identity is recorded separately. The default records it as not applicable because no provider is selected. A selected Google or GitHub provider is `approved-pending` until the social implementation is installed and verified. That status is not a readiness claim.
