@@ -50,6 +50,36 @@ test('bearer logout revokes only the current token and repeat is unauthenticated
   assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
 })
 
+test('password change revokes every bearer token for the account', async ({ client, assert }) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const user = await User.create({
+    fullName: 'Multi Token User',
+    email: `multi-token-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  const tokens: string[] = []
+  for (let index = 0; index < 2; index++) {
+    const login = await client
+      .post('/api/v1/auth/login')
+      .json({ email: user.email, password: 'OriginalPass123!' })
+    assert.equal(login.status(), 200)
+    tokens.push((login.body() as unknown as { data: { token: string } }).data.token)
+  }
+  const change = await client
+    .post('/account-kit/credentials/password')
+    .bearerToken(tokens[0])
+    .json({
+      currentPassword: 'OriginalPass123!',
+      newPassword: 'ReplacementPass123!',
+      newPasswordConfirmation: 'ReplacementPass123!',
+    })
+  assert.equal(change.status(), 200)
+  for (const token of tokens) {
+    assert.equal((await client.get('/api/v1/account/profile').bearerToken(token)).status(), 401)
+  }
+  assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
+})
+
 test('account errors use stable JSON and JSON:API envelopes while Vine errors retain 422', async ({
   client,
   assert,
