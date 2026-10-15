@@ -1,0 +1,136 @@
+export const featureNames = [
+  'registration',
+  'authentication',
+  'emailVerification',
+  'passwordReset',
+  'emailPasswordManagement',
+  'invitations',
+] as const
+
+export type SetupFeature = (typeof featureNames)[number]
+export type GuardStrategy = 'session' | 'access_tokens'
+
+/** Values here are application choices. Deployment values remain environment references. */
+export interface SetupChoices {
+  version: 1
+  mode: 'services' | 'managed'
+  features: SetupFeature[]
+  managed: SetupFeature[]
+  routePrefix: string
+  user: {
+    model: string
+    table: string
+    idType: 'integer' | 'string' | 'uuid'
+    adapter: 'lucid' | 'custom'
+    connection: 'default'
+    primaryKey: 'id'
+    emailColumn: 'email'
+    passwordColumn: 'password'
+    verifiedColumn: 'email_verified_at'
+  }
+  authentication: {
+    strategy: GuardStrategy
+    guard: string
+    /** A session needs explicit cookie, CSRF, origin, and storage checks. */
+    session?: {
+      secureCookie: boolean
+      csrf: boolean
+      originChecked: boolean
+      persistentStore: boolean
+    }
+    token?: { revocation: boolean; lifetime: string; abilities: string[] }
+    applicationRouteRevocation: boolean
+  } | null
+  mail: {
+    integration: 'adonisjs-mail' | 'custom'
+    delivery: 'best-effort' | 'durable'
+    senderEnv: string | null
+    transportEnv: string | null
+    appName: string
+    backendOriginEnv: string
+    frontendOriginEnv: string
+    destinations: Partial<
+      Record<'emailVerification' | 'passwordReset' | 'invitation' | 'emailChange', string>
+    >
+    durableWorkerVerified: boolean
+  }
+  policy: {
+    registration: 'open' | 'closed' | 'application'
+    registrationFields: Array<{
+      name: string
+      type: 'string' | 'number' | 'boolean'
+      required: boolean
+      maxLength?: number
+    }>
+    password: {
+      minLength: number
+      maxLength: number | null
+      letters: boolean
+      mixedCase: boolean
+      numbers: boolean
+      symbols: boolean
+      minScore: number
+    }
+    verificationRequired: boolean
+    unverifiedActions: Array<'logout' | 'verificationResend' | 'passwordReset'>
+    invitationPermissionHook: boolean
+    accessRestrictionHook: boolean
+  }
+  social:
+    | { status: 'not-applicable'; reason: string }
+    | { status: 'approved-pending'; providers: Array<'google' | 'github'> }
+}
+
+export interface SetupInspection {
+  root: string
+  existingInstallation: boolean
+  files: Record<string, string>
+  guards: string[]
+  database: 'sqlite' | 'postgres' | 'unsupported' | 'unknown'
+  connection: 'default' | 'unsupported' | 'unknown'
+  installedPackages: string[]
+  migrationNames: string[]
+  existingPrefix: string | null
+  routePaths: string[]
+  existingChoices: SetupChoices | null
+}
+
+export interface SetupDiagnostic {
+  field: string
+  message: string
+  severity: 'error' | 'warning' | 'action'
+}
+
+export interface SetupFileChange {
+  path: string
+  action: 'create' | 'update' | 'unchanged' | 'conflict'
+  content: string
+  expected?: string
+  reason: string
+}
+
+export interface SetupPlan {
+  choices: SetupChoices
+  preview: boolean
+  changes: SetupFileChange[]
+  diagnostics: SetupDiagnostic[]
+  differences: string[]
+  retirementImpact: {
+    inspectedAccounts: number
+    affectedAccounts: number
+    checkedAt: string
+  } | null
+  prerequisites: string[]
+  endpoints: string[]
+  migrationState: 'not-generated' | 'generated-application-unknown' | 'partially-generated'
+  readiness: {
+    configurationGenerated: boolean
+    configurationValid: boolean
+    migrationsApplied: false
+    externalConfigured: boolean
+    workflowVerified: false
+    productionReady: false
+    delivery: 'best effort' | 'durable'
+  }
+  pillars: Record<'features' | 'user' | 'authentication' | 'mail' | 'social' | 'policy', string>
+}

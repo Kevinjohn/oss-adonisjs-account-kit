@@ -40,6 +40,11 @@ pnpm exec node ace migration:run
 pnpm typecheck
 ```
 
+For a new managed installation, use [`account-kit:setup`](docs/setup.md) instead of the basic
+configure step. It previews all six pillars, required files, dependencies, and endpoint groups;
+`--apply` creates a conflict-free proposal. An existing `config/account_kit.ts` with different
+application policy remains owned by the application and must be reconciled before setup applies.
+
 ## Quick start
 
 The maintained API consumer fixture is the runnable setup and operation example. Run its packed
