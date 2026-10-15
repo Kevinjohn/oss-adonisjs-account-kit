@@ -71,7 +71,7 @@ export async function sendVerification(
 export async function completeVerification(
   deps: { config: ResolvedConfig; db: Database },
   input: VerificationCompleteInput
-): Promise<'verified' | 'already_verified'> {
+): Promise<'verified'> {
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
   const outcome = await transaction(deps.db, async (trx) => {

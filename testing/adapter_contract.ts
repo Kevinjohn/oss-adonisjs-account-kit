@@ -231,6 +231,23 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   )
   const persistedPending = await fixture.adapter.findById(inactive.id)
   assert.equal(persistedPending?.unverifiedEmail, pendingEmail)
+  await assert.rejects(
+    fixture.transaction(async (trx) => {
+      await fixture.adapter.setUnverifiedEmail(inactive.id, null, trx)
+      const cleared = await fixture.adapter.findById(inactive.id, trx)
+      assert.equal(cleared?.unverifiedEmail, null)
+      throw new Error('pending clear rollback')
+    }),
+    /pending clear rollback/
+  )
+  const restoredPending = await fixture.adapter.findById(inactive.id)
+  assert.equal(restoredPending?.unverifiedEmail, pendingEmail)
+  await fixture.transaction((trx) => fixture.adapter.setUnverifiedEmail(inactive.id, null, trx))
+  const persistedClear = await fixture.adapter.findById(inactive.id)
+  assert.equal(persistedClear?.unverifiedEmail, null)
+  await fixture.transaction((trx) =>
+    fixture.adapter.setUnverifiedEmail(inactive.id, pendingEmail, trx)
+  )
   await fixture.transaction((trx) =>
     fixture.adapter.markEmailVerified(inactive.id, verifiedAt, trx)
   )

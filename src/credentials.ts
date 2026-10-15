@@ -110,10 +110,10 @@ export async function requestEmailChange(
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
-  let actor: AccountUser | null
+  let issued: { user: AccountUser; changedConfirmedEmail: boolean } | null
   let fault: PostCommitError | undefined
   try {
-    ;({ value: actor, fault } = await settleCommitted(
+    ;({ value: issued, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
         const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
         if (newEmail === current.email) {
@@ -155,7 +155,9 @@ export async function requestEmailChange(
             trx
           )
         }
-        return current
+        const issuedUser = await deps.config.users.findById(current.id, trx)
+        if (!issuedUser) throw new InvalidInputError('Unknown actor')
+        return { user: issuedUser, changedConfirmedEmail: inactive }
       })
     ))
   } catch (error) {
@@ -163,13 +165,20 @@ export async function requestEmailChange(
       throw new EmailAlreadyRegisteredError()
     throw error
   }
-  if (!actor) {
+  if (!issued) {
     if (fault) throw fault
     return
   }
 
+  const { user: actor, changedConfirmedEmail } = issued
+  const context = { operation: 'email_change' as const, operationId, userId: actor.id }
   await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
     postCommit('Email change follow-up failed', [
+      {
+        kind: 'observer',
+        run: () =>
+          changedConfirmedEmail ? deps.config.onCredentialsChanged?.(actor, context) : undefined,
+      },
       {
         kind: 'delivery',
         run: () =>
