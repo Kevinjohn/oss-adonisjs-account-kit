@@ -839,7 +839,28 @@ test.group('emailPasswordManagement', (group) => {
         }),
       InvalidInputError
     )
+    const required = service({
+      users: adapter,
+      registration: {
+        availability: 'closed',
+        mapFields: (input) => {
+          if (input === undefined) throw new InvalidInputError('Full name is required')
+          return { fullName: (input as { fullName: string }).fullName }
+        },
+      },
+    })
+    await assert.rejects(
+      () =>
+        required.emailPasswordManagement.updateProfile({
+          actorId: user.id,
+          currentPassword: 'oldPassword123',
+          email: 'new@example.test',
+          registrationData: undefined,
+        }),
+      /Full name is required/
+    )
     assert.equal(writes, 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('inactive address replacement requires activation and a fresh password', async ({
