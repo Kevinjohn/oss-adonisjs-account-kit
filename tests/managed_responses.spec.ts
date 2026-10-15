@@ -13,6 +13,7 @@ test.group('managed HTTP responses', () => {
     assert.deepEqual(managedErrorResponse(error, { proof: 'password' }), {
       status: 400,
       headers: {},
+      contentType: 'application/json',
       body: {
         errors: [{ code: 'E_INVALID_PASSWORD_TOKEN', message: 'This link is invalid or expired.' }],
       },
@@ -32,7 +33,27 @@ test.group('managed HTTP responses', () => {
       {
         status: 429,
         headers: { 'Retry-After': '2' },
+        contentType: 'application/vnd.api+json',
         body: { errors: [{ code: 'E_ACCOUNT_KIT_THROTTLED', title: 'Too many requests.' }] },
+      }
+    )
+  })
+
+  test('honors quality zero and customizes wording without changing a code', ({ assert }) => {
+    const error = new InvalidTokenError()
+    assert.deepEqual(
+      managedErrorResponse(error, {
+        proof: 'email',
+        accept: 'application/vnd.api+json;q=0, application/json;q=1',
+        message: (code) => `Public ${code}`,
+      }),
+      {
+        status: 400,
+        headers: {},
+        contentType: 'application/json',
+        body: {
+          errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'Public E_INVALID_EMAIL_TOKEN' }],
+        },
       }
     )
   })

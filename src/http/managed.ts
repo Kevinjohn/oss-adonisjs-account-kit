@@ -15,7 +15,7 @@ import type {
   CurrentAccountInput,
   UserId,
 } from '../types.js'
-import { managedErrorResponse, proofHeaders } from './responses.js'
+import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
@@ -49,6 +49,8 @@ export interface ManagedGuard<Credential> {
 }
 
 export interface ManagedExtensions {
+  /** Public wording only; the stable status and machine code cannot be changed. */
+  message?: ManagedMessage
   registration?: {
     /** HTTP schema; field mapping and domain rules remain in the public registration service. */
     validate(context: HttpContext): Promise<{
@@ -121,11 +123,17 @@ function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
 }
 
-function invalidProof(context: HttpContext, proof: 'password' | 'email' | 'invitation'): unknown {
+function invalidProof(
+  context: HttpContext,
+  proof: 'password' | 'email' | 'invitation',
+  message?: ManagedMessage
+): unknown {
   const mapped = managedErrorResponse(new InvalidTokenError(), {
     proof,
     accept: context.request.header('accept'),
+    message,
   })!
+  context.response.header('Content-Type', mapped.contentType)
   return context.response.status(mapped.status).send(mapped.body)
 }
 
@@ -175,6 +183,14 @@ async function execute<Credential>(
   const actorId = account?.id
   const represent = (value: CurrentAccount) =>
     options.extensions?.representAccount?.(value, context) ?? safeAccount(value)
+  const representIssued = async (value: CurrentAccount) => {
+    try {
+      return await represent(value)
+    } catch {
+      context.logger?.error('Account representation failed after credential issuance')
+      return safeAccount(value)
+    }
+  }
 
   switch (route.name) {
     case 'auth.csrf':
@@ -186,7 +202,7 @@ async function execute<Credential>(
         options.guard.forRequest(context)
       )
       return response.ok({
-        account: await represent(result.account),
+        account: await representIssued(result.account),
         ...(options.guard.strategy === 'access_tokens'
           ? { token: options.guard.publicCredential!(result.credential) }
           : {}),
@@ -212,7 +228,7 @@ async function execute<Credential>(
     case 'auth.passwordReset.inspect':
       return (await kit.passwordReset.inspect({ token: params.token }))
         ? response.ok({ valid: true })
-        : invalidProof(context, 'password')
+        : invalidProof(context, 'password', options.extensions?.message)
     case 'auth.passwordReset.complete': {
       const { password } = await request.validateUsing(passwordResetCompleteValidator)
       await kit.passwordReset.reset({ token: params.token, password })
@@ -220,7 +236,9 @@ async function execute<Credential>(
     }
     case 'auth.invitation.inspect': {
       const preview = await kit.invitations.inspect({ token: params.token })
-      return preview ? response.ok(preview) : invalidProof(context, 'invitation')
+      return preview
+        ? response.ok(preview)
+        : invalidProof(context, 'invitation', options.extensions?.message)
     }
     case 'auth.invitation.accept': {
       const input = options.extensions?.invitationAcceptance
@@ -272,7 +290,8 @@ async function execute<Credential>(
         options,
         kit as unknown as IntegratedKit,
         actorId,
-        represent
+        represent,
+        representIssued
       )
   }
 }
@@ -284,11 +303,14 @@ async function executePending<Credential>(
   options: ManagedRoutesOptions<Credential>,
   kit: IntegratedKit,
   actorId: CurrentAccount['id'] | undefined,
-  represent: (value: CurrentAccount) => Promise<Record<string, unknown>> | Record<string, unknown>
+  represent: (value: CurrentAccount) => Promise<Record<string, unknown>> | Record<string, unknown>,
+  representIssued: (value: CurrentAccount) => Promise<Record<string, unknown>>
 ): Promise<unknown> {
   const { request, response, params } = context
   switch (route.name) {
     case 'auth.signup': {
+      kit.managedHttp.assertPublicRegistration()
+      await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
       const input = options.extensions?.registration
         ? await options.extensions.registration.validate(context)
         : await request.validateUsing(signupValidator)
@@ -317,7 +339,7 @@ async function executePending<Credential>(
         return response.created({ registered: true, authenticated: false })
       }
       return response.created({
-        account: await represent(result.account),
+        account: await representIssued(result.account),
         ...(options.guard.strategy === 'access_tokens'
           ? { token: options.guard.publicCredential!(result.credential) }
           : {}),
@@ -326,7 +348,7 @@ async function executePending<Credential>(
     case 'auth.emailVerification.inspect':
       return (await kit.emailVerification.inspect({ token: params.token }))
         ? response.ok({ valid: true })
-        : invalidProof(context, 'email')
+        : invalidProof(context, 'email', options.extensions?.message)
     case 'auth.emailVerification.complete': {
       const { password } = await request.validateUsing(passwordResetCompleteValidator)
       await kit.emailVerification.complete({ token: params.token, password })
@@ -335,7 +357,7 @@ async function executePending<Credential>(
     case 'auth.emailChange.inspect':
       return (await kit.emailPasswordManagement.inspectEmailChange({ token: params.token }))
         ? response.ok({ valid: true })
-        : invalidProof(context, 'email')
+        : invalidProof(context, 'email', options.extensions?.message)
     case 'auth.emailChange.complete': {
       const user = await kit.emailPasswordManagement.completeEmailChange({ token: params.token })
       return response.ok({ account: await represent(currentAccount(user)) })
@@ -398,6 +420,7 @@ export function registerManagedRoutes<Credential>(
             return context.response.accepted({ committed: true })
           const mapped = managedErrorResponse(error, {
             accept: context.request.header('accept'),
+            message: options.extensions?.message,
             proof: route.proof
               ? route.name.includes('passwordReset')
                 ? 'password'
@@ -409,6 +432,7 @@ export function registerManagedRoutes<Credential>(
           if (!mapped) throw error
           for (const [name, value] of Object.entries(mapped.headers))
             context.response.header(name, value)
+          context.response.header('Content-Type', mapped.contentType)
           return context.response.status(mapped.status).send(mapped.body)
         }
       })

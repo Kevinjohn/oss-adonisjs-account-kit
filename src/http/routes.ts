@@ -238,7 +238,8 @@ export function planManagedRoutes(
   const result = definitions
     .filter(
       (route) =>
-        enabled.includes(route.capability) &&
+        (enabled.includes(route.capability) ||
+          (route.name === 'auth.csrf' && strategy === 'session' && enabled.length > 0)) &&
         (!route.strategy || route.strategy === strategy) &&
         !except.includes(route.name)
     )
