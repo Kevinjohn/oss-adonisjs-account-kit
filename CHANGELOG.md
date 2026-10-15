@@ -6,6 +6,10 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Added
 
+- `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential logout.
+- `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
+- `users.credentials_changed_at` (column) invalidates existing browser sessions and login attempts using superseded account evidence.
+- The API example provides session CSRF bootstrap, browser logout, and selected-guard access middleware for protected routes.
 - `users.unverified_email` (column) records a pending address; active state follows the confirmed/pending pair.
 - `email_verification_tokens` (table) stores hashed, expiring, single-use activation and email-change proofs.
 - `social_identities` (table) stores unique provider subjects and user-linked identity metadata without credentials.
@@ -26,6 +30,7 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Changed
 
+- Password and confirmed-email changes and password resets now delete all user access tokens transactionally in token mode or advance the browser-session revision in session mode.
 - `UsersAdapter.create({ email, password, emailVerifiedAt, registrationData? })` → `UsersAdapter.create({ email, unverifiedEmail, password, registrationData? })` (export contract).
 - `AccountUser.emailVerifiedAt` authorization state → `AccountUser.unverifiedEmail` confirmed/pending authorization state (export contract); the timestamp remains audit metadata.
 - `UsersAdapter.setUnverifiedEmail` (export contract) is required for pending-address writes.
