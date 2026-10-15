@@ -129,15 +129,15 @@ export async function updateProfile(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
   input: UpdateProfileInput
 ): Promise<AccountUser> {
-  if (input.email === undefined && input.registrationData === undefined)
+  const hasRegistrationData = Object.hasOwn(input, 'registrationData')
+  if (input.email === undefined && !hasRegistrationData)
     throw new InvalidInputError('Profile update is empty')
   if (input.email !== undefined && !isEmailShaped(input.email))
     throw new InvalidInputError('Invalid email')
   const newEmail = input.email === undefined ? undefined : normaliseEmail(input.email)
-  const registrationData =
-    input.registrationData === undefined
-      ? undefined
-      : await mapRegistrationFields(deps.config, input.registrationData)
+  const registrationData = hasRegistrationData
+    ? await mapRegistrationFields(deps.config, input.registrationData)
+    : undefined
   await consume(
     deps.limiter,
     'identity:user',
