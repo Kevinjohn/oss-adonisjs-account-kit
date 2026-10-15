@@ -9,11 +9,11 @@ export interface ManagedUser {
   currentAccessToken?: { identifier: UserId }
 }
 
-export interface ManagedUserModel<User extends ManagedUser> {
+export interface ManagedUserModel<User> {
   findOrFail(id: UserId): Promise<User>
 }
 
-export interface ManagedTokenModel<User extends ManagedUser> extends ManagedUserModel<User> {
+export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
   accessTokens: {
     create(
       user: User,
@@ -33,18 +33,18 @@ export interface ManagedTokenCredential {
   value?: string
 }
 
-type SessionOptions<User extends ManagedUser> = {
+type SessionOptions<User> = {
   strategy: 'session'
   name: string
   loadUser(): Promise<ManagedUserModel<User>>
 }
-type TokenOptions<User extends ManagedUser> = {
+type TokenOptions<User> = {
   strategy: 'access_tokens'
   name: string
   loadUser(): Promise<ManagedTokenModel<User>>
 }
 
-type SessionContext<User extends ManagedUser> = HttpContext & {
+type SessionContext<User> = HttpContext & {
   auth: {
     use(name: string): {
       authenticate(): Promise<User>
@@ -59,15 +59,31 @@ type SessionContext<User extends ManagedUser> = HttpContext & {
     clear(): void
   }
 }
-type TokenContext<User extends ManagedUser> = HttpContext & {
+type TokenContext<User> = HttpContext & {
   auth: { use(name: string): { authenticate(): Promise<User> } }
 }
 
 const revisionKey = 'accountKitRevision'
 
-async function authenticate<User extends ManagedUser>(guard: {
-  authenticate(): Promise<User>
-}): Promise<User> {
+function managedUser(value: unknown): ManagedUser {
+  if (!value || typeof value !== 'object' || !('id' in value)) throw new InvalidSessionError()
+  const id = value.id
+  if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
+  return value as ManagedUser
+}
+
+function tokenIdentifier(value: unknown): UserId {
+  if (!value || typeof value !== 'object' || !('currentAccessToken' in value))
+    throw new InvalidSessionError()
+  const token = value.currentAccessToken
+  if (!token || typeof token !== 'object' || !('identifier' in token))
+    throw new InvalidSessionError()
+  const id = token.identifier
+  if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
+  return id
+}
+
+async function authenticate<User>(guard: { authenticate(): Promise<User> }): Promise<User> {
   try {
     return await guard.authenticate()
   } catch (error) {
@@ -82,15 +98,17 @@ async function authenticate<User extends ManagedUser>(guard: {
   }
 }
 
-export function createManagedGuard<User extends ManagedUser>(
-  options: SessionOptions<User>
-): Omit<ManagedGuard<undefined>, 'strategy' | 'forRequest'> & {
+export function createManagedGuard<User>(options: SessionOptions<User>): Omit<
+  ManagedGuard<undefined>,
+  'strategy' | 'forRequest'
+> & {
   strategy: 'session'
   forRequest(context: HttpContext): Extract<AuthenticationGuard<undefined>, { strategy: 'session' }>
 }
-export function createManagedGuard<User extends ManagedUser>(
-  options: TokenOptions<User>
-): Omit<ManagedGuard<ManagedTokenCredential>, 'strategy' | 'forRequest' | 'logoutCredential'> & {
+export function createManagedGuard<User>(options: TokenOptions<User>): Omit<
+  ManagedGuard<ManagedTokenCredential>,
+  'strategy' | 'forRequest' | 'logoutCredential'
+> & {
   strategy: 'access_tokens'
   forRequest(
     context: HttpContext
@@ -98,7 +116,7 @@ export function createManagedGuard<User extends ManagedUser>(
   logoutCredential(context: HttpContext): Promise<ManagedTokenCredential>
   publicCredential(credential: ManagedTokenCredential): string
 }
-export function createManagedGuard<User extends ManagedUser>(
+export function createManagedGuard<User>(
   options: SessionOptions<User> | TokenOptions<User>
 ): ManagedGuard<undefined | ManagedTokenCredential> {
   if (options.strategy === 'session') {
@@ -111,7 +129,7 @@ export function createManagedGuard<User extends ManagedUser>(
         const stored = ctx.session.get(revisionKey)
         if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
         return {
-          userId: user.id,
+          userId: managedUser(user).id,
           ...(stored === undefined ? {} : { revision: stored === '' ? null : stored }),
         }
       },
@@ -145,15 +163,11 @@ export function createManagedGuard<User extends ManagedUser>(
     },
     async current(context) {
       const user = await authenticate((context as TokenContext<User>).auth.use(options.name))
-      const identifier = user.currentAccessToken?.identifier
-      if (identifier === undefined || identifier === null) throw new InvalidSessionError()
-      return { userId: user.id, tokenId: identifier }
+      return { userId: managedUser(user).id, tokenId: tokenIdentifier(user) }
     },
     async logoutCredential(context) {
       const user = await authenticate((context as TokenContext<User>).auth.use(options.name))
-      const identifier = user.currentAccessToken?.identifier
-      if (identifier === undefined || identifier === null) throw new InvalidSessionError()
-      return { userId: user.id, identifier }
+      return { userId: managedUser(user).id, identifier: tokenIdentifier(user) }
     },
     forRequest(_context) {
       return {
