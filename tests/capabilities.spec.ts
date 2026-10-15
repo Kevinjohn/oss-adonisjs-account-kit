@@ -105,6 +105,21 @@ test.group('capability configuration', (group) => {
     )
   })
 
+  for (const capability of ['passwordReset', 'emailPasswordManagement'] as const) {
+    test(`${capability} requires a pending-email setter`, ({ assert }) => {
+      const users = makeUsersAdapter(kit.db, kit.hash)
+      assert.throws(
+        () =>
+          defineConfig({
+            ...makeConfig({ users }),
+            enabled: [capability],
+            users: { ...users, setUnverifiedEmail: undefined } as never,
+          }),
+        /users\.setUnverifiedEmail must be a function/
+      )
+    })
+  }
+
   test('requires supplied hooks to be callable but does not execute placeholders', ({ assert }) => {
     const base = makeConfig({
       users: makeUsersAdapter(kit.db, kit.hash),
