@@ -122,12 +122,12 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
         throw new Error(`account_kit: ${path} must be a function`)
     }
   }
+  if (
+    !config.registration ||
+    !['open', 'closed', 'application'].includes(config.registration.availability)
+  )
+    throw new Error('account_kit: registration.availability must be open, closed, or application')
   if (enabled.includes('registration')) {
-    if (
-      !config.registration ||
-      !['open', 'closed', 'application'].includes(config.registration.availability)
-    )
-      throw new Error('account_kit: registration.availability must be open, closed, or application')
     if (
       config.registration.mapFields !== undefined &&
       typeof config.registration.mapFields !== 'function'

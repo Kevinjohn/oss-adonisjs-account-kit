@@ -125,6 +125,7 @@ export function makeConfig(
   const { notify } = makeNotify()
   return {
     limiterSecret: 'test_only_shared_limiter_secret_32_bytes',
+    registration: { availability: 'open' },
     authorize: allowAll,
     urls: {
       passwordReset: (token) => `https://example.test/recovery/${token}`,
