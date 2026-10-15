@@ -83,6 +83,23 @@ test.group('managed existing-guard adapters', () => {
       value: 'token',
     })
   })
+  test('refuses a provider token without a releasable bearer value', async ({ assert }) => {
+    const adapter = createManagedGuard({
+      strategy: 'access_tokens',
+      name: 'api',
+      loadUser: async () => ({
+        findOrFail: async () => ({ id: 42 }),
+        accessTokens: {
+          create: async () => ({ identifier: 18, value: undefined }),
+          delete: async () => {},
+        },
+      }),
+    })
+    await assert.rejects(
+      () => adapter.forRequest({} as never).establish(42, ['*'], null),
+      /bearer value/
+    )
+  })
   test('refuses cookie-backed sessions before issuing or trusting a credential', async ({
     assert,
   }) => {
