@@ -84,7 +84,7 @@ function escapeHtml(value: string): string {
 
 export function renderAccountMessage(
   kind: AccountMessageKind,
-  values: { brandName: string; recipient: string; actionUrl?: string },
+  values: { brandName: string; actionUrl?: string },
   emailLayout?: (body: string) => string
 ): RenderedAccountMessage {
   const template = templates[kind]
@@ -113,7 +113,7 @@ export function renderAccountMessage(
   }
 }
 
-/** Maintained mailer values for the four action-link flows. */
+/** Maintained action-link values; pass their rendered content through createMailNotifications. */
 export class PasswordResetProvision {
   readonly kind = 'passwordResetProvision' as const
   constructor(
@@ -154,7 +154,7 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
   async function send(kind: AccountMessageKind, recipient: string, actionUrl?: string) {
     const rendered = renderAccountMessage(
       kind,
-      { brandName: options.brandName, recipient, actionUrl },
+      { brandName: options.brandName, actionUrl },
       options.emailLayout
     )
     await options.mail.sendLater((message) => {
@@ -228,6 +228,7 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
     const destination = options.destinations[name]
     if (
       !destination ||
+      destination.trim() !== destination ||
       destination.startsWith('/') ||
       destination.includes('..') ||
       destination.includes('\\') ||
@@ -238,10 +239,28 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
       destination.startsWith('//')
     )
       throw new Error(`account_kit: ${name} destination must be a relative path`)
-    return new URL(
-      `${destination.replace(/\/?$/, '/')}${encodeURIComponent(token)}`,
-      base
-    ).toString()
+    try {
+      if (
+        destination.split('/').some((segment) => {
+          const decoded = decodeURIComponent(segment)
+          return (
+            decoded === '.' || decoded === '..' || decoded.includes('/') || decoded.includes('\\')
+          )
+        })
+      )
+        throw new Error('unsafe path segment')
+      const resolved = new URL(
+        `${destination.replace(/\/?$/, '/')}${encodeURIComponent(token)}`,
+        base
+      )
+      if (resolved.origin !== base.origin || !resolved.pathname.startsWith(base.pathname))
+        throw new Error('outside configured frontend')
+      return resolved.toString()
+    } catch {
+      throw new Error(
+        `account_kit: ${name} destination must stay below the configured frontend path`
+      )
+    }
   }
   for (const [name, destination] of Object.entries(options.destinations)) {
     if (destination !== undefined) link(name as keyof UrlCallbacks, 'check')
@@ -287,6 +306,12 @@ export function notificationReadiness(input: NotificationReadinessInput) {
   }
   if (input.environment === 'production' && input.delivery === 'capture')
     problems.push('capture is development only and does not deliver to recipients')
+  if (input.transport === 'discard')
+    problems.push('discard transport does not deliver or capture account messages')
+  if (input.transport === 'capture' && input.delivery !== 'capture')
+    problems.push('capture transport requires capture delivery classification')
+  if (input.transport === 'delivery' && input.delivery === 'capture')
+    problems.push('capture delivery classification requires a capture transport')
   if (input.environment === 'production' && input.transport !== 'delivery')
     problems.push('production mail transport must deliver to recipients')
   if (
@@ -319,11 +344,13 @@ export function notificationReadiness(input: NotificationReadinessInput) {
     problems.push((error as Error).message)
   }
   const classification =
-    input.delivery === 'durable'
-      ? 'application declared durable'
-      : input.delivery === 'capture'
+    input.transport === 'discard'
+      ? 'discarded'
+      : input.transport === 'capture'
         ? 'development capture'
-        : 'best effort'
+        : input.delivery === 'durable'
+          ? 'application declared durable'
+          : 'best effort'
   const notes =
     input.delivery === 'durable'
       ? ['Verify application worker, retry, terminal failure and deduplication operations.']

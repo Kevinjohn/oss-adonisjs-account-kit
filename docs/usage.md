@@ -22,9 +22,10 @@ expiresIn: {
 For example, `expiresIn: { passwordReset: 3600 }` has the same lifetime as `'1h'`.
 Keep application password rules, throttle budgets, and notification delivery policy explicit.
 
-The callback names distinguish a link provision from a completed-operation notice:
 For maintained AdonisJS Mail callbacks, templates, trusted links and delivery classification,
 see [account notifications](notifications.md).
+
+The callback names distinguish a link provision from a completed-operation notice:
 
 | Purpose                   | URL callback             | Notification callback               |
 | ------------------------- | ------------------------ | ----------------------------------- |
