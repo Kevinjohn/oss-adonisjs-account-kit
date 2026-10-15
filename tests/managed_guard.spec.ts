@@ -174,6 +174,7 @@ test.group('managed existing-guard adapters', () => {
           create: async () => ({ identifier: 'token-2', value: { release: () => 'secret-token' } }),
           delete: async (_user: unknown, identifier: unknown) => {
             deleted.push(identifier)
+            return 1
           },
         },
       }),
