@@ -93,7 +93,7 @@ connection and an `id` primary-key column. Add
 `mapRegistrationData(data, user)` only when account creation needs additional required profile
 fields. The callback receives untrusted registration data and the new model instance. Explicitly
 validate and assign known fields; never spread request data onto the model. The adapter controls
-`id`, `email`, `password`, `emailVerifiedAt`, and `role`. Passwords are set through normal model
+`id`, `email`, `unverifiedEmail`, `password`, `emailVerifiedAt`, and `role`. Passwords are set through normal model
 save hooks so the application's hashing hook runs once.
 
 If using a custom adapter, implement normalized email equality, a unique email constraint, password
@@ -101,7 +101,8 @@ hashing, and transaction-aware reads/writes. Provide `resolveMetadata()` with th
 and `primaryKey: 'id'`, or configure `usersTable` as the metadata fallback. The package acquires
 the PostgreSQL user-row lock centrally from that metadata; SQLite uses its package-owned singleton
 transaction lock. See the emitted [`UsersAdapter` declaration](../build/src/types.d.ts) and
-[adapter compatibility declaration](../build/testing/adapter_contract.d.ts).
+[adapter compatibility declaration](../build/testing/adapter_contract.d.ts). Review the
+[identity creation contract](identity-creation.md) before enabling creation flows.
 
 ## Authorization and callbacks
 
@@ -217,7 +218,7 @@ Implement the callbacks for enabled capabilities, adapt application calls and im
 types, and update lifecycle listeners to `password_reset.requested`. The email-verification event
 remains `verification.completed`; all other lifecycle events and `E_ACCOUNT_KIT_*` error codes
 also retain their names. An inactive account becomes active when its current email is verified;
-this rename retains the existing `emailVerifiedAt` state representation.
+the canonical state now uses `email` and `unverifiedEmail`; `emailVerifiedAt` is audit metadata.
 
 Existing installations must also rename their reset-token table in a controlled migration.
 Follow the [vocabulary upgrade steps](upgrade.md#vocabulary-alignment) before enabling the new

@@ -5,6 +5,17 @@ pagination, registration mapping, and generated schema. Review each item before 
 installed package. Configure deliberately skips existing config and migration files; it does not
 rewrite them to match new options or schemas.
 
+## Identity creation and proof migration
+
+Follow the [identity creation contract](identity-creation.md), especially its manual steps,
+before applying the appended migrations. Custom adapters now accept explicit pending-email and
+nullable-password creation attributes, expose `AccountUser.unverifiedEmail`, and implement
+`setUnverifiedEmail`. The API example has been updated to the new contract. Existing migrations
+are preserved; review the generated evolution, social-identity and retirement migrations against
+the application-owned users table. Existing reset proofs and pending email-change proofs are
+transferred. Encrypted repeatable activation links must be reissued. Do not infer provider
+ownership from an email match when migrating application social identities.
+
 ## Vocabulary alignment
 
 D24 permits breaking contract changes before first publication, with no compatibility layer.
@@ -38,8 +49,8 @@ Use a maintenance window so old and new package versions do not access different
 Preserve every existing column and row, including hashes, expiry timestamps and outstanding
 proofs. Apply the rename before starting the new application code; restore the old code with the
 reverse table rename if rolling back. Fresh installations use the generated create-table migration.
-The email-change table, verification-state model, token columns, default lifetimes and secret
-length remain unchanged; their later design decisions are outside this vocabulary change.
+The later identity migration changes the email-change table, verification state, token columns,
+and secret length as described above; default lifetimes remain unchanged.
 
 ## Existing installations
 
