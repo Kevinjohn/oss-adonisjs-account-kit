@@ -133,7 +133,8 @@ This project has no published releases yet. The current candidate remains versio
 - Registration attributes are untrusted. Applications must map only validated profile data in
   `mapRegistrationData`; identity, email, password, verification, and role fields remain controlled
   by the adapter and account operation.
-- Enabled capabilities default to all capabilities. When supplying a subset, configure only the
+- Enabled capabilities default to password reset, email verification, and email/password
+  management; registration and invitations require explicit opt-in. When supplying a subset, configure only the
   callbacks required by those capabilities; calling a disabled operation fails explicitly.
 - Review the [upgrade guide](docs/upgrade.md) before applying these contracts to an existing
   installation. Current evidence is tracked in [verification](docs/verification.md).
