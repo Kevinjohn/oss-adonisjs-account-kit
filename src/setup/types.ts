@@ -1,3 +1,5 @@
+import type { ManagedEndpointName } from '../http/routes.js'
+
 export const featureNames = [
   'registration',
   'authentication',
@@ -16,6 +18,7 @@ export interface SetupChoices {
   mode: 'services' | 'managed'
   features: SetupFeature[]
   managed: SetupFeature[]
+  managedExcept?: ManagedEndpointName[]
   routePrefix: string
   user: {
     model: string
@@ -95,6 +98,7 @@ export interface SetupInspection {
   migrationNames: string[]
   existingPrefix: string | null
   routePaths: string[]
+  routeDefinitions: Array<{ method: string; path: string }>
   existingChoices: SetupChoices | null
 }
 
@@ -125,6 +129,7 @@ export interface SetupPlan {
   } | null
   prerequisites: string[]
   endpoints: string[]
+  endpointLocations: Array<{ name: string; method: string; path: string }>
   migrationState: 'not-generated' | 'generated-application-unknown' | 'partially-generated'
   readiness: {
     configurationGenerated: boolean

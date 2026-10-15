@@ -19,6 +19,7 @@ export function defaultSetupChoices(): SetupChoices {
       'passwordReset',
       'emailPasswordManagement',
     ],
+    managedExcept: [],
     routePrefix: '/account',
     user: {
       model: '#models/user',

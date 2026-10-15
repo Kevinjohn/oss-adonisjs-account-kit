@@ -232,6 +232,7 @@ export default class SetupAccountKit extends BaseCommand {
           differences: plan.differences,
           retirementImpact: plan.retirementImpact,
           endpoints: plan.endpoints,
+          endpointLocations: plan.endpointLocations,
           prerequisites: plan.prerequisites,
           diagnostics: plan.diagnostics,
           migrationState: plan.migrationState,
@@ -251,7 +252,7 @@ export default class SetupAccountKit extends BaseCommand {
     }
     if (!plan.preview) {
       const written = await applySetup(root, plan)
-      this.logger.info(`Created ${written.length} files. Run migrations separately after review.`)
+      this.logger.info(`Wrote ${written.length} files. Run migrations separately after review.`)
     }
   }
 }

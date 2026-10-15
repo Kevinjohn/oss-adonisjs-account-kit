@@ -71,13 +71,17 @@ async function fixture() {
     "export default { guards: { web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }), api: tokensGuard({ provider: tokensUserProvider({ model: () => import('#models/user') }) })\n} }\n"
   )
   await writeFile(join(root, 'config/database.ts'), "export default { client: 'better-sqlite3' }\n")
+  await writeFile(
+    join(root, 'config/limiter.ts'),
+    'export default defineConfig({ default: "database" })\n'
+  )
   await writeFile(join(root, 'config/shield.ts'), 'export default { csrf: { enabled: true } }\n')
   await writeFile(join(root, 'config/session.ts'), 'export default { cookie: {} }\n')
   await writeFile(join(root, 'adonisrc.ts'), 'export default { providers: [] }\n')
   await writeFile(join(root, 'start/routes.ts'), '// application routes\n')
   await writeFile(
     join(root, 'start/kernel.ts'),
-    "router.use([\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])\n"
+    "server.use([\n  () => import('@adonisjs/cors/cors_middleware'),\n])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])\n"
   )
   const choices = defaultSetupChoices()
   choices.features = ['passwordReset']
@@ -209,13 +213,14 @@ test.group('onboarding plan and apply', (group) => {
     assert.lengthOf(Object.keys(plan.pillars), 6)
     assert.include(plan.pillars.social, 'pending')
     assert.deepEqual(plan.endpoints, [
+      'auth.csrf',
       'auth.passwordReset.request',
       'auth.passwordReset.inspect',
       'auth.passwordReset.complete',
     ])
     assert.lengthOf(
       plan.changes.filter(({ action }) => action === 'create'),
-      14
+      15
     )
     assert.isFalse(plan.readiness.productionReady)
     assert.isFalse(plan.readiness.migrationsApplied)
@@ -252,7 +257,7 @@ test.group('onboarding plan and apply', (group) => {
     })
     assert.equal(resumed.changes[0].action, 'unchanged')
     const written = await applySetup(root, resumed)
-    assert.lengthOf(written, 16)
+    assert.lengthOf(written, 17)
     assert.include(await readFile(join(root, 'start/routes.ts'), 'utf8'), originalRoutes.trim())
     assert.include(
       await readFile(join(root, 'start/routes.ts'), 'utf8'),
@@ -371,7 +376,10 @@ test.group('onboarding plan and apply', (group) => {
 
   test('stops on an existing managed prefix and rejects hidden JSON fields', async ({ assert }) => {
     const { root, choices } = await fixture()
-    await writeFile(join(root, 'start/routes.ts'), "router.get('/account/profile', handler)\n")
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      "router.post('/account/auth/password-reset', handler)\n"
+    )
     const plan = await planSetup(choices, await inspectSetup(root), {
       apply: true,
       timestamp: 1234,
@@ -534,6 +542,149 @@ test.group('onboarding plan and apply', (group) => {
       'start/account_kit_routes.ts'
     )
     assert.notInclude(plan.prerequisites.join(' '), 'guard prerequisites')
+  })
+
+  test('service-only setup ignores unrelated managed-prefix routes', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    choices.mode = 'services'
+    choices.managed = []
+    choices.authentication = null
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      "router.post('/account/auth/password-reset', handler)\n"
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'routePrefix'
+    )
+  })
+
+  test('persisted named exclusion supports an application-owned replacement across preview, apply and check', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.managedExcept = ['auth.passwordReset.request']
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      "router.post('/account/auth/password-reset', handler)\n"
+    )
+    const preview = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.notInclude(
+      preview.diagnostics.map(({ field }) => field),
+      'routePrefix'
+    )
+    assert.notInclude(preview.endpoints, 'auth.passwordReset.request')
+    assert.include(preview.endpoints, 'auth.passwordReset.inspect')
+    const applied = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    await applySetup(root, applied)
+    const persisted = await inspectSetup(root)
+    assert.deepEqual(persisted.existingChoices?.managedExcept, ['auth.passwordReset.request'])
+    assert.include(
+      persisted.files['start/account_kit_routes.ts'],
+      'except: ["auth.passwordReset.request"]'
+    )
+    const checked = await planSetup(persisted.existingChoices!, persisted, { timestamp: 1234 })
+    assert.isFalse(checked.diagnostics.some(({ severity }) => severity === 'error'))
+    assert.isTrue(checked.changes.every(({ action }) => action === 'unchanged'))
+    choices.managedExcept = ['auth.passwordReset.request', 'auth.passwordReset.request']
+    const invalid = await planSetup(choices, persisted)
+    assert.include(
+      invalid.diagnostics.map(({ field }) => field),
+      'managedExcept'
+    )
+  })
+
+  test('selected database client wins over unused connections', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "export default { connection: 'mysql', connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } }\n"
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'unsupported')
+    assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'database.client'
+    )
+  })
+
+  test('rejects model leaf links and explicit table or connection mismatches', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const outside = join(tmpdir(), `account-kit-model-${Date.now()}.ts`)
+    cleanupRoots.push(outside)
+    await writeFile(outside, 'export default class User extends BaseModel {}\n')
+    await rm(join(root, 'app/models/user.ts'))
+    await symlink(outside, join(root, 'app/models/user.ts'))
+    const linkedState = await inspectSetup(root)
+    await assert.rejects(() => planSetup(choices, linkedState), /non-regular model/)
+    await rm(join(root, 'app/models/user.ts'))
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      "export default class User extends BaseModel { static table = 'members'; static connection = 'other' }\n"
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.includeMembers(
+      plan.diagnostics.map(({ field }) => field),
+      ['user.table', 'user.connection']
+    )
+  })
+
+  test('detects manual mounts but ignores commented route and provider imports', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(join(root, 'start/routes.ts'), "// import './account_kit_routes.js'\n")
+    await writeFile(
+      join(root, 'adonisrc.ts'),
+      "export default { providers: [ /* () => import('@adonisjs/limiter/limiter_provider') */ ] }\n"
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.equal(plan.changes.find(({ path }) => path === 'start/routes.ts')?.action, 'update')
+    assert.include(
+      plan.changes.find(({ path }) => path === 'adonisrc.ts')!.content,
+      "    () => import('@adonisjs/limiter/limiter_provider'),"
+    )
+    await writeFile(join(root, 'start/routes.ts'), 'registerManagedRoutes(router, {})\n')
+    const duplicate = await planSetup(choices, await inspectSetup(root))
+    assert.include(
+      duplicate.diagnostics.map(({ field }) => field),
+      'start/routes.ts'
+    )
+  })
+
+  test('requires configured limiter and repairs a comma-free router array', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await rm(join(root, 'config/limiter.ts'))
+    const missing = await planSetup(choices, await inspectSetup(root))
+    assert.include(
+      missing.diagnostics.map(({ field }) => field),
+      'config/limiter.ts'
+    )
+    await writeFile(join(root, 'config/limiter.ts'), 'export default {}\n')
+    const invalid = await planSetup(choices, await inspectSetup(root))
+    assert.include(
+      invalid.diagnostics.map(({ field }) => field),
+      'config/limiter.ts'
+    )
+    await writeFile(join(root, 'config/limiter.ts'), 'export default defineConfig({})\n')
+    await writeFile(
+      join(root, 'start/kernel.ts'),
+      "server.use([])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware')\n])\n"
+    )
+    const planned = await planSetup(choices, await inspectSetup(root))
+    const kernel = planned.changes.find(({ path }) => path === 'start/kernel.ts')!.content
+    assert.include(kernel, "bodyparser_middleware'),\n  () => import('@adonisjs/session")
+    assert.include(
+      kernel,
+      "server.use([\n  () => import('#middleware/account_kit_proof_headers_middleware'),"
+    )
   })
 
   test('maintained mail needs explicit deployment configuration and cannot claim durable delivery', async ({
@@ -703,6 +854,81 @@ test.group('onboarding plan and apply', (group) => {
     assert.include(
       await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
       'registerManagedRoutes'
+    )
+  })
+
+  test('disabled choices retain exact owned baselines through re-enable and reject edits', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('emailVerification')
+    choices.mail.destinations.emailVerification = 'account/verify'
+    await applySetup(
+      root,
+      await planSetup(choices, await inspectSetup(root), { apply: true, timestamp: 1234 })
+    )
+    choices.managed = []
+    choices.policy.verificationRequired = true
+    choices.authentication!.guard = 'api'
+    choices.authentication!.strategy = 'access_tokens'
+    delete choices.authentication!.session
+    choices.authentication!.token = { revocation: true, lifetime: '1d', abilities: ['*'] }
+    const disabled = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.equal(
+      disabled.changes.find(({ path }) => path === 'app/services/account_kit_guard.ts')?.action,
+      'update'
+    )
+    assert.equal(
+      disabled.changes.find(
+        ({ path }) => path === 'app/middleware/account_kit_access_middleware.ts'
+      )?.action,
+      'update'
+    )
+    await applySetup(root, disabled)
+    choices.managed = ['passwordReset']
+    const restored = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(restored.diagnostics.some(({ severity }) => severity === 'error'))
+    await applySetup(root, restored)
+    choices.managed = []
+    choices.authentication = null
+    const zero = { inspectedAccounts: 1, affectedAccounts: 0, checkedAt: new Date().toISOString() }
+    await applySetup(
+      root,
+      await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+        retirementImpact: zero,
+        retirementMaintenanceWindow: true,
+      })
+    )
+    choices.authentication = {
+      strategy: 'access_tokens',
+      guard: 'api',
+      token: { revocation: true, lifetime: '1d', abilities: ['*'] },
+      applicationRouteRevocation: true,
+    }
+    choices.managed = ['passwordReset']
+    const reenabling = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(reenabling.diagnostics.some(({ severity }) => severity === 'error'))
+    await applySetup(root, reenabling)
+    await writeFile(join(root, 'app/services/account_kit_guard.ts'), '// owner edit\n')
+    choices.authentication.guard = 'web'
+    const conflicted = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.equal(
+      conflicted.changes.find(({ path }) => path === 'app/services/account_kit_guard.ts')?.action,
+      'conflict'
     )
   })
 
