@@ -93,13 +93,19 @@ back. The [registration guide](registration.md) documents the capability and its
 ### Keep HTTP policy in the application
 
 Controllers choose status codes, response bodies, and route middleware. The reference exception
-handler uses `accountErrorResponse` for stable package codes, safe messages, `Retry-After`, and the
-`committed: true` marker. It returns package errors as
+handler uses `accountErrorResponse` for stable package codes, safe messages, and `Retry-After` on
+throttling. The mapper marks committed failures for controller handling; the example does not expose
+that marker in its public error envelope. Package errors become
 `{ errors: [{ code, message }] }`, or `{ errors: [{ code, title }] }` when the client accepts
-JSON:API. It maps invalid credentials to 401; request-schema failures remain Vine 422 responses.
-Proof routes map missing, expired, replayed, or mismatched proofs to a generic 400 response with
-`Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Do not return internal causes or log
-proofs, full URLs, passwords, provider data, or unnecessary personal data.
+JSON:API. Invalid credentials map to 401; request-schema failures remain Vine 422 responses.
+Successful login returns 200 and throttled login returns 429 with `Retry-After`. Duplicate signup is
+also a Vine 422, deliberately using the same email-field response for every existing account state:
+`{ errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }] }`.
+Password-reset requests and completions return 202, including committed delivery failures; signup
+returns 200 after guard establishment or 202 with recovery guidance after account commit. Proof
+inspection succeeds with 200 and invalid, expired, replayed, or mismatched proofs return a generic
+400 with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. Do not return internal causes
+or log proofs, full URLs, passwords, provider data, or unnecessary personal data.
 
 At the HTTP boundary, return the same 404 code and body for an invitation that is missing and one
 the actor is not authorized to manage. The service may retain separate exceptions for private
@@ -189,9 +195,10 @@ before M3 starts. Keep the task set, success rule, and failure treatment below f
 criteria are not selected retrospectively for the final managed-backend evaluation.
 
 The preferred final evaluation uses three to five developers, including at least one developer new
-to AdonisJS and one familiar with it. Participants may use the published documentation only. The
-product owner is accountable for the evaluation and success criteria; the technical maintainer
-validates that the tasks are feasible against the supported application.
+to AdonisJS and one familiar with it. Permitted guidance is the published documentation only; do not
+provide author or maintainer implementation help or rely on undocumented application code to
+complete a task. The product owner is accountable for the evaluation and success criteria; the
+technical maintainer validates that the tasks are feasible against the supported application.
 
 If those participants are unavailable for this run, the product owner has approved a documented
 technical walkthrough as the fallback. It uses the same four tasks:
@@ -201,12 +208,17 @@ technical walkthrough as the fallback. It uses the same four tasks:
 3. Exercise the enabled account lifecycle through the application's routes.
 4. Replace one endpoint while preserving the other enabled routes.
 
-Each task succeeds only when it is completed using published documentation, without undocumented
-application code or undocumented assistance. Record the candidate revision, runtime, database,
-guard configuration, steps, observed outcomes, errors, and remaining limitations. When a task
-blocks, record the exact failure and the documentation or contract gap; fix the candidate or record
-an explicit limitation, then rerun the affected task against the corrected candidate. Do not count
-observation alone as success.
+For both evaluation modes, the permitted written guidance is the published documentation, including
+the maintained reference application. No author or maintainer implementation help, source inspection
+as a substitute for missing documentation, or undocumented application code may supply a task step.
+Normal framework, package, database, and mail tooling may be used to perform the documented steps.
+Mark a task complete only when the evaluator performs it successfully under these rules; otherwise
+record it as blocked or failed. Record the candidate revision, runtime, database, guard
+configuration, permitted guidance and assistance, steps, observed outcomes, errors, and named
+limitations. For a blocking failure, record the exact failure and documentation or contract gap, fix
+the candidate or state the limitation, then rerun the affected task against the corrected candidate.
+An unresolved failure remains a failure; do not count observation alone as success or select new
+criteria after seeing the result.
 
 Record package setup time separately from provider credential acquisition, mail-service
 configuration, and frontend work. Do not convert an untested duration into a product guarantee.
