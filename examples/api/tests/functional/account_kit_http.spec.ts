@@ -41,6 +41,24 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   }>(registration)
   assert.equal(registrationBody.data.user.fullName, 'Registration User')
   assert.equal(registrationBody.data.user.email, 'registration@example.test')
+  const registered = await User.findByOrFail('email', 'registration@example.test')
+  assert.equal(registered.unverifiedEmail, registered.email)
+  assert.isNull(registered.emailVerifiedAt)
+  const registrationActivation = await client
+    .post('/account-kit/verification/send')
+    .loginAs(registered)
+    .json({})
+  assert.equal(registrationActivation.status(), 200)
+  assert.equal(registrationActivation.body().result, 'sent')
+  const registrationToken = tokenFrom(
+    notifications.events.find((event) => event.kind === 'verification')!.value
+  )
+  const activation = await client.get(
+    `/account-kit/verification/${encodeURIComponent(registrationToken)}`
+  )
+  assert.equal(activation.body().result, 'verified')
+  assert.isNull((await User.findByOrFail('email', registered.email)).unverifiedEmail)
+  notifications.reset()
   assert.isString(registrationBody.data.token)
   assert.notProperty(registrationBody.data.user, 'password')
   assert.equal(

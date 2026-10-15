@@ -1,4 +1,4 @@
-import { mkdir, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
@@ -119,7 +119,22 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       expires_at: future,
       created_at: now,
     })
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    const [staleId] = await kit.db
+      .table('users')
+      .insert({ email: 'stale@example.test', password: 'hash', created_at: now })
+      .returning('id')
+    await kit.db.table('account_email_changes').insert({
+      user_id: id(staleId),
+      current_email: 'prior@example.test',
+      new_email: 'stale-next@example.test',
+      token_hash: hashToken(generateToken(32)),
+      expires_at: future,
+      created_at: now,
+    })
+    assert.lengthOf(await kit.db.from('account_email_changes'), 2)
+    await assert.rejects(() => writeMigrations(evolution, 100), /proof no longer matches its user/)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 2)
+    await kit.db.from('account_email_changes').where('user_id', id(staleId)).delete()
     await writeMigrations(evolution, 100)
     const inactive = await kit.db.from('users').where('id', id(inactiveId)).first()
     const active = await kit.db.from('users').where('id', id(activeId)).first()
@@ -153,6 +168,89 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     assert.equal(changedUser.email, 'next@example.test')
   } finally {
     await kit.db.connection().schema.dropTableIfExists('application_roles')
+    await kit.close()
+  }
+}).timeout(30_000)
+
+test('API example evolution rejects stale proofs without deleting their source rows', async ({
+  assert,
+}) => {
+  const kit = await bootTestApp()
+  try {
+    const schema = kit.db.connection().schema
+    for (const table of [
+      'social_identities',
+      'email_verification_tokens',
+      'account_email_changes',
+      'account_invitations',
+      'password_reset_tokens',
+      'account_transaction_lock',
+      'adonis_schema_versions',
+      'adonis_schema',
+      'users',
+    ])
+      await schema.dropTableIfExists(table)
+    await schema.createTable('users', (table) => {
+      table.increments('id')
+      table.string('email').notNullable().unique()
+      table.string('password').notNullable()
+      table.timestamp('email_verified_at').nullable()
+    })
+    await schema.createTable('password_reset_tokens', (table) => {
+      table.increments('id')
+      table.integer('user_id')
+      table.string('token_hash')
+    })
+    await schema.createTable('account_email_changes', (table) => {
+      table.increments('id')
+      table.integer('user_id')
+      table.string('current_email')
+      table.string('new_email')
+      table.string('token_hash')
+      table.timestamp('expires_at')
+      table.timestamp('created_at')
+    })
+    const [inserted] = await kit.db
+      .table('users')
+      .insert({ email: 'current@example.test', password: 'hash' })
+      .returning('id')
+    const userId = typeof inserted === 'object' ? inserted.id : inserted
+    const proof = {
+      user_id: userId,
+      current_email: 'prior@example.test',
+      new_email: 'next@example.test',
+      token_hash: hashToken(generateToken(32)),
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+      created_at: new Date().toISOString(),
+    }
+    await kit.db.table('account_email_changes').insert(proof)
+    await symlink(
+      fileURLToPath(new URL('../node_modules', import.meta.url)),
+      join(kit.migrationDirectory, 'node_modules')
+    )
+    const example = await readFile(
+      fileURLToPath(
+        new URL(
+          '../examples/api/database/migrations/1791906378309_account_kit_evolve_identity_contract.ts',
+          import.meta.url
+        )
+      ),
+      'utf8'
+    )
+    await writeFile(
+      join(kit.migrationDirectory, '1900000000200_account_kit_evolve_identity_contract.ts'),
+      example.replace(
+        "import env from '#start/env'",
+        'const env = { get: (_name: string) => undefined }'
+      )
+    )
+    const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
+    await runner.run()
+    assert.match(String(runner.error), /proof no longer matches its user/)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    const preserved = await kit.db.from('users').where('id', userId).first()
+    assert.equal(preserved.email, 'current@example.test')
+  } finally {
     await kit.close()
   }
 }).timeout(30_000)

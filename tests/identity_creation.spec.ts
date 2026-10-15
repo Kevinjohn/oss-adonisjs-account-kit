@@ -3,8 +3,8 @@ import { createLucidAdapter } from '../adapters/lucid.js'
 import { consumeUserToken, transaction } from '../src/db.js'
 import LucidUser from './fixtures/lucid_user.js'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { InvalidTokenError } from '../src/errors.js'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import { EmailAlreadyRegisteredError, InvalidTokenError } from '../src/errors.js'
 
 test.group('identity creation contract', (group) => {
   const kit = useTestApp(group)
@@ -45,6 +45,35 @@ test.group('identity creation contract', (group) => {
     assert.notEqual(row.hash, token)
     assert.equal(await account.emailVerification.complete({ token }), 'verified')
     await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
+  })
+
+  test('a failed activation write rolls back proof consumption and state together', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { verified: false })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const { account, recorder } = makeService(kit, {
+      users: {
+        ...users,
+        markEmailVerified: async () => {
+          throw new Error('activation write failed')
+        },
+      },
+    })
+    await account.emailVerification.send({ userId: user.id })
+    const token = tokenFrom(recorder.calls[0].args[1])
+    await assert.rejects(
+      () => account.emailVerification.complete({ token }),
+      /activation write failed/
+    )
+    assert.lengthOf(
+      await kit.db.from('email_verification_tokens').where('tokenable_id', user.id),
+      1
+    )
+    const pending = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(pending.unverified_email, pending.email)
+    assert.isNull(pending.email_verified_at)
+    assert.equal(await makeService(kit).account.emailVerification.complete({ token }), 'verified')
   })
 
   test('token consumption removes the live proof atomically before account-state writes', async ({
@@ -91,6 +120,58 @@ test.group('identity creation contract', (group) => {
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: newProof })
     assert.equal(changed.email, 'next@example.test')
     assert.isNull(changed.unverifiedEmail)
+  })
+
+  test('inactive email write revokes credentials transactionally and rolls back on callback failure', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { verified: false })
+    let called = false
+    const { account } = makeService(kit, {
+      onCredentialsChangedTransaction: async (_account, context, trx) => {
+        called = true
+        assert.equal(context.operation, 'email_change')
+        const row = await trx.from('users').where('id', user.id).first()
+        assert.equal(row.email, 'next@example.test')
+        throw new Error('revocation failed')
+      },
+    })
+    await assert.rejects(
+      () =>
+        account.emailPasswordManagement.requestEmailChange({
+          actorId: user.id,
+          currentPassword: 'password123',
+          newEmail: 'next@example.test',
+        }),
+      /revocation failed/
+    )
+    assert.isTrue(called)
+    const after = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(after.email, user.email)
+    assert.equal(after.unverified_email, user.email)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
+  })
+
+  test('inactive email write translates a raced unique-address conflict', async ({ assert }) => {
+    const user = await insertUser(kit, { verified: false })
+    await insertUser(kit, { email: 'taken@example.test' })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const { account } = makeService(kit, {
+      users: {
+        ...users,
+        findByEmail: async (email, trx, options) =>
+          email === 'taken@example.test' ? null : users.findByEmail(email, trx, options),
+      },
+    })
+    await assert.rejects(
+      () =>
+        account.emailPasswordManagement.requestEmailChange({
+          actorId: user.id,
+          currentPassword: 'password123',
+          newEmail: 'taken@example.test',
+        }),
+      EmailAlreadyRegisteredError
+    )
   })
 
   test('activation resend cannot replace a pending email-change proof', async ({ assert }) => {
@@ -178,6 +259,56 @@ test.group('identity creation contract', (group) => {
     )
   })
 
+  test('password change clears a distinct pending address but keeps an inactive address pending', async ({
+    assert,
+  }) => {
+    const active = await insertUser(kit)
+    const inactive = await insertUser(kit, { verified: false, email: 'inactive@example.test' })
+    const { account } = makeService(kit)
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: active.id,
+      currentPassword: 'password123',
+      newEmail: 'next@example.test',
+    })
+    await account.emailPasswordManagement.changePassword({
+      actorId: active.id,
+      currentPassword: 'password123',
+      newPassword: 'newPassword123',
+    })
+    await account.emailPasswordManagement.changePassword({
+      actorId: inactive.id,
+      currentPassword: 'password123',
+      newPassword: 'newPassword123',
+    })
+    const activeAfter = await kit.db.from('users').where('id', active.id).first()
+    assert.isNull(activeAfter.unverified_email)
+    const stillInactive = await kit.db.from('users').where('id', inactive.id).first()
+    assert.equal(stillInactive.unverified_email, stillInactive.email)
+  })
+
+  test('password reset clears a distinct pending address but activates equal inactive state', async ({
+    assert,
+  }) => {
+    const active = await insertUser(kit)
+    const inactive = await insertUser(kit, { verified: false, email: 'inactive@example.test' })
+    const { account, recorder } = makeService(kit)
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: active.id,
+      currentPassword: 'password123',
+      newEmail: 'next@example.test',
+    })
+    await account.passwordReset.request({ email: active.email, clientKey: 'active-client' })
+    const activeToken = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await account.passwordReset.reset({ token: activeToken, password: 'newPassword123' })
+    const activeAfter = await kit.db.from('users').where('id', active.id).first()
+    assert.isNull(activeAfter.unverified_email)
+    await account.passwordReset.request({ email: inactive.email, clientKey: 'inactive-client' })
+    const inactiveToken = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await account.passwordReset.reset({ token: inactiveToken, password: 'newPassword123' })
+    const inactiveAfter = await kit.db.from('users').where('id', inactive.id).first()
+    assert.isNull(inactiveAfter.unverified_email)
+  })
+
   test('social identity relationships enforce subject uniqueness and cascade without credential storage', async ({
     assert,
   }) => {
@@ -196,6 +327,11 @@ test.group('identity creation contract', (group) => {
       updated_at: new Date(),
     }
     await kit.db.table('social_identities').insert(row)
+    await assert.rejects(() =>
+      kit.db
+        .table('social_identities')
+        .insert({ ...row, provider_user_id: 'orphan', user_id: 999999 })
+    )
     await assert.rejects(() =>
       kit.db.table('social_identities').insert({ ...row, user_id: second.id })
     )
