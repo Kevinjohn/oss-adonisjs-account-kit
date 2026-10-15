@@ -37,6 +37,8 @@ The callback names distinguish a link provision from a completed-operation notic
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`, and `emailPasswordManagement`.
 It defaults to all four. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
+An `emailVerification`-only adapter needs `findById` and `markEmailVerified`, but does not
+need `setEmail`; verification only confirms the current persisted address.
 
 The service methods accept structured inputs. The usual calls are:
 
@@ -205,10 +207,12 @@ conventions.
 
 ## Files delta
 
-Configure generates `config/account_kit.ts` and five package migration files. The reset-token
+Configure generates `config/account_kit.ts` and eight package migration files. The reset-token
 stub is `create_password_reset_tokens.stub` and generates
-`*_account_kit_create_password_reset_tokens.ts`, creating `password_reset_tokens`. Its columns
-are unchanged. Existing application-owned config and migration files are preserved.
+`*_account_kit_create_password_reset_tokens.ts`, creating `password_reset_tokens`. On upgrade,
+the reset-token columns are renamed in place from `user_id` to `tokenable_id` and from
+`token_hash` to `hash`, preserving outstanding proofs. Existing application-owned config and
+migration files are preserved.
 The implementation lives in `src/password_reset.ts`; import the public `AccountKit` and input
 types from the package root or its documented type entry point.
 

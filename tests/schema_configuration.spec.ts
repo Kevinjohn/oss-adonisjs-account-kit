@@ -1,11 +1,16 @@
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import type Configure from '@adonisjs/core/commands/configure'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
+import { BaseModel, beforeCreate, column } from '@adonisjs/lucid/orm'
+import type { DateTime } from 'luxon'
 import { configure, migrationNames, migrationSchema, type UserIdType } from '../configure.js'
+import { createLucidAdapter } from '../adapters/lucid.js'
+import { transaction } from '../src/db.js'
 import { bootTestApp } from './helpers/app.js'
 
 const idTypes: UserIdType[] = ['integer', 'string', 'uuid']
@@ -90,6 +95,54 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       assert.isTrue(await tableExists(kit, 'email_verification_tokens'))
       assert.isTrue(await tableExists(kit, 'social_identities'))
       assert.isFalse(await tableExists(kit, 'account_email_changes'))
+
+      class SchemaUser extends BaseModel {
+        static table = usersTable
+        static selfAssignPrimaryKey = userIdType !== 'integer'
+
+        @column({ isPrimary: true })
+        declare id: number | string
+
+        @column()
+        declare email: string
+
+        @column({ columnName: 'unverified_email' })
+        declare unverifiedEmail: string | null
+
+        @column()
+        declare password: string | null
+
+        @column.dateTime({ columnName: 'email_verified_at' })
+        declare emailVerifiedAt: DateTime | null
+
+        @beforeCreate()
+        static assignId(user: SchemaUser) {
+          if (userIdType !== 'integer')
+            user.id = userIdType === 'uuid' ? randomUUID() : `member-${randomUUID()}`
+        }
+      }
+      const adapter = createLucidAdapter(async () => SchemaUser)
+      const created = await transaction(kit.db, (trx) =>
+        adapter.create(
+          {
+            email: ' Pending@Example.Test ',
+            unverifiedEmail: ' Pending@Example.Test ',
+            password: null,
+          },
+          trx
+        )
+      )
+      assert.equal(created.email, 'pending@example.test')
+      assert.equal(created.unverifiedEmail, 'pending@example.test')
+      assert.isFalse(created.hasPassword)
+      assert.isNull(created.emailVerifiedAt)
+      assert.equal(typeof created.id, userIdType === 'integer' ? 'number' : 'string')
+      if (userIdType === 'uuid') assert.match(String(created.id), /^[0-9a-f-]{36}$/)
+      const persisted = await kit.db.from(usersTable).where('id', created.id).first()
+      assert.isNull(persisted.password)
+      assert.equal(persisted.unverified_email, created.email)
+      const reloaded = await adapter.findById(created.id)
+      assert.equal(reloaded?.unverifiedEmail, created.email)
 
       const down = new MigrationRunner(kit.db, kit.app, {
         direction: 'down',

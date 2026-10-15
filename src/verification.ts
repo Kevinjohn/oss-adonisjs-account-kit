@@ -75,7 +75,7 @@ export async function completeVerification(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
   const outcome = await transaction(deps.db, async (trx) => {
-    const { row, user } = await consumeUserToken<{
+    const { user } = await consumeUserToken<{
       tokenable_id: UserId
       email: string
       current_email: string
@@ -91,7 +91,6 @@ export async function completeVerification(
         current.unverifiedEmail === proof.email &&
         current.email === proof.current_email
     )
-    if (user.email !== row.email) await deps.config.users.setEmail(user.id, row.email, trx)
     await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
     await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
     return user.id

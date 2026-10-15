@@ -200,9 +200,7 @@ test.group('emailVerification.complete', (group) => {
     return { id, account, token }
   }
 
-  test('marks the current email verified; a repeat visit is already verified', async ({
-    assert,
-  }) => {
+  test('marks the current email verified and rejects a reused proof', async ({ assert }) => {
     const { id, account, token } = await issue()
     let callbacks = 0
     const withCallback = service({
@@ -215,6 +213,39 @@ test.group('emailVerification.complete', (group) => {
     assert.isNotNull(verified.email_verified_at)
     await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
     assert.equal(callbacks, 0)
+  })
+
+  test('activation invalidates an outstanding password-reset proof', async ({ assert }) => {
+    const id = await createUser()
+    const { account, recorder } = service()
+    await account.emailVerification.send({ userId: id })
+    const activationToken = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'reset-client' })
+    const resetToken = tokenFrom(recorder.calls.at(-1)!.args[1])
+    assert.lengthOf(await kit.db.from('password_reset_tokens').where('tokenable_id', id), 1)
+    assert.equal(await account.emailVerification.complete({ token: activationToken }), 'verified')
+    await assert.rejects(
+      () => account.passwordReset.reset({ token: resetToken, password: 'newPassword123' }),
+      InvalidTokenError
+    )
+    assert.lengthOf(await kit.db.from('password_reset_tokens').where('tokenable_id', id), 0)
+  })
+
+  test('completes activation with a verification-only adapter lacking setEmail', async ({
+    assert,
+  }) => {
+    const id = await createUser()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const { account, recorder } = service({
+      enabled: ['emailVerification'],
+      users: { ...users, setEmail: undefined } as never,
+    })
+    await account.emailVerification.send({ userId: id })
+    const token = tokenFrom(recorder.calls[0].args[1])
+    assert.equal(await account.emailVerification.complete({ token }), 'verified')
+    const row = await kit.db.from('users').where('id', id).first()
+    assert.isNotNull(row.email_verified_at)
+    assert.isNull(row.unverified_email)
   })
 
   test('rejects an unknown proof', async ({ assert }) => {

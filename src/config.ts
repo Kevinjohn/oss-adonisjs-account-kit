@@ -27,7 +27,7 @@ const adapterMethods: Record<Capability, string[]> = {
     'setUnverifiedEmail',
     'markEmailVerified',
   ],
-  emailVerification: ['findById', 'setEmail', 'markEmailVerified'],
+  emailVerification: ['findById', 'markEmailVerified'],
   invitations: ['findByEmail', 'findById', 'create', 'markEmailVerified'],
   emailPasswordManagement: [
     'findByEmail',
