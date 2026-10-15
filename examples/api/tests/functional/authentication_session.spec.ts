@@ -99,6 +99,37 @@ test('inactive session may request activation but cannot use verified routes', a
   assert.equal((protectedResponse.body() as unknown as { code: string }).code, 'unverified_email')
 })
 
+test('inactive session may replace its unconfirmed email through the guarded route', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  const user = await User.create({
+    fullName: 'Email Correction User',
+    email: `email-correction-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  user.unverifiedEmail = user.email
+  await user.save()
+  const bootstrap = await client.get('/api/v1/auth/csrf')
+  const login = await client
+    .post('/api/v1/auth/login')
+    .header('cookie', rawCookies(bootstrap))
+    .header('x-csrf-token', (bootstrap.body() as { csrfToken: string }).csrfToken)
+    .json({ email: user.email, password: 'OriginalPass123!' })
+  assert.equal(login.status(), 200)
+  const csrf = await client.get('/api/v1/auth/csrf').header('cookie', rawCookies(login))
+  const correction = await client
+    .post('/account-kit/credentials/email')
+    .header('cookie', rawCookies(login))
+    .header('x-csrf-token', (csrf.body() as { csrfToken: string }).csrfToken)
+    .json({
+      currentPassword: 'OriginalPass123!',
+      newEmail: `corrected-${randomUUID()}@example.test`,
+    })
+  assert.equal(correction.status(), 202, JSON.stringify(correction.body()))
+})
+
 test('a password change revokes every previously issued browser session', async ({
   client,
   assert,

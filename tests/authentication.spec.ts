@@ -282,10 +282,6 @@ test.group('authentication contract', (group) => {
           .update({ disabled_at: new Date().toISOString() })
       },
     })
-    await assert.rejects(
-      () => first.authentication.current({ userId: user.id, revision: login.credential }),
-      'Invalid session'
-    )
     const rejectedEvents: string[] = []
     await assert.rejects(
       () =>
@@ -296,7 +292,98 @@ test.group('authentication contract', (group) => {
       'Invalid email or password'
     )
     assert.deepEqual(rejectedEvents, [])
+    await second.authentication.changeRestriction({
+      userId: user.id,
+      change: async (_account, trx) => {
+        await trx.from('users').where('id', user.id).update({ disabled_at: null })
+      },
+    })
+    await assert.rejects(
+      () => first.authentication.current({ userId: user.id, revision: login.credential }),
+      'Invalid session'
+    )
   })
+
+  for (const strategy of ['session', 'access_tokens'] as const) {
+    test(`inactive email replacement revokes existing ${strategy} credentials`, async ({
+      assert,
+    }) => {
+      const user = await insertUser(kit, { verified: false })
+      const { account } = makeService(kit, {
+        authentication: { strategy, guard: strategy === 'session' ? 'web' : 'api' },
+      })
+      const [inserted] =
+        strategy === 'access_tokens'
+          ? await kit.db
+              .table('auth_access_tokens')
+              .insert({ tokenable_id: user.id, hash: 'email-correction-token' })
+              .returning('id')
+          : [undefined]
+      const tokenId = inserted === undefined ? undefined : unwrapId(inserted)
+      await account.emailPasswordManagement.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'password123',
+        newEmail: `corrected-${user.id}@example.test`,
+      })
+      const row = await kit.db.from('users').where('id', user.id).first()
+      assert.equal(row.email, `corrected-${user.id}@example.test`)
+      assert.isNotNull(row.credentials_changed_at)
+      if (strategy === 'session') {
+        await assert.rejects(
+          () => account.authentication.current({ userId: user.id, revision: null }),
+          'Invalid session'
+        )
+      } else {
+        assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
+        await assert.rejects(
+          () => account.authentication.current({ userId: user.id, tokenId }),
+          'Invalid session'
+        )
+      }
+    })
+
+    test(`confirmed email change revokes existing ${strategy} credentials`, async ({ assert }) => {
+      const user = await insertUser(kit)
+      const { account, recorder } = makeService(kit, {
+        authentication: { strategy, guard: strategy === 'session' ? 'web' : 'api' },
+      })
+      const [inserted] =
+        strategy === 'access_tokens'
+          ? await kit.db
+              .table('auth_access_tokens')
+              .insert({ tokenable_id: user.id, hash: 'confirmed-email-token' })
+              .returning('id')
+          : [undefined]
+      const tokenId = inserted === undefined ? undefined : unwrapId(inserted)
+      await account.emailPasswordManagement.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'password123',
+        newEmail: `confirmed-${user.id}@example.test`,
+      })
+      const proof = tokenFrom(
+        recorder.calls.find((call) => call.method === 'emailChangeProvision')?.args[2]
+      )
+      if (strategy === 'session')
+        await account.authentication.current({ userId: user.id, revision: null })
+      else await account.authentication.current({ userId: user.id, tokenId })
+      await account.emailPasswordManagement.completeEmailChange({ token: proof })
+      const row = await kit.db.from('users').where('id', user.id).first()
+      assert.equal(row.email, `confirmed-${user.id}@example.test`)
+      assert.isNotNull(row.credentials_changed_at)
+      if (strategy === 'session') {
+        await assert.rejects(
+          () => account.authentication.current({ userId: user.id, revision: null }),
+          'Invalid session'
+        )
+      } else {
+        assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
+        await assert.rejects(
+          () => account.authentication.current({ userId: user.id, tokenId }),
+          'Invalid session'
+        )
+      }
+    })
+  }
 
   test('a credential change during provisional session establishment cannot return a usable session', async ({
     assert,
@@ -472,7 +559,10 @@ test.group('authentication contract', (group) => {
     await kit.db.table('auth_access_tokens').insert({ tokenable_id: user.id, hash: 'one' })
     const { account } = makeService(kit, {
       authentication: { strategy: 'access_tokens', guard: 'api' },
-      onCredentialsChangedTransaction: async () => {
+      onCredentialsChangedTransaction: async (_account, _context, trx) => {
+        const inside = await trx.from('users').where('id', user.id).first()
+        assert.isNotNull(inside.credentials_changed_at)
+        assert.lengthOf(await trx.from('auth_access_tokens').where('tokenable_id', user.id), 0)
         throw new Error('abort')
       },
     })
@@ -496,7 +586,18 @@ test.group('authentication contract', (group) => {
 
   test('restriction callback and revocation roll back together', async ({ assert }) => {
     const user = await insertUser(kit)
-    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    await kit.db
+      .table('auth_access_tokens')
+      .insert({ tokenable_id: user.id, hash: 'rollback-token' })
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+      onCredentialsChangedTransaction: async (_account, _context, trx) => {
+        const inside = await trx.from('users').where('id', user.id).first()
+        assert.isNotNull(inside.credentials_changed_at)
+        assert.lengthOf(await trx.from('auth_access_tokens').where('tokenable_id', user.id), 0)
+        throw new Error('abort')
+      },
+    })
     await assert.rejects(
       () =>
         account.authentication.changeRestriction({
@@ -506,7 +607,6 @@ test.group('authentication contract', (group) => {
               .from('users')
               .where('id', user.id)
               .update({ disabled_at: new Date().toISOString() })
-            throw new Error('abort')
           },
         }),
       'abort'
@@ -514,6 +614,7 @@ test.group('authentication contract', (group) => {
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isNull(row.disabled_at)
     assert.isNull(row.credentials_changed_at)
+    assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
   })
 
   test('logout calls only the selected current guard and has an idempotent service result', async ({

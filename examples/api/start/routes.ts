@@ -33,16 +33,20 @@ router
     router.post('/invitations/:id/resend', [controllers.AccountKit, 'invitationResend'])
     router.delete('/invitations/:id', [controllers.AccountKit, 'invitationRevoke'])
     router.post('/credentials/password', [controllers.AccountKit, 'changePassword'])
-    router.post('/credentials/email', [controllers.AccountKit, 'requestEmailChange'])
   })
   .prefix('/account-kit')
+  .use(middleware.auth())
+  .use(middleware.verifiedAccount())
+
+router
+  .post('/account-kit/credentials/email', [controllers.AccountKit, 'requestEmailChange'])
   .use(middleware.auth())
   .use(middleware.accountAccess())
 
 router
   .post('/account-kit/verification/send', [controllers.AccountKit, 'verificationSend'])
   .use(middleware.auth())
-  .use(middleware.accountAccess({ allowInactive: true }))
+  .use(middleware.accountAccess())
 
 router
   .group(() => {
@@ -58,9 +62,7 @@ router
 
     router
       .group(() => {
-        router
-          .get('profile', [controllers.Profile, 'show'])
-          .use(middleware.accountAccess({ allowInactive: true }))
+        router.get('profile', [controllers.Profile, 'show']).use(middleware.accountAccess())
         if (strategy === 'session') router.post('logout', [controllers.Session, 'destroy'])
         else router.post('logout', [controllers.AccessTokens, 'destroy'])
       })
