@@ -6,7 +6,7 @@ import type { ManagedGuard } from './managed.js'
 
 export interface ManagedUser {
   id: UserId
-  currentAccessToken?: { identifier: UserId }
+  currentAccessToken?: { identifier: UserId | BigInt }
 }
 
 export interface ManagedUserModel<User> {
@@ -20,10 +20,10 @@ export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
       abilities: string[],
       options?: { expiresIn: string | number }
     ): Promise<{
-      identifier: UserId
+      identifier: UserId | BigInt
       value: { release(): string } | null
     }>
-    delete(user: User, identifier: UserId): Promise<void>
+    delete(user: User, identifier: UserId | BigInt): Promise<void>
   }
 }
 
@@ -78,13 +78,18 @@ function managedUser(value: unknown): ManagedUser {
   return value as ManagedUser
 }
 
+function normalizedIdentifier(value: unknown): UserId {
+  if (typeof value === 'bigint') return value.toString()
+  if (typeof value !== 'number' && typeof value !== 'string') throw new InvalidSessionError()
+  return value
+}
+
 function tokenIdentifier(value: unknown): UserId {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
   const token = (value as { currentAccessToken?: unknown }).currentAccessToken
   if (!token || typeof token !== 'object') throw new InvalidSessionError()
   const id = (token as { identifier?: unknown }).identifier
-  if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
-  return id
+  return normalizedIdentifier(id)
 }
 
 async function authenticate<User>(guard: { authenticate(): Promise<User> }): Promise<User> {
@@ -188,7 +193,11 @@ export function createManagedGuard<User>(
             expiresIn === null ? undefined : { expiresIn }
           )
           if (!token.value) throw new Error('Token guard did not return a bearer value')
-          return { userId, identifier: token.identifier, value: token.value.release() }
+          return {
+            userId,
+            identifier: normalizedIdentifier(token.identifier),
+            value: token.value.release(),
+          }
         },
         async terminate(credential) {
           if (!credential) return
