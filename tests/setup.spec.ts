@@ -147,6 +147,7 @@ test.group('onboarding plan and apply', (group) => {
     const answers: Record<string, string> = {
       'Enabled services': 'authentication,invitations',
       'Managed endpoint groups': 'authentication,invitations',
+      'Managed endpoint exclusions': 'auth.invitation.inspect',
       'Existing guard strategy': 'access_tokens',
       'Existing guard name': 'api',
       'Token revocation': 'yes',
@@ -162,6 +163,7 @@ test.group('onboarding plan and apply', (group) => {
         Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
     )
     assert.equal(choices.authentication?.strategy, 'access_tokens')
+    assert.deepEqual(choices.managedExcept, ['auth.invitation.inspect'])
     assert.isFalse(Object.hasOwn(choices.authentication!, 'session'))
     assert.equal(choices.mail.destinations.invitation, 'invites/accept')
     assert.lengthOf(choices.policy.registrationFields, 1)
