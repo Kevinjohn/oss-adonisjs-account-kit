@@ -73,7 +73,7 @@ export class AccountKit {
   readonly emailVerification = {
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
       this.enabled('emailVerification', () => sendVerification(this.deps, input)),
-    complete: (input: VerificationCompleteInput): Promise<'verified' | 'already_verified'> =>
+    complete: (input: VerificationCompleteInput): Promise<'verified'> =>
       this.enabled('emailVerification', () => completeVerification(this.deps, input)),
   }
   readonly invitations = {
