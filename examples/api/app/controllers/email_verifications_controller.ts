@@ -21,15 +21,19 @@ export default class EmailVerificationsController {
 
   async inspect(ctx: HttpContext) {
     proofHeaders(ctx)
+    const kit = await app.container.make(AccountKit)
+    if (!(await kit.emailVerification.inspect({ token: ctx.params.token }))) {
+      return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+    }
     return ctx.response.ok({ confirmation: true })
   }
 
   async complete(ctx: HttpContext) {
     proofHeaders(ctx)
-    await ctx.request.validateUsing(verificationCompleteValidator)
+    const { password } = await ctx.request.validateUsing(verificationCompleteValidator)
     const kit = await app.container.make(AccountKit)
     try {
-      const result = await kit.emailVerification.complete({ token: ctx.params.token })
+      const result = await kit.emailVerification.complete({ token: ctx.params.token, password })
       return ctx.response.ok({ result })
     } catch (error) {
       if (error instanceof InvalidTokenError) return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')

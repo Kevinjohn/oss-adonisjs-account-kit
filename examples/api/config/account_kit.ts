@@ -16,7 +16,7 @@ const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value : `${va
 const appUrl = normalizeBaseUrl(env.get('APP_URL'))
 const authStrategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
 const accountUrl = (path: string, token: string) =>
-  new URL(`account-kit/${path}/${encodeURIComponent(token)}`, appUrl).toString()
+  new URL(`api/v1/auth/${path}/${encodeURIComponent(token)}`, appUrl).toString()
 
 if (env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' && env.get('SESSION_DRIVER') === 'cookie') {
   throw new Error('account_kit: session authentication requires a server-side session store')
@@ -81,9 +81,9 @@ export default defineConfig({
     listInvitations: async (actor) => isOwner(actor.id),
   },
   urls: {
-    passwordReset: (token) => accountUrl('recovery', token),
-    emailVerification: (token) => accountUrl('verification', token),
-    invitation: (token) => accountUrl('invitation', token),
+    passwordReset: (token) => accountUrl('password-reset', token),
+    emailVerification: (token) => accountUrl('email-verification', token),
+    invitation: (token) => accountUrl('invitations', token),
     emailChange: (token) => accountUrl('email-change', token),
   },
   notify: {

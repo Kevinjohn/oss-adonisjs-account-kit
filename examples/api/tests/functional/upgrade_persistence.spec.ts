@@ -49,13 +49,13 @@ if (phase) {
       await db.table('role_assignments').insert({ user_id: user.id, role: 'owner' })
       assert.isNotNull(await db.from('adonis_schema').where('name', customMigration).first())
 
-      const requested = await client.post('/account-kit/recovery').json({ email })
+      const requested = await client.post('/api/v1/auth/password-reset').json({ email })
       assert.equal(requested.status(), 202)
       const notice = notifications.events.find((event) => event.kind === 'recovery')
       assert.isNotNull(notice)
       if (!notice) throw new Error('The baseline adapter did not deliver a recovery notice')
       const token = decodeURIComponent(new URL(notice.value).pathname.split('/').at(-1)!)
-      const path = `/account-kit/recovery/${encodeURIComponent(token)}`
+      const path = `/api/v1/auth/password-reset/${encodeURIComponent(token)}`
       const inspected = await client.get(path)
       assert.equal(inspected.status(), 200)
       const reset = await client.post(path).json({
@@ -68,7 +68,7 @@ if (phase) {
       assert.equal(user.email, email)
       assert.isTrue(await hash.verify(user.password!, 'BaselineReset123!'))
 
-      const pendingRequest = await client.post('/account-kit/recovery').json({ email })
+      const pendingRequest = await client.post('/api/v1/auth/password-reset').json({ email })
       assert.equal(pendingRequest.status(), 202)
       const persistedNotice = notifications.events.findLast((event) => event.kind === 'recovery')
       assert.isNotNull(persistedNotice)
@@ -120,7 +120,7 @@ if (phase) {
     assert.equal(expiryIso(row.expires_at), proof.row.expires_at)
     assert.equal(expiryIso(row.created_at), proof.row.created_at)
 
-    const path = `/account-kit/recovery/${encodeURIComponent(proof.token)}`
+    const path = `/api/v1/auth/password-reset/${encodeURIComponent(proof.token)}`
     const inspected = await client.get(path)
     assert.equal(inspected.status(), 200)
     const reset = await client.post(path).json({

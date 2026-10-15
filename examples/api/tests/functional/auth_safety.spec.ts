@@ -301,7 +301,7 @@ test('a bearer token without the invitation ability cannot send an invitation', 
   })
   const token = await User.accessTokens.create(user, ['profile:read'], { expiresIn: '1d' })
   const response = await client
-    .post('/account-kit/invitations')
+    .post('/api/v1/account/invitations')
     .bearerToken(token.value!.release())
     .json({ email: `invitee-${randomUUID()}@example.test`, role: 'member' })
   assert.equal(response.status(), 403)
@@ -341,7 +341,7 @@ test('bearer login uses the real token guard and password changes revoke issued 
   assert.equal(profile.status(), 200)
   assert.notProperty(responseBody<{ data: Record<string, unknown> }>(profile).data, 'password')
 
-  const change = await client.post('/account-kit/credentials/password').bearerToken(token).json({
+  const change = await client.post('/api/v1/account/password').bearerToken(token).json({
     currentPassword: 'OriginalPass123!',
     newPassword: 'ReplacementPass123!',
     newPasswordConfirmation: 'ReplacementPass123!',

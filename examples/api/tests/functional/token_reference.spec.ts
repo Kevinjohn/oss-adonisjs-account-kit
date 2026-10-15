@@ -65,14 +65,11 @@ test('password change revokes every bearer token for the account', async ({ clie
     assert.equal(login.status(), 200)
     tokens.push((login.body() as unknown as { data: { token: string } }).data.token)
   }
-  const change = await client
-    .post('/account-kit/credentials/password')
-    .bearerToken(tokens[0])
-    .json({
-      currentPassword: 'OriginalPass123!',
-      newPassword: 'ReplacementPass123!',
-      newPasswordConfirmation: 'ReplacementPass123!',
-    })
+  const change = await client.post('/api/v1/account/password').bearerToken(tokens[0]).json({
+    currentPassword: 'OriginalPass123!',
+    newPassword: 'ReplacementPass123!',
+    newPasswordConfirmation: 'ReplacementPass123!',
+  })
   assert.equal(change.status(), 200)
   for (const token of tokens) {
     assert.equal((await client.get('/api/v1/account/profile').bearerToken(token)).status(), 401)
@@ -181,7 +178,7 @@ test('a limited inactive token cannot reach a verified account route', async ({
   const profile = await client.get('/api/v1/account/profile').bearerToken(token)
   assert.equal(profile.status(), 200)
   assert.isFalse((profile.body() as unknown as { data: { active: boolean } }).data.active)
-  const restricted = await client.get('/account-kit/invitations').bearerToken(token)
+  const restricted = await client.get('/api/v1/account/invitations').bearerToken(token)
   assert.equal(restricted.status(), 403)
   assert.equal(
     (restricted.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
@@ -246,7 +243,7 @@ test('verification GET inspects without consuming and POST completes once', asyn
   const notice = notifications.events.findLast(
     (event) => event.kind === 'verification' && event.recipient === user.email
   )!
-  const path = `/account-kit/verification/${encodeURIComponent(proofFrom(notice.value))}`
+  const path = `/api/v1/auth/email-verification/${encodeURIComponent(proofFrom(notice.value))}`
   for (let index = 0; index < 2; index++) {
     const inspect = await client.get(path)
     assert.equal(inspect.status(), 200)
