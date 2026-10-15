@@ -1,4 +1,6 @@
 import type { SetupChoices } from './types.js'
+import { DateTime } from 'luxon'
+import { expiresAt } from '../ttl.js'
 
 function record(
   input: unknown,
@@ -49,6 +51,9 @@ export function parseSetupChoices(input: unknown): SetupChoices {
   strings(root.features, 'features')
   strings(root.managed, 'managed')
   string(root.mode, 'mode')
+  if (!['services', 'managed'].includes(root.mode as string))
+    throw new Error('mode: choose services or managed')
+  if (root.version !== 1) throw new Error('version: expected 1')
   string(root.routePrefix, 'routePrefix')
   const user = record(root.user, 'user', [
     'model',
@@ -70,6 +75,8 @@ export function parseSetupChoices(input: unknown): SetupChoices {
       ['session', 'token']
     )
     string(auth.strategy, 'authentication.strategy')
+    if (!['session', 'access_tokens'].includes(auth.strategy as string))
+      throw new Error('authentication.strategy: choose session or access_tokens')
     string(auth.guard, 'authentication.guard')
     bool(auth.applicationRouteRevocation, 'authentication.applicationRouteRevocation')
     const optional = root.authentication as Record<string, unknown>
@@ -92,6 +99,16 @@ export function parseSetupChoices(input: unknown): SetupChoices {
       bool(token.revocation, 'authentication.token.revocation')
       string(token.lifetime, 'authentication.token.lifetime')
       strings(token.abilities, 'authentication.token.abilities')
+      if (
+        !(token.abilities as string[]).length ||
+        (token.abilities as string[]).some((value) => !value.trim())
+      )
+        throw new Error('authentication.token.abilities: provide non-empty abilities')
+      try {
+        expiresAt(DateTime.utc(), token.lifetime as string)
+      } catch {
+        throw new Error('authentication.token.lifetime: provide a supported positive duration')
+      }
     }
   }
   const mail = record(root.mail, 'mail', [
@@ -129,6 +146,8 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     'accessRestrictionHook',
   ])
   string(policy.registration, 'policy.registration')
+  if (!['open', 'closed', 'application'].includes(policy.registration as string))
+    throw new Error('policy.registration: choose open, closed or application')
   if (!Array.isArray(policy.registrationFields))
     throw new Error('policy.registrationFields: expected an array')
   for (const [index, inputField] of policy.registrationFields.entries()) {

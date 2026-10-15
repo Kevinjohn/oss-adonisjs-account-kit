@@ -86,6 +86,9 @@ export interface SetupInspection {
   existingInstallation: boolean
   files: Record<string, string>
   guards: string[]
+  guardStrategies: Record<string, GuardStrategy>
+  guardModels: Record<string, string>
+  installedVersions: Record<string, string>
   database: 'sqlite' | 'postgres' | 'unsupported' | 'unknown'
   connection: 'default' | 'unsupported' | 'unknown'
   installedPackages: string[]

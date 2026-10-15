@@ -42,11 +42,13 @@ export default class SetupAccountKit extends BaseCommand {
   })
   declare retirementMaintenanceWindow: boolean
 
-  private async interactiveChoices(): Promise<SetupChoices> {
-    if (!process.stdin.isTTY)
+  async interactiveChoices(
+    askOverride?: (question: string) => Promise<string>
+  ): Promise<SetupChoices> {
+    if (!process.stdin.isTTY && !askOverride)
       throw new Error('Missing --input: provide a JSON choices file for noninteractive setup')
     const choices = defaultSetupChoices()
-    const ask = (question: string) => this.prompt.ask(question)
+    const ask = askOverride ?? ((question: string) => this.prompt.ask(question))
     const confirmed = async (question: string) => {
       const answer = await ask(question)
       return /^y(?:es)?$/i.test(answer.trim())
@@ -70,6 +72,8 @@ export default class SetupAccountKit extends BaseCommand {
     choices.routePrefix = (await ask('Managed route prefix (/account)')) || choices.routePrefix
     choices.user.model = (await ask('User model import (#models/user)')) || choices.user.model
     choices.user.table = (await ask('User table (users)')) || choices.user.table
+    const adapter = await ask('User adapter (lucid/custom)')
+    if (adapter === 'lucid' || adapter === 'custom') choices.user.adapter = adapter
     const idType = await ask('Physical id type (integer/string/uuid)')
     if (idType === 'integer' || idType === 'string' || idType === 'uuid')
       choices.user.idType = idType
@@ -87,7 +91,7 @@ export default class SetupAccountKit extends BaseCommand {
         )
         session.persistentStore = await confirmed('Persistent session storage verified? (yes/no)')
       } else {
-        choices.authentication!.session = undefined
+        delete choices.authentication!.session
         choices.authentication!.token = {
           revocation: await confirmed('Token revocation configured? (yes/no)'),
           lifetime: (await ask('Token lifetime (7d)')) || '7d',
@@ -103,6 +107,13 @@ export default class SetupAccountKit extends BaseCommand {
     } else choices.authentication = null
     const mail = await ask('Delivery integration (custom/adonisjs-mail)')
     if (mail === 'custom' || mail === 'adonisjs-mail') choices.mail.integration = mail
+    const delivery = await ask('Delivery guarantee (best-effort/durable)')
+    if (delivery === 'best-effort' || delivery === 'durable') choices.mail.delivery = delivery
+    choices.mail.durableWorkerVerified =
+      choices.mail.delivery === 'durable' &&
+      (await confirmed(
+        'Application queue worker, retries and terminal failures verified? (yes/no)'
+      ))
     if (choices.mail.integration === 'adonisjs-mail') {
       choices.mail.senderEnv =
         (await ask('Mail sender environment name (ACCOUNT_MAIL_FROM)')) || 'ACCOUNT_MAIL_FROM'
@@ -118,6 +129,8 @@ export default class SetupAccountKit extends BaseCommand {
     choices.mail.frontendOriginEnv =
       (await ask('Trusted frontend origin environment name (ACCOUNT_FRONTEND_URL)')) ||
       'ACCOUNT_FRONTEND_URL'
+    if (choices.features.includes('invitations'))
+      choices.mail.destinations.invitation = 'account/invitation'
     for (const [name, value] of Object.entries(choices.mail.destinations)) {
       choices.mail.destinations[name as keyof typeof choices.mail.destinations] =
         (await ask(`${name} relative frontend path (${value})`)) || value
@@ -127,6 +140,28 @@ export default class SetupAccountKit extends BaseCommand {
       choices.policy.registration = registration
     const minLength = await ask('New-password minimum length (8)')
     if (minLength) choices.policy.password.minLength = Number(minLength)
+    const maxLength = await ask('New-password maximum length (blank for no configured maximum)')
+    choices.policy.password.maxLength = maxLength ? Number(maxLength) : null
+    for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
+      choices.policy.password[key] = await confirmed(`Require password ${key}? (yes/no)`)
+    const minScore = await ask('Password strength score (0-4)')
+    if (minScore) choices.policy.password.minScore = Number(minScore)
+    choices.policy.verificationRequired = await confirmed(
+      'Require verified email for account access? (yes/no)'
+    )
+    choices.policy.unverifiedActions = (
+      (await ask(
+        'Allowed actions before verification (logout,verificationResend,passwordReset)'
+      )) || choices.policy.unverifiedActions.join(',')
+    )
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean) as SetupChoices['policy']['unverifiedActions']
+    const registrationFields = await ask(
+      'Additional registration fields as JSON array ([] for none)'
+    )
+    if (registrationFields.trim())
+      choices.policy.registrationFields = JSON.parse(registrationFields)
     if (choices.authentication)
       choices.policy.accessRestrictionHook = await confirmed(
         'Application restricted-account policy callback provided? (yes/no)'
