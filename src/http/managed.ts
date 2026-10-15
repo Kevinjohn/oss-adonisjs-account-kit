@@ -81,6 +81,8 @@ export interface ManagedRoutesOptions<Credential> {
   guard: ManagedGuard<Credential>
   enabled: readonly ManagedCapability[]
   except?: readonly ManagedEndpointName[]
+  /** Require verified email on active routes; defaults to true. Guard and revision checks always apply. */
+  verificationRequired?: boolean
   extensions?: ManagedExtensions
 }
 
@@ -156,7 +158,7 @@ async function execute<Credential>(
   if (route.proof) await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
   const accountInput = route.access === 'public' ? undefined : await options.guard.current(context)
   const account = accountInput
-    ? route.access === 'active'
+    ? route.access === 'active' && options.verificationRequired !== false
       ? await kit.authentication.requireActive(accountInput)
       : await kit.authentication.current(accountInput)
     : undefined
