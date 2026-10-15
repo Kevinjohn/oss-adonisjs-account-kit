@@ -131,6 +131,17 @@ test.group('emailVerification.send', (group) => {
     )
   })
 
+  test('suppressed resends still consume the request throttle', async ({ assert }) => {
+    const id = await createUser()
+    const { account, recorder } = service({ throttle: { requests: 2, duration: '15m' } })
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    const token = tokenFrom(recorder.calls[0].args[1])
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    await assert.rejects(() => account.emailVerification.send({ userId: id }), ThrottledError)
+    assert.lengthOf(recorder.calls, 1)
+    assert.isTrue(await account.emailVerification.inspect({ token }))
+  })
+
   test('resend after one minute rotates the single-use proof', async ({ assert }) => {
     const id = await createUser()
     const { account, recorder } = service()

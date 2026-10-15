@@ -7,8 +7,8 @@ Enable the required capabilities from `passwordReset`, `emailVerification`,
 callbacks, the shared `passwordPolicy`, and credential revocation through
 `onCredentialsChangedTransaction` when revocation must commit with an account change. Proof
 lifetimes default to one hour for reset, activation, and email change, and seven days for
-invitations. `emailPasswordManagement` requires the activation URL and notification callbacks
-even when `emailVerification` is disabled, because inactive address changes use activation.
+invitations. `emailPasswordManagement` requires `emailVerification` plus its activation URL
+and notification callback, because inactive address changes complete through activation.
 `tokenSecretLength` defaults to 40 bytes. The application owns mail delivery and
 permission callbacks; invitations deny by default when permission is not configured.
 Profile fields require `registration.mapFields` and the adapter's `updateRegistrationData`
