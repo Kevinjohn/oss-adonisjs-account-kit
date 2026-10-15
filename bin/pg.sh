@@ -91,7 +91,9 @@ state() {
   local result
   if pg pg_ctl -D "$DATA" status; then identity || return 1; return 0; else result=$?; fi
   case "$result" in
-    3) [ ! -e "$DATA/postmaster.pid" ] || { echo 'uncertain postmaster identity' >&2; return 1; }; return 3;;
+    # pg_ctl found no live postmaster; a leftover PID file after a crash is stale and
+    # PostgreSQL replaces it on the next start.
+    3) return 3;;
     4) if [ ! -e "$DATA" ]; then return 3; fi
        [ -d "$DATA" ] && [ -r "$DATA" ] && [ -x "$DATA" ] && [ ! -e "$DATA/postmaster.pid" ] && [ ! -e "$DATA/PG_VERSION" ] && return 3;;
   esac

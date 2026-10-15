@@ -403,6 +403,20 @@ for (const [name, config, expected] of [
     } else await f.stopped()
   })
 
+test('stale PID file after a crashed server does not block stop or test', async (t) => {
+  const f = await fixture(t)
+  assert.equal((await f.run(['start'])).code, 0)
+  const pid = Number(await readFile(join(f.root, 'server-pid'), 'utf8'))
+  process.kill(pid, 'SIGKILL')
+  await until(() => !alive(pid), 'crashed server exit')
+  assert.equal(await exists(join(f.root, 'tmp/pg16/postmaster.pid')), true)
+  assert.equal((await f.run(['status'])).code, 3)
+  assert.equal((await f.run(['stop'])).code, 0)
+  const result = await f.run(['test'])
+  assert.equal(result.code, 0, result.output)
+  await f.stopped()
+})
+
 test('standalone cluster is preserved, actual port checked and stop is idempotent', async (t) => {
   const f = await fixture(t)
   assert.equal((await f.run(['start'])).code, 0)

@@ -88,7 +88,8 @@ at the selected port is diagnostic only. `bash bin/pg.sh reset` stops and delete
 disposable data, initializes it again and leaves a fresh server running; use `pnpm pg:stop`
 afterward. Wrong-version or incomplete data requires this explicit reset.
 
-After SIGKILL or power loss, a stale lock is intentionally retained. Inspect `tmp/pg16.lock/owner`
+After SIGKILL or power loss, a `postmaster.pid` left by a dead server is treated as stopped and
+replaced on the next start. A stale lock is intentionally retained. Inspect `tmp/pg16.lock/owner`
 and check that PID with `ps` and `kill -0`. Only after establishing that its owner no longer exists,
 remove the owner file and empty lock directory, then run `pnpm pg:stop`. A missing owner file or
 an uninspectable/live PID requires inspecting running script processes before removal. Never use
