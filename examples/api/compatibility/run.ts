@@ -117,6 +117,8 @@ let insertDeferredFailure = false
 const account = new AccountKit({
   config: defineConfig({
     limiterSecret: 'minimum-consumer-test-secret-32-bytes-long',
+    enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
+    registration: { availability: 'closed' },
     minRequestMs: 0,
     throttle: { requests: 100, duration: '15m' },
     invitationThrottle: {

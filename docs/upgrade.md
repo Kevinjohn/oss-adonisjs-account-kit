@@ -144,7 +144,8 @@ number of database entries examined.
 - **Invitation listing is paged.** `invitations.list({ actorId, limit?, cursor? })` returns
   `{ items, nextCursor }`, defaults to 25 items, and accepts at most 100. Update controllers and
   clients that previously expected a complete unpaged collection.
-- **Capabilities can be disabled explicitly.** `enabled` defaults to all supported capabilities.
+- **Capabilities can be disabled explicitly.** `enabled` defaults to password reset, email
+  verification, and email/password management; registration and invitations require explicit opt-in.
   A configured subset only requires callbacks for enabled features. Calling a disabled operation
   rejects with `CapabilityDisabledError`.
 - **Credential revocation can be transactional.** Prefer
