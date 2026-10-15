@@ -389,6 +389,50 @@ test.group('managed HTTP dispatch', () => {
     })
   })
 
+  test('a representation failure does not falsely say signup authentication failed', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () =>
+        ({
+          managedHttp: { assertGuard: () => {} },
+          registration: { register: async () => {} },
+          authentication: {
+            login: async () => ({
+              account: {
+                id: 7,
+                email: 'a@example.test',
+                unverifiedEmail: 'a@example.test',
+                hasPassword: true,
+                active: false,
+              },
+              credential: undefined,
+            }),
+          },
+        }) as unknown as AccountKit,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, revision: null }),
+      },
+      enabled: ['registration'],
+      extensions: {
+        representAccount: () => {
+          throw new Error('representation failed')
+        },
+      },
+    })
+    const ctx = context()
+    Object.assign(ctx.request, { csrfToken: 'proof' })
+    await assert.rejects(
+      () => routes.get('POST /api/v1/auth/signup')!(ctx),
+      /representation failed/
+    )
+  })
+
   test('session login fails closed without Shield CSRF state', async ({ assert }) => {
     const { router, routes, context } = fixture()
     let loggedIn = false
