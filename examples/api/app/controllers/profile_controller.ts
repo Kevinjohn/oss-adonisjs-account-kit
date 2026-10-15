@@ -2,7 +2,7 @@ import app from '@adonisjs/core/services/app'
 import { AccountKit, DeliveryError, InvalidTokenError, PostCommitError } from 'adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { accountInput } from '#middleware/account_access_middleware'
-import { emailChangeValidator } from '#validators/account_kit'
+import { profileUpdateValidator } from '#validators/account_kit'
 import { proofFailure, proofHeaders } from '#services/http_responses'
 
 export default class ProfileController {
@@ -12,24 +12,30 @@ export default class ProfileController {
     return ctx.serialize(await kit.authentication.current(input))
   }
 
-  async requestEmailChange({ auth, request, response }: HttpContext) {
-    const actor = await auth.getUserOrFail()
-    const { currentPassword, newEmail } = await request.validateUsing(emailChangeValidator)
+  async update(ctx: HttpContext) {
+    const actor = await ctx.auth.getUserOrFail()
+    const { currentPassword, email, fullName } =
+      await ctx.request.validateUsing(profileUpdateValidator)
     const kit = await app.container.make(AccountKit)
     try {
-      await kit.emailPasswordManagement.requestEmailChange({
+      await kit.emailPasswordManagement.updateProfile({
         actorId: actor.id,
         currentPassword,
-        newEmail,
+        ...(email === undefined ? {} : { email }),
+        ...(fullName === undefined ? {} : { registrationData: { fullName } }),
       })
     } catch (error) {
       if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
     }
-    return response.accepted({ requested: true })
+    return ctx.serialize(await kit.authentication.current(accountInput(ctx)))
   }
 
   async inspectEmailChange(ctx: HttpContext) {
     proofHeaders(ctx)
+    const kit = await app.container.make(AccountKit)
+    if (!(await kit.emailPasswordManagement.inspectEmailChange({ token: ctx.params.token }))) {
+      return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+    }
     return ctx.response.ok({ confirmation: true })
   }
 
