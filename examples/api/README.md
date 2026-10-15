@@ -20,7 +20,10 @@ maintained candidate config, controller and exception handler as documented manu
 It changes the newly generated reset-token migration to rename the existing table, preserving rows
 and applied migration files, before booting and typechecking the candidate. See the
 [vocabulary upgrade guide](../../docs/upgrade.md#vocabulary-alignment). The candidate-phase test verifies the recovered password,
-user data, role assignment, and application migration record survived.
+user data, role assignment, and application migration record survived. It also carries a live reset
+proof through the table rename, compares every stored row field, redeems that proof once, and
+rejects replay. The proof is transferred between phases in a mode-0600 temporary file and removed
+before redemption assertions.
 
 Before adapting these routes, configure trusted proxy addresses so `request.ip()` cannot be spoofed.
 Login allows five attempts per client and normalized email pair, and 20 attempts per client, within
