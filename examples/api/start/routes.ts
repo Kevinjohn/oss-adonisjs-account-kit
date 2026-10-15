@@ -10,7 +10,9 @@
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
-import { loginClientThrottle, loginThrottle } from '#start/limiter'
+import env from '#start/env'
+
+const strategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
 
 router.get('/', () => {
   return { hello: 'world' }
@@ -26,7 +28,6 @@ router.get('/account-kit/email-change/:token', [controllers.AccountKit, 'emailCh
 router.post('/account-kit/email-change/:token', [controllers.AccountKit, 'emailChangeComplete'])
 router
   .group(() => {
-    router.post('/verification/send', [controllers.AccountKit, 'verificationSend'])
     router.post('/invitations', [controllers.AccountKit, 'invitationSend'])
     router.get('/invitations', [controllers.AccountKit, 'invitationList'])
     router.post('/invitations/:id/resend', [controllers.AccountKit, 'invitationResend'])
@@ -36,23 +37,32 @@ router
   })
   .prefix('/account-kit')
   .use(middleware.auth())
+  .use(middleware.accountAccess())
+
+router
+  .post('/account-kit/verification/send', [controllers.AccountKit, 'verificationSend'])
+  .use(middleware.auth())
+  .use(middleware.accountAccess({ allowInactive: true }))
 
 router
   .group(() => {
     router
       .group(() => {
-        router.post('signup', [controllers.NewAccount, 'store'])
-        router
-          .post('login', [controllers.AccessTokens, 'store'])
-          .use([loginClientThrottle, loginThrottle])
+        if (strategy === 'access_tokens') router.post('signup', [controllers.NewAccount, 'store'])
+        else router.get('csrf', [controllers.Session, 'csrf'])
+        if (strategy === 'session') router.post('login', [controllers.Session, 'store'])
+        else router.post('login', [controllers.AccessTokens, 'store'])
       })
       .prefix('auth')
       .as('auth')
 
     router
       .group(() => {
-        router.get('profile', [controllers.Profile, 'show'])
-        router.post('logout', [controllers.AccessTokens, 'destroy'])
+        router
+          .get('profile', [controllers.Profile, 'show'])
+          .use(middleware.accountAccess({ allowInactive: true }))
+        if (strategy === 'session') router.post('logout', [controllers.Session, 'destroy'])
+        else router.post('logout', [controllers.AccessTokens, 'destroy'])
       })
       .prefix('account')
       .as('profile')

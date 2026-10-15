@@ -15,6 +15,7 @@
     "configure": "node ace configure adonisjs-account-kit",
     "migrate": "node ace migration:run --force",
     "test": "node ace test",
+    "test:session": "node ace test --files=tests/functional/authentication_session.spec.ts",
     "test:upgrade-baseline": "node ace test --files=tests/functional/upgrade_persistence.spec.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",

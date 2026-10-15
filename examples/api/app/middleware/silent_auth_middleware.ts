@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
+import env from '#start/env'
 
 /**
  * Silent auth middleware can be used as a global middleware to silent check
@@ -9,7 +10,7 @@ import type { NextFn } from '@adonisjs/core/types/http'
  */
 export default class SilentAuthMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
-    await ctx.auth.check()
+    await ctx.auth.use(env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' ? 'web' : 'api').check()
 
     return next()
   }

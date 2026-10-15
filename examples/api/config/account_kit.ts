@@ -14,8 +14,13 @@ import { notifications } from '#services/account_kit_notifications'
 
 const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value : `${value}/`)
 const appUrl = normalizeBaseUrl(env.get('APP_URL'))
+const authStrategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
 const accountUrl = (path: string, token: string) =>
   new URL(`account-kit/${path}/${encodeURIComponent(token)}`, appUrl).toString()
+
+if (env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' && env.get('SESSION_DRIVER') === 'cookie') {
+  throw new Error('account_kit: session authentication requires a server-side session store')
+}
 
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
@@ -35,6 +40,17 @@ async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
 
 export default defineConfig({
   users,
+  authentication: {
+    strategy: authStrategy,
+    guard: authStrategy === 'session' ? 'web' : 'api',
+    ...(authStrategy === 'access_tokens' ? { tokenExpiresIn: '1d', tokenAbilities: ['*'] } : {}),
+    canAccess: async (user, trx) =>
+      !(await trx
+        .from('role_assignments')
+        .where('user_id', user.id)
+        .where('role', 'disabled')
+        .first()),
+  },
   limiterSecret: env.get('APP_KEY').release(),
   // The functional suite sends many requests from one client; production keeps the package
   // default of five requests per 15 minutes.
@@ -69,7 +85,6 @@ export default defineConfig({
     await trx.table('role_assignments').insert({ user_id: user.id, role: invitation.role })
   },
   onCredentialsChangedTransaction: async (user, context, trx) => {
-    await trx.from('auth_access_tokens').where('tokenable_id', user.id).delete()
     if (context.operation !== 'password_reset' && context.operation !== 'password_change') return
 
     await trx.table('account_kit_outbox').insert({
