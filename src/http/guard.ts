@@ -21,7 +21,7 @@ export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
       options?: { expiresIn: string | number }
     ): Promise<{
       identifier: UserId | BigInt
-      value: { release(): string } | null
+      value?: { release(): string } | null
     }>
     delete(user: User, identifier: UserId | BigInt): Promise<void>
   }
