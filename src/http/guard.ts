@@ -72,19 +72,17 @@ function assertServerSession(context: SessionContext<unknown>): void {
 }
 
 function managedUser(value: unknown): ManagedUser {
-  if (!value || typeof value !== 'object' || !('id' in value)) throw new InvalidSessionError()
-  const id = value.id
+  if (!value || typeof value !== 'object') throw new InvalidSessionError()
+  const id = (value as { id?: unknown }).id
   if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
   return value as ManagedUser
 }
 
 function tokenIdentifier(value: unknown): UserId {
-  if (!value || typeof value !== 'object' || !('currentAccessToken' in value))
-    throw new InvalidSessionError()
-  const token = value.currentAccessToken
-  if (!token || typeof token !== 'object' || !('identifier' in token))
-    throw new InvalidSessionError()
-  const id = token.identifier
+  if (!value || typeof value !== 'object') throw new InvalidSessionError()
+  const token = (value as { currentAccessToken?: unknown }).currentAccessToken
+  if (!token || typeof token !== 'object') throw new InvalidSessionError()
+  const id = (token as { identifier?: unknown }).identifier
   if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
   return id
 }
