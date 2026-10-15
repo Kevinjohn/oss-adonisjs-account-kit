@@ -36,10 +36,19 @@ export default class NewAccountController {
     }
     const strategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
     const input = { email, password, clientKey: request.ip() }
-    const result =
-      strategy === 'session'
-        ? await kit.authentication.login(input, sessionGuard(ctx))
-        : await kit.authentication.login(input, accessTokenGuard())
+    let result
+    try {
+      result =
+        strategy === 'session'
+          ? await kit.authentication.login(input, sessionGuard(ctx))
+          : await kit.authentication.login(input, accessTokenGuard())
+    } catch {
+      return response.accepted({
+        accountCreated: true,
+        message:
+          'Account created. Request a new verification link or reset your password if you cannot sign in.',
+      })
+    }
     const user = await User.findOrFail(result.account.id)
     return serialize({
       user: UserTransformer.transform(user),

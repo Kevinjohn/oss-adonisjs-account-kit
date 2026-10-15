@@ -126,6 +126,7 @@ export function makeConfig(
   return {
     limiterSecret: 'test_only_shared_limiter_secret_32_bytes',
     registration: { availability: 'open' },
+    enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
     authorize: allowAll,
     urls: {
       passwordReset: (token) => `https://example.test/recovery/${token}`,

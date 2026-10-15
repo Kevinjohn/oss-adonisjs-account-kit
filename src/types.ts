@@ -163,7 +163,7 @@ export interface AccountKitConfig {
   minRequestMs?: number
   tokenSecretLength?: number
   authentication?: AuthenticationConfig
-  registration?: {
+  registration: {
     availability: 'open' | 'closed' | 'application'
     mapFields?: (input: unknown) => Promise<Record<string, unknown>> | Record<string, unknown>
   }
