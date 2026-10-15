@@ -177,8 +177,11 @@ function validate(
       'user',
       'Only the physical id, email, password and email_verified_at columns are supported'
     )
-  if (!choices.user.model.startsWith('#models/') || choices.user.model.includes('..'))
-    diagnostic(diagnostics, 'user.model', 'Use an application #models/ import')
+  if (
+    !/^#models\/[A-Za-z_][A-Za-z0-9_/]*$/.test(choices.user.model) ||
+    choices.user.model.includes('//')
+  )
+    diagnostic(diagnostics, 'user.model', 'Use an application #models/ import with a safe path')
   if (choices.user.adapter === 'custom')
     diagnostic(
       diagnostics,
@@ -855,14 +858,14 @@ export async function planSetup(
     options.retirementImpact ?? null,
     options.retirementMaintenanceWindow ?? false
   )
-  if (choices.user.adapter === 'lucid' && /^#models\/[a-z_][a-z0-9_]*$/.test(choices.user.model)) {
+  if (
+    choices.user.adapter === 'lucid' &&
+    /^#models\/[A-Za-z_][A-Za-z0-9_/]*$/.test(choices.user.model) &&
+    !choices.user.model.includes('//')
+  ) {
     const modelPath = `app/models/${choices.user.model.slice('#models/'.length)}.ts`
     try {
-      const model = await readFile(`${state.root}/${modelPath}`, 'utf8')
-      for (const property of ['email', 'password', 'emailVerifiedAt']) {
-        if (!new RegExp(`\\b${property}\\b`).test(model))
-          diagnostic(diagnostics, `user.model.${property}`, `${modelPath} must expose ${property}`)
-      }
+      await readFile(`${state.root}/${modelPath}`, 'utf8')
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       diagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
