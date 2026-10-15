@@ -66,8 +66,10 @@ return response.ok(result)
 
 For application setup, including the lazy Lucid adapter, trusted registration mapping, required
 callbacks, and HTTP error handling, follow the [consumer API example](examples/api/README.md) and
-its [Account Kit config](examples/api/config/account_kit.ts). Treat `registrationData` as untrusted
-request data; the example maps a validated name and never spreads request fields onto the model.
+its [Account Kit config](examples/api/config/account_kit.ts). The [application-owned integration
+guide](docs/application-owned-integration.md) explains the controller, route, validation, response,
+notification, and authentication boundaries. Treat `registrationData` as untrusted request data;
+the example maps a validated name and never spreads request fields onto the model.
 
 ## Application prerequisites
 
