@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
-import { InvalidTokenError } from './errors.js'
+import { InvalidTokenError, PostCommitError } from './errors.js'
 import { hashToken } from './tokens.js'
 import type { AccountUser, ResolvedConfig, Trx, UserId, UsersAdapterMetadata } from './types.js'
 
@@ -12,6 +12,7 @@ interface SQLiteConnection {
   inTransaction: boolean
   exec(sql: string): void
   pragma(sql: string, options?: { simple: boolean }): unknown
+  __knex__disposed?: Error
 }
 
 function isBusy(error: unknown): boolean {
@@ -179,7 +180,12 @@ async function commitTransaction(
       await completion
       onCommitted()
     } catch (error) {
-      if (sqlite?.inTransaction) sqlite.exec('ROLLBACK')
+      const cleanup: unknown[] = []
+      try {
+        if (sqlite?.inTransaction) sqlite.exec('ROLLBACK')
+      } catch (failure) {
+        cleanup.push(failure)
+      }
       // Knex has completed and released the failed transaction. PostgreSQL has
       // rolled it back; SQLite may need the native cleanup above. Emit Lucid's
       // rollback lifecycle without sending another query through a closed client.
@@ -187,10 +193,12 @@ async function commitTransaction(
       knexTrx.rollback = (() => Promise.resolve()) as typeof originalRollback
       try {
         await trx.rollback()
+      } catch (failure) {
+        cleanup.push(failure)
       } finally {
         knexTrx.rollback = originalRollback
       }
-      throw error
+      throw combineFailures(error, cleanup)
     }
   }) as typeof originalCommit
 
@@ -205,16 +213,45 @@ async function runAndCommit<T>(
   trx: Trx,
   callback: (trx: Trx) => Promise<T>,
   onCommitted: () => void,
+  onResult: (result: T) => void,
   sqlite?: SQLiteConnection
 ): Promise<T> {
   try {
     const result = await callback(trx)
+    onResult(result)
     await commitTransaction(trx, onCommitted, sqlite)
     return result
   } catch (error) {
-    if (!trx.isCompleted) await trx.rollback()
+    if (!trx.isCompleted) {
+      try {
+        await trx.rollback()
+      } catch (failure) {
+        throw combineFailures(error, [failure])
+      }
+    }
     throw error
   }
+}
+
+const committedResults = new WeakMap<PostCommitError, unknown>()
+
+/** Internal operation data is retained privately, never placed on a public committed error. */
+export function committedResult<T>(error: unknown): { value: T } | null {
+  if (!(error instanceof PostCommitError) || !committedResults.has(error)) return null
+  return { value: committedResults.get(error) as T }
+}
+
+function committedFailure<T>(cause: unknown, result: T): PostCommitError {
+  const error = new PostCommitError('Account change committed but a follow-up failed', { cause })
+  committedResults.set(error, result)
+  return error
+}
+
+function combineFailures(primary: unknown, cleanup: unknown[]): unknown {
+  if (cleanup.length === 0) return primary
+  return primary === undefined && cleanup.length === 1
+    ? cleanup[0]
+    : new AggregateError(primary === undefined ? cleanup : [primary, ...cleanup])
 }
 
 /** Run a database-only callback; callers perform notifications after this resolves. */
@@ -223,16 +260,37 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
   if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
 
   if (connection.dialect.name !== 'better-sqlite3') {
-    return runAndCommit(await connection.transaction(), callback, () => {})
+    let committed = false
+    let result: T | undefined
+    try {
+      return await runAndCommit(
+        await connection.transaction(),
+        callback,
+        () => {
+          committed = true
+        },
+        (value) => {
+          result = value
+        }
+      )
+    } catch (error) {
+      if (committed) throw committedFailure(error, result as T)
+      throw error
+    }
   }
   const client = connection.getWriteClient().client
 
   const deadline = performance.now() + SQLITE_DEADLINE_MS
   for (;;) {
     let committed = false
+    let result: T | undefined
     try {
       const sqlite = (await client.acquireConnection()) as SQLiteConnection
       let timeout: number | undefined
+      let outcome: T | undefined
+      let failure: unknown
+      let failed = false
+      const cleanup: unknown[] = []
       try {
         timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
         sqlite.pragma('busy_timeout = 0')
@@ -240,7 +298,7 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
           undefined as never,
           { connection: sqlite } as never
         )) as Trx
-        return await runAndCommit(
+        outcome = await runAndCommit(
           trx,
           async (sqliteTrx) => {
             await lockSQLiteTransaction(sqliteTrx)
@@ -249,15 +307,39 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
           () => {
             committed = true
           },
+          (value) => {
+            result = value
+          },
           sqlite
         )
+      } catch (error) {
+        failure = error
+        failed = true
       } finally {
-        if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
-        if (timeout !== undefined) sqlite.pragma(`busy_timeout = ${timeout}`)
-        await client.releaseConnection(sqlite)
+        try {
+          if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
+        } catch (error) {
+          cleanup.push(error)
+        }
+        try {
+          if (timeout !== undefined) sqlite.pragma(`busy_timeout = ${timeout}`)
+        } catch (error) {
+          cleanup.push(error)
+        }
+        if (cleanup.length > 0 || sqlite.inTransaction) {
+          sqlite.__knex__disposed = new Error('Account kit discarded a dirty SQLite connection')
+        }
+        try {
+          await client.releaseConnection(sqlite)
+        } catch (error) {
+          cleanup.push(error)
+        }
       }
+      if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup)
+      return outcome as T
     } catch (error) {
-      if (committed || !isBusy(error) || performance.now() >= deadline) throw error
+      if (committed) throw committedFailure(error, result as T)
+      if (!isBusy(error) || performance.now() >= deadline) throw error
       await new Promise((resolve) =>
         setTimeout(resolve, Math.min(SQLITE_RETRY_MS, Math.max(0, deadline - performance.now())))
       )
