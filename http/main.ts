@@ -1,5 +1,6 @@
 export { registerManagedRoutes } from '../src/http/managed.js'
 export { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
+export { managedProofHeadersMiddleware } from '../src/http/proof_headers.js'
 export type {
   ManagedTokenCredential,
   ManagedTokenModel,
@@ -11,6 +12,9 @@ export { planManagedRoutes } from '../src/http/routes.js'
 export type { ManagedMessage } from '../src/http/responses.js'
 export type {
   ManagedErrorBody,
+  ManagedCommittedSuccess,
+  ManagedQueries,
+  ManagedQuery,
   ManagedRequestBodies,
   ManagedRequestBody,
   ManagedSuccessBodies,
