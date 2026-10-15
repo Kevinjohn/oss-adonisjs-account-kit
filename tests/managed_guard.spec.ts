@@ -25,6 +25,43 @@ test.group('managed existing-guard adapters', () => {
     } as never
     await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
   })
+  test('reads Lucid proxy user and token IDs even when property membership is hidden', async ({
+    assert,
+  }) => {
+    const user = new Proxy(
+      {},
+      {
+        get(_target, key) {
+          if (key === 'id') return 42
+          if (key === 'currentAccessToken') return { identifier: 17 }
+          return undefined
+        },
+        has: () => false,
+      }
+    )
+    const ctx = {
+      auth: { use: () => ({ authenticate: async () => user }) },
+      session: { get: () => '' },
+    } as never
+    const session = createManagedGuard({
+      strategy: 'session',
+      name: 'web',
+      loadUser: async () => ({ findOrFail: async () => user }),
+    })
+    const token = createManagedGuard({
+      strategy: 'access_tokens',
+      name: 'api',
+      loadUser: async () => ({
+        findOrFail: async () => user,
+        accessTokens: {
+          create: async () => ({ identifier: 17, value: { release: () => 'token' } }),
+          delete: async () => {},
+        },
+      }),
+    })
+    assert.deepEqual(await session.current(ctx), { userId: 42, revision: null })
+    assert.deepEqual(await token.current(ctx), { userId: 42, tokenId: 17 })
+  })
   test('refuses cookie-backed sessions before issuing or trusting a credential', async ({
     assert,
   }) => {
