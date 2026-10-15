@@ -177,7 +177,7 @@ export interface PasswordPolicy {
   mixedCase: boolean
   numbers: boolean
   symbols: boolean
-  minScore: number
+  minScore: 0 | 1 | 2 | 3 | 4
 }
 
 export interface AuthenticationConfig {

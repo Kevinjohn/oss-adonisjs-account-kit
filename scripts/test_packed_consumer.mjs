@@ -674,6 +674,7 @@ try {
   } as unknown as UsersAdapter
   app.config.set('account_kit', defineConfig({
     enabled: ['emailVerification'],
+    registration: { availability: 'open' },
     limiterSecret: 'service_only_consumer_secret_32_bytes',
     users,
     urls: { emailVerification: (token) => 'https://example.test/activate/' + token },

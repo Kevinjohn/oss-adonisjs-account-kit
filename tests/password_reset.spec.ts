@@ -433,7 +433,7 @@ test.group('passwordReset.reset', (group) => {
       InvalidInputError
     )
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
-    await account.passwordReset.reset({ token, password: 'Password123' })
+    await account.passwordReset.reset({ token, password: 'LongerPassword12345' })
   })
 
   test('expired, reused, and malformed tokens cannot change the password', async ({ assert }) => {

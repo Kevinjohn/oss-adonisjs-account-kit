@@ -8,6 +8,7 @@ This project has no published releases yet. The current candidate remains versio
 
 - `AccountKit.registration.register` (export) creates inactive accounts with trusted mapped fields, a durable activation proof, and uniform duplicate-email errors.
 - `registration.availability` (required config key) selects open/closed/application admission and defaults to open in generated config; `registration.mapFields` (config key) selects trusted additional fields.
+- Configured `registration.mapFields` now receives `undefined` when profile input is omitted, so required application fields can reject registration; mapped output must be a plain object.
 - `passwordPolicy` (config key) applies Plus-style rules to newly established passwords with a 256-character service ceiling.
 - The API example signup establishes a limited bearer token or browser session and denies protected access until verification.
 - `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential logout.
@@ -39,6 +40,9 @@ This project has no published releases yet. The current candidate remains versio
 - `emailVerification.complete({ token })` → `emailVerification.complete({ token, password })` (export contract) for inactive account claims; the claim replaces the earlier password and invalidates earlier credentials.
 - `GET /account-kit/verification/:token` → `POST /account-kit/verification/:token` (API example route) with password and confirmation in the body.
 - The API example's password validator maximum changes from 128 to 256 characters to match the service ceiling.
+- `passwordPolicy.minScore` (config key) now scores password length and character variety, and its TypeScript type is `0 | 1 | 2 | 3 | 4`.
+- `emailVerification` (adapter capability contract) requires `UsersAdapter.setPassword` to replace an earlier password during inactive activation.
+- The generated `enabled` (config key) omits invitations by default; applications opt in explicitly.
 - Password and confirmed-email changes and password resets now delete all user access tokens transactionally in token mode or advance the browser-session revision in session mode.
 - `UsersAdapter.create({ email, password, emailVerifiedAt, registrationData? })` → `UsersAdapter.create({ email, unverifiedEmail, password, registrationData? })` (export contract).
 - `AccountUser.emailVerifiedAt` authorization state → `AccountUser.unverifiedEmail` confirmed/pending authorization state (export contract); the timestamp remains audit metadata.

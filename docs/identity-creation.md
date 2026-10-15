@@ -13,6 +13,8 @@ connections are unsupported by this contract, including when a custom adapter is
 `create({ email, unverifiedEmail, password, registrationData? }, trx)` accepts an explicit
 pending address and a nullable local password. `registrationData` is passed only to the trusted
 application mapping callback; request properties are never copied directly to the user model.
+Email-verification-only adapters also implement `setPassword`, because inactive activation now
+replaces the password supplied by an earlier registrant.
 Keep ID, password hash, verification state, and roles under trusted account policy. Configure
 `tokenSecretLength` as 40 bytes by default (16–64 allowed). Existing expiry defaults remain one
 hour for reset, activation, and email change, and seven days for invitations.

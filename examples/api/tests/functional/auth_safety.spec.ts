@@ -58,6 +58,61 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   assert.equal(claimantPassword.status(), 200)
 })
 
+test('committed signup delivery and observer failures return recovery guidance', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  for (const failure of ['delivery', 'observer'] as const) {
+    notifications.reset()
+    notifications.failVerification = failure === 'delivery'
+    notifications.failLifecycle = failure === 'observer'
+    const email = `committed-${failure}-${randomUUID()}@example.test`
+    const response = await client.post('/api/v1/auth/signup').json({
+      fullName: 'Committed Signup',
+      email,
+      password: 'CommittedPass123!',
+      passwordConfirmation: 'CommittedPass123!',
+    })
+    assert.equal(response.status(), 202, JSON.stringify(response.body()))
+    assert.isTrue((response.body() as unknown as { accountCreated: boolean }).accountCreated)
+    const user = await User.findByOrFail('email', email)
+    const proofs = await db.from('email_verification_tokens').where('tokenable_id', user.id)
+    assert.lengthOf(proofs, 1)
+    notifications.failVerification = false
+    notifications.failLifecycle = false
+    const resend = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    assert.equal(resend.status(), 200, JSON.stringify(resend.body()))
+    assert.equal((resend.body() as { result: string }).result, 'sent')
+    assert.isTrue(notifications.events.some((event) => event.kind === 'verification'))
+  }
+  notifications.reset()
+})
+
+test('signup maps an application-restricted duplicate to the uniform email error', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const email = `restricted-duplicate-${randomUUID()}@example.test`
+  const user = await User.create({
+    fullName: 'Restricted Existing User',
+    email,
+    password: 'ExistingPass123!',
+  })
+  await db.table('role_assignments').insert({ user_id: user.id, role: 'disabled' })
+  const duplicate = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Another User',
+    email: email.toUpperCase(),
+    password: 'NewPass123!',
+    passwordConfirmation: 'NewPass123!',
+  })
+  assert.equal(duplicate.status(), 422)
+  assert.deepEqual(duplicate.body(), {
+    errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
+  })
+})
+
 test('login limits known and unknown identities independently after normalization', async ({
   client,
   assert,
