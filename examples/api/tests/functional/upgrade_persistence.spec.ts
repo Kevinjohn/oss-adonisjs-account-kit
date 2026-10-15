@@ -132,7 +132,7 @@ if (phase) {
       password: 'UpgradeReset123!',
       passwordConfirmation: 'UpgradeReset123!',
     })
-    assert.equal(replay.status(), 422)
+    assert.equal(replay.status(), 400)
     await user!.refresh()
     assert.isTrue(await hash.verify(user!.password!, 'UpgradeReset123!'))
   })
