@@ -671,6 +671,7 @@ try {
   const users = {
     findById: async () => ({ id: 1, email: 'active@example.test', unverifiedEmail: null, hasPassword: false, emailVerifiedAt: null }),
     markEmailVerified: async () => {},
+    setPassword: async () => {},
   } as unknown as UsersAdapter
   app.config.set('account_kit', defineConfig({
     enabled: ['emailVerification'],
