@@ -21,14 +21,17 @@ for (const usersTable of tableNames) {
           {
             email: 'actor@example.test',
             password: 'originalPassword123',
-            emailVerifiedAt: DateTime.utc(),
+            unverifiedEmail: null,
           },
           trx
         )
       )
       const { account, recorder } = makeService(kit, { users, usersTable, minRequestMs: 0 })
 
-      await kit.db.from(usersTable).where('id', actor.id).update({ email_verified_at: null })
+      await kit.db
+        .from(usersTable)
+        .where('id', actor.id)
+        .update({ email_verified_at: null, unverified_email: actor.email })
       await account.emailVerification.send({ userId: actor.id })
       const verificationToken = tokenFrom(recorder.calls.at(-1)!.args[1])
       assert.equal(
@@ -99,7 +102,7 @@ for (const usersTable of tableNames) {
       const restored = await users.findById(actor.id)
       assert.equal(restored!.email, 'next@example.test')
       assert.isNull(await users.findByEmail('race@example.test'))
-      assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+      assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     } finally {
       try {
         await resetSchema(kit)

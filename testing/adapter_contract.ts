@@ -30,12 +30,14 @@ function assertSameUser(
     {
       id: actual.id,
       email: actual.email,
+      unverifiedEmail: actual.unverifiedEmail,
       hasPassword: actual.hasPassword,
       emailVerifiedAt: actual.emailVerifiedAt?.toMillis() ?? null,
     },
     {
       id: expected.id,
       email: expected.email,
+      unverifiedEmail: expected.unverifiedEmail,
       hasPassword: expected.hasPassword,
       emailVerifiedAt: expected.emailVerifiedAt?.toMillis() ?? null,
     }
@@ -58,7 +60,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       {
         email: ` ${email.toUpperCase()} `,
         password,
-        emailVerifiedAt: verifiedAt,
+        unverifiedEmail: null,
         ...(fixture.registrationData !== undefined
           ? { registrationData: fixture.registrationData }
           : {}),
@@ -67,9 +69,10 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     )
     const read = await fixture.adapter.findByEmail(email.toUpperCase(), trx)
     assertSameUser(read, user)
+    await fixture.adapter.markEmailVerified(user.id, verifiedAt, trx)
     assert.equal(await fixture.adapter.verifyPassword(user.id, password, trx), true)
     assert.equal(await fixture.adapter.verifyPassword(user.id, 'incorrect-password', trx), false)
-    return user
+    return (await fixture.adapter.findById(user.id, trx))!
   })
 
   assert.equal(created.email, email, 'created addresses should be normalized')
@@ -91,7 +94,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
         {
           email: email.toUpperCase(),
           password,
-          emailVerifiedAt: verifiedAt,
+          unverifiedEmail: null,
           ...(fixture.registrationData !== undefined
             ? { registrationData: fixture.registrationData }
             : {}),

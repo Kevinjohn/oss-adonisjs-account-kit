@@ -118,11 +118,6 @@ test.group('database helpers', (group) => {
     await schema.dropTableIfExists('test_lifecycle_audit')
     const user = await insertUser(kit)
     const { account } = makeService(kit, { minRequestMs: 0 })
-    const token = kit.encryption.encrypt(
-      { userId: user.id, email: user.email },
-      '1h',
-      'account-kit:verify-email'
-    )
     await schema.createTable('test_lifecycle_audit', (table) => {
       table.increments('id')
       table.string('source').notNullable()
@@ -138,7 +133,7 @@ test.group('database helpers', (group) => {
       )
       .exec()
     try {
-      assert.equal(await account.emailVerification.complete({ token }), 'already_verified')
+      assert.equal(await account.emailVerification.send({ userId: user.id }), 'already_verified')
       await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'password123',
@@ -163,6 +158,7 @@ test.group('database helpers', (group) => {
 
     const schema = kit.db.connection().schema
     await schema.dropTableIfExists('account_email_changes')
+    await schema.dropTableIfExists('email_verification_tokens')
     await schema.dropTableIfExists('account_invitations')
     await schema.dropTableIfExists('password_reset_tokens')
     await schema.dropTableIfExists('users')

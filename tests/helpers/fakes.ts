@@ -25,6 +25,7 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
       ? {
           id: row.id as UserId,
           email: row.email as string,
+          unverifiedEmail: row.unverified_email as string | null,
           hasPassword: row.password !== null,
           emailVerifiedAt: row.email_verified_at
             ? DateTime.fromJSDate(new Date(row.email_verified_at as string), { zone: 'utc' })
@@ -47,8 +48,9 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
         .table(usersTable)
         .insert({
           email: attrs.email.trim().toLowerCase(),
-          password: await hash.make(attrs.password),
-          email_verified_at: attrs.emailVerifiedAt.toISO(),
+          unverified_email: attrs.unverifiedEmail,
+          password: attrs.password === null ? null : await hash.make(attrs.password),
+          email_verified_at: null,
           created_at: DateTime.utc().toISO(),
         })
         .returning('id')
@@ -63,8 +65,17 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
     async setEmail(id, email, trx) {
       await trx.from(usersTable).where('id', id).update({ email: email.trim().toLowerCase() })
     },
+    async setUnverifiedEmail(id, email, trx) {
+      await trx
+        .from(usersTable)
+        .where('id', id)
+        .update({ unverified_email: email?.trim().toLowerCase() ?? null })
+    },
     async markEmailVerified(id, at, trx) {
-      await trx.from(usersTable).where('id', id).update({ email_verified_at: at.toISO() })
+      await trx
+        .from(usersTable)
+        .where('id', id)
+        .update({ unverified_email: null, email_verified_at: at.toISO() })
     },
     async verifyPassword(id, password, trx) {
       const row = await trx.from(usersTable).where('id', id).first()
@@ -137,6 +148,7 @@ export async function insertUser(
     .table('users')
     .insert({
       email,
+      unverified_email: verified ? null : email,
       password: password === null ? null : await kit.hash.make(password),
       email_verified_at: verified ? DateTime.utc().toISO() : null,
       created_at: DateTime.utc().toISO(),

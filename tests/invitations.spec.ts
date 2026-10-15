@@ -87,7 +87,7 @@ test.group('invitations.send', (group) => {
     const [notified, url] = recorder.calls[0].args
     assert.deepEqual(notified, invitation)
     const raw = tokenFrom(url)
-    assert.match(raw, /^[A-Za-z0-9_-]{43}$/)
+    assert.match(raw, /^[A-Za-z0-9_-]{54}$/)
     const row = await kit.db.from('account_invitations').where('id', invitation.id).first()
     assert.equal(row.email, invitation.email)
     assert.equal(row.role, 'admin')
@@ -560,7 +560,7 @@ test.group('invitations.accept', (group) => {
         {
           email: invitation.email,
           password: 'existingPassword123',
-          emailVerifiedAt: DateTime.utc(),
+          unverifiedEmail: null,
         },
         trx
       )
@@ -659,7 +659,7 @@ test.group('invitations.accept', (group) => {
           {
             email: invitation.email,
             password: 'plainPassword123',
-            emailVerifiedAt: DateTime.utc(),
+            unverifiedEmail: null,
           },
           trx
         )
@@ -714,7 +714,7 @@ test.group('invitations.accept', (group) => {
             {
               email: invitation.email,
               password: 'plainPassword123',
-              emailVerifiedAt: DateTime.utc(),
+              unverifiedEmail: null,
             },
             trx
           )
@@ -975,7 +975,7 @@ test.group('invitations.resend and revoke', (group) => {
             {
               email: 'actor@example.test',
               password: 'password123',
-              emailVerifiedAt: DateTime.utc(),
+              unverifiedEmail: null,
             },
             trx
           )

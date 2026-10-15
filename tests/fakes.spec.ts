@@ -9,13 +9,15 @@ test.group('database users adapter', (group) => {
     assert,
   }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
-    const at = DateTime.utc()
     const created = await kit.db.transaction((trx) =>
-      users.create({ email: '  A@Example.Test  ', password: 'secret123', emailVerifiedAt: at }, trx)
+      users.create(
+        { email: '  A@Example.Test  ', password: 'secret123', unverifiedEmail: null },
+        trx
+      )
     )
     assert.equal(created.email, 'a@example.test')
     assert.isTrue(created.hasPassword)
-    assert.equal(created.emailVerifiedAt?.toISO(), at.toISO())
+    assert.isNull(created.emailVerifiedAt)
     const stored = await kit.db.from('users').where('id', created.id).first()
     assert.notEqual(stored.password, 'secret123')
     await kit.db.transaction(async (trx) => {
@@ -31,14 +33,14 @@ test.group('database users adapter', (group) => {
     const at = DateTime.utc()
     const existing = await kit.db.transaction((trx) =>
       users.create(
-        { email: 'before@example.test', password: 'before123', emailVerifiedAt: at },
+        { email: 'before@example.test', password: 'before123', unverifiedEmail: null },
         trx
       )
     )
     try {
       await kit.db.transaction(async (trx) => {
         await users.create(
-          { email: 'new@example.test', password: 'new12345', emailVerifiedAt: at },
+          { email: 'new@example.test', password: 'new12345', unverifiedEmail: null },
           trx
         )
         await users.setPassword(existing.id, 'changed123', trx)
@@ -53,7 +55,7 @@ test.group('database users adapter', (group) => {
     assert.isNull(await users.findByEmail('changed@example.test'))
     const unchanged = await users.findById(existing.id)
     assert.equal(unchanged?.email, 'before@example.test')
-    assert.equal(unchanged?.emailVerifiedAt?.toMillis(), at.toMillis())
+    assert.isNull(unchanged?.emailVerifiedAt)
     await kit.db.transaction(async (trx) => {
       assert.isTrue(await users.verifyPassword(existing.id, 'before123', trx))
       assert.isFalse(await users.verifyPassword(existing.id, 'changed123', trx))
@@ -68,6 +70,7 @@ test.group('database users adapter', (group) => {
       await allowAll.listInvitations({
         id: 1,
         email: 'a@example.test',
+        unverifiedEmail: null,
         hasPassword: false,
         emailVerifiedAt: null,
       })
@@ -76,12 +79,19 @@ test.group('database users adapter', (group) => {
       await denyAll.listInvitations({
         id: 1,
         email: 'a@example.test',
+        unverifiedEmail: null,
         hasPassword: false,
         emailVerifiedAt: null,
       })
     )
     const recorder = makeNotify()
-    const user = { id: 1, email: 'a@example.test', hasPassword: false, emailVerifiedAt: null }
+    const user = {
+      id: 1,
+      email: 'a@example.test',
+      unverifiedEmail: null,
+      hasPassword: false,
+      emailVerifiedAt: null,
+    }
     await recorder.notify.passwordResetProvision(user, 'https://example.test/reset')
     recorder.failOn('accountActivationProvision')
     try {

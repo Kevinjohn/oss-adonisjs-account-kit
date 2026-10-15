@@ -29,7 +29,7 @@ export async function inspectPasswordReset(
   const row = await db
     .from('password_reset_tokens')
     .select(db.raw('1'))
-    .where('token_hash', hashToken(input.token))
+    .where('hash', hashToken(input.token))
     .where('expires_at', '>', DateTime.utc().toISO())
     .first()
   return row !== null
@@ -45,19 +45,22 @@ export async function completePasswordReset(
 
   const { value: user, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      const { row, user: current } = await consumeUserToken<{ user_id: UserId; email: string }>(
+      const { row, user: current } = await consumeUserToken<{
+        tokenable_id: UserId
+        email: string
+      }>(
         trx,
         deps.config,
         'password_reset_tokens',
         input.token,
-        (candidate) => candidate.email
+        (candidate, account) => candidate.email === account.email
       )
 
-      await deps.config.users.setPassword(row.user_id, input.password, trx)
-      if (current.emailVerifiedAt === null)
-        await deps.config.users.markEmailVerified(row.user_id, DateTime.utc(), trx)
-      await trx.from('account_email_changes').where('user_id', row.user_id).delete()
-      const reloaded = await deps.config.users.findById(row.user_id, trx)
+      await deps.config.users.setPassword(row.tokenable_id, input.password, trx)
+      if (current.unverifiedEmail === current.email)
+        await deps.config.users.markEmailVerified(row.tokenable_id, DateTime.utc(), trx)
+      await trx.from('email_verification_tokens').where('tokenable_id', row.tokenable_id).delete()
+      const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await deps.config.onCredentialsChangedTransaction?.(
         reloaded,
@@ -110,7 +113,7 @@ export async function requestPasswordReset(
     const user = await deps.config.users.findByEmail(email)
     if (!user) return
 
-    const token = generateToken()
+    const token = generateToken(deps.config.tokenSecretLength)
     const operationId = randomUUID()
     const now = DateTime.utc()
     const { value: issuedUser, fault } = await settleCommitted(
@@ -121,14 +124,14 @@ export async function requestPasswordReset(
         await trx
           .table('password_reset_tokens')
           .insert({
-            user_id: current.id,
+            tokenable_id: current.id,
             email: current.email,
-            token_hash: hashToken(token),
+            hash: hashToken(token),
             expires_at: expiresAt(now, deps.config.expiresIn.passwordReset).toISO(),
             created_at: now.toISO(),
           })
-          .onConflict('user_id')
-          .merge(['email', 'token_hash', 'expires_at', 'created_at'])
+          .onConflict('tokenable_id')
+          .merge(['email', 'hash', 'expires_at', 'created_at'])
         await deps.config.onPasswordResetIssuedTransaction?.(current, trx)
         return current
       })
