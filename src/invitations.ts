@@ -9,7 +9,7 @@ import {
   isUniqueViolation,
   isUserEmailUniqueViolation,
 } from './db.js'
-import { postCommit } from './effects.js'
+import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   AuthorizationError,
@@ -19,6 +19,7 @@ import {
   InvitationNotFoundError,
   InvitationManagementDeniedError,
   InvalidTokenError,
+  type PostCommitError,
 } from './errors.js'
 import { consume } from './throttle.js'
 import { isPasswordShaped } from './password.js'
@@ -171,34 +172,44 @@ export async function acceptInvitation(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
 
+  let result: { user: AccountUser; invitationId: number }
+  let fault: PostCommitError | undefined
   try {
-    const result = await transaction(deps.db, async (trx) => {
-      const now = DateTime.utc()
-      const row = await consumeToken<InvitationDatabaseRow>(
-        trx,
-        'account_invitations',
-        hashToken(input.token),
-        now.toISO()
-      )
-      if (!row) throw new InvalidTokenError()
-      if (await deps.config.users.findByEmail(row.email, trx))
-        throw new EmailAlreadyRegisteredError()
+    ;({ value: result, fault } = await settleCommitted(
+      transaction(deps.db, async (trx) => {
+        const now = DateTime.utc()
+        const row = await consumeToken<InvitationDatabaseRow>(
+          trx,
+          'account_invitations',
+          hashToken(input.token),
+          now.toISO()
+        )
+        if (!row) throw new InvalidTokenError()
+        if (await deps.config.users.findByEmail(row.email, trx))
+          throw new EmailAlreadyRegisteredError()
 
-      const user = await deps.config.users.create(
-        {
-          email: row.email,
-          password: input.password,
-          emailVerifiedAt: now,
-          registrationData: input.registrationData,
-        },
-        trx
-      )
-      await deps.config.onInvitationAccepted(user, toInvitation(row), trx)
-      const reloaded = await deps.config.users.findById(user.id, trx)
-      if (!reloaded) throw new InvalidTokenError()
-      return { user: reloaded, invitationId: row.id }
-    })
-    await postCommit('Invitation follow-up failed', [
+        const user = await deps.config.users.create(
+          {
+            email: row.email,
+            password: input.password,
+            emailVerifiedAt: now,
+            registrationData: input.registrationData,
+          },
+          trx
+        )
+        await deps.config.onInvitationAccepted(user, toInvitation(row), trx)
+        const reloaded = await deps.config.users.findById(user.id, trx)
+        if (!reloaded) throw new InvalidTokenError()
+        return { user: reloaded, invitationId: row.id }
+      })
+    ))
+  } catch (error) {
+    if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
+      throw new EmailAlreadyRegisteredError()
+    throw error
+  }
+  await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
+    postCommit('Invitation follow-up failed', [
       {
         kind: 'observer',
         run: () =>
@@ -210,12 +221,8 @@ export async function acceptInvitation(
           }),
       },
     ])
-    return result.user
-  } catch (error) {
-    if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
-      throw new EmailAlreadyRegisteredError()
-    throw error
-  }
+  )
+  return result.user
 }
 
 export async function listInvitations(
@@ -318,48 +325,53 @@ export async function sendInvitation(
   const token = generateToken()
   const operationId = randomUUID()
   let invitation: Invitation
+  let fault: PostCommitError | undefined
   try {
-    invitation = await transaction(deps.db, async (trx) => {
-      const now = DateTime.utc()
-      await trx
-        .from('account_invitations')
-        .where('email', email)
-        .where('expires_at', '<=', now.toISO())
-        .delete()
-      const [row] = await trx
-        .getWriteClient()
-        .table('account_invitations')
-        .insert({
-          email,
-          role: input.role,
-          inviter_id: actor.id,
-          token_hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.ttl.invitation).toISO(),
-          created_at: now.toISO(),
-          updated_at: now.toISO(),
-        })
-        .returning('*')
-      return toInvitation(row)
-    })
+    ;({ value: invitation, fault } = await settleCommitted(
+      transaction(deps.db, async (trx) => {
+        const now = DateTime.utc()
+        await trx
+          .from('account_invitations')
+          .where('email', email)
+          .where('expires_at', '<=', now.toISO())
+          .delete()
+        const [row] = await trx
+          .getWriteClient()
+          .table('account_invitations')
+          .insert({
+            email,
+            role: input.role,
+            inviter_id: actor.id,
+            token_hash: hashToken(token),
+            expires_at: expiresAt(now, deps.config.ttl.invitation).toISO(),
+            created_at: now.toISO(),
+            updated_at: now.toISO(),
+          })
+          .returning('*')
+        return toInvitation(row)
+      })
+    ))
   } catch (error) {
     if (isUniqueViolation(error, 'account_invitations', 'email')) throw new InvitationPendingError()
     throw error
   }
 
-  await postCommit('Invitation follow-up failed', [
-    {
-      kind: 'delivery',
-      run: () => deps.config.notify.invitation(invitation, deps.config.urls.invitation(token)),
-    },
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'invitation.sent',
-          invitationId: invitation.id,
-          operationId,
-        }),
-    },
-  ])
+  await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
+    postCommit('Invitation follow-up failed', [
+      {
+        kind: 'delivery',
+        run: () => deps.config.notify.invitation(invitation, deps.config.urls.invitation(token)),
+      },
+      {
+        kind: 'observer',
+        run: () =>
+          deps.config.onLifecycleEvent?.({
+            type: 'invitation.sent',
+            invitationId: invitation.id,
+            operationId,
+          }),
+      },
+    ])
+  )
   return invitation
 }

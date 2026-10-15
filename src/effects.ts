@@ -1,3 +1,4 @@
+import { committedResult } from './db.js'
 import { DeliveryError, PostCommitError } from './errors.js'
 
 export interface PostCommitEffect {
@@ -53,4 +54,34 @@ export async function afterCommit(
       cause: failures.length === 1 ? failures[0] : new AggregateError(failures),
     })
   }
+}
+
+/** Await a package transaction; a committed fault still yields its result. */
+export async function settleCommitted<T>(
+  pending: Promise<T>
+): Promise<{ value: T; fault?: PostCommitError }> {
+  try {
+    return { value: await pending }
+  } catch (error) {
+    const saved = committedResult<T>(error)
+    if (!saved) throw error
+    return { value: saved.value, fault: error as PostCommitError }
+  }
+}
+
+/** Run follow-ups, then rethrow a committed fault combined with any follow-up failure. */
+export async function finishCommitted(
+  fault: PostCommitError | undefined,
+  message: string,
+  followUps: () => Promise<void>
+): Promise<void> {
+  try {
+    await followUps()
+  } catch (error) {
+    if (!fault) throw error
+    throw new PostCommitError(message, {
+      cause: new AggregateError([fault.cause, (error as Error).cause ?? error]),
+    })
+  }
+  if (fault) throw fault
 }
