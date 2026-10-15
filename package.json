@@ -26,6 +26,7 @@
     "./adapters/lucid": "./build/adapters/lucid.js",
     "./testing/adapter_contract": "./build/testing/adapter_contract.js",
     "./services/main": "./build/services/main.js",
+    "./http": "./build/http/main.js",
     "./commands": "./build/commands/main.js"
   },
   "scripts": {
@@ -64,6 +65,8 @@
     "@adonisjs/assembler": "^8.0.0",
     "@adonisjs/core": "^7.0.1",
     "@adonisjs/eslint-config": "^3.0.0",
+    "@adonisjs/limiter": "^3.0.0",
+    "@adonisjs/lucid": "^22.4.2",
     "@adonisjs/mail": "^10.4.0",
     "@adonisjs/prettier-config": "^1.4.5",
     "@adonisjs/tsconfig": "^2.0.0",
@@ -71,28 +74,28 @@
     "@japa/runner": "^5.3.0",
     "@poppinss/ts-exec": "^1.4.4",
     "@release-it/conventional-changelog": "^10.0.5",
+    "@types/luxon": "^3.0.0",
     "@types/node": "^25.3.5",
+    "@vinejs/vine": "^4.4.0",
+    "better-sqlite3": "^12.0.0",
     "c8": "^11.0.0",
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "eslint": "^10.0.3",
+    "luxon": "^3.0.0",
+    "pg": "^8.0.0",
     "prettier": "^3.8.1",
     "release-it": "^19.2.4",
     "tsdown": "^0.21.0",
-    "typescript": "^5.9.3",
-    "@adonisjs/lucid": "^22.4.2",
-    "@adonisjs/limiter": "^3.0.0",
-    "luxon": "^3.0.0",
-    "@types/luxon": "^3.0.0",
-    "pg": "^8.0.0",
-    "better-sqlite3": "^12.0.0"
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "@adonisjs/core": "^7.0.0",
     "@adonisjs/assembler": "^8.0.0",
-    "@adonisjs/lucid": "^22.4.2",
+    "@adonisjs/core": "^7.0.0",
     "@adonisjs/limiter": "^3.0.0",
+    "@adonisjs/lucid": "^22.4.2",
     "@adonisjs/mail": "^10.0.0",
+    "@vinejs/vine": "^4.4.0",
     "luxon": "^3.0.0"
   },
   "peerDependenciesMeta": {
@@ -100,6 +103,9 @@
       "optional": true
     },
     "@adonisjs/mail": {
+      "optional": true
+    },
+    "@vinejs/vine": {
       "optional": true
     }
   },
@@ -117,6 +123,7 @@
       "./adapters/lucid.ts",
       "./testing/adapter_contract.ts",
       "./services/main.ts",
+      "./http/main.ts",
       "./commands/main.ts",
       "./commands/prune.ts"
     ],
