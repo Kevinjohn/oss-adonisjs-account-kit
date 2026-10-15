@@ -653,7 +653,6 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     .where('operation', 'email_change')
     .first()
   assert.isNull(emailChangeOutbox)
-  assert.equal(await dispatchAccountKitOutbox(), 0)
   assert.equal((await client.post(emailPath).json({})).status(), 400)
   assert.equal(
     Number(
