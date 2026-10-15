@@ -23,7 +23,7 @@ export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
       identifier: UserId | BigInt
       value?: { release(): string } | null
     }>
-    delete(user: User, identifier: UserId | BigInt): Promise<void>
+    delete(user: User, identifier: UserId | BigInt): Promise<unknown>
   }
 }
 
