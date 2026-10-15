@@ -3,7 +3,7 @@
 import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
 import { AccountKit } from '../src/account_kit.js'
@@ -57,6 +57,32 @@ test.group('authentication contract', (group) => {
     if (!result.impact) throw new Error('Missing retirement impact')
     assert.equal(result.impact.inspectedAccounts, 2)
     assert.equal(result.impact.affectedAccounts, 1)
+  })
+
+  test('retirement inventory follows configured string IDs and user table', async ({ assert }) => {
+    await kit.db.connection().schema.createTable('retirement_users', (table) => {
+      table.string('id', 254).primary()
+      table.string('email')
+      table.string('password').nullable()
+      table.string('unverified_email').nullable()
+      table.timestamp('email_verified_at').nullable()
+    })
+    try {
+      await kit.db.table('retirement_users').insert([
+        { id: 'acct-a', email: 'a@example.test', password: await kit.hash.make('password123') },
+        { id: 'acct-b', email: 'b@example.test', password: null },
+      ])
+      const { account } = makeService(kit, {
+        users: makeUsersAdapter(kit.db, kit.hash, 'retirement_users'),
+        usersTable: 'retirement_users',
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+      const impact = await account.authentication.retirementImpact({ passwordLogin: false })
+      assert.equal(impact.inspectedAccounts, 2)
+      assert.equal(impact.affectedAccounts, 1)
+    } finally {
+      await kit.db.connection().schema.dropTable('retirement_users')
+    }
   })
 
   test('rejects invalid credentials with one public error and counts failures only', async ({
