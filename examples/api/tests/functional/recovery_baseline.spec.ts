@@ -41,6 +41,6 @@ test('stage-3 recovery baseline persists through real HTTP requests', async ({
         .post(path)
         .json({ password: 'ReplayReset123!', passwordConfirmation: 'ReplayReset123!' })
     ).status(),
-    422
+    400
   )
 })

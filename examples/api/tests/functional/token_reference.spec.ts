@@ -1,0 +1,173 @@
+/* eslint-disable @unicorn/no-await-expression-member -- Keep response checks beside their requests. */
+
+import { randomUUID } from 'node:crypto'
+import { test } from '@japa/runner'
+import app from '@adonisjs/core/services/app'
+import db from '@adonisjs/lucid/services/db'
+import { AccountKit } from 'adonisjs-account-kit'
+import User from '#models/user'
+import { notifications } from '#services/account_kit_notifications'
+
+const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
+
+test('bearer logout revokes only the current token and repeat is unauthenticated', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const user = await User.create({
+    fullName: 'Token Logout User',
+    email: `token-logout-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  const credentials: string[] = []
+  for (let index = 0; index < 2; index++) {
+    const login = await client
+      .post('/api/v1/auth/login')
+      .json({ email: user.email, password: 'OriginalPass123!' })
+    assert.equal(login.status(), 200)
+    credentials.push((login.body() as unknown as { data: { token: string } }).data.token)
+  }
+  const logout = await client.post('/api/v1/account/logout').bearerToken(credentials[0])
+  assert.equal(logout.status(), 200)
+  assert.equal(
+    (await client.get('/api/v1/account/profile').bearerToken(credentials[0])).status(),
+    401
+  )
+  assert.equal(
+    (await client.post('/api/v1/account/logout').bearerToken(credentials[0])).status(),
+    401
+  )
+  assert.equal(
+    (await client.get('/api/v1/account/profile').bearerToken(credentials[1])).status(),
+    200
+  )
+  const current = await client.get('/api/v1/account/profile').bearerToken(credentials[1])
+  assert.deepEqual(Object.keys((current.body() as unknown as { data: Record<string, unknown> }).data).sort(), [
+    'active',
+    'email',
+    'hasPassword',
+    'id',
+    'unverifiedEmail',
+  ])
+  assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
+})
+
+test('account errors use stable JSON and JSON:API envelopes while Vine errors retain 422', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const email = `unknown-token-${randomUUID()}@example.test`
+  const rejected = await client
+    .post('/api/v1/auth/login')
+    .json({ email, password: 'WrongPass123!' })
+  assert.equal(rejected.status(), 400)
+  assert.deepEqual(rejected.body(), {
+    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+  })
+  const jsonApi = await client
+    .post('/api/v1/auth/login')
+    .header('accept', 'application/vnd.api+json')
+    .json({ email, password: 'WrongPass123!' })
+  assert.equal(jsonApi.status(), 400)
+  assert.include(jsonApi.header('content-type'), 'application/vnd.api+json')
+  assert.deepEqual(jsonApi.body(), {
+    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', title: 'Account request rejected' }],
+  })
+  const validation = await client
+    .post('/api/v1/auth/login')
+    .json({ email: 'invalid', password: '' })
+  assert.equal(validation.status(), 422)
+  assert.property(
+    (validation.body() as unknown as { errors: Array<Record<string, unknown>> }).errors[0],
+    'rule'
+  )
+})
+
+test('the existing token guard rejects an expired bearer token', async ({ client, assert }) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const user = await User.create({
+    fullName: 'Expired Token User',
+    email: `expired-token-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  const token = await User.accessTokens.create(user, ['profile:read'], { expiresIn: '1h' })
+  const value = token.value!.release()
+  assert.equal((await client.get('/api/v1/account/profile').bearerToken(value)).status(), 200)
+  await db
+    .from('auth_access_tokens')
+    .where('tokenable_id', user.id)
+    .update({ expires_at: new Date(0) })
+  assert.equal((await client.get('/api/v1/account/profile').bearerToken(value)).status(), 401)
+})
+
+test('verification GET inspects without consuming and POST completes once', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const user = await User.create({
+    fullName: 'Verification Link User',
+    email: `verification-link-${randomUUID()}@example.test`,
+    unverifiedEmail: `verification-link-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  user.unverifiedEmail = user.email
+  await user.save()
+  const oldToken = (await User.accessTokens.create(user)).value!.release()
+  const kit = await app.container.make(AccountKit)
+  await kit.emailVerification.send({ userId: user.id })
+  const notice = notifications.events.findLast(
+    (event) => event.kind === 'verification' && event.recipient === user.email
+  )!
+  const path = `/account-kit/verification/${encodeURIComponent(proofFrom(notice.value))}`
+  for (let index = 0; index < 2; index++) {
+    const inspect = await client.get(path)
+    assert.equal(inspect.status(), 200)
+    assert.equal(inspect.header('cache-control'), 'no-store')
+    assert.equal(inspect.header('referrer-policy'), 'no-referrer')
+    await user.refresh()
+    assert.equal(user.unverifiedEmail, user.email)
+  }
+  const complete = await client.post(path).json({
+    password: 'ReplacementPass123!',
+    passwordConfirmation: 'ReplacementPass123!',
+  })
+  assert.equal(complete.status(), 200)
+  await user.refresh()
+  assert.isNull(user.unverifiedEmail)
+  assert.equal((await client.get('/api/v1/account/profile').bearerToken(oldToken)).status(), 401)
+  assert.equal(
+    (
+      await client
+        .post('/api/v1/auth/login')
+        .json({ email: user.email, password: 'OriginalPass123!' })
+    ).status(),
+    400
+  )
+  assert.equal(
+    (
+      await client
+        .post('/api/v1/auth/login')
+        .json({ email: user.email, password: 'ReplacementPass123!' })
+    ).status(),
+    200
+  )
+  const replay = await client.post(path).json({
+    password: 'ReplacementPass123!',
+    passwordConfirmation: 'ReplacementPass123!',
+  })
+  assert.equal(replay.status(), 400)
+  assert.deepEqual(replay.body(), {
+    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' }],
+  })
+  const spentInspect = await client.get(path)
+  assert.equal(spentInspect.status(), 400)
+  assert.equal(spentInspect.header('cache-control'), 'no-store')
+  const jsonApiProof = await client.get(path).header('accept', 'application/vnd.api+json')
+  assert.equal(jsonApiProof.status(), 400)
+  assert.deepEqual(jsonApiProof.body(), {
+    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' }],
+  })
+})
