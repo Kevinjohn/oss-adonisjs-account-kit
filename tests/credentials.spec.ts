@@ -1135,4 +1135,140 @@ test.group('credentials', (group) => {
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
   })
+
+  /** Register a failing commit listener from the next transactional `findByEmail` call. */
+  function faultOnNextEmailLookup(failure: Error) {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let armed = false
+    return {
+      arm: () => {
+        armed = true
+      },
+      users: {
+        ...users,
+        findByEmail: async (...args: Parameters<typeof users.findByEmail>) => {
+          const trx = args[1]
+          if (armed && trx) {
+            armed = false
+            trx.on('commit', () => {
+              throw failure
+            })
+          }
+          return users.findByEmail(...args)
+        },
+      },
+    }
+  }
+
+  test('runs all email-change completion follow-ups once after a committed cleanup fault', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const failure = new Error('listener failed after commit')
+    const calls: string[] = []
+    const seam = faultOnNextEmailLookup(failure)
+    const account = service({
+      users: seam.users,
+      notify: {
+        ...recorder.notify,
+        emailChanged: async (previousEmail, changed) => {
+          calls.push(`notice:${previousEmail}`)
+          await recorder.notify.emailChanged(previousEmail, changed)
+        },
+      },
+      onCredentialsChanged: async () => {
+        calls.push('credentials')
+      },
+      onLifecycleEvent: async (event) => {
+        calls.push(event.type)
+      },
+    })
+    const token = await issueEmailChange(account, user, recorder)
+    calls.length = 0
+    seam.arm()
+    try {
+      await account.credentials.completeEmailChange({ token })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(calls, ['credentials', 'notice:person@example.test', 'email_change.completed'])
+    const stored = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(stored.email, 'new@example.test')
+    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+  })
+
+  test('delivers the email-change link once after a committed cleanup fault', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const failure = new Error('listener failed after commit')
+    const events: string[] = []
+    const seam = faultOnNextEmailLookup(failure)
+    const account = service({
+      users: seam.users,
+      notify: recorder.notify,
+      onLifecycleEvent: async (event) => {
+        events.push(event.type)
+      },
+    })
+    seam.arm()
+    try {
+      await account.credentials.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'oldPassword123',
+        newEmail: 'new@example.test',
+      })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(
+      recorder.calls.map((call) => call.method),
+      ['emailChangeConfirm']
+    )
+    assert.deepEqual(events, ['email_change.requested'])
+    const row = await kit.db.from('account_email_changes').where('user_id', user.id).first()
+    assert.equal(row.token_hash, hashToken(tokenFrom(recorder.calls[0].args[2])))
+  })
+
+  test('a follow-up failure after a committed cleanup fault reports both causes', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const failure = new Error('listener failed after commit')
+    const observerFailure = new Error('observer failed')
+    const seam = faultOnNextEmailLookup(failure)
+    const account = service({
+      users: seam.users,
+      notify: recorder.notify,
+      onLifecycleEvent: async () => {
+        throw observerFailure
+      },
+    })
+    seam.arm()
+    try {
+      await account.credentials.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'oldPassword123',
+        newEmail: 'new@example.test',
+      })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      const cause = (error as PostCommitError).cause
+      assert.instanceOf(cause, AggregateError)
+      assert.deepEqual((cause as AggregateError).errors, [failure, observerFailure])
+    }
+    assert.lengthOf(recorder.calls, 1)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+  })
 })

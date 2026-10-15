@@ -31,6 +31,13 @@ This project has no published releases yet. The current candidate remains versio
 - Configure accepts `--users-table` and `--user-id-type` (`integer`, `string`, or `uuid`) for newly
   generated migrations. Existing generated config and migration files are not rewritten.
 
+### Fixed
+
+- Email-change requests and completions, invitation sends and invitation acceptance now run their
+  notices, link deliveries, legacy credential callbacks and lifecycle events when the transaction
+  commits but connection cleanup or a commit listener then fails. The operation still reports
+  `PostCommitError` with `committed: true`.
+
 ### Integration notes
 
 - Registration attributes are untrusted. Applications must map only validated profile data in

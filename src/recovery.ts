@@ -4,10 +4,10 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { committedResult, consumeUserToken, lockUser, transaction } from './db.js'
-import { afterCommit, postCommit } from './effects.js'
+import { consumeUserToken, lockUser, transaction } from './db.js'
+import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
-import { InvalidInputError, InvalidTokenError, PostCommitError } from './errors.js'
+import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordShaped } from './password.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -40,10 +40,8 @@ export async function resetRecovery(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
 
-  let user: AccountUser
-  let committedFault: PostCommitError | undefined
-  try {
-    user = await transaction(deps.db, async (trx) => {
+  const { value: user, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
       const { row, user: current } = await consumeUserToken<{ user_id: UserId; email: string }>(
         trx,
         deps.config,
@@ -65,28 +63,17 @@ export async function resetRecovery(
       )
       return reloaded
     })
-  } catch (error) {
-    const saved = committedResult<AccountUser>(error)
-    if (!saved) throw error
-    user = saved.value
-    committedFault = error as PostCommitError
-  }
+  )
 
   const context = { operation: 'password_reset' as const, operationId, userId: user.id }
-  try {
-    await afterCommit(
+  await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
+    afterCommit(
       'Credentials changed but a follow-up failed',
       () => deps.config.onCredentialsChanged?.(user, context),
       () => deps.config.notify.passwordReset(user, context),
       () => deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId })
     )
-  } catch (error) {
-    if (!committedFault) throw error
-    throw new PostCommitError('Credentials changed but follow-ups failed', {
-      cause: new AggregateError([committedFault.cause, (error as Error).cause ?? error]),
-    })
-  }
-  if (committedFault) throw committedFault
+  )
   return user
 }
 
@@ -123,10 +110,8 @@ export async function requestRecovery(
     const token = generateToken()
     const operationId = randomUUID()
     const now = DateTime.utc()
-    let issuedUser: AccountUser | null
-    let committedFault: PostCommitError | undefined
-    try {
-      issuedUser = await transaction(deps.db, async (trx) => {
+    const { value: issuedUser, fault } = await settleCommitted(
+      transaction(deps.db, async (trx) => {
         await lockUser(trx, deps.config, user.id)
         const current = await deps.config.users.findById(user.id, trx)
         if (!current || current.email !== email) return null
@@ -144,19 +129,14 @@ export async function requestRecovery(
         await deps.config.onRecoveryIssuedTransaction?.(current, trx)
         return current
       })
-    } catch (error) {
-      const saved = committedResult<AccountUser | null>(error)
-      if (!saved) throw error
-      issuedUser = saved.value
-      committedFault = error as PostCommitError
-    }
+    )
     if (!issuedUser) {
-      if (committedFault) throw committedFault
+      if (fault) throw fault
       return
     }
 
-    try {
-      await postCommit('Recovery follow-up failed', [
+    await finishCommitted(fault, 'Recovery committed but follow-ups failed', () =>
+      postCommit('Recovery follow-up failed', [
         {
           kind: 'delivery',
           run: () => deps.config.notify.recovery(issuedUser, deps.config.urls.recovery(token)),
@@ -171,13 +151,7 @@ export async function requestRecovery(
             }),
         },
       ])
-    } catch (error) {
-      if (!committedFault) throw error
-      throw new PostCommitError('Recovery committed but follow-ups failed', {
-        cause: new AggregateError([committedFault.cause, (error as Error).cause ?? error]),
-      })
-    }
-    if (committedFault) throw committedFault
+    )
   } finally {
     // Every exit, including a throw, waits out the configured floor. Timers can wake early,
     // so keep waiting until the floor has actually passed.
