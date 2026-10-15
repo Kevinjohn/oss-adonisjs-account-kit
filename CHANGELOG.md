@@ -28,12 +28,16 @@ This project has no published releases yet. The current candidate remains versio
 - `UsersAdapter.create({ email, password, emailVerifiedAt, registrationData? })` → `UsersAdapter.create({ email, unverifiedEmail, password, registrationData? })` (export contract).
 - `AccountUser.emailVerifiedAt` authorization state → `AccountUser.unverifiedEmail` confirmed/pending authorization state (export contract); the timestamp remains audit metadata.
 - `UsersAdapter.setUnverifiedEmail` (export contract) is required for pending-address writes.
+- `UsersAdapter.markEmailVerified` (export contract) now clears `unverifiedEmail` while recording the audit timestamp.
+- `PruneCounts.emailChanges` → `PruneCounts.emailVerifications` (export property).
 - `users.password NOT NULL` → `users.password NULL` (column), allowing no local password.
 - `password_reset_tokens.user_id` → `password_reset_tokens.tokenable_id` (column).
 - `password_reset_tokens.token_hash` → `password_reset_tokens.hash` (column).
 - `account_email_changes` → `email_verification_tokens` (table) for pending email-change proofs.
 - Repeatable encrypted activation link → stored, hashed, one-use activation proof (service contract).
 - An inactive account's email change now updates both confirmed and pending addresses and invalidates the prior proof (service contract).
+- Password reset and password change now cancel a distinct pending email change in the same transaction (service contract).
+- Inactive-account email changes now run credential revocation when the confirmed address changes (service contract).
 
 - `recovery (capability)` → `passwordReset` (config key).
 - `verification (capability)` → `emailVerification` (config key).

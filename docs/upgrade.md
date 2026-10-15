@@ -10,8 +10,11 @@ rewrite them to match new options or schemas.
 Follow the [identity creation contract](identity-creation.md), especially its manual steps,
 before applying the appended migrations. Custom adapters now accept explicit pending-email and
 nullable-password creation attributes, expose `AccountUser.unverifiedEmail`, and implement
-`setUnverifiedEmail`. The API example has been updated to the new contract. Existing migrations
-are preserved; review the generated evolution, social-identity and retirement migrations against
+`setUnverifiedEmail`. The API example has been updated to the new contract.
+Custom `markEmailVerified` implementations must clear the pending address in the same transaction
+as the audit timestamp; otherwise an inactive account will not activate. Password reset and
+password change also call `setUnverifiedEmail` to cancel a distinct pending address.
+Existing migrations are preserved; review the generated evolution, social-identity and retirement migrations against
 the application-owned users table. Existing reset proofs and pending email-change proofs are
 transferred. Encrypted repeatable activation links must be reissued. Do not infer provider
 ownership from an email match when migrating application social identities.
