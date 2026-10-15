@@ -890,6 +890,11 @@ test.group('onboarding plan and apply', (group) => {
     assert.include(config, 'mapFields: mapRegistrationFields')
     assert.include(config, 'mapRegistrationData: (data, user)')
     assert.include(config, 'registrationData.${key} is not allowed')
+    assert.include(config, "import { InvalidInputError } from 'adonisjs-account-kit/errors'")
+    assert.include(
+      config,
+      'throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)'
+    )
     choices.policy.registrationFields.push({ name: 'Role', type: 'string', required: true })
     const blocked = await planSetup(choices, await inspectSetup(root), {
       apply: true,
