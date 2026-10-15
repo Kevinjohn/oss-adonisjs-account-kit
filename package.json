@@ -130,7 +130,9 @@
       "./services/main.ts",
       "./http/main.ts",
       "./commands/main.ts",
-      "./commands/prune.ts"
+      "./commands/prune.ts",
+      "./commands/setup.ts",
+      "./commands/retirement_impact.ts"
     ],
     "outDir": "./build",
     "clean": true,

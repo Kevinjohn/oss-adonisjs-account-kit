@@ -1,10 +1,13 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep database assertions next to the operation they inspect. */
 
 import { test } from '@japa/runner'
+import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
+import { AccountKit } from '../src/account_kit.js'
+import RetirementImpact from '../commands/retirement_impact.js'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -20,6 +23,41 @@ const sessionGuard = (events: string[] = []) => ({
 
 test.group('authentication contract', (group) => {
   const kit = useTestApp(group)
+
+  test('counts accounts that would lose password login from adapter truth without mutation', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'password@example.test' })
+    await insertUser(kit, { email: 'provider@example.test', password: null })
+    const before = await kit.db.from('users').count('* as total').first()
+    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    const impact = await account.authentication.retirementImpact({ passwordLogin: false })
+    assert.equal(impact.inspectedAccounts, 2)
+    assert.equal(impact.affectedAccounts, 1)
+    assert.isTrue(Number.isFinite(Date.parse(impact.checkedAt)))
+    assert.deepEqual(await kit.db.from('users').count('* as total').first(), before)
+    await assert.rejects(
+      () =>
+        account.authentication.retirementImpact({ passwordLogin: false, providers: ['google'] }),
+      /Social identity inventory is unavailable/
+    )
+  })
+
+  test('booted Ace retirement inventory returns a structured count', async ({ assert }) => {
+    await insertUser(kit, { email: 'password@example.test' })
+    await insertUser(kit, { email: 'other@example.test', password: null })
+    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    kit.app.container.bindValue(AccountKit, account)
+    const kernel = new Kernel(kit.app)
+    kernel.addLoader(new ListLoader([RetirementImpact]))
+    const result = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [
+      '--quiet',
+    ])
+    assert.isNotNull(result.impact)
+    if (!result.impact) throw new Error('Missing retirement impact')
+    assert.equal(result.impact.inspectedAccounts, 2)
+    assert.equal(result.impact.affectedAccounts, 1)
+  })
 
   test('rejects invalid credentials with one public error and counts failures only', async ({
     assert,
