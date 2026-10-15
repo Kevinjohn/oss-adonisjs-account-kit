@@ -412,6 +412,51 @@ test.group('onboarding plan and apply', (group) => {
     assert.equal(await readFile(join(root, last.path), 'utf8'), '// owner changed this migration\n')
   })
 
+  test('temporary write failure stays unpublished and a competing create is never replaced', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const ordinary = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const target = 'app/atomic_account_kit_probe.txt'
+    const plan = {
+      ...ordinary,
+      changes: [
+        {
+          path: target,
+          action: 'create' as const,
+          content: 'complete content\n',
+          reason: 'Exercise atomic publication',
+        },
+      ],
+    }
+    await assert.rejects(
+      () =>
+        applySetup(root, plan, {
+          beforePublish: async (temp) => {
+            await writeFile(temp, 'partial')
+            throw new Error('injected interruption')
+          },
+        }),
+      /injected interruption/
+    )
+    const appFiles = await readdir(join(root, 'app'))
+    assert.notInclude(appFiles, 'atomic_account_kit_probe.txt')
+    assert.isFalse(appFiles.some((name) => name.includes('.account-kit-')))
+    await assert.rejects(
+      () =>
+        applySetup(root, plan, {
+          beforePublish: async (_temp, destination) => {
+            await writeFile(destination, 'owner content\n')
+          },
+        }),
+      /EEXIST/
+    )
+    assert.equal(await readFile(join(root, target), 'utf8'), 'owner content\n')
+  })
+
   test('noninteractive Ace preview and apply use the same choices without prompting', async ({
     assert,
   }) => {
