@@ -188,6 +188,13 @@ test('inactive session may request activation but cannot use verified routes', a
   const profile = await client.get('/api/v1/account/profile').header('cookie', cookies)
   assert.equal(profile.status(), 200, JSON.stringify(profile.body()))
   assert.isFalse((profile.body() as unknown as { data: { active: boolean } }).data.active)
+  const sendCsrf = await client.get('/api/v1/auth/csrf').header('cookie', cookies)
+  const activation = await client
+    .post('/api/v1/account/email-verification/send')
+    .header('cookie', cookies)
+    .header('x-csrf-token', (sendCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({})
+  assert.equal(activation.status(), 200)
   const protectedResponse = await client
     .get('/api/v1/account/invitations')
     .header('cookie', cookies)
