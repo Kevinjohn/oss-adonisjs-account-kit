@@ -3,6 +3,9 @@ import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
 import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
+import { notifications } from '#services/account_kit_notifications'
+
+const tokenFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
 
 function rawCookies(response: { header(name: string): string | string[] | undefined }): string {
   const values = response.header('set-cookie')
@@ -24,6 +27,7 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
   })
   const bootstrap = await client.get('/api/v1/auth/csrf')
   assert.equal(bootstrap.status(), 200, JSON.stringify(bootstrap.body()))
+  assert.equal(bootstrap.header('cache-control'), 'no-store')
   const csrf = (bootstrap.body() as { csrfToken: string }).csrfToken
   assert.isString(csrf)
   const beforeCookie = bootstrap.cookie('adonis-session')
@@ -72,6 +76,54 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
   assert.equal(logout.status(), 200)
   const oldSession = await client.get('/api/v1/account/profile').header('cookie', rawCookies(login))
   assert.equal(oldSession.status(), 401)
+  const repeatCsrf = await client.get('/api/v1/auth/csrf').header('cookie', rawCookies(login))
+  const repeatedLogout = await client
+    .post('/api/v1/account/logout')
+    .header('cookie', rawCookies(repeatCsrf))
+    .header('x-csrf-token', (repeatCsrf.body() as { csrfToken: string }).csrfToken)
+  assert.equal(repeatedLogout.status(), 401)
+})
+
+test('password reset rejects pre-existing sessions on an application-owned route', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  notifications.reset()
+  const user = await User.create({
+    fullName: 'Reset Session User',
+    email: `reset-session-${randomUUID()}@example.test`,
+    password: 'OriginalPass123!',
+  })
+  const sessions: string[] = []
+  for (let index = 0; index < 2; index++) {
+    const csrf = await client.get('/api/v1/auth/csrf')
+    const login = await client
+      .post('/api/v1/auth/login')
+      .header('cookie', rawCookies(csrf))
+      .header('x-csrf-token', (csrf.body() as { csrfToken: string }).csrfToken)
+      .json({ email: user.email, password: 'OriginalPass123!' })
+    assert.equal(login.status(), 200)
+    sessions.push(rawCookies(login))
+  }
+  const resetCsrf = await client.get('/api/v1/auth/csrf')
+  const requested = await client
+    .post('/account-kit/recovery')
+    .header('cookie', rawCookies(resetCsrf))
+    .header('x-csrf-token', (resetCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ email: user.email })
+  assert.equal(requested.status(), 202)
+  const token = tokenFrom(notifications.events.find((event) => event.kind === 'recovery')!.value)
+  const reset = await client
+    .post(`/account-kit/recovery/${encodeURIComponent(token)}`)
+    .header('cookie', rawCookies(resetCsrf))
+    .header('x-csrf-token', (resetCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+  assert.equal(reset.status(), 202, JSON.stringify(reset.body()))
+  for (const cookies of sessions) {
+    const profile = await client.get('/api/v1/account/profile').header('cookie', cookies)
+    assert.equal(profile.status(), 401)
+  }
 })
 
 test('inactive session may request activation but cannot use verified routes', async ({
