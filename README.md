@@ -30,10 +30,10 @@ driver for its selected Lucid dialect. PostgreSQL applications install `pg`; the
 SQLite setup uses `better-sqlite3`. See [compatibility](docs/compatibility.md) for tested version
 points and declared peer ranges.
 
-Configure creates `config/account_kit.ts` when absent, registers the provider, and adds five
-migrations when matching migration files do not already exist. It does not rewrite existing
-configuration or migrations. Review generated files, set a stable `APP_KEY` and `APP_URL`, then
-apply migrations and typecheck:
+Configure creates `config/account_kit.ts` when absent, registers the provider, and generates eight
+package migrations for a fresh install when matching files do not already exist. It preserves
+existing configuration and migrations. Review generated files, set a stable `APP_KEY` and
+`APP_URL`, then apply migrations and typecheck:
 
 ```sh
 pnpm exec node ace migration:run
@@ -71,9 +71,12 @@ request data; the example maps a validated name and never spreads request fields
 
 ## Application prerequisites
 
-- The user model exposes `id`, `email`, `password`, and nullable `emailVerifiedAt`, mapped to the
-  corresponding database columns. `id` is the physical primary-key column. Models that assign
-  string/UUID keys must enable Lucid’s `selfAssignPrimaryKey` policy; see the custom schema guide.
+- The user model exposes `id` → `id`, `email` → `email`, nullable `unverifiedEmail` →
+  `unverified_email`, nullable `password` → `password`, and nullable `emailVerifiedAt` →
+  `email_verified_at`. A null password represents an account without local credentials; a new
+  inactive account writes the same normalized address to `email` and `unverified_email`. `id` is
+  the physical primary-key column. Models that assign string/UUID keys must enable Lucid’s
+  `selfAssignPrimaryKey` policy; see the custom schema guide.
 - Email is stored trimmed and lowercase, and has a single-column unique constraint. The Lucid
   adapter compares normalized email values with indexed equality. PostgreSQL duplicate-email
   classification discovers the table's single-column email unique index through the catalog;

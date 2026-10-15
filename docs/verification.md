@@ -36,10 +36,11 @@ pnpm test:consumer -- --mode=service-only --database=sqlite
 pnpm test:consumer -- --mode=service-only --database=postgres
 ```
 
-The service-only mode installs the packed candidate in a separate minimal application, compiles
-against its public types, boots the account service with the selected database, and verifies that
-authentication, session, shield, Tuyau, mail, and Ally integrations are absent. Core and its
-transitive validation dependencies remain installed as required by AdonisJS.
+The service-only mode installs the packed candidate in a separate minimal application, builds
+with full declaration checking, and boots the compiled account service with the selected
+database. It verifies that authentication, session, shield, Tuyau, mail, and Ally integrations
+are absent. Core and its transitive validation dependencies remain installed as required by
+AdonisJS.
 
 ### Vocabulary alignment: 15 October 2026
 
