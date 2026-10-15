@@ -259,17 +259,24 @@ function overlappingPaths(existing: ExistingRoute, managedPath: string): boolean
   const right = pathTokens(managedPath)
   const visited = new Set<string>()
 
+  // The tree matcher can traverse missing parameter segments at the end of a
+  // request, but only an optional segment restores a terminal route match.
+  // A suffix-bearing parameter cannot be traversed without a segment.
+  function acceptsMissingTail(tokens: readonly RoutePatternToken[], index: number): boolean {
+    let terminalAllowed = true
+    for (const token of tokens.slice(index)) {
+      if (token.end !== '' || (token.type !== 1 && token.type !== 3)) return false
+      terminalAllowed = token.type === 3
+    }
+    return terminalAllowed
+  }
+
   function intersects(i: number, j: number): boolean {
     const key = `${i}:${j}`
     if (visited.has(key)) return false
     visited.add(key)
-    if (i === left.length && j === right.length) return true
-    // Adonis may omit a trailing run of optional parameters, not an optional
-    // parameter followed by a required or static segment.
-    const skippable = (tokens: readonly RoutePatternToken[], index: number) =>
-      tokens.slice(index).every((token) => token.type === 3 && token.end === '')
-    if (i < left.length && skippable(left, i) && intersects(i + 1, j)) return true
-    if (j < right.length && skippable(right, j) && intersects(i, j + 1)) return true
+    if (i === left.length) return acceptsMissingTail(right, j)
+    if (j === right.length) return acceptsMissingTail(left, i)
     if (i < left.length && left[i].type === 2) {
       // A wildcard must consume at least one trailing segment.
       if (j < right.length && (intersects(i + 1, j + 1) || intersects(i, j + 1))) return true
@@ -277,7 +284,6 @@ function overlappingPaths(existing: ExistingRoute, managedPath: string): boolean
     if (j < right.length && right[j].type === 2) {
       if (i < left.length && (intersects(i + 1, j + 1) || intersects(i + 1, j))) return true
     }
-    if (i === left.length || j === right.length) return false
     return overlapsSegment(left[i], right[j]) && intersects(i + 1, j + 1)
   }
 
