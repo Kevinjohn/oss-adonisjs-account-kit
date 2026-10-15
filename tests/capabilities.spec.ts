@@ -30,6 +30,15 @@ test.group('capability configuration', (group) => {
     assert.isFunction(resolved.onInvitationAccepted)
   })
 
+  test('accepts an email-verification-only adapter without setEmail', ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const config = makeConfig({
+      enabled: ['emailVerification'],
+      users: { ...users, setEmail: undefined } as never,
+    })
+    assert.deepEqual(defineConfig(config).enabled, ['emailVerification'])
+  })
+
   test('validates enabled capability names, duplicates, and required dependencies', ({
     assert,
   }) => {

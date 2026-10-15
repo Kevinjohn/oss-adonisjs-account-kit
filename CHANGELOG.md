@@ -29,6 +29,7 @@ This project has no published releases yet. The current candidate remains versio
 - `AccountUser.emailVerifiedAt` authorization state → `AccountUser.unverifiedEmail` confirmed/pending authorization state (export contract); the timestamp remains audit metadata.
 - `UsersAdapter.setUnverifiedEmail` (export contract) is required for pending-address writes.
 - `UsersAdapter.markEmailVerified` (export contract) now clears `unverifiedEmail` while recording the audit timestamp.
+- Email-verification-only configuration no longer requires `UsersAdapter.setEmail` (adapter capability contract).
 - `PruneCounts.emailChanges` → `PruneCounts.emailVerifications` (export property).
 - `emailVerification.complete` return type `'verified' | 'already_verified'` → `'verified'` (export contract); replay now rejects an invalid proof.
 - `users.password NOT NULL` → `users.password NULL` (column), allowing no local password.
