@@ -215,9 +215,22 @@ function overlappingPaths(first: string, second: string): boolean {
   const segments = (path: string) => path.replace(/\/+$/, '').split('/').filter(Boolean)
   const left = segments(first)
   const right = segments(second)
-  const optional = (part: string) => /^:[A-Za-z_][\w]*\?$/.test(part)
+  const optional = (part: string) => part.startsWith(':') && part.endsWith('?')
   const wildcard = (part: string) => part === '*'
-  const parameter = (part: string) => /^:[A-Za-z_][\w]*\??$/.test(part)
+  const parameterSuffix = (part: string): string | null => {
+    if (!part.startsWith(':')) return null
+    const name = part.slice(1).replace(/\?$/, '')
+    const dot = name.indexOf('.')
+    return dot === -1 ? '' : name.slice(dot)
+  }
+  const compatible = (a: string, b: string): boolean => {
+    const aSuffix = parameterSuffix(a)
+    const bSuffix = parameterSuffix(b)
+    if (aSuffix === null && bSuffix === null) return a === b
+    if (aSuffix === null) return a.endsWith(bSuffix!) && a.length > bSuffix!.length
+    if (bSuffix === null) return b.endsWith(aSuffix) && b.length > aSuffix.length
+    return aSuffix.endsWith(bSuffix) || bSuffix.endsWith(aSuffix)
+  }
   const visited = new Set<string>()
 
   function intersects(i: number, j: number): boolean {
@@ -225,21 +238,19 @@ function overlappingPaths(first: string, second: string): boolean {
     if (visited.has(key)) return false
     visited.add(key)
     if (i === left.length && j === right.length) return true
-    if (i < left.length && optional(left[i]) && intersects(i + 1, j)) return true
-    if (j < right.length && optional(right[j]) && intersects(i, j + 1)) return true
+    // Adonis may omit a trailing run of optional parameters, not an optional
+    // parameter followed by a required or static segment.
+    if (i < left.length && left.slice(i).every(optional) && intersects(i + 1, j)) return true
+    if (j < right.length && right.slice(j).every(optional) && intersects(i, j + 1)) return true
     if (i < left.length && wildcard(left[i])) {
-      if (intersects(i + 1, j)) return true
-      if (j < right.length && intersects(i, j + 1)) return true
+      // A wildcard must consume at least one trailing segment.
+      if (j < right.length && (intersects(i + 1, j + 1) || intersects(i, j + 1))) return true
     }
     if (j < right.length && wildcard(right[j])) {
-      if (intersects(i, j + 1)) return true
-      if (i < left.length && intersects(i + 1, j)) return true
+      if (i < left.length && (intersects(i + 1, j + 1) || intersects(i + 1, j))) return true
     }
     if (i === left.length || j === right.length) return false
-    return (
-      (left[i] === right[j] || parameter(left[i]) || parameter(right[j])) &&
-      intersects(i + 1, j + 1)
-    )
+    return compatible(left[i], right[j]) && intersects(i + 1, j + 1)
   }
 
   return intersects(0, 0)
