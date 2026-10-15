@@ -41,6 +41,11 @@ async function fixture() {
       dependencies: {
         '@adonisjs/core': '7',
         '@adonisjs/lucid': '22',
+        '@adonisjs/limiter': '2',
+        '@adonisjs/auth': '10',
+        '@adonisjs/session': '7',
+        '@adonisjs/shield': '8',
+        '@vinejs/vine': '3',
         'adonisjs-account-kit': '0',
       },
     })
@@ -494,11 +499,15 @@ test.group('onboarding plan and apply', (group) => {
     choices.mail.transportEnv = 'MAIL_MAILER'
     choices.mail.delivery = 'durable'
     choices.mail.durableWorkerVerified = true
-    const plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
     assert.includeMembers(
       plan.diagnostics.map(({ field }) => field),
-      ['mail.delivery', 'config/mail.ts']
+      ['mail.delivery', 'config/mail.ts', 'dependencies.@adonisjs/mail']
     )
+    await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
     assert.include(
       plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content,
       'createMailNotifications'
