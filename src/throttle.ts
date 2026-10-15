@@ -12,18 +12,23 @@ export async function consume(
   secret: string,
   namespace = 'default'
 ): Promise<void> {
-  const derivedKey = Buffer.from(
-    hkdfSync('sha256', secret, 'adonisjs-account-kit', 'limiter-key-v1', 32)
-  )
-  const digest = createHmac('sha256', derivedKey)
-    .update(JSON.stringify([namespace, operation, key]))
-    .digest('hex')
+  const digest = limiterKey(operation, key, secret, namespace)
   try {
-    await limiter.use({ ...options }).consume(`account-kit:v1:${digest}`)
+    await limiter.use({ ...options }).consume(digest)
   } catch (error) {
     if (error instanceof errors.E_TOO_MANY_REQUESTS) {
       throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
     }
     throw error
   }
+}
+
+export function limiterKey(operation: string, key: string, secret: string, namespace = 'default') {
+  const derivedKey = Buffer.from(
+    hkdfSync('sha256', secret, 'adonisjs-account-kit', 'limiter-key-v1', 32)
+  )
+  const digest = createHmac('sha256', derivedKey)
+    .update(JSON.stringify([namespace, operation, key]))
+    .digest('hex')
+  return `account-kit:v1:${digest}`
 }
