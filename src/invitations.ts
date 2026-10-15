@@ -23,6 +23,7 @@ import {
 } from './errors.js'
 import { consume } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
+import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './rows.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -172,6 +173,7 @@ export async function acceptInvitation(
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+  const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
   const operationId = randomUUID()
 
   let result: { user: AccountUser; invitationId: number }
@@ -195,7 +197,7 @@ export async function acceptInvitation(
             email: row.email,
             unverifiedEmail: null,
             password: input.password,
-            registrationData: input.registrationData,
+            registrationData,
           },
           trx
         )

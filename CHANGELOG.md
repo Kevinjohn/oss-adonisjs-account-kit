@@ -17,6 +17,9 @@ This project has no published releases yet. The current candidate remains versio
 - The API example provides session CSRF bootstrap, browser logout, and selected-guard access middleware for protected routes.
 - Inactive accounts may correct an unconfirmed email through the limited credential gate while verified routes still reject them.
 - The API example checks token abilities before sending invitations and returns `missing_ability` for a token without permission.
+- Read-only activation and email-change proof inspection methods check current account state without consuming a link.
+- `emailPasswordManagement.updateProfile` writes only mapped registration fields and optional pending email under one current-password-protected transaction.
+
 - `users.unverified_email` (column) records a pending address; active state follows the confirmed/pending pair.
 - `email_verification_tokens` (table) stores hashed, expiring, single-use activation and email-change proofs.
 - `social_identities` (table) stores unique provider subjects and user-linked identity metadata without credentials.
@@ -44,6 +47,9 @@ This project has no published releases yet. The current candidate remains versio
 - `emailVerification` (adapter capability contract) requires `UsersAdapter.setPassword` to replace an earlier password during inactive activation.
 - The generated `enabled` (config key) and the runtime default omit invitations; applications opt in explicitly.
 - Password and confirmed-email changes and password resets now delete all user access tokens transactionally in token mode or advance the browser-session revision in session mode.
+- Activation and email-change resends within one minute keep the existing proof and acknowledgement without another message.
+- Inactive-account email replacement now sends an activation link that requires a fresh password to claim the account.
+
 - `UsersAdapter.create({ email, password, emailVerifiedAt, registrationData? })` → `UsersAdapter.create({ email, unverifiedEmail, password, registrationData? })` (export contract).
 - `AccountUser.emailVerifiedAt` authorization state → `AccountUser.unverifiedEmail` confirmed/pending authorization state (export contract); the timestamp remains audit metadata.
 - `UsersAdapter.setUnverifiedEmail` (export contract) is required for pending-address writes.

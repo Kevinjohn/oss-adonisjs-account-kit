@@ -59,7 +59,9 @@ const requiredHooks: Record<Capability, string[]> = {
   ],
   emailPasswordManagement: [
     'urls.emailChange',
+    'urls.emailVerification',
     'notify.emailChangeProvision',
+    'notify.accountActivationProvision',
     'notify.emailChanged',
     'notify.passwordChanged',
   ],

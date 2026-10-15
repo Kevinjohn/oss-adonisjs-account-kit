@@ -49,6 +49,30 @@ test.group('capability configuration', (group) => {
     assert.throws(() => defineConfig(config), 'users.setPassword must be a function')
   })
 
+  test('email management requires activation delivery for inactive address replacement', ({
+    assert,
+  }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    assert.throws(
+      () =>
+        defineConfig({
+          ...base,
+          enabled: ['emailPasswordManagement'],
+          urls: { ...base.urls, emailVerification: undefined },
+        }),
+      /urls\.emailVerification must be a function/
+    )
+    assert.throws(
+      () =>
+        defineConfig({
+          ...base,
+          enabled: ['emailPasswordManagement'],
+          notify: { ...base.notify, accountActivationProvision: undefined },
+        }),
+      /notify\.accountActivationProvision must be a function/
+    )
+  })
+
   test('validates enabled capability names, duplicates, and required dependencies', ({
     assert,
   }) => {
