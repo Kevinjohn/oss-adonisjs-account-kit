@@ -1082,6 +1082,46 @@ export async function planSetup(
           'config/session.ts',
           'Session guard requires configured cookie and session storage'
         )
+      else {
+        const sessionConfig = state.files['config/session.ts']
+        const selectedStore =
+          sessionConfig.match(/\bstore\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
+          (/\bstore\s*:\s*env\.get\(['"]SESSION_DRIVER['"]\)/.test(sessionConfig)
+            ? process.env.SESSION_DRIVER
+            : undefined)
+        if (selectedStore === 'cookie')
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            'Cookie-only sessions cannot enforce logout replay protection; select a server-side session store'
+          )
+        else if (
+          selectedStore &&
+          !new RegExp(`\\b${selectedStore}\\s*:\\s*stores\\.`).test(sessionConfig)
+        )
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            `Selected session store ${selectedStore} is not configured in config/session.ts`
+          )
+        else if (
+          selectedStore === 'database' &&
+          !state.migrationNames.some((name) => /session/i.test(name))
+        )
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            'Database session storage requires an application session-table migration and a verified applied table',
+            'action'
+          )
+        else if (!selectedStore)
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            'Verify the selected runtime session store is server-side and preserves logout revocation across requests',
+            'action'
+          )
+      }
     }
   }
   const requiredMigrations = migrationNames.filter((name) => name !== 'create_social_identities')

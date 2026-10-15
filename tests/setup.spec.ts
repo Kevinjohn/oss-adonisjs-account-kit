@@ -604,6 +604,37 @@ test.group('onboarding plan and apply', (group) => {
     assert.isTrue(plan.prerequisites.some((item) => item.includes('CSRF-protected POST')))
   })
 
+  test('session planning rejects cookie replay and unconfigured stores', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/session.ts'),
+      "export default { store: env.get('SESSION_DRIVER'), stores: { cookie: stores.cookie(), database: stores.database() } }\n"
+    )
+    const previous = process.env.SESSION_DRIVER
+    try {
+      process.env.SESSION_DRIVER = 'cookie'
+      const cookie = await planSetup(choices, await inspectSetup(root))
+      assert.isTrue(
+        cookie.diagnostics.some(
+          (item) => item.field === 'config/session.ts' && item.severity === 'error'
+        )
+      )
+      process.env.SESSION_DRIVER = 'memory'
+      const missing = await planSetup(choices, await inspectSetup(root))
+      assert.isTrue(missing.diagnostics.some((item) => item.message.includes('not configured')))
+      process.env.SESSION_DRIVER = 'database'
+      const database = await planSetup(choices, await inspectSetup(root))
+      assert.isTrue(
+        database.diagnostics.some(
+          (item) => item.message.includes('session-table migration') && item.severity === 'action'
+        )
+      )
+    } finally {
+      if (previous === undefined) delete process.env.SESSION_DRIVER
+      else process.env.SESSION_DRIVER = previous
+    }
+  })
+
   test('reconfiguration reports changed fields and updates only owned files', async ({
     assert,
   }) => {
