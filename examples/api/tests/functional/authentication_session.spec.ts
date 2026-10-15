@@ -40,7 +40,7 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
       password: 'SessionPass123!',
     })
   assert.equal(denied.status(), 403)
-  assert.equal((denied.body() as unknown as { code: string }).code, 'E_BAD_CSRF_TOKEN')
+  assert.equal((denied.body() as { errors: [{ code: string }] }).errors[0].code, 'E_BAD_CSRF_TOKEN')
 
   const login = await client
     .post('/api/v1/auth/login')
@@ -94,9 +94,14 @@ test('inactive session may request activation but cannot use verified routes', a
   const profile = await client.get('/api/v1/account/profile').header('cookie', cookies)
   assert.equal(profile.status(), 200, JSON.stringify(profile.body()))
   assert.isFalse((profile.body() as unknown as { data: { active: boolean } }).data.active)
-  const protectedResponse = await client.get('/account-kit/invitations').header('cookie', cookies)
+  const protectedResponse = await client
+    .get('/api/v1/account/invitations')
+    .header('cookie', cookies)
   assert.equal(protectedResponse.status(), 403)
-  assert.equal((protectedResponse.body() as unknown as { code: string }).code, 'unverified_email')
+  assert.equal(
+    (protectedResponse.body() as { errors: [{ code: string }] }).errors[0].code,
+    'unverified_email'
+  )
 })
 
 test('inactive session may replace its unconfirmed email through the guarded route', async ({
@@ -120,14 +125,14 @@ test('inactive session may replace its unconfirmed email through the guarded rou
   assert.equal(login.status(), 200)
   const csrf = await client.get('/api/v1/auth/csrf').header('cookie', rawCookies(login))
   const correction = await client
-    .post('/account-kit/credentials/email')
+    .patch('/api/v1/account/profile')
     .header('cookie', rawCookies(login))
     .header('x-csrf-token', (csrf.body() as { csrfToken: string }).csrfToken)
     .json({
       currentPassword: 'OriginalPass123!',
-      newEmail: `corrected-${randomUUID()}@example.test`,
+      email: `corrected-${randomUUID()}@example.test`,
     })
-  assert.equal(correction.status(), 202, JSON.stringify(correction.body()))
+  assert.equal(correction.status(), 200, JSON.stringify(correction.body()))
 })
 
 test('signup establishes a limited session for an inactive account', async ({ client, assert }) => {
@@ -147,9 +152,14 @@ test('signup establishes a limited session for an inactive account', async ({ cl
   const cookies = rawCookies(signup)
   assert.isNotEmpty(cookies)
   assert.notProperty((signup.body() as { data: Record<string, unknown> }).data, 'token')
-  const protectedResponse = await client.get('/account-kit/invitations').header('cookie', cookies)
+  const protectedResponse = await client
+    .get('/api/v1/account/invitations')
+    .header('cookie', cookies)
   assert.equal(protectedResponse.status(), 403)
-  assert.equal((protectedResponse.body() as unknown as { code: string }).code, 'unverified_email')
+  assert.equal(
+    (protectedResponse.body() as { errors: [{ code: string }] }).errors[0].code,
+    'unverified_email'
+  )
 })
 
 test('a password change revokes every previously issued browser session', async ({
@@ -179,7 +189,7 @@ test('a password change revokes every previously issued browser session', async 
   }
   const csrf = await client.get('/api/v1/auth/csrf').header('cookie', sessions[0])
   const change = await client
-    .post('/account-kit/credentials/password')
+    .post('/api/v1/account/password')
     .header('cookie', sessions[0])
     .header('x-csrf-token', (csrf.body() as { csrfToken: string }).csrfToken)
     .json({
