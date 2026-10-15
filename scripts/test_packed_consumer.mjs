@@ -542,9 +542,17 @@ async function runServiceOnly(candidate, runName) {
       [database === 'sqlite' ? 'better-sqlite3' : 'pg']:
         database === 'sqlite' ? '^12.11.1' : '^8.23.1',
     },
+    scripts: { build: 'tsc', start: 'node build/service.js' },
     devDependencies: {
+      '@adonisjs/assembler': '^8.0.0',
+      '@adonisjs/redis': '^9.0.0',
+      '@types/json-schema': '^7.0.15',
       '@types/luxon': '^3.7.5',
       '@types/node': '^24.10.0',
+      '@types/picomatch': '^4.0.0',
+      '@types/yargs-parser': '^21.0.3',
+      '@vinejs/vine': '^4.0.0',
+      'json-schema': '^0.4.0',
       'typescript': '~6.0.3',
     },
   }
@@ -552,37 +560,25 @@ async function runServiceOnly(candidate, runName) {
   await writeFile(join(appRoot, 'pnpm-workspace.yaml'), 'allowBuilds:\n  better-sqlite3: true\n')
   await writeFile(
     join(appRoot, 'tsconfig.json'),
-    `${JSON.stringify({ compilerOptions: { module: 'NodeNext', moduleResolution: 'NodeNext', target: 'ES2022', strict: true, noEmit: true, skipLibCheck: true }, files: ['service.ts'] }, null, 2)}\n`
+    `${JSON.stringify({ compilerOptions: { module: 'NodeNext', moduleResolution: 'NodeNext', target: 'ES2022', strict: true, skipLibCheck: false, outDir: 'build' }, files: ['service.ts'] }, null, 2)}\n`
   )
   await writeFile(
     join(appRoot, 'service.ts'),
-    `import { AccountKit, defineConfig, type UsersAdapter } from 'adonisjs-account-kit'\n
-export const configure = (users: UsersAdapter) => defineConfig({
-  enabled: ['emailVerification'], users,
-  limiterSecret: 'service_only_consumer_secret_32_bytes',
-  urls: { emailVerification: (token) => 'https://example.test/activate/' + token },
-  notify: { accountActivationProvision: async () => {} },
-})
-export const send = (service: AccountKit) => service.emailVerification.send({ userId: 1 })
-`
-  )
-  await writeFile(
-    join(appRoot, 'start.mjs'),
     `import { createRequire } from 'node:module'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
-import { AccountKit, defineConfig } from 'adonisjs-account-kit'
+import { AccountKit, defineConfig, type UsersAdapter } from 'adonisjs-account-kit'
 
 const require = createRequire(import.meta.url)
 for (const name of ['@adonisjs/auth', '@adonisjs/session', '@adonisjs/shield', '@tuyau/core', '@adonisjs/mail', '@adonisjs/ally']) {
   try { require.resolve(name); throw new Error('Backend-only dependency installed: ' + name) }
-  catch (error) { if (error.code !== 'MODULE_NOT_FOUND') throw error }
+  catch (error) { if ((error as { code?: string }).code !== 'MODULE_NOT_FOUND') throw error }
 }
 const connection = ${
       database === 'sqlite'
-        ? `{ client: 'better-sqlite3', connection: { filename: './service.sqlite' }, useNullAsDefault: true }`
-        : `{ client: 'pg', connection: { host: process.env.DB_HOST ?? '127.0.0.1', port: Number(process.env.DB_PORT ?? '55432'), user: process.env.DB_USER ?? 'account_kit', password: process.env.DB_PASSWORD ?? '', database: process.env.DB_DATABASE ?? 'account_kit_consumer' } }`
+        ? `{ client: 'better-sqlite3' as const, connection: { filename: './service.sqlite' }, useNullAsDefault: true }`
+        : `{ client: 'pg' as const, connection: { host: process.env.DB_HOST ?? '127.0.0.1', port: Number(process.env.DB_PORT ?? '55432'), user: process.env.DB_USER ?? 'account_kit', password: process.env.DB_PASSWORD ?? '', database: process.env.DB_DATABASE ?? 'account_kit_consumer' } }`
     }
 const ignitor = new IgnitorFactory().withCoreProviders().withCoreConfig().merge({
   rcFileContents: { providers: [
@@ -594,7 +590,7 @@ const ignitor = new IgnitorFactory().withCoreProviders().withCoreConfig().merge(
     database: defineDatabaseConfig({ connection: 'service', connections: { service: connection } }),
     limiter: defineLimiterConfig({ default: 'memory', stores: { memory: stores.memory({}) } }),
   },
-}).create(new URL('./', import.meta.url))
+}).create(new URL('../', import.meta.url))
 const app = ignitor.createApp('console')
 try {
   await app.init()
@@ -602,19 +598,20 @@ try {
   const db = await app.container.make('lucid.db')
   const result = await db.connection().rawQuery('select 1 as value').exec()
   if (!result) throw new Error('Database did not start')
+  const users = {
+    findById: async () => ({ id: 1, email: 'active@example.test', unverifiedEmail: null, hasPassword: false, emailVerifiedAt: null }),
+    markEmailVerified: async () => {},
+  } as unknown as UsersAdapter
   app.config.set('account_kit', defineConfig({
     enabled: ['emailVerification'],
     limiterSecret: 'service_only_consumer_secret_32_bytes',
-    users: {
-      findById: async () => ({ id: 1, email: 'active@example.test', unverifiedEmail: null, hasPassword: false, emailVerifiedAt: null }),
-      markEmailVerified: async () => {},
-    },
+    users,
     urls: { emailVerification: (token) => 'https://example.test/activate/' + token },
     notify: { accountActivationProvision: async () => {} },
   }))
-  const service = await app.container.make(AccountKit)
+  const service: AccountKit = await app.container.make(AccountKit)
   if (await service.emailVerification.send({ userId: 1 }) !== 'already_verified') throw new Error('Service did not boot')
-  console.log('Service-only startup passed; backend-only dependencies absent')
+  console.log('Compiled service-only startup passed; backend-only dependencies absent')
 } finally {
   await ignitor.terminate()
 }
@@ -625,8 +622,8 @@ try {
   if (!installed.startsWith(`${await realpath(join(appRoot, 'node_modules'))}/`)) {
     throw new Error('Service-only package resolved outside isolated consumer')
   }
-  run('pnpm', ['exec', 'tsc', '--noEmit'], appRoot)
-  run('node', ['start.mjs'], appRoot, databaseEnvironment(appRoot))
+  run('pnpm', ['run', 'build'], appRoot)
+  run('pnpm', ['run', 'start'], appRoot, databaseEnvironment(appRoot))
   return {
     appRoot,
     installed,
