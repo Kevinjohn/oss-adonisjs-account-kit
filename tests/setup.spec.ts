@@ -113,6 +113,25 @@ test.group('onboarding plan and apply', (group) => {
     assert.equal(choices.mail.integration, 'adonisjs-mail')
   })
 
+  test('accepts a model that inherits account fields from an application schema', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      'export default class User extends UserSchema {}\n'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'user.model.password'
+    )
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'user.model.emailVerifiedAt'
+    )
+  })
+
   test('application-admitted registration cannot expose the managed public signup route', async ({
     assert,
   }) => {
