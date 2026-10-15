@@ -150,6 +150,27 @@ test.group('emailVerification.send', (group) => {
     )
   })
 
+  test('an expired activation proof can be reissued inside the suppression window', async ({
+    assert,
+  }) => {
+    const id = await createUser()
+    const { account, recorder } = service({ expiresIn: { emailVerification: 1 } })
+    await account.emailVerification.send({ userId: id })
+    const oldToken = tokenFrom(recorder.calls[0].args[1])
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', id)
+      .update({
+        expires_at: DateTime.utc().minus({ seconds: 1 }).toISO(),
+      })
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    assert.lengthOf(recorder.calls, 2)
+    assert.isFalse(await account.emailVerification.inspect({ token: oldToken }))
+    assert.isTrue(
+      await account.emailVerification.inspect({ token: tokenFrom(recorder.calls[1].args[1]) })
+    )
+  })
+
   test('inspection checks current address and leaves live proof untouched', async ({ assert }) => {
     const id = await createUser()
     const { account, recorder } = service()

@@ -98,7 +98,8 @@ and invokes the configured credential revocation hook.
 
 Activation and pending email-change requests issue at most one message per account in a minute.
 Repeating the same request within that window returns the same success result without replacing
-the link or sending another message. A later resend rotates the single-use proof. Requesting the
+the live link or sending another message. A later resend, or one after proof expiry, rotates the
+single-use proof. Requesting the
 confirmed address cancels a distinct pending change and deletes its proof; a new pending address
 supersedes the previous one. An inactive account changing its address updates both email columns,
 sends an activation link, and stays inactive until that link is submitted with a new password.

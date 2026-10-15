@@ -48,13 +48,14 @@ export async function sendVerification(
   if (user.unverifiedEmail !== user.email) return 'already_verified'
   const recent = await deps.db
     .from('email_verification_tokens')
-    .select('created_at', 'purpose', 'email', 'current_email')
+    .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
     .where('tokenable_id', user.id)
     .first()
   if (
     recent?.purpose === 'activation' &&
     recent.email === user.email &&
     recent.current_email === user.email &&
+    DateTime.fromJSDate(new Date(recent.expires_at)).toMillis() > DateTime.utc().toMillis() &&
     DateTime.fromJSDate(new Date(recent.created_at)).toMillis() >
       DateTime.utc().minus({ minutes: 1 }).toMillis()
   )
@@ -76,13 +77,14 @@ export async function sendVerification(
       const now = DateTime.utc()
       const previous = await trx
         .from('email_verification_tokens')
-        .select('created_at', 'purpose', 'email', 'current_email')
+        .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
         .where('tokenable_id', current.id)
         .first()
       if (
         previous?.purpose === 'activation' &&
         previous.email === current.email &&
         previous.current_email === current.email &&
+        DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
         DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
           now.minus({ minutes: 1 }).toMillis()
       )
