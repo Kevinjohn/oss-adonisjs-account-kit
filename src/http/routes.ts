@@ -211,8 +211,17 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
   },
 ]
 
-function canonical(path: string): string {
-  return path.replace(/:[A-Za-z_][\w]*/g, ':param').replace(/\/+$/, '') || '/'
+function overlappingPaths(first: string, second: string): boolean {
+  const segments = (path: string) => path.replace(/\/+$/, '').split('/').filter(Boolean)
+  const left = segments(first)
+  const right = segments(second)
+  if (left.length !== right.length) return false
+  return left.every(
+    (part, index) =>
+      part === right[index] ||
+      /^:[A-Za-z_][\w]*$/.test(part) ||
+      /^:[A-Za-z_][\w]*$/.test(right[index])
+  )
 }
 
 export function planManagedRoutes(
@@ -249,7 +258,7 @@ export function planManagedRoutes(
     const collision = existing.find(
       (candidate) =>
         candidate.method.toUpperCase() === route.method &&
-        canonical(candidate.path) === canonical(route.path)
+        overlappingPaths(candidate.path, route.path)
     )
     if (collision)
       throw new Error(
@@ -269,7 +278,7 @@ export function assertManagedRouteCollisions(
       (candidate) =>
         candidate.name !== `accountKit.${route.name}` &&
         candidate.method.toUpperCase() === route.method &&
-        canonical(candidate.path) === canonical(route.path)
+        overlappingPaths(candidate.path, route.path)
     )
     if (collision)
       throw new Error(

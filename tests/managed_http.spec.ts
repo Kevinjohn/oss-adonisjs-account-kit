@@ -3,6 +3,7 @@ import type { HttpContext, Router } from '@adonisjs/core/http'
 import { AccountKit } from '../src/account_kit.js'
 import { DeliveryError, InvalidSessionError, ThrottledError } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
+import type { ManagedQuery, ManagedSuccessBody } from '../src/http/contracts.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 
@@ -35,6 +36,9 @@ function fixture() {
       header(name: string, value: string) {
         headers[name] = value
         return this
+      },
+      getHeader(name: string) {
+        return headers[name]
       },
       status(status: number) {
         return { send: (body: unknown) => ({ status, body }) }
@@ -621,10 +625,16 @@ test.group('managed HTTP dispatch', () => {
     })
     const ctx = context()
     Object.assign(ctx.request, { csrfToken: 'proof' })
+    const diagnostics: unknown[] = []
+    Object.assign(ctx, { logger: { warn: (data: unknown) => diagnostics.push(data) } })
     assert.deepEqual(await routes.get('POST /api/v1/auth/signup')!(ctx), {
       status: 201,
       body: { registered: true, authenticated: false },
     })
+    assert.deepEqual(diagnostics, [
+      { operation: 'auth.signup', outcome: 'delivery_failed' },
+      { operation: 'auth.signup', outcome: 'authentication_failed' },
+    ])
   })
 
   test('a representation failure does not falsely say signup authentication failed', async ({
@@ -670,8 +680,8 @@ test.group('managed HTTP dispatch', () => {
     })
     const ctx = context()
     Object.assign(ctx.request, { csrfToken: 'proof' })
-    const logged: string[] = []
-    Object.assign(ctx, { logger: { error: (message: string) => logged.push(message) } })
+    const logged: unknown[] = []
+    Object.assign(ctx, { logger: { warn: (data: unknown) => logged.push(data) } })
     assert.deepEqual(await routes.get('POST /api/v1/auth/signup')!(ctx), {
       status: 201,
       body: {
@@ -684,7 +694,7 @@ test.group('managed HTTP dispatch', () => {
         },
       },
     })
-    assert.lengthOf(logged, 1)
+    assert.deepEqual(logged, [{ operation: 'auth.signup', outcome: 'representation_failed' }])
   })
 
   test('session login fails closed without Shield CSRF state', async ({ assert }) => {
@@ -894,6 +904,75 @@ test.group('managed HTTP dispatch', () => {
     }
   })
 
+  test('representation failures preserve committed invitation, email, and profile responses', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const user = {
+      id: 7,
+      email: 'a@example.test',
+      unverifiedEmail: null,
+      hasPassword: true,
+      emailVerifiedAt: null,
+      passwordHash: 'private',
+    }
+    const account = {
+      id: 7,
+      email: user.email,
+      unverifiedEmail: null,
+      hasPassword: true,
+      active: true,
+    }
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {}, passwordAllowed: () => true },
+      authentication: { current: async () => account },
+      invitations: { accept: async () => user },
+      emailPasswordManagement: {
+        completeEmailChange: async () => user,
+        updateProfile: async () => user,
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, tokenId: 11 }),
+      },
+      enabled: ['invitations', 'emailPasswordManagement'],
+      extensions: {
+        representAccount: async () => {
+          throw new Error('private rendering failure')
+        },
+      },
+    })
+    for (const [path, status] of [
+      ['POST /api/v1/auth/invitations/:token', 201],
+      ['POST /api/v1/auth/email-change/:token', 200],
+      ['PATCH /api/v1/account/profile', 200],
+    ] as const) {
+      const diagnostics: unknown[] = []
+      const ctx = context({ token: 'secret-proof' })
+      Object.assign(ctx, {
+        logger: { warn: (data: unknown) => diagnostics.push(data) },
+      })
+      const output = await routes.get(path)!(ctx)
+      assert.deepEqual(output, { status, body: { account } })
+      assert.deepEqual(diagnostics, [
+        {
+          operation: path.includes('invitations')
+            ? 'auth.invitation.accept'
+            : path.includes('email-change')
+              ? 'auth.emailChange.complete'
+              : 'account.profile.update',
+          outcome: 'representation_failed',
+        },
+      ])
+    }
+  })
+
   test('post-commit notification failure remains a successful write response', async ({
     assert,
   }) => {
@@ -926,8 +1005,77 @@ test.group('managed HTTP dispatch', () => {
       },
       enabled: ['emailVerification'],
     })
-    const output = await routes.get('POST /api/v1/account/email-verification/send')!(context())
-    assert.deepEqual(output, { status: 202, body: { committed: true } })
+    const ctx = context()
+    const diagnostics: unknown[] = []
+    Object.assign(ctx, { logger: { warn: (data: unknown) => diagnostics.push(data) } })
+    const output = await routes.get('POST /api/v1/account/email-verification/send')!(ctx)
+    const committed: ManagedSuccessBody<'account.emailVerification.send'> = { committed: true }
+    assert.deepEqual(output, { status: 202, body: committed })
+    assert.deepEqual(diagnostics, [
+      { operation: 'account.emailVerification.send', outcome: 'delivery_failed' },
+    ])
+  })
+
+  test('password-reset delivery failure retains its public acknowledgement and sanitized diagnostic', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () =>
+        ({
+          managedHttp: { assertGuard: () => {} },
+          passwordReset: {
+            request: async () => {
+              throw new DeliveryError('private delivery detail')
+            },
+          },
+        }) as unknown as AccountKit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 1, tokenId: 2 }),
+      },
+      enabled: ['passwordReset'],
+    })
+    const diagnostics: unknown[] = []
+    const ctx = context()
+    Object.assign(ctx, { logger: { warn: (data: unknown) => diagnostics.push(data) } })
+    assert.deepEqual(await routes.get('POST /api/v1/auth/password-reset')!(ctx), {
+      status: 202,
+      body: { message: 'If the account exists, instructions will be sent.' },
+    })
+    assert.deepEqual(diagnostics, [
+      { operation: 'auth.passwordReset.request', outcome: 'delivery_failed' },
+    ])
+  })
+
+  test('invitation query contract is separate from its empty request body', ({ assert }) => {
+    const query: ManagedQuery<'account.invitation.list'> = { limit: 25, cursor: 'opaque' }
+    assert.deepEqual(query, { limit: 25, cursor: 'opaque' })
+  })
+
+  test('negotiated errors preserve an existing Vary value', async ({ assert }) => {
+    const { router, routes, context } = fixture()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => ({ managedHttp: { assertGuard: () => {} } }) as unknown as AccountKit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => {
+          throw new InvalidSessionError()
+        },
+      },
+      enabled: ['invitations'],
+    })
+    const ctx = context()
+    ctx.response.header('Vary', 'Origin')
+    const output = await routes.get('GET /api/v1/account/invitations')!(ctx)
+    assert.equal((output as { status: number }).status, 401)
+    assert.equal(ctx.headers.Vary, 'Origin, Accept')
   })
 })
 
@@ -977,5 +1125,91 @@ test.group('managed HTTP verification policy with live account state', (group) =
     await app.db.from('users').where('id', user.id).update({ disabled_at: null })
     await account.authentication.changeRestriction({ userId: user.id, change: async () => {} })
     assert.equal(((await run()) as { status: number }).status, 401)
+  })
+
+  test('email-only profile update omits registration data for a required field mapper', async ({
+    assert,
+  }) => {
+    const user = await insertUser(app)
+    let mapped = false
+    const { account } = makeService(app, {
+      authentication: { strategy: 'session', guard: 'web' },
+      registration: {
+        availability: 'open',
+        mapFields: async () => {
+          mapped = true
+          throw new Error('fullName is required')
+        },
+      },
+    })
+    const { router, routes, context } = fixture()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => account,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: user.id, revision: null }),
+      },
+      enabled: ['emailPasswordManagement'],
+    })
+    const profile = routes.get('PATCH /api/v1/account/profile')!
+    const ctx = context()
+    Object.assign(ctx.request, {
+      csrfToken: 'proof',
+      validateUsing: async () => ({ currentPassword: 'password123', email: 'new@example.test' }),
+    })
+    assert.equal(((await profile(ctx)) as { status: number }).status, 200)
+    assert.isFalse(mapped)
+
+    const empty = context()
+    Object.assign(empty.request, {
+      csrfToken: 'proof',
+      validateUsing: async () => ({ currentPassword: 'password123' }),
+    })
+    assert.equal(((await profile(empty)) as { status: number }).status, 422)
+    assert.isFalse(mapped)
+  })
+
+  test('wrong current password has an identity-proof error on profile and password writes', async ({
+    assert,
+  }) => {
+    const user = await insertUser(app)
+    const { account } = makeService(app, {
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const { router, routes, context } = fixture()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => account,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: user.id, revision: null }),
+      },
+      enabled: ['emailPasswordManagement'],
+    })
+    for (const [path, input] of [
+      ['PATCH /api/v1/account/profile', { currentPassword: 'wrong', email: 'new@example.test' }],
+      [
+        'POST /api/v1/account/password',
+        { currentPassword: 'wrong', newPassword: 'new-password123' },
+      ],
+    ] as const) {
+      const ctx = context()
+      Object.assign(ctx.request, { csrfToken: 'proof', validateUsing: async () => input })
+      const output = await routes.get(path)!(ctx)
+      assert.equal((output as { status: number }).status, 403)
+      assert.deepEqual((output as { body: unknown }).body, {
+        errors: [
+          {
+            code: 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED',
+            message: 'Current identity proof could not be confirmed.',
+          },
+        ],
+      })
+    }
   })
 })

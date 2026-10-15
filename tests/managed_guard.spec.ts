@@ -84,6 +84,7 @@ test.group('managed existing-guard adapters', () => {
     })
   })
   test('refuses a provider token without a releasable bearer value', async ({ assert }) => {
+    const deleted: unknown[] = []
     const adapter = createManagedGuard({
       strategy: 'access_tokens',
       name: 'api',
@@ -91,7 +92,9 @@ test.group('managed existing-guard adapters', () => {
         findOrFail: async () => ({ id: 42 }),
         accessTokens: {
           create: async () => ({ identifier: 18, value: undefined }),
-          delete: async () => {},
+          delete: async (_user: unknown, identifier: unknown) => {
+            deleted.push(identifier)
+          },
         },
       }),
     })
@@ -99,6 +102,7 @@ test.group('managed existing-guard adapters', () => {
       () => adapter.forRequest({} as never).establish(42, ['*'], null),
       /bearer value/
     )
+    assert.deepEqual(deleted, [18])
   })
   test('refuses cookie-backed sessions before issuing or trusting a credential', async ({
     assert,

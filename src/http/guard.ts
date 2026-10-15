@@ -192,11 +192,22 @@ export function createManagedGuard<User>(
             abilities,
             expiresIn === null ? undefined : { expiresIn }
           )
-          if (!token.value) throw new Error('Token guard did not return a bearer value')
-          return {
-            userId,
-            identifier: normalizedIdentifier(token.identifier),
-            value: token.value.release(),
+          try {
+            if (!token.value) throw new Error('Token guard did not return a bearer value')
+            const identifier = normalizedIdentifier(token.identifier)
+            const value = token.value.release()
+            if (!value) throw new Error('Token guard did not return a bearer value')
+            return { userId, identifier, value }
+          } catch (error) {
+            try {
+              await model.accessTokens.delete(user, token.identifier)
+            } catch (cleanupError) {
+              throw new AggregateError(
+                [error, cleanupError],
+                'Token issuance failed and cleanup failed'
+              )
+            }
+            throw error
           }
         },
         async terminate(credential) {

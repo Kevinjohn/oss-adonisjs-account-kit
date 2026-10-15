@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import {
   InvalidCredentialsError,
   InvalidInputError,
+  IdentityNotConfirmedError,
   InvalidTokenError,
   PostCommitError,
   ThrottledError,
@@ -13,7 +14,7 @@ test.group('managed HTTP responses', () => {
     const error = new InvalidTokenError('database row and token details')
     assert.deepEqual(managedErrorResponse(error, { proof: 'password' }), {
       status: 400,
-      headers: {},
+      headers: { Vary: 'Accept' },
       contentType: 'application/json',
       body: {
         errors: [{ code: 'E_INVALID_PASSWORD_TOKEN', message: 'This link is invalid or expired.' }],
@@ -33,7 +34,7 @@ test.group('managed HTTP responses', () => {
       managedErrorResponse(new ThrottledError(1.2), { accept: 'application/vnd.api+json' }),
       {
         status: 429,
-        headers: { 'Retry-After': '2' },
+        headers: { 'Vary': 'Accept', 'Retry-After': '2' },
         contentType: 'application/vnd.api+json',
         body: { errors: [{ code: 'E_ACCOUNT_KIT_THROTTLED', title: 'Too many requests.' }] },
       }
@@ -48,7 +49,7 @@ test.group('managed HTTP responses', () => {
     ]) {
       assert.deepEqual(managedErrorResponse(new InvalidInputError(detail)), {
         status: 422,
-        headers: {},
+        headers: { Vary: 'Accept' },
         contentType: 'application/json',
         body: {
           errors: [{ code: 'E_ACCOUNT_KIT_INVALID_INPUT', message: 'Account request rejected.' }],
@@ -67,7 +68,7 @@ test.group('managed HTTP responses', () => {
       }),
       {
         status: 400,
-        headers: {},
+        headers: { Vary: 'Accept' },
         contentType: 'application/json',
         body: {
           errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'Public E_INVALID_EMAIL_TOKEN' }],
@@ -95,6 +96,22 @@ test.group('managed HTTP responses', () => {
     assert.deepEqual(proofHeaders(), {
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
+    })
+  })
+
+  test('distinguishes rejected identity proof from an unverified email', ({ assert }) => {
+    assert.deepEqual(managedErrorResponse(new IdentityNotConfirmedError()), {
+      status: 403,
+      headers: { Vary: 'Accept' },
+      contentType: 'application/json',
+      body: {
+        errors: [
+          {
+            code: 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED',
+            message: 'Current identity proof could not be confirmed.',
+          },
+        ],
+      },
     })
   })
 })
