@@ -8,6 +8,17 @@ import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 test.group('capability configuration', (group) => {
   const kit = useTestApp(group)
 
+  test('classifies delivery explicitly without changing custom callbacks', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    assert.equal(defineConfig(base).delivery, 'best-effort')
+    assert.equal(defineConfig({ ...base, delivery: 'durable' }).delivery, 'durable')
+    assert.strictEqual(
+      defineConfig({ ...base, delivery: 'durable' }).notify.passwordChanged,
+      base.notify.passwordChanged
+    )
+    assert.throws(() => defineConfig({ ...base, delivery: 'unknown' as never }), /delivery/)
+  })
+
   test('accepts a password-reset-only configuration without unrelated callbacks', ({ assert }) => {
     const input: AccountKitConfig = {
       users: makeUsersAdapter(kit.db, kit.hash),
