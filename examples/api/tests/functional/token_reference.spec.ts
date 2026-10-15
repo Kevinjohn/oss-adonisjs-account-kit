@@ -224,6 +224,32 @@ test('profile writes accept only configured fields and preserve pending-email ru
   assert.isNull(user.unverifiedEmail)
 })
 
+test('an inactive email correction succeeds while revoking the old bearer credential', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const email = `inactive-correction-${randomUUID()}@example.test`
+  const user = await User.create({
+    fullName: 'Inactive Correction',
+    email,
+    unverifiedEmail: email,
+    password: 'OriginalPass123!',
+  })
+  const token = (await User.accessTokens.create(user)).value!.release()
+  const correction = `corrected-${randomUUID()}@example.test`
+  const response = await client.patch('/api/v1/account/profile').bearerToken(token).json({
+    currentPassword: 'OriginalPass123!',
+    email: correction,
+  })
+  assert.equal(response.status(), 200)
+  assert.equal((response.body() as { data: { email: string } }).data.email, correction)
+  await user.refresh()
+  assert.equal(user.email, correction)
+  assert.equal(user.unverifiedEmail, correction)
+  assert.equal((await client.get('/api/v1/account/profile').bearerToken(token)).status(), 401)
+})
+
 test('verification GET inspects without consuming and POST completes once', async ({
   client,
   assert,
