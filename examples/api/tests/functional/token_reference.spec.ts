@@ -399,3 +399,17 @@ test('malformed proof submission still receives private-cache and referrer heade
   assert.equal(malformed.header('cache-control'), 'no-store')
   assert.equal(malformed.header('referrer-policy'), 'no-referrer')
 })
+
+test('session CSRF rejection on a proof POST retains private response headers', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  const rejected = await client
+    .post('/api/v1/auth/password-reset/invalid-proof')
+    .header('x-csrf-token', 'invalid')
+    .json({ password: 'NewPass123!', passwordConfirmation: 'NewPass123!' })
+  assert.equal(rejected.status(), 403)
+  assert.equal(rejected.header('cache-control'), 'no-store')
+  assert.equal(rejected.header('referrer-policy'), 'no-referrer')
+})
