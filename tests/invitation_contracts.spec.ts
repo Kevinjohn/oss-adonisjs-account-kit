@@ -322,7 +322,7 @@ test.group('invitation management contracts', (group) => {
           return users.create(attrs, trx)
         },
       },
-      registration: undefined,
+      registration: { availability: 'closed' },
     })
     await account.invitations.send({
       actorId: actor.id,
