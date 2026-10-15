@@ -4,7 +4,7 @@ import { consumeUserToken, transaction } from '../src/db.js'
 import LucidUser from './fixtures/lucid_user.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
-import { EmailAlreadyRegisteredError, InvalidTokenError } from '../src/errors.js'
+import { EmailAlreadyRegisteredError, InvalidTokenError, PostCommitError } from '../src/errors.js'
 
 test.group('identity creation contract', (group) => {
   const kit = useTestApp(group)
@@ -152,6 +152,87 @@ test.group('identity creation contract', (group) => {
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
+  test('inactive email write calls the post-commit credential hook with refreshed state', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { verified: false })
+    let callbackUser: { email: string; unverifiedEmail: string | null } | undefined
+    const { account, recorder } = makeService(kit, {
+      onCredentialsChanged: async (current, context) => {
+        assert.equal(context.operation, 'email_change')
+        const persisted = await kit.db.from('users').where('id', user.id).first()
+        assert.equal(persisted.email, 'next@example.test')
+        assert.equal(persisted.unverified_email, 'next@example.test')
+        callbackUser = current
+      },
+    })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'password123',
+      newEmail: 'next@example.test',
+    })
+    assert.equal(callbackUser?.email, 'next@example.test')
+    assert.equal(callbackUser?.unverifiedEmail, 'next@example.test')
+    const noticeUser = recorder.calls.find((call) => call.method === 'emailChangeProvision')
+      ?.args[0] as { email: string; unverifiedEmail: string | null }
+    assert.equal(noticeUser.email, 'next@example.test')
+    assert.equal(noticeUser.unverifiedEmail, 'next@example.test')
+  })
+
+  test('inactive post-commit hook failure still delivers the proof after commit', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { verified: false })
+    const { account, recorder } = makeService(kit, {
+      onCredentialsChanged: async () => {
+        throw new Error('observer failed')
+      },
+    })
+    try {
+      await account.emailPasswordManagement.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'password123',
+        newEmail: 'next@example.test',
+      })
+      assert.fail('expected committed observer failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+    }
+    assert.deepEqual(
+      recorder.calls.map((call) => call.method),
+      ['emailChangeProvision']
+    )
+    const changed = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(changed.email, 'next@example.test')
+    assert.equal(changed.unverified_email, 'next@example.test')
+    assert.lengthOf(
+      await kit.db.from('email_verification_tokens').where('tokenable_id', user.id),
+      1
+    )
+  })
+
+  test('active pending change keeps credential callback until proof completion', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const observed: string[] = []
+    const { account, recorder } = makeService(kit, {
+      onCredentialsChanged: async (current) => {
+        observed.push(current.email)
+      },
+    })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'password123',
+      newEmail: 'next@example.test',
+    })
+    assert.deepEqual(observed, [])
+    const proof = tokenFrom(recorder.calls[0].args[2])
+    await account.emailPasswordManagement.completeEmailChange({ token: proof })
+    assert.deepEqual(observed, ['next@example.test'])
+  })
+
   test('inactive email write translates a raced unique-address conflict', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
     await insertUser(kit, { email: 'taken@example.test' })
@@ -191,6 +272,24 @@ test.group('identity creation contract', (group) => {
     )
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: proof })
     assert.equal(changed.email, 'next@example.test')
+  })
+
+  test('inactive activation resend replaces its pending email-change proof', async ({ assert }) => {
+    const user = await insertUser(kit, { verified: false })
+    const { account, recorder } = makeService(kit)
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'password123',
+      newEmail: 'next@example.test',
+    })
+    const oldProof = tokenFrom(recorder.calls[0].args[2])
+    assert.equal(await account.emailVerification.send({ userId: user.id }), 'sent')
+    const activationProof = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await assert.rejects(
+      () => account.emailPasswordManagement.completeEmailChange({ token: oldProof }),
+      InvalidTokenError
+    )
+    assert.equal(await account.emailVerification.complete({ token: activationProof }), 'verified')
   })
 
   test('email-change completion rejects an activation-purpose proof for the pending address', async ({

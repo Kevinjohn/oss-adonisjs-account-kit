@@ -78,12 +78,16 @@ test.group('emailVerification.send', (group) => {
     const secondToken = tokenFrom(recorder.calls[1].args[1])
 
     const proof = await kit.db.from('email_verification_tokens').where('tokenable_id', id).first()
+    const secondProof = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', secondId)
+      .first()
     assert.equal(proof.hash.length, 64)
     assert.approximately(new Date(proof.expires_at).valueOf() - issuedAt, 1200_000, 2000)
     assert.isString(token)
-    timeTravel(new Date(issuedAt + 1_199_000))
+    timeTravel(new Date(new Date(proof.expires_at).valueOf() - 1000))
     assert.equal(await account.emailVerification.complete({ token }), 'verified')
-    timeTravel(new Date(issuedAt + 1_200_001))
+    timeTravel(new Date(new Date(secondProof.expires_at).valueOf() + 1))
     await assert.rejects(
       () => account.emailVerification.complete({ token: secondToken }),
       InvalidTokenError
