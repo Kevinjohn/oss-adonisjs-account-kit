@@ -352,10 +352,14 @@ export function notificationReadiness(input: NotificationReadinessInput) {
           ? 'application declared durable'
           : 'best effort'
   const notes =
-    input.delivery === 'durable'
-      ? ['Verify application worker, retry, terminal failure and deduplication operations.']
-      : [
-          'Best effort has no package retry or crash recovery; diagnose failures and do not replay committed mutations.',
-        ]
+    classification === 'development capture'
+      ? ['Captured for development; no message was delivered to a recipient.']
+      : classification === 'discarded'
+        ? ['Messages are discarded and cannot be recovered from this transport.']
+        : input.delivery === 'durable'
+          ? ['Verify application worker, retry, terminal failure and deduplication operations.']
+          : [
+              'Best effort has no package retry or crash recovery; diagnose failures and do not replay committed mutations.',
+            ]
   return { ready: problems.length === 0, classification, problems, notes }
 }

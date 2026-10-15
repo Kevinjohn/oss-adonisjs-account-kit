@@ -331,6 +331,18 @@ test.group('maintained notifications', () => {
     })
     assert.isFalse(contradictory.ready)
     assert.include(contradictory.problems.join(' '), 'capture')
+    const developmentCapture = notificationReadiness({
+      environment: 'development',
+      delivery: 'capture',
+      transport: 'capture',
+      backendOrigin: 'http://localhost:3333',
+      actionOrigin: 'http://localhost:5173',
+      enabled: ['passwordReset'],
+      destinations: { passwordReset: 'reset' },
+    })
+    assert.isTrue(developmentCapture.ready)
+    assert.equal(developmentCapture.classification, 'development capture')
+    assert.include(developmentCapture.notes.join(' '), 'no message was delivered')
   })
 })
 
