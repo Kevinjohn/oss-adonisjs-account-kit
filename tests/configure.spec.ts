@@ -67,6 +67,8 @@ test('configures the package idempotently without replacing application-owned fi
     assert.include(generatedConfig, "import('#models/user')")
     assert.include(generatedConfig, "env.get('APP_URL').endsWith('/')")
     assert.include(generatedConfig, "new URL('account-kit/' + path")
+    assert.include(generatedConfig, "registration: { availability: 'open' }")
+    assert.notInclude(generatedConfig.match(/enabled: \[[^\]]*\]/s)?.[0], "'invitations'")
     const firstEnv = await readFile(envPath, 'utf8')
     assert.equal(
       firstEnv.match(/APP_URL: Env\.schema\.string\(\{ format: 'url', tld: false \}\)/g)?.length,

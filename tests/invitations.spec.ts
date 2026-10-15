@@ -424,7 +424,7 @@ test.group('invitations.accept', (group) => {
       InvalidInputError
     )
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
-    await account.invitations.accept({ token, password: 'Password123' })
+    await account.invitations.accept({ token, password: 'LongerPassword12345' })
   })
 
   async function issue(

@@ -10,7 +10,8 @@ package does not install a public registration route. Enable `emailVerification`
 `urls.emailVerification` and `notify.accountActivationProvision` to deliver activation proofs.
 
 Use `registration.mapFields(input)` to validate and select additional application profile fields.
-When `registrationData` is supplied, this mapping is required. The mapping returns a plain object
+When configured, the mapping runs even if `registrationData` is omitted, so it can require profile
+fields. Without a mapping, only omitted `registrationData` is accepted. The mapping returns a plain object
 whose keys cannot control IDs, email, passwords, verification state, or roles. The trusted users
 adapter receives only the mapped object; it must decide how to write those fields. The API example
 validates `fullName` and maps only that field.
@@ -19,7 +20,8 @@ validates `fullName` and maps only that field.
 `maxLength: null`, `letters: false`, `mixedCase: false`, `numbers: false`, `symbols: false`, and
 `minScore: 0` of 4. The service always caps passwords at 256 characters. A configured minimum or
 maximum over 256, or a minimum over the maximum, is rejected. Login still verifies an existing
-password even when a newer policy would reject it.
+password even when a newer policy would reject it. The strength score estimates entropy from
+length and character variety; a long passphrase can score higher without mixed case or symbols.
 
 ## How it works
 

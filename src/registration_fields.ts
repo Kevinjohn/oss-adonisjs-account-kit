@@ -20,14 +20,16 @@ export async function mapRegistrationFields(
   config: ResolvedConfig,
   input: unknown
 ): Promise<Record<string, unknown> | undefined> {
-  if (input === undefined) return undefined
-  if (!config.registration?.mapFields)
+  if (!config.registration?.mapFields) {
+    if (input === undefined) return undefined
     throw new InvalidInputError('Registration fields are not configured')
+  }
   const data = await config.registration.mapFields(input)
   if (
     !data ||
     typeof data !== 'object' ||
     Array.isArray(data) ||
+    (Object.getPrototypeOf(data) !== Object.prototype && Object.getPrototypeOf(data) !== null) ||
     Object.keys(data).some((key) => PROTECTED_FIELDS.has(key.toLowerCase()))
   )
     throw new InvalidInputError('Invalid registration fields')

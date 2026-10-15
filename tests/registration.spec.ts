@@ -9,7 +9,14 @@ import {
   InvalidInputError,
 } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
-import { makeConfig, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import {
+  insertUser,
+  makeConfig,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
+import { isPasswordAllowed } from '../src/password.js'
 
 test.group('registration', (group) => {
   const kit = useTestApp(group)
@@ -88,6 +95,47 @@ test.group('registration', (group) => {
       InvalidInputError
     )
     assert.equal((await kit.db.from('users')).length, 0)
+  })
+
+  test('runs required-field mapping when registrationData is omitted', async ({ assert }) => {
+    const required = makeService(kit, {
+      enabled: ['registration'],
+      registration: {
+        availability: 'open',
+        mapFields: async (input) => {
+          if (!input) throw new InvalidInputError('Profile is required')
+          return input as Record<string, unknown>
+        },
+      },
+    })
+    await assert.rejects(
+      () =>
+        required.account.registration.register({
+          email: 'missing@example.test',
+          password: 'password123',
+        }),
+      InvalidInputError
+    )
+    assert.lengthOf(await kit.db.from('users'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
+  })
+
+  test('rejects object instances returned by registration mapping', async ({ assert }) => {
+    const instance = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'open', mapFields: async () => new Date() as never },
+    })
+    await assert.rejects(
+      () =>
+        instance.account.registration.register({
+          email: 'instance@example.test',
+          password: 'password123',
+          registrationData: {},
+        }),
+      InvalidInputError
+    )
+    assert.lengthOf(await kit.db.from('users'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('enforces closed availability and disabled capability without writing', async ({
@@ -202,6 +250,34 @@ test.group('registration', (group) => {
     assert.equal(RegistrationEmailAlreadyRegisteredError.status, 422)
   })
 
+  test('maps a database uniqueness race after an empty email precheck', async ({ assert }) => {
+    const first = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'open' },
+    })
+    await first.account.registration.register({
+      email: 'race@example.test',
+      password: 'password123',
+    })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const racing = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'open' },
+      users: { ...users, findByEmail: async () => null },
+    })
+    await assert.rejects(
+      () =>
+        racing.account.registration.register({
+          email: 'RACE@example.test',
+          password: 'password123',
+        }),
+      RegistrationEmailAlreadyRegisteredError
+    )
+    assert.lengthOf(await kit.db.from('users'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
+    assert.lengthOf(racing.recorder.calls, 0)
+  })
+
   test('concurrent requests create one account and one verification delivery', async ({
     assert,
   }) => {
@@ -276,9 +352,86 @@ test.group('registration', (group) => {
     )
     const user = await service.account.registration.register({
       email: 'person@example.test',
-      password: 'Password123',
+      password: 'LongerPassword12345',
     })
     assert.equal(user.email, 'person@example.test')
+  })
+
+  test('password policy options and bounds are independently enforced', ({ assert }) => {
+    const base = {
+      minLength: 8,
+      maxLength: null,
+      letters: false,
+      mixedCase: false,
+      numbers: false,
+      symbols: false,
+      minScore: 0 as const,
+    }
+    assert.isTrue(isPasswordAllowed('a'.repeat(256), base))
+    assert.isFalse(isPasswordAllowed('a'.repeat(257), base))
+    assert.isFalse(isPasswordAllowed('a'.repeat(7), base))
+    assert.isFalse(isPasswordAllowed('a'.repeat(11), { ...base, minLength: 12 }))
+    assert.isFalse(isPasswordAllowed('a'.repeat(17), { ...base, maxLength: 16 }))
+    assert.isFalse(isPasswordAllowed('12345678', { ...base, letters: true }))
+    assert.isFalse(isPasswordAllowed('lowercase1', { ...base, mixedCase: true }))
+    assert.isFalse(isPasswordAllowed('LettersOnly', { ...base, numbers: true }))
+    assert.isFalse(isPasswordAllowed('Letters123', { ...base, symbols: true }))
+    assert.isTrue(
+      isPasswordAllowed('Lowercase1!', {
+        ...base,
+        letters: true,
+        mixedCase: true,
+        numbers: true,
+        symbols: true,
+      })
+    )
+    assert.isTrue(
+      isPasswordAllowed('longlowercasepassphrasewithmanyletters', { ...base, minScore: 3 })
+    )
+    assert.isTrue(isPasswordAllowed('Password1!', { ...base, minScore: 2 }))
+    assert.isFalse(isPasswordAllowed('Password1!', { ...base, minScore: 3 }))
+    assert.isFalse(isPasswordAllowed('Ab1!Ab1!', { ...base, minScore: 3 }))
+  })
+
+  test('rejects contradictory password-policy configuration', ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    for (const passwordPolicy of [
+      { minLength: 257 },
+      { maxLength: 257 },
+      { minLength: 12, maxLength: 11 },
+      { minScore: 5 as never },
+      { symbols: 'yes' as never },
+    ]) {
+      assert.throws(() => defineConfig(makeConfig({ users, passwordPolicy })))
+    }
+  })
+
+  test('login accepts a previously valid password under a stricter new-password policy', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { password: 'lowercase123' })
+    const service = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'open' },
+      passwordPolicy: { mixedCase: true, symbols: true },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const result = await service.account.authentication.login(
+      { email: user.email, password: 'lowercase123', clientKey: 'policy-client' },
+      {
+        strategy: 'session',
+        name: 'web',
+        establish: async () => 'session',
+        terminate: async () => {},
+      }
+    )
+    assert.equal(result.account.id, user.id)
+    await assert.rejects(() =>
+      service.account.registration.register({
+        email: 'new@example.test',
+        password: 'lowercase123',
+      })
+    )
   })
 
   test('a claimant replaces the precreator password before activation and revokes earlier credentials', async ({

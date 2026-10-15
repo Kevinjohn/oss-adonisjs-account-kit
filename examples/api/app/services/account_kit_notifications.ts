@@ -6,6 +6,7 @@ export const notifications = {
   events: [] as Notice[],
   lifecycleEvents: [] as LifecycleEvent[],
   failRecovery: false,
+  failVerification: false,
   failPasswordReset: false,
   failPasswordChanged: false,
   failLifecycle: false,
@@ -13,6 +14,9 @@ export const notifications = {
   deliveredOperationIds: new Set<string>(),
   async send(kind: string, recipient: string, value: string) {
     if (kind === 'recovery' && this.failRecovery) throw new Error('temporary delivery outage')
+    if (kind === 'verification' && this.failVerification) {
+      throw new Error('temporary verification delivery outage')
+    }
     if (kind === 'passwordReset' && this.failPasswordReset) {
       throw new Error('temporary password notice outage')
     }
@@ -47,6 +51,7 @@ export const notifications = {
     this.events.length = 0
     this.lifecycleEvents.length = 0
     this.failRecovery = false
+    this.failVerification = false
     this.failPasswordReset = false
     this.failPasswordChanged = false
     this.failLifecycle = false

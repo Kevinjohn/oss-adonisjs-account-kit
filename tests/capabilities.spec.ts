@@ -40,6 +40,15 @@ test.group('capability configuration', (group) => {
     assert.deepEqual(defineConfig(config).enabled, ['emailVerification'])
   })
 
+  test('rejects verification configuration without password replacement', ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const config = makeConfig({
+      enabled: ['emailVerification'],
+      users: { ...users, setPassword: undefined } as never,
+    })
+    assert.throws(() => defineConfig(config), 'users.setPassword must be a function')
+  })
+
   test('validates enabled capability names, duplicates, and required dependencies', ({
     assert,
   }) => {

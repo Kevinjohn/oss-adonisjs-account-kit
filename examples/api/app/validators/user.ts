@@ -1,5 +1,4 @@
 import vine from '@vinejs/vine'
-import User from '#models/user'
 import { password } from '#validators/password'
 
 /**
@@ -12,7 +11,7 @@ const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
  */
 export const signupValidator = vine.create({
   fullName: vine.string().trim().minLength(1).maxLength(100),
-  email: email().unique({ table: User.table, column: 'email' }),
+  email: email(),
   password: password(),
   passwordConfirmation: password().sameAs('password'),
 })

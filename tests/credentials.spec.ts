@@ -131,7 +131,7 @@ test.group('emailPasswordManagement', (group) => {
     await account.emailPasswordManagement.changePassword({
       actorId: user.id,
       currentPassword: 'oldPassword123',
-      newPassword: 'Password123',
+      newPassword: 'LongerPassword12345',
     })
   })
 

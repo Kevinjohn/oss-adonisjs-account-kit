@@ -59,17 +59,26 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   notifications.reset()
   assert.isString(registrationBody.data.token)
   assert.notProperty(registrationBody.data.user, 'password')
-  assert.equal(
-    (
-      await client.post('/api/v1/auth/signup').json({
-        fullName: 'Duplicate User',
-        email: 'REGISTRATION@EXAMPLE.TEST',
-        password: 'DuplicatePass123!',
-        passwordConfirmation: 'DuplicatePass123!',
-      })
-    ).status(),
-    422
-  )
+  const duplicate = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Duplicate User',
+    email: 'REGISTRATION@EXAMPLE.TEST',
+    password: 'DuplicatePass123!',
+    passwordConfirmation: 'DuplicatePass123!',
+  })
+  assert.equal(duplicate.status(), 422)
+  assert.deepEqual(duplicate.body(), {
+    errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
+  })
+  await db.table('role_assignments').insert({ user_id: registered.id, role: 'disabled' })
+  const restrictedDuplicate = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Duplicate User',
+    email: registered.email,
+    password: 'DuplicatePass123!',
+    passwordConfirmation: 'DuplicatePass123!',
+  })
+  assert.equal(restrictedDuplicate.status(), 422)
+  assert.deepEqual(restrictedDuplicate.body(), duplicate.body())
+  await db.from('role_assignments').where('user_id', registered.id).delete()
   const normalizedLogin = await client.post('/api/v1/auth/login').json({
     email: ' REGISTRATION@EXAMPLE.TEST ',
     password: 'ClaimantPass123!',
