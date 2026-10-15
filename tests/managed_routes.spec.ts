@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
+import { bootTestApp } from './helpers/app.js'
 
 test.group('managed route plan', () => {
   test('publishes the named Phase 1 paths and submission methods', ({ assert }) => {
@@ -146,6 +147,8 @@ test.group('managed route plan', () => {
     for (const [path, name] of [
       ['/api/v1/auth/:action?', 'application.optional'],
       ['/api/v1/auth/*', 'application.wildcard'],
+      ['/api/v1/auth/login/:tail?', 'application.emptyOptionalTail'],
+      ['/api/v1/auth/:action-name', 'application.hyphenParameter'],
     ] as const) {
       const existing = [{ method: 'POST', path, name }]
       assert.throws(
@@ -161,8 +164,103 @@ test.group('managed route plan', () => {
       planManagedRoutes(selection, [
         { method: 'POST', path: '/api/v1/unrelated/*' },
         { method: 'POST', path: '/api/v1/other/:action?' },
+        { method: 'POST', path: '/api/v1/auth/login/*' },
+        { method: 'POST', path: '/api/v1/:extra?/auth/login' },
+        { method: 'POST', path: '/api/v1/auth/:action.json' },
       ])
     )
+    assert.doesNotThrow(() =>
+      assertManagedRouteCollisions(managed, [
+        { method: 'POST', path: '/api/v1/auth/login/*' },
+        { method: 'POST', path: '/api/v1/:extra?/auth/login' },
+        { method: 'POST', path: '/api/v1/auth/:action.json' },
+      ])
+    )
+  })
+
+  test('collision decisions follow the installed Adonis tree router', async ({ assert }) => {
+    const app = await bootTestApp()
+    try {
+      const router = await app.app.container.make('router')
+      const patterns = [
+        ['/api/v1/auth/:action?', true],
+        ['/api/v1/auth/*', true],
+        ['/api/v1/auth/login/:tail?', true],
+        ['/api/v1/auth/:action-name', true],
+        ['/api/v1/auth/login/*', false],
+        ['/api/v1/:extra?/auth/login', false],
+        ['/api/v1/auth/:action.json', false],
+        ['/api/v1/auth/:middle?/login', false],
+        ['/api/v1/auth/login/:first?/:second?', true],
+      ] as const
+      for (const [index, [pattern]] of patterns.entries()) {
+        router.route(`/case${index}${pattern}`, ['POST'], () => null)
+      }
+      const proofPatterns = [
+        ['/api/v1/auth/password-reset/specific', '/api/v1/auth/password-reset/specific', true],
+        ['/api/v1/auth/password-reset/*', '/api/v1/auth/password-reset/specific', true],
+        ['/api/v1/auth/password-reset/:token-name', '/api/v1/auth/password-reset/specific', true],
+        [
+          '/api/v1/auth/password-reset/:token.json',
+          '/api/v1/auth/password-reset/specific.json',
+          true,
+        ],
+        ['/api/v1/auth/password-reset/specific/*', '/api/v1/auth/password-reset/specific', false],
+      ] as const
+      for (const [index, [pattern]] of proofPatterns.entries()) {
+        router.route(`/proof${index}${pattern}`, ['POST'], () => null)
+      }
+      router.commit()
+
+      const selection = {
+        prefix: '/api/v1',
+        strategy: 'session' as const,
+        enabled: ['authentication'] as const,
+      }
+      const managed = planManagedRoutes(selection)
+      for (const [index, [pattern, intersects]] of patterns.entries()) {
+        const observed = Boolean(router.match(`/case${index}/api/v1/auth/login`, 'POST', false))
+        assert.equal(observed, intersects, pattern)
+        const existing = [{ method: 'POST', path: pattern }]
+        if (intersects) {
+          assert.throws(() => planManagedRoutes(selection, existing), /Managed route collision/)
+          assert.throws(
+            () => assertManagedRouteCollisions(managed, existing),
+            /Managed route collision/
+          )
+        } else {
+          assert.doesNotThrow(() => planManagedRoutes(selection, existing))
+          assert.doesNotThrow(() => assertManagedRouteCollisions(managed, existing))
+        }
+      }
+      assert.isTrue(Boolean(router.match('/case5/api/v1/x/auth/login', 'POST', false)))
+
+      const proofSelection = {
+        prefix: '/api/v1',
+        strategy: 'session' as const,
+        enabled: ['passwordReset'] as const,
+      }
+      const managedProof = planManagedRoutes(proofSelection)
+      for (const [index, [pattern, concrete, intersects]] of proofPatterns.entries()) {
+        assert.equal(Boolean(router.match(`/proof${index}${concrete}`, 'POST', false)), intersects)
+        const existing = [{ method: 'POST', path: pattern }]
+        if (intersects) {
+          assert.throws(
+            () => planManagedRoutes(proofSelection, existing),
+            /Managed route collision/
+          )
+          assert.throws(
+            () => assertManagedRouteCollisions(managedProof, existing),
+            /Managed route collision/
+          )
+        } else {
+          assert.doesNotThrow(() => planManagedRoutes(proofSelection, existing))
+          assert.doesNotThrow(() => assertManagedRouteCollisions(managedProof, existing))
+        }
+      }
+    } finally {
+      await app.close()
+    }
   })
 
   test('rejects duplicate managed groups, unknown endpoints, and malformed prefixes', ({
