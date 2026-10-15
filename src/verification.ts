@@ -3,7 +3,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { consumeUserToken, lockUser, transaction } from './db.js'
-import { deliver, postCommit } from './effects.js'
+import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -31,31 +31,38 @@ export async function sendVerification(
     deps.config.limiterNamespace
   )
   const token = generateToken(deps.config.tokenSecretLength)
-  const issuedUser = await transaction(deps.db, async (trx) => {
-    await lockUser(trx, deps.config, user.id)
-    const current = await deps.config.users.findById(user.id, trx)
-    if (!current || current.unverifiedEmail !== current.email) return null
-    const now = DateTime.utc()
-    await trx
-      .table('email_verification_tokens')
-      .insert({
-        tokenable_id: current.id,
-        email: current.unverifiedEmail,
-        current_email: current.email,
-        purpose: 'activation',
-        hash: hashToken(token),
-        expires_at: expiresAt(now, deps.config.expiresIn.emailVerification).toISO(),
-        created_at: now.toISO(),
-      })
-      .onConflict('tokenable_id')
-      .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
-    return current
-  })
-  if (!issuedUser) return 'already_verified'
-  await deliver('Verification notification failed', () =>
-    deps.config.notify.accountActivationProvision(
-      issuedUser,
-      deps.config.urls.emailVerification(token)
+  const { value: issuedUser, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      await lockUser(trx, deps.config, user.id)
+      const current = await deps.config.users.findById(user.id, trx)
+      if (!current || current.unverifiedEmail !== current.email) return null
+      const now = DateTime.utc()
+      await trx
+        .table('email_verification_tokens')
+        .insert({
+          tokenable_id: current.id,
+          email: current.unverifiedEmail,
+          current_email: current.email,
+          purpose: 'activation',
+          hash: hashToken(token),
+          expires_at: expiresAt(now, deps.config.expiresIn.emailVerification).toISO(),
+          created_at: now.toISO(),
+        })
+        .onConflict('tokenable_id')
+        .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
+      return current
+    })
+  )
+  if (!issuedUser) {
+    if (fault) throw fault
+    return 'already_verified'
+  }
+  await finishCommitted(fault, 'Verification issued but follow-up failed', () =>
+    deliver('Verification notification failed', () =>
+      deps.config.notify.accountActivationProvision(
+        issuedUser,
+        deps.config.urls.emailVerification(token)
+      )
     )
   )
   return 'sent'

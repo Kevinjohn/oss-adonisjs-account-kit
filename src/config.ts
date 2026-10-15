@@ -20,9 +20,15 @@ const capabilities: Capability[] = [
   'emailPasswordManagement',
 ]
 const adapterMethods: Record<Capability, string[]> = {
-  passwordReset: ['findByEmail', 'findById', 'setPassword', 'markEmailVerified'],
+  passwordReset: [
+    'findByEmail',
+    'findById',
+    'setPassword',
+    'setUnverifiedEmail',
+    'markEmailVerified',
+  ],
   emailVerification: ['findById', 'setEmail', 'markEmailVerified'],
-  invitations: ['findByEmail', 'findById', 'create'],
+  invitations: ['findByEmail', 'findById', 'create', 'markEmailVerified'],
   emailPasswordManagement: [
     'findByEmail',
     'findById',
