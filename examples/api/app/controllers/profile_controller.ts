@@ -46,7 +46,7 @@ export default class ProfileController {
       })
     } catch (error) {
       if (error instanceof InvalidTokenError) {
-        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
+        return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
       }
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
         return ctx.response.ok({ changed: true })

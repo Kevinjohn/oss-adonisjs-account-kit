@@ -494,10 +494,12 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   assert.equal(missingInvitation.status(), 404)
   assert.equal(deniedInvitation.status(), 404)
   assert.deepEqual(missingInvitation.body(), deniedInvitation.body())
+  notifications.failLifecycle = true
   const revoked = await client
     .delete(`/account-kit/invitations/${resendId}`)
     .loginAs(inviter)
     .json({})
+  notifications.failLifecycle = false
   assert.equal(revoked.status(), 204)
   assert.equal(
     (await client.get(`/account-kit/invitation/${encodeURIComponent(resentToken)}`)).status(),
@@ -581,6 +583,19 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     responseBody<{ errors: [{ code: string }] }>(badProof).errors[0].code,
     'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
   )
+  notifications.failPasswordChanged = true
+  const committedPasswordChange = await client
+    .post('/account-kit/credentials/password')
+    .loginAs(passwordUser)
+    .json({
+      currentPassword: 'ChangedPass123!',
+      newPassword: 'FinalPass123!',
+      newPasswordConfirmation: 'FinalPass123!',
+    })
+  notifications.failPasswordChanged = false
+  assert.equal(committedPasswordChange.status(), 200)
+  await passwordUser.refresh()
+  assert.isTrue(await hash.verify(passwordUser.password!, 'FinalPass123!'))
 
   const emailUser = await User.create({
     fullName: 'Email User',

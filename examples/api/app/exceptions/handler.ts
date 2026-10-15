@@ -1,6 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
-import { accountErrorResponse } from 'adonisjs-account-kit'
+import { accountErrorResponse, InvalidCredentialsError } from 'adonisjs-account-kit'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { accountError } from '#services/http_responses'
 
@@ -22,7 +22,12 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     const mapped = accountErrorResponse(error)
     if (mapped) {
       for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
-      return accountError(ctx, mapped.status, mapped.body.code, mapped.body.message)
+      return accountError(
+        ctx,
+        error instanceof InvalidCredentialsError ? 401 : mapped.status,
+        mapped.body.code,
+        mapped.body.message
+      )
     }
     return super.handle(error, ctx)
   }
