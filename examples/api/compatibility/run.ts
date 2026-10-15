@@ -181,6 +181,7 @@ async function createSchema() {
   await schema.dropTableIfExists('account_kit_outbox')
   await schema.dropTableIfExists('account_transaction_lock')
   await schema.dropTableIfExists('account_email_changes')
+  await schema.dropTableIfExists('email_verification_tokens')
   await schema.dropTableIfExists('account_invitations')
   await schema.dropTableIfExists('password_reset_tokens')
   await schema.dropTableIfExists('users')
@@ -189,15 +190,16 @@ async function createSchema() {
     table.increments('id').primary()
     table.string('full_name').notNullable()
     table.string('email').notNullable().unique()
+    table.string('unverified_email').nullable()
     table.string('password').nullable()
     table.timestamp('email_verified_at').nullable()
     table.timestamp('created_at').notNullable()
   })
   await schema.createTable('password_reset_tokens', (table) => {
     table.increments('id').primary()
-    table.integer('user_id').notNullable().unique()
+    table.integer('tokenable_id').notNullable().unique()
     table.string('email').notNullable()
-    table.string('token_hash').notNullable().unique()
+    table.string('hash').notNullable().unique()
     table.timestamp('expires_at').notNullable()
     table.timestamp('created_at').notNullable()
   })
@@ -211,12 +213,13 @@ async function createSchema() {
     table.timestamp('created_at').notNullable()
     table.timestamp('updated_at').notNullable()
   })
-  await schema.createTable('account_email_changes', (table) => {
+  await schema.createTable('email_verification_tokens', (table) => {
     table.increments('id').primary()
-    table.integer('user_id').notNullable().unique()
+    table.integer('tokenable_id').notNullable().unique()
+    table.string('email').notNullable()
     table.string('current_email').notNullable()
-    table.string('new_email').notNullable()
-    table.string('token_hash').notNullable().unique()
+    table.string('purpose').notNullable()
+    table.string('hash').notNullable().unique()
     table.timestamp('expires_at').notNullable()
     table.timestamp('created_at').notNullable()
   })
@@ -407,14 +410,12 @@ try {
     email: 'verification@example.test',
     password: 'VerifyPass123!',
     emailVerifiedAt: null,
+    unverifiedEmail: 'verification@example.test',
   })
   assert.equal(await account.emailVerification.send({ userId: unverifiedUser.id }), 'sent')
   const verificationToken = tokenFromUrl(notifications.emailVerificationUrl)
   assert.equal(await account.emailVerification.complete({ token: verificationToken }), 'verified')
-  assert.equal(
-    await account.emailVerification.complete({ token: verificationToken }),
-    'already_verified'
-  )
+  await assert.rejects(() => account.emailVerification.complete({ token: verificationToken }))
   await unverifiedUser.refresh()
   assert.ok(unverifiedUser.emailVerifiedAt)
   console.log('MINIMUM_STAGE email-verification-send-complete-verified-replay')

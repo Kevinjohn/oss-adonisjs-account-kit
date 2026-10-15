@@ -144,6 +144,7 @@ export class UserSchema extends BaseModel {
     'createdAt',
     'email',
     'emailVerifiedAt',
+    'unverifiedEmail',
     'fullName',
     'id',
     'password',
@@ -157,11 +158,13 @@ export class UserSchema extends BaseModel {
   @column.dateTime()
   declare emailVerifiedAt: DateTime | null
   @column()
+  declare unverifiedEmail: string | null
+  @column()
   declare fullName: string
   @column({ isPrimary: true })
   declare id: number
   @column({ serializeAs: null })
-  declare password: string
+  declare password: string | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }
