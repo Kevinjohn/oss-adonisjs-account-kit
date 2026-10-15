@@ -4,11 +4,49 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
+import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
+
+test('committed follow-up diagnostics omit private error details', async ({ assert }) => {
+  const reported: Array<{ details: object; message: string }> = []
+  const logger = {
+    error(details: object, message: string) {
+      reported.push({ details, message })
+    },
+  }
+  reportCommittedFailure(
+    logger,
+    new DeliveryError('secret proof and recipient@example.test'),
+    'password_reset.request'
+  )
+  reportCommittedFailure(
+    logger,
+    new PostCommitError('secret proof and recipient@example.test'),
+    'password_reset.complete'
+  )
+  assert.deepEqual(reported, [
+    {
+      details: {
+        event: 'account_kit_follow_up_failed',
+        operation: 'password_reset.request',
+        failure: 'delivery',
+      },
+      message: 'Account operation committed but a follow-up failed',
+    },
+    {
+      details: {
+        event: 'account_kit_follow_up_failed',
+        operation: 'password_reset.complete',
+        failure: 'post_commit',
+      },
+      message: 'Account operation committed but a follow-up failed',
+    },
+  ])
+})
 
 test('bearer logout revokes only the current token and repeat is unauthenticated', async ({
   client,
@@ -21,13 +59,25 @@ test('bearer logout revokes only the current token and repeat is unauthenticated
     password: 'OriginalPass123!',
   })
   const credentials: string[] = []
+  let firstLoginWindow: { start: number; end: number } | undefined
   for (let index = 0; index < 2; index++) {
+    const start = Date.now()
     const login = await client
       .post('/api/v1/auth/login')
       .json({ email: user.email, password: 'OriginalPass123!' })
+    const end = Date.now()
     assert.equal(login.status(), 200)
+    if (index === 0) firstLoginWindow = { start, end }
     credentials.push((login.body() as unknown as { data: { token: string } }).data.token)
   }
+  const firstToken = await db
+    .from('auth_access_tokens')
+    .where('tokenable_id', user.id)
+    .orderBy('id', 'asc')
+    .first()
+  const expiresAt = new Date(firstToken.expires_at).getTime()
+  assert.isAtLeast(expiresAt, firstLoginWindow!.start + 86_400_000 - 1_000)
+  assert.isAtMost(expiresAt, firstLoginWindow!.end + 86_400_000 + 1_000)
   const logout = await client.post('/api/v1/account/logout').bearerToken(credentials[0])
   assert.equal(logout.status(), 200)
   assert.equal(
@@ -98,6 +148,15 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.include(jsonApi.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(jsonApi.body(), {
     errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', title: 'Account request rejected' }],
+  })
+  const excluded = await client
+    .post('/api/v1/auth/login')
+    .header('accept', 'application/json, application/vnd.api+json;q=0')
+    .json({ email, password: 'WrongPass123!' })
+  assert.equal(excluded.status(), 401)
+  assert.notInclude(excluded.header('content-type'), 'application/vnd.api+json')
+  assert.deepEqual(excluded.body(), {
+    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const validation = await client
     .post('/api/v1/auth/login')
@@ -318,4 +377,16 @@ test('verification GET inspects without consuming and POST completes once', asyn
   assert.deepEqual(jsonApiProof.body(), {
     errors: [{ code: 'E_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' }],
   })
+})
+
+test('malformed proof submission still receives private-cache and referrer headers', async ({
+  client,
+  assert,
+}) => {
+  const malformed = await client
+    .post('/api/v1/auth/email-verification/malformed-proof')
+    .unsafeJson('{"password":')
+  assert.equal(malformed.status(), 400)
+  assert.equal(malformed.header('cache-control'), 'no-store')
+  assert.equal(malformed.header('referrer-policy'), 'no-referrer')
 })
