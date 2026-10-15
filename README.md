@@ -1,9 +1,13 @@
 # adonisjs-account-kit
 
-Account recovery, email verification, invitations, and credential changes for AdonisJS 7. The
+Forgot password, email verification, invitations, and email and password management for AdonisJS 7. The
 application owns its user model, HTTP routes, validation, password policy, and notification
 delivery. The package provides transactional account operations and callbacks for application
 authorization and side effects.
+
+Account Kit covers the account basics and uses the same vocabulary as AdonisJS Plus and the
+AdonisJS starter kits. For two-factor authentication and passkeys, we recommend
+[AdonisJS Plus](https://plus.adonisjs.com).
 
 ## Requirements and installation
 
@@ -85,7 +89,7 @@ request data; the example maps a validated name and never spreads request fields
   and `limiterNamespace` across application instances that share a limiter store.
 - `APP_URL` must be the application's public HTTPS base URL. Generated URLs preserve a configured
   path; do not construct account links from an untrusted `Host` header.
-- Derive recovery `clientKey` from the request IP only after configuring Adonis trusted proxies.
+- Derive password reset `clientKey` from the request IP only after configuring Adonis trusted proxies.
   Never trust a caller-supplied key or an unverified `X-Forwarded-For` value.
 - SQLite applications must enable foreign keys on every connection and size the pool for their
   concurrency. Transaction callbacks must use the supplied `trx`; details are in
@@ -99,7 +103,7 @@ running configure, then inspect all generated migrations. See the
 
 Account Kit owns its root write transactions. Do not wrap package write operations in an active
 global transaction. Application validators remain responsible for request shape, password policy,
-confirmation fields, and authorization at the HTTP boundary. Recovery requests must return a
+confirmation fields, and authorization at the HTTP boundary. Password reset requests must return a
 generic acknowledgement even when post-commit notification delivery fails. The package's minimum
 request duration mitigates timing differences; it is not a timing guarantee.
 

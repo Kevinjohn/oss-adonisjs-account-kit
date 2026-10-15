@@ -4,21 +4,49 @@
 complete application wiring is in the [API consumer example](../examples/api/README.md), including
 routes, validation, central HTTP error mapping, Lucid model setup, and notification callbacks.
 
-## Capabilities
+## Configuration
 
-`enabled` accepts any unique subset of `recovery`, `verification`, `invitations`, and `credentials`.
+`expiresIn` accepts positive duration strings or seconds for each feature. The defaults remain:
+
+```ts
+expiresIn: {
+  passwordReset: '1h',
+  emailVerification: '1h',
+  invitation: '7d',
+  emailChange: '1h',
+}
+```
+
+For example, `expiresIn: { passwordReset: 3600 }` has the same lifetime as `'1h'`.
+Keep application password rules, throttle budgets, and notification delivery policy explicit.
+
+The callback names distinguish a link provision from a completed-operation notice:
+
+| Purpose                   | URL callback             | Notification callback               |
+| ------------------------- | ------------------------ | ----------------------------------- |
+| Forgot password link      | `urls.passwordReset`     | `notify.passwordResetProvision`     |
+| Password reset completed  | —                        | `notify.passwordResetCompleted`     |
+| Account activation link   | `urls.emailVerification` | `notify.accountActivationProvision` |
+| Invitation link           | `urls.invitation`        | `notify.invitationProvision`        |
+| Email-change confirmation | `urls.emailChange`       | `notify.emailChangeProvision`       |
+| Email changed             | —                        | `notify.emailChanged`               |
+| Password changed          | —                        | `notify.passwordChanged`            |
+
+### Capabilities
+
+`enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`, and `emailPasswordManagement`.
 It defaults to all four. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
 
 The service methods accept structured inputs. The usual calls are:
 
 ```ts
-await kit.recovery.request({ email, clientKey })
-const valid = await kit.recovery.inspect({ token })
-const user = await kit.recovery.reset({ token, password })
+await kit.passwordReset.request({ email, clientKey })
+const valid = await kit.passwordReset.inspect({ token })
+const user = await kit.passwordReset.reset({ token, password })
 
-await kit.verification.send({ userId })
-await kit.verification.complete({ token })
+await kit.emailVerification.send({ userId })
+await kit.emailVerification.complete({ token })
 
 const invitation = await kit.invitations.send({ actorId, email, role })
 const page = await kit.invitations.list({ actorId, limit: 25 })
@@ -27,9 +55,9 @@ const newUser = await kit.invitations.accept({ token, password, registrationData
 await kit.invitations.resend({ actorId, invitationId: invitation.id })
 await kit.invitations.revoke({ actorId, invitationId: invitation.id })
 
-await kit.credentials.changePassword({ actorId, currentPassword, newPassword })
-await kit.credentials.requestEmailChange({ actorId, currentPassword, newEmail })
-await kit.credentials.completeEmailChange({ token })
+await kit.emailPasswordManagement.changePassword({ actorId, currentPassword, newPassword })
+await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail })
+await kit.emailPasswordManagement.completeEmailChange({ token })
 ```
 
 Invitation listing returns `{ items, nextCursor }`. The default page limit is 25 and the maximum is 100. Pass `nextCursor` as `cursor` to fetch the next page; `null` means there are no more rows.
@@ -37,14 +65,16 @@ Invitation listing returns `{ items, nextCursor }`. The default page limit is 25
 Pages use a cursor over creation time and invitation ID, but each page is a separate query, not a
 snapshot. Invitations created, revoked, or expired between requests can change later page results.
 
-## Recovery and invitation rules
+## How it works
 
-Recovery requests consume both a client-key budget and a normalized-email budget. A throttled
-request does not replace the currently stored recovery token, so an already-issued unexpired link
+### A reset link works once, then expires
+
+Password reset requests consume both a client-key budget and a normalized-email budget. A throttled
+request does not replace the currently stored password reset token, so an already-issued unexpired link
 remains redeemable. A later successful issuance rotates the user's token and invalidates its
 predecessor.
 
-Build the recovery `clientKey` from `request.ip()` only after configuring Adonis trusted proxies
+Build the password reset `clientKey` from `request.ip()` only after configuring Adonis trusted proxies
 for the known proxy addresses and forwarded-header policy. Do not accept a client-provided key or
 trust arbitrary `X-Forwarded-For` headers. Keep `APP_URL` set to the public HTTPS origin and build
 links from that configured value, not from request `Host` or forwarded-host headers.
@@ -85,7 +115,7 @@ application permission records; lock mutable permission rows through `trx` when 
 policy requires serialization. The limiter runs outside the write transaction to avoid a
 same-database limiter deadlock with a one-connection SQLite pool.
 
-`onRecoveryIssuedTransaction(user, trx)` is an optional recovery-issuance hook. After the
+`onPasswordResetIssuedTransaction(user, trx)` is an optional hook for password reset issuance. After the
 issuance limiter and initial email lookup, the package starts its root transaction, locks and
 reloads that user, confirms the requested email still matches, and replaces the token before
 calling the hook. The hook can check current authority and eligibility and write an audit or
@@ -104,7 +134,7 @@ Use `onCredentialsChangedTransaction(user, context, trx)` for token/session revo
 commit atomically with a password or email change. The context contains `operation`,
 `operationId`, and `userId`. It is mutually exclusive with the legacy
 `onCredentialsChanged(user, context)` post-commit callback. The package also invokes the dedicated
-`notify.passwordReset` or `notify.passwordChanged` notice for the corresponding password
+`notify.passwordResetCompleted` or `notify.passwordChanged` notice for the corresponding password
 operation.
 
 `onLifecycleEvent(event)` receives safe event identifiers after commit. Payloads contain IDs and an
@@ -162,7 +192,7 @@ classes retain separate codes for application-side diagnosis.
 corresponding capability; it is generally an application configuration issue and should not be
 returned as a generic server detail.
 
-Recovery request endpoints must always return the same generic acknowledgement for known and unknown
+Password reset request endpoints must always return the same generic acknowledgement for known and unknown
 accounts. Suppress both `DeliveryError` and `PostCommitError` for that operation at the HTTP
 boundary, then return the acknowledgement. Do not return error codes, delivery status, or callback
 details to the requester. `minRequestMs` defaults to 300ms as a mitigation against timing
@@ -171,3 +201,30 @@ differences; it is not a guarantee that all requests take the same time.
 See the [API controller example](../examples/api/app/controllers/account_kit_controller.ts) for
 illustrative route behavior. Adapt it to the application's own transport and error response
 conventions.
+
+## Files delta
+
+Configure generates `config/account_kit.ts` and five package migration files. The reset-token
+stub is `create_password_reset_tokens.stub` and generates
+`*_account_kit_create_password_reset_tokens.ts`, creating `password_reset_tokens`. Its columns
+are unchanged. Existing application-owned config and migration files are preserved.
+The implementation lives in `src/password_reset.ts`; import the public `AccountKit` and input
+types from the package root or its documented type entry point.
+
+## Manual steps
+
+Implement the callbacks for enabled capabilities, adapt application calls and imported input
+types, and update lifecycle listeners to `password_reset.requested`. The email-verification event
+remains `verification.completed`; all other lifecycle events and `E_ACCOUNT_KIT_*` error codes
+also retain their names. An inactive account becomes active when its current email is verified;
+this rename retains the existing `emailVerifiedAt` state representation.
+
+Existing installations must also rename their reset-token table in a controlled migration.
+Follow the [vocabulary upgrade steps](upgrade.md#vocabulary-alignment) before enabling the new
+code. No old service names, exported input aliases, or dual config keys are supplied.
+
+## Changelog
+
+The [Unreleased rename list](../CHANGELOG.md#unreleased) records every breaking public rename.
+The forgot password, email-verification, email and password management, and invitation operations
+retain their existing responses, defaults, proof semantics and security rules.

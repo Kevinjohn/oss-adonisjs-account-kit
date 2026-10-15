@@ -6,7 +6,7 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Added
 
-- Recovery, email verification, invitations, password changes, and verified email changes with
+- Password reset, email verification, invitations, password changes, and verified email changes with
   package-owned transactions and application callbacks.
 - A maintained lazy Lucid adapter that derives the model table, validates the physical `id` key
   and default connection, uses model save hooks for password hashing, and maps registration data
@@ -20,13 +20,55 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Changed
 
+- `recovery (capability)` → `passwordReset` (config key).
+- `verification (capability)` → `emailVerification` (config key).
+- `credentials (capability)` → `emailPasswordManagement` (config key).
+- `AccountKit.recovery` → `AccountKit.passwordReset` (export).
+- `AccountKit.verification` → `AccountKit.emailVerification` (export).
+- `AccountKit.credentials` → `AccountKit.emailPasswordManagement` (export).
+- `RecoveryRequestInput` → `PasswordResetRequestInput` (export).
+- `RecoveryInspectInput` → `PasswordResetInspectInput` (export).
+- `RecoveryResetInput` → `PasswordResetCompleteInput` (export).
+- `CredentialsChangePasswordInput` → `ChangePasswordInput` (export).
+- `CredentialsRequestEmailChangeInput` → `RequestEmailChangeInput` (export).
+- `CredentialsCompleteEmailChangeInput` → `CompleteEmailChangeInput` (export).
+- `urls.recovery` → `urls.passwordReset` (config key).
+- `urls.verification` → `urls.emailVerification` (config key).
+- `notify.recovery` → `notify.passwordResetProvision` (config key).
+- `notify.passwordReset` → `notify.passwordResetCompleted` (config key).
+- `notify.verification` → `notify.accountActivationProvision` (config key).
+- `notify.invitation` → `notify.invitationProvision` (config key).
+- `notify.emailChangeConfirm` → `notify.emailChangeProvision` (config key).
+- `onRecoveryIssuedTransaction` → `onPasswordResetIssuedTransaction` (config key).
+- `recovery.requested` → `password_reset.requested` (event).
+- `ttl` → `expiresIn` (config key).
+- `ttl.recovery` → `expiresIn.passwordReset` (config key).
+- `ttl.verification` → `expiresIn.emailVerification` (config key).
+- `ttl.invitation` → `expiresIn.invitation` (config key).
+- `ttl.emailChange` → `expiresIn.emailChange` (config key).
+- `account_recovery_tokens` → `password_reset_tokens` (table).
+- `requestRecovery` → `requestPasswordReset` (export).
+- `inspectRecovery` → `inspectPasswordReset` (export).
+- `resetRecovery` → `completePasswordReset` (export).
+- `AccountRecoveryTokenSchema` → `PasswordResetTokenSchema` (export).
+- `src/recovery.ts` → `src/password_reset.ts` (file).
+- `stubs/migrations/create_account_recovery_tokens.stub` → `stubs/migrations/create_password_reset_tokens.stub` (file).
+- `*_account_kit_create_account_recovery_tokens.ts` → `*_account_kit_create_password_reset_tokens.ts` (file).
+- `examples/api/upgrade/baseline_account_kit.ts` → `examples/api/upgrade/baseline_account_kit.stub` (file).
+- `tests/recovery.spec.ts` → `tests/password_reset.spec.ts` (file).
+
+- `recovery (package keyword)` → `password-reset` (doc).
+- `verification (package keyword)` → `email-verification` (doc).
+- `Account recovery / credential changes (package description)` → `Password reset / email and password management` (doc).
+- `Recovery (flow terminology)` → `Forgot password / password reset` (doc).
+
 - Configuration requires a stable limiter secret of at least 32 bytes. Applications should use a
   stable `APP_KEY` shared by instances using the same limiter store. Secret rotation resets limiter
   buckets.
 - `onCredentialsChangedTransaction(user, context, trx)` is the transaction-aware credential
   revocation hook. It is mutually exclusive with the legacy post-commit
   `onCredentialsChanged(user, context)` hook.
-- Recovery notification failures remain generic at the HTTP boundary. A failed post-commit effect
+- Password reset notification failures remain generic at the HTTP boundary. A failed post-commit effect
   can be reported with `committed: true`; the database transaction has already committed.
 - Configure accepts `--users-table` and `--user-id-type` (`integer`, `string`, or `uuid`) for newly
   generated migrations. Existing generated config and migration files are not rewritten.
