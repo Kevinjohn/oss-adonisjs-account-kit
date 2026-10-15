@@ -29,7 +29,7 @@ export const plugins: Config['plugins'] = [
   pluginAdonisJS(app),
   dbAssertions(app),
   apiClient(),
-  sessionApiClient(app),
+  ...(process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session' ? [] : [sessionApiClient(app)]),
   authApiClient(app),
 ]
 
