@@ -30,6 +30,7 @@ This project has no published releases yet. The current candidate remains versio
 - `UsersAdapter.setUnverifiedEmail` (export contract) is required for pending-address writes.
 - `UsersAdapter.markEmailVerified` (export contract) now clears `unverifiedEmail` while recording the audit timestamp.
 - `PruneCounts.emailChanges` → `PruneCounts.emailVerifications` (export property).
+- `emailVerification.complete` return type `'verified' | 'already_verified'` → `'verified'` (export contract); replay now rejects an invalid proof.
 - `users.password NOT NULL` → `users.password NULL` (column), allowing no local password.
 - `password_reset_tokens.user_id` → `password_reset_tokens.tokenable_id` (column).
 - `password_reset_tokens.token_hash` → `password_reset_tokens.hash` (column).
@@ -37,7 +38,7 @@ This project has no published releases yet. The current candidate remains versio
 - Repeatable encrypted activation link → stored, hashed, one-use activation proof (service contract).
 - An inactive account's email change now updates both confirmed and pending addresses and invalidates the prior proof (service contract).
 - Password reset and password change now cancel a distinct pending email change in the same transaction (service contract).
-- Inactive-account email changes now run credential revocation when the confirmed address changes (service contract).
+- Inactive-account email changes now run the configured credential revocation hook when the confirmed address changes, transactionally or after commit (service contract).
 
 - `recovery (capability)` → `passwordReset` (config key).
 - `verification (capability)` → `emailVerification` (config key).
