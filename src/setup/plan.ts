@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { safeSetupPath } from './safe_path.js'
 import { fileURLToPath } from 'node:url'
 import { migrationNames, migrationSchema } from '../../configure.js'
 import type {
@@ -208,6 +210,20 @@ function validate(
         'authentication.guard',
         'Named existing guard was not found in config/auth.ts; add it yourself before activation'
       )
+    else if (
+      state.guardStrategies[choices.authentication.guard] !== choices.authentication.strategy
+    )
+      diagnostic(
+        diagnostics,
+        'authentication.guard',
+        'Selected guard must use the matching conventional sessionGuard or tokensGuard driver'
+      )
+    else if (state.guardModels[choices.authentication.guard] !== choices.user.model)
+      diagnostic(
+        diagnostics,
+        'authentication.guard',
+        'Selected guard must load the selected user model through its conventional user provider'
+      )
     if (choices.authentication.strategy === 'session') {
       if (!choices.authentication.session)
         diagnostic(
@@ -379,8 +395,7 @@ function validate(
     diagnostic(
       diagnostics,
       'config/mail.ts',
-      'Configure AdonisJS Mail with a real transport before activation',
-      'action'
+      'Configure AdonisJS Mail with a real transport before applying'
     )
   if (
     choices.mail.integration === 'custom' &&
@@ -507,10 +522,18 @@ function generatedEnv(choices: SetupChoices): string {
 }
 
 async function migrationContent(name: string, choices: SetupChoices): Promise<string> {
-  const stub = await readFile(
-    fileURLToPath(new URL(`../../stubs/migrations/${name}.stub`, import.meta.url)),
-    'utf8'
-  )
+  let directory = dirname(fileURLToPath(import.meta.url))
+  let stub: string | undefined
+  for (let depth = 0; depth < 3; depth++) {
+    try {
+      stub = await readFile(join(directory, 'stubs/migrations', `${name}.stub`), 'utf8')
+      break
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+    directory = dirname(directory)
+  }
+  if (stub === undefined) throw new Error(`Account Kit migration template ${name} is missing`)
   const schema = migrationSchema(choices.user.table, choices.user.idType)
   return stub
     .replace(/^\{\{\{ exports\([^\n]+\n\n/, '')
@@ -828,6 +851,86 @@ function planArrayImports(
   })
 }
 
+function planRouterMiddleware(
+  changes: SetupFileChange[],
+  state: SetupInspection,
+  diagnostics: SetupDiagnostic[],
+  session: boolean
+) {
+  const path = 'start/kernel.ts'
+  const previous = state.files[path]
+  const start = previous?.indexOf('router.use([') ?? -1
+  const end = start < 0 ? -1 : previous!.indexOf('])', start)
+  if (!previous || start < 0 || end < 0 || previous.indexOf('router.use([', start + 1) >= 0) {
+    diagnostic(diagnostics, path, 'Expected one conventional router.use array in start/kernel.ts')
+    return
+  }
+  const block = previous.slice(start + 'router.use(['.length, end)
+  const serverStart = previous.indexOf('server.use([')
+  const serverEnd = serverStart < 0 ? -1 : previous.indexOf('])', serverStart)
+  const serverBlock = serverEnd < 0 ? '' : previous.slice(serverStart, serverEnd)
+  const lines = block.split('\n')
+  const body = '@adonisjs/core/bodyparser_middleware'
+  const ordered = [
+    body,
+    ...(session
+      ? ['@adonisjs/session/session_middleware', '@adonisjs/shield/shield_middleware']
+      : []),
+    '@adonisjs/auth/initialize_auth_middleware',
+  ]
+  if (ordered.slice(1).some((name) => serverBlock.includes(name))) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Account middleware already appears in server.use; move it to the ordered router.use stack manually'
+    )
+    return
+  }
+  if (
+    lines.filter((line) => line.includes(body)).length !== 1 ||
+    ordered.some((name) => lines.filter((line) => line.includes(name)).length > 1)
+  ) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Router middleware layout is ambiguous; preserve body parser, session, Shield, then auth order manually'
+    )
+    return
+  }
+  const existingIndexes = ordered
+    .map((name) => lines.findIndex((line) => line.includes(name)))
+    .filter((index) => index >= 0)
+  if (
+    existingIndexes.some(
+      (index, position) => position > 0 && index <= existingIndexes[position - 1]
+    )
+  ) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Existing router middleware order is unsafe; require body parser, session, Shield, then auth'
+    )
+    return
+  }
+  let changed = false
+  for (let index = 1; index < ordered.length; index++) {
+    if (lines.some((line) => line.includes(ordered[index]))) continue
+    const previousIndex = lines.findIndex((line) => line.includes(ordered[index - 1]))
+    if (previousIndex < 0) throw new Error('Missing previously planned router middleware')
+    lines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
+    changed = true
+  }
+  changes.push({
+    path,
+    action: changed ? 'update' : 'unchanged',
+    expected: previous,
+    content: changed
+      ? previous.slice(0, start + 'router.use(['.length) + lines.join('\n') + previous.slice(end)
+      : previous,
+    reason: 'Keep account middleware after body parsing on registered routes',
+  })
+}
+
 /** Build the complete proposal before a write. Apply refuses every conflict in this plan. */
 export async function planSetup(
   choices: SetupChoices,
@@ -855,7 +958,22 @@ export async function planSetup(
   ) {
     const modelPath = `app/models/${choices.user.model.slice('#models/'.length)}.ts`
     try {
-      await readFile(`${state.root}/${modelPath}`, 'utf8')
+      const model = await readFile(await safeSetupPath(state.root, modelPath), 'utf8')
+      if (!/export\s+default\s+class\s+\w+\s+extends\s+/.test(model))
+        diagnostic(
+          diagnostics,
+          'user.model',
+          'Selected Lucid model must expose a default model class'
+        )
+      if (
+        choices.authentication?.strategy === 'access_tokens' &&
+        !/static\s+accessTokens\s*=/.test(model)
+      )
+        diagnostic(
+          diagnostics,
+          'user.model',
+          'Token guard model must expose its existing static accessTokens provider'
+        )
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       diagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
@@ -873,14 +991,6 @@ export async function planSetup(
   ownedChange(
     changes,
     state,
-    'config/account_kit_setup.json',
-    `${JSON.stringify(choices, null, 2)}\n`,
-    state.files['config/account_kit_setup.json'] ?? null,
-    'Persist six-pillar application choices without secrets'
-  )
-  ownedChange(
-    changes,
-    state,
     '.env.account-kit.example',
     generatedEnv(choices),
     state.existingChoices ? generatedEnv(state.existingChoices) : null,
@@ -892,9 +1002,7 @@ export async function planSetup(
       state,
       'app/services/account_kit_guard.ts',
       managedGuardSource(choices),
-      state.existingChoices?.authentication && state.existingChoices.managed.length
-        ? managedGuardSource(state.existingChoices)
-        : null,
+      state.existingChoices?.authentication ? managedGuardSource(state.existingChoices) : null,
       'Adapt the selected existing AdonisJS guard'
     )
     addChange(
@@ -909,8 +1017,10 @@ export async function planSetup(
       state,
       'start/account_kit_routes.ts',
       managedRoutesSource(choices),
-      state.existingChoices?.authentication && state.existingChoices.managed.length
-        ? managedRoutesSource(state.existingChoices)
+      state.existingChoices?.authentication
+        ? state.existingChoices.managed.length
+          ? managedRoutesSource(state.existingChoices)
+          : disabledManagedRoutesSource()
         : null,
       'Mount selected maintained endpoints through the existing guard'
     )
@@ -933,14 +1043,15 @@ export async function planSetup(
     ...(choices.authentication?.strategy === 'session' && choices.managed.length
       ? ['@adonisjs/session/session_provider', '@adonisjs/shield/shield_provider']
       : []),
+    ...(choices.mail.integration === 'adonisjs-mail' ? ['@adonisjs/mail/mail_provider'] : []),
   ])
   if (choices.managed.length) {
-    planArrayImports(changes, state, diagnostics, 'start/kernel.ts', 'server.use([', [
-      ...(choices.authentication?.strategy === 'session'
-        ? ['@adonisjs/session/session_middleware', '@adonisjs/shield/shield_middleware']
-        : []),
-      '@adonisjs/auth/initialize_auth_middleware',
-    ])
+    planRouterMiddleware(
+      changes,
+      state,
+      diagnostics,
+      choices.authentication?.strategy === 'session'
+    )
     if (choices.authentication?.strategy === 'session') {
       if (
         !state.files['config/shield.ts'] ||
@@ -974,6 +1085,16 @@ export async function planSetup(
     )
   }
   if (choices.managed.length && choices.authentication) planRouteImport(changes, state, diagnostics)
+  // Commit the selection only after every dependent file. This preserves the previous
+  // generated-content baseline when an interrupted application is replayed.
+  ownedChange(
+    changes,
+    state,
+    'config/account_kit_setup.json',
+    `${JSON.stringify(choices, null, 2)}\n`,
+    state.files['config/account_kit_setup.json'] ?? null,
+    'Persist six-pillar application choices without secrets'
+  )
   for (const change of changes) {
     if (change.action === 'conflict')
       diagnostic(
@@ -985,6 +1106,17 @@ export async function planSetup(
   const endpoints = choices.managed.flatMap((feature) => knownEndpoints[feature])
   if (choices.authentication?.strategy === 'session' && choices.managed.includes('authentication'))
     endpoints.push('auth.csrf')
+  if (
+    choices.authentication?.strategy === 'session' &&
+    choices.managed.length &&
+    !choices.managed.includes('authentication')
+  )
+    diagnostic(
+      diagnostics,
+      'authentication.csrfBootstrap',
+      'Session managed POST routes require an application-owned CSRF bootstrap endpoint because the managed authentication group is disabled',
+      'action'
+    )
   const missingPackages = [
     '@adonisjs/core',
     '@adonisjs/lucid',
@@ -998,6 +1130,25 @@ export async function planSetup(
   ].filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
     diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
+  const supportedMajors: Record<string, number> = {
+    '@adonisjs/core': 7,
+    '@adonisjs/lucid': 22,
+    '@adonisjs/limiter': 3,
+    '@adonisjs/auth': 10,
+    '@adonisjs/session': 8,
+    '@adonisjs/shield': 9,
+    '@vinejs/vine': 4,
+    '@adonisjs/mail': 10,
+  }
+  for (const [name, major] of Object.entries(supportedMajors)) {
+    const version = state.installedVersions[name]
+    if (version && Number(version.match(/^(\d+)\./)?.[1]) !== major)
+      diagnostic(
+        diagnostics,
+        `dependencies.${name}`,
+        `Installed ${name}@${version} is outside supported major ${major}`
+      )
+  }
   const prerequisites = [
     ...missingPackages.map((name) => `Install ${name} explicitly with pnpm add ${name}`),
     'Review generated migrations, then run node ace migration:run explicitly',

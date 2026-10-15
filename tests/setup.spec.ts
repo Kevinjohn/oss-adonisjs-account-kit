@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -25,7 +25,7 @@ async function fixture() {
   await mkdir(join(root, 'app/services'), { recursive: true })
   await writeFile(
     join(root, 'app/models/user.ts'),
-    'class User { email!: string; password!: string; emailVerifiedAt!: Date }\n'
+    'export default class User extends BaseModel { static accessTokens = tokens; email!: string; password!: string; emailVerifiedAt!: Date }\n'
   )
   await writeFile(
     join(root, 'app/services/account_kit_policy.ts'),
@@ -41,25 +41,44 @@ async function fixture() {
       dependencies: {
         '@adonisjs/core': '7',
         '@adonisjs/lucid': '22',
-        '@adonisjs/limiter': '2',
+        '@adonisjs/limiter': '3',
         '@adonisjs/auth': '10',
-        '@adonisjs/session': '7',
-        '@adonisjs/shield': '8',
-        '@vinejs/vine': '3',
+        '@adonisjs/session': '8',
+        '@adonisjs/shield': '9',
+        '@vinejs/vine': '4',
         'adonisjs-account-kit': '0',
       },
     })
   )
+  for (const [name, version] of Object.entries({
+    '@adonisjs/core': '7.0.0',
+    '@adonisjs/lucid': '22.4.2',
+    '@adonisjs/limiter': '3.0.0',
+    '@adonisjs/auth': '10.0.0',
+    '@adonisjs/session': '8.0.0',
+    '@adonisjs/shield': '9.0.0',
+    '@vinejs/vine': '4.0.0',
+    'adonisjs-account-kit': '0.0.0',
+  })) {
+    await mkdir(join(root, 'node_modules', name), { recursive: true })
+    await writeFile(
+      join(root, 'node_modules', name, 'package.json'),
+      JSON.stringify({ name, version })
+    )
+  }
   await writeFile(
     join(root, 'config/auth.ts'),
-    'export default { guards: { web: {}, api: {}\n} }\n'
+    "export default { guards: { web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }), api: tokensGuard({ provider: tokensUserProvider({ model: () => import('#models/user') }) })\n} }\n"
   )
   await writeFile(join(root, 'config/database.ts'), "export default { client: 'better-sqlite3' }\n")
   await writeFile(join(root, 'config/shield.ts'), 'export default { csrf: { enabled: true } }\n')
   await writeFile(join(root, 'config/session.ts'), 'export default { cookie: {} }\n')
   await writeFile(join(root, 'adonisrc.ts'), 'export default { providers: [] }\n')
   await writeFile(join(root, 'start/routes.ts'), '// application routes\n')
-  await writeFile(join(root, 'start/kernel.ts'), 'server.use([])\n')
+  await writeFile(
+    join(root, 'start/kernel.ts'),
+    "router.use([\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])\n"
+  )
   const choices = defaultSetupChoices()
   choices.features = ['passwordReset']
   choices.managed = ['passwordReset']
@@ -116,6 +135,33 @@ test.group('onboarding plan and apply', (group) => {
     assert.notInclude(choices.managed, 'invitations')
     assert.equal(choices.social.status, 'not-applicable')
     assert.equal(choices.mail.integration, 'adonisjs-mail')
+  })
+
+  test('interactive token answers produce complete parseable choices including invitation destination', async ({
+    assert,
+  }) => {
+    const answers: Record<string, string> = {
+      'Enabled services': 'authentication,invitations',
+      'Managed endpoint groups': 'authentication,invitations',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Token revocation': 'yes',
+      'Application-owned protected': 'yes',
+      'Delivery integration': 'custom',
+      'invitation relative': 'invites/accept',
+      'Additional registration fields': '[{"name":"fullName","type":"string","required":true}]',
+      'Application invitation permission': 'yes',
+    }
+    const choices = await SetupAccountKit.prototype.interactiveChoices.call(
+      { logger: { info() {} } } as unknown as SetupAccountKit,
+      async (question) =>
+        Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
+    )
+    assert.equal(choices.authentication?.strategy, 'access_tokens')
+    assert.isFalse(Object.hasOwn(choices.authentication!, 'session'))
+    assert.equal(choices.mail.destinations.invitation, 'invites/accept')
+    assert.lengthOf(choices.policy.registrationFields, 1)
+    assert.deepEqual(parseSetupChoices(choices), choices)
   })
 
   test('accepts a model that inherits account fields from an application schema', async ({
@@ -350,7 +396,7 @@ test.group('onboarding plan and apply', (group) => {
       apply: true,
       timestamp: 1234,
     })
-    const last = plan.changes.at(-1)!
+    const last = plan.changes.find(({ path }) => path.includes('_account_kit_'))!
     await mkdir(join(root, 'database/migrations'), { recursive: true })
     await writeFile(join(root, last.path), '// owner changed this migration\n')
     await assert.rejects(() => applySetup(root, plan), /Setup conflict/)
@@ -590,6 +636,153 @@ test.group('onboarding plan and apply', (group) => {
     assert.equal(await readFile(join(root, 'start/routes.ts'), 'utf8'), routesBefore)
     assert.equal(await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'), mount.content)
     assert.deepEqual(next.endpoints, [])
+    choices.managed = ['passwordReset']
+    choices.authentication!.guard = 'api'
+    choices.authentication!.strategy = 'access_tokens'
+    delete choices.authentication!.session
+    choices.authentication!.token = { revocation: true, lifetime: '7d', abilities: ['*'] }
+    const enabled = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.equal(
+      enabled.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.action,
+      'update'
+    )
+    await applySetup(root, enabled)
+    assert.include(
+      await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
+      'registerManagedRoutes'
+    )
+  })
+
+  test('reconfiguration replay keeps old choices until dependent files finish', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await applySetup(
+      root,
+      await planSetup(choices, await inspectSetup(root), { apply: true, timestamp: 1234 })
+    )
+    choices.routePrefix = '/new-account'
+    const proposed = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.equal(proposed.changes.at(-1)?.path, 'config/account_kit_setup.json')
+    await applySetup(root, { ...proposed, changes: proposed.changes.slice(0, 2) })
+    const retry = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(retry.diagnostics.some(({ severity }) => severity === 'error'))
+    await applySetup(root, retry)
+    assert.equal(
+      JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')).routePrefix,
+      '/new-account'
+    )
+  })
+
+  test('inspection refuses linked parent paths and setup refuses an existing apply lock', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const outside = await mkdtemp(join(tmpdir(), 'account-outside-'))
+    cleanupRoots.push(outside)
+    await rm(join(root, 'app/models'), { recursive: true })
+    await symlink(outside, join(root, 'app/models'))
+    await assert.rejects(
+      async () => planSetup(choices, await inspectSetup(root)),
+      /non-directory or symlink/
+    )
+    const other = await fixture()
+    const plan = await planSetup(other.choices, await inspectSetup(other.root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    await writeFile(join(other.root, '.account-kit-setup.lock'), 'held elsewhere\n')
+    await assert.rejects(() => applySetup(other.root, plan), /already applying or was interrupted/)
+    assert.notInclude(await readdir(join(other.root, 'config')), 'account_kit_setup.json')
+    const migration = await fixture()
+    await mkdir(join(migration.root, 'database'))
+    await symlink(outside, join(migration.root, 'database/migrations'))
+    await assert.rejects(() => inspectSetup(migration.root), /non-directory or symlink/)
+  })
+
+  test('planner checks installed versions, guard driver, and named default connection', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "export default { connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3' } } }\n"
+    )
+    let plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'database.connection'
+    )
+    await writeFile(
+      join(root, 'node_modules/@adonisjs/limiter/package.json'),
+      JSON.stringify({ version: '2.0.0' })
+    )
+    await writeFile(
+      join(root, 'config/auth.ts'),
+      'export default { guards: { web: tokensGuard({})\n} }\n'
+    )
+    plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.includeMembers(
+      plan.diagnostics.map(({ field }) => field),
+      ['dependencies.@adonisjs/limiter', 'authentication.guard']
+    )
+    await rm(join(root, 'node_modules/@adonisjs/limiter/package.json'))
+    plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'dependencies.@adonisjs/limiter'
+    )
+  })
+
+  test('managed middleware follows body parsing and refuses a server middleware placement', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    let plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    const kernel = plan.changes.find(({ path }) => path === 'start/kernel.ts')!.content
+    assert.isBelow(kernel.indexOf('bodyparser_middleware'), kernel.indexOf('session_middleware'))
+    assert.isBelow(kernel.indexOf('session_middleware'), kernel.indexOf('shield_middleware'))
+    assert.isBelow(
+      kernel.indexOf('shield_middleware'),
+      kernel.indexOf('initialize_auth_middleware')
+    )
+    await writeFile(
+      join(root, 'start/kernel.ts'),
+      "server.use([() => import('@adonisjs/auth/initialize_auth_middleware')])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])\n"
+    )
+    plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'start/kernel.ts'
+    )
+  })
+
+  test('semantic setup choices reject invalid registration, duration and abilities', ({
+    assert,
+  }) => {
+    const choices = defaultSetupChoices()
+    choices.policy.registration = 'typo' as never
+    assert.throws(() => parseSetupChoices(choices), /policy.registration/)
+    choices.policy.registration = 'open'
+    choices.authentication = {
+      strategy: 'access_tokens',
+      guard: 'api',
+      token: { revocation: true, lifetime: 'nonsense', abilities: ['*'] },
+      applicationRouteRevocation: true,
+    }
+    assert.throws(() => parseSetupChoices(choices), /authentication.token.lifetime/)
+    choices.authentication.token!.lifetime = '7d'
+    choices.authentication.token!.abilities = ['']
+    assert.throws(() => parseSetupChoices(choices), /authentication.token.abilities/)
   })
 
   test('additional registration fields are explicit and protected properties are refused', async ({
@@ -617,4 +810,33 @@ test.group('onboarding plan and apply', (group) => {
     )
     await assert.rejects(() => applySetup(root, blocked), /blocking diagnostics/)
   })
+
+  if (process.env.TEST_BUILT_SETUP === '1') {
+    test('built Ace command previews and applies packaged migration templates', async ({
+      assert,
+    }) => {
+      const builtPath = '../build/commands/setup.js'
+      const { default: BuiltSetup } = (await import(builtPath)) as {
+        default: typeof SetupAccountKit
+      }
+      const { root, choices } = await fixture()
+      const input = join(root, 'choices.json')
+      await writeFile(input, JSON.stringify(choices))
+      const ignitor = new IgnitorFactory()
+        .withCoreProviders()
+        .withCoreConfig()
+        .merge({
+          rcFileContents: { providers: [], commands: [async () => new ListLoader([BuiltSetup])] },
+        })
+        .create(pathToFileURL(`${root}/`))
+      await ignitor.ace().handle(['account-kit:setup', `--input=${input}`])
+      await ignitor.ace().handle(['account-kit:setup', `--input=${input}`, '--apply'])
+      const migrations = await readdir(join(root, 'database/migrations'))
+      assert.isAbove(migrations.filter((name) => name.includes('_account_kit_')).length, 0)
+      assert.deepEqual(
+        JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
+        choices
+      )
+    })
+  }
 })

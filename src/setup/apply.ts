@@ -1,7 +1,19 @@
 import { randomUUID } from 'node:crypto'
-import { lstat, mkdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import {
+  link,
+  lstat,
+  mkdir,
+  open,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import type { SetupFileChange, SetupPlan } from './types.js'
+import { safeSetupPath } from './safe_path.js'
 
 async function currentFile(path: string): Promise<string | null> {
   try {
@@ -14,36 +26,11 @@ async function currentFile(path: string): Promise<string | null> {
   }
 }
 
-async function assertSafePath(root: string, name: string): Promise<string> {
-  const path = resolve(root, name)
-  const fromRoot = relative(root, path)
-  if (
-    !name ||
-    name.startsWith('/') ||
-    fromRoot === '..' ||
-    fromRoot.startsWith('..' + sep) ||
-    path === root
-  )
-    throw new Error(`Setup path escapes the application: ${name}`)
-  let parent = dirname(path)
-  while (parent !== root) {
-    try {
-      const parentStat = await lstat(parent)
-      if (!parentStat.isDirectory())
-        throw new Error(`Setup refuses non-directory or symlink ${parent}`)
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    }
-    parent = dirname(parent)
-  }
-  return path
-}
-
 async function assertNoConflict(
   root: string,
   change: SetupFileChange
 ): Promise<'create' | 'update' | 'unchanged'> {
-  const path = await assertSafePath(root, change.path)
+  const path = await safeSetupPath(root, change.path)
   const existing = await currentFile(path)
   if (existing === null) {
     if (change.action === 'update')
@@ -57,7 +44,7 @@ async function assertNoConflict(
   )
 }
 
-/** Preflight all files, then check again immediately before each exclusive create. */
+/** Apply under a project lock. The caller must keep other editors out of this workspace. */
 export async function applySetup(root: string, plan: SetupPlan): Promise<string[]> {
   root = await realpath(root)
   if (plan.preview) throw new Error('Setup is in preview mode; pass --apply to write files')
@@ -67,28 +54,43 @@ export async function applySetup(root: string, plan: SetupPlan): Promise<string[
       `Setup has blocking diagnostics: ${blocking.map((item) => item.field).join(', ')}`
     )
   for (const change of plan.changes) await assertNoConflict(root, change)
+  const lockPath = join(root, '.account-kit-setup.lock')
+  let lock
+  try {
+    lock = await open(lockPath, 'wx', 0o600)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST')
+      throw new Error(
+        `Setup is already applying or was interrupted; inspect and remove ${lockPath} before retrying`
+      )
+    throw error
+  }
   const written: string[] = []
-  for (const change of plan.changes) {
-    const path = join(root, change.path)
-    const action = await assertNoConflict(root, change)
-    if (action === 'unchanged') continue
-    await mkdir(dirname(path), { recursive: true })
-    await assertSafePath(root, change.path)
-    if (action === 'create') {
-      await writeFile(path, change.content, { flag: 'wx', mode: 0o644 })
-    } else {
+  try {
+    await lock.writeFile(`${process.pid} ${new Date().toISOString()}\n`)
+    for (const change of plan.changes) await assertNoConflict(root, change)
+    for (const change of plan.changes) {
+      const path = await safeSetupPath(root, change.path)
+      const action = await assertNoConflict(root, change)
+      if (action === 'unchanged') continue
+      await mkdir(dirname(path), { recursive: true })
+      await safeSetupPath(root, change.path)
       const temp = `${path}.account-kit-${process.pid}-${randomUUID()}.tmp`
-      const fileStat = await stat(path)
-      const mode = fileStat.mode
       try {
+        const oldStat = action === 'update' ? await stat(path) : null
+        const mode = oldStat?.mode ?? 0o644
         await writeFile(temp, change.content, { flag: 'wx', mode })
         await assertNoConflict(root, change)
-        await rename(temp, path)
+        if (action === 'create') await link(temp, path)
+        else await rename(temp, path)
       } finally {
         await rm(temp, { force: true })
       }
+      written.push(change.path)
     }
-    written.push(change.path)
+  } finally {
+    await lock.close()
+    await rm(lockPath, { force: true })
   }
   return written
 }

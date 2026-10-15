@@ -1,5 +1,6 @@
 import { readFile, readdir, lstat, realpath } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, relative as pathRelative, sep } from 'node:path'
+import { safeSetupPath } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
 
@@ -26,7 +27,7 @@ const inspectedFiles = [
 ]
 
 async function readOptional(root: string, relative: string): Promise<string | null> {
-  const path = join(root, relative)
+  const path = await safeSetupPath(root, relative)
   try {
     const stat = await lstat(path)
     if (!stat.isFile()) throw new Error(`Setup cannot inspect non-regular file ${relative}`)
@@ -43,6 +44,25 @@ function existingGuards(source: string): string[] {
   return [...match[1].matchAll(/(?:^|[\s,{])([A-Za-z_][\w]*|['"][^'"]+['"])\s*:/gm)].map(
     ([, name]) => name.replace(/^['"]|['"]$/g, '')
   )
+}
+
+function guardStrategies(source: string): SetupInspection['guardStrategies'] {
+  const strategies: SetupInspection['guardStrategies'] = {}
+  for (const match of source.matchAll(
+    /(?:^|[,{\n])\s*(['"]?[\w-]+['"]?)\s*:\s*(sessionGuard|tokensGuard)\s*\(/g
+  ))
+    strategies[match[1].replace(/^['"]|['"]$/g, '')] =
+      match[2] === 'sessionGuard' ? 'session' : 'access_tokens'
+  return strategies
+}
+
+function guardModels(source: string): SetupInspection['guardModels'] {
+  const models: Record<string, string> = {}
+  for (const match of source.matchAll(
+    /(?:^|[,{\n])\s*['"]?([\w-]+)['"]?\s*:\s*(?:sessionGuard|tokensGuard)\s*\(\s*\{[^}]*?provider\s*:\s*(?:sessionUserProvider|tokensUserProvider)\s*\(\s*\{[^}]*?model\s*:\s*\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)/g
+  ))
+    models[match[1]] = match[2]
+  return models
 }
 
 function databaseKind(source: string): SetupInspection['database'] {
@@ -67,13 +87,34 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     dependencies?: Record<string, string>
     devDependencies?: Record<string, string>
   }
-  const installedPackages = [
+  const declaredPackages = [
     ...Object.keys(packageJson.dependencies ?? {}),
     ...Object.keys(packageJson.devDependencies ?? {}),
   ]
+  const installedVersions: Record<string, string> = {}
+  for (const name of declaredPackages) {
+    if (!/^(?:@[\w.-]+\/)?[\w.-]+$/.test(name)) continue
+    try {
+      await safeSetupPath(root, `node_modules/${name}`)
+      const directory = await realpath(join(root, 'node_modules', name))
+      const fromRoot = pathRelative(root, directory)
+      if (fromRoot === '..' || fromRoot.startsWith(`..${sep}`)) continue
+      const installed = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8')) as {
+        version?: string
+      }
+      if (typeof installed.version === 'string') installedVersions[name] = installed.version
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  }
+  const installedPackages = Object.keys(installedVersions)
   let migrationNames: string[] = []
   try {
-    migrationNames = await readdir(join(root, 'database/migrations'))
+    const migrationPath = await safeSetupPath(root, 'database/migrations')
+    const migrationStat = await lstat(migrationPath)
+    if (!migrationStat.isDirectory())
+      throw new Error(`Setup refuses non-directory or symlink ${migrationPath}`)
+    migrationNames = await readdir(migrationPath)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
@@ -99,13 +140,12 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     ),
     files,
     guards: existingGuards(files['config/auth.ts'] ?? ''),
+    guardStrategies: guardStrategies(files['config/auth.ts'] ?? ''),
+    guardModels: guardModels(files['config/auth.ts'] ?? ''),
     database: databaseKind(files['config/database.ts'] ?? ''),
-    connection: /connection\s*:\s*['"](?!default)[^'"]+['"]/.test(files['config/database.ts'] ?? '')
-      ? 'unsupported'
-      : files['config/database.ts']
-        ? 'default'
-        : 'unknown',
+    connection: files['config/database.ts'] ? 'default' : 'unknown',
     installedPackages,
+    installedVersions,
     migrationNames,
     existingPrefix,
     routePaths,
