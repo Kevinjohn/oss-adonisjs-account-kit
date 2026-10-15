@@ -10,23 +10,10 @@ import {
   InvalidInputError,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
+import { mapRegistrationFields } from './registration_fields.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type { AccountUser, RegistrationInput, ResolvedConfig } from './types.js'
-
-const PROTECTED_FIELDS = new Set([
-  'id',
-  'email',
-  'unverifiedemail',
-  'unverified_email',
-  'password',
-  'passwordhash',
-  'password_hash',
-  'emailverifiedat',
-  'email_verified_at',
-  'role',
-  'roles',
-])
 
 /** Create an inactive account and its activation proof in one transaction. */
 export async function register(
@@ -40,19 +27,7 @@ export async function register(
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid password')
 
-  let registrationData: Record<string, unknown> | undefined
-  if (input.registrationData !== undefined) {
-    if (!deps.config.registration?.mapFields)
-      throw new InvalidInputError('Registration fields are not configured')
-    registrationData = await deps.config.registration.mapFields(input.registrationData)
-    if (
-      !registrationData ||
-      typeof registrationData !== 'object' ||
-      Array.isArray(registrationData) ||
-      Object.keys(registrationData).some((key) => PROTECTED_FIELDS.has(key.toLowerCase()))
-    )
-      throw new InvalidInputError('Invalid registration fields')
-  }
+  const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
