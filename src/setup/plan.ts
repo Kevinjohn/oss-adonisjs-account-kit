@@ -617,7 +617,9 @@ function managedRoutesSource(choices: SetupChoices): string {
     'registerManagedRoutes(router, {',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
-    `  except: ${JSON.stringify(choices.managedExcept ?? [])},`,
+    ...('managedExcept' in choices
+      ? [`  except: ${JSON.stringify(choices.managedExcept ?? [])},`]
+      : []),
     `  verificationRequired: ${choices.policy.verificationRequired},`,
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
