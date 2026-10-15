@@ -61,6 +61,10 @@ This project has no published releases yet. The current candidate remains versio
 - `verification (package keyword)` → `email-verification` (doc).
 - `Account recovery / credential changes (package description)` → `Password reset / email and password management` (doc).
 - `Recovery (flow terminology)` → `Forgot password / password reset` (doc).
+- `MINIMUM_STAGE recovery-requested` → `MINIMUM_STAGE password-reset-requested` (doc).
+- `MINIMUM_STAGE verification-send-complete-verified-replay` → `MINIMUM_STAGE email-verification-send-complete-verified-replay` (doc).
+- `MINIMUM_PUBLIC_OPERATIONS: recovery` → `MINIMUM_PUBLIC_OPERATIONS: passwordReset` (doc).
+- `MINIMUM_PUBLIC_OPERATIONS: verification` → `MINIMUM_PUBLIC_OPERATIONS: emailVerification` (doc).
 
 - Configuration requires a stable limiter secret of at least 32 bytes. Applications should use a
   stable `APP_KEY` shared by instances using the same limiter store. Secret rotation resets limiter
@@ -75,6 +79,9 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Fixed
 
+- Package archives exclude private planning and review documents while retaining public docs and examples.
+- Installed-consumer upgrade checks preserve an outstanding password-reset proof through the table rename and verify one-time redemption.
+- Minimum-consumer diagnostic markers use the current password-reset and email-verification vocabulary.
 - Email-change requests and completions, invitation sends and invitation acceptance now run their
   notices, link deliveries, legacy credential callbacks and lifecycle events when the transaction
   commits but connection cleanup or a commit listener then fails. The operation still reports
