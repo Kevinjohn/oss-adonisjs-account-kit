@@ -369,7 +369,7 @@ try {
   }
 
   await account.passwordReset.request({ email: profile.email, clientKey: 'consumer-client' })
-  console.log('MINIMUM_STAGE recovery-requested')
+  console.log('MINIMUM_STAGE password-reset-requested')
   const recoveryToken = tokenFromUrl(notifications.passwordResetUrl)
   assert.equal(await account.passwordReset.inspect({ token: recoveryToken }), true)
   failCredentialTransaction = true
@@ -417,7 +417,7 @@ try {
   )
   await unverifiedUser.refresh()
   assert.ok(unverifiedUser.emailVerifiedAt)
-  console.log('MINIMUM_STAGE verification-send-complete-verified-replay')
+  console.log('MINIMUM_STAGE email-verification-send-complete-verified-replay')
 
   await account.emailPasswordManagement.changePassword({
     actorId: profile.id,
@@ -453,7 +453,7 @@ try {
   assert.equal(Number(emailChangeOutboxCount.count), 0)
   console.log('MINIMUM_STAGE authenticated-email-change')
   console.log(
-    `MINIMUM_PUBLIC_OPERATIONS ${JSON.stringify(['recovery', 'verification', 'password_change', 'email_change', 'invitations'])}`
+    `MINIMUM_PUBLIC_OPERATIONS ${JSON.stringify(['passwordReset', 'emailVerification', 'password_change', 'email_change', 'invitations'])}`
   )
 
   {

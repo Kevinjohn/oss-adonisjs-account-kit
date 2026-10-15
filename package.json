@@ -12,6 +12,9 @@
     "examples/api",
     "!build/bin",
     "!build/tests",
+    "!docs/reviews/**",
+    "!docs/PRD*.md",
+    "!PLAN*.md",
     "SECURITY.md"
   ],
   "main": "build/index.js",
