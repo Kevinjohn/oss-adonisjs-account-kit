@@ -13,6 +13,7 @@ import {
   invitationValidator,
 } from '#validators/account_kit'
 import { accountError, proofFailure, proofHeaders } from '#services/http_responses'
+import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 function invitationIdParam(value: string): number {
   const id = Number(value)
@@ -33,6 +34,7 @@ export default class InvitationsController {
       return ctx.response.created({ id: invitation.id })
     } catch (error) {
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        reportCommittedFailure(ctx.logger, error, 'invitation.send')
         return ctx.response.accepted({ requested: true })
       }
       throw error
@@ -75,13 +77,14 @@ export default class InvitationsController {
         return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
       }
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        reportCommittedFailure(ctx.logger, error, 'invitation.accept')
         return ctx.response.accepted({ accepted: true })
       }
       throw error
     }
   }
 
-  async resend({ auth, params, response }: HttpContext) {
+  async resend({ auth, params, response, logger }: HttpContext) {
     const actor = await auth.getUserOrFail()
     const kit = await app.container.make(AccountKit)
     try {
@@ -92,13 +95,14 @@ export default class InvitationsController {
       return response.ok({ id: invitation.id })
     } catch (error) {
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        reportCommittedFailure(logger, error, 'invitation.resend')
         return response.accepted({ requested: true })
       }
       throw error
     }
   }
 
-  async revoke({ auth, params, response }: HttpContext) {
+  async revoke({ auth, params, response, logger }: HttpContext) {
     const actor = await auth.getUserOrFail()
     const kit = await app.container.make(AccountKit)
     try {
@@ -108,6 +112,7 @@ export default class InvitationsController {
       })
     } catch (error) {
       if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      reportCommittedFailure(logger, error, 'invitation.revoke')
     }
     return response.noContent()
   }

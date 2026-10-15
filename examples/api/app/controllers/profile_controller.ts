@@ -10,6 +10,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { accountInput } from '#middleware/account_access_middleware'
 import { profileUpdateValidator } from '#validators/account_kit'
 import { proofFailure, proofHeaders } from '#services/http_responses'
+import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 function safeAccount(user: AccountUser) {
   return {
@@ -43,6 +44,7 @@ export default class ProfileController {
       return ctx.serialize(safeAccount(updated))
     } catch (error) {
       if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      reportCommittedFailure(ctx.logger, error, 'profile.update')
       return ctx.response.ok({ updated: true })
     }
   }
@@ -72,6 +74,7 @@ export default class ProfileController {
         return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
       }
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        reportCommittedFailure(ctx.logger, error, 'email_change.complete')
         return ctx.response.ok({ changed: true })
       }
       throw error
