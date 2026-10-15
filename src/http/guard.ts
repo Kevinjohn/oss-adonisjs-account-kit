@@ -53,6 +53,7 @@ type SessionContext<User> = HttpContext & {
     }
   }
   session: {
+    config?: { store?: string }
     regenerate(): void
     put(key: string, value: string): void
     get(key: string): unknown
@@ -64,6 +65,11 @@ type TokenContext<User> = HttpContext & {
 }
 
 const revisionKey = 'accountKitRevision'
+
+function assertServerSession(context: SessionContext<unknown>): void {
+  if (context.session?.config?.store === 'cookie')
+    throw new Error('Managed session authentication requires a server-side session store')
+}
 
 function managedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object' || !('id' in value)) throw new InvalidSessionError()
@@ -125,6 +131,7 @@ export function createManagedGuard<User>(
       name: options.name,
       async current(context) {
         const ctx = context as SessionContext<User>
+        assertServerSession(ctx)
         const user = await authenticate(ctx.auth.use(options.name))
         const stored = ctx.session.get(revisionKey)
         if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
@@ -135,6 +142,7 @@ export function createManagedGuard<User>(
       },
       forRequest(context) {
         const ctx = context as SessionContext<User>
+        assertServerSession(ctx)
         return {
           strategy: 'session',
           name: options.name,

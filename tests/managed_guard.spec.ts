@@ -25,6 +25,18 @@ test.group('managed existing-guard adapters', () => {
     } as never
     await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
   })
+  test('refuses cookie-backed sessions before issuing or trusting a credential', async ({
+    assert,
+  }) => {
+    const adapter = createManagedGuard({
+      strategy: 'session',
+      name: 'web',
+      loadUser: async () => ({ findOrFail: async () => ({ id: 1 }) }),
+    })
+    const ctx = { session: { config: { store: 'cookie' } } } as never
+    assert.throws(() => adapter.forRequest(ctx), /server-side session store/)
+    await assert.rejects(() => adapter.current(ctx), /server-side session store/)
+  })
   test('session login regenerates, captures revision, and current reads only authenticated state', async ({
     assert,
   }) => {
