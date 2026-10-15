@@ -84,17 +84,31 @@ export default class InvitationsController {
   async resend({ auth, params, response }: HttpContext) {
     const actor = await auth.getUserOrFail()
     const kit = await app.container.make(AccountKit)
-    const invitation = await kit.invitations.resend({
-      actorId: actor.id,
-      invitationId: invitationIdParam(params.id),
-    })
-    return response.ok({ id: invitation.id })
+    try {
+      const invitation = await kit.invitations.resend({
+        actorId: actor.id,
+        invitationId: invitationIdParam(params.id),
+      })
+      return response.ok({ id: invitation.id })
+    } catch (error) {
+      if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        return response.accepted({ requested: true })
+      }
+      throw error
+    }
   }
 
   async revoke({ auth, params, response }: HttpContext) {
     const actor = await auth.getUserOrFail()
     const kit = await app.container.make(AccountKit)
-    await kit.invitations.revoke({ actorId: actor.id, invitationId: invitationIdParam(params.id) })
+    try {
+      await kit.invitations.revoke({
+        actorId: actor.id,
+        invitationId: invitationIdParam(params.id),
+      })
+    } catch (error) {
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+    }
     return response.noContent()
   }
 }
