@@ -3,7 +3,7 @@ import env from '#start/env'
 
 export default class extends BaseSchema {
   async up() {
-    this.schema.createTable('account_recovery_tokens', (table) => {
+    this.schema.createTable('password_reset_tokens', (table) => {
       table.increments('id')
       const idType = env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer'
       const usersTable = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
@@ -22,6 +22,6 @@ export default class extends BaseSchema {
   }
 
   async down() {
-    this.schema.dropTable('account_recovery_tokens')
+    this.schema.dropTable('password_reset_tokens')
   }
 }

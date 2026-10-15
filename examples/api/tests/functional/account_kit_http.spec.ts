@@ -17,7 +17,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
 }) => {
   notifications.reset()
   await db.from('role_assignments').delete()
-  await db.from('account_recovery_tokens').delete()
+  await db.from('password_reset_tokens').delete()
   await db.from('account_invitations').delete()
   await db.from('account_email_changes').delete()
   await db.from('auth_access_tokens').delete()

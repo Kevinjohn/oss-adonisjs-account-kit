@@ -14,17 +14,20 @@ import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountUser,
-  RecoveryInspectInput,
-  RecoveryRequestInput,
-  RecoveryResetInput,
+  PasswordResetInspectInput,
+  PasswordResetRequestInput,
+  PasswordResetCompleteInput,
   ResolvedConfig,
   UserId,
 } from './types.js'
 
-export async function inspectRecovery(db: Database, input: RecoveryInspectInput): Promise<boolean> {
+export async function inspectPasswordReset(
+  db: Database,
+  input: PasswordResetInspectInput
+): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
   const row = await db
-    .from('account_recovery_tokens')
+    .from('password_reset_tokens')
     .select(db.raw('1'))
     .where('token_hash', hashToken(input.token))
     .where('expires_at', '>', DateTime.utc().toISO())
@@ -32,9 +35,9 @@ export async function inspectRecovery(db: Database, input: RecoveryInspectInput)
   return row !== null
 }
 
-export async function resetRecovery(
+export async function completePasswordReset(
   deps: { config: ResolvedConfig; db: Database },
-  input: RecoveryResetInput
+  input: PasswordResetCompleteInput
 ): Promise<AccountUser> {
   if (!isPasswordShaped(input.password)) throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
@@ -45,7 +48,7 @@ export async function resetRecovery(
       const { row, user: current } = await consumeUserToken<{ user_id: UserId; email: string }>(
         trx,
         deps.config,
-        'account_recovery_tokens',
+        'password_reset_tokens',
         input.token,
         (candidate) => candidate.email
       )
@@ -70,16 +73,16 @@ export async function resetRecovery(
     afterCommit(
       'Credentials changed but a follow-up failed',
       () => deps.config.onCredentialsChanged?.(user, context),
-      () => deps.config.notify.passwordReset(user, context),
+      () => deps.config.notify.passwordResetCompleted(user, context),
       () => deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId })
     )
   )
   return user
 }
 
-export async function requestRecovery(
+export async function requestPasswordReset(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
-  input: RecoveryRequestInput
+  input: PasswordResetRequestInput
 ): Promise<void> {
   const started = performance.now()
   try {
@@ -116,17 +119,17 @@ export async function requestRecovery(
         const current = await deps.config.users.findById(user.id, trx)
         if (!current || current.email !== email) return null
         await trx
-          .table('account_recovery_tokens')
+          .table('password_reset_tokens')
           .insert({
             user_id: current.id,
             email: current.email,
             token_hash: hashToken(token),
-            expires_at: expiresAt(now, deps.config.ttl.recovery).toISO(),
+            expires_at: expiresAt(now, deps.config.expiresIn.passwordReset).toISO(),
             created_at: now.toISO(),
           })
           .onConflict('user_id')
           .merge(['email', 'token_hash', 'expires_at', 'created_at'])
-        await deps.config.onRecoveryIssuedTransaction?.(current, trx)
+        await deps.config.onPasswordResetIssuedTransaction?.(current, trx)
         return current
       })
     )
@@ -139,13 +142,17 @@ export async function requestRecovery(
       postCommit('Recovery follow-up failed', [
         {
           kind: 'delivery',
-          run: () => deps.config.notify.recovery(issuedUser, deps.config.urls.recovery(token)),
+          run: () =>
+            deps.config.notify.passwordResetProvision(
+              issuedUser,
+              deps.config.urls.passwordReset(token)
+            ),
         },
         {
           kind: 'observer',
           run: () =>
             deps.config.onLifecycleEvent?.({
-              type: 'recovery.requested',
+              type: 'password_reset.requested',
               userId: issuedUser.id,
               operationId,
             }),

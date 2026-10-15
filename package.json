@@ -1,6 +1,6 @@
 {
   "name": "adonisjs-account-kit",
-  "description": "Account recovery, verification, invitations and credential changes for AdonisJS",
+  "description": "Password reset, email verification, invitations and email/password management for AdonisJS",
   "version": "0.0.0",
   "engines": {
     "node": ">=24.0.0"
@@ -51,8 +51,8 @@
   "keywords": [
     "adonisjs",
     "accounts",
-    "recovery",
-    "verification",
+    "password-reset",
+    "email-verification",
     "invitations"
   ],
   "author": "Kevinjohn Gallagher",

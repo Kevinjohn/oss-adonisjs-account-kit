@@ -408,8 +408,18 @@ async function runUpgrade(candidate, baseline, runName) {
   const env = databaseEnvironment(appRoot)
   const configPath = join(appRoot, 'config/account_kit.ts')
   const handlerPath = join(appRoot, 'app/exceptions/handler.ts')
+  const controllerPath = join(appRoot, 'app/controllers/account_kit_controller.ts')
   await copyFile(join(appRoot, 'upgrade/baseline_account_kit.ts'), configPath)
   await copyFile(join(appRoot, 'upgrade/baseline_handler.ts'), handlerPath)
+  // Only the temporary historical fixture uses the baseline package vocabulary.
+  const controller = await readFile(controllerPath, 'utf8')
+  await writeFile(
+    controllerPath,
+    controller
+      .replaceAll('.passwordReset.', '.recovery.')
+      .replaceAll('.emailVerification.', '.verification.')
+      .replaceAll('.emailPasswordManagement.', '.credentials.')
+  )
   for (const migration of await packageMigrations(appRoot)) await rm(migration)
   const baselineInstall = await installArchive(appRoot, baseline)
   await resetExclusivePostgresSchema(appRoot)
@@ -442,16 +452,37 @@ async function runUpgrade(candidate, baseline, runName) {
   )
     throw new Error('Upgrade configure changed an existing application migration')
   const newlyGenerated = upgradedMigrations.filter((file) => !appMigrations.includes(file))
+  const resetMigration = newlyGenerated.find((file) =>
+    file.endsWith('_account_kit_create_password_reset_tokens.ts')
+  )
   if (
-    newlyGenerated.length !== 1 ||
-    !newlyGenerated[0].endsWith('_account_kit_create_account_transaction_lock.ts')
+    newlyGenerated.length !== 2 ||
+    !resetMigration ||
+    !newlyGenerated.some((file) => file.endsWith('_account_kit_create_account_transaction_lock.ts'))
   ) {
     throw new Error(
-      `Upgrade should add only the transaction-lock migration; added: ${newlyGenerated.join(', ')}`
+      `Upgrade should add only the reset-token and transaction-lock migrations; added: ${newlyGenerated.join(', ')}`
     )
   }
+  // Rehearse the documented application-owned table rename without editing applied migrations.
+  await writeFile(
+    join(migrationDir, resetMigration),
+    `import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  async up() {
+    this.schema.renameTable('account_recovery_tokens', 'password_reset_tokens')
+  }
+
+  async down() {
+    this.schema.renameTable('password_reset_tokens', 'account_recovery_tokens')
+  }
+}
+`
+  )
   await copyFile(join(fixtureRoot, 'config/account_kit.ts'), configPath)
   await copyFile(join(fixtureRoot, 'app/exceptions/handler.ts'), handlerPath)
+  await writeFile(controllerPath, controller)
   const manuallyUpdatedConfigSha256 = await digest(configPath)
   const manuallyUpdatedHandlerSha256 = await digest(handlerPath)
   run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)

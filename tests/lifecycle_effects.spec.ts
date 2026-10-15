@@ -106,7 +106,7 @@ test.group('credential and lifecycle effects', (group) => {
     try {
       await assert.rejects(
         () =>
-          account.credentials.changePassword({
+          account.emailPasswordManagement.changePassword({
             actorId: user.id,
             currentPassword: 'password123',
             newPassword: 'changedPassword123',
@@ -120,7 +120,7 @@ test.group('credential and lifecycle effects', (group) => {
       assert.isTrue(await kit.hash.verify(unchanged.password, 'password123'))
 
       fail = false
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'password123',
         newPassword: 'changedPassword123',
@@ -147,7 +147,7 @@ test.group('credential and lifecycle effects', (group) => {
   }) => {
     const user = await insertUser(kit)
     const token = generateToken()
-    await kit.db.table('account_recovery_tokens').insert({
+    await kit.db.table('password_reset_tokens').insert({
       user_id: user.id,
       email: user.email,
       token_hash: hashToken(token),
@@ -165,17 +165,17 @@ test.group('credential and lifecycle effects', (group) => {
       },
     })
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'newPassword123' }),
+      () => account.passwordReset.reset({ token, password: 'newPassword123' }),
       /revoke failed/
     )
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(recorder.calls, 0)
     fail = false
-    await account.recovery.reset({ token, password: 'newPassword123' })
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    await account.passwordReset.reset({ token, password: 'newPassword123' })
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['passwordReset']
+      ['passwordResetCompleted']
     )
     assert.equal(events[0]?.type, 'password.reset')
   })
@@ -206,7 +206,7 @@ test.group('credential and lifecycle effects', (group) => {
     })
     let error: unknown
     try {
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'password123',
         newPassword: 'changedPassword123',
@@ -227,7 +227,7 @@ test.group('credential and lifecycle effects', (group) => {
     assert.isTrue(await kit.hash.verify(row.password, 'changedPassword123'))
   })
 
-  test('recovery issue emits for a known account even if delivery fails, and not for an unknown account', async ({
+  test('password reset issuance emits for a known account even if delivery fails, and not for an unknown account', async ({
     assert,
   }) => {
     const user = await insertUser(kit)
@@ -238,7 +238,7 @@ test.group('credential and lifecycle effects', (group) => {
       minRequestMs: 0,
       notify: {
         ...notify,
-        recovery: async () => {
+        passwordResetProvision: async () => {
           throw deliveryFailure
         },
       },
@@ -247,15 +247,15 @@ test.group('credential and lifecycle effects', (group) => {
       },
     })
     await assert.rejects(
-      () => account.recovery.request({ email: user.email, clientKey: 'client-one' }),
+      () => account.passwordReset.request({ email: user.email, clientKey: 'client-one' }),
       DeliveryError
     )
     assert.deepEqual(
       events.map((event) => event.type),
-      ['recovery.requested']
+      ['password_reset.requested']
     )
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
-    await account.recovery.request({ email: 'missing@example.test', clientKey: 'client-two' })
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
+    await account.passwordReset.request({ email: 'missing@example.test', clientKey: 'client-two' })
     assert.lengthOf(events, 1)
   })
 
@@ -272,8 +272,8 @@ test.group('credential and lifecycle effects', (group) => {
         events.push(event)
       },
     })
-    assert.equal(await account.verification.complete({ token }), 'verified')
-    assert.equal(await account.verification.complete({ token }), 'already_verified')
+    assert.equal(await account.emailVerification.complete({ token }), 'verified')
+    assert.equal(await account.emailVerification.complete({ token }), 'already_verified')
     assert.deepEqual(
       events.map((event) => event.type),
       ['verification.completed']
@@ -285,7 +285,7 @@ test.group('credential and lifecycle effects', (group) => {
   }) => {
     const user = await insertUser(kit)
     const { account: requesting, recorder } = makeService(kit)
-    await requesting.credentials.requestEmailChange({
+    await requesting.emailPasswordManagement.requestEmailChange({
       actorId: user.id,
       currentPassword: 'password123',
       newEmail: 'next@example.test',
@@ -299,12 +299,15 @@ test.group('credential and lifecycle effects', (group) => {
         if (fail) throw new Error('revoke failed')
       },
     })
-    await assert.rejects(() => account.credentials.completeEmailChange({ token }), /revoke failed/)
+    await assert.rejects(
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
+      /revoke failed/
+    )
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
     const unchanged = await kit.db.from('users').where('id', user.id).first()
     assert.equal(unchanged.email, user.email)
     fail = false
-    const changed = await account.credentials.completeEmailChange({ token })
+    const changed = await account.emailPasswordManagement.completeEmailChange({ token })
     assert.equal(changed.email, 'next@example.test')
     assert.equal(contexts.at(-1)?.operation, 'email_change')
     assert.equal(contexts.at(-1)?.userId, user.id)
@@ -323,7 +326,7 @@ test.group('credential and lifecycle effects', (group) => {
         throw listenerFailure
       },
     })
-    await account.credentials.requestEmailChange({
+    await account.emailPasswordManagement.requestEmailChange({
       actorId: user.id,
       currentPassword: 'password123',
       newEmail: user.email,
@@ -331,7 +334,7 @@ test.group('credential and lifecycle effects', (group) => {
     assert.lengthOf(events, 0)
     let failure: unknown
     try {
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'password123',
         newEmail: 'next@example.test',
@@ -347,7 +350,7 @@ test.group('credential and lifecycle effects', (group) => {
     )
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['emailChangeConfirm']
+      ['emailChangeProvision']
     )
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
   })
@@ -357,7 +360,7 @@ test.group('credential and lifecycle effects', (group) => {
   }) => {
     const user = await insertUser(kit)
     const token = generateToken()
-    await kit.db.table('account_recovery_tokens').insert({
+    await kit.db.table('password_reset_tokens').insert({
       user_id: user.id,
       email: user.email,
       token_hash: hashToken(token),
@@ -371,7 +374,7 @@ test.group('credential and lifecycle effects', (group) => {
     const { account } = makeService(kit, {
       notify: {
         ...defaults,
-        passwordReset: async () => {
+        passwordResetCompleted: async () => {
           order.push('notice')
         },
       },
@@ -386,14 +389,14 @@ test.group('credential and lifecycle effects', (group) => {
     })
     let failure: unknown
     try {
-      await account.recovery.reset({ token, password: 'newPassword123' })
+      await account.passwordReset.reset({ token, password: 'newPassword123' })
     } catch (caught) {
       failure = caught
     }
     assert.instanceOf(failure, PostCommitError)
     assert.deepEqual(((failure as PostCommitError).cause as AggregateError).errors, [first, last])
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 
   test('email completion attempts old-address notice and lifecycle listener after a failing legacy callback', async ({
@@ -401,7 +404,7 @@ test.group('credential and lifecycle effects', (group) => {
   }) => {
     const user = await insertUser(kit)
     const { account: requesting, recorder } = makeService(kit)
-    await requesting.credentials.requestEmailChange({
+    await requesting.emailPasswordManagement.requestEmailChange({
       actorId: user.id,
       currentPassword: 'password123',
       newEmail: 'next@example.test',
@@ -431,7 +434,7 @@ test.group('credential and lifecycle effects', (group) => {
     })
     let failure: unknown
     try {
-      await account.credentials.completeEmailChange({ token })
+      await account.emailPasswordManagement.completeEmailChange({ token })
     } catch (caught) {
       failure = caught
     }
@@ -469,7 +472,7 @@ test.group('credential and lifecycle effects', (group) => {
       },
     })
     try {
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'password123',
         newPassword: 'changedPassword123',

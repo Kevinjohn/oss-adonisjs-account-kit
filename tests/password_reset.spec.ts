@@ -2,7 +2,7 @@ import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
-import { requestRecovery } from '../src/recovery.js'
+import { requestPasswordReset } from '../src/password_reset.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import {
   DeliveryError,
@@ -23,7 +23,7 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
-test.group('recovery.request', (group) => {
+test.group('passwordReset.request', (group) => {
   const kit = useTestApp(group)
 
   const service = (overrides: Partial<Omit<AccountKitConfig, 'users'>> = {}) =>
@@ -35,12 +35,12 @@ test.group('recovery.request', (group) => {
     const recorder = makeNotify()
     const { account } = service({ notify: recorder.notify })
     assert.isUndefined(
-      await account.recovery.request({ email: 'unknown@example.test', clientKey: 'first' })
+      await account.passwordReset.request({ email: 'unknown@example.test', clientKey: 'first' })
     )
     assert.isUndefined(
-      await account.recovery.request({ email: 'missing@example.test', clientKey: 'second' })
+      await account.passwordReset.request({ email: 'missing@example.test', clientKey: 'second' })
     )
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(recorder.calls, 0)
   })
 
@@ -51,14 +51,14 @@ test.group('recovery.request', (group) => {
     const recorder = makeNotify()
     const { account } = service({ notify: recorder.notify })
     assert.isUndefined(
-      await account.recovery.request({ email: '  PERSON@EXAMPLE.TEST  ', clientKey: 'first' })
+      await account.passwordReset.request({ email: '  PERSON@EXAMPLE.TEST  ', clientKey: 'first' })
     )
     assert.lengthOf(recorder.calls, 1)
     const [notifiedUser, url] = recorder.calls[0].args
     assert.equal((notifiedUser as typeof user).id, user.id)
     const raw = tokenFrom(url)
     assert.match(raw, /^[A-Za-z0-9_-]{43}$/)
-    const rows = await kit.db.from('account_recovery_tokens')
+    const rows = await kit.db.from('password_reset_tokens')
     assert.lengthOf(rows, 1)
     assert.equal(rows[0].user_id, user.id)
     assert.equal(rows[0].email, user.email)
@@ -74,16 +74,16 @@ test.group('recovery.request', (group) => {
     await createUser()
     const recorder = makeNotify()
     const { account } = service({ notify: recorder.notify })
-    await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
-    const first = await kit.db.from('account_recovery_tokens').first()
-    await account.recovery.request({ email: 'person@example.test', clientKey: 'second' })
-    const second = await kit.db.from('account_recovery_tokens').first()
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
+    const first = await kit.db.from('password_reset_tokens').first()
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'second' })
+    const second = await kit.db.from('password_reset_tokens').first()
     assert.notEqual(first.token_hash, second.token_hash)
     await Promise.all([
-      account.recovery.request({ email: 'person@example.test', clientKey: 'third' }),
-      account.recovery.request({ email: 'person@example.test', clientKey: 'fourth' }),
+      account.passwordReset.request({ email: 'person@example.test', clientKey: 'third' }),
+      account.passwordReset.request({ email: 'person@example.test', clientKey: 'fourth' }),
     ])
-    const rows = await kit.db.from('account_recovery_tokens')
+    const rows = await kit.db.from('password_reset_tokens')
     assert.lengthOf(rows, 1)
     const concurrentHashes = recorder.calls
       .slice(2)
@@ -101,24 +101,24 @@ test.group('recovery.request', (group) => {
     let calls = 0
     const { account } = service({
       notify: recorder.notify,
-      onRecoveryIssuedTransaction: async (current, trx) => {
+      onPasswordResetIssuedTransaction: async (current, trx) => {
         calls++
         assert.equal(current.id, user.id)
         assert.equal(current.email, user.email)
-        const row = await trx.from('account_recovery_tokens').where('user_id', user.id).first()
+        const row = await trx.from('password_reset_tokens').where('user_id', user.id).first()
         assert.isNotNull(row)
         if (calls === 2) throw failure
       },
     })
-    await account.recovery.request({ email: user.email, clientKey: 'first' })
-    const before = await kit.db.from('account_recovery_tokens').where('user_id', user.id).first()
+    await account.passwordReset.request({ email: user.email, clientKey: 'first' })
+    const before = await kit.db.from('password_reset_tokens').where('user_id', user.id).first()
     try {
-      await account.recovery.request({ email: user.email, clientKey: 'second' })
+      await account.passwordReset.request({ email: user.email, clientKey: 'second' })
       assert.fail('expected claim refusal')
     } catch (error) {
       assert.equal(error, failure)
     }
-    const after = await kit.db.from('account_recovery_tokens').where('user_id', user.id).first()
+    const after = await kit.db.from('password_reset_tokens').where('user_id', user.id).first()
     assert.deepEqual(after, before)
     assert.equal(calls, 2)
     assert.lengthOf(recorder.calls, 1)
@@ -132,7 +132,7 @@ test.group('recovery.request', (group) => {
     let lifecycle = 0
     const { account } = service({
       notify: recorder.notify,
-      onRecoveryIssuedTransaction: async (_current, trx) => {
+      onPasswordResetIssuedTransaction: async (_current, trx) => {
         hooks++
         trx.on('commit', () => {
           throw failure
@@ -143,7 +143,7 @@ test.group('recovery.request', (group) => {
       },
     })
     try {
-      await account.recovery.request({ email: user.email, clientKey: 'first' })
+      await account.passwordReset.request({ email: user.email, clientKey: 'first' })
       assert.fail('expected committed failure')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -153,11 +153,13 @@ test.group('recovery.request', (group) => {
     assert.equal(lifecycle, 1)
     assert.lengthOf(recorder.calls, 1)
     const token = tokenFrom(recorder.calls[0].args[1])
-    const row = await kit.db.from('account_recovery_tokens').where('user_id', user.id).first()
+    const row = await kit.db.from('password_reset_tokens').where('user_id', user.id).first()
     assert.equal(row.token_hash, hashToken(token))
   })
 
-  test('stale preflight email does not replace a recovery token or notify', async ({ assert }) => {
+  test('stale preflight email does not replace a password reset token or notify', async ({
+    assert,
+  }) => {
     const user = await createUser()
     let hookCalls = 0
     const recorder = makeNotify()
@@ -179,14 +181,14 @@ test.group('recovery.request', (group) => {
             },
           },
           notify: recorder.notify,
-          onRecoveryIssuedTransaction: async () => {
+          onPasswordResetIssuedTransaction: async () => {
             hookCalls++
           },
         })
       )
     )
-    await account.recovery.request({ email: user.email, clientKey: 'first' })
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    await account.passwordReset.request({ email: user.email, clientKey: 'first' })
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.equal(hookCalls, 0)
     assert.lengthOf(recorder.calls, 0)
   })
@@ -210,9 +212,12 @@ test.group('recovery.request', (group) => {
     )
     const account = accountKit(kit, config)
     for (let index = 0; index < 5; index++)
-      await account.recovery.request({ email: `unknown${index}@example.test`, clientKey: 'same' })
+      await account.passwordReset.request({
+        email: `unknown${index}@example.test`,
+        clientKey: 'same',
+      })
     try {
-      await account.recovery.request({ email: 'unknown5@example.test', clientKey: 'same' })
+      await account.passwordReset.request({ email: 'unknown5@example.test', clientKey: 'same' })
       assert.fail('expected throttle')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
@@ -242,9 +247,15 @@ test.group('recovery.request', (group) => {
     )
     const account = accountKit(kit, config)
     for (let index = 0; index < 5; index++)
-      await account.recovery.request({ email: 'Person@Example.Test', clientKey: `client${index}` })
+      await account.passwordReset.request({
+        email: 'Person@Example.Test',
+        clientKey: `client${index}`,
+      })
     try {
-      await account.recovery.request({ email: '  person@example.test  ', clientKey: 'client5' })
+      await account.passwordReset.request({
+        email: '  person@example.test  ',
+        clientKey: 'client5',
+      })
       assert.fail('expected throttle')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
@@ -256,16 +267,19 @@ test.group('recovery.request', (group) => {
   test('delivery failure leaves the committed row and carries its cause', async ({ assert }) => {
     await createUser()
     const recorder = makeNotify()
-    recorder.failOn('recovery')
+    recorder.failOn('passwordResetProvision')
     const { account } = service({ notify: recorder.notify })
     try {
-      await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
+      await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
       assert.fail('expected delivery failure')
     } catch (error) {
       assert.instanceOf(error, DeliveryError)
-      assert.equal(((error as DeliveryError).cause as Error).message, 'notify.recovery failed')
+      assert.equal(
+        ((error as DeliveryError).cause as Error).message,
+        'notify.passwordResetProvision failed'
+      )
     }
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 
   test('URL callback failure is a delivery error after commit', async ({ assert }) => {
@@ -274,19 +288,19 @@ test.group('recovery.request', (group) => {
     const { account } = service({
       urls: {
         ...makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }).urls,
-        recovery: () => {
+        passwordReset: () => {
           throw failure
         },
       },
     })
     try {
-      await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
+      await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
       assert.fail('expected URL failure')
     } catch (error) {
       assert.instanceOf(error, DeliveryError)
       assert.equal((error as DeliveryError).cause, failure)
     }
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 
   test('known and unknown requests both take at least the configured minimum', async ({
@@ -295,10 +309,10 @@ test.group('recovery.request', (group) => {
     await createUser()
     const { account } = service({ minRequestMs: 40 })
     const unknownStart = performance.now()
-    await account.recovery.request({ email: 'unknown@example.test', clientKey: 'first' })
+    await account.passwordReset.request({ email: 'unknown@example.test', clientKey: 'first' })
     const unknownElapsed = performance.now() - unknownStart
     const knownStart = performance.now()
-    await account.recovery.request({ email: 'person@example.test', clientKey: 'second' })
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'second' })
     const knownElapsed = performance.now() - knownStart
     assert.isAtLeast(unknownElapsed, 40)
     assert.isAtLeast(knownElapsed, 40)
@@ -315,7 +329,7 @@ test.group('recovery.request', (group) => {
     const limiter = { use: () => ({ consume: async () => {} }) } as never
     for (let index = 0; index < 30; index++) {
       const started = performance.now()
-      await requestRecovery(
+      await requestPasswordReset(
         { config, db: kit.db, limiter },
         { email: 'unknown@example.test', clientKey: 'fast' }
       )
@@ -329,7 +343,7 @@ test.group('recovery.request', (group) => {
     for (let index = 0; index < 30; index++) {
       const started = performance.now()
       try {
-        await requestRecovery(
+        await requestPasswordReset(
           { config, db: kit.db, limiter },
           { email: 'invalid', clientKey: 'fast' }
         )
@@ -346,10 +360,10 @@ test.group('recovery.request', (group) => {
     const { account } = service({ notify: recorder.notify })
     for (const email of ['invalid', '@ab', 'ab@', '  @  ', 'a b@example.test'])
       await assert.rejects(
-        () => account.recovery.request({ email, clientKey: 'first' }),
+        () => account.passwordReset.request({ email, clientKey: 'first' }),
         InvalidInputError
       )
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(recorder.calls, 0)
   })
 
@@ -359,19 +373,22 @@ test.group('recovery.request', (group) => {
     const { account } = service()
     for (const clientKey of [undefined, '', '   ', 7]) {
       try {
-        await account.recovery.request({ email: 'person@example.test', clientKey } as never)
+        await account.passwordReset.request({ email: 'person@example.test', clientKey } as never)
         assert.fail('expected invalid input')
       } catch (error) {
         assert.instanceOf(error, InvalidInputError)
       }
     }
     for (let index = 0; index < 5; index++) {
-      await account.recovery.request({ email: `unknown${index}@example.test`, clientKey: 'ok' })
+      await account.passwordReset.request({
+        email: `unknown${index}@example.test`,
+        clientKey: 'ok',
+      })
     }
   })
 })
 
-test.group('recovery.reset', (group) => {
+test.group('passwordReset.reset', (group) => {
   const kit = useTestApp(group)
 
   const service = (overrides: Partial<AccountKitConfig> = {}, users?: AccountKitConfig['users']) =>
@@ -382,7 +399,7 @@ test.group('recovery.reset', (group) => {
     await insertUser(kit, { password: options.password, verified: options.verified !== false })
     const recorder = makeNotify()
     const account = service({ notify: recorder.notify })
-    await account.recovery.request({ email, clientKey: 'reset-fixture' })
+    await account.passwordReset.request({ email, clientKey: 'reset-fixture' })
     const token = tokenFrom(recorder.calls[0].args[1])
     const user = await kit.db.from('users').first()
     return { account, token, user, recorder }
@@ -397,44 +414,44 @@ test.group('recovery.reset', (group) => {
     assert,
   }) => {
     const { account, token, user } = await issue()
-    const result = await account.recovery.reset({ token, password: 'new-password123' })
+    const result = await account.passwordReset.reset({ token, password: 'new-password123' })
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(result.id, user.id)
     assert.isTrue(result.hasPassword)
     assert.notEqual(stored.password, 'new-password123')
     assert.isTrue(await kit.hash.verify(stored.password, 'new-password123'))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 
   test('expired, reused, and malformed tokens cannot change the password', async ({ assert }) => {
     const { account, token, user } = await issue()
     const original = user.password
     await kit.db
-      .from('account_recovery_tokens')
+      .from('password_reset_tokens')
       .update({ expires_at: DateTime.utc().minus({ minute: 1 }).toISO() })
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'new-password123' }),
+      () => account.passwordReset.reset({ token, password: 'new-password123' }),
       InvalidTokenError
     )
     await assert.rejects(
-      () => account.recovery.reset({ token: 'bad', password: 'new-password123' }),
+      () => account.passwordReset.reset({ token: 'bad', password: 'new-password123' }),
       InvalidTokenError
     )
     await assert.rejects(
-      () => account.recovery.reset({ token: null as never, password: 'new-password123' }),
+      () => account.passwordReset.reset({ token: null as never, password: 'new-password123' }),
       InvalidTokenError
     )
     await assert.rejects(
-      () => account.recovery.reset({ token: generateToken(), password: 'new-password123' }),
+      () => account.passwordReset.reset({ token: generateToken(), password: 'new-password123' }),
       InvalidTokenError
     )
     assert.equal(await storedPassword(), original)
     await kit.db
-      .from('account_recovery_tokens')
+      .from('password_reset_tokens')
       .update({ expires_at: DateTime.utc().plus({ minute: 1 }).toISO() })
-    await account.recovery.reset({ token, password: 'new-password123' })
+    await account.passwordReset.reset({ token, password: 'new-password123' })
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'another-password' }),
+      () => account.passwordReset.reset({ token, password: 'another-password' }),
       InvalidTokenError
     )
     assert.notEqual(await storedPassword(), original)
@@ -445,19 +462,19 @@ test.group('recovery.reset', (group) => {
     const { account, token, user } = await issue()
     for (const password of [null, 123, '1234567', 'x'.repeat(257)]) {
       await assert.rejects(
-        () => account.recovery.reset({ token: 'bad', password: password as never }),
+        () => account.passwordReset.reset({ token: 'bad', password: password as never }),
         InvalidInputError
       )
     }
     assert.equal(await storedPassword(), user.password)
-    await account.recovery.reset({ token, password: '12345678' })
+    await account.passwordReset.reset({ token, password: '12345678' })
     assert.isTrue(await kit.hash.verify((await storedPassword())!, '12345678'))
   })
 
   test('accepts a 256-unit password without changing its bytes', async ({ assert }) => {
     const { account, token } = await issue()
     const password = '😀'.repeat(128)
-    await account.recovery.reset({ token, password })
+    await account.passwordReset.reset({ token, password })
     assert.isTrue(await kit.hash.verify((await storedPassword())!, password))
   })
 
@@ -465,13 +482,13 @@ test.group('recovery.reset', (group) => {
     const { account, token, user } = await issue()
     await kit.db.from('users').where('id', user.id).update({ email: 'changed@example.test' })
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'new-password123' }),
+      () => account.passwordReset.reset({ token, password: 'new-password123' }),
       InvalidTokenError
     )
     assert.equal(await storedPassword(), user.password)
     await kit.db.from('users').where('id', user.id).delete()
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'new-password123' }),
+      () => account.passwordReset.reset({ token, password: 'new-password123' }),
       InvalidTokenError
     )
   })
@@ -481,17 +498,17 @@ test.group('recovery.reset', (group) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const account = service({}, { ...users, findById: async () => null })
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'new-password123' }),
+      () => account.passwordReset.reset({ token, password: 'new-password123' }),
       InvalidTokenError
     )
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 
   test('two independent reset transactions allow only one use', async ({ assert }) => {
     const { account, token } = await issue()
     const results = await Promise.allSettled([
-      account.recovery.reset({ token, password: 'first-password' }),
-      account.recovery.reset({ token, password: 'second-password' }),
+      account.passwordReset.reset({ token, password: 'first-password' }),
+      account.passwordReset.reset({ token, password: 'second-password' }),
     ])
     assert.lengthOf(
       results.filter((result) => result.status === 'fulfilled'),
@@ -531,11 +548,11 @@ test.group('recovery.reset', (group) => {
       }
     )
     await assert.rejects(
-      () => account.recovery.reset({ token, password: 'new-password123' }),
+      () => account.passwordReset.reset({ token, password: 'new-password123' }),
       failure.message
     )
     assert.equal(await storedPassword(), user.password)
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.deepEqual(await kit.db.from('account_email_changes'), emailChangeRows)
     assert.equal(callbackCalls, 0)
   })
@@ -552,7 +569,7 @@ test.group('recovery.reset', (group) => {
       expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
       created_at: DateTime.utc().toISO(),
     })
-    const result = await account.recovery.reset({ token, password: 'new-password123' })
+    const result = await account.passwordReset.reset({ token, password: 'new-password123' })
     assert.isTrue(result.hasPassword)
     assert.isNotNull(result.emailVerifiedAt)
     assert.isTrue(await kit.hash.verify((await storedPassword())!, 'new-password123'))
@@ -567,7 +584,7 @@ test.group('recovery.reset', (group) => {
         calls.push(user)
       },
     })
-    const result = await account.recovery.reset({ token, password: 'new-password123' })
+    const result = await account.passwordReset.reset({ token, password: 'new-password123' })
     assert.deepEqual(calls, [result])
     assert.isTrue(result.hasPassword)
     assert.isNotNull(result.emailVerifiedAt)
@@ -595,7 +612,7 @@ test.group('recovery.reset', (group) => {
         created_at: DateTime.utc().toISO(),
       })
       const user = await customKit.db.from('users').first()
-      await customKit.db.table('account_recovery_tokens').insert({
+      await customKit.db.table('password_reset_tokens').insert({
         user_id: user.id,
         email,
         token_hash: hashToken(token),
@@ -603,7 +620,7 @@ test.group('recovery.reset', (group) => {
         created_at: DateTime.utc().toISO(),
       })
       reader = await customKit.db.transaction()
-      await reader.from('account_recovery_tokens').first()
+      await reader.from('password_reset_tokens').first()
       const users = makeUsersAdapter(customKit.db, customKit.hash)
       const config = defineConfig(
         makeConfig({
@@ -637,7 +654,7 @@ test.group('recovery.reset', (group) => {
           }
         }, 80)
       })
-      await account.recovery.reset({ token, password: 'new-password123' })
+      await account.passwordReset.reset({ token, password: 'new-password123' })
       await release
       assert.equal(calls, 1)
       assert.isTrue(observedCommitted)
@@ -663,7 +680,7 @@ test.group('recovery.reset', (group) => {
       },
       notify: {
         ...makeNotify().notify,
-        passwordReset: async () => {
+        passwordResetCompleted: async () => {
           calls.push('notice')
         },
       },
@@ -672,7 +689,7 @@ test.group('recovery.reset', (group) => {
       },
     })
     try {
-      await account.recovery.reset({ token, password: 'new-password123' })
+      await account.passwordReset.reset({ token, password: 'new-password123' })
       assert.fail('expected committed failure')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -681,7 +698,7 @@ test.group('recovery.reset', (group) => {
     assert.deepEqual(calls, ['notice', 'lifecycle'])
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'new-password123'))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 
   test('post-commit failure preserves the changed password and reports its cause', async ({
@@ -695,18 +712,18 @@ test.group('recovery.reset', (group) => {
       },
     })
     try {
-      await account.recovery.reset({ token, password: 'new-password123' })
+      await account.passwordReset.reset({ token, password: 'new-password123' })
       assert.fail('expected PostCommitError')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
       assert.equal((error as PostCommitError).cause, failure)
     }
     assert.isTrue(await kit.hash.verify((await storedPassword())!, 'new-password123'))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 })
 
-test.group('recovery.inspect', (group) => {
+test.group('passwordReset.inspect', (group) => {
   const kit = useTestApp(group)
 
   async function issue() {
@@ -724,7 +741,7 @@ test.group('recovery.inspect', (group) => {
     const recorder = makeNotify()
     const config = defineConfig(makeConfig({ users, notify: recorder.notify, minRequestMs: 0 }))
     const account = accountKit(kit, config)
-    await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
     const token = tokenFrom(recorder.calls[0].args[1])
     return { account, token }
   }
@@ -733,30 +750,30 @@ test.group('recovery.inspect', (group) => {
     assert,
   }) => {
     const { account, token } = await issue()
-    assert.isTrue(await account.recovery.inspect({ token }))
-    assert.isTrue(await account.recovery.inspect({ token }))
-    const rows = await kit.db.from('account_recovery_tokens')
+    assert.isTrue(await account.passwordReset.inspect({ token }))
+    assert.isTrue(await account.passwordReset.inspect({ token }))
+    const rows = await kit.db.from('password_reset_tokens')
     assert.lengthOf(rows, 1)
     assert.equal(rows[0].token_hash, hashToken(token))
   })
 
   test('expired token is rejected', async ({ assert }) => {
     const { account, token } = await issue()
-    await kit.db.from('account_recovery_tokens').update({
+    await kit.db.from('password_reset_tokens').update({
       expires_at: DateTime.utc().minus({ minutes: 1 }).toISO(),
     })
-    assert.isFalse(await account.recovery.inspect({ token }))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.isFalse(await account.passwordReset.inspect({ token }))
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 
   test('unknown and malformed tokens return false before malformed values reach hashing or the database', async ({
     assert,
   }) => {
     const { account } = await issue()
-    assert.isFalse(await account.recovery.inspect({ token: generateToken() }))
+    assert.isFalse(await account.passwordReset.inspect({ token: generateToken() }))
     for (const token of [null, undefined, 42, {}, [], '', 'a'.repeat(42), '!'.repeat(43)]) {
-      assert.isFalse(await account.recovery.inspect({ token: token as never }))
+      assert.isFalse(await account.passwordReset.inspect({ token: token as never }))
     }
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 })

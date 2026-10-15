@@ -48,7 +48,7 @@ test('account workflows support string user IDs with matching application-owned 
       role: 'member',
     })
     assert.equal(invitation.inviterId, actor.id)
-    const invitationCall = recorder.calls.find((call) => call.method === 'invitation')!
+    const invitationCall = recorder.calls.find((call) => call.method === 'invitationProvision')!
     const invitationToken = tokenFrom(invitationCall.args[1])
     const invited = await account.invitations.accept({
       token: invitationToken,
@@ -57,26 +57,26 @@ test('account workflows support string user IDs with matching application-owned 
     assert.isString(invited.id)
     assert.match(String(invited.id), /^[a-f\d-]{36}$/)
 
-    await account.recovery.request({ email: actor.email, clientKey: 'text-id-client' })
-    const recoveryCall = recorder.calls.find((call) => call.method === 'recovery')!
+    await account.passwordReset.request({ email: actor.email, clientKey: 'text-id-client' })
+    const recoveryCall = recorder.calls.find((call) => call.method === 'passwordResetProvision')!
     const recoveryToken = tokenFrom(recoveryCall.args[1])
-    const reset = await account.recovery.reset({
+    const reset = await account.passwordReset.reset({
       token: recoveryToken,
       password: 'resetPassword123',
     })
     assert.equal(reset.id, actor.id)
-    await account.credentials.requestEmailChange({
+    await account.emailPasswordManagement.requestEmailChange({
       actorId: actor.id,
       currentPassword: 'resetPassword123',
       newEmail: 'changed@example.test',
     })
-    const emailCall = recorder.calls.find((call) => call.method === 'emailChangeConfirm')!
+    const emailCall = recorder.calls.find((call) => call.method === 'emailChangeProvision')!
     const emailToken = tokenFrom(emailCall.args[2])
-    const changed = await account.credentials.completeEmailChange({ token: emailToken })
+    const changed = await account.emailPasswordManagement.completeEmailChange({ token: emailToken })
     assert.equal(changed.id, actor.id)
     assert.equal(changed.email, 'changed@example.test')
     await kit.db.from('users').where('id', actor.id).delete()
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(await kit.db.from('account_email_changes'), 0)
   } finally {
     await kit.close()
