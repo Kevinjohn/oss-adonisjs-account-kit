@@ -92,6 +92,105 @@ test.group('recovery.request', (group) => {
     assert.lengthOf(recorder.calls, 4)
   })
 
+  test('issuance hook sees the locked current user and rolls back a rejected replacement', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const failure = new Error('claim refused')
+    let calls = 0
+    const { account } = service({
+      notify: recorder.notify,
+      onRecoveryIssuedTransaction: async (current, trx) => {
+        calls++
+        assert.equal(current.id, user.id)
+        assert.equal(current.email, user.email)
+        const row = await trx.from('account_recovery_tokens').where('user_id', user.id).first()
+        assert.isNotNull(row)
+        if (calls === 2) throw failure
+      },
+    })
+    await account.recovery.request({ email: user.email, clientKey: 'first' })
+    const before = await kit.db.from('account_recovery_tokens').where('user_id', user.id).first()
+    try {
+      await account.recovery.request({ email: user.email, clientKey: 'second' })
+      assert.fail('expected claim refusal')
+    } catch (error) {
+      assert.equal(error, failure)
+    }
+    const after = await kit.db.from('account_recovery_tokens').where('user_id', user.id).first()
+    assert.deepEqual(after, before)
+    assert.equal(calls, 2)
+    assert.lengthOf(recorder.calls, 1)
+  })
+
+  test('verified issuance commit fault still captures its delivery once', async ({ assert }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const failure = new Error('issuance listener failed')
+    let hooks = 0
+    let lifecycle = 0
+    const { account } = service({
+      notify: recorder.notify,
+      onRecoveryIssuedTransaction: async (_current, trx) => {
+        hooks++
+        trx.on('commit', () => {
+          throw failure
+        })
+      },
+      onLifecycleEvent: async () => {
+        lifecycle++
+      },
+    })
+    try {
+      await account.recovery.request({ email: user.email, clientKey: 'first' })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.equal(hooks, 1)
+    assert.equal(lifecycle, 1)
+    assert.lengthOf(recorder.calls, 1)
+    const token = tokenFrom(recorder.calls[0].args[1])
+    const row = await kit.db.from('account_recovery_tokens').where('user_id', user.id).first()
+    assert.equal(row.token_hash, hashToken(token))
+  })
+
+  test('stale preflight email does not replace a recovery token or notify', async ({ assert }) => {
+    const user = await createUser()
+    let hookCalls = 0
+    const recorder = makeNotify()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const account = accountKit(
+      kit,
+      defineConfig(
+        makeConfig({
+          users: {
+            ...users,
+            async findByEmail(email, trx, options) {
+              const found = await users.findByEmail(email, trx, options)
+              if (!trx && found)
+                await kit.db
+                  .from('users')
+                  .where('id', found.id)
+                  .update({ email: 'bruce@example.test' })
+              return found
+            },
+          },
+          notify: recorder.notify,
+          onRecoveryIssuedTransaction: async () => {
+            hookCalls++
+          },
+        })
+      )
+    )
+    await account.recovery.request({ email: user.email, clientKey: 'first' })
+    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.equal(hookCalls, 0)
+    assert.lengthOf(recorder.calls, 0)
+  })
+
   test('the sixth client request is throttled before user lookup', async ({ assert }) => {
     let lookups = 0
     const users = makeUsersAdapter(kit.db, kit.hash)
@@ -344,7 +443,7 @@ test.group('recovery.reset', (group) => {
 
   test('password validation runs first and accepts its length boundaries', async ({ assert }) => {
     const { account, token, user } = await issue()
-    for (const password of [null, 123, '1234567', 'x'.repeat(256)]) {
+    for (const password of [null, 123, '1234567', 'x'.repeat(257)]) {
       await assert.rejects(
         () => account.recovery.reset({ token: 'bad', password: password as never }),
         InvalidInputError
@@ -355,9 +454,9 @@ test.group('recovery.reset', (group) => {
     assert.isTrue(await kit.hash.verify((await storedPassword())!, '12345678'))
   })
 
-  test('accepts a 255-character password', async ({ assert }) => {
+  test('accepts a 256-unit password without changing its bytes', async ({ assert }) => {
     const { account, token } = await issue()
-    const password = 'p'.repeat(255)
+    const password = '😀'.repeat(128)
     await account.recovery.reset({ token, password })
     assert.isTrue(await kit.hash.verify((await storedPassword())!, password))
   })
@@ -548,6 +647,42 @@ test.group('recovery.reset', (group) => {
       await customKit.close()
     }
   }).timeout(8000)
+
+  test('reset attempts notices and lifecycle once after verified COMMIT listener failure', async ({
+    assert,
+  }) => {
+    const { account: unused, token, user } = await issue()
+    void unused
+    const failure = new Error('reset listener failed')
+    const calls: string[] = []
+    const account = service({
+      onCredentialsChangedTransaction: async (_current, _context, trx) => {
+        trx.on('commit', () => {
+          throw failure
+        })
+      },
+      notify: {
+        ...makeNotify().notify,
+        passwordReset: async () => {
+          calls.push('notice')
+        },
+      },
+      onLifecycleEvent: async () => {
+        calls.push('lifecycle')
+      },
+    })
+    try {
+      await account.recovery.reset({ token, password: 'new-password123' })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(calls, ['notice', 'lifecycle'])
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isTrue(await kit.hash.verify(row.password, 'new-password123'))
+    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+  })
 
   test('post-commit failure preserves the changed password and reports its cause', async ({
     assert,

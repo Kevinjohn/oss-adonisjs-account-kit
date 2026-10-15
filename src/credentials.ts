@@ -2,7 +2,13 @@ import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
+import {
+  committedResult,
+  consumeUserToken,
+  isUserEmailUniqueViolation,
+  lockUser,
+  transaction,
+} from './db.js'
 import { afterCommit, postCommit } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
@@ -11,6 +17,7 @@ import {
   InvalidInputError,
   InvalidTokenError,
   NoPasswordError,
+  PostCommitError,
 } from './errors.js'
 import { isPasswordShaped } from './password.js'
 import { consume } from './throttle.js'
@@ -61,28 +68,46 @@ export async function changePassword(
     deps.config.limiterNamespace
   )
   const operationId = randomUUID()
-  const user = await transaction(deps.db, async (trx) => {
-    const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
-    await deps.config.users.setPassword(actor.id, input.newPassword, trx)
-    await trx.from('account_recovery_tokens').where('user_id', actor.id).delete()
-    await trx.from('account_email_changes').where('user_id', actor.id).delete()
-    const reloaded = await deps.config.users.findById(actor.id, trx)
-    if (!reloaded) throw new InvalidInputError('Unknown actor')
-    await deps.config.onCredentialsChangedTransaction?.(
-      reloaded,
-      { operation: 'password_change', operationId, userId: reloaded.id },
-      trx
-    )
-    return reloaded
-  })
+  let user: AccountUser
+  let committedFault: PostCommitError | undefined
+  try {
+    user = await transaction(deps.db, async (trx) => {
+      const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
+      await deps.config.users.setPassword(actor.id, input.newPassword, trx)
+      await trx.from('account_recovery_tokens').where('user_id', actor.id).delete()
+      await trx.from('account_email_changes').where('user_id', actor.id).delete()
+      const reloaded = await deps.config.users.findById(actor.id, trx)
+      if (!reloaded) throw new InvalidInputError('Unknown actor')
+      await deps.config.onCredentialsChangedTransaction?.(
+        reloaded,
+        { operation: 'password_change', operationId, userId: reloaded.id },
+        trx
+      )
+      return reloaded
+    })
+  } catch (error) {
+    const saved = committedResult<AccountUser>(error)
+    if (!saved) throw error
+    user = saved.value
+    committedFault = error as PostCommitError
+  }
 
   const context = { operation: 'password_change' as const, operationId, userId: user.id }
-  await afterCommit(
-    'Credentials changed but a follow-up failed',
-    () => deps.config.onCredentialsChanged?.(user, context),
-    () => deps.config.notify.passwordChanged(user, context),
-    () => deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
-  )
+  try {
+    await afterCommit(
+      'Credentials changed but a follow-up failed',
+      () => deps.config.onCredentialsChanged?.(user, context),
+      () => deps.config.notify.passwordChanged(user, context),
+      () =>
+        deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
+    )
+  } catch (error) {
+    if (!committedFault) throw error
+    throw new PostCommitError('Credentials changed but follow-ups failed', {
+      cause: new AggregateError([committedFault.cause, (error as Error).cause ?? error]),
+    })
+  }
+  if (committedFault) throw committedFault
 }
 
 export async function requestEmailChange(
