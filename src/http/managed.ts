@@ -420,7 +420,13 @@ export function registerManagedRoutes<Credential>(
   )
     throw new Error('Managed access-token routes require publicCredential')
   const existing = (router.toJSON().root ?? []).flatMap((route) =>
-    route.methods.map((method) => ({ method, path: route.pattern, name: route.name }))
+    route.methods.map((method) => ({
+      method,
+      path: route.pattern,
+      name: route.name,
+      tokens: route.tokens,
+      matchers: route.matchers,
+    }))
   )
   const routes = planManagedRoutes(
     {
@@ -473,7 +479,13 @@ export function registerManagedRoutes<Credential>(
   router.commit = function (this: Router, ...args: Parameters<Router['commit']>) {
     const result = commit.apply(this, args)
     const committed = (this.toJSON().root ?? []).flatMap((item) =>
-      item.methods.map((method) => ({ method, path: item.pattern, name: item.name }))
+      item.methods.map((method) => ({
+        method,
+        path: item.pattern,
+        name: item.name,
+        tokens: item.tokens,
+        matchers: item.matchers,
+      }))
     )
     assertManagedRouteCollisions(routes, committed)
     return result

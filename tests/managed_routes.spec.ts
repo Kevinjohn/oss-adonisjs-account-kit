@@ -1,4 +1,6 @@
 import { test } from '@japa/runner'
+import type { AccountKit } from '../src/account_kit.js'
+import { registerManagedRoutes } from '../src/http/managed.js'
 import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
 import { bootTestApp } from './helpers/app.js'
 
@@ -260,6 +262,129 @@ test.group('managed route plan', () => {
       }
     } finally {
       await app.close()
+    }
+  })
+
+  test('honors Adonis parameter constraints and suffixes in both collision checks', async ({
+    assert,
+  }) => {
+    const app = await bootTestApp()
+    try {
+      const router = await app.app.container.make('router')
+      const cases = [
+        { pattern: '/auth/:id', matcher: /^[0-9]+$/, intersects: false },
+        { pattern: '/auth/:id', matcher: /^login$/, intersects: true },
+        { pattern: '/auth/:action-name', matcher: /^\d+$/, intersects: false },
+        { pattern: '/auth/:action-name', matcher: /^login$/, intersects: true },
+        { pattern: '/auth/login/:tail.json?', intersects: false },
+        { pattern: '/auth/login/:tail?', intersects: true },
+      ] as const
+      for (const [index, item] of cases.entries()) {
+        const route = router.route(`/case${index}/api/v1${item.pattern}`, ['POST'], () => null)
+        if ('matcher' in item)
+          route.where(item.pattern.includes('action-name') ? 'action-name' : 'id', item.matcher)
+      }
+      router
+        .group(() => {
+          router.route('/auth/:id', ['POST'], () => null)
+        })
+        .prefix('/group0/api/v1')
+        .where('id', /^[0-9]+$/)
+      router
+        .group(() => {
+          router.route('/auth/:id', ['POST'], () => null)
+        })
+        .prefix('/group1/api/v1')
+        .where('id', /^login$/)
+      router.commit()
+
+      const all = router.toJSON().root ?? []
+      for (const [index, item] of cases.entries()) {
+        const prefix = `/case${index}/api/v1`
+        const path = `${prefix}${item.pattern}`
+        const stored = all.find((route) => route.pattern === path)
+        assert.isDefined(stored, path)
+        const existing = [
+          { method: 'POST', path, tokens: stored!.tokens, matchers: stored!.matchers },
+        ]
+        const selection = {
+          prefix,
+          strategy: 'session' as const,
+          enabled: ['authentication'] as const,
+        }
+        const managed = planManagedRoutes(selection)
+        assert.equal(
+          Boolean(router.match(`${prefix}/auth/login`, 'POST', false)),
+          item.intersects,
+          path
+        )
+        if (item.intersects) {
+          assert.throws(() => planManagedRoutes(selection, existing), /Managed route collision/)
+          assert.throws(
+            () => assertManagedRouteCollisions(managed, existing),
+            /Managed route collision/
+          )
+        } else {
+          assert.doesNotThrow(() => planManagedRoutes(selection, existing))
+          assert.doesNotThrow(() => assertManagedRouteCollisions(managed, existing))
+        }
+      }
+      for (const [index, intersects] of [false, true].entries()) {
+        const prefix = `/group${index}/api/v1`
+        const path = `${prefix}/auth/:id`
+        const stored = all.find((route) => route.pattern === path)
+        assert.isDefined(stored, path)
+        const existing = [
+          { method: 'POST', path, tokens: stored!.tokens, matchers: stored!.matchers },
+        ]
+        const selection = {
+          prefix,
+          strategy: 'session' as const,
+          enabled: ['authentication'] as const,
+        }
+        const managed = planManagedRoutes(selection)
+        assert.equal(Boolean(router.match(`${prefix}/auth/login`, 'POST', false)), intersects, path)
+        if (intersects) {
+          assert.throws(() => planManagedRoutes(selection, existing), /Managed route collision/)
+          assert.throws(
+            () => assertManagedRouteCollisions(managed, existing),
+            /Managed route collision/
+          )
+        } else {
+          assert.doesNotThrow(() => planManagedRoutes(selection, existing))
+          assert.doesNotThrow(() => assertManagedRouteCollisions(managed, existing))
+        }
+      }
+    } finally {
+      await app.close()
+    }
+  })
+
+  test('registration keeps Adonis route constraints through router commit', async ({ assert }) => {
+    for (const [matcher, intersects] of [
+      [/^[0-9]+$/, false],
+      [/^login$/, true],
+    ] as const) {
+      const app = await bootTestApp()
+      try {
+        const router = await app.app.container.make('router')
+        router.route('/api/v1/auth/:id', ['POST'], () => null).where('id', matcher)
+        registerManagedRoutes(router, {
+          prefix: '/api/v1',
+          kit: async () => ({}) as AccountKit,
+          guard: {
+            strategy: 'session',
+            name: 'web',
+            forRequest: () => ({}) as never,
+            current: async () => ({ userId: 1, revision: null }),
+          },
+          enabled: ['authentication'],
+        })
+        if (intersects) assert.throws(() => router.commit(), /Managed route collision/)
+        else assert.doesNotThrow(() => router.commit())
+      } finally {
+        await app.close()
+      }
     }
   })
 
