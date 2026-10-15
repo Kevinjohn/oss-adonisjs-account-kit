@@ -585,6 +585,25 @@ test.group('onboarding plan and apply', (group) => {
     )
   })
 
+  test('dynamic Shield CSRF requires a runtime check before session readiness', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.authentication!.strategy = 'session'
+    await writeFile(
+      join(root, 'config/shield.ts'),
+      "export default { csrf: { enabled: env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' } }\n"
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.isTrue(
+      plan.diagnostics.some(
+        (item) => item.field === 'config/shield.ts' && item.severity === 'action'
+      )
+    )
+    assert.isFalse(plan.readiness.externalConfigured)
+    assert.isTrue(plan.prerequisites.some((item) => item.includes('CSRF-protected POST')))
+  })
+
   test('reconfiguration reports changed fields and updates only owned files', async ({
     assert,
   }) => {
@@ -774,9 +793,11 @@ test.group('onboarding plan and apply', (group) => {
     const before = process.env.DB_CONNECTION
     try {
       process.env.DB_CONNECTION = 'sqlite'
-      assert.equal((await inspectSetup(root)).database, 'sqlite')
+      const sqlite = await inspectSetup(root)
+      assert.equal(sqlite.database, 'sqlite')
       process.env.DB_CONNECTION = 'pg'
-      assert.equal((await inspectSetup(root)).database, 'postgres')
+      const postgres = await inspectSetup(root)
+      assert.equal(postgres.database, 'postgres')
     } finally {
       if (before === undefined) delete process.env.DB_CONNECTION
       else process.env.DB_CONNECTION = before
