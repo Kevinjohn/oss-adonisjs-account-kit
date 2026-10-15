@@ -106,8 +106,8 @@ const modelAdapter = createLucidAdapter(async () => User, {
 })
 
 const notifications: {
-  recoveryUrl?: string
-  verificationUrl?: string
+  passwordResetUrl?: string
+  emailVerificationUrl?: string
   invitationUrl?: string
   emailChangeUrl?: string
 } = {}
