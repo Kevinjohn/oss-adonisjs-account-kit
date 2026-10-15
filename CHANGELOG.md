@@ -10,6 +10,7 @@ This project has no published releases yet. The current candidate remains versio
 - `email_verification_tokens` (table) stores hashed, expiring, single-use activation and email-change proofs.
 - `social_identities` (table) stores unique provider subjects and user-linked identity metadata without credentials.
 - `tokenSecretLength` (config key) defaults to 40 bytes.
+- An isolated packed service-only consumer check covers compilation and startup on both databases without backend-only dependencies.
 
 - Password reset, email verification, invitations, password changes, and verified email changes with
   package-owned transactions and application callbacks.
