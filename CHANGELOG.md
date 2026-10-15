@@ -10,6 +10,8 @@ This project has no published releases yet. The current candidate remains versio
 - `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
 - `users.credentials_changed_at` (column) invalidates existing browser sessions and login attempts using superseded account evidence.
 - The API example provides session CSRF bootstrap, browser logout, and selected-guard access middleware for protected routes.
+- Inactive accounts may correct an unconfirmed email through the limited credential gate while verified routes still reject them.
+- The API example checks token abilities before sending invitations and returns `missing_ability` for a token without permission.
 - `users.unverified_email` (column) records a pending address; active state follows the confirmed/pending pair.
 - `email_verification_tokens` (table) stores hashed, expiring, single-use activation and email-change proofs.
 - `social_identities` (table) stores unique provider subjects and user-linked identity metadata without credentials.
