@@ -42,6 +42,14 @@ database. It verifies that authentication, session, shield, Tuyau, mail, and All
 are absent. Core and its transitive validation dependencies remain installed as required by
 AdonisJS.
 
+For authentication integration, the fresh and upgrade API consumers run both the default
+`access_tokens` route group and the `session` route group using a server-side session store.
+The session fixture exercises CSRF bootstrap, fixation protection, protected access, revision
+revocation, and logout. Run `--mode=both` with the historical stage-3 baseline tarball and
+`--baseline-revision=stage-3` to verify the upgrade path; run the service-only mode separately
+for both databases to check that optional Auth and Session imports do not enter the generic
+service declarations.
+
 ### Vocabulary alignment: 15 October 2026
 
 The vocabulary implementation and review fixes at `f526a5e4e94ff730a8f63873a23b54619820e288`
