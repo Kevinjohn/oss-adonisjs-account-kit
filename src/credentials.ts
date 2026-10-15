@@ -178,13 +178,14 @@ export async function updateProfile(
         if (current.unverifiedEmail === newEmail) {
           const previous = await trx
             .from('email_verification_tokens')
-            .select('created_at', 'email', 'current_email', 'purpose')
+            .select('created_at', 'expires_at', 'email', 'current_email', 'purpose')
             .where('tokenable_id', current.id)
             .first()
           if (
             previous?.purpose === 'email_change' &&
             previous.email === newEmail &&
             previous.current_email === current.email &&
+            DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
             DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
               now.minus({ minutes: 1 }).toMillis()
           ) {

@@ -589,6 +589,34 @@ test.group('emailPasswordManagement', (group) => {
     )
   })
 
+  test('an expired pending-address proof can be reissued inside one minute', async ({ assert }) => {
+    const user = await createUser()
+    const recorder = makeNotify()
+    const account = service({ notify: recorder.notify, expiresIn: { emailChange: 1 } })
+    const request = () =>
+      account.emailPasswordManagement.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'oldPassword123',
+        newEmail: 'new@example.test',
+      })
+    await request()
+    const token = tokenFrom(recorder.calls[0].args[2])
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .update({
+        expires_at: DateTime.utc().minus({ seconds: 1 }).toISO(),
+      })
+    await request()
+    assert.lengthOf(recorder.calls, 2)
+    assert.isFalse(await account.emailPasswordManagement.inspectEmailChange({ token }))
+    assert.isTrue(
+      await account.emailPasswordManagement.inspectEmailChange({
+        token: tokenFrom(recorder.calls[1].args[2]),
+      })
+    )
+  })
+
   test('requesting the confirmed address cancels the pending change and its proof', async ({
     assert,
   }) => {
