@@ -8,7 +8,7 @@ connection, a physical `id` key (`integer`, `string`, or `uuid`), and an applica
 table with unique, normalized `email`, nullable `password`, nullable `unverified_email`, and
 nullable `email_verified_at`. Pass a custom users table and ID type to configure with
 `--users-table` and `--user-id-type`. Other column names, composite keys, and secondary
-connections need a custom adapter and are outside this mapping.
+connections are unsupported by this contract, including when a custom adapter is used.
 
 `create({ email, unverifiedEmail, password, registrationData? }, trx)` accepts an explicit
 pending address and a nullable local password. `registrationData` is passed only to the trusted
@@ -67,6 +67,9 @@ renames reset proof columns in place, and transfers outstanding email-change pro
 removing the old table. It never normalizes production addresses. A prior encrypted repeatable
 activation link must be reissued as a one-use proof. Do not roll back across this migration with
 outstanding new proofs; a reverse migration cannot reconstruct the earlier proof model.
+The generated `down()` also leaves the password column nullable after rollback. An application
+downgrade must account for existing passwordless users and explicitly review its own schema and
+sign-in policy before requiring a password again.
 
 Update custom adapters to the new create shape and pending-email setter, plus the
 `AccountUser.unverifiedEmail` property. Update application-owned schema representations and
