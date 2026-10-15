@@ -417,11 +417,15 @@ test.group('invitations.accept', (group) => {
     const actor = await createActor()
     const { account, recorder } = service()
     const { invitation, token } = await issue(account, recorder, actor.id)
-    for (const password of [null, 'short', 'x'.repeat(256)])
+    for (const password of [null, 'short', 'x'.repeat(257)])
       await assert.rejects(
         () => account.invitations.accept({ token: 'bad', password: password as never }),
         InvalidInputError
       )
+    await assert.rejects(
+      () => account.invitations.accept({ token: 'bad', password: '😀'.repeat(128) }),
+      InvalidTokenError
+    )
     for (const value of [null, 42, 'bad', 'a'.repeat(43)])
       await assert.rejects(
         () => account.invitations.accept({ token: value as never, password: 'newPassword123' }),

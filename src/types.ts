@@ -132,6 +132,7 @@ export interface AccountKitConfig {
   notify: Partial<NotificationCallbacks>
   onInvitationAccepted?: (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
   onCredentialsChanged?: (user: AccountUser, context: CredentialChangeContext) => Promise<void>
+  onRecoveryIssuedTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
   onCredentialsChangedTransaction?: (
     user: AccountUser,
     context: CredentialChangeContext,

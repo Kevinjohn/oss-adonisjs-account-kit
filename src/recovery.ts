@@ -4,10 +4,10 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { consumeUserToken, transaction } from './db.js'
+import { committedResult, consumeUserToken, lockUser, transaction } from './db.js'
 import { afterCommit, postCommit } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
-import { InvalidInputError, InvalidTokenError } from './errors.js'
+import { InvalidInputError, InvalidTokenError, PostCommitError } from './errors.js'
 import { isPasswordShaped } from './password.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -40,36 +40,53 @@ export async function resetRecovery(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
 
-  const user = await transaction(deps.db, async (trx) => {
-    const { row, user: current } = await consumeUserToken<{ user_id: UserId; email: string }>(
-      trx,
-      deps.config,
-      'account_recovery_tokens',
-      input.token,
-      (candidate) => candidate.email
-    )
+  let user: AccountUser
+  let committedFault: PostCommitError | undefined
+  try {
+    user = await transaction(deps.db, async (trx) => {
+      const { row, user: current } = await consumeUserToken<{ user_id: UserId; email: string }>(
+        trx,
+        deps.config,
+        'account_recovery_tokens',
+        input.token,
+        (candidate) => candidate.email
+      )
 
-    await deps.config.users.setPassword(row.user_id, input.password, trx)
-    if (current.emailVerifiedAt === null)
-      await deps.config.users.markEmailVerified(row.user_id, DateTime.utc(), trx)
-    await trx.from('account_email_changes').where('user_id', row.user_id).delete()
-    const reloaded = await deps.config.users.findById(row.user_id, trx)
-    if (!reloaded) throw new InvalidTokenError()
-    await deps.config.onCredentialsChangedTransaction?.(
-      reloaded,
-      { operation: 'password_reset', operationId, userId: reloaded.id },
-      trx
-    )
-    return reloaded
-  })
+      await deps.config.users.setPassword(row.user_id, input.password, trx)
+      if (current.emailVerifiedAt === null)
+        await deps.config.users.markEmailVerified(row.user_id, DateTime.utc(), trx)
+      await trx.from('account_email_changes').where('user_id', row.user_id).delete()
+      const reloaded = await deps.config.users.findById(row.user_id, trx)
+      if (!reloaded) throw new InvalidTokenError()
+      await deps.config.onCredentialsChangedTransaction?.(
+        reloaded,
+        { operation: 'password_reset', operationId, userId: reloaded.id },
+        trx
+      )
+      return reloaded
+    })
+  } catch (error) {
+    const saved = committedResult<AccountUser>(error)
+    if (!saved) throw error
+    user = saved.value
+    committedFault = error as PostCommitError
+  }
 
   const context = { operation: 'password_reset' as const, operationId, userId: user.id }
-  await afterCommit(
-    'Credentials changed but a follow-up failed',
-    () => deps.config.onCredentialsChanged?.(user, context),
-    () => deps.config.notify.passwordReset(user, context),
-    () => deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId })
-  )
+  try {
+    await afterCommit(
+      'Credentials changed but a follow-up failed',
+      () => deps.config.onCredentialsChanged?.(user, context),
+      () => deps.config.notify.passwordReset(user, context),
+      () => deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId })
+    )
+  } catch (error) {
+    if (!committedFault) throw error
+    throw new PostCommitError('Credentials changed but follow-ups failed', {
+      cause: new AggregateError([committedFault.cause, (error as Error).cause ?? error]),
+    })
+  }
+  if (committedFault) throw committedFault
   return user
 }
 
@@ -106,35 +123,61 @@ export async function requestRecovery(
     const token = generateToken()
     const operationId = randomUUID()
     const now = DateTime.utc()
-    await transaction(deps.db, async (trx) => {
-      await trx
-        .table('account_recovery_tokens')
-        .insert({
-          user_id: user.id,
-          email: user.email,
-          token_hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.ttl.recovery).toISO(),
-          created_at: now.toISO(),
-        })
-        .onConflict('user_id')
-        .merge(['email', 'token_hash', 'expires_at', 'created_at'])
-    })
+    let issuedUser: AccountUser | null
+    let committedFault: PostCommitError | undefined
+    try {
+      issuedUser = await transaction(deps.db, async (trx) => {
+        await lockUser(trx, deps.config, user.id)
+        const current = await deps.config.users.findById(user.id, trx)
+        if (!current || current.email !== email) return null
+        await trx
+          .table('account_recovery_tokens')
+          .insert({
+            user_id: current.id,
+            email: current.email,
+            token_hash: hashToken(token),
+            expires_at: expiresAt(now, deps.config.ttl.recovery).toISO(),
+            created_at: now.toISO(),
+          })
+          .onConflict('user_id')
+          .merge(['email', 'token_hash', 'expires_at', 'created_at'])
+        await deps.config.onRecoveryIssuedTransaction?.(current, trx)
+        return current
+      })
+    } catch (error) {
+      const saved = committedResult<AccountUser | null>(error)
+      if (!saved) throw error
+      issuedUser = saved.value
+      committedFault = error as PostCommitError
+    }
+    if (!issuedUser) {
+      if (committedFault) throw committedFault
+      return
+    }
 
-    await postCommit('Recovery follow-up failed', [
-      {
-        kind: 'delivery',
-        run: () => deps.config.notify.recovery(user, deps.config.urls.recovery(token)),
-      },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'recovery.requested',
-            userId: user.id,
-            operationId,
-          }),
-      },
-    ])
+    try {
+      await postCommit('Recovery follow-up failed', [
+        {
+          kind: 'delivery',
+          run: () => deps.config.notify.recovery(issuedUser, deps.config.urls.recovery(token)),
+        },
+        {
+          kind: 'observer',
+          run: () =>
+            deps.config.onLifecycleEvent?.({
+              type: 'recovery.requested',
+              userId: issuedUser.id,
+              operationId,
+            }),
+        },
+      ])
+    } catch (error) {
+      if (!committedFault) throw error
+      throw new PostCommitError('Recovery committed but follow-ups failed', {
+        cause: new AggregateError([committedFault.cause, (error as Error).cause ?? error]),
+      })
+    }
+    if (committedFault) throw committedFault
   } finally {
     // Every exit, including a throw, waits out the configured floor. Timers can wake early,
     // so keep waiting until the floor has actually passed.

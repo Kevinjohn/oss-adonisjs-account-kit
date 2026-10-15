@@ -95,7 +95,7 @@ test.group('credentials', (group) => {
         },
       },
     })
-    for (const value of [null, 'short', 'x'.repeat(256)])
+    for (const value of [null, 'short', 'x'.repeat(257)])
       await assert.rejects(
         () =>
           account.credentials.changePassword({
@@ -275,6 +275,57 @@ test.group('credentials', (group) => {
     assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
     assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
     assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+  })
+
+  test('accepts 256 UTF-16 units for a password change', async ({ assert }) => {
+    const user = await createUser()
+    const password = '😀'.repeat(128)
+    await service().credentials.changePassword({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newPassword: password,
+    })
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isTrue(await kit.hash.verify(row.password, password))
+  })
+
+  test('runs all password follow-ups once after a verified commit listener fault', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const failure = new Error('listener failed after commit')
+    const calls: string[] = []
+    const account = service({
+      onCredentialsChangedTransaction: async (_user, _context, trx) => {
+        trx.on('commit', () => {
+          throw failure
+        })
+      },
+      onLifecycleEvent: async () => {
+        calls.push('lifecycle')
+      },
+      notify: {
+        ...makeNotify().notify,
+        passwordChanged: async () => {
+          calls.push('notice')
+        },
+      },
+    })
+    try {
+      await account.credentials.changePassword({
+        actorId: user.id,
+        currentPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+      })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(calls, ['notice', 'lifecycle'])
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
   })
 
   test('an adapter write followed by throw rolls back password and token deletions', async ({
