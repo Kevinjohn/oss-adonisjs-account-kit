@@ -22,7 +22,6 @@ pnpm pack --pack-destination /tmp
 # In the AdonisJS API application
 pnpm exec node ace add @adonisjs/limiter
 pnpm add /tmp/adonisjs-account-kit-0.0.0.tgz
-pnpm exec node ace configure adonisjs-account-kit
 ```
 
 The application must provide compatible AdonisJS core, Lucid, limiter, Luxon, and the database
@@ -30,6 +29,7 @@ driver for its selected Lucid dialect. PostgreSQL applications install `pg`; the
 SQLite setup uses `better-sqlite3`. See [compatibility](docs/compatibility.md) for tested version
 points and declared peer ranges.
 
+For the basic service configuration path, run `pnpm exec node ace configure adonisjs-account-kit`.
 Configure creates `config/account_kit.ts` when absent, registers the provider, and generates eight
 package migrations for a fresh install when matching files do not already exist. It preserves
 existing configuration and migrations. Review generated files, set a stable `APP_KEY` and
@@ -40,10 +40,19 @@ pnpm exec node ace migration:run
 pnpm typecheck
 ```
 
-For a new managed installation, use [`account-kit:setup`](docs/setup.md) instead of the basic
-configure step. It previews all six pillars, required files, dependencies, and endpoint groups;
-`--apply` creates a conflict-free proposal. An existing `config/account_kit.ts` with different
-application policy remains owned by the application and must be reconciled before setup applies.
+For a new managed installation, register the package command loader in `adonisrc.ts` and use
+[`account-kit:setup`](docs/setup.md) instead of the basic configure step:
+
+```ts
+commands: [
+  // Keep the application's existing command loaders.
+  () => import('adonisjs-account-kit/commands'),
+],
+```
+
+Setup previews all six pillars, required files, dependencies, and endpoint groups; `--apply`
+creates a conflict-free proposal. An existing `config/account_kit.ts` with different application
+policy remains owned by the application and must be reconciled before setup applies.
 
 ## Quick start
 
