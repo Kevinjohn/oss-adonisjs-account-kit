@@ -54,10 +54,14 @@ test.group('capability configuration', (group) => {
   }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     assert.throws(
+      () => defineConfig({ ...base, enabled: ['emailPasswordManagement'] }),
+      /emailPasswordManagement requires emailVerification/
+    )
+    assert.throws(
       () =>
         defineConfig({
           ...base,
-          enabled: ['emailPasswordManagement'],
+          enabled: ['emailPasswordManagement', 'emailVerification'],
           urls: { ...base.urls, emailVerification: undefined },
         }),
       /urls\.emailVerification must be a function/
@@ -66,7 +70,7 @@ test.group('capability configuration', (group) => {
       () =>
         defineConfig({
           ...base,
-          enabled: ['emailPasswordManagement'],
+          enabled: ['emailPasswordManagement', 'emailVerification'],
           notify: { ...base.notify, accountActivationProvision: undefined },
         }),
       /notify\.accountActivationProvision must be a function/
@@ -146,7 +150,10 @@ test.group('capability configuration', (group) => {
         () =>
           defineConfig({
             ...makeConfig({ users }),
-            enabled: [capability],
+            enabled:
+              capability === 'emailPasswordManagement'
+                ? [capability, 'emailVerification']
+                : [capability],
             users: { ...users, setUnverifiedEmail: undefined } as never,
           }),
         /users\.setUnverifiedEmail must be a function/

@@ -698,6 +698,72 @@ test.group('emailPasswordManagement', (group) => {
     assert.equal(pending.unverifiedEmail, 'new@example.test')
     assert.deepEqual(received, [{ fullName: 'Person' }, { fullName: 'Another Person' }])
     assert.equal(recorder.calls[0].method, 'emailChangeProvision')
+    const pendingToken = tokenFrom(recorder.calls[0].args[2])
+    const profileOnly = await account.emailPasswordManagement.updateProfile({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      registrationData: { name: 'Third Person' },
+    })
+    assert.equal(profileOnly.unverifiedEmail, 'new@example.test')
+    assert.isTrue(await account.emailPasswordManagement.inspectEmailChange({ token: pendingToken }))
+    assert.lengthOf(recorder.calls, 1)
+    assert.deepEqual(received.at(-1), { fullName: 'Third Person' })
+  })
+
+  test('a later email conflict rolls back a persisted profile field and preserves pending proof', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    await kit.db.connection().schema.alterTable('users', (table) => table.string('display_name'))
+    await kit.db.from('users').where('id', user.id).update({ display_name: 'Original' })
+    await insertUser(kit, { email: 'taken@example.test' })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let profileWrites = 0
+    const recorder = makeNotify()
+    const account = service({
+      notify: recorder.notify,
+      users: {
+        ...users,
+        async updateRegistrationData(id, data, trx) {
+          profileWrites++
+          await trx.from('users').where('id', id).update({ display_name: data.displayName })
+        },
+      },
+      registration: {
+        availability: 'closed',
+        mapFields: (input) => ({ displayName: (input as { name: string }).name }),
+      },
+    })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newEmail: 'pending@example.test',
+    })
+    const pendingToken = tokenFrom(recorder.calls[0].args[2])
+    const before = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .first()
+    await assert.rejects(
+      () =>
+        account.emailPasswordManagement.updateProfile({
+          actorId: user.id,
+          currentPassword: 'oldPassword123',
+          email: 'taken@example.test',
+          registrationData: { name: 'Attempted' },
+        }),
+      EmailAlreadyRegisteredError
+    )
+    assert.equal(profileWrites, 1)
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.display_name, 'Original')
+    assert.equal(row.unverified_email, 'pending@example.test')
+    assert.deepEqual(
+      await kit.db.from('email_verification_tokens').where('tokenable_id', user.id).first(),
+      before
+    )
+    assert.isTrue(await account.emailPasswordManagement.inspectEmailChange({ token: pendingToken }))
+    assert.lengthOf(recorder.calls, 1)
   })
 
   test('profile field failure rolls back a simultaneous pending-address request', async ({

@@ -46,6 +46,14 @@ export async function sendVerification(
   const user = await deps.config.users.findById(input.userId)
   if (!user) throw new InvalidInputError('Unknown user')
   if (user.unverifiedEmail !== user.email) return 'already_verified'
+  await consume(
+    deps.limiter,
+    'verification:user',
+    String(user.id),
+    deps.config.throttle,
+    deps.config.limiterSecret,
+    deps.config.limiterNamespace
+  )
   const recent = await deps.db
     .from('email_verification_tokens')
     .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
@@ -60,14 +68,6 @@ export async function sendVerification(
       DateTime.utc().minus({ minutes: 1 }).toMillis()
   )
     return 'sent'
-  await consume(
-    deps.limiter,
-    'verification:user',
-    String(user.id),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
   const token = generateToken(deps.config.tokenSecretLength)
   const { value: issuedUser, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
