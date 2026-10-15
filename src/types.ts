@@ -64,9 +64,9 @@ export interface Invitation {
 }
 
 export type Capability =
-  'passwordReset' | 'emailVerification' | 'invitations' | 'emailPasswordManagement'
+  'passwordReset' | 'emailVerification' | 'invitations' | 'emailPasswordManagement' | 'registration'
 export type CredentialOperation =
-  'password_reset' | 'password_change' | 'email_change' | 'access_restriction'
+  'password_reset' | 'password_change' | 'email_change' | 'access_restriction' | 'registration_claim'
 
 export interface CredentialChangeContext {
   operation: CredentialOperation
@@ -77,6 +77,7 @@ export interface CredentialChangeContext {
 export type LifecycleEvent =
   | {
       type:
+        | 'registration.created'
         | 'verification.completed'
         | 'password_reset.requested'
         | 'password.reset'
@@ -158,6 +159,21 @@ export interface AccountKitConfig {
   minRequestMs?: number
   tokenSecretLength?: number
   authentication?: AuthenticationConfig
+  registration?: {
+    availability: 'open' | 'closed' | 'application'
+    mapFields?: (input: unknown) => Promise<Record<string, unknown>> | Record<string, unknown>
+  }
+  passwordPolicy?: Partial<PasswordPolicy>
+}
+
+export interface PasswordPolicy {
+  minLength: number
+  maxLength: number | null
+  letters: boolean
+  mixedCase: boolean
+  numbers: boolean
+  symbols: boolean
+  minScore: number
 }
 
 export interface AuthenticationConfig {
@@ -239,6 +255,7 @@ export interface ResolvedConfig extends Omit<
   | 'invitationThrottle'
   | 'minRequestMs'
   | 'authentication'
+  | 'passwordPolicy'
 > {
   enabled: Capability[]
   authorize: AuthorizationCallbacks
@@ -253,6 +270,13 @@ export interface ResolvedConfig extends Omit<
   minRequestMs: number
   tokenSecretLength: number
   authentication?: ResolvedAuthenticationConfig
+  passwordPolicy: PasswordPolicy
+}
+
+export interface RegistrationInput {
+  email: string
+  password: string
+  registrationData?: unknown
 }
 
 export interface InvitationPage {
@@ -276,6 +300,7 @@ export interface VerificationSendInput {
 }
 export interface VerificationCompleteInput {
   token: string
+  password: string
 }
 export interface InvitationsSendInput {
   actorId: UserId

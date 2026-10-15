@@ -423,6 +423,19 @@ test.group('passwordReset.reset', (group) => {
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 
+  test('applies the shared new-password policy without consuming a rejected proof', async ({
+    assert,
+  }) => {
+    const { token } = await issue()
+    const account = service({ passwordPolicy: { mixedCase: true, numbers: true, minScore: 3 } })
+    await assert.rejects(
+      () => account.passwordReset.reset({ token, password: 'password123' }),
+      InvalidInputError
+    )
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
+    await account.passwordReset.reset({ token, password: 'Password123' })
+  })
+
   test('expired, reused, and malformed tokens cannot change the password', async ({ assert }) => {
     const { account, token, user } = await issue()
     const original = user.password

@@ -72,6 +72,7 @@ test.group('account kit configuration and service surface', (group) => {
       assert.equal(
         await account.emailVerification.complete({
           token: nextToken('accountActivationProvision'),
+          password: 'NewPassword123',
         }),
         'verified'
       )

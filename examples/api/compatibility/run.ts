@@ -414,8 +414,16 @@ try {
   })
   assert.equal(await account.emailVerification.send({ userId: unverifiedUser.id }), 'sent')
   const verificationToken = tokenFromUrl(notifications.emailVerificationUrl)
-  assert.equal(await account.emailVerification.complete({ token: verificationToken }), 'verified')
-  await assert.rejects(() => account.emailVerification.complete({ token: verificationToken }))
+  assert.equal(
+    await account.emailVerification.complete({
+      token: verificationToken,
+      password: 'NewPassword123',
+    }),
+    'verified'
+  )
+  await assert.rejects(() =>
+    account.emailVerification.complete({ token: verificationToken, password: 'NewPassword123' })
+  )
   await unverifiedUser.refresh()
   assert.ok(unverifiedUser.emailVerifiedAt)
   console.log('MINIMUM_STAGE email-verification-send-complete-verified-replay')
