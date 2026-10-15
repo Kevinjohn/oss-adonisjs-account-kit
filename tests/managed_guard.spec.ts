@@ -3,6 +3,28 @@ import { InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
 
 test.group('managed existing-guard adapters', () => {
+  test('conventional model static types compile while invalid authenticated IDs fail closed', async ({
+    assert,
+  }) => {
+    class LucidRow {
+      static async findOrFail(_id: number | string): Promise<LucidRow> {
+        return new User()
+      }
+    }
+    class User extends LucidRow {
+      id = 42
+    }
+    const adapter = createManagedGuard({
+      strategy: 'session',
+      name: 'web',
+      loadUser: async () => User,
+    })
+    const ctx = {
+      auth: { use: () => ({ authenticate: async () => ({}) }) },
+      session: { get: () => undefined },
+    } as never
+    await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
+  })
   test('session login regenerates, captures revision, and current reads only authenticated state', async ({
     assert,
   }) => {
