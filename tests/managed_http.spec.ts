@@ -171,6 +171,7 @@ test.group('managed HTTP dispatch', () => {
           managedHttp: {
             assertGuard: () => {},
             assertPublicRegistration: () => {},
+            passwordAllowed: () => true,
             consume: async () => {
               throw new ThrottledError(12)
             },
@@ -194,6 +195,68 @@ test.group('managed HTTP dispatch', () => {
     const output = await routes.get('POST /api/v1/auth/signup')!(ctx)
     assert.equal((output as { status: number }).status, 429)
     assert.isFalse(created)
+  })
+  test('shared configured password policy produces native field errors before a write', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const writes: string[] = []
+    const real = new AccountKit({
+      config: {
+        registration: { availability: 'open' },
+        authentication: { guard: 'api', strategy: 'access_tokens' },
+        passwordPolicy: {
+          minLength: 8,
+          maxLength: null,
+          letters: false,
+          mixedCase: true,
+          numbers: false,
+          symbols: false,
+          minScore: 0,
+        },
+      },
+    } as never)
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () =>
+        ({
+          managedHttp: { ...real.managedHttp, consume: async () => {} },
+          registration: {
+            register: async () => {
+              writes.push('registration')
+            },
+          },
+          passwordReset: {
+            reset: async () => {
+              writes.push('reset')
+            },
+          },
+        }) as unknown as AccountKit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        publicCredential: () => 'opaque',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 1, tokenId: 1 }),
+      },
+      enabled: ['registration', 'passwordReset'],
+    })
+    for (const route of ['POST /api/v1/auth/signup', 'POST /api/v1/auth/password-reset/:token']) {
+      const output = await routes.get(route)!(context({ token: 'proof' }))
+      assert.deepEqual(output, {
+        status: 422,
+        body: {
+          errors: [
+            {
+              field: 'password',
+              rule: 'passwordPolicy',
+              message: 'Password does not meet the policy.',
+            },
+          ],
+        },
+      })
+    }
+    assert.deepEqual(writes, [])
   })
   test('excludes a named route and rejects a second registration before mutating router', ({
     assert,
@@ -425,6 +488,7 @@ test.group('managed HTTP dispatch', () => {
           managedHttp: {
             assertGuard: () => {},
             assertPublicRegistration: () => {},
+            passwordAllowed: () => true,
             consume: async () => {},
           },
           registration: {
@@ -484,6 +548,7 @@ test.group('managed HTTP dispatch', () => {
           managedHttp: {
             assertGuard: () => {},
             assertPublicRegistration: () => {},
+            passwordAllowed: () => true,
             consume: async () => {},
           },
           registration: {
@@ -524,6 +589,7 @@ test.group('managed HTTP dispatch', () => {
           managedHttp: {
             assertGuard: () => {},
             assertPublicRegistration: () => {},
+            passwordAllowed: () => true,
             consume: async () => {},
           },
           registration: { register: async () => {} },
@@ -653,6 +719,15 @@ test.group('managed HTTP dispatch', () => {
         throttle: { requests: 20, duration: '15m' },
         limiterSecret: 'a'.repeat(32),
         limiterNamespace: 'proof-test',
+        passwordPolicy: {
+          minLength: 8,
+          maxLength: null,
+          letters: false,
+          mixedCase: false,
+          numbers: false,
+          symbols: false,
+          minScore: 0,
+        },
       },
       limiter: {
         use: () => ({
@@ -722,7 +797,7 @@ test.group('managed HTTP dispatch', () => {
     }
     const user = { ...account, emailVerifiedAt: null, passwordHash: 'never expose' }
     const kit = {
-      managedHttp: { assertGuard: () => {}, consume: async () => {} },
+      managedHttp: { assertGuard: () => {}, consume: async () => {}, passwordAllowed: () => true },
       authentication: {
         current: async () => account,
         requireActive: async () => account,

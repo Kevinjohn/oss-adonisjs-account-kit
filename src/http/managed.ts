@@ -13,7 +13,6 @@ import type {
   AuthenticationGuard,
   CurrentAccount,
   CurrentAccountInput,
-  UserId,
 } from '../types.js'
 import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
 import {
@@ -87,31 +86,6 @@ export interface ManagedRoutesOptions<Credential> {
 
 const mounted = new WeakSet<Router>()
 
-/** Provisional integration typing until the accepted service heads are rebased. */
-type IntegratedKit = Omit<AccountKit, 'emailVerification' | 'emailPasswordManagement'> & {
-  registration: {
-    register(input: {
-      email: string
-      password: string
-      registrationData?: unknown
-    }): Promise<AccountUser>
-  }
-  emailVerification: {
-    inspect(input: { token: string }): Promise<boolean>
-    complete(input: { token: string; password: string }): Promise<'verified'>
-  }
-  emailPasswordManagement: {
-    inspectEmailChange(input: { token: string }): Promise<boolean>
-    completeEmailChange(input: { token: string }): Promise<AccountUser>
-    updateProfile(input: {
-      actorId: UserId
-      currentPassword: string
-      email?: string
-      registrationData?: unknown
-    }): Promise<AccountUser>
-  }
-}
-
 function invitationId(value: string): number {
   const id = Number(value)
   if (!Number.isSafeInteger(id) || id <= 0) throw new InvalidInputError('Invalid invitation ID')
@@ -135,6 +109,12 @@ function invalidProof(
   })!
   context.response.header('Content-Type', mapped.contentType)
   return context.response.status(mapped.status).send(mapped.body)
+}
+
+function passwordPolicyError(context: HttpContext, field: 'password' | 'newPassword'): unknown {
+  return context.response.status(422).send({
+    errors: [{ field, rule: 'passwordPolicy', message: 'Password does not meet the policy.' }],
+  })
 }
 
 function safeAccount(account: CurrentAccount): Record<string, unknown> {
@@ -231,6 +211,8 @@ async function execute<Credential>(
         : invalidProof(context, 'password', options.extensions?.message)
     case 'auth.passwordReset.complete': {
       const { password } = await request.validateUsing(passwordResetCompleteValidator)
+      if (!kit.managedHttp.passwordAllowed(password))
+        return passwordPolicyError(context, 'password')
       await kit.passwordReset.reset({ token: params.token, password })
       return response.ok({ reset: true })
     }
@@ -244,6 +226,8 @@ async function execute<Credential>(
       const input = options.extensions?.invitationAcceptance
         ? await options.extensions.invitationAcceptance.validate(context)
         : await request.validateUsing(invitationAcceptValidator)
+      if (!kit.managedHttp.passwordAllowed(input.password))
+        return passwordPolicyError(context, 'password')
       const user = await kit.invitations.accept({
         token: params.token,
         password: input.password,
@@ -253,6 +237,8 @@ async function execute<Credential>(
     }
     case 'account.password.change': {
       const { currentPassword, newPassword } = await request.validateUsing(passwordChangeValidator)
+      if (!kit.managedHttp.passwordAllowed(newPassword))
+        return passwordPolicyError(context, 'newPassword')
       await kit.emailPasswordManagement.changePassword({
         actorId: actorId!,
         currentPassword,
@@ -284,24 +270,15 @@ async function execute<Credential>(
       await kit.invitations.revoke({ actorId: actorId!, invitationId: invitationId(params.id) })
       return response.noContent()
     default:
-      return executePending(
-        route,
-        context,
-        options,
-        kit as unknown as IntegratedKit,
-        actorId,
-        represent,
-        representIssued
-      )
+      return executePending(route, context, options, kit, actorId, represent, representIssued)
   }
 }
 
-/** These methods are supplied by the service baseline before managed integration. */
 async function executePending<Credential>(
   route: ManagedRoute,
   context: HttpContext,
   options: ManagedRoutesOptions<Credential>,
-  kit: IntegratedKit,
+  kit: AccountKit,
   actorId: CurrentAccount['id'] | undefined,
   represent: (value: CurrentAccount) => Promise<Record<string, unknown>> | Record<string, unknown>,
   representIssued: (value: CurrentAccount) => Promise<Record<string, unknown>>
@@ -314,6 +291,8 @@ async function executePending<Credential>(
       const input = options.extensions?.registration
         ? await options.extensions.registration.validate(context)
         : await request.validateUsing(signupValidator)
+      if (!kit.managedHttp.passwordAllowed(input.password))
+        return passwordPolicyError(context, 'password')
       try {
         await kit.registration.register({
           email: input.email,
@@ -351,6 +330,8 @@ async function executePending<Credential>(
         : invalidProof(context, 'email', options.extensions?.message)
     case 'auth.emailVerification.complete': {
       const { password } = await request.validateUsing(passwordResetCompleteValidator)
+      if (!kit.managedHttp.passwordAllowed(password))
+        return passwordPolicyError(context, 'password')
       await kit.emailVerification.complete({ token: params.token, password })
       return response.ok({ verified: true })
     }
