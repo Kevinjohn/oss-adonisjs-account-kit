@@ -68,10 +68,13 @@ export default class AccountKitController {
     return response.ok({ result })
   }
 
-  async verificationComplete({ params, response }: HttpContext) {
+  async verificationComplete({ params, request, response }: HttpContext) {
     response.header('Referrer-Policy', 'no-referrer')
+    const { password } = await request.validateUsing(passwordValidator)
     try {
-      const result = await (await this.kit()).emailVerification.complete({ token: params.token })
+      const result = await (
+        await this.kit()
+      ).emailVerification.complete({ token: params.token, password })
       return response.ok({ result })
     } catch (error) {
       if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)

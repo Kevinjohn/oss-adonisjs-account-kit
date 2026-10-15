@@ -66,7 +66,11 @@ export interface Invitation {
 export type Capability =
   'passwordReset' | 'emailVerification' | 'invitations' | 'emailPasswordManagement' | 'registration'
 export type CredentialOperation =
-  'password_reset' | 'password_change' | 'email_change' | 'access_restriction' | 'registration_claim'
+  | 'password_reset'
+  | 'password_change'
+  | 'email_change'
+  | 'access_restriction'
+  | 'registration_claim'
 
 export interface CredentialChangeContext {
   operation: CredentialOperation

@@ -120,6 +120,51 @@ test.group('registration', (group) => {
     assert.equal((await kit.db.from('users')).length, 0)
   })
 
+  test('requires explicit availability when enabled and permits application-owned admission', async ({
+    assert,
+  }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    assert.throws(
+      () => defineConfig(makeConfig({ users, enabled: ['registration'] })),
+      'registration.availability must be open, closed, or application'
+    )
+    const service = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'application' },
+    })
+    const user = await service.account.registration.register({
+      email: 'approved@example.test',
+      password: 'password123',
+    })
+    assert.equal(user.email, 'approved@example.test')
+  })
+
+  test('rolls back account creation when its transaction fails', async ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const service = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'open' },
+      users: {
+        ...users,
+        async create(attrs, trx) {
+          await users.create(attrs, trx)
+          throw new Error('injected transaction failure')
+        },
+      },
+    })
+    await assert.rejects(
+      () =>
+        service.account.registration.register({
+          email: 'rollback@example.test',
+          password: 'password123',
+        }),
+      'injected transaction failure'
+    )
+    assert.lengthOf(await kit.db.from('users'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
+    assert.lengthOf(service.recorder.calls, 0)
+  })
+
   test('reports every existing account state with the same email field error', async ({
     assert,
   }) => {
@@ -267,104 +312,111 @@ test.group('registration', (group) => {
     }
   })
 
-  test('issuance and claim serialize so an in-flight old-password credential cannot survive', async ({
+  test('bearer login is limited, and claiming revokes both existing and in-flight tokens', async ({
     assert,
   }) => {
-    await kit.db.connection().schema.createTable('issued_credentials', (table) => {
-      table.increments('id')
-      table.integer('user_id').notNullable()
-    })
-    try {
-      let releaseIssuance!: () => void
-      let issuanceStarted!: () => void
-      const waitForIssuance = new Promise<void>((resolve) => {
-        issuanceStarted = resolve
-      })
-      const holdIssuance = new Promise<void>((resolve) => {
-        releaseIssuance = resolve
-      })
-      const service = makeService(kit, {
-        enabled: ['registration', 'emailVerification'],
-        registration: { availability: 'open' },
-        onCredentialsChangedTransaction: async (user, _context, trx) => {
-          await trx.from('issued_credentials').where('user_id', user.id).delete()
-        },
-      })
-      await service.account.registration.register({
-        email: 'victim@example.test',
-        password: 'attackerPassword123',
-      })
-      const token = tokenFrom(service.recorder.calls[0].args[1])
-      const issuing = service.account.registration.issueCredential({
-        email: 'victim@example.test',
-        password: 'attackerPassword123',
-        issue: async (user, trx) => {
-          await trx.table('issued_credentials').insert({ user_id: user.id })
-          issuanceStarted()
-          await holdIssuance
-          return 'limited'
-        },
-      })
-      await waitForIssuance
-      const claiming = service.account.emailVerification.complete({
-        token,
-        password: 'VictimPassword123',
-      })
-      releaseIssuance()
-      assert.equal((await issuing).credential, 'limited')
-      await claiming
-      assert.lengthOf(await kit.db.from('issued_credentials'), 0)
-      await assert.rejects(
-        () =>
-          service.account.registration.issueCredential({
-            email: 'victim@example.test',
-            password: 'attackerPassword123',
-            issue: async (user, trx) =>
-              trx.table('issued_credentials').insert({ user_id: user.id }),
-          }),
-        InvalidInputError
-      )
-      assert.lengthOf(await kit.db.from('issued_credentials'), 0)
-    } finally {
-      await kit.db.connection().schema.dropTable('issued_credentials')
-    }
-  })
-
-  test('limited credentials reach only allowed actions until verification, and restrictions deny access', async ({
-    assert,
-  }) => {
-    let allowed = true
     const service = makeService(kit, {
       enabled: ['registration', 'emailVerification'],
-      registration: { availability: 'open', allowAccess: () => allowed },
+      registration: { availability: 'open' },
+      authentication: { strategy: 'access_tokens', guard: 'api' },
     })
     const user = await service.account.registration.register({
-      email: 'person@example.test',
-      password: 'password123',
+      email: 'victim@example.test',
+      password: 'attackerPassword123',
     })
     const token = tokenFrom(service.recorder.calls[0].args[1])
-    const issued = await service.account.registration.issueCredential({
-      email: user.email,
-      password: 'password123',
-      issue: async () => 'limited-token',
-    })
-    assert.equal(issued.credential, 'limited-token')
-    assert.equal(issued.user.unverifiedEmail, user.email)
+    const guard = {
+      strategy: 'access_tokens' as const,
+      name: 'api',
+      establish: async (userId: number | string) => {
+        const [id] = await kit.db
+          .table('auth_access_tokens')
+          .insert({ tokenable_id: userId, hash: 'credential' })
+          .returning('id')
+        return { id: typeof id === 'object' ? id.id : id, userId }
+      },
+      terminate: async (credential?: { id: number | string; userId: number | string }) => {
+        if (credential) await kit.db.from('auth_access_tokens').where('id', credential.id).delete()
+      },
+    }
+    const limited = await service.account.authentication.login(
+      { email: user.email, password: 'attackerPassword123', clientKey: 'first' },
+      guard
+    )
+    assert.isFalse(limited.account.active)
     await assert.rejects(
-      () => service.account.registration.requireVerified(user.id),
+      () =>
+        service.account.authentication.requireActive({
+          userId: user.id,
+          tokenId: limited.credential.id,
+        }),
       UnverifiedEmailError
     )
-    allowed = false
-    await assert.rejects(() =>
-      service.account.registration.issueCredential({
-        email: user.email,
-        password: 'password123',
-        issue: async () => 'denied',
-      })
+    const inFlight = service.account.authentication.login(
+      { email: user.email, password: 'attackerPassword123', clientKey: 'second' },
+      {
+        ...guard,
+        establish: async (userId: number | string) => {
+          const credential = await guard.establish(userId)
+          await service.account.emailVerification.complete({ token, password: 'VictimPassword123' })
+          return credential
+        },
+      }
     )
-    await assert.rejects(() => service.account.registration.requireVerified(user.id))
-    allowed = true
-    await service.account.emailVerification.complete({ token, password: 'Password123' })
-    assert.isNull((await service.account.registration.requireVerified(user.id)).unverifiedEmail)
+    await assert.rejects(() => inFlight)
+    assert.lengthOf(await kit.db.from('auth_access_tokens'), 0)
+    await assert.rejects(() =>
+      service.account.authentication.current({ userId: user.id, tokenId: limited.credential.id })
+    )
+    await assert.rejects(() =>
+      service.account.authentication.login(
+        { email: user.email, password: 'attackerPassword123', clientKey: 'third' },
+        guard
+      )
+    )
+  })
+
+  test('session issuance after claim rejects the old password and earlier session revision', async ({
+    assert,
+  }) => {
+    const service = makeService(kit, {
+      enabled: ['registration', 'emailVerification'],
+      registration: { availability: 'open' },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const user = await service.account.registration.register({
+      email: 'victim@example.test',
+      password: 'attackerPassword123',
+    })
+    const token = tokenFrom(service.recorder.calls[0].args[1])
+    const guard = {
+      strategy: 'session' as const,
+      name: 'web',
+      establish: async (_userId: number | string, revision: string | null) => revision,
+      terminate: async () => {},
+    }
+    const limited = await service.account.authentication.login(
+      { email: user.email, password: 'attackerPassword123', clientKey: 'first' },
+      guard
+    )
+    assert.isFalse(limited.account.active)
+    await assert.rejects(
+      () =>
+        service.account.authentication.requireActive({
+          userId: user.id,
+          revision: limited.credential,
+        }),
+      UnverifiedEmailError
+    )
+    await service.account.emailVerification.complete({ token, password: 'VictimPassword123' })
+    await assert.rejects(() =>
+      service.account.authentication.current({ userId: user.id, revision: limited.credential })
+    )
+    await assert.rejects(() =>
+      service.account.authentication.login(
+        { email: user.email, password: 'attackerPassword123', clientKey: 'second' },
+        guard
+      )
+    )
   })
 })
