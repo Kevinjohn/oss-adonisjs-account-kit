@@ -16,7 +16,7 @@ test.group('expired-token pruning', (group) => {
     const expired = DateTime.utc().minus({ days: 1 }).toISO()
     const live = DateTime.utc().plus({ days: 1 }).toISO()
     for (const [index, expiresAt] of [expired, live].entries()) {
-      await kit.db.table('account_recovery_tokens').insert({
+      await kit.db.table('password_reset_tokens').insert({
         user_id: index === 0 ? user.id : other.id,
         email: index === 0 ? user.email : 'other@example.test',
         token_hash: `recovery-${index}`,
@@ -43,14 +43,14 @@ test.group('expired-token pruning', (group) => {
     }
     const expected = { recovery: 1, invitations: 1, emailChanges: 1 }
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, dryRun: true }), expected)
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 2)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 2)
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1 }), expected)
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1 }), {
       recovery: 0,
       invitations: 0,
       emailChanges: 0,
     })
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
   })

@@ -2,16 +2,20 @@ import string from '@adonisjs/core/helpers/string'
 import type { DateTime } from 'luxon'
 import { InvalidInputError } from './errors.js'
 
-export function expiresAt(now: DateTime, ttl: string): DateTime {
+export function expiresAt(now: DateTime, ttl: string | number): DateTime {
   let seconds: number
-  try {
-    seconds = string.seconds.parse(ttl)
-  } catch (cause) {
-    throw new InvalidInputError('TTL must be a positive duration string', { cause })
+  if (typeof ttl === 'number') {
+    seconds = ttl
+  } else {
+    try {
+      seconds = string.seconds.parse(ttl)
+    } catch (cause) {
+      throw new InvalidInputError('TTL must be a positive duration string or seconds', { cause })
+    }
   }
 
   if (!Number.isFinite(seconds) || seconds <= 0) {
-    throw new InvalidInputError('TTL must be a positive duration string')
+    throw new InvalidInputError('TTL must be a positive duration string or seconds')
   }
 
   const expiration = now.plus({ seconds })

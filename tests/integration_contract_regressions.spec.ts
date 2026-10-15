@@ -55,7 +55,7 @@ async function generatedInvitationAcceptanceHook(kit: ReturnType<typeof useTestA
   return imported.default as (...args: never[]) => Promise<void>
 }
 
-test.group('recovery issuance and redemption boundaries', (group) => {
+test.group('password reset issuance and redemption boundaries', (group) => {
   const kit = useTestApp(group)
 
   test('exhausting request issuance does not prevent redeeming the latest valid token', async ({
@@ -69,21 +69,21 @@ test.group('recovery issuance and redemption boundaries', (group) => {
       notify: recorder.notify,
     })
 
-    await account.recovery.request({ email: 'person@example.test', clientKey: 'first' })
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
     const token = tokenFrom(recorder.calls[0].args[1])
     await assert.rejects(
-      () => account.recovery.request({ email: 'person@example.test', clientKey: 'second' }),
+      () => account.passwordReset.request({ email: 'person@example.test', clientKey: 'second' }),
       ThrottledError
     )
 
-    const resetUser = await account.recovery.reset({ token, password: 'new-password123' })
+    const resetUser = await account.passwordReset.reset({ token, password: 'new-password123' })
     const stored = await kit.db.from('users').where('id', resetUser.id).first()
     assert.equal(resetUser.email, 'person@example.test')
     assert.isTrue(await kit.hash.verify(stored.password, 'new-password123'))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['recovery', 'passwordReset']
+      ['passwordResetProvision', 'passwordResetCompleted']
     )
   })
 })

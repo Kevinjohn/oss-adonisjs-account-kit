@@ -3,7 +3,7 @@ import { pruneExpired } from '../src/maintenance.js'
 
 export default class PruneAccountKit extends BaseCommand {
   static commandName = 'account-kit:prune'
-  static description = 'Remove expired account recovery, invitation, and email-change rows'
+  static description = 'Remove expired password-reset, invitation, and email-change rows'
   static options = { startApp: true }
 
   @flags.number({ description: 'Maximum rows inspected in each batch (1–1000)' })

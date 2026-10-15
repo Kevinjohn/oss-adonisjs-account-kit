@@ -9,7 +9,7 @@ test.group('published account kit migrations', (group) => {
     const userColumns = await kit.db.connection().columnsInfo('users')
     assert.isTrue(userColumns.email_verified_at.nullable)
 
-    const recoveryColumnInfo = await kit.db.connection().columnsInfo('account_recovery_tokens')
+    const recoveryColumnInfo = await kit.db.connection().columnsInfo('password_reset_tokens')
     const recoveryColumns = Object.keys(recoveryColumnInfo)
     assert.deepEqual(recoveryColumns, [
       'id',
@@ -95,7 +95,7 @@ test.group('published account kit migrations', (group) => {
     const firstUserId = typeof firstUser === 'object' ? firstUser.id : firstUser
     const secondUserId = typeof secondUser === 'object' ? secondUser.id : secondUser
 
-    await kit.db.table('account_recovery_tokens').insert({
+    await kit.db.table('password_reset_tokens').insert({
       user_id: firstUserId,
       email: 'first@example.test',
       token_hash: 'a'.repeat(64),
@@ -121,7 +121,7 @@ test.group('published account kit migrations', (group) => {
     })
 
     await assert.rejects(() =>
-      kit.db.table('account_recovery_tokens').insert({
+      kit.db.table('password_reset_tokens').insert({
         user_id: firstUserId,
         email: 'first@example.test',
         token_hash: 'd'.repeat(64),
@@ -141,7 +141,7 @@ test.group('published account kit migrations', (group) => {
     )
 
     await assert.rejects(() =>
-      kit.db.table('account_recovery_tokens').insert({
+      kit.db.table('password_reset_tokens').insert({
         user_id: secondUserId,
         email: 'second@example.test',
         token_hash: 'a'.repeat(64),
@@ -183,9 +183,7 @@ test.group('published account kit migrations', (group) => {
     )
 
     await kit.db.from('users').where('id', firstUserId).delete()
-    assert.isNull(
-      await kit.db.from('account_recovery_tokens').where('user_id', firstUserId).first()
-    )
+    assert.isNull(await kit.db.from('password_reset_tokens').where('user_id', firstUserId).first())
     assert.isNull(await kit.db.from('account_email_changes').where('user_id', firstUserId).first())
     const invitation = await kit.db
       .from('account_invitations')

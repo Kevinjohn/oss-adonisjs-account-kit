@@ -132,26 +132,26 @@ const account = new AccountKit({
       listInvitations: async () => true,
     },
     urls: {
-      recovery: (token) => `https://example.test/recovery/${token}`,
-      verification: (token) => `https://example.test/verification/${token}`,
+      passwordReset: (token) => `https://example.test/recovery/${token}`,
+      emailVerification: (token) => `https://example.test/verification/${token}`,
       invitation: (token) => `https://example.test/invitation/${token}`,
       emailChange: (token) => `https://example.test/email-change/${token}`,
     },
     notify: {
-      recovery: async (_user, url) => {
-        notifications.recoveryUrl = url
+      passwordResetProvision: async (_user, url) => {
+        notifications.passwordResetUrl = url
       },
-      verification: async (_user, url) => {
-        notifications.verificationUrl = url
+      accountActivationProvision: async (_user, url) => {
+        notifications.emailVerificationUrl = url
       },
-      invitation: async (_invitation, url) => {
+      invitationProvision: async (_invitation, url) => {
         notifications.invitationUrl = url
       },
-      emailChangeConfirm: async (_user, _email, url) => {
+      emailChangeProvision: async (_user, _email, url) => {
         notifications.emailChangeUrl = url
       },
       emailChanged: async () => {},
-      passwordReset: async () => {
+      passwordResetCompleted: async () => {
         if (failPasswordNotice) throw new Error('private delivery failure')
       },
       passwordChanged: async () => {},
@@ -182,7 +182,7 @@ async function createSchema() {
   await schema.dropTableIfExists('account_transaction_lock')
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
-  await schema.dropTableIfExists('account_recovery_tokens')
+  await schema.dropTableIfExists('password_reset_tokens')
   await schema.dropTableIfExists('users')
 
   await schema.createTable('users', (table) => {
@@ -193,7 +193,7 @@ async function createSchema() {
     table.timestamp('email_verified_at').nullable()
     table.timestamp('created_at').notNullable()
   })
-  await schema.createTable('account_recovery_tokens', (table) => {
+  await schema.createTable('password_reset_tokens', (table) => {
     table.increments('id').primary()
     table.integer('user_id').notNullable().unique()
     table.string('email').notNullable()
@@ -347,7 +347,10 @@ try {
       writer.close()
     }, 60)
     try {
-      await account.recovery.request({ email: profile.email, clientKey: 'sqlite-retry-client' })
+      await account.passwordReset.request({
+        email: profile.email,
+        clientKey: 'sqlite-retry-client',
+      })
     } finally {
       clearTimeout(releaseWriter)
       if (writer.inTransaction) writer.exec('COMMIT')
@@ -365,18 +368,18 @@ try {
     )
   }
 
-  await account.recovery.request({ email: profile.email, clientKey: 'consumer-client' })
+  await account.passwordReset.request({ email: profile.email, clientKey: 'consumer-client' })
   console.log('MINIMUM_STAGE recovery-requested')
-  const recoveryToken = tokenFromUrl(notifications.recoveryUrl)
-  assert.equal(await account.recovery.inspect({ token: recoveryToken }), true)
+  const recoveryToken = tokenFromUrl(notifications.passwordResetUrl)
+  assert.equal(await account.passwordReset.inspect({ token: recoveryToken }), true)
   failCredentialTransaction = true
   await assert.rejects(
-    account.recovery.reset({ token: recoveryToken, password: 'RolledBackPass123!' }),
+    account.passwordReset.reset({ token: recoveryToken, password: 'RolledBackPass123!' }),
     /transaction rollback sentinel/
   )
   failCredentialTransaction = false
   console.log('MINIMUM_STAGE rollback-verified')
-  assert.equal(await account.recovery.inspect({ token: recoveryToken }), true)
+  assert.equal(await account.passwordReset.inspect({ token: recoveryToken }), true)
   assert.equal(
     await db
       .from('account_kit_outbox')
@@ -387,14 +390,14 @@ try {
 
   failPasswordNotice = true
   await assert.rejects(
-    account.recovery.reset({ token: recoveryToken, password: 'CommittedPass123!' }),
+    account.passwordReset.reset({ token: recoveryToken, password: 'CommittedPass123!' }),
     PostCommitError
   )
   failPasswordNotice = false
   console.log('MINIMUM_STAGE post-commit-verified')
   await profile.refresh()
   assert.equal(await hashVerify(profile.password, 'CommittedPass123!'), true)
-  const recoveryRemainsActive = await account.recovery.inspect({ token: recoveryToken })
+  const recoveryRemainsActive = await account.passwordReset.inspect({ token: recoveryToken })
   assert.equal(recoveryRemainsActive, false)
   const committedOutbox = await db.from('account_kit_outbox').count('* as count').first()
   assert.equal(Number(committedOutbox.count), 1)
@@ -405,18 +408,18 @@ try {
     password: 'VerifyPass123!',
     emailVerifiedAt: null,
   })
-  assert.equal(await account.verification.send({ userId: unverifiedUser.id }), 'sent')
-  const verificationToken = tokenFromUrl(notifications.verificationUrl)
-  assert.equal(await account.verification.complete({ token: verificationToken }), 'verified')
+  assert.equal(await account.emailVerification.send({ userId: unverifiedUser.id }), 'sent')
+  const verificationToken = tokenFromUrl(notifications.emailVerificationUrl)
+  assert.equal(await account.emailVerification.complete({ token: verificationToken }), 'verified')
   assert.equal(
-    await account.verification.complete({ token: verificationToken }),
+    await account.emailVerification.complete({ token: verificationToken }),
     'already_verified'
   )
   await unverifiedUser.refresh()
   assert.ok(unverifiedUser.emailVerifiedAt)
   console.log('MINIMUM_STAGE verification-send-complete-verified-replay')
 
-  await account.credentials.changePassword({
+  await account.emailPasswordManagement.changePassword({
     actorId: profile.id,
     currentPassword: 'CommittedPass123!',
     newPassword: 'ChangedPass123!',
@@ -431,13 +434,15 @@ try {
   assert.equal(Number(passwordChangeOutboxCount.count), 1)
   console.log('MINIMUM_STAGE authenticated-password-change')
 
-  await account.credentials.requestEmailChange({
+  await account.emailPasswordManagement.requestEmailChange({
     actorId: profile.id,
     currentPassword: 'ChangedPass123!',
     newEmail: ' Owner-Next@Example.Test ',
   })
   const emailChangeToken = tokenFromUrl(notifications.emailChangeUrl)
-  const changedProfile = await account.credentials.completeEmailChange({ token: emailChangeToken })
+  const changedProfile = await account.emailPasswordManagement.completeEmailChange({
+    token: emailChangeToken,
+  })
   assert.equal(changedProfile.email, 'owner-next@example.test')
   assert.ok(changedProfile.emailVerifiedAt)
   const emailChangeOutboxCount = await db
@@ -458,15 +463,15 @@ try {
       password: 'DeferredPass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await account.recovery.request({ email: deferredUser.email, clientKey: 'deferred-client' })
+    await account.passwordReset.request({ email: deferredUser.email, clientKey: 'deferred-client' })
     console.log('MINIMUM_STAGE deferred-requested')
-    const deferredToken = tokenFromUrl(notifications.recoveryUrl)
+    const deferredToken = tokenFromUrl(notifications.passwordResetUrl)
     insertDeferredFailure = true
     await assert.rejects(
-      account.recovery.reset({ token: deferredToken, password: 'NeverCommitted123!' })
+      account.passwordReset.reset({ token: deferredToken, password: 'NeverCommitted123!' })
     )
     insertDeferredFailure = false
-    assert.equal(await account.recovery.inspect({ token: deferredToken }), true)
+    assert.equal(await account.passwordReset.inspect({ token: deferredToken }), true)
     await deferredUser.refresh()
     assert.equal(await hashVerify(deferredUser.password, 'DeferredPass123!'), true)
     console.log('MINIMUM_STAGE deferred-commit-verified')

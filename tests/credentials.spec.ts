@@ -22,7 +22,7 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
-test.group('credentials', (group) => {
+test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
 
   const createUser = (social = false) =>
@@ -35,7 +35,7 @@ test.group('credentials', (group) => {
     const now = DateTime.utc()
     const recoveryToken = generateToken()
     const emailToken = generateToken()
-    await kit.db.table('account_recovery_tokens').insert({
+    await kit.db.table('password_reset_tokens').insert({
       user_id: user.id,
       email: user.email,
       token_hash: hashToken(recoveryToken),
@@ -59,7 +59,7 @@ test.group('credentials', (group) => {
     recorder: ReturnType<typeof makeNotify>,
     newEmail = 'new@example.test'
   ) {
-    await account.credentials.requestEmailChange({
+    await account.emailPasswordManagement.requestEmailChange({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newEmail,
@@ -75,7 +75,7 @@ test.group('credentials', (group) => {
     email: string
   ) {
     if (
-      call.method !== 'emailChangeConfirm' ||
+      call.method !== 'emailChangeProvision' ||
       (call.args[0] as AccountUser).id !== user.id ||
       call.args[1] !== email
     )
@@ -98,7 +98,7 @@ test.group('credentials', (group) => {
     for (const value of [null, 'short', 'x'.repeat(257)])
       await assert.rejects(
         () =>
-          account.credentials.changePassword({
+          account.emailPasswordManagement.changePassword({
             actorId: user.id,
             currentPassword: 'oldPassword123',
             newPassword: value as never,
@@ -107,7 +107,7 @@ test.group('credentials', (group) => {
       )
     assert.equal(lookups, 0)
     assert.isUndefined(
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
@@ -122,7 +122,7 @@ test.group('credentials', (group) => {
     const account = service()
     await assert.rejects(
       () =>
-        account.credentials.changePassword({
+        account.emailPasswordManagement.changePassword({
           actorId: 99999,
           currentPassword: 'oldPassword123',
           newPassword: 'newPassword123',
@@ -132,7 +132,7 @@ test.group('credentials', (group) => {
     for (const currentPassword of [undefined, '', 'incorrect'])
       await assert.rejects(
         () =>
-          account.credentials.changePassword({
+          account.emailPasswordManagement.changePassword({
             actorId: user.id,
             currentPassword: currentPassword as never,
             newPassword: 'newPassword123',
@@ -149,7 +149,7 @@ test.group('credentials', (group) => {
     const account = service()
     await assert.rejects(
       () =>
-        account.credentials.changePassword({
+        account.emailPasswordManagement.changePassword({
           actorId: user.id,
           currentPassword: 'anything',
           newPassword: 'newPassword123',
@@ -181,7 +181,7 @@ test.group('credentials', (group) => {
     for (let index = 0; index < 5; index++)
       await assert.rejects(
         () =>
-          account.credentials.changePassword({
+          account.emailPasswordManagement.changePassword({
             actorId: user.id,
             currentPassword: 'wrong',
             newPassword: 'newPassword123',
@@ -189,7 +189,7 @@ test.group('credentials', (group) => {
         IdentityNotConfirmedError
       )
     try {
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
@@ -225,15 +225,12 @@ test.group('credentials', (group) => {
         callbackUser = changed
         const row = await kit.db.from('users').where('id', changed.id).first()
         sawCommitted = await kit.hash.verify(row.password, 'newPassword123')
-        assert.lengthOf(
-          await kit.db.from('account_recovery_tokens').where('user_id', changed.id),
-          0
-        )
+        assert.lengthOf(await kit.db.from('password_reset_tokens').where('user_id', changed.id), 0)
         assert.lengthOf(await kit.db.from('account_email_changes').where('user_id', changed.id), 0)
       },
     })
     assert.isUndefined(
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
@@ -261,7 +258,7 @@ test.group('credentials', (group) => {
       },
     })
     try {
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
@@ -273,14 +270,14 @@ test.group('credentials', (group) => {
     }
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(await kit.db.from('account_email_changes'), 0)
   })
 
   test('accepts 256 UTF-16 units for a password change', async ({ assert }) => {
     const user = await createUser()
     const password = '😀'.repeat(128)
-    await service().credentials.changePassword({
+    await service().emailPasswordManagement.changePassword({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newPassword: password,
@@ -312,7 +309,7 @@ test.group('credentials', (group) => {
       },
     })
     try {
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
@@ -349,7 +346,7 @@ test.group('credentials', (group) => {
       },
     })
     try {
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
@@ -361,7 +358,7 @@ test.group('credentials', (group) => {
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'oldPassword123'))
     assert.isFalse(await kit.hash.verify(row.password, 'newPassword123'))
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 1)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
     assert.equal(callbacks, 0)
   })
@@ -397,7 +394,7 @@ test.group('credentials', (group) => {
         })
       : null
     if (native) assert.equal(native.pragma('journal_mode', { simple: true }), 'wal')
-    const changing = account.credentials.changePassword({
+    const changing = account.emailPasswordManagement.changePassword({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newPassword: 'newPassword123',
@@ -435,7 +432,7 @@ test.group('credentials', (group) => {
     }
   })
 
-  test('a password change and independent recovery reset serialize without a database error', async ({
+  test('a password change and independent password reset serialize without a database error', async ({
     assert,
   }) => {
     const user = await createUser()
@@ -464,7 +461,7 @@ test.group('credentials', (group) => {
         },
       },
     })
-    const changing = account.credentials.changePassword({
+    const changing = account.emailPasswordManagement.changePassword({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newPassword: 'changedPassword123',
@@ -485,7 +482,7 @@ test.group('credentials', (group) => {
     }
     knex.on('query', onQuery)
     try {
-      const resetting = account.recovery.reset({
+      const resetting = account.passwordReset.reset({
         token: recoveryToken,
         password: 'resetPassword123',
       })
@@ -506,7 +503,7 @@ test.group('credentials', (group) => {
       const reset = await kit.hash.verify(row.password, 'resetPassword123')
       assert.notEqual(changed, reset)
       assert.isTrue(changed || reset)
-      assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+      assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     } finally {
       releaseProof()
       knex.off('query', onQuery)
@@ -518,7 +515,7 @@ test.group('credentials', (group) => {
     const user = await createUser()
     const recorder = makeNotify()
     const account = service({ notify: recorder.notify })
-    await account.credentials.requestEmailChange({
+    await account.emailPasswordManagement.requestEmailChange({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newEmail: ' NEW@EXAMPLE.TEST ',
@@ -528,7 +525,7 @@ test.group('credentials', (group) => {
     assert.equal(row.new_email, 'new@example.test')
     const token = tokenFrom(recorder.calls[0].args[2])
     assert.equal(row.token_hash, hashToken(token))
-    const changed = await account.credentials.completeEmailChange({ token })
+    const changed = await account.emailPasswordManagement.completeEmailChange({ token })
     assert.equal(changed.email, 'new@example.test')
     assert.isNotNull(changed.emailVerifiedAt)
   })
@@ -551,7 +548,7 @@ test.group('credentials', (group) => {
     ])
       await assert.rejects(
         () =>
-          account.credentials.requestEmailChange({
+          account.emailPasswordManagement.requestEmailChange({
             actorId: user.id,
             currentPassword: 'oldPassword123',
             newEmail: newEmail as never,
@@ -563,7 +560,7 @@ test.group('credentials', (group) => {
     for (const currentPassword of [undefined, '', 'incorrect'])
       await assert.rejects(
         () =>
-          account.credentials.requestEmailChange({
+          account.emailPasswordManagement.requestEmailChange({
             actorId: user.id,
             currentPassword: currentPassword as never,
             newEmail: 'new@example.test',
@@ -572,7 +569,7 @@ test.group('credentials', (group) => {
       )
     await assert.rejects(
       () =>
-        account.credentials.requestEmailChange({
+        account.emailPasswordManagement.requestEmailChange({
           actorId: 99999,
           currentPassword: 'oldPassword123',
           newEmail: 'new@example.test',
@@ -589,7 +586,7 @@ test.group('credentials', (group) => {
     const account = service()
     await assert.rejects(
       () =>
-        account.credentials.requestEmailChange({
+        account.emailPasswordManagement.requestEmailChange({
           actorId: social.id,
           currentPassword: 'anything',
           newEmail: 'new@example.test',
@@ -607,7 +604,7 @@ test.group('credentials', (group) => {
     const actor = await users.findById(social.id)
     await assert.rejects(
       () =>
-        account.credentials.requestEmailChange({
+        account.emailPasswordManagement.requestEmailChange({
           actorId: actor!.id,
           currentPassword: 'oldPassword123',
           newEmail: 'new@example.test',
@@ -623,7 +620,7 @@ test.group('credentials', (group) => {
     const account = service({ notify: recorder.notify })
     await assert.rejects(
       () =>
-        account.credentials.requestEmailChange({
+        account.emailPasswordManagement.requestEmailChange({
           actorId: user.id,
           currentPassword: 'wrong',
           newEmail: ' PERSON@EXAMPLE.TEST ',
@@ -631,7 +628,7 @@ test.group('credentials', (group) => {
       IdentityNotConfirmedError
     )
     assert.isUndefined(
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newEmail: ' PERSON@EXAMPLE.TEST ',
@@ -640,14 +637,14 @@ test.group('credentials', (group) => {
     assert.lengthOf(recorder.calls, 0)
     assert.lengthOf(await kit.db.from('account_email_changes'), 0)
     for (let index = 0; index < 3; index++)
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newEmail: user.email,
       })
     await assert.rejects(
       () =>
-        account.credentials.requestEmailChange({
+        account.emailPasswordManagement.requestEmailChange({
           actorId: user.id,
           currentPassword: 'oldPassword123',
           newEmail: user.email,
@@ -679,7 +676,7 @@ test.group('credentials', (group) => {
     for (let index = 0; index < 5; index++)
       await assert.rejects(
         () =>
-          account.credentials.changePassword({
+          account.emailPasswordManagement.changePassword({
             actorId: user.id,
             currentPassword: 'wrong',
             newPassword: 'newPassword123',
@@ -687,7 +684,7 @@ test.group('credentials', (group) => {
         IdentityNotConfirmedError
       )
     try {
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newEmail: 'new@example.test',
@@ -733,7 +730,7 @@ test.group('credentials', (group) => {
         })
       : null
     if (native) assert.equal(native.pragma('journal_mode', { simple: true }), 'wal')
-    const requesting = account.credentials.requestEmailChange({
+    const requesting = account.emailPasswordManagement.requestEmailChange({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newEmail: 'new@example.test',
@@ -796,21 +793,21 @@ test.group('credentials', (group) => {
     assert.isAbove(new Date(rows[0].expires_at).valueOf(), new Date(rows[0].created_at).valueOf())
     assert.isFalse(Object.values(rows[0]).includes(second))
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token: first }),
+      () => account.emailPasswordManagement.completeEmailChange({ token: first }),
       InvalidTokenError
     )
-    const changed = await account.credentials.completeEmailChange({ token: second })
+    const changed = await account.emailPasswordManagement.completeEmailChange({ token: second })
     assert.equal(changed.email, 'other@example.test')
   })
 
   test('request delivery failure preserves the committed token and cause', async ({ assert }) => {
     const user = await createUser()
     const recorder = makeNotify()
-    recorder.failOn('emailChangeConfirm')
+    recorder.failOn('emailChangeProvision')
     const account = service({ notify: recorder.notify })
     await assert.rejects(
       () =>
-        account.credentials.requestEmailChange({
+        account.emailPasswordManagement.requestEmailChange({
           actorId: user.id,
           currentPassword: 'oldPassword123',
           newEmail: 'new@example.test',
@@ -835,7 +832,7 @@ test.group('credentials', (group) => {
       },
     })
     try {
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newEmail: 'new@example.test',
@@ -848,7 +845,7 @@ test.group('credentials', (group) => {
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
   })
 
-  test('complete invalidates recovery, reloads a verified user, and orders postcommit callbacks', async ({
+  test('complete invalidates password reset tokens, reloads a verified user, and orders postcommit callbacks', async ({
     assert,
   }) => {
     const user = await createUser()
@@ -865,7 +862,7 @@ test.group('credentials', (group) => {
           assert.equal(previous, user.email)
           assert.equal(changed.email, 'new@example.test')
           assert.lengthOf(await kit.db.from('account_email_changes'), 0)
-          assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+          assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
         },
       },
       onCredentialsChanged: async (changed) => {
@@ -876,13 +873,13 @@ test.group('credentials', (group) => {
       },
     })
     const token = await issueEmailChange(account, user, recorder)
-    const changed = await account.credentials.completeEmailChange({ token })
+    const changed = await account.emailPasswordManagement.completeEmailChange({ token })
     assert.equal(changed.email, 'new@example.test')
     assert.isNotNull(changed.emailVerifiedAt)
     assert.deepEqual(events, ['credentials', 'notify'])
-    assert.lengthOf(await kit.db.from('account_recovery_tokens'), 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token }),
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
       InvalidTokenError
     )
   })
@@ -895,7 +892,7 @@ test.group('credentials', (group) => {
     const account = service({ notify: recorder.notify })
     for (const token of [null, 123, '', 'bad'])
       await assert.rejects(
-        () => account.credentials.completeEmailChange({ token: token as never }),
+        () => account.emailPasswordManagement.completeEmailChange({ token: token as never }),
         InvalidTokenError
       )
     const token = await issueEmailChange(account, user, recorder)
@@ -904,14 +901,14 @@ test.group('credentials', (group) => {
       .where('user_id', user.id)
       .update({ expires_at: DateTime.utc().minus({ second: 1 }).toISO() })
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token }),
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
       InvalidTokenError
     )
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
     const second = await issueEmailChange(account, user, recorder)
     await kit.db.from('users').where('id', user.id).update({ email: 'changed@example.test' })
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token: second }),
+      () => account.emailPasswordManagement.completeEmailChange({ token: second }),
       InvalidTokenError
     )
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
@@ -922,7 +919,7 @@ test.group('credentials', (group) => {
     )
     await kit.db.from('users').where('id', user.id).delete()
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token: third }),
+      () => account.emailPasswordManagement.completeEmailChange({ token: third }),
       InvalidTokenError
     )
   })
@@ -949,7 +946,7 @@ test.group('credentials', (group) => {
       .table('users')
       .insert({ email: 'new@example.test', created_at: DateTime.utc().toISO() })
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token }),
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
       EmailAlreadyRegisteredError
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
@@ -976,7 +973,7 @@ test.group('credentials', (group) => {
     })
     const token = await issueEmailChange(account, user, recorder)
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token }),
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
       EmailAlreadyRegisteredError
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
@@ -990,13 +987,13 @@ test.group('credentials', (group) => {
     const recorder = makeNotify()
     const account = service({ notify: recorder.notify })
     const token = await issueEmailChange(account, user, recorder)
-    await account.credentials.changePassword({
+    await account.emailPasswordManagement.changePassword({
       actorId: user.id,
       currentPassword: 'oldPassword123',
       newPassword: 'newPassword123',
     })
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token }),
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
       InvalidTokenError
     )
   })
@@ -1007,8 +1004,8 @@ test.group('credentials', (group) => {
     const account = service({ notify: recorder.notify })
     const token = await issueEmailChange(account, user, recorder)
     const results = await Promise.allSettled([
-      account.credentials.completeEmailChange({ token }),
-      account.credentials.completeEmailChange({ token }),
+      account.emailPasswordManagement.completeEmailChange({ token }),
+      account.emailPasswordManagement.completeEmailChange({ token }),
     ])
     assert.lengthOf(
       results.filter((result) => result.status === 'fulfilled'),
@@ -1040,7 +1037,7 @@ test.group('credentials', (group) => {
     })
     const token = await issueEmailChange(account, user, recorder)
     await assert.rejects(
-      () => account.credentials.completeEmailChange({ token }),
+      () => account.emailPasswordManagement.completeEmailChange({ token }),
       'setEmail failed'
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
@@ -1066,7 +1063,7 @@ test.group('credentials', (group) => {
     })
     const token = await issueEmailChange(account, user, recorder)
     try {
-      await account.credentials.completeEmailChange({ token })
+      await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected postcommit error')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -1092,7 +1089,7 @@ test.group('credentials', (group) => {
     })
     const token = await issueEmailChange(account, user, recorder)
     try {
-      await account.credentials.completeEmailChange({ token })
+      await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected postcommit error')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -1124,7 +1121,7 @@ test.group('credentials', (group) => {
     })
     const token = await issueEmailChange(account, user, recorder)
     try {
-      await account.credentials.completeEmailChange({ token })
+      await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected postcommit error')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -1188,7 +1185,7 @@ test.group('credentials', (group) => {
     calls.length = 0
     seam.arm()
     try {
-      await account.credentials.completeEmailChange({ token })
+      await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected committed failure')
     } catch (error) {
       assert.instanceOf(error, PostCommitError)
@@ -1218,7 +1215,7 @@ test.group('credentials', (group) => {
     })
     seam.arm()
     try {
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newEmail: 'new@example.test',
@@ -1231,7 +1228,7 @@ test.group('credentials', (group) => {
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['emailChangeConfirm']
+      ['emailChangeProvision']
     )
     assert.deepEqual(events, ['email_change.requested'])
     const row = await kit.db.from('account_email_changes').where('user_id', user.id).first()
@@ -1255,7 +1252,7 @@ test.group('credentials', (group) => {
     })
     seam.arm()
     try {
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newEmail: 'new@example.test',
