@@ -9,10 +9,12 @@ import {
   InvitationPendingError,
   InvitationNotFoundError,
   InvalidTokenError,
+  PostCommitError,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { transaction } from '../src/db.js'
-import type { AccountKitConfig, AccountUser } from '../src/types.js'
+import type { Database } from '@adonisjs/lucid/database'
+import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import {
   accountKit,
@@ -25,6 +27,26 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+
+/** A database whose package transactions fail in a commit listener after committing. */
+function faultAfterCommit(db: Database, failure: Error): Database {
+  return Object.create(db, {
+    connection: {
+      value: (...args: Parameters<Database['connection']>) => {
+        const client = db.connection(...args)
+        const begin = client.transaction.bind(client) as (...rest: unknown[]) => Promise<Trx>
+        client.transaction = (async (...rest: unknown[]) => {
+          const trx = await begin(...rest)
+          trx.on('commit', () => {
+            throw failure
+          })
+          return trx
+        }) as typeof client.transaction
+        return client
+      },
+    },
+  })
+}
 test.group('invitations.send', (group) => {
   const kit = useTestApp(group)
 
@@ -252,6 +274,38 @@ test.group('invitations.send', (group) => {
     }
     assert.lengthOf(await kit.db.from('account_invitations'), 2)
   })
+
+  test('delivers the invitation once after a committed cleanup fault', async ({ assert }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    const failure = new Error('listener failed after commit')
+    const events: string[] = []
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        notify: recorder.notify,
+        onLifecycleEvent: async (event) => {
+          events.push(event.type)
+        },
+      })
+    )
+    const account = accountKit({ ...kit, db: faultAfterCommit(kit.db, failure) }, config)
+    try {
+      await account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(
+      recorder.calls.map((call) => call.method),
+      ['invitation']
+    )
+    assert.deepEqual(events, ['invitation.sent'])
+    const row = await kit.db.from('account_invitations').where('email', 'new@example.test').first()
+    assert.equal(row.token_hash, hashToken(tokenFrom(recorder.calls[0].args[1])))
+  })
 })
 
 test.group('invitations.list and inspect', (group) => {
@@ -408,6 +462,38 @@ test.group('invitations.accept', (group) => {
     assert.notEqual(accepted.emailVerifiedAt?.toISO(), callbackUser?.emailVerifiedAt?.toISO())
     assert.notEqual(stored.password, 'newPassword123')
     assert.isTrue(await kit.hash.verify(stored.password, 'newPassword123'))
+    assert.lengthOf(await kit.db.from('account_invitations'), 0)
+  })
+
+  test('emits the accepted event once after a committed cleanup fault', async ({ assert }) => {
+    const actor = await createActor()
+    const failure = new Error('listener failed after commit')
+    const events: string[] = []
+    let armed = false
+    const { account, recorder } = service({
+      onInvitationAccepted: async (_user, _invitation, trx) => {
+        if (!armed) return
+        trx.on('commit', () => {
+          throw failure
+        })
+      },
+      onLifecycleEvent: async (event) => {
+        events.push(event.type)
+      },
+    })
+    const { token } = await issue(account, recorder, actor.id)
+    events.length = 0
+    armed = true
+    try {
+      await account.invitations.accept({ token, password: 'newPassword123' })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(events, ['invitation.accepted'])
+    assert.isNotNull(await kit.db.from('users').where('email', 'person@example.test').first())
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
   })
 
