@@ -11,6 +11,13 @@ Follow the [identity creation contract](identity-creation.md), especially its ma
 before applying the appended migrations. Custom adapters now accept explicit pending-email and
 nullable-password creation attributes, expose `AccountUser.unverifiedEmail`, and implement
 `setUnverifiedEmail`. The API example has been updated to the new contract.
+Enable and configure registration explicitly as described in [registration](registration.md).
+An inactive activation now needs `emailVerification.complete({ token, password })`; update clients
+to POST a fresh password and confirmation. Token-only activation attempts fail. Existing legacy
+activation links must be reissued after the proof migration. A successful claim replaces an
+earlier password and invalidates credentials issued for the inactive account. Existing
+application-owned signup routes should establish only a limited credential and enforce
+`unverified_email` on protected routes.
 Custom `markEmailVerified` implementations must clear the pending address in the same transaction
 as the audit timestamp; otherwise an inactive account will not activate. Password reset and
 password change also call `setUnverifiedEmail` to cancel a distinct pending address.

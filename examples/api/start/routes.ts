@@ -21,7 +21,6 @@ router.get('/', () => {
 router.post('/account-kit/recovery', [controllers.AccountKit, 'recoveryRequest'])
 router.get('/account-kit/recovery/:token', [controllers.AccountKit, 'recoveryInspect'])
 router.post('/account-kit/recovery/:token', [controllers.AccountKit, 'recoveryReset'])
-router.get('/account-kit/verification/:token', [controllers.AccountKit, 'verificationComplete'])
 router.get('/account-kit/invitation/:token', [controllers.AccountKit, 'invitationInspect'])
 router.post('/account-kit/invitation/:token', [controllers.AccountKit, 'invitationAccept'])
 router.get('/account-kit/email-change/:token', [controllers.AccountKit, 'emailChangeInspect'])
@@ -48,12 +47,14 @@ router
   .use(middleware.auth())
   .use(middleware.accountAccess())
 
+router.post('/account-kit/verification/:token', [controllers.AccountKit, 'verificationComplete'])
+
 router
   .group(() => {
     router
       .group(() => {
-        if (strategy === 'access_tokens') router.post('signup', [controllers.NewAccount, 'store'])
-        else router.get('csrf', [controllers.Session, 'csrf'])
+        router.post('signup', [controllers.NewAccount, 'store'])
+        if (strategy === 'session') router.get('csrf', [controllers.Session, 'csrf'])
         if (strategy === 'session') router.post('login', [controllers.Session, 'store'])
         else router.post('login', [controllers.AccessTokens, 'store'])
       })

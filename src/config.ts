@@ -123,9 +123,15 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     }
   }
   if (enabled.includes('registration')) {
-    if (!config.registration || !['open', 'closed', 'application'].includes(config.registration.availability))
+    if (
+      !config.registration ||
+      !['open', 'closed', 'application'].includes(config.registration.availability)
+    )
       throw new Error('account_kit: registration.availability must be open, closed, or application')
-    if (config.registration.mapFields !== undefined && typeof config.registration.mapFields !== 'function')
+    if (
+      config.registration.mapFields !== undefined &&
+      typeof config.registration.mapFields !== 'function'
+    )
       throw new Error('account_kit: registration.mapFields must be a function')
   }
   for (const hook of [
@@ -186,15 +192,34 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     symbols: config.passwordPolicy?.symbols ?? false,
     minScore: config.passwordPolicy?.minScore ?? 0,
   }
-  if (config.passwordPolicy !== undefined && (!config.passwordPolicy || typeof config.passwordPolicy !== 'object' || Array.isArray(config.passwordPolicy)))
+  if (
+    config.passwordPolicy !== undefined &&
+    (!config.passwordPolicy ||
+      typeof config.passwordPolicy !== 'object' ||
+      Array.isArray(config.passwordPolicy))
+  )
     throw new Error('account_kit: passwordPolicy must be an object')
-  if (!Number.isSafeInteger(passwordPolicy.minLength) || passwordPolicy.minLength < 8 || passwordPolicy.minLength > 256 ||
-      (passwordPolicy.maxLength !== null && (!Number.isSafeInteger(passwordPolicy.maxLength) || passwordPolicy.maxLength > 256 || passwordPolicy.maxLength < passwordPolicy.minLength)))
-    throw new Error('account_kit: passwordPolicy lengths must stay within 8–256 and minLength must not exceed maxLength')
-  if (!Number.isSafeInteger(passwordPolicy.minScore) || passwordPolicy.minScore < 0 || passwordPolicy.minScore > 4)
+  if (
+    !Number.isSafeInteger(passwordPolicy.minLength) ||
+    passwordPolicy.minLength < 8 ||
+    passwordPolicy.minLength > 256 ||
+    (passwordPolicy.maxLength !== null &&
+      (!Number.isSafeInteger(passwordPolicy.maxLength) ||
+        passwordPolicy.maxLength > 256 ||
+        passwordPolicy.maxLength < passwordPolicy.minLength))
+  )
+    throw new Error(
+      'account_kit: passwordPolicy lengths must stay within 8–256 and minLength must not exceed maxLength'
+    )
+  if (
+    !Number.isSafeInteger(passwordPolicy.minScore) ||
+    passwordPolicy.minScore < 0 ||
+    passwordPolicy.minScore > 4
+  )
     throw new Error('account_kit: passwordPolicy.minScore must be an integer from 0 to 4')
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
-    if (typeof passwordPolicy[key] !== 'boolean') throw new Error(`account_kit: passwordPolicy.${key} must be boolean`)
+    if (typeof passwordPolicy[key] !== 'boolean')
+      throw new Error(`account_kit: passwordPolicy.${key} must be boolean`)
   let authentication: ResolvedAuthenticationConfig | undefined
   if (config.authentication !== undefined) {
     const auth = config.authentication

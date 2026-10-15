@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
 import { loginValidator } from '#validators/user'
+import { accessTokenGuard } from '#services/account_kit_guards'
 
 export default class AccessTokensController {
   async store({ request, serialize }: HttpContext) {
@@ -11,24 +12,7 @@ export default class AccessTokensController {
     const kit = await app.container.make(AccountKit)
     const result = await kit.authentication.login(
       { email, password, clientKey: request.ip() },
-      {
-        strategy: 'access_tokens',
-        name: 'api',
-        async establish(userId, abilities, expiresIn) {
-          const user = await User.findOrFail(userId)
-          const token = await User.accessTokens.create(
-            user,
-            abilities,
-            expiresIn === null ? undefined : { expiresIn }
-          )
-          return { userId, identifier: token.identifier, value: token.value!.release() }
-        },
-        async terminate(credential) {
-          if (!credential) return
-          const user = await User.findOrFail(credential.userId)
-          await User.accessTokens.delete(user, credential.identifier)
-        },
-      }
+      accessTokenGuard()
     )
     return serialize({ user: result.account, token: result.credential.value })
   }

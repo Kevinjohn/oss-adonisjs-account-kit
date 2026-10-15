@@ -40,6 +40,26 @@ async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
 
 export default defineConfig({
   users,
+  enabled: [
+    'passwordReset',
+    'emailVerification',
+    'invitations',
+    'emailPasswordManagement',
+    'registration',
+  ],
+  registration: {
+    availability: 'open',
+    mapFields(data) {
+      const fullName = (data as { fullName?: unknown } | null)?.fullName
+      if (
+        typeof fullName !== 'string' ||
+        fullName.trim().length === 0 ||
+        fullName.trim().length > 100
+      )
+        throw new Error('A full name of at most 100 characters is required')
+      return { fullName: fullName.trim() }
+    },
+  },
   authentication: {
     strategy: authStrategy,
     guard: authStrategy === 'session' ? 'web' : 'api',

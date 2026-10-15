@@ -102,7 +102,9 @@ export async function completeVerification(
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await credentialsChanged(trx, deps.config, reloaded, {
-        operation: 'registration_claim', operationId, userId: user.id,
+        operation: 'registration_claim',
+        operationId,
+        userId: user.id,
       })
       return reloaded
     })
