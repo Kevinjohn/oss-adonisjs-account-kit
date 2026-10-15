@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { lstat, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { safeSetupPath } from './safe_path.js'
 import { fileURLToPath } from 'node:url'
@@ -13,6 +13,7 @@ import type {
 } from './types.js'
 import { featureNames } from './types.js'
 import { parseSetupChoices } from './parse.js'
+import { planManagedRoutes, type ManagedRoute } from '../http/routes.js'
 
 const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']['destinations']>> =
   {
@@ -23,42 +24,19 @@ const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']
     emailPasswordManagement: 'emailChange',
   }
 
-const knownEndpoints: Record<SetupFeature, string[]> = {
-  registration: ['auth.signup'],
-  authentication: [
-    'auth.login',
-    'account.logout',
-    'account.profile.show',
-    'account.profile.update',
-  ],
-  passwordReset: [
-    'auth.passwordReset.request',
-    'auth.passwordReset.inspect',
-    'auth.passwordReset.complete',
-  ],
-  emailVerification: [
-    'auth.emailVerification.inspect',
-    'auth.emailVerification.complete',
-    'account.emailVerification.send',
-  ],
-  emailPasswordManagement: [
-    'auth.emailChange.inspect',
-    'auth.emailChange.complete',
-    'account.password.change',
-  ],
-  invitations: [
-    'auth.invitation.inspect',
-    'auth.invitation.accept',
-    'account.invitation.send',
-    'account.invitation.list',
-    'account.invitation.resend',
-    'account.invitation.revoke',
-  ],
-}
-
 const envName = /^[A-Z][A-Z0-9_]*$/
 const sqlName = /^[A-Za-z_][A-Za-z0-9_]*$/
 const routePrefix = /^\/[A-Za-z0-9/_-]*$/
+
+function selectedManagedRoutes(choices: SetupChoices): ManagedRoute[] {
+  if (!choices.managed.length || !choices.authentication) return []
+  return planManagedRoutes({
+    prefix: choices.routePrefix,
+    strategy: choices.authentication.strategy,
+    enabled: choices.managed,
+    except: choices.managedExcept ?? [],
+  })
+}
 
 function diagnostic(
   diagnostics: SetupDiagnostic[],
@@ -144,15 +122,41 @@ function validate(
       'routePrefix',
       'Use a non-root absolute path without a query or fragment'
     )
+  let managedRoutes: ManagedRoute[] = []
+  try {
+    managedRoutes = selectedManagedRoutes(choices)
+    const allowedExcept = planManagedRoutes({
+      prefix: choices.routePrefix,
+      strategy: choices.authentication?.strategy ?? 'session',
+      enabled: choices.managed,
+    }).map(({ name }) => name)
+    if (
+      new Set(choices.managedExcept ?? []).size !== (choices.managedExcept ?? []).length ||
+      (choices.managedExcept ?? []).some((name) => !allowedExcept.includes(name))
+    )
+      diagnostic(
+        diagnostics,
+        'managedExcept',
+        'Exclude each selected managed endpoint at most once'
+      )
+  } catch {
+    diagnostic(
+      diagnostics,
+      'managedExcept',
+      'Select only known endpoint names for the selected strategy and managed groups'
+    )
+  }
   if (
-    state.routePaths.some(
-      (path) => path === choices.routePrefix || path.startsWith(`${choices.routePrefix}/`)
+    managedRoutes.some(({ method, path }) =>
+      state.routeDefinitions.some(
+        (route) => (route.method === method || route.method === 'ANY') && route.path === path
+      )
     )
   )
     diagnostic(
       diagnostics,
       'routePrefix',
-      'An application route already uses this prefix; choose a different prefix or remove the route before applying'
+      'An application route collides with a selected managed method and path; exclude that endpoint or change the application route'
     )
   if (choices.user.connection !== 'default')
     diagnostic(diagnostics, 'user.connection', 'Only the default Lucid connection is supported')
@@ -613,6 +617,7 @@ function managedRoutesSource(choices: SetupChoices): string {
     'registerManagedRoutes(router, {',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
+    `  except: ${JSON.stringify(choices.managedExcept ?? [])},`,
     `  verificationRequired: ${choices.policy.verificationRequired},`,
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
@@ -621,8 +626,24 @@ function managedRoutesSource(choices: SetupChoices): string {
   ].join('\n')
 }
 
-function disabledManagedRoutesSource(): string {
-  return '// Account Kit managed endpoints are disabled by setup.\n'
+function disabledManagedRoutesSource(previous: SetupChoices): string {
+  return `// Account Kit managed endpoints are disabled by setup.\n// Previous generated selection: ${Buffer.from(JSON.stringify(previous)).toString('base64url')}\n`
+}
+
+function retainedGeneratedChoices(state: SetupInspection): SetupChoices | null {
+  const marker = state.files['start/account_kit_routes.ts']
+  const encoded = marker?.match(
+    /^\/\/ Account Kit managed endpoints are disabled by setup\.\n\/\/ Previous generated selection: ([A-Za-z0-9_-]+)\n$/
+  )?.[1]
+  if (!encoded) return null
+  try {
+    const previous = parseSetupChoices(
+      JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
+    )
+    return marker === disabledManagedRoutesSource(previous) ? previous : null
+  } catch {
+    return null
+  }
 }
 
 function managedGuardSource(choices: SetupChoices): string {
@@ -651,6 +672,26 @@ function managedAccessMiddlewareSource(choices: SetupChoices): string {
     '  guard: accountKitGuard,',
     `  active: ${choices.policy.verificationRequired},`,
     '})',
+    '',
+  ].join('\n')
+}
+
+function proofHeadersMiddlewareSource(choices: SetupChoices): string {
+  return [
+    "import type { HttpContext } from '@adonisjs/core/http'",
+    "import { managedProofHeadersMiddleware } from 'adonisjs-account-kit/http'",
+    '',
+    'const applyProofHeaders = managedProofHeadersMiddleware({',
+    `  prefix: ${JSON.stringify(choices.routePrefix)},`,
+    `  enabled: ${JSON.stringify(choices.managed)},`,
+    `  except: ${JSON.stringify(choices.managedExcept ?? [])},`,
+    '})',
+    '',
+    'export default class AccountKitProofHeadersMiddleware {',
+    '  handle(ctx: HttpContext, next: () => Promise<unknown>): Promise<unknown> {',
+    '    return applyProofHeaders(ctx, next)',
+    '  }',
+    '}',
     '',
   ].join('\n')
 }
@@ -796,7 +837,16 @@ function planRouteImport(
     return
   }
   const importLine = "import './account_kit_routes.js'"
-  if (previous.includes(importLine)) {
+  const executable = withoutComments(previous)
+  if (/\bregisterManagedRoutes\s*\(/.test(executable)) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Existing direct managed route mount must be reconciled before setup adds another'
+    )
+    return
+  }
+  if (executable.includes(importLine)) {
     changes.push({
       path,
       action: 'unchanged',
@@ -805,7 +855,7 @@ function planRouteImport(
     })
     return
   }
-  if (previous.includes('account_kit_routes')) {
+  if (executable.includes('account_kit_routes')) {
     diagnostic(diagnostics, path, 'Existing Account Kit route import differs; resolve it manually')
     return
   }
@@ -835,7 +885,13 @@ function planArrayImports(
     )
     return
   }
-  const missing = imports.filter((name) => !previous.includes(name))
+  const executable = withoutComments(previous)
+  const missing = imports.filter(
+    (name) =>
+      !new RegExp(
+        `\\bimport\\s*\\(\\s*['"]${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\s*\\)`
+      ).test(executable)
+  )
   if (!missing.length) {
     changes.push({
       path,
@@ -855,6 +911,10 @@ function planArrayImports(
     ),
     reason: 'Register required framework providers or middleware',
   })
+}
+
+function withoutComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm, '$1')
 }
 
 function planRouterMiddleware(
@@ -923,6 +983,8 @@ function planRouterMiddleware(
     if (lines.some((line) => line.includes(ordered[index]))) continue
     const previousIndex = lines.findIndex((line) => line.includes(ordered[index - 1]))
     if (previousIndex < 0) throw new Error('Missing previously planned router middleware')
+    if (!/[,\s]$/.test(lines[previousIndex].trimEnd()))
+      lines[previousIndex] = `${lines[previousIndex].trimEnd()},`
     lines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
     changed = true
   }
@@ -935,6 +997,45 @@ function planRouterMiddleware(
       : previous,
     reason: 'Keep account middleware after body parsing on registered routes',
   })
+}
+
+function planServerProofMiddleware(
+  changes: SetupFileChange[],
+  state: SetupInspection,
+  diagnostics: SetupDiagnostic[]
+) {
+  const path = 'start/kernel.ts'
+  const existing = changes.find((change) => change.path === path)
+  const previous = existing?.content ?? state.files[path]
+  const start = previous?.indexOf('server.use([') ?? -1
+  const end = start < 0 ? -1 : previous!.indexOf('])', start)
+  if (!previous || start < 0 || end < 0 || previous.indexOf('server.use([', start + 1) >= 0) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Expected one conventional server.use array before router middleware'
+    )
+    return
+  }
+  const name = '#middleware/account_kit_proof_headers_middleware'
+  const block = withoutComments(previous.slice(start, end))
+  if (block.includes(name)) return
+  const content =
+    previous.slice(0, start + 'server.use(['.length) +
+    `\n  () => import('${name}'),` +
+    previous.slice(start + 'server.use(['.length)
+  if (existing) {
+    existing.content = content
+    existing.action = existing.action === 'unchanged' ? 'update' : existing.action
+    existing.reason += '; install early proof response headers'
+  } else
+    changes.push({
+      path,
+      action: 'update',
+      expected: state.files[path],
+      content,
+      reason: 'Install early proof response headers before body parsing and Shield',
+    })
 }
 
 /** Build the complete proposal before a write. Apply refuses every conflict in this plan. */
@@ -964,7 +1065,11 @@ export async function planSetup(
   ) {
     const modelPath = `app/models/${choices.user.model.slice('#models/'.length)}.ts`
     try {
-      const model = await readFile(await safeSetupPath(state.root, modelPath), 'utf8')
+      const modelFile = await safeSetupPath(state.root, modelPath)
+      const modelStat = await lstat(modelFile)
+      if (!modelStat.isFile())
+        throw new Error(`Setup cannot inspect non-regular model ${modelPath}`)
+      const model = await readFile(modelFile, 'utf8')
       if (!/export\s+default\s+class\s+\w+\s+extends\s+/.test(model))
         diagnostic(
           diagnostics,
@@ -980,12 +1085,47 @@ export async function planSetup(
           'user.model',
           'Token guard model must expose its existing static accessTokens provider'
         )
+      const table = model.match(/\bstatic\s+table\s*=\s*['"]([^'"]+)['"]/)?.[1]
+      const connection = model.match(/\bstatic\s+connection\s*=\s*['"]([^'"]+)['"]/)?.[1]
+      if (table && table !== choices.user.table)
+        diagnostic(
+          diagnostics,
+          'user.table',
+          `Model table ${table} differs from selected ${choices.user.table}`
+        )
+      if (connection && connection !== 'default')
+        diagnostic(
+          diagnostics,
+          'user.connection',
+          `Model connection ${connection} differs from selected default`
+        )
+      if (!table)
+        diagnostic(
+          diagnostics,
+          'user.table',
+          'Verify the model table, including inherited or inferred mapping, matches the generated migrations',
+          'action'
+        )
+      if (
+        !connection &&
+        (/\bstatic\s+connection\s*=/.test(model) || !/extends\s+BaseModel\b/.test(model))
+      )
+        diagnostic(
+          diagnostics,
+          'user.connection',
+          'Verify the model connection, including inherited or dynamic mapping, is the default',
+          'action'
+        )
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       diagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
     }
   }
   const changes: SetupFileChange[] = []
+  const retainedChoices = retainedGeneratedChoices(state)
+  const priorGenerated = state.existingChoices?.authentication
+    ? state.existingChoices
+    : retainedChoices
   ownedChange(
     changes,
     state,
@@ -1002,13 +1142,16 @@ export async function planSetup(
     state.existingChoices ? generatedEnv(state.existingChoices) : null,
     'Document deployment references'
   )
-  if (choices.managed.length && choices.authentication) {
+  if (
+    choices.authentication &&
+    (choices.managed.length || state.files['app/services/account_kit_guard.ts'])
+  ) {
     ownedChange(
       changes,
       state,
       'app/services/account_kit_guard.ts',
       managedGuardSource(choices),
-      state.existingChoices?.authentication ? managedGuardSource(state.existingChoices) : null,
+      priorGenerated?.authentication ? managedGuardSource(priorGenerated) : null,
       'Adapt the selected existing AdonisJS guard'
     )
     ownedChange(
@@ -1016,21 +1159,21 @@ export async function planSetup(
       state,
       'app/middleware/account_kit_access_middleware.ts',
       managedAccessMiddlewareSource(choices),
-      state.existingChoices?.authentication && state.existingChoices.managed.length
-        ? managedAccessMiddlewareSource(state.existingChoices)
-        : null,
+      priorGenerated?.authentication ? managedAccessMiddlewareSource(priorGenerated) : null,
       'Offer the same account revision and restriction gate to application-owned routes'
     )
+  }
+  if (choices.managed.length && choices.authentication) {
     ownedChange(
       changes,
       state,
       'start/account_kit_routes.ts',
       managedRoutesSource(choices),
-      state.existingChoices?.authentication
-        ? state.existingChoices.managed.length
-          ? managedRoutesSource(state.existingChoices)
-          : disabledManagedRoutesSource()
-        : null,
+      state.existingChoices?.authentication && state.existingChoices.managed.length
+        ? managedRoutesSource(state.existingChoices)
+        : retainedChoices
+          ? disabledManagedRoutesSource(retainedChoices)
+          : null,
       'Mount selected maintained endpoints through the existing guard'
     )
   } else if (state.existingChoices?.managed.length && state.existingChoices.authentication) {
@@ -1038,9 +1181,22 @@ export async function planSetup(
       changes,
       state,
       'start/account_kit_routes.ts',
-      disabledManagedRoutesSource(),
+      disabledManagedRoutesSource(state.existingChoices),
       managedRoutesSource(state.existingChoices),
       'Retire the managed route mount without changing application routes or account data'
+    )
+  }
+  if (
+    choices.managed.length ||
+    state.files['app/middleware/account_kit_proof_headers_middleware.ts']
+  ) {
+    ownedChange(
+      changes,
+      state,
+      'app/middleware/account_kit_proof_headers_middleware.ts',
+      proofHeadersMiddlewareSource(choices),
+      state.existingChoices ? proofHeadersMiddlewareSource(state.existingChoices) : null,
+      'Protect proof responses before parser and CSRF failures'
     )
   }
   planArrayImports(changes, state, diagnostics, 'adonisrc.ts', 'providers: [', [
@@ -1061,6 +1217,7 @@ export async function planSetup(
       diagnostics,
       choices.authentication?.strategy === 'session'
     )
+    planServerProofMiddleware(changes, state, diagnostics)
     if (choices.authentication?.strategy === 'session') {
       const shieldConfig = state.files['config/shield.ts']
       if (!shieldConfig || /csrf\s*:\s*\{[^}]*enabled\s*:\s*false/s.test(shieldConfig))
@@ -1157,20 +1314,17 @@ export async function planSetup(
         'Existing file differs. Resolve it manually; setup will not overwrite it'
       )
   }
-  const endpoints = choices.managed.flatMap((feature) => knownEndpoints[feature])
-  if (choices.authentication?.strategy === 'session' && choices.managed.includes('authentication'))
-    endpoints.push('auth.csrf')
-  if (
-    choices.authentication?.strategy === 'session' &&
-    choices.managed.length &&
-    !choices.managed.includes('authentication')
-  )
-    diagnostic(
-      diagnostics,
-      'authentication.csrfBootstrap',
-      'Session managed POST routes require an application-owned CSRF bootstrap endpoint because the managed authentication group is disabled',
-      'action'
-    )
+  let endpointLocations: Array<{ name: string; method: string; path: string }> = []
+  try {
+    endpointLocations = selectedManagedRoutes(choices).map(({ name, method, path }) => ({
+      name,
+      method,
+      path,
+    }))
+  } catch {
+    // Invalid choices are reported above; preview remains inspectable.
+  }
+  const endpoints = endpointLocations.map(({ name }) => name)
   const missingPackages = [
     '@adonisjs/core',
     '@adonisjs/lucid',
@@ -1184,6 +1338,15 @@ export async function planSetup(
   ].filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
     diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
+  if (
+    !state.files['config/limiter.ts'] ||
+    !/\bdefineConfig\s*\(/.test(withoutComments(state.files['config/limiter.ts']))
+  )
+    diagnostic(
+      diagnostics,
+      'config/limiter.ts',
+      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts must use defineConfig'
+    )
   const supportedMajors: Record<string, number> = {
     '@adonisjs/core': 7,
     '@adonisjs/lucid': 22,
@@ -1225,6 +1388,7 @@ export async function planSetup(
     retirementImpact: options.retirementImpact ?? null,
     prerequisites,
     endpoints: [...new Set(endpoints)],
+    endpointLocations,
     migrationState: !state.migrationNames.some((file) => file.includes('_account_kit_'))
       ? 'not-generated'
       : requiredMigrations.every((name) =>

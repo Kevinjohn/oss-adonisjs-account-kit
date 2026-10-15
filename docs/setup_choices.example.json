@@ -15,6 +15,7 @@
     "passwordReset",
     "emailPasswordManagement"
   ],
+  "managedExcept": [],
   "routePrefix": "/account",
   "user": {
     "model": "#models/user",
@@ -66,7 +67,11 @@
       "minScore": 0
     },
     "verificationRequired": true,
-    "unverifiedActions": ["logout", "verificationResend", "passwordReset"],
+    "unverifiedActions": [
+      "logout",
+      "verificationResend",
+      "passwordReset"
+    ],
     "invitationPermissionHook": false,
     "accessRestrictionHook": false
   },

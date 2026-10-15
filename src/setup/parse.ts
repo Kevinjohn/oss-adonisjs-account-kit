@@ -36,20 +36,26 @@ function strings(value: unknown, path: string): void {
 
 /** Reject unknown fields so a deployment secret cannot be silently written to the setup file. */
 export function parseSetupChoices(input: unknown): SetupChoices {
-  const root = record(input, 'setup', [
-    'version',
-    'mode',
-    'features',
-    'managed',
-    'routePrefix',
-    'user',
-    'authentication',
-    'mail',
-    'policy',
-    'social',
-  ])
+  const root = record(
+    input,
+    'setup',
+    [
+      'version',
+      'mode',
+      'features',
+      'managed',
+      'routePrefix',
+      'user',
+      'authentication',
+      'mail',
+      'policy',
+      'social',
+    ],
+    ['managedExcept']
+  )
   strings(root.features, 'features')
   strings(root.managed, 'managed')
+  if (root.managedExcept !== undefined) strings(root.managedExcept, 'managedExcept')
   string(root.mode, 'mode')
   if (!['services', 'managed'].includes(root.mode as string))
     throw new Error('mode: choose services or managed')

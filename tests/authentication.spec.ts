@@ -85,6 +85,53 @@ test.group('authentication contract', (group) => {
     }
   })
 
+  test('retirement inventory pages UUID-like IDs and trusts adapter password state without a password column', async ({
+    assert,
+  }) => {
+    await kit.db.connection().schema.createTable('retirement_identities', (table) => {
+      table.string('id', 254).primary()
+    })
+    try {
+      const ids = Array.from(
+        { length: 502 },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`
+      )
+      for (let index = 0; index < ids.length; index += 100)
+        await kit.db
+          .table('retirement_identities')
+          .insert(ids.slice(index, index + 100).map((id) => ({ id })))
+      const users = {
+        ...makeUsersAdapter(kit.db, kit.hash, 'retirement_identities'),
+        findById: async (id: number | string) => ({
+          id,
+          email: `${id}@example.test`,
+          unverifiedEmail: null,
+          hasPassword: id === ids[0] || id === ids[501],
+          emailVerifiedAt: null,
+        }),
+      }
+      const { account } = makeService(kit, {
+        users,
+        usersTable: 'retirement_identities',
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+      const impact = await account.authentication.retirementImpact({ passwordLogin: false })
+      assert.equal(impact.inspectedAccounts, 502)
+      assert.equal(impact.affectedAccounts, 2)
+      const unresolved = makeService(kit, {
+        users: { ...users, findById: async () => null },
+        usersTable: 'retirement_identities',
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+      await assert.rejects(
+        () => unresolved.account.authentication.retirementImpact({ passwordLogin: false }),
+        /could not resolve/
+      )
+    } finally {
+      await kit.db.connection().schema.dropTable('retirement_identities')
+    }
+  })
+
   test('rejects invalid credentials with one public error and counts failures only', async ({
     assert,
   }) => {

@@ -9,6 +9,7 @@ const inspectedFiles = [
   'adonisrc.ts',
   'config/auth.ts',
   'config/database.ts',
+  'config/limiter.ts',
   'config/mail.ts',
   'config/shield.ts',
   'config/session.ts',
@@ -22,6 +23,7 @@ const inspectedFiles = [
   'app/services/account_kit_users.ts',
   'app/services/account_kit_guard.ts',
   'app/middleware/account_kit_access_middleware.ts',
+  'app/middleware/account_kit_proof_headers_middleware.ts',
   '.env.example',
   '.env.account-kit.example',
 ]
@@ -59,19 +61,39 @@ function guardModels(source: string): SetupInspection['guardModels'] {
 
 function databaseKind(source: string): SetupInspection['database'] {
   if (!source) return 'unknown'
-  const sqlite = /(?:client\s*:\s*['"](?:better-sqlite3|sqlite3)['"]|sqlite)/i.test(source)
-  const postgres = /(?:client\s*:\s*['"](?:pg|postgres)['"]|postgres)/i.test(source)
-  if (sqlite && postgres) {
-    const literal = source.match(/\bconnection\s*:\s*['"]([^'"]+)['"]/)?.[1]
-    const selected =
-      literal ??
-      (/env\.get\(['"]DB_CONNECTION['"]\)/.test(source) ? process.env.DB_CONNECTION : undefined)
-    if (selected === 'sqlite') return 'sqlite'
-    if (selected === 'pg' || selected === 'postgres') return 'postgres'
-    return 'unknown'
-  }
-  if (sqlite) return 'sqlite'
-  if (postgres) return 'postgres'
+  source = source.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm, '$1')
+  const selected =
+    source.match(/\bconnection\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
+    (/\bconnection\s*:\s*env\.get\(['"]DB_CONNECTION['"]/.test(source)
+      ? (process.env.DB_CONNECTION ??
+        source.match(
+          /\bconnection\s*:\s*env\.get\(['"]DB_CONNECTION['"]\s*,\s*['"]([^'"]+)['"]/
+        )?.[1])
+      : undefined)
+  let clientSource = source
+  if (selected) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(selected)) return 'unknown'
+    const connections = source.indexOf('connections:')
+    if (connections < 0) return 'unknown'
+    const entry = new RegExp(
+      `(?:^|[,\\s{])(?:['"]${selected}['"]|${selected})\\s*:\\s*(?:defineConfig\\s*\\()?\\s*\\{`
+    ).exec(source.slice(connections))
+    if (!entry) return 'unknown'
+    const begin = connections + entry.index + entry[0].length
+    let depth = 1
+    let end = begin
+    while (end < source.length && depth) {
+      if (source[end] === '{') depth++
+      if (source[end] === '}') depth--
+      end++
+    }
+    if (depth) return 'unknown'
+    clientSource = source.slice(begin, end - 1)
+  } else if (/\bconnections\s*:/.test(source)) return 'unknown'
+  const client = clientSource.match(/\bclient\s*:\s*['"]([^'"]+)['"]/)?.[1]
+  if (!client) return 'unknown'
+  if (['better-sqlite3', 'sqlite3'].includes(client)) return 'sqlite'
+  if (['pg', 'postgres'].includes(client)) return 'postgres'
   return 'unsupported'
 }
 
@@ -128,11 +150,14 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     existingChoices = parseSetupChoices(JSON.parse(files['config/account_kit_setup.json']))
   }
   const existingPrefix = existingChoices?.routePrefix ?? null
-  const routePaths = [
-    ...(files['start/routes.ts'] ?? '').matchAll(
-      /\.(?:get|post|put|patch|delete|any|prefix)\(\s*['"]([^'"]+)['"]/g
-    ),
-  ].map((match) => match[1])
+  const routeSource = (files['start/routes.ts'] ?? '').replace(
+    /\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm,
+    '$1'
+  )
+  const routeDefinitions = [
+    ...routeSource.matchAll(/\.(get|post|put|patch|delete|any)\(\s*['"]([^'"]+)['"]/g),
+  ].map((match) => ({ method: match[1].toUpperCase(), path: match[2] }))
+  const routePaths = routeDefinitions.map(({ path }) => path)
   return {
     root,
     existingInstallation: Boolean(
@@ -149,6 +174,7 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     migrationNames,
     existingPrefix,
     routePaths,
+    routeDefinitions,
     existingChoices,
   }
 }
