@@ -18,6 +18,7 @@ import {
   requestEmailChange,
   updateProfile,
 } from './credentials.js'
+import { consume } from './throttle.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -72,6 +73,27 @@ export class AccountKit {
 
   readonly maintenance = {
     prune: (input: PruneInput = {}) => pruneExpired(this.deps.db, input),
+  }
+
+  /** Shared-store, secret-keyed client budget for managed proof URL requests. */
+  readonly managedHttp = {
+    assertGuard: (guard: { name: string; strategy: 'session' | 'access_tokens' }): void => {
+      const selected = this.deps.config.authentication
+      if (!selected || selected.guard !== guard.name || selected.strategy !== guard.strategy)
+        throw new Error('Managed routes must use the configured existing authentication guard')
+    },
+    consume: (input: { endpoint: string; clientKey: string }): Promise<void> => {
+      if (!input.clientKey)
+        return Promise.reject(new Error('Managed request client key is required'))
+      return consume(
+        this.deps.limiter,
+        `managed:${input.endpoint}`,
+        input.clientKey,
+        this.deps.config.throttle,
+        this.deps.config.limiterSecret,
+        this.deps.config.limiterNamespace
+      )
+    },
   }
 
   get authentication() {

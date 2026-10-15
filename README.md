@@ -1,9 +1,9 @@
 # adonisjs-account-kit
 
-Forgot password, email verification, invitations, and email and password management for AdonisJS 7. The
-application owns its user model, HTTP routes, validation, password policy, and notification
-delivery. The package provides transactional account operations and callbacks for application
-authorization and side effects.
+Forgot password, email verification, invitations, and email and password management for AdonisJS 7.
+The package provides transactional account operations. Applications may own their HTTP routes or
+explicitly register the optional [managed JSON backend](docs/managed-http.md). The application
+owns its user model, password policy, additional fields, and business authorization.
 
 Account Kit covers the account basics and uses the same vocabulary as AdonisJS Plus and the
 AdonisJS starter kits. For two-factor authentication and passkeys, we recommend
