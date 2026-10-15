@@ -81,9 +81,18 @@ test('committed signup delivery and observer failures return recovery guidance',
     assert.lengthOf(proofs, 1)
     notifications.failVerification = false
     notifications.failLifecycle = false
-    const resend = await client.post('/account-kit/verification/send').loginAs(user).json({})
-    assert.equal(resend.status(), 200, JSON.stringify(resend.body()))
-    assert.equal((resend.body() as { result: string }).result, 'sent')
+    notifications.events.length = 0
+    const suppressed = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    assert.equal(suppressed.status(), 200, JSON.stringify(suppressed.body()))
+    assert.equal((suppressed.body() as { result: string }).result, 'sent')
+    assert.lengthOf(notifications.events, 0)
+    await db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .update({ created_at: new Date(Date.now() - 120_000).toISOString() })
+    const resent = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    assert.equal(resent.status(), 200, JSON.stringify(resent.body()))
+    assert.equal((resent.body() as { result: string }).result, 'sent')
     assert.isTrue(notifications.events.some((event) => event.kind === 'verification'))
   }
   notifications.reset()
