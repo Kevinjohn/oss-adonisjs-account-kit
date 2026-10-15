@@ -1059,14 +1059,19 @@ export async function planSetup(
       choices.authentication?.strategy === 'session'
     )
     if (choices.authentication?.strategy === 'session') {
-      if (
-        !state.files['config/shield.ts'] ||
-        /csrf\s*:\s*\{[^}]*enabled\s*:\s*false/s.test(state.files['config/shield.ts'])
-      )
+      const shieldConfig = state.files['config/shield.ts']
+      if (!shieldConfig || /csrf\s*:\s*\{[^}]*enabled\s*:\s*false/s.test(shieldConfig))
         diagnostic(
           diagnostics,
           'config/shield.ts',
           'Session managed POSTs require configured Shield CSRF protection'
+        )
+      else if (!/csrf\s*:\s*\{[^}]*enabled\s*:\s*true\b/s.test(shieldConfig))
+        diagnostic(
+          diagnostics,
+          'config/shield.ts',
+          'Verify that Shield csrf.enabled resolves true at runtime for the selected session guard; conventional environment-gated configuration requires ACCOUNT_KIT_AUTH_STRATEGY=session',
+          'action'
         )
       if (!state.files['config/session.ts'])
         diagnostic(
@@ -1160,6 +1165,9 @@ export async function planSetup(
     'Review generated migrations, then run node ace migration:run explicitly',
     ...(choices.managed.length
       ? ['Verify the generated route mount and existing guard prerequisites']
+      : []),
+    ...(choices.managed.length && choices.authentication?.strategy === 'session'
+      ? ['Exercise GET /auth/csrf and a CSRF-protected POST with the deployed Shield configuration']
       : []),
     'Verify model email uniqueness, normalization, hashing and transaction behavior',
   ]
