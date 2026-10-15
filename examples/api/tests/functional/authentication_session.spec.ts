@@ -108,22 +108,61 @@ test('password reset rejects pre-existing sessions on an application-owned route
   }
   const resetCsrf = await client.get('/api/v1/auth/csrf')
   const requested = await client
-    .post('/account-kit/recovery')
+    .post('/api/v1/auth/password-reset')
     .header('cookie', rawCookies(resetCsrf))
     .header('x-csrf-token', (resetCsrf.body() as { csrfToken: string }).csrfToken)
     .json({ email: user.email })
   assert.equal(requested.status(), 202)
+  const unknown = await client
+    .post('/api/v1/auth/password-reset')
+    .header('cookie', rawCookies(resetCsrf))
+    .header('x-csrf-token', (resetCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ email: `unknown-${randomUUID()}@example.test` })
+  assert.equal(unknown.status(), 202)
+  assert.deepEqual(unknown.body(), requested.body())
   const token = tokenFrom(notifications.events.find((event) => event.kind === 'recovery')!.value)
+  const proofPath = `/api/v1/auth/password-reset/${encodeURIComponent(token)}`
+  for (let index = 0; index < 2; index++) {
+    const inspect = await client.get(proofPath)
+    assert.equal(inspect.status(), 200)
+    assert.equal(inspect.header('cache-control'), 'no-store')
+    assert.equal(inspect.header('referrer-policy'), 'no-referrer')
+  }
+  const rejectedProof = await client
+    .post(proofPath)
+    .header('cookie', rawCookies(resetCsrf))
+    .header('x-csrf-token', 'invalid')
+    .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+  assert.equal(rejectedProof.status(), 403)
+  assert.equal(rejectedProof.header('cache-control'), 'no-store')
+  assert.equal(rejectedProof.header('referrer-policy'), 'no-referrer')
+  assert.equal(
+    (rejectedProof.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
+    'E_BAD_CSRF_TOKEN'
+  )
   const reset = await client
-    .post(`/account-kit/recovery/${encodeURIComponent(token)}`)
+    .post(proofPath)
     .header('cookie', rawCookies(resetCsrf))
     .header('x-csrf-token', (resetCsrf.body() as { csrfToken: string }).csrfToken)
     .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
   assert.equal(reset.status(), 202, JSON.stringify(reset.body()))
+  const replay = await client
+    .post(proofPath)
+    .header('cookie', rawCookies(resetCsrf))
+    .header('x-csrf-token', (resetCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+  assert.equal(replay.status(), 400)
   for (const cookies of sessions) {
     const profile = await client.get('/api/v1/account/profile').header('cookie', cookies)
     assert.equal(profile.status(), 401)
   }
+  const newCsrf = await client.get('/api/v1/auth/csrf')
+  const freshLogin = await client
+    .post('/api/v1/auth/login')
+    .header('cookie', rawCookies(newCsrf))
+    .header('x-csrf-token', (newCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ email: user.email, password: 'ReplacementPass123!' })
+  assert.equal(freshLogin.status(), 200)
 })
 
 test('inactive session may request activation but cannot use verified routes', async ({
@@ -188,21 +227,34 @@ test('inactive session may replace its unconfirmed email through the guarded rou
       email: `corrected-${randomUUID()}@example.test`,
     })
   assert.equal(correction.status(), 200, JSON.stringify(correction.body()))
+  const staleProfile = await client
+    .get('/api/v1/account/profile')
+    .header('cookie', rawCookies(login))
+  assert.equal(staleProfile.status(), 401)
 })
 
 test('signup establishes a limited session for an inactive account', async ({ client, assert }) => {
   if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const bootstrap = await client.get('/api/v1/auth/csrf')
+  const email = `signup-session-${randomUUID()}@example.test`
+  const signupInput = {
+    fullName: 'Session Signup',
+    email,
+    password: 'NewSessionPass123!',
+    passwordConfirmation: 'NewSessionPass123!',
+  }
+  const rejected = await client
+    .post('/api/v1/auth/signup')
+    .header('cookie', rawCookies(bootstrap))
+    .header('x-csrf-token', 'invalid')
+    .json(signupInput)
+  assert.equal(rejected.status(), 403)
+  assert.isNull(await User.findBy('email', email))
   const signup = await client
     .post('/api/v1/auth/signup')
     .header('cookie', rawCookies(bootstrap))
     .header('x-csrf-token', (bootstrap.body() as { csrfToken: string }).csrfToken)
-    .json({
-      fullName: 'Session Signup',
-      email: `signup-session-${randomUUID()}@example.test`,
-      password: 'NewSessionPass123!',
-      passwordConfirmation: 'NewSessionPass123!',
-    })
+    .json(signupInput)
   assert.equal(signup.status(), 200, JSON.stringify(signup.body()))
   const cookies = rawCookies(signup)
   assert.isNotEmpty(cookies)
