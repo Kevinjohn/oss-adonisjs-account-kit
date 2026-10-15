@@ -375,16 +375,6 @@ function validate(
         'Use an uppercase environment variable name, not a secret'
       )
   }
-  if (
-    choices.mail.integration === 'adonisjs-mail' &&
-    !state.installedPackages.includes('@adonisjs/mail')
-  )
-    diagnostic(
-      diagnostics,
-      'mail.integration',
-      'Install @adonisjs/mail explicitly before activating maintained mail',
-      'action'
-    )
   if (choices.mail.integration === 'adonisjs-mail' && !state.files['config/mail.ts'])
     diagnostic(
       diagnostics,
@@ -1006,6 +996,8 @@ export async function planSetup(
       : []),
     ...(choices.mail.integration === 'adonisjs-mail' ? ['@adonisjs/mail'] : []),
   ].filter((name) => !state.installedPackages.includes(name))
+  for (const name of missingPackages)
+    diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
   const prerequisites = [
     ...missingPackages.map((name) => `Install ${name} explicitly with pnpm add ${name}`),
     'Review generated migrations, then run node ace migration:run explicitly',

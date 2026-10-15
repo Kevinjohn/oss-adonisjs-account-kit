@@ -18,7 +18,7 @@ Setup flags control the operation, committed choices control runtime policy, and
 
 ### The full plan appears before a write
 
-Setup inspects package dependencies, named guards, database configuration, existing routes, generated migration names, and setup files without executing application code or reading secret values. The report lists all six pillar outcomes, file actions, endpoint names, prerequisites, diagnostics, migration state, delivery mode, and distinct readiness states. Existing installations also preview by default. A differing generated file, route prefix collision, unsupported schema, or missing mandatory policy blocks `--apply` before any write. Resolve the named collision manually and run setup again.
+Setup inspects package dependencies, named guards, database configuration, existing routes, generated migration names, and setup files without executing application code or reading secret values. The report lists all six pillar outcomes, file actions, endpoint names, prerequisites, diagnostics, migration state, delivery mode, and distinct readiness states. Existing installations also preview by default. A missing required package, differing generated file, route prefix collision, unsupported schema, or missing mandatory policy blocks `--apply` before any write. Install missing packages explicitly, resolve the named collision, and run setup again.
 
 ### A repeated run can recover from interruption
 
