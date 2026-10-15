@@ -1,13 +1,16 @@
 import { test, timeTravel } from '@japa/runner'
+import type { Database } from '@adonisjs/lucid/database'
 import { defineConfig } from '../src/account_kit.js'
 import {
   DeliveryError,
   InvalidInputError,
   InvalidTokenError,
+  PostCommitError,
   ThrottledError,
 } from '../src/errors.js'
 import { lockRow, transaction } from '../src/db.js'
-import type { AccountKitConfig } from '../src/types.js'
+import { generateToken } from '../src/tokens.js'
+import type { AccountKitConfig, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import {
   accountKit,
@@ -18,6 +21,25 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
+
+function faultAfterCommit(db: Database, failure: Error): Database {
+  return Object.create(db, {
+    connection: {
+      value: (...args: Parameters<Database['connection']>) => {
+        const client = db.connection(...args)
+        const begin = client.transaction.bind(client) as (...rest: unknown[]) => Promise<Trx>
+        client.transaction = (async (...rest: unknown[]) => {
+          const trx = await begin(...rest)
+          trx.on('commit', () => {
+            throw failure
+          })
+          return trx
+        }) as typeof client.transaction
+        return client
+      },
+    },
+  })
+}
 test.group('emailVerification.send', (group) => {
   const kit = useTestApp(group)
 
@@ -46,15 +68,56 @@ test.group('emailVerification.send', (group) => {
     assert,
   }) => {
     const id = await createUser()
-    const { account, recorder } = service({ expiresIn: { emailVerification: 3600 } })
+    const secondUser = await insertUser(kit, { verified: false, email: 'second@example.test' })
+    const secondId = secondUser.id
+    const { account, recorder } = service({ expiresIn: { emailVerification: 1200 } })
     const issuedAt = Date.now()
     assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
     const token = tokenFrom(recorder.calls[0].args[1])
+    await account.emailVerification.send({ userId: secondId })
+    const secondToken = tokenFrom(recorder.calls[1].args[1])
 
     const proof = await kit.db.from('email_verification_tokens').where('tokenable_id', id).first()
     assert.equal(proof.hash.length, 64)
-    assert.approximately(new Date(proof.expires_at).valueOf() - issuedAt, 3600_000, 2000)
+    assert.approximately(new Date(proof.expires_at).valueOf() - issuedAt, 1200_000, 2000)
     assert.isString(token)
+    timeTravel(new Date(issuedAt + 1_199_000))
+    assert.equal(await account.emailVerification.complete({ token }), 'verified')
+    timeTravel(new Date(issuedAt + 1_200_001))
+    await assert.rejects(
+      () => account.emailVerification.complete({ token: secondToken }),
+      InvalidTokenError
+    )
+  })
+
+  test('resend invalidates the prior proof and accepts the latest', async ({ assert }) => {
+    const id = await createUser()
+    const { account, recorder } = service()
+    await account.emailVerification.send({ userId: id })
+    const oldToken = tokenFrom(recorder.calls[0].args[1])
+    await account.emailVerification.send({ userId: id })
+    const latestToken = tokenFrom(recorder.calls[1].args[1])
+    await assert.rejects(
+      () => account.emailVerification.complete({ token: oldToken }),
+      InvalidTokenError
+    )
+    assert.equal(await account.emailVerification.complete({ token: latestToken }), 'verified')
+  })
+
+  test('delivers activation after a committed cleanup fault', async ({ assert }) => {
+    const id = await createUser()
+    const recorder = makeNotify()
+    const config = defineConfig(
+      makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), notify: recorder.notify })
+    )
+    const failure = new Error('listener failed after commit')
+    const account = accountKit({ ...kit, db: faultAfterCommit(kit.db, failure) }, config)
+    await assert.rejects(() => account.emailVerification.send({ userId: id }), PostCommitError)
+    assert.deepEqual(
+      recorder.calls.map((call) => call.method),
+      ['accountActivationProvision']
+    )
+    assert.lengthOf(await kit.db.from('email_verification_tokens').where('tokenable_id', id), 1)
   })
 
   test('missing user rejects and verified user returns without throttling or notification', async ({
@@ -153,7 +216,7 @@ test.group('emailVerification.complete', (group) => {
   test('rejects an unknown proof', async ({ assert }) => {
     const id = await createUser()
     const { account } = service()
-    const wrongPurpose = 'a'.repeat(43)
+    const wrongPurpose = generateToken()
     await assert.rejects(
       () => account.emailVerification.complete({ token: wrongPurpose }),
       InvalidTokenError

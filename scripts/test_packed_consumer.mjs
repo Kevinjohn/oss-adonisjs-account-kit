@@ -455,13 +455,20 @@ async function runUpgrade(candidate, baseline, runName) {
   const resetMigration = newlyGenerated.find((file) =>
     file.endsWith('_account_kit_create_password_reset_tokens.ts')
   )
+  const expectedSuffixes = [
+    '_account_kit_create_password_reset_tokens.ts',
+    '_account_kit_create_account_transaction_lock.ts',
+    '_account_kit_evolve_identity_contract.ts',
+    '_account_kit_create_social_identities.ts',
+    '_account_kit_retire_account_email_changes.ts',
+  ]
   if (
-    newlyGenerated.length !== 2 ||
+    newlyGenerated.length !== expectedSuffixes.length ||
     !resetMigration ||
-    !newlyGenerated.some((file) => file.endsWith('_account_kit_create_account_transaction_lock.ts'))
+    expectedSuffixes.some((suffix) => !newlyGenerated.some((file) => file.endsWith(suffix)))
   ) {
     throw new Error(
-      `Upgrade should add only the reset-token and transaction-lock migrations; added: ${newlyGenerated.join(', ')}`
+      `Upgrade should add only the five expected account migrations; added: ${newlyGenerated.join(', ')}`
     )
   }
   // Rehearse the documented application-owned table rename without editing applied migrations.

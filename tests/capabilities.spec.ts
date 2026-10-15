@@ -85,6 +85,15 @@ test.group('capability configuration', (group) => {
         }),
       /users\.markEmailVerified must be a function/
     )
+    assert.throws(
+      () =>
+        defineConfig({
+          ...base,
+          enabled: ['invitations'],
+          users: { ...users, markEmailVerified: undefined } as never,
+        }),
+      /users\.markEmailVerified must be a function/
+    )
   })
 
   test('requires supplied hooks to be callable but does not execute placeholders', ({ assert }) => {

@@ -439,6 +439,11 @@ test.group('invitations.accept', (group) => {
         callbackUser = user
         const row = await trx.from('users').where('id', user.id).first()
         assert.equal(row.email, 'person@example.test')
+        assert.equal(
+          user.emailVerifiedAt?.toISO(),
+          DateTime.fromJSDate(new Date(row.email_verified_at)).toUTC().toISO()
+        )
+        assert.isNull(user.unverifiedEmail)
         await trx
           .from('users')
           .where('id', user.id)
@@ -460,6 +465,7 @@ test.group('invitations.accept', (group) => {
       DateTime.fromJSDate(new Date(stored.email_verified_at)).toUTC().toISO()
     )
     assert.notEqual(accepted.emailVerifiedAt?.toISO(), callbackUser?.emailVerifiedAt?.toISO())
+    assert.isNull(callbackUser?.unverifiedEmail)
     assert.notEqual(stored.password, 'newPassword123')
     assert.isTrue(await kit.hash.verify(stored.password, 'newPassword123'))
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
