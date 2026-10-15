@@ -215,13 +215,34 @@ function overlappingPaths(first: string, second: string): boolean {
   const segments = (path: string) => path.replace(/\/+$/, '').split('/').filter(Boolean)
   const left = segments(first)
   const right = segments(second)
-  if (left.length !== right.length) return false
-  return left.every(
-    (part, index) =>
-      part === right[index] ||
-      /^:[A-Za-z_][\w]*$/.test(part) ||
-      /^:[A-Za-z_][\w]*$/.test(right[index])
-  )
+  const optional = (part: string) => /^:[A-Za-z_][\w]*\?$/.test(part)
+  const wildcard = (part: string) => part === '*'
+  const parameter = (part: string) => /^:[A-Za-z_][\w]*\??$/.test(part)
+  const visited = new Set<string>()
+
+  function intersects(i: number, j: number): boolean {
+    const key = `${i}:${j}`
+    if (visited.has(key)) return false
+    visited.add(key)
+    if (i === left.length && j === right.length) return true
+    if (i < left.length && optional(left[i]) && intersects(i + 1, j)) return true
+    if (j < right.length && optional(right[j]) && intersects(i, j + 1)) return true
+    if (i < left.length && wildcard(left[i])) {
+      if (intersects(i + 1, j)) return true
+      if (j < right.length && intersects(i, j + 1)) return true
+    }
+    if (j < right.length && wildcard(right[j])) {
+      if (intersects(i, j + 1)) return true
+      if (i < left.length && intersects(i + 1, j)) return true
+    }
+    if (i === left.length || j === right.length) return false
+    return (
+      (left[i] === right[j] || parameter(left[i]) || parameter(right[j])) &&
+      intersects(i + 1, j + 1)
+    )
+  }
+
+  return intersects(0, 0)
 }
 
 export function planManagedRoutes(
