@@ -21,8 +21,8 @@ application-owned signup routes should establish only a limited credential and e
 Custom adapters enabled for email verification now need `setPassword`, even when they do not
 change confirmed email addresses. Configured registration field mapping runs on omitted input;
 required profile fields can therefore fail before account creation. Generated setup config omits
-invitations from its enabled capability list, so enable invitations explicitly if the application
-uses them.
+invitations from its enabled capability list. Runtime configuration also leaves invitations
+disabled when `enabled` is omitted, so enable invitations explicitly if the application uses them.
 Custom `markEmailVerified` implementations must clear the pending address in the same transaction
 as the audit timestamp; otherwise an inactive account will not activate. Password reset and
 password change also call `setUnverifiedEmail` to cancel a distinct pending address.

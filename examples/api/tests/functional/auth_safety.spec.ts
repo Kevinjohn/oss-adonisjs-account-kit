@@ -3,7 +3,7 @@ import { test } from '@japa/runner'
 import limiter from '@adonisjs/limiter/services/main'
 import db from '@adonisjs/lucid/services/db'
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit, ThrottledError } from 'adonisjs-account-kit'
 import { notifications } from '#services/account_kit_notifications'
 import User from '#models/user'
 import AuthMiddleware from '#middleware/auth_middleware'
@@ -87,6 +87,45 @@ test('committed signup delivery and observer failures return recovery guidance',
     assert.isTrue(notifications.events.some((event) => event.kind === 'verification'))
   }
   notifications.reset()
+})
+
+test('committed signup survives credential throttling and guard failure', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  const kit = await app.container.make(AccountKit)
+  const original = Object.getOwnPropertyDescriptor(kit, 'authentication')
+  for (const [kind, failure] of [
+    ['throttled', new ThrottledError(60)],
+    ['guard', new Error('Credential guard failed')],
+  ] as const) {
+    const email = `committed-${kind}-${randomUUID()}@example.test`
+    Object.defineProperty(kit, 'authentication', {
+      configurable: true,
+      get: () => ({
+        login: async () => {
+          throw failure
+        },
+      }),
+    })
+    try {
+      const response = await client.post('/api/v1/auth/signup').json({
+        fullName: 'Committed Signup',
+        email,
+        password: 'CommittedPass123!',
+        passwordConfirmation: 'CommittedPass123!',
+      })
+      assert.equal(response.status(), 202, JSON.stringify(response.body()))
+      assert.isTrue((response.body() as { accountCreated: boolean }).accountCreated)
+      const user = await User.findByOrFail('email', email)
+      const proofs = await db.from('email_verification_tokens').where('tokenable_id', user.id)
+      assert.lengthOf(proofs, 1)
+    } finally {
+      if (original) Object.defineProperty(kit, 'authentication', original)
+      else Reflect.deleteProperty(kit, 'authentication')
+    }
+  }
 })
 
 test('signup maps an application-restricted duplicate to the uniform email error', async ({

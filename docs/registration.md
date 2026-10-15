@@ -4,6 +4,8 @@
 
 The generated configuration enables `registration` and sets `registration.availability: 'open'`.
 Every configuration must include availability explicitly, even when registration is disabled.
+When `enabled` is omitted, both registration and invitations are disabled; applications must
+select either capability explicitly.
 Choose `open`, `closed`, or `application`. `open` is the recommended public default. `closed` rejects creation;
 `application` lets the application own admission and call the service after its own checks. The
 package does not install a public registration route. Enable `emailVerification` and configure

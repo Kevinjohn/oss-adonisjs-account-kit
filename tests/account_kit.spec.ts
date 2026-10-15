@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { defineConfig } from '../src/account_kit.js'
 import { expiresAt } from '../src/ttl.js'
+import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import {
   insertUser,
@@ -34,6 +35,20 @@ test.group('account kit configuration and service surface', (group) => {
     assert.equal(resolved.tokenSecretLength, 40)
     assert.deepEqual(input.expiresIn, { passwordReset: '2h' })
     assert.deepEqual(input.throttle, { requests: 2 })
+  })
+
+  test('omitted enabled capabilities leave registration and invitations disabled', ({ assert }) => {
+    const input = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: undefined })
+    const resolved = defineConfig(input)
+    assert.notInclude(resolved.enabled, 'registration')
+    assert.notInclude(resolved.enabled, 'invitations')
+  })
+
+  test('registration availability is required in the public configuration type', ({ assert }) => {
+    type AllowsOmission =
+      Omit<AccountKitConfig, 'registration'> extends AccountKitConfig ? true : false
+    const allowsOmission: AllowsOmission = false
+    assert.isFalse(allowsOmission)
   })
 
   test('accepts token secret length boundaries and rejects invalid values', ({ assert }) => {
@@ -107,7 +122,10 @@ test.group('account kit configuration and service surface', (group) => {
   })
 
   test('rejects missing callbacks and invalid TTLs at configuration time', ({ assert }) => {
-    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    const base = makeConfig({
+      users: makeUsersAdapter(kit.db, kit.hash),
+      enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
+    })
     assert.throws(() =>
       defineConfig({ ...base, notify: { ...base.notify, passwordResetProvision: null } } as never)
     )

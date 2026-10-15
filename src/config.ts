@@ -97,7 +97,9 @@ function disabled(): never {
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!config || typeof config !== 'object' || !config.users || typeof config.users !== 'object')
     throw new Error('account_kit: users adapter must be configured')
-  const enabled = config.enabled ?? capabilities.filter((name) => name !== 'registration')
+  const enabled =
+    config.enabled ??
+    capabilities.filter((name) => name !== 'registration' && name !== 'invitations')
   if (
     !Array.isArray(enabled) ||
     new Set(enabled).size !== enabled.length ||
