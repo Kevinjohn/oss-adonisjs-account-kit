@@ -74,6 +74,20 @@ test.group('managed HTTP responses', () => {
         },
       }
     )
+    assert.equal(
+      managedErrorResponse(error, {
+        proof: 'email',
+        accept: 'application/*;q=1, application/vnd.api+json;q=0.5',
+      })?.contentType,
+      'application/json'
+    )
+    assert.equal(
+      managedErrorResponse(error, {
+        proof: 'email',
+        accept: 'application/*;q=1, application/vnd.api+json;q=0',
+      })?.contentType,
+      'application/json'
+    )
   })
 
   test('does not expose committed callback failures as a rolled-back response', ({ assert }) => {

@@ -25,24 +25,28 @@ export type ManagedMessage = (code: string, defaultMessage: string) => string
 
 function prefersJsonApi(accept?: string): boolean {
   if (!accept) return false
+  const ranges = accept.split(',').map((part) => {
+    const [type, ...parameters] = part
+      .trim()
+      .split(';')
+      .map((value) => value.trim().toLowerCase())
+    const q = parameters.find((parameter) => parameter.startsWith('q='))
+    const value = q === undefined ? 1 : Number(q.slice(2))
+    return { type, quality: Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0 }
+  })
   const quality = (type: string) => {
-    const match = accept
-      .split(',')
-      .map((part) =>
-        part
-          .trim()
-          .split(';')
-          .map((value) => value.trim())
-      )
-      .find(([mediaType]) => mediaType?.toLowerCase() === type)
-    if (!match) return 0
-    const q = match.slice(1).find((parameter) => parameter?.toLowerCase().startsWith('q='))
-    if (!q) return 1
-    const value = Number(q.slice(2))
-    return Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0
+    for (const mediaType of [type, 'application/*', '*/*']) {
+      const match = ranges.find((range) => range.type === mediaType)
+      if (match) return match.quality
+    }
+    return 0
   }
   const jsonApi = quality('application/vnd.api+json')
-  return jsonApi > 0 && jsonApi >= quality('application/json')
+  return (
+    ranges.some((range) => range.type === 'application/vnd.api+json') &&
+    jsonApi > 0 &&
+    jsonApi >= quality('application/json')
+  )
 }
 
 export function proofHeaders(): Record<string, string> {
