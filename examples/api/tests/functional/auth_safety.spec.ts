@@ -8,6 +8,8 @@ import { notifications } from '#services/account_kit_notifications'
 import User from '#models/user'
 import AuthMiddleware from '#middleware/auth_middleware'
 import env from '#start/env'
+import accountKitConfig from '#config/account_kit'
+import { referencePasswordLimits } from '#validators/password'
 
 const responseBody = <T>(response: { body(): unknown }) => response.body() as T
 
@@ -258,6 +260,9 @@ test('signup accepts a password within the shared 256 character limit', async ({
   client,
   assert,
 }) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  assert.deepEqual(accountKitConfig.passwordPolicy, referencePasswordLimits)
+  assert.deepEqual(referencePasswordLimits, { minLength: 8, maxLength: 256 })
   await limiter.clear(['memory'])
   const password = 'LongPassword123!'.padEnd(256, 'x')
   const registration = await client.post('/api/v1/auth/signup').json({
@@ -268,6 +273,15 @@ test('signup accepts a password within the shared 256 character limit', async ({
   })
   assert.equal(registration.status(), 200)
   assert.isString(responseBody<{ data: { token: string } }>(registration).data.token)
+
+  const tooShortPassword = 'Short1!'
+  const rejectedShort = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Short Password User',
+    email: `short-password-${randomUUID()}@example.test`,
+    password: tooShortPassword,
+    passwordConfirmation: tooShortPassword,
+  })
+  assert.equal(rejectedShort.status(), 422)
 
   const tooLongPassword = `${password}x`
   const rejectedRegistration = await client.post('/api/v1/auth/signup').json({

@@ -8,6 +8,8 @@ Invitation list, resend, and revoke use the configured invitation authorisation 
 
 Use HTTPS, a fixed public `APP_URL`, and trusted proxy configuration before using `request.ip()` for login limits. The configured registration-field policy and invitation authorisation callback remain application decisions.
 
+The shipped example config and Vine request validators share the 8–256 character policy for newly established passwords. If you change `passwordPolicy`, update the application's Vine rules to match; package service checks remain authoritative for registration, activation, invitation acceptance, password reset, and password change. Login accepts existing credentials separately and does not apply new-password rules.
+
 ## How it works
 
 POST `/api/v1/auth/login` accepts `email` and `password`. A successful login issues an opaque token with the configured lifetime and abilities and returns it once in the JSON response. Send that value in `Authorization: Bearer <token>` to GET `/api/v1/account/profile` or other protected routes. The current-account response is allowlisted: it does not contain a password hash, proof, provider secret, raw provider response, or adapter internals. A limited inactive credential may reach account activation and email correction routes, while verified routes return 403 `unverified_email`.

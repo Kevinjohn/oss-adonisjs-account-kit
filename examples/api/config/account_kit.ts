@@ -11,6 +11,7 @@ import {
 } from 'adonisjs-account-kit'
 import db from '@adonisjs/lucid/services/db'
 import { notifications } from '#services/account_kit_notifications'
+import { referencePasswordLimits } from '#validators/password'
 
 const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value : `${value}/`)
 const appUrl = normalizeBaseUrl(env.get('APP_URL'))
@@ -40,6 +41,7 @@ async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
 
 export default defineConfig({
   users,
+  passwordPolicy: referencePasswordLimits,
   enabled: [
     'passwordReset',
     'emailVerification',
