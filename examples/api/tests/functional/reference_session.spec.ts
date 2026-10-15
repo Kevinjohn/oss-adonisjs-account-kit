@@ -151,3 +151,177 @@ test('session signup, activation and a new login complete through application-ow
   assert.equal(profile.status(), 200)
   assert.isTrue((profile.body() as unknown as { data: { active: boolean } }).data.active)
 })
+
+test('confirmed email change inspects without consuming and revokes the old browser session', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  notifications.reset()
+  const originalEmail = `session-email-${randomUUID()}@example.test`
+  const nextEmail = `session-next-${randomUUID()}@example.test`
+  const user = await User.create({
+    fullName: 'Email Change Session',
+    email: originalEmail,
+    password: 'OriginalPass123!',
+  })
+  const bootstrap = await client.get('/api/v1/auth/csrf')
+  const login = await client
+    .post('/api/v1/auth/login')
+    .header('cookie', cookies(bootstrap))
+    .header('x-csrf-token', (bootstrap.body() as { csrfToken: string }).csrfToken)
+    .json({ email: originalEmail, password: 'OriginalPass123!' })
+  assert.equal(login.status(), 200)
+  const oldSession = cookies(login)
+  const updateCsrf = await client.get('/api/v1/auth/csrf').header('cookie', oldSession)
+  const requestChange = await client
+    .patch('/api/v1/account/profile')
+    .header('cookie', oldSession)
+    .header('x-csrf-token', (updateCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ currentPassword: 'OriginalPass123!', email: nextEmail })
+  assert.equal(requestChange.status(), 200, JSON.stringify(requestChange.body()))
+  await user.refresh()
+  assert.equal(user.email, originalEmail)
+  assert.equal(user.unverifiedEmail, nextEmail)
+  const notice = notifications.events.findLast(
+    (event) => event.kind === 'emailChangeConfirm' && event.recipient === nextEmail
+  )
+  assert.isDefined(notice)
+  const proofPath = `/api/v1/auth/email-change/${encodeURIComponent(proofFrom(notice!.value))}`
+  for (let index = 0; index < 2; index++) {
+    const inspect = await client.get(proofPath)
+    assert.equal(inspect.status(), 200)
+    assert.equal(inspect.header('cache-control'), 'no-store')
+    await user.refresh()
+    assert.equal(user.email, originalEmail)
+  }
+  const proofCsrf = await client.get('/api/v1/auth/csrf')
+  const complete = await client
+    .post(proofPath)
+    .header('cookie', cookies(proofCsrf))
+    .header('x-csrf-token', (proofCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({})
+  assert.equal(complete.status(), 200, JSON.stringify(complete.body()))
+  await user.refresh()
+  assert.equal(user.email, nextEmail)
+  assert.isNull(user.unverifiedEmail)
+  assert.equal(
+    (await client.get('/api/v1/account/profile').header('cookie', oldSession)).status(),
+    401
+  )
+  const replay = await client
+    .post(proofPath)
+    .header('cookie', cookies(proofCsrf))
+    .header('x-csrf-token', (proofCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({})
+  assert.equal(replay.status(), 400)
+  const nextCsrf = await client.get('/api/v1/auth/csrf')
+  const nextLogin = await client
+    .post('/api/v1/auth/login')
+    .header('cookie', cookies(nextCsrf))
+    .header('x-csrf-token', (nextCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({ email: nextEmail, password: 'OriginalPass123!' })
+  assert.equal(nextLogin.status(), 200)
+})
+
+test('session owner can send, inspect, resend, accept and revoke invitations', async ({
+  client,
+  assert,
+}) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  notifications.reset()
+  const owner = await User.create({
+    fullName: 'Invitation Owner',
+    email: `session-owner-${randomUUID()}@example.test`,
+    password: 'OwnerPass123!',
+  })
+  await db.table('role_assignments').insert({ user_id: owner.id, role: 'owner' })
+  const bootstrap = await client.get('/api/v1/auth/csrf')
+  const login = await client
+    .post('/api/v1/auth/login')
+    .header('cookie', cookies(bootstrap))
+    .header('x-csrf-token', (bootstrap.body() as { csrfToken: string }).csrfToken)
+    .json({ email: owner.email, password: 'OwnerPass123!' })
+  assert.equal(login.status(), 200)
+  const ownerSession = cookies(login)
+  const ownerCsrf = await client.get('/api/v1/auth/csrf').header('cookie', ownerSession)
+  const ownerToken = (ownerCsrf.body() as { csrfToken: string }).csrfToken
+  const recipient = `session-invite-${randomUUID()}@example.test`
+  const sent = await client
+    .post('/api/v1/account/invitations')
+    .header('cookie', ownerSession)
+    .header('x-csrf-token', ownerToken)
+    .json({ email: recipient, role: 'member' })
+  assert.equal(sent.status(), 201, JSON.stringify(sent.body()))
+  const invitationId = (sent.body() as { id: number }).id
+  const list = await client.get('/api/v1/account/invitations').header('cookie', ownerSession)
+  assert.equal(list.status(), 200)
+  const firstNotice = notifications.events.findLast(
+    (event) => event.kind === 'invitation' && event.recipient === recipient
+  )
+  assert.isDefined(firstNotice)
+  const firstPath = `/api/v1/auth/invitations/${encodeURIComponent(proofFrom(firstNotice!.value))}`
+  const firstInspect = await client.get(firstPath)
+  assert.equal(firstInspect.status(), 200)
+  assert.equal(firstInspect.header('cache-control'), 'no-store')
+  const resent = await client
+    .post(`/api/v1/account/invitations/${invitationId}/resend`)
+    .header('cookie', ownerSession)
+    .header('x-csrf-token', ownerToken)
+    .json({})
+  assert.equal(resent.status(), 200, JSON.stringify(resent.body()))
+  const replacementNotice = notifications.events.findLast(
+    (event) => event.kind === 'invitation' && event.recipient === recipient
+  )
+  assert.isDefined(replacementNotice)
+  const currentPath = `/api/v1/auth/invitations/${encodeURIComponent(proofFrom(replacementNotice!.value))}`
+  const inspect = await client.get(currentPath)
+  assert.equal(inspect.status(), 200)
+  const acceptCsrf = await client.get('/api/v1/auth/csrf')
+  const acceptance = await client
+    .post(currentPath)
+    .header('cookie', cookies(acceptCsrf))
+    .header('x-csrf-token', (acceptCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({
+      fullName: 'Invited Session User',
+      password: 'InvitedPass123!',
+      passwordConfirmation: 'InvitedPass123!',
+    })
+  assert.equal(acceptance.status(), 201, JSON.stringify(acceptance.body()))
+  const invited = await User.findByOrFail('email', recipient)
+  const assignment = await db
+    .from('role_assignments')
+    .where('user_id', invited.id)
+    .where('role', 'member')
+    .first()
+  assert.isDefined(assignment)
+  const replay = await client
+    .post(currentPath)
+    .header('cookie', cookies(acceptCsrf))
+    .header('x-csrf-token', (acceptCsrf.body() as { csrfToken: string }).csrfToken)
+    .json({
+      fullName: 'Invited Session User',
+      password: 'InvitedPass123!',
+      passwordConfirmation: 'InvitedPass123!',
+    })
+  assert.equal(replay.status(), 400)
+  const revokeEmail = `session-revoke-${randomUUID()}@example.test`
+  const second = await client
+    .post('/api/v1/account/invitations')
+    .header('cookie', ownerSession)
+    .header('x-csrf-token', ownerToken)
+    .json({ email: revokeEmail, role: 'member' })
+  assert.equal(second.status(), 201)
+  const secondId = (second.body() as { id: number }).id
+  const secondNotice = notifications.events.findLast(
+    (event) => event.kind === 'invitation' && event.recipient === revokeEmail
+  )
+  assert.isDefined(secondNotice)
+  const revokedPath = `/api/v1/auth/invitations/${encodeURIComponent(proofFrom(secondNotice!.value))}`
+  const revoke = await client
+    .delete(`/api/v1/account/invitations/${secondId}`)
+    .header('cookie', ownerSession)
+    .header('x-csrf-token', ownerToken)
+  assert.equal(revoke.status(), 204)
+  assert.equal((await client.get(revokedPath)).status(), 400)
+})
