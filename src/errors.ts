@@ -66,3 +66,24 @@ export class PostCommitError extends AccountKitError {
 export class CapabilityDisabledError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_CAPABILITY_DISABLED'
 }
+export class InvalidCredentialsError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_INVALID_CREDENTIALS'
+  static status = 400
+  constructor() {
+    super('Invalid email or password')
+  }
+}
+export class InvalidSessionError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_INVALID_SESSION'
+  static status = 401
+  constructor() {
+    super('Invalid session')
+  }
+}
+export class UnverifiedEmailError extends AccountKitError {
+  static code = 'unverified_email'
+  static status = 403
+  constructor() {
+    super('unverified_email')
+  }
+}
