@@ -62,6 +62,27 @@ test.group('managed existing-guard adapters', () => {
     assert.deepEqual(await session.current(ctx), { userId: 42, revision: null })
     assert.deepEqual(await token.current(ctx), { userId: 42, tokenId: 17 })
   })
+  test('normalizes Adonis bigint token identifiers at the service boundary', async ({ assert }) => {
+    const user = { id: 42, currentAccessToken: { identifier: BigInt(17) } }
+    const adapter = createManagedGuard({
+      strategy: 'access_tokens',
+      name: 'api',
+      loadUser: async () => ({
+        findOrFail: async () => user,
+        accessTokens: {
+          create: async () => ({ identifier: BigInt(18), value: { release: () => 'token' } }),
+          delete: async () => {},
+        },
+      }),
+    })
+    const ctx = { auth: { use: () => ({ authenticate: async () => user }) } } as never
+    assert.deepEqual(await adapter.current(ctx), { userId: 42, tokenId: '17' })
+    assert.deepEqual(await adapter.forRequest(ctx).establish(42, ['*'], null), {
+      userId: 42,
+      identifier: '18',
+      value: 'token',
+    })
+  })
   test('refuses cookie-backed sessions before issuing or trusting a credential', async ({
     assert,
   }) => {
