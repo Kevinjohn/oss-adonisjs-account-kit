@@ -45,7 +45,11 @@ async function assertNoConflict(
 }
 
 /** Apply under a project lock. The caller must keep other editors out of this workspace. */
-export async function applySetup(root: string, plan: SetupPlan): Promise<string[]> {
+export async function applySetup(
+  root: string,
+  plan: SetupPlan,
+  options: { beforePublish?: (temporary: string, destination: string) => Promise<void> } = {}
+): Promise<string[]> {
   root = await realpath(root)
   if (plan.preview) throw new Error('Setup is in preview mode; pass --apply to write files')
   const blocking = plan.diagnostics.filter((item) => item.severity === 'error')
@@ -81,6 +85,7 @@ export async function applySetup(root: string, plan: SetupPlan): Promise<string[
         const mode = oldStat?.mode ?? 0o644
         await writeFile(temp, change.content, { flag: 'wx', mode })
         await assertNoConflict(root, change)
+        await options.beforePublish?.(temp, path)
         if (action === 'create') await link(temp, path)
         else await rename(temp, path)
       } finally {
