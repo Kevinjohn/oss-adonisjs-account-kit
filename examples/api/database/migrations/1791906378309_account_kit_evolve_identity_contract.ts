@@ -46,7 +46,11 @@ export default class extends BaseSchema {
       const changes = await db.from('account_email_changes')
       for (const change of changes) {
         const user = await db.from(usersTable).where('id', change.user_id).first()
-        if (!user || user.email !== change.current_email) continue
+        if (!user || user.email !== change.current_email) {
+          throw new Error(
+            'account_kit: email-change proof no longer matches its user; resolve it before migration'
+          )
+        }
         const inactive = user.email_verified_at === null
         await db
           .from(usersTable)

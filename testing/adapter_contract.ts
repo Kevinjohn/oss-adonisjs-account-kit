@@ -193,4 +193,48 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     )
     assert.equal(await fixture.adapter.verifyPassword(afterVerification.id, password, trx), false)
   })
+
+  const inactiveEmail = `${prefix}-inactive@example.test`
+  const inactive = await fixture.transaction((trx) =>
+    fixture.adapter.create(
+      {
+        email: ` ${inactiveEmail.toUpperCase()} `,
+        unverifiedEmail: ` ${inactiveEmail.toUpperCase()} `,
+        password: null,
+        ...(fixture.registrationData !== undefined
+          ? { registrationData: fixture.registrationData }
+          : {}),
+      },
+      trx
+    )
+  )
+  assert.equal(inactive.email, inactiveEmail)
+  assert.equal(inactive.unverifiedEmail, inactiveEmail)
+  assert.equal(inactive.hasPassword, false)
+  assert.equal(inactive.emailVerifiedAt, null)
+  assert.equal(await fixture.storedPassword(inactive.id), null)
+  assertSameUser(await fixture.adapter.findById(inactive.id), inactive)
+
+  const pendingEmail = `${prefix}-pending@example.test`
+  await assert.rejects(
+    fixture.transaction(async (trx) => {
+      await fixture.adapter.setUnverifiedEmail(inactive.id, ` ${pendingEmail.toUpperCase()} `, trx)
+      const pending = await fixture.adapter.findById(inactive.id, trx)
+      assert.equal(pending?.unverifiedEmail, pendingEmail)
+      throw new Error('pending address rollback')
+    }),
+    /pending address rollback/
+  )
+  assertSameUser(await fixture.adapter.findById(inactive.id), inactive)
+  await fixture.transaction((trx) =>
+    fixture.adapter.setUnverifiedEmail(inactive.id, ` ${pendingEmail.toUpperCase()} `, trx)
+  )
+  const persistedPending = await fixture.adapter.findById(inactive.id)
+  assert.equal(persistedPending?.unverifiedEmail, pendingEmail)
+  await fixture.transaction((trx) =>
+    fixture.adapter.markEmailVerified(inactive.id, verifiedAt, trx)
+  )
+  const activated = await fixture.adapter.findById(inactive.id)
+  assert.equal(activated?.unverifiedEmail, null, 'markEmailVerified must clear pending email')
+  assert.equal(activated?.emailVerifiedAt?.toMillis(), verifiedAt.toMillis())
 }

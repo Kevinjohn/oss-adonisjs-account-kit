@@ -57,6 +57,8 @@ export async function completePasswordReset(
       )
 
       await deps.config.users.setPassword(row.tokenable_id, input.password, trx)
+      if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email)
+        await deps.config.users.setUnverifiedEmail(row.tokenable_id, null, trx)
       if (current.unverifiedEmail === current.email)
         await deps.config.users.markEmailVerified(row.tokenable_id, DateTime.utc(), trx)
       await trx.from('email_verification_tokens').where('tokenable_id', row.tokenable_id).delete()

@@ -199,10 +199,12 @@ export async function acceptInvitation(
           trx
         )
         await deps.config.users.markEmailVerified(user.id, now, trx)
-        await deps.config.onInvitationAccepted(user, toInvitation(row), trx)
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
-        return { user: reloaded, invitationId: row.id }
+        await deps.config.onInvitationAccepted(reloaded, toInvitation(row), trx)
+        const accepted = await deps.config.users.findById(user.id, trx)
+        if (!accepted) throw new InvalidTokenError()
+        return { user: accepted, invitationId: row.id }
       })
     ))
   } catch (error) {
