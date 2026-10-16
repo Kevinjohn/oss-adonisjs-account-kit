@@ -437,7 +437,8 @@ test.group('authentication contract', (group) => {
         const [tokenId] = await kit.db
           .table('auth_access_tokens')
           .insert({ tokenable_id: id, hash: `issued-${++issued}` })
-        return tokenId as number
+          .returning('id')
+        return unwrapId(tokenId)
       },
       terminate: async () => {},
     }
