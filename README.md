@@ -30,7 +30,7 @@ driver for its selected Lucid dialect. PostgreSQL applications install `pg`; the
 SQLite setup uses `better-sqlite3`. See [compatibility](docs/compatibility.md) for tested version
 points and declared peer ranges.
 
-Configure creates `config/account_kit.ts` when absent, registers the provider, and generates eight
+Configure creates `config/account_kit.ts` when absent, registers the provider, and generates nine
 package migrations for a fresh install when matching files do not already exist. It preserves
 existing configuration and migrations. Review generated files, set a stable `APP_KEY` and
 `APP_URL`, then apply migrations and typecheck:
