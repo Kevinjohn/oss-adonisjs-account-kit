@@ -8,7 +8,7 @@ import SetupAccountKit from '../commands/setup.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { fixture, registerSetupTeardown, retirementIgnitor } from './helpers/setup.js'
 
-test.group('onboarding plan and apply', (group) => {
+test.group('setup Ace command', (group) => {
   registerSetupTeardown(group)
 
   test('noninteractive Ace preview and apply use the same choices without prompting', async ({
