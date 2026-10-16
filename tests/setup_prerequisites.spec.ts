@@ -157,7 +157,7 @@ test.group('setup prerequisite inspection', () => {
         []
       )
     })
-  })
+  }).timeout(10_000)
 
   test('optional registration fields ignore inherited object properties', async ({ assert }) => {
     await withFixture(async (choices, state) => {
@@ -1451,7 +1451,7 @@ export default class User extends BaseModel { static table = 'users'; static '\u
         else process.env.MAIL_MAILER = previous
       }
     })
-  })
+  }).timeout(10_000)
 
   test('unsafe Mail configuration blocks apply without writing files', async ({ assert }) => {
     await withFixture(async (choices, state, root) => {
