@@ -199,9 +199,20 @@ export function hasUnsafeBindingReferences(
 
 /** A type query references a value's type but never reads that value at runtime. */
 export function isTypeOnlyReference(source: SetupSource, node: TypeScript.Node): boolean {
+  let child = node
   for (let parent = node.parent; parent; parent = parent.parent) {
+    if (
+      source.ts.isExpressionWithTypeArguments(parent) &&
+      child === parent.expression &&
+      source.ts.isHeritageClause(parent.parent) &&
+      parent.parent.token === source.ts.SyntaxKind.ExtendsKeyword &&
+      (source.ts.isClassDeclaration(parent.parent.parent) ||
+        source.ts.isClassExpression(parent.parent.parent))
+    )
+      return false
     if (source.ts.isTypeNode(parent)) return true
     if (source.ts.isExpression(parent) || source.ts.isStatement(parent)) return false
+    child = parent
   }
   return false
 }

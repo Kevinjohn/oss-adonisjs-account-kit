@@ -482,9 +482,19 @@ test.group('onboarding plan and apply', (group) => {
       ['config/mail.ts', 'mailConfig.mailers.smtp = null', 'config/mail.ts'],
       ['config/limiter.ts', 'limiterConfig.stores.database = null', 'config/limiter.ts'],
       ['database/schema.ts', "UserSchema.table = 'other'", 'user.connection'],
+      [
+        'database/schema.ts',
+        "class Other extends UserSchema { static { Object.getPrototypeOf(this).table = 'members' } }",
+        'user.connection',
+      ],
       ['database/schema.ts', "BaseModel.table = 'other'", 'user.connection'],
       ['database/schema.ts', 'column.dateTime = () => null', 'user.connection'],
       ['app/models/user.ts', "User.table = 'other'", 'user.model'],
+      [
+        'app/models/user.ts',
+        "class Other extends User { static { Object.getPrototypeOf(this).table = 'members' } }",
+        'user.model',
+      ],
       ['app/models/user.ts', "UserSchema.table = 'other'", 'user.connection'],
     ] as const) {
       await writeFile(join(root, path), `${await stock(path)}\n${mutation}\n`)
@@ -523,6 +533,150 @@ test.group('onboarding plan and apply', (group) => {
     await assert.rejects(() => applySetup(root, wrongId), /blocking diagnostics/)
     await writeFile(
       join(root, 'database/schema.ts'),
+      schema.replace(
+        'export class UserSchema extends BaseModel {',
+        "export class UserSchema extends BaseModel {\n  static primaryKey = 'email'"
+      )
+    )
+    const inheritedKey = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      inheritedKey.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    for (const decorator of ['column', 'column.date', 'column.dateTime']) {
+      await writeFile(
+        join(root, 'database/schema.ts'),
+        schema.replace(
+          "static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const",
+          `static $columns = ['createdAt', 'email', 'fullName', 'id', 'password', 'updatedAt'] as const\n  @${decorator}({ isPrimary: true }) declare alternateId: number`
+        )
+      )
+      const secondPrimary = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        secondPrimary.diagnostics.some(
+          ({ field, severity }) => field === 'user.idType' && severity === 'error'
+        )
+      )
+      await assert.rejects(() => applySetup(root, secondPrimary), /blocking diagnostics/)
+    }
+    const user = await stock('app/models/user.ts')
+    await writeFile(join(root, 'database/schema.ts'), schema)
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      user.replace('static accessTokens =', "static primaryKey = 'email'\n  static accessTokens =")
+    )
+    const modelKey = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      modelKey.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      user.replace(
+        'static accessTokens =',
+        "static get primaryKey() { return 'email' }\n  static accessTokens ="
+      )
+    )
+    const keyAccessor = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      keyAccessor.diagnostics.some(
+        ({ field, severity }) => field === 'user.model' && severity === 'error'
+      )
+    )
+    for (const decorator of [
+      '@column() declare id: number',
+      '@column({ isPrimary: true }) declare alternateId: number',
+    ]) {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        "import { column } from '@adonisjs/lucid/orm'\n" +
+          user.replace('static accessTokens =', `${decorator}\n  static accessTokens =`)
+      )
+      const override = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        override.diagnostics.some(
+          ({ field, severity }) => field === 'user.idType' && severity === 'error'
+        )
+      )
+      await assert.rejects(() => applySetup(root, override), /blocking diagnostics/)
+    }
+    const validIdOverride =
+      "import { column } from '@adonisjs/lucid/orm'\n" +
+      user.replace(
+        'static accessTokens =',
+        '@column({ isPrimary: true }) declare id: number\n  static accessTokens ='
+      )
+    await writeFile(join(root, 'app/models/user.ts'), validIdOverride)
+    const sameId = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      sameId.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      `${validIdOverride}\ncolumn.dateTime = () => null\n`
+    )
+    const changedFactory = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      changedFactory.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await assert.rejects(() => applySetup(root, changedFactory), /blocking diagnostics/)
+    await writeFile(join(root, 'app/models/user.ts'), user)
+    for (const idType of ['string', 'uuid'] as const) {
+      await writeFile(
+        join(root, 'database/schema.ts'),
+        schema.replaceAll('declare id: number', 'declare id: string')
+      )
+      choices.user.idType = idType
+      const matching = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isFalse(
+        matching.diagnostics.some(
+          ({ field, severity }) => field === 'user.idType' && severity === 'error'
+        ),
+        JSON.stringify(matching.diagnostics)
+      )
+    }
+    choices.user.idType = 'integer'
+    const mismatchedType = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      mismatchedType.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'database/schema.ts'),
       schema.replaceAll(
         '@column({ isPrimary: true })',
         "@column({ isPrimary: true, columnName: 'other_id' })"
@@ -553,6 +707,88 @@ test.group('onboarding plan and apply', (group) => {
         ({ field, severity }) => field === 'user.table' && severity === 'error'
       )
     )
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replace(
+        'export class UserSchema extends BaseModel {',
+        "export class UserSchema extends BaseModel {\n  static table = 'members'"
+      )
+    )
+    choices.user.table = 'members'
+    const schemaTable = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      schemaTable.diagnostics.some(
+        ({ field, severity }) => field === 'user.table' && severity === 'error'
+      )
+    )
+    choices.user.table = 'users'
+    const defaultUserTable = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      defaultUserTable.diagnostics.some(
+        ({ field, severity }) => field === 'user.table' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replace(
+        'export class UserSchema extends BaseModel {',
+        "export class UserSchema extends BaseModel {\n  static connection = 'archive'"
+      )
+    )
+    const inheritedConnection = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      inheritedConnection.diagnostics.some(
+        ({ field, severity }) => field === 'user.connection' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replace(
+        'export class UserSchema extends BaseModel {',
+        'export class UserSchema extends BaseModel {\n  static namingStrategy = customNaming'
+      )
+    )
+    const inheritedNaming = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      inheritedNaming.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replace(
+        'export class UserSchema extends BaseModel {',
+        "export class UserSchema extends BaseModel {\n  static table = 'members'"
+      )
+    )
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      user.replace('static accessTokens =', "static table = 'members'\n  static accessTokens =")
+    )
+    choices.user.table = 'members'
+    const ownedTable = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      ownedTable.diagnostics.some(
+        ({ field, severity }) => field === 'user.table' && severity === 'error'
+      )
+    )
+    await writeFile(join(root, 'app/models/user.ts'), user)
+    choices.user.table = 'users'
     await writeFile(join(root, 'database/schema.ts'), schema)
     manifest.imports = { '#database/*': './elsewhere/*.js' }
     await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
@@ -566,7 +802,18 @@ test.group('onboarding plan and apply', (group) => {
       )
     )
     await assert.rejects(() => applySetup(root, remapped), /blocking diagnostics/)
-  })
+    manifest.imports = { '#database/*': './database/*.js', '#database/s*': './elsewhere/*.js' }
+    await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+    const shadowedAlias = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      shadowedAlias.diagnostics.some(
+        ({ field, severity }) => field === 'user.connection' && severity === 'error'
+      )
+    )
+  }).timeout(10_000)
 
   test('schema-composed model inspection refuses a linked schema leaf', async ({ assert }) => {
     const { root, choices } = await fixture()

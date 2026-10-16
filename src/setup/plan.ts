@@ -1886,6 +1886,91 @@ async function planSessionConfigIntegration(
 }
 
 /** Build the complete proposal before a write. Apply refuses every conflict in this plan. */
+type InspectedColumn = {
+  primary: boolean
+  physical: string
+  declaration: TypeScript.PropertyDeclaration
+}
+
+/** Inspect only the Lucid column decorators that determine the runtime primary mapping. */
+function classColumns(
+  source: SetupSource,
+  selected: TypeScript.ClassDeclaration
+): {
+  columns: Map<string, InspectedColumn>
+  unsafe: boolean
+} {
+  const { ts } = source
+  const binding = importedName(source, '@adonisjs/lucid/orm', 'column')
+  const columns = new Map<string, InspectedColumn>()
+  let unsafe = Boolean(
+    binding &&
+    hasUnsafeBindingReferences(
+      source,
+      binding,
+      (call) =>
+        ts.isDecorator(call.parent) &&
+        ((ts.isIdentifier(call.expression) && call.expression.text === binding) ||
+          exactCall(source, call, binding, 'dateTime') ||
+          exactCall(source, call, binding, 'date'))
+    )
+  )
+  for (const member of selected.members) {
+    if (!ts.isPropertyDeclaration(member)) continue
+    const decorators = member.modifiers?.filter(ts.isDecorator) ?? []
+    if (!decorators.length) continue
+    if (!ts.isIdentifier(member.name) || decorators.length !== 1 || !binding) {
+      unsafe = true
+      continue
+    }
+    const call = decorators[0].expression
+    if (
+      !ts.isCallExpression(call) ||
+      !(
+        (ts.isIdentifier(call.expression) && call.expression.text === binding) ||
+        exactCall(source, call, binding, 'dateTime') ||
+        exactCall(source, call, binding, 'date')
+      ) ||
+      call.arguments.length > 1
+    ) {
+      unsafe = true
+      continue
+    }
+    const options = call.arguments[0]
+    if (
+      options &&
+      (!ts.isObjectLiteralExpression(options) || hasUnsafeObjectEntries(source, options))
+    ) {
+      unsafe = true
+      continue
+    }
+    const primary =
+      options && ts.isObjectLiteralExpression(options)
+        ? directProperty(source, options, 'isPrimary')?.initializer
+        : undefined
+    const columnName =
+      options && ts.isObjectLiteralExpression(options)
+        ? directProperty(source, options, 'columnName')?.initializer
+        : undefined
+    if (
+      (primary &&
+        primary.kind !== ts.SyntaxKind.TrueKeyword &&
+        primary.kind !== ts.SyntaxKind.FalseKeyword) ||
+      (columnName && !ts.isStringLiteral(columnName)) ||
+      columns.has(member.name.text)
+    ) {
+      unsafe = true
+      continue
+    }
+    columns.set(member.name.text, {
+      primary: primary?.kind === ts.SyntaxKind.TrueKeyword,
+      physical: columnName && ts.isStringLiteral(columnName) ? columnName.text : member.name.text,
+      declaration: member,
+    })
+  }
+  return { columns, unsafe }
+}
+
 export async function planSetup(
   choices: SetupChoices,
   state: SetupInspection,
@@ -1998,7 +2083,7 @@ export async function planSetup(
             (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) &&
             member.name.text === name
         ) ?? []
-      const metadataNames = ['table', 'connection', 'accessTokens']
+      const metadataNames = ['table', 'connection', 'primaryKey', 'namingStrategy', 'accessTokens']
       const unsafeMetadata =
         selectedClass?.members.some((member) => {
           if (ts.isClassStaticBlockDeclaration(member)) return true
@@ -2133,11 +2218,20 @@ export async function planSetup(
             imports?: Record<string, unknown>
           }
           const exactAlias = manifest.imports?.['#database/schema']
+          const overlapping = Object.keys(manifest.imports ?? {}).some((key) => {
+            if (key === '#database/schema' || key === '#database/*') return false
+            const wildcard = key.indexOf('*')
+            if (wildcard < 0) return false
+            return (
+              '#database/schema'.startsWith(key.slice(0, wildcard)) &&
+              '#database/schema'.endsWith(key.slice(wildcard + 1))
+            )
+          })
           const mapped =
             exactAlias === undefined
               ? manifest.imports?.['#database/*'] === './database/*.js'
               : exactAlias === './database/schema.js'
-          if (!mapped)
+          if (!mapped || overlapping)
             throw new Error('Setup cannot resolve #database/schema to the inspected schema')
           const path = await safeSetupPath(state.root, schemaPath)
           const schemaStat = await lstat(path)
@@ -2197,7 +2291,8 @@ export async function planSetup(
               (call) =>
                 parsed.ts.isDecorator(call.parent) &&
                 ((parsed.ts.isIdentifier(call.expression) && call.expression.text === column) ||
-                  exactCall(parsed, call, column, 'dateTime'))
+                  exactCall(parsed, call, column, 'dateTime') ||
+                  exactCall(parsed, call, column, 'date'))
             )
           let escaped = false
           if (candidate?.name)
@@ -2222,7 +2317,7 @@ export async function planSetup(
                 return
               escaped = true
             })
-          const schemaMetadata = ['table', 'connection']
+          const schemaMetadata = ['table', 'connection', 'primaryKey', 'namingStrategy']
           const metadataUnsafe =
             candidate?.members.some((member) => {
               if (parsed.ts.isClassStaticBlockDeclaration(member)) return true
@@ -2282,56 +2377,67 @@ export async function planSetup(
               schemaSource!.ts.isStringLiteral(member.name)) &&
             member.name.text === name
         ) ?? []
-      if (composed && schemaClass && schemaSource) {
-        const idMembers = schemaClass.members.filter(
-          (member) =>
-            schemaSource!.ts.isPropertyDeclaration(member) &&
-            schemaSource!.ts.isIdentifier(member.name) &&
-            member.name.text === choices.user.primaryKey
+      const modelColumns = selectedClass ? classColumns(model, selectedClass) : null
+      const inheritedColumns =
+        schemaClass && schemaSource ? classColumns(schemaSource, schemaClass) : null
+      const primaryKeyMember = (member: TypeScript.Node | undefined) =>
+        member &&
+        ts.isPropertyDeclaration(member) &&
+        member.initializer &&
+        ts.isStringLiteral(member.initializer) &&
+        member.initializer.text === choices.user.primaryKey
+      const declaredKeys = [...staticMember('primaryKey'), ...inheritedMember('primaryKey')]
+      if (
+        declaredKeys.some((member) => !primaryKeyMember(member)) ||
+        staticMember('namingStrategy').length ||
+        inheritedMember('namingStrategy').length
+      )
+        diagnostic(
+          diagnostics,
+          'user.idType',
+          'Resolve the model primary key and naming strategy before generating migrations'
         )
-        const id =
-          idMembers.length === 1 && schemaSource.ts.isPropertyDeclaration(idMembers[0])
-            ? idMembers[0]
-            : null
-        const columnName = importedName(schemaSource, '@adonisjs/lucid/orm', 'column')
-        const primary = id?.modifiers?.some((modifier) => {
-          if (
-            !schemaSource!.ts.isDecorator(modifier) ||
-            !schemaSource!.ts.isCallExpression(modifier.expression) ||
-            !schemaSource!.ts.isIdentifier(modifier.expression.expression) ||
-            modifier.expression.expression.text !== columnName ||
-            modifier.expression.arguments.length !== 1 ||
-            !schemaSource!.ts.isObjectLiteralExpression(modifier.expression.arguments[0])
-          )
-            return false
-          const columnOptions = modifier.expression.arguments[0]
-          const physicalName = directProperty(
-            schemaSource!,
-            columnOptions,
-            'columnName'
-          )?.initializer
-          return (
-            directProperty(schemaSource!, columnOptions, 'isPrimary')?.initializer.kind ===
-              schemaSource!.ts.SyntaxKind.TrueKeyword &&
-            (!physicalName ||
-              (schemaSource!.ts.isStringLiteral(physicalName) &&
-                physicalName.text === choices.user.primaryKey))
-          )
-        })
+      if (modelColumns?.unsafe || inheritedColumns?.unsafe)
+        diagnostic(
+          diagnostics,
+          'user.idType',
+          'Resolve model column decorators before generating migrations'
+        )
+      if (composed && schemaClass && schemaSource && modelColumns && inheritedColumns) {
+        const effective = new Map([...inheritedColumns.columns, ...modelColumns.columns])
+        const primary = [...effective.entries()].filter(([, value]) => value.primary)
+        const id = effective.get(choices.user.primaryKey)
+        const expectedType =
+          choices.user.idType === 'integer'
+            ? schemaSource.ts.SyntaxKind.NumberKeyword
+            : schemaSource.ts.SyntaxKind.StringKeyword
         if (
-          !primary ||
-          id?.type?.kind !== schemaSource.ts.SyntaxKind.NumberKeyword ||
-          choices.user.idType !== 'integer'
+          !id ||
+          !id.primary ||
+          id.physical !== choices.user.primaryKey ||
+          primary.length !== 1 ||
+          primary[0][0] !== choices.user.primaryKey ||
+          id.declaration.type?.kind !== expectedType
         )
           diagnostic(
             diagnostics,
             'user.idType',
-            'Inherited schema must declare the selected physical primary id with @column({ isPrimary: true })'
+            'Composed model must expose one physical id primary column with the selected TypeScript id type'
           )
-      }
-      const tableMember = staticMember('table').length
-        ? staticMember('table')
-        : inheritedMember('table')
+      } else if (
+        modelColumns?.columns.size &&
+        [...modelColumns.columns.entries()].some(
+          ([name, column]) =>
+            (column.primary && name !== choices.user.primaryKey) ||
+            (name === choices.user.primaryKey && column.physical !== choices.user.primaryKey)
+        )
+      )
+        diagnostic(
+          diagnostics,
+          'user.idType',
+          'Model columns must preserve the selected physical id primary key'
+        )
+      const tableMember = staticMember('table')
       const tableInitializer =
         tableMember.length === 1 && ts.isPropertyDeclaration(tableMember[0])
           ? tableMember[0].initializer
@@ -2356,7 +2462,33 @@ export async function planSetup(
           'user.connection',
           'Selected Lucid model must not declare an explicit connection override'
         )
-      if (!table)
+      if (composed && schemaClass && !table && selectedClass?.name?.text !== 'User')
+        diagnostic(
+          diagnostics,
+          'user.table',
+          'Confirm the final model table mapping before generated migrations'
+        )
+      if (composed && schemaClass && !table && choices.user.table !== 'users')
+        diagnostic(
+          diagnostics,
+          'user.table',
+          'Default Lucid User table is users; declare a model-owned table for another name'
+        )
+      if (
+        inheritedMember('table').length &&
+        inheritedMember('table').some(
+          (member) =>
+            ts.isPropertyDeclaration(member) &&
+            member.initializer &&
+            !ts.isStringLiteral(member.initializer)
+        )
+      )
+        diagnostic(
+          diagnostics,
+          'user.table',
+          'Resolve schema table evaluation before generated migrations'
+        )
+      if (!table && !composed)
         diagnostic(
           diagnostics,
           'user.table',

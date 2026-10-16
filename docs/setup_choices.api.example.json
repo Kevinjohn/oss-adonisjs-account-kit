@@ -36,7 +36,7 @@
       "lifetime": "1d",
       "abilities": ["*"]
     },
-    "applicationRouteRevocation": true
+    "applicationRouteRevocation": false
   },
   "mail": {
     "integration": "adonisjs-mail",
