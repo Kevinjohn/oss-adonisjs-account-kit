@@ -152,7 +152,17 @@ export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
   token: string,
   validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {
-  const tokenHash = hashToken(token)
+  return consumeUserTokenHash(trx, config, table, hashToken(token), validForUser)
+}
+
+/** Consume a hash already bound to a one-use server-side social transaction. */
+export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>(
+  trx: Trx,
+  config: ResolvedConfig,
+  table: 'password_reset_tokens' | 'email_verification_tokens',
+  tokenHash: string,
+  validForUser: (row: Row, user: AccountUser) => boolean
+): Promise<{ row: Row; user: AccountUser }> {
   const candidate = await trx.from(table).select('tokenable_id').where('hash', tokenHash).first()
   if (!candidate) throw new InvalidTokenError()
   await lockUser(trx, config, candidate.tokenable_id)

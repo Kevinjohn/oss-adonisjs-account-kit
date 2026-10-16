@@ -11,6 +11,8 @@ export const migrationNames = [
   'create_social_identities',
   'retire_account_email_changes',
   'add_credentials_changed_at_to_users',
+  'create_social_transactions',
+  'add_social_identity_confirmation',
 ]
 
 function isMissing(error: unknown): boolean {

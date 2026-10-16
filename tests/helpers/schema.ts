@@ -14,7 +14,10 @@ export async function resetSchema(
   await schema.dropTableIfExists('auth_access_tokens')
   await schema.dropTableIfExists('account_transaction_lock')
   await schema.dropTableIfExists('email_verification_tokens')
+  await schema.dropTableIfExists('social_handoff_codes')
+  await schema.dropTableIfExists('social_sensitive_proofs')
   await schema.dropTableIfExists('social_identities')
+  await schema.dropTableIfExists('social_transactions')
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
   await schema.dropTableIfExists('password_reset_tokens')
@@ -69,6 +72,9 @@ const dataTables = [
   'password_reset_tokens',
   'email_verification_tokens',
   'social_identities',
+  'social_sensitive_proofs',
+  'social_handoff_codes',
+  'social_transactions',
   'users',
 ]
 

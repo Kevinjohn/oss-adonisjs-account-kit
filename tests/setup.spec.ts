@@ -15,6 +15,7 @@ import { createRequire } from 'node:module'
 import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
+import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import SetupAccountKit from '../commands/setup.js'
@@ -28,6 +29,9 @@ import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
+import { bootTestApp } from './helpers/app.js'
+import { pruneExpired } from '../src/maintenance.js'
+import { migrationNames } from '../configure.js'
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-'))
@@ -155,6 +159,81 @@ test.group('onboarding plan and apply', (group) => {
     for (const root of cleanupRoots) await rm(root, { recursive: true, force: true })
   })
 
+  for (const [usersTable, timestamp] of [
+    ['users', undefined],
+    ['users', 1234],
+    ['accounts', undefined],
+    ['accounts', 1234],
+  ] as const) {
+    test(`applies every planned migration for ${usersTable} with ${timestamp === undefined ? 'clock' : 'fixed'} timestamp`, async ({
+      assert,
+    }) => {
+      const { root, choices } = await fixture()
+      choices.user.table = usersTable
+      const plan = await planSetup(choices, await inspectSetup(root), { timestamp })
+      const migrations = plan.changes.filter((change) =>
+        change.path.startsWith('database/migrations/')
+      )
+      assert.lengthOf(migrations, migrationNames.length)
+      const kit = await bootTestApp()
+      try {
+        const schema = kit.db.connection().schema
+        for (const table of [
+          'social_handoff_codes',
+          'social_sensitive_proofs',
+          'social_transactions',
+          'social_identities',
+          'account_transaction_lock',
+          'account_invitations',
+          'password_reset_tokens',
+          'email_verification_tokens',
+          'account_email_changes',
+          'adonis_schema_versions',
+          'adonis_schema',
+          'users',
+          'accounts',
+        ])
+          await schema.dropTableIfExists(table)
+        await schema.createTable(usersTable, (table) => {
+          table.increments('id')
+          table.string('email', 254).notNullable().unique()
+          table.string('password').nullable()
+          table.timestamp('created_at').notNullable()
+        })
+        await symlink(
+          join(process.cwd(), 'node_modules'),
+          join(kit.migrationDirectory, 'node_modules')
+        )
+        for (const migration of migrations)
+          await writeFile(
+            join(kit.migrationDirectory, migration.path.split('/').at(-1)!),
+            migration.content
+          )
+        const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
+        await runner.run()
+        if (runner.error) throw runner.error
+        assert.isTrue(await kit.db.connection().schema.hasTable('social_identities'))
+        assert.isTrue(await kit.db.connection().schema.hasTable('social_transactions'))
+        assert.isTrue(
+          await kit.db.connection().schema.hasColumn('social_identities', 'confirmed_at')
+        )
+        assert.isTrue(
+          await kit.db.connection().schema.hasColumn(usersTable, 'credentials_changed_at')
+        )
+        assert.deepEqual(await pruneExpired(kit.db, { dryRun: true }), {
+          recovery: 0,
+          invitations: 0,
+          emailVerifications: 0,
+          socialTransactions: 0,
+          socialSensitiveProofs: 0,
+          socialHandoffCodes: 0,
+        })
+      } finally {
+        await kit.close()
+      }
+    })
+  }
+
   test('standard defaults require explicit invitation and social opt-in', ({ assert }) => {
     const choices = defaultSetupChoices()
     assert.notInclude(choices.features, 'invitations')
@@ -260,7 +339,7 @@ test.group('onboarding plan and apply', (group) => {
     ])
     assert.lengthOf(
       plan.changes.filter(({ action }) => action === 'create'),
-      15
+      18
     )
     assert.isFalse(plan.readiness.productionReady)
     assert.isFalse(plan.readiness.migrationsApplied)
@@ -297,7 +376,7 @@ test.group('onboarding plan and apply', (group) => {
     })
     assert.equal(resumed.changes[0].action, 'unchanged')
     const written = await applySetup(root, resumed)
-    assert.lengthOf(written, 18)
+    assert.lengthOf(written, 21)
     assert.include(await readFile(join(root, 'start/routes.ts'), 'utf8'), originalRoutes.trim())
     assert.include(
       await readFile(join(root, 'start/routes.ts'), 'utf8'),

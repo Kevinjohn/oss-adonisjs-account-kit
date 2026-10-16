@@ -1,12 +1,80 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
+import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import type { Database } from '@adonisjs/lucid/database'
+import PruneAccountKit from '../commands/prune.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser } from './helpers/fakes.js'
 
 test.group('expired-token pruning', (group) => {
   const kit = useTestApp(group)
+
+  test('Ace command reports social cleanup in dry-run and deletion', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const expired = '2020-01-01T00:00:00.000Z'
+    await kit.db.table('social_transactions').insert({
+      hash: 'a'.repeat(64),
+      provider: 'google',
+      intent: 'login',
+      client_challenge: 'A'.repeat(43),
+      expires_at: expired,
+      created_at: expired,
+    })
+    await kit.db.table('social_sensitive_proofs').insert({
+      hash: 'b'.repeat(64),
+      user_id: user.id,
+      purpose: 'social_link',
+      expires_at: expired,
+      created_at: expired,
+    })
+    await kit.db.table('social_identities').insert({
+      user_id: user.id,
+      provider: 'google',
+      provider_user_id: 'prune-command-subject',
+      email_verified: false,
+      created_at: expired,
+      updated_at: expired,
+    })
+    const identity = await kit.db.from('social_identities').firstOrFail()
+    await kit.db.table('social_handoff_codes').insert({
+      hash: 'c'.repeat(64),
+      user_id: user.id,
+      social_identity_id: identity.id,
+      client_challenge: 'A'.repeat(43),
+      expires_at: expired,
+      created_at: expired,
+    })
+
+    const kernel = new Kernel(kit.app)
+    kernel.addLoader(new ListLoader([PruneAccountKit]))
+    const messages: string[] = []
+    kernel.ui.logger.info = (message) => {
+      messages.push(message)
+    }
+    const suffix =
+      'recovery=0, invitations=0, emailVerifications=0, socialTransactions=1, socialSensitiveProofs=1, socialHandoffCodes=1'
+    await kernel.exec('account-kit:prune', ['--dry-run'])
+    assert.include(messages, `Expired: ${suffix}`)
+    for (const table of [
+      'social_transactions',
+      'social_sensitive_proofs',
+      'social_handoff_codes',
+    ]) {
+      assert.lengthOf(await kit.db.from(table), 1)
+    }
+
+    await kernel.exec('account-kit:prune', [])
+    assert.include(messages, `Pruned: ${suffix}`)
+    for (const table of [
+      'social_transactions',
+      'social_sensitive_proofs',
+      'social_handoff_codes',
+    ]) {
+      assert.lengthOf(await kit.db.from(table), 0)
+    }
+    assert.lengthOf(await kit.db.from('social_identities'), 1)
+  })
 
   test('dry run, bounded deletion, and repeated runs count only expired rows', async ({
     assert,
@@ -40,7 +108,14 @@ test.group('expired-token pruning', (group) => {
         created_at: expired,
       })
     }
-    const expected = { recovery: 1, invitations: 1, emailVerifications: 1 }
+    const expected = {
+      recovery: 1,
+      invitations: 1,
+      emailVerifications: 1,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
+    }
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, dryRun: true }), expected)
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 2)
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1 }), expected)
@@ -48,6 +123,9 @@ test.group('expired-token pruning', (group) => {
       recovery: 0,
       invitations: 0,
       emailVerifications: 0,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
     })
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
@@ -126,11 +204,17 @@ test.group('expired-token pruning', (group) => {
       recovery: 0,
       invitations: 1,
       emailVerifications: 0,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
     })
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, maxBatches: 1 }), {
       recovery: 0,
       invitations: 0,
       emailVerifications: 1,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
     })
   })
 

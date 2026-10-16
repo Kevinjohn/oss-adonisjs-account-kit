@@ -7,6 +7,7 @@ export * from './src/errors.ts'
 export { AccountKit, defineConfig } from './src/account_kit.ts'
 
 export { createLucidAdapter } from './adapters/lucid.ts'
+export { createAllySocialProvider } from './src/ally_social_provider.ts'
 export type { LucidAdapterOptions, LucidModelLoader } from './adapters/lucid.ts'
 export { accountErrorResponse } from './src/http.ts'
 export type { AccountErrorResponse } from './src/http.ts'
