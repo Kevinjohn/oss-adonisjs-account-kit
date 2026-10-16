@@ -9,6 +9,7 @@ import {
   importedName,
   defaultImportName,
   parseSetupSource,
+  safeEnvGetter,
   topLevelConfig,
   walk,
   type SetupSource,
@@ -186,6 +187,8 @@ async function databaseKind(
     connection.arguments[0].text === 'DB_CONNECTION' &&
     (connection.arguments.length === 1 || ts.isStringLiteral(connection.arguments[1]))
   ) {
+    const envBinding = defaultImportName(source, '#start/env')
+    if (!envBinding || !safeEnvGetter(source, envBinding)) return 'unknown'
     selected =
       (await resolveSelectedEnvironment(root, 'DB_CONNECTION')) ??
       (connection.arguments.length === 2

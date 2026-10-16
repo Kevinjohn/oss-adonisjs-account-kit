@@ -99,6 +99,26 @@ test('changed and ambiguous exported config cannot certify guards or database', 
   }
 })
 
+test('mutated environment getter cannot certify database fallback', async ({ assert }) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nenv.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
+    )
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'unknown')
+    const plan = await planSetup(defaultSetupChoices(), state)
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, severity }) => field === 'database.client' && severity === 'action'
+      )
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('quoted and template examples cannot invent guards or models', async ({ assert }) => {
   const root = await applicationRoot()
   try {

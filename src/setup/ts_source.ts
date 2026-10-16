@@ -112,6 +112,42 @@ export function exactCall(
   )
 }
 
+/** Reject uses of an imported binding outside the exact read-only calls we inspect. */
+export function hasUnsafeBindingReferences(
+  source: SetupSource,
+  binding: string,
+  allowedCall: (call: TypeScript.CallExpression) => boolean
+): boolean {
+  const { ts } = source
+  let unsafe = false
+  walk(source, (node) => {
+    if (!ts.isIdentifier(node) || node.text !== binding) return
+    const parent = node.parent
+    if (
+      (ts.isImportClause(parent) && parent.name === node) ||
+      (ts.isImportSpecifier(parent) && parent.name === node) ||
+      (ts.isNamespaceImport(parent) && parent.name === node) ||
+      (ts.isPropertyAssignment(parent) && parent.name === node) ||
+      (ts.isPropertyAccessExpression(parent) && parent.name === node)
+    )
+      return
+    const member =
+      ts.isPropertyAccessExpression(parent) && parent.expression === node ? parent : null
+    const call =
+      member && ts.isCallExpression(member.parent) && member.parent.expression === member
+        ? member.parent
+        : null
+    if (!call || !allowedCall(call)) unsafe = true
+  })
+  return unsafe
+}
+
+export function safeEnvGetter(source: SetupSource, binding: string): boolean {
+  return !hasUnsafeBindingReferences(source, binding, (call) =>
+    exactCall(source, call, binding, 'get')
+  )
+}
+
 export function defaultExpression(source: SetupSource): {
   expression: TypeScript.Expression
   declaration: TypeScript.VariableDeclaration | null
@@ -156,8 +192,9 @@ export function exportedObject(
   let expression = target.expression
   if (source.ts.isCallExpression(expression)) {
     if (
+      !allowedFactory ||
       !source.ts.isIdentifier(expression.expression) ||
-      (allowedFactory && expression.expression.text !== allowedFactory) ||
+      expression.expression.text !== allowedFactory ||
       expression.arguments.length !== 1
     )
       return null

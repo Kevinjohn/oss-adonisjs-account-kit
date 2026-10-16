@@ -178,7 +178,7 @@ test.group('onboarding plan and apply', (group) => {
     assert.deepEqual(parseSetupChoices(choices), choices)
   })
 
-  test('accepts a model that inherits account fields from an application schema', async ({
+  test('requires manual resolution for a model with unproven inherited mapping', async ({
     assert,
   }) => {
     const { root, choices } = await fixture()
@@ -187,13 +187,10 @@ test.group('onboarding plan and apply', (group) => {
       'export default class User extends UserSchema {}\n'
     )
     const plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
-    assert.notInclude(
-      plan.diagnostics.map(({ field }) => field),
-      'user.model.password'
-    )
-    assert.notInclude(
-      plan.diagnostics.map(({ field }) => field),
-      'user.model.emailVerifiedAt'
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, severity }) => field === 'user.connection' && severity === 'error'
+      )
     )
   })
 
