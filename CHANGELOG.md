@@ -19,6 +19,8 @@ This project has no published releases yet. The current candidate remains versio
 - The reference profile PATCH updates configured fields and pending email through the public profile operation, including inactive-address correction and credential revocation.
 - Reference account errors now use stable JSON and JSON:API envelopes while Vine validation retains its 422 response.
 - Bad-login errors in the API reference now return 401 with the same generic response for absent, wrong-password, restricted, and passwordless accounts.
+- Optional managed Google and GitHub social endpoints provide provider redirects and callbacks, safe identity management, recent proof, and one-use PKCE handoff under the selected guard.
+- Pillar-five setup records selected provider credential references and callback URLs, generates Ally wiring, and reports social activation and retirement prerequisites.
 - Optional `adonisjs-account-kit/http` entry provides explicitly registered managed JSON routes, selected-guard adapters, route exclusions, validators, safe responses, and shared protection for application-owned routes.
 - `account-kit:setup` (command) previews, validates, applies, replays, and diagnoses six-pillar onboarding choices in `config/account_kit_setup.json` (file).
 - The API example adds application-owned Google and GitHub social routes for both selected guards, with client and session PKCE handoff, required-field continuation, proof-protected linking, and account methods.
