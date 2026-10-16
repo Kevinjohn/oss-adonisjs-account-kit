@@ -16,7 +16,7 @@ the temporary application config only for its baseline phase.
 The upgrade scenario uses an application-owned handler compatible with the preserved baseline
 package, then exercises password reset through its preserved config and adapter before hashing the
 baseline config and migration files. It verifies configure preserves them, then applies the
-maintained candidate config, controller and exception handler as documented manual upgrade steps.
+maintained candidate config, password-reset controller and exception handler as documented manual upgrade steps.
 It changes the newly generated reset-token migration to rename the existing table, preserving rows
 and applied migration files, before booting and typechecking the candidate. See the
 [vocabulary upgrade guide](../../docs/upgrade.md#vocabulary-alignment). The candidate-phase test verifies the recovered password,
@@ -34,7 +34,8 @@ client key. Keep `APP_URL` on HTTPS in production so generated links are secure.
 CSRF bootstrap, and HTTP-only browser cookies; the default uses the existing `api` bearer-token
 guard. The cookie session store is rejected because it cannot invalidate a replayed cookie on
 logout. See [authentication integration](../../docs/authentication.md) for setup, route protection,
-revocation, and client handling. The example permits a limited inactive credential to correct an
+revocation, and client handling, and [token API reference](TOKENS.md) for bearer requests, proof
+confirmation, error formats, and log redaction. The example permits a limited inactive credential to correct an
 unconfirmed email, while `VerifiedAccountMiddleware` rejects it on verified routes. Bearer tokens
 must have the `invitations:create` ability before the invitation-send controller acts.
 

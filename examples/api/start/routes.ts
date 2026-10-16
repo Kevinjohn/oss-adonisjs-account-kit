@@ -18,37 +18,6 @@ router.get('/', () => {
   return { hello: 'world' }
 })
 
-router.post('/account-kit/recovery', [controllers.AccountKit, 'recoveryRequest'])
-router.get('/account-kit/recovery/:token', [controllers.AccountKit, 'recoveryInspect'])
-router.post('/account-kit/recovery/:token', [controllers.AccountKit, 'recoveryReset'])
-router.get('/account-kit/invitation/:token', [controllers.AccountKit, 'invitationInspect'])
-router.post('/account-kit/invitation/:token', [controllers.AccountKit, 'invitationAccept'])
-router.get('/account-kit/email-change/:token', [controllers.AccountKit, 'emailChangeInspect'])
-router.post('/account-kit/email-change/:token', [controllers.AccountKit, 'emailChangeComplete'])
-router
-  .group(() => {
-    router.post('/invitations', [controllers.AccountKit, 'invitationSend'])
-    router.get('/invitations', [controllers.AccountKit, 'invitationList'])
-    router.post('/invitations/:id/resend', [controllers.AccountKit, 'invitationResend'])
-    router.delete('/invitations/:id', [controllers.AccountKit, 'invitationRevoke'])
-    router.post('/credentials/password', [controllers.AccountKit, 'changePassword'])
-  })
-  .prefix('/account-kit')
-  .use(middleware.auth())
-  .use(middleware.verifiedAccount())
-
-router
-  .post('/account-kit/credentials/email', [controllers.AccountKit, 'requestEmailChange'])
-  .use(middleware.auth())
-  .use(middleware.accountAccess())
-
-router
-  .post('/account-kit/verification/send', [controllers.AccountKit, 'verificationSend'])
-  .use(middleware.auth())
-  .use(middleware.accountAccess())
-
-router.post('/account-kit/verification/:token', [controllers.AccountKit, 'verificationComplete'])
-
 router
   .group(() => {
     router
@@ -57,6 +26,16 @@ router
         if (strategy === 'session') router.get('csrf', [controllers.Session, 'csrf'])
         if (strategy === 'session') router.post('login', [controllers.Session, 'store'])
         else router.post('login', [controllers.AccessTokens, 'store'])
+
+        router.post('password-reset', [controllers.PasswordResets, 'request'])
+        router.get('password-reset/:token', [controllers.PasswordResets, 'inspect'])
+        router.post('password-reset/:token', [controllers.PasswordResets, 'complete'])
+        router.get('email-verification/:token', [controllers.EmailVerifications, 'inspect'])
+        router.post('email-verification/:token', [controllers.EmailVerifications, 'complete'])
+        router.get('email-change/:token', [controllers.Profile, 'inspectEmailChange'])
+        router.post('email-change/:token', [controllers.Profile, 'completeEmailChange'])
+        router.get('invitations/:token', [controllers.Invitations, 'inspect'])
+        router.post('invitations/:token', [controllers.Invitations, 'accept'])
       })
       .prefix('auth')
       .as('auth')
@@ -64,11 +43,30 @@ router
     router
       .group(() => {
         router.get('profile', [controllers.Profile, 'show']).use(middleware.accountAccess())
+        router.patch('profile', [controllers.Profile, 'update']).use(middleware.accountAccess())
         if (strategy === 'session') router.post('logout', [controllers.Session, 'destroy'])
         else router.post('logout', [controllers.AccessTokens, 'destroy'])
+        router
+          .post('email-verification/send', [controllers.EmailVerifications, 'send'])
+          .use(middleware.accountAccess())
+        router
+          .post('password', [controllers.AccountPassword, 'update'])
+          .use(middleware.verifiedAccount())
+        router
+          .post('invitations', [controllers.Invitations, 'send'])
+          .use(middleware.verifiedAccount())
+        router
+          .get('invitations', [controllers.Invitations, 'list'])
+          .use(middleware.verifiedAccount())
+        router
+          .post('invitations/:id/resend', [controllers.Invitations, 'resend'])
+          .use(middleware.verifiedAccount())
+        router
+          .delete('invitations/:id', [controllers.Invitations, 'revoke'])
+          .use(middleware.verifiedAccount())
       })
       .prefix('account')
-      .as('profile')
+      .as('account')
       .use(middleware.auth())
   })
   .prefix('/api/v1')

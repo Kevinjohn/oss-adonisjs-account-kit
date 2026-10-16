@@ -10,6 +10,12 @@ export const passwordValidator = vine.compile(
     passwordConfirmation: vine.string().sameAs('password'),
   })
 )
+export const verificationCompleteValidator = vine.compile(
+  vine.object({
+    password: password(),
+    passwordConfirmation: vine.string().sameAs('password'),
+  })
+)
 export const invitationAcceptValidator = vine.compile(
   vine.object({
     password: password(),
@@ -36,9 +42,10 @@ export const credentialChangeValidator = vine.compile(
     newPasswordConfirmation: vine.string().sameAs('newPassword'),
   })
 )
-export const emailChangeValidator = vine.compile(
+export const profileUpdateValidator = vine.compile(
   vine.object({
     currentPassword: vine.string().minLength(1),
-    newEmail: vine.string().trim().toLowerCase().email().maxLength(254),
+    email: vine.string().trim().toLowerCase().email().maxLength(254).optional(),
+    fullName: vine.string().trim().minLength(1).maxLength(100).optional(),
   })
 )

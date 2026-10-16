@@ -217,6 +217,9 @@ At the HTTP boundary, map missing and unauthorized invitation-management results
 not-found code and response body to avoid revealing the invitation's existence. The exception
 classes retain separate codes for application-side diagnosis.
 
+These are service exception defaults. The maintained HTTP reference maps proof failures to 400
+with a generic response and retains Vine request validation at 422.
+
 | Error                             | Code                                         | Status |
 | --------------------------------- | -------------------------------------------- | -----: |
 | `InvalidInputError`               | `E_ACCOUNT_KIT_INVALID_INPUT`                |    422 |
@@ -244,7 +247,7 @@ boundary, then return the acknowledgement. Do not return error codes, delivery s
 details to the requester. `minRequestMs` defaults to 300ms as a mitigation against timing
 differences; it is not a guarantee that all requests take the same time.
 
-See the [API controller example](../examples/api/app/controllers/account_kit_controller.ts) for
+See the maintained [API reference](../examples/api/TOKENS.md) and its named controllers for
 illustrative route behavior. Adapt it to the application's own transport and error response
 conventions.
 

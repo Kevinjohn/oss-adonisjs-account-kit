@@ -11,6 +11,12 @@ This project has no published releases yet. The current candidate remains versio
 - Configured `registration.mapFields` now receives `undefined` when profile input is omitted, so required application fields can reject registration; mapped output must be a plain object.
 - `passwordPolicy` (config key) applies Plus-style rules to newly established passwords with a 256-character service ceiling.
 - The API example signup establishes a limited bearer token or browser session and denies protected access until verification.
+- The maintained token API reference now documents bearer issuance, current-token logout, expiry, abilities, and application-owned route protection.
+- Reference proof links now inspect on GET and complete on POST with no-store and no-referrer responses.
+- The API reference now groups authentication and proof routes under `/api/v1/auth` and protected account routes under `/api/v1/account`; the previous `/account-kit` example paths have no aliases.
+- The reference profile PATCH updates configured fields and pending email through the public profile operation, including inactive-address correction and credential revocation.
+- Reference account errors now use stable JSON and JSON:API envelopes while Vine validation retains its 422 response.
+- Bad-login errors in the API reference now return 401 with the same generic response for absent, wrong-password, restricted, and passwordless accounts.
 - `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential logout.
 - `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
 - `users.credentials_changed_at` (column) invalidates existing browser sessions and login attempts using superseded account evidence.

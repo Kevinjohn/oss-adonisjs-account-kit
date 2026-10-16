@@ -8,6 +8,9 @@ import { notifications } from '#services/account_kit_notifications'
 import User from '#models/user'
 import AuthMiddleware from '#middleware/auth_middleware'
 import env from '#start/env'
+import accountKitConfig from '#config/account_kit'
+import { referencePasswordLimits } from '#validators/password'
+import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 
 const responseBody = <T>(response: { body(): unknown }) => response.body() as T
 
@@ -36,14 +39,17 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   })
   assert.equal(signup.status(), 200, JSON.stringify(signup.body()))
   const token = responseBody<{ data: { token: string } }>(signup).data.token
-  const blocked = await client.get('/account-kit/invitations').bearerToken(token)
+  const blocked = await client.get('/api/v1/account/invitations').bearerToken(token)
   assert.equal(blocked.status(), 403)
-  assert.equal((blocked.body() as unknown as { code: string }).code, 'unverified_email')
+  assert.equal(
+    (blocked.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
+    'unverified_email'
+  )
   const provision = notifications.events.find((event) => event.kind === 'verification')
   assert.isDefined(provision)
   const proof = new URL(provision!.value).pathname.split('/').at(-1)!
   const claim = await client
-    .post(`/account-kit/verification/${proof}`)
+    .post(`/api/v1/auth/email-verification/${proof}`)
     .json({ password: 'ClaimantPass123!', passwordConfirmation: 'ClaimantPass123!' })
   assert.equal(claim.status(), 200, JSON.stringify(claim.body()))
   const previousToken = await client.get('/api/v1/account/profile').bearerToken(token)
@@ -51,7 +57,7 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   const previousPassword = await client
     .post('/api/v1/auth/login')
     .json({ email, password: 'PrecreatorPass123!' })
-  assert.equal(previousPassword.status(), 400)
+  assert.equal(previousPassword.status(), 401)
   const claimantPassword = await client
     .post('/api/v1/auth/login')
     .json({ email, password: 'ClaimantPass123!' })
@@ -68,21 +74,33 @@ test('committed signup delivery and observer failures return recovery guidance',
     notifications.failVerification = failure === 'delivery'
     notifications.failLifecycle = failure === 'observer'
     const email = `committed-${failure}-${randomUUID()}@example.test`
-    const response = await client.post('/api/v1/auth/signup').json({
-      fullName: 'Committed Signup',
-      email,
-      password: 'CommittedPass123!',
-      passwordConfirmation: 'CommittedPass123!',
-    })
+    const { result: response, entries } = await captureFollowUpDiagnostics(() =>
+      client.post('/api/v1/auth/signup').json({
+        fullName: 'Committed Signup',
+        email,
+        password: 'CommittedPass123!',
+        passwordConfirmation: 'CommittedPass123!',
+      })
+    )
     assert.equal(response.status(), 202, JSON.stringify(response.body()))
     assert.isTrue((response.body() as unknown as { accountCreated: boolean }).accountCreated)
+    assert.deepEqual(entries, [
+      {
+        event: 'account_kit_follow_up_failed',
+        operation: 'registration.signup',
+        failure: failure === 'delivery' ? 'delivery' : 'post_commit',
+      },
+    ])
     const user = await User.findByOrFail('email', email)
     const proofs = await db.from('email_verification_tokens').where('tokenable_id', user.id)
     assert.lengthOf(proofs, 1)
     notifications.failVerification = false
     notifications.failLifecycle = false
     notifications.events.length = 0
-    const suppressed = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    const suppressed = await client
+      .post('/api/v1/account/email-verification/send')
+      .loginAs(user)
+      .json({})
     assert.equal(suppressed.status(), 200, JSON.stringify(suppressed.body()))
     assert.equal((suppressed.body() as { result: string }).result, 'sent')
     assert.lengthOf(notifications.events, 0)
@@ -90,7 +108,10 @@ test('committed signup delivery and observer failures return recovery guidance',
       .from('email_verification_tokens')
       .where('tokenable_id', user.id)
       .update({ created_at: new Date(Date.now() - 120_000).toISOString() })
-    const resent = await client.post('/account-kit/verification/send').loginAs(user).json({})
+    const resent = await client
+      .post('/api/v1/account/email-verification/send')
+      .loginAs(user)
+      .json({})
     assert.equal(resent.status(), 200, JSON.stringify(resent.body()))
     assert.equal((resent.body() as { result: string }).result, 'sent')
     assert.isTrue(notifications.events.some((event) => event.kind === 'verification'))
@@ -119,14 +140,23 @@ test('committed signup survives credential throttling and guard failure', async 
       }),
     })
     try {
-      const response = await client.post('/api/v1/auth/signup').json({
-        fullName: 'Committed Signup',
-        email,
-        password: 'CommittedPass123!',
-        passwordConfirmation: 'CommittedPass123!',
-      })
+      const { result: response, entries } = await captureFollowUpDiagnostics(() =>
+        client.post('/api/v1/auth/signup').json({
+          fullName: 'Committed Signup',
+          email,
+          password: 'CommittedPass123!',
+          passwordConfirmation: 'CommittedPass123!',
+        })
+      )
       assert.equal(response.status(), 202, JSON.stringify(response.body()))
       assert.isTrue((response.body() as { accountCreated: boolean }).accountCreated)
+      assert.deepEqual(entries, [
+        {
+          event: 'account_kit_follow_up_failed',
+          operation: 'registration.credential_establish',
+          failure: 'credential_establishment',
+        },
+      ])
       const user = await User.findByOrFail('email', email)
       const proofs = await db.from('email_verification_tokens').where('tokenable_id', user.id)
       assert.lengthOf(proofs, 1)
@@ -184,14 +214,14 @@ test('login limits known and unknown identities independently after normalizatio
     email: `long-login-${identity}@example.test`,
     password: 'x'.repeat(129),
   })
-  assert.equal(longWrongPasswordLogin.status(), 400)
+  assert.equal(longWrongPasswordLogin.status(), 401)
 
   for (let attempt = 0; attempt < 4; attempt++) {
     const failedLogin = await client.post('/api/v1/auth/login').json({
       email: attempt === 0 ? ` ${email.toUpperCase()} ` : user.email,
       password: 'wrong-password',
     })
-    assert.equal(failedLogin.status(), 400)
+    assert.equal(failedLogin.status(), 401)
   }
   const clientKey = storedLoginKey('login:client', '127.0.0.1')
   const identityKey = storedLoginKey('login:identity', `127.0.0.1\0${email}`)
@@ -211,18 +241,23 @@ test('login limits known and unknown identities independently after normalizatio
     email: email.toUpperCase(),
     password: 'wrong-password',
   })
-  assert.equal(normalizedIdentityLimit.status(), 400)
+  assert.equal(normalizedIdentityLimit.status(), 401)
   const blockedIdentity = await client.post('/api/v1/auth/login').json({
     email,
     password: 'wrong-password',
   })
   assert.equal(blockedIdentity.status(), 429)
+  assert.equal(
+    responseBody<{ errors: [{ code: string }] }>(blockedIdentity).errors[0].code,
+    'E_ACCOUNT_KIT_THROTTLED'
+  )
+  assert.isAbove(Number(blockedIdentity.header('retry-after')), 0)
 
   const differentIdentity = await client.post('/api/v1/auth/login').json({
     email: `another-${identity}@example.test`,
     password: 'wrong-password',
   })
-  assert.equal(differentIdentity.status(), 400)
+  assert.equal(differentIdentity.status(), 401)
 
   await limiter.clear(['memory'])
 
@@ -231,7 +266,7 @@ test('login limits known and unknown identities independently after normalizatio
       email: `unknown-${identity}@example.test`,
       password: 'wrong-password',
     })
-    assert.equal(unknownLogin.status(), 400)
+    assert.equal(unknownLogin.status(), 401)
   }
   const limitedUnknownLogin = await client.post('/api/v1/auth/login').json({
     email: `unknown-${identity}@example.test`,
@@ -244,6 +279,15 @@ test('signup accepts a password within the shared 256 character limit', async ({
   client,
   assert,
 }) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
+  assert.equal(accountKitConfig.passwordPolicy.minLength, referencePasswordLimits.minLength)
+  assert.equal(accountKitConfig.passwordPolicy.maxLength, referencePasswordLimits.maxLength)
+  assert.isFalse(accountKitConfig.passwordPolicy.letters)
+  assert.isFalse(accountKitConfig.passwordPolicy.mixedCase)
+  assert.isFalse(accountKitConfig.passwordPolicy.numbers)
+  assert.isFalse(accountKitConfig.passwordPolicy.symbols)
+  assert.equal(accountKitConfig.passwordPolicy.minScore, 0)
+  assert.deepEqual(referencePasswordLimits, { minLength: 8, maxLength: 256 })
   await limiter.clear(['memory'])
   const password = 'LongPassword123!'.padEnd(256, 'x')
   const registration = await client.post('/api/v1/auth/signup').json({
@@ -254,6 +298,15 @@ test('signup accepts a password within the shared 256 character limit', async ({
   })
   assert.equal(registration.status(), 200)
   assert.isString(responseBody<{ data: { token: string } }>(registration).data.token)
+
+  const tooShortPassword = 'Short1!'
+  const rejectedShort = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Short Password User',
+    email: `short-password-${randomUUID()}@example.test`,
+    password: tooShortPassword,
+    passwordConfirmation: tooShortPassword,
+  })
+  assert.equal(rejectedShort.status(), 422)
 
   const tooLongPassword = `${password}x`
   const rejectedRegistration = await client.post('/api/v1/auth/signup').json({
@@ -274,7 +327,7 @@ test('login limits each client across rotating identities', async ({ client, ass
       email: `rotating-${clientId}-${attempt}@example.test`,
       password: 'wrong-password',
     })
-    assert.equal(response.status(), 400)
+    assert.equal(response.status(), 401)
   }
 
   const limitedClient = await client.post('/api/v1/auth/login').json({
@@ -296,11 +349,14 @@ test('a bearer token without the invitation ability cannot send an invitation', 
   })
   const token = await User.accessTokens.create(user, ['profile:read'], { expiresIn: '1d' })
   const response = await client
-    .post('/account-kit/invitations')
+    .post('/api/v1/account/invitations')
     .bearerToken(token.value!.release())
     .json({ email: `invitee-${randomUUID()}@example.test`, role: 'member' })
   assert.equal(response.status(), 403)
-  assert.equal(responseBody<{ code: string }>(response).code, 'missing_ability')
+  assert.equal(
+    responseBody<{ errors: [{ code: string }] }>(response).errors[0].code,
+    'missing_ability'
+  )
 })
 
 test('bearer login uses the real token guard and password changes revoke issued tokens', async ({
@@ -333,7 +389,7 @@ test('bearer login uses the real token guard and password changes revoke issued 
   assert.equal(profile.status(), 200)
   assert.notProperty(responseBody<{ data: Record<string, unknown> }>(profile).data, 'password')
 
-  const change = await client.post('/account-kit/credentials/password').bearerToken(token).json({
+  const change = await client.post('/api/v1/account/password').bearerToken(token).json({
     currentPassword: 'OriginalPass123!',
     newPassword: 'ReplacementPass123!',
     newPasswordConfirmation: 'ReplacementPass123!',

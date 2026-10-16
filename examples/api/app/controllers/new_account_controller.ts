@@ -11,6 +11,10 @@ import {
 } from 'adonisjs-account-kit'
 import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard, sessionGuard } from '#services/account_kit_guards'
+import {
+  reportCommittedFailure,
+  reportCredentialEstablishmentFailure,
+} from '#services/committed_failure_diagnostic'
 
 export default class NewAccountController {
   async store(ctx: HttpContext) {
@@ -26,6 +30,7 @@ export default class NewAccountController {
         })
       }
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
+        reportCommittedFailure(ctx.logger, error, 'registration.signup')
         return response.accepted({
           accountCreated: true,
           message:
@@ -43,6 +48,7 @@ export default class NewAccountController {
           ? await kit.authentication.login(input, sessionGuard(ctx))
           : await kit.authentication.login(input, accessTokenGuard())
     } catch {
+      reportCredentialEstablishmentFailure(ctx.logger, 'registration.credential_establish')
       return response.accepted({
         accountCreated: true,
         message:
