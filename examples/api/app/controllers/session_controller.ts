@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit } from 'adonisjs-account-kit'
 import { loginValidator } from '#validators/user'
 import { sessionGuard } from '#services/account_kit_guards'
+import { rememberLastUsedMethod } from '#services/last_used_method'
 
 export default class SessionController {
   csrf({ request, response }: HttpContext) {
@@ -18,6 +19,7 @@ export default class SessionController {
       { email, password, clientKey: request.ip() },
       sessionGuard(ctx)
     )
+    rememberLastUsedMethod(ctx, 'password')
     return serialize({ user: result.account })
   }
 

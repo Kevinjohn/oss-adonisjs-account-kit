@@ -12,6 +12,7 @@ import {
 import db from '@adonisjs/lucid/services/db'
 import { notifications } from '#services/account_kit_notifications'
 import { referencePasswordLimits } from '#validators/password'
+import { socialProvider } from '#services/social_provider'
 
 const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value : `${value}/`)
 const appUrl = normalizeBaseUrl(env.get('APP_URL'))
@@ -40,7 +41,6 @@ async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
 }
 
 export default defineConfig({
-  users,
   passwordPolicy: referencePasswordLimits,
   enabled: [
     'passwordReset',
@@ -48,7 +48,9 @@ export default defineConfig({
     'invitations',
     'emailPasswordManagement',
     'registration',
+    'socialAuthentication',
   ],
+  users,
   registration: {
     availability: 'open',
     mapFields(data) {
@@ -61,6 +63,9 @@ export default defineConfig({
         throw new Error('A full name of at most 100 characters is required')
       return { fullName: fullName.trim() }
     },
+  },
+  socialAuthentication: {
+    providers: { google: socialProvider('google'), github: socialProvider('github') },
   },
   authentication: {
     strategy: authStrategy,
@@ -89,9 +94,21 @@ export default defineConfig({
     emailChange: (token) => accountUrl('email-change', token),
   },
   notify: {
+    socialIdentityLinked: async (user) => {
+      await notifications.send('socialLinked', user.email, 'Social identity linked')
+    },
+    socialIdentityUnlinked: async (user) => {
+      await notifications.send('socialUnlinked', user.email, 'Social identity unlinked')
+    },
     passwordResetProvision: (user, url) => notifications.send('recovery', user.email, url),
     accountActivationProvision: (user, url) =>
-      notifications.send('verification', user.unverifiedEmail ?? user.email, url),
+      notifications.send(
+        'verification',
+        user.unverifiedEmail ?? user.email,
+        user.hasPassword
+          ? url
+          : accountUrl('social-verification', new URL(url).pathname.split('/').at(-1)!)
+      ),
     invitationProvision: (invitation, url) =>
       notifications.send('invitation', invitation.email, url),
     emailChangeProvision: (_user, newEmail, url) =>

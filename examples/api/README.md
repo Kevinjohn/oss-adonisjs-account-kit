@@ -1,5 +1,10 @@
 # Account API consumer fixture
 
+The [social reference](../../docs/social-reference.md) connects Google and GitHub through Ally and
+the package's social services. It includes application-owned routes for browser sessions and token
+clients, a deterministic provider fixture for the functional suite, and the live-provider smoke
+procedure. Set provider credentials and the exact OAuth callback URI before a live check.
+
 This is the application-owned Adonis 7 API example used by the packed-consumer gate. It includes
 routes, validation, central error mapping, a maintained lazy Lucid user adapter, captured
 notifications, migrations, and HTTP flow tests. The test harness copies this fixture outside the

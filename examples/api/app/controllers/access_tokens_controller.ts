@@ -4,9 +4,11 @@ import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
 import { loginValidator } from '#validators/user'
 import { accessTokenGuard } from '#services/account_kit_guards'
+import { rememberLastUsedMethod } from '#services/last_used_method'
 
 export default class AccessTokensController {
-  async store({ request, serialize }: HttpContext) {
+  async store(ctx: HttpContext) {
+    const { request, serialize } = ctx
     const { email, password } = await request.validateUsing(loginValidator)
 
     const kit = await app.container.make(AccountKit)
@@ -14,6 +16,7 @@ export default class AccessTokensController {
       { email, password, clientKey: request.ip() },
       accessTokenGuard()
     )
+    rememberLastUsedMethod(ctx, 'password')
     return serialize({ user: result.account, token: result.credential.value })
   }
 
