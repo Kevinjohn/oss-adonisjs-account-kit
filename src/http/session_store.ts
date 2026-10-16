@@ -34,7 +34,9 @@ export function protectManagedSessionConfig<Config extends SessionConfiguration>
     if (typeof selected !== 'function') throw new Error(setupError)
 
     const verifiedFactory: StoreFactory = (context, sessionConfig) => {
-      verifiedRequests.delete(context)
+      // Native SessionCollection passes null; it needs the same store check but no request marker.
+      const httpContext = context && typeof context === 'object' ? context : null
+      if (httpContext) verifiedRequests.delete(httpContext)
       const store = selected(context, sessionConfig)
       const nativeCookie = cookieFactory(context, sessionConfig)
       const cookieConstructor =
@@ -44,7 +46,8 @@ export function protectManagedSessionConfig<Config extends SessionConfiguration>
       if (typeof cookieConstructor !== 'function') throw new Error(setupError)
       if (store instanceof cookieConstructor || options.verifyStore(store) !== true)
         throw new Error('Managed session authentication requires a revocable server-side store')
-      verifiedRequests.set(context, { config: sessionConfig, factory: verifiedFactory })
+      if (httpContext)
+        verifiedRequests.set(httpContext, { config: sessionConfig, factory: verifiedFactory })
       return store
     }
     config.stores[config.store] = verifiedFactory

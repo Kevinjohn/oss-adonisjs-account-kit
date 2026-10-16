@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { configProvider } from '@adonisjs/core/config'
-import { stores } from '@adonisjs/session'
+import { defineConfig, SessionCollection, stores } from '@adonisjs/session'
+import type { ResolvedSessionConfig } from '@adonisjs/session/types'
 import { InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
 import { protectManagedSessionConfig } from '../src/http/session_store.js'
@@ -250,6 +251,57 @@ test.group('managed existing-guard adapters', () => {
     config.stores.cookie = () => new ServerStore()
     assert.throws(() => guard.forRequest(first), /protectManagedSessionConfig/)
     config.stores.cookie = original
+  })
+  test('preserves native SessionCollection operations while validating its null-context store', async ({
+    assert,
+  }) => {
+    let checked = 0
+    const config = await configProvider.resolve<ResolvedSessionConfig>(
+      {} as never,
+      protectManagedSessionConfig(
+        defineConfig({
+          enabled: true,
+          cookieName: 'session',
+          age: '2h',
+          store: 'memory',
+          stores: {},
+        }),
+        {
+          verifyStore: (actual) => {
+            checked++
+            return !!actual && typeof actual === 'object' && 'destroy' in actual
+          },
+        }
+      )
+    )
+    if (!config) throw new Error('Native session config did not resolve')
+    const id = `managed-collection-${Date.now()}`
+    const store = config.stores[config.store](null as never, config)
+    await store.write(id, { account: 42 })
+    const collection = new SessionCollection(config)
+    assert.deepEqual(await collection.get(id), { account: 42 })
+    assert.isTrue(collection.supportsTagging())
+    await collection.tag(id, '42')
+    assert.deepEqual(await collection.tagged('42'), [{ id, data: { account: 42 } }])
+    await collection.destroy(id)
+    assert.isNull(await collection.get(id))
+    assert.isAtLeast(checked, 2)
+
+    const cookieConfig = await configProvider.resolve<ResolvedSessionConfig>(
+      {} as never,
+      protectManagedSessionConfig(
+        defineConfig({
+          enabled: true,
+          cookieName: 'session',
+          age: '2h',
+          store: 'browser',
+          stores: { browser: stores.cookie() },
+        }),
+        { verifyStore: () => true }
+      )
+    )
+    if (!cookieConfig) throw new Error('Native cookie config did not resolve')
+    assert.throws(() => new SessionCollection(cookieConfig), /revocable server-side store/)
   })
   test('session login regenerates, captures revision, and current reads only authenticated state', async ({
     assert,
