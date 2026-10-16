@@ -37,6 +37,8 @@ type SessionOptions<User> = {
   strategy: 'session'
   name: string
   loadUser(): Promise<ManagedUserModel<User>>
+  /** Attest revocation semantics for an application-defined server-side store. */
+  verifySessionStore?(store: unknown): boolean
 }
 type TokenOptions<User> = {
   strategy: 'access_tokens'
@@ -53,7 +55,10 @@ type SessionContext<User> = HttpContext & {
     }
   }
   session: {
-    config?: { store?: string }
+    config?: {
+      store?: string
+      stores?: Record<string, (context: HttpContext, config: unknown) => unknown>
+    }
     regenerate(): void
     put(key: string, value: string): void
     get(key: string): unknown
@@ -66,9 +71,37 @@ type TokenContext<User> = HttpContext & {
 
 const revisionKey = 'accountKitRevision'
 
-function assertServerSession(context: SessionContext<unknown>): void {
-  if (context.session?.config?.store === 'cookie')
-    throw new Error('Managed session authentication requires a server-side session store')
+const knownServerStores = new Set([
+  'MemoryStore',
+  'DatabaseStore',
+  'FileStore',
+  'RedisStore',
+  'DynamoDBStore',
+])
+
+function sessionStoreCheck(verifyCustom?: (store: unknown) => boolean) {
+  const accepted = new WeakSet<(context: HttpContext, config: unknown) => unknown>()
+  return (context: SessionContext<unknown>): void => {
+    const config = context.session?.config
+    const factory = config?.store && config.stores?.[config.store]
+    if (config?.store === 'cookie' || typeof factory !== 'function')
+      throw new Error(
+        'Managed session authentication requires a verified server-side session store'
+      )
+    if (accepted.has(factory)) return
+    const store = factory(context, config)
+    const name =
+      store && typeof store === 'object' && 'constructor' in store
+        ? (store.constructor as { name?: unknown }).name
+        : undefined
+    if (name === 'CookieStore')
+      throw new Error('Managed session authentication requires a server-side session store')
+    if (!knownServerStores.has(String(name)) && !verifyCustom?.(store))
+      throw new Error(
+        'Managed session authentication requires a verified server-side session store'
+      )
+    accepted.add(factory)
+  }
 }
 
 function managedUser(value: unknown): ManagedUser {
@@ -129,6 +162,7 @@ export function createManagedGuard<User>(
   options: SessionOptions<User> | TokenOptions<User>
 ): ManagedGuard<undefined | ManagedTokenCredential> {
   if (options.strategy === 'session') {
+    const assertServerSession = sessionStoreCheck(options.verifySessionStore)
     return {
       strategy: 'session',
       name: options.name,

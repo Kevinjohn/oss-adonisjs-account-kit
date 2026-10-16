@@ -2,6 +2,12 @@ import { test } from '@japa/runner'
 import { InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
 
+class DatabaseStore {}
+const serverSessionConfig = {
+  store: 'browser',
+  stores: { browser: () => new DatabaseStore() },
+}
+
 test.group('managed existing-guard adapters', () => {
   test('conventional model static types compile while invalid authenticated IDs fail closed', async ({
     assert,
@@ -21,7 +27,7 @@ test.group('managed existing-guard adapters', () => {
     })
     const ctx = {
       auth: { use: () => ({ authenticate: async () => ({}) }) },
-      session: { get: () => undefined },
+      session: { config: serverSessionConfig, get: () => undefined },
     } as never
     await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
   })
@@ -41,7 +47,7 @@ test.group('managed existing-guard adapters', () => {
     )
     const ctx = {
       auth: { use: () => ({ authenticate: async () => user }) },
-      session: { get: () => '' },
+      session: { config: serverSessionConfig, get: () => '' },
     } as never
     const session = createManagedGuard({
       strategy: 'session',
@@ -116,6 +122,46 @@ test.group('managed existing-guard adapters', () => {
     assert.throws(() => adapter.forRequest(ctx), /server-side session store/)
     await assert.rejects(() => adapter.current(ctx), /server-side session store/)
   })
+  test('refuses an aliased cookie backend and unknown stores without an explicit verifier', async ({
+    assert,
+  }) => {
+    class CookieStore {}
+    class CustomStore {}
+    let authenticated = false
+    const adapter = createManagedGuard({
+      strategy: 'session',
+      name: 'web',
+      loadUser: async () => ({ findOrFail: async () => ({ id: 1 }) }),
+    })
+    const context = (factory: () => unknown) =>
+      ({
+        session: {
+          config: { store: 'browser', stores: { browser: factory } },
+          get: () => undefined,
+        },
+        auth: {
+          use: () => ({
+            authenticate: async () => {
+              authenticated = true
+              return { id: 1 }
+            },
+          }),
+        },
+      }) as never
+    const cookie = context(() => new CookieStore())
+    assert.throws(() => adapter.forRequest(cookie), /server-side session store/)
+    await assert.rejects(() => adapter.current(cookie), /server-side session store/)
+    assert.isFalse(authenticated)
+    const unknown = context(() => new CustomStore())
+    assert.throws(() => adapter.forRequest(unknown), /verified server-side session store/)
+    const trusted = createManagedGuard({
+      strategy: 'session',
+      name: 'web',
+      loadUser: async () => ({ findOrFail: async () => ({ id: 1 }) }),
+      verifySessionStore: (store) => store instanceof CustomStore,
+    })
+    assert.deepEqual(await trusted.current(unknown), { userId: 1 })
+  })
   test('session login regenerates, captures revision, and current reads only authenticated state', async ({
     assert,
   }) => {
@@ -138,6 +184,7 @@ test.group('managed existing-guard adapters', () => {
         },
       },
       session: {
+        config: serverSessionConfig,
         regenerate: () => {
           actions.push('regenerate')
         },
@@ -220,6 +267,7 @@ test.group('managed existing-guard adapters', () => {
       code: 'E_UNAUTHORIZED_ACCESS',
     })
     const ctx = {
+      session: { config: serverSessionConfig },
       auth: {
         use: () => ({
           authenticate: async () => {
@@ -231,6 +279,7 @@ test.group('managed existing-guard adapters', () => {
     await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
     const databaseFailure = new Error('database offline')
     const outage = {
+      session: { config: serverSessionConfig },
       auth: {
         use: () => ({
           authenticate: async () => {
