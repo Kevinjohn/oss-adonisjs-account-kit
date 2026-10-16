@@ -11,10 +11,12 @@ import {
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createRequire } from 'node:module'
 import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
+import ts from 'typescript'
 import SetupAccountKit from '../commands/setup.js'
 import RetirementImpact from '../commands/retirement_impact.js'
 import { AccountKit } from '../src/account_kit.js'
@@ -1125,6 +1127,125 @@ test.group('onboarding plan and apply', (group) => {
         )
       }
     }
+  })
+
+  test('every supported User inheritance form checks its final default table', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const direct = (table: string) =>
+      `import { BaseModel, column } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { ${table}@column({ isPrimary: true }) declare id: number }\n`
+    const composed = (table: string) =>
+      `import { BaseModel, column } from '@adonisjs/lucid/orm'\nimport { compose } from '@adonisjs/core/helpers'\nimport { withAuthFinder } from '@adonisjs/auth/mixins/lucid'\nimport hash from '@adonisjs/core/services/hash'\nexport default class User extends compose(BaseModel, withAuthFinder(hash)) { ${table}@column({ isPrimary: true }) declare id: number }\n`
+    for (const model of [direct, composed]) {
+      for (const [table, selected, blocked] of [
+        ['', 'users', false],
+        ['', 'members', true],
+        ["static table = 'members'; ", 'members', false],
+      ] as const) {
+        choices.user.table = selected
+        await writeFile(join(root, 'app/models/user.ts'), model(table))
+        const plan = await planSetup(choices, await inspectSetup(root), {
+          apply: true,
+          timestamp: 1234,
+        })
+        const errors = plan.diagnostics.filter(
+          ({ field, severity }) => field === 'user.table' && severity === 'error'
+        )
+        assert.equal(errors.length > 0, blocked, JSON.stringify(plan.diagnostics))
+        if (blocked) {
+          await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+          const files = await readdir(join(root, 'config'))
+          assert.notInclude(files, 'account_kit_setup.json')
+        }
+      }
+      choices.user.table = 'users'
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        model('').replace('class User', 'class CustomUser')
+      )
+      const custom = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        custom.diagnostics.some(
+          ({ field, severity }) => field === 'user.table' && severity === 'error'
+        )
+      )
+      await assert.rejects(() => applySetup(root, custom), /blocking diagnostics/)
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        model("static table = 'users'; ").replace('class User', 'class CustomUser')
+      )
+      const explicit = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isFalse(
+        explicit.diagnostics.some(
+          ({ field, severity }) => field === 'user.table' && severity === 'error'
+        ),
+        JSON.stringify(explicit.diagnostics)
+      )
+    }
+  })
+
+  test('generated access and proof middleware run through Adonis lazy registration', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const packageRequire = createRequire(import.meta.resolve('@adonisjs/core'))
+    const { Container } = await import(pathToFileURL(packageRequire.resolve('@adonisjs/fold')).href)
+    const { RouterFactory } = await import(
+      pathToFileURL(packageRequire.resolve('@adonisjs/http-server/factories')).href
+    )
+    const router = new RouterFactory().create()
+    const resolver = new Container().createResolver()
+    for (const path of [
+      'app/middleware/account_kit_access_middleware.ts',
+      'app/middleware/account_kit_proof_headers_middleware.ts',
+    ]) {
+      const generated = plan.changes.find((change) => change.path === path)!.content
+      const executable = generated.replace(/^import .*\n/gm, '')
+      const stubs = `const app = { container: { make: async () => ({}) } }; class AccountKit {}; const accountKitGuard = {}; const managedAccountMiddleware = () => async (ctx, next) => { ctx.gated = true; return next() }; const managedProofHeadersMiddleware = () => async (ctx, next) => { ctx.gated = true; return next() };\n`
+      const compiled = ts.transpileModule(stubs + executable, {
+        compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+      }).outputText
+      const named = router.named({
+        accountKit: () => import(`data:text/javascript,${encodeURIComponent(compiled)}`),
+      })
+      const ctx = { gated: false }
+      const result = await named.accountKit().handle(resolver, ctx, async () => 'passed')
+      assert.equal(result, 'passed', path)
+      assert.isTrue(ctx.gated, path)
+    }
+  })
+
+  test('CSRF prerequisites distinguish inert app bootstrap from active managed endpoint', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.authentication!.applicationRouteRevocation = false
+    const inert = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.deepEqual(inert.endpointLocations, [])
+    assert.isTrue(
+      inert.prerequisites.some((item) => item.includes('application-owned CSRF bootstrap endpoint'))
+    )
+    assert.isFalse(inert.prerequisites.some((item) => item.includes('GET /account/auth/csrf')))
+    choices.authentication!.applicationRouteRevocation = true
+    const active = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(active.prerequisites.some((item) => item.includes('GET /account/auth/csrf')))
   })
 
   test('retirement uses a DB-derived count and a declared maintenance window', async ({
