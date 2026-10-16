@@ -5,18 +5,34 @@ import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
-import { featureNames, type SetupChoices, type SetupFeature } from '../src/setup/types.js'
+import { featureNames, type SetupChoices } from '../src/setup/types.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import type RetirementImpact from './retirement_impact.js'
 
-function selected(value: string, field: string): SetupFeature[] {
+function selected<const T extends string>(
+  value: string,
+  field: string,
+  options: readonly T[]
+): T[] {
   const names = value
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean)
-  if (names.some((name) => !featureNames.includes(name as SetupFeature)))
-    throw new Error(`${field}: choose from ${featureNames.join(', ')}`)
-  return names as SetupFeature[]
+  if (names.some((name) => !options.includes(name as T)))
+    throw new Error(`${field}: choose from ${options.join(', ')}`)
+  return names as T[]
+}
+
+function answerChoice<const T extends string>(
+  value: string,
+  field: string,
+  options: readonly T[],
+  fallback: T
+): T {
+  const answer = value.trim()
+  if (!answer) return fallback
+  if (!options.includes(answer as T)) throw new Error(`${field}: choose from ${options.join(', ')}`)
+  return answer as T
 }
 
 /** No prompt path is reachable from --input or --check. */
@@ -49,26 +65,36 @@ export default class SetupAccountKit extends BaseCommand {
       throw new Error('Missing --input: provide a JSON choices file for noninteractive setup')
     const choices = defaultSetupChoices()
     const ask = askOverride ?? ((question: string) => this.prompt.ask(question))
-    const confirmed = async (question: string) => {
-      const answer = await ask(question)
-      return /^y(?:es)?$/i.test(answer.trim())
+    const confirmed = async (question: string, fallback = false) => {
+      const input = await ask(question)
+      const answer = input.trim().toLowerCase()
+      if (answer && !['yes', 'y', 'no', 'n'].includes(answer))
+        throw new Error(`${question}: choose yes or no`)
+      if (!answer) return fallback
+      return answer === 'yes' || answer === 'y'
     }
-    const mode = await ask('Consumption mode (managed/services)')
-    if (mode === 'managed' || mode === 'services') choices.mode = mode
+    choices.mode = answerChoice(
+      await ask('Consumption mode (managed/services)'),
+      'mode',
+      ['managed', 'services'],
+      choices.mode
+    )
+    const enabledServices = await ask(
+      `Enabled services, comma separated (${featureNames.join(', ')})`
+    )
     choices.features = selected(
-      (await ask(`Enabled services, comma separated (${featureNames.join(', ')})`)) ||
-        choices.features.join(','),
-      'features'
+      enabledServices.trim() || choices.features.join(','),
+      'features',
+      featureNames
     )
     if (!choices.features.includes('registration')) choices.policy.registration = 'closed'
     if (!choices.features.includes('emailVerification')) choices.policy.verificationRequired = false
+    const managedGroups =
+      choices.mode === 'services' ? '' : await ask('Managed endpoint groups, comma separated')
     choices.managed =
       choices.mode === 'services'
         ? []
-        : selected(
-            (await ask('Managed endpoint groups, comma separated')) || choices.features.join(','),
-            'managed'
-          )
+        : selected(managedGroups.trim() || choices.features.join(','), 'managed', featureNames)
     const excluded = await ask('Managed endpoint exclusions, comma separated (optional)')
     choices.managedExcept = excluded
       ? (excluded
@@ -79,15 +105,25 @@ export default class SetupAccountKit extends BaseCommand {
     choices.routePrefix = (await ask('Managed route prefix (/account)')) || choices.routePrefix
     choices.user.model = (await ask('User model import (#models/user)')) || choices.user.model
     choices.user.table = (await ask('User table (users)')) || choices.user.table
-    const adapter = await ask('User adapter (lucid/custom)')
-    if (adapter === 'lucid' || adapter === 'custom') choices.user.adapter = adapter
-    const idType = await ask('Physical id type (integer/string/uuid)')
-    if (idType === 'integer' || idType === 'string' || idType === 'uuid')
-      choices.user.idType = idType
+    choices.user.adapter = answerChoice(
+      await ask('User adapter (lucid/custom)'),
+      'user.adapter',
+      ['lucid', 'custom'],
+      choices.user.adapter
+    )
+    choices.user.idType = answerChoice(
+      await ask('Physical id type (integer/string/uuid)'),
+      'user.idType',
+      ['integer', 'string', 'uuid'],
+      choices.user.idType
+    )
     if (choices.features.includes('authentication') || choices.managed.length) {
-      const strategy = await ask('Existing guard strategy (session/access_tokens)')
-      if (strategy === 'session' || strategy === 'access_tokens')
-        choices.authentication!.strategy = strategy
+      choices.authentication!.strategy = answerChoice(
+        await ask('Existing guard strategy (session/access_tokens)'),
+        'authentication.strategy',
+        ['session', 'access_tokens'],
+        choices.authentication!.strategy
+      )
       choices.authentication!.guard = (await ask('Existing guard name (web)')) || 'web'
       if (choices.authentication!.strategy === 'session') {
         const session = choices.authentication!.session!
@@ -112,10 +148,18 @@ export default class SetupAccountKit extends BaseCommand {
         'Application-owned protected routes use account revision checks? (yes/no)'
       )
     } else choices.authentication = null
-    const mail = await ask('Delivery integration (custom/adonisjs-mail)')
-    if (mail === 'custom' || mail === 'adonisjs-mail') choices.mail.integration = mail
-    const delivery = await ask('Delivery guarantee (best-effort/durable)')
-    if (delivery === 'best-effort' || delivery === 'durable') choices.mail.delivery = delivery
+    choices.mail.integration = answerChoice(
+      await ask('Delivery integration (custom/adonisjs-mail)'),
+      'mail.integration',
+      ['custom', 'adonisjs-mail'],
+      choices.mail.integration
+    )
+    choices.mail.delivery = answerChoice(
+      await ask('Delivery guarantee (best-effort/durable)'),
+      'mail.delivery',
+      ['best-effort', 'durable'],
+      choices.mail.delivery
+    )
     choices.mail.durableWorkerVerified =
       choices.mail.delivery === 'durable' &&
       (await confirmed(
@@ -133,18 +177,20 @@ export default class SetupAccountKit extends BaseCommand {
     choices.mail.appName = (await ask('Application name')) || choices.mail.appName
     choices.mail.backendOriginEnv =
       (await ask('Trusted backend origin environment name (APP_URL)')) || 'APP_URL'
-    choices.mail.frontendOriginEnv =
-      (await ask('Trusted frontend origin environment name (ACCOUNT_FRONTEND_URL)')) ||
-      'ACCOUNT_FRONTEND_URL'
+    const frontendOriginEnv = await ask('Trusted frontend origin environment name (FRONTEND_URL)')
+    choices.mail.frontendOriginEnv = frontendOriginEnv.trim() || choices.mail.frontendOriginEnv
     if (choices.features.includes('invitations'))
       choices.mail.destinations.invitation = 'account/invitation'
     for (const [name, value] of Object.entries(choices.mail.destinations)) {
       choices.mail.destinations[name as keyof typeof choices.mail.destinations] =
         (await ask(`${name} relative frontend path (${value})`)) || value
     }
-    const registration = await ask('Registration policy (open/closed/application)')
-    if (registration === 'open' || registration === 'closed' || registration === 'application')
-      choices.policy.registration = registration
+    choices.policy.registration = answerChoice(
+      await ask('Registration policy (open/closed/application)'),
+      'policy.registration',
+      ['open', 'closed', 'application'],
+      choices.policy.registration
+    )
     const minLength = await ask('New-password minimum length (8)')
     if (minLength) choices.policy.password.minLength = Number(minLength)
     const maxLength = await ask('New-password maximum length (blank for no configured maximum)')
@@ -154,16 +200,17 @@ export default class SetupAccountKit extends BaseCommand {
     const minScore = await ask('Password strength score (0-4)')
     if (minScore) choices.policy.password.minScore = Number(minScore)
     choices.policy.verificationRequired = await confirmed(
-      'Require verified email for account access? (yes/no)'
+      'Require verified email for account access? (yes/no)',
+      choices.policy.verificationRequired
     )
-    choices.policy.unverifiedActions = (
-      (await ask(
-        'Allowed actions before verification (logout,verificationResend,passwordReset)'
-      )) || choices.policy.unverifiedActions.join(',')
+    const unverifiedActions = await ask(
+      'Allowed actions before verification (logout,verificationResend,passwordReset)'
     )
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean) as SetupChoices['policy']['unverifiedActions']
+    choices.policy.unverifiedActions = selected(
+      unverifiedActions.trim() || choices.policy.unverifiedActions.join(','),
+      'policy.unverifiedActions',
+      ['logout', 'verificationResend', 'passwordReset'] as const
+    )
     const registrationFields = await ask(
       'Additional registration fields as JSON array ([] for none)'
     )

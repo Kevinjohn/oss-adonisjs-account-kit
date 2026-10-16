@@ -8,7 +8,7 @@ The file `config/account_kit_setup.json` records the six pillars. `features` sel
 
 For `access_tokens`, set `authentication.token` to `{ "revocation": true, "lifetime": "1d", "abilities": ["*"] }` or narrower abilities appropriate for your application. `revocation` must be true, `lifetime` must be a supported positive duration, and `abilities` must be nonempty. Set `authentication.applicationRouteRevocation` true after attaching and verifying the generated account-access middleware on application-owned protected routes. A session selection uses `authentication.session` instead; its four booleans record checks that must be performed, rather than configuring the session backend themselves.
 
-The `mail` pillar stores environment variable **names** for the sender, transport, trusted backend origin, and trusted frontend origin. The examples select maintained AdonisJS Mail: install `@adonisjs/mail` 10 with `pnpm add @adonisjs/mail@^10`, run `pnpm exec node ace configure @adonisjs/mail` to create `config/mail.ts` and register its provider, then configure a real transport and the required environment values. Check the resulting provider and config before applying setup. The pillar stores safe relative paths for the relevant action destinations; it does not store origin or secret values. In production, public backend and frontend origins must use HTTPS. Development HTTP is limited to loopback origins. Origin base paths are retained. Mail delivery is either `best-effort` or application-owned `durable`; durable classification requires custom notification callbacks and an independently verified worker and retry path. A database commit and message delivery are separate outcomes.
+The `mail` pillar stores environment variable **names** for the sender, transport, trusted backend origin, and trusted frontend origin. The conventional frontend reference is `FRONTEND_URL`; an explicitly selected custom name is also supported. The examples select maintained AdonisJS Mail: install `@adonisjs/mail` 10 with `pnpm add @adonisjs/mail@^10`, run `pnpm exec node ace configure @adonisjs/mail` to create `config/mail.ts` and register its provider, then configure a real transport and the required environment values. Check the resulting provider and config before applying setup. The pillar stores safe relative paths for the relevant action destinations; it does not store origin or secret values. In production, public backend and frontend origins must use HTTPS. Development HTTP is limited to loopback origins. Origin base paths are retained. Mail delivery is either `best-effort` or application-owned `durable`; durable classification requires custom notification callbacks and an independently verified worker and retry path. A database commit and message delivery are separate outcomes.
 
 To use your own notification transport, set `mail.integration` to `custom`, `mail.senderEnv` and `mail.transportEnv` to `null`, and provide `app/services/account_kit_notifications.ts` exporting `accountKitNotifications: Partial<NotificationCallbacks>` from the package root. Implement `passwordResetProvision`, `accountActivationProvision`, `emailChangeProvision`, `emailChanged`, `passwordResetCompleted`, and `passwordChanged` for the five-service examples; invitations also require `invitationProvision`. Provision callbacks receive an action URL and must hand it to a real delivery transport. A local file capture can help inspect links in development, but it is not message delivery or a production-ready transport. `delivery: durable` additionally requires an application-owned queue or outbox with a verified worker, retries, and terminal-failure handling.
 
@@ -16,7 +16,8 @@ The following complete callback shape writes a **development-only** private capt
 
 ```ts
 // app/services/account_kit_notifications.ts
-import { appendFile, mkdir } from 'node:fs/promises'
+import { open, mkdir } from 'node:fs/promises'
+import { constants } from 'node:fs'
 import { dirname } from 'node:path'
 import app from '@adonisjs/core/services/app'
 import type { NotificationCallbacks } from 'adonisjs-account-kit'
@@ -25,7 +26,18 @@ async function capture(kind: keyof NotificationCallbacks, recipient: string, url
   if (app.inProduction) throw new Error('Configure account message delivery before production')
   const path = app.makePath('tmp', 'account-kit-notifications.jsonl')
   await mkdir(dirname(path), { recursive: true })
-  await appendFile(path, JSON.stringify({ kind, recipient, url }) + '\n', { mode: 0o600 })
+  const file = await open(
+    path,
+    constants.O_WRONLY | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW,
+    0o600
+  )
+  try {
+    if (!(await file.stat()).isFile()) throw new Error('Capture path must be a regular file')
+    await file.chmod(0o600) // Also tighten permissions when the file already exists.
+    await file.writeFile(JSON.stringify({ kind, recipient, url }) + '\n')
+  } finally {
+    await file.close()
+  }
 }
 
 export const accountKitNotifications: NotificationCallbacks = {

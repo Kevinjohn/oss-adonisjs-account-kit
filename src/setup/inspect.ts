@@ -3,6 +3,7 @@ import { join, relative as pathRelative, sep } from 'node:path'
 import { safeSetupPath } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
+import { stripSourceComments } from './source_text.js'
 
 const inspectedFiles = [
   'package.json',
@@ -61,7 +62,7 @@ function guardModels(source: string): SetupInspection['guardModels'] {
 
 function databaseKind(source: string): SetupInspection['database'] {
   if (!source) return 'unknown'
-  source = source.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm, '$1')
+  source = stripSourceComments(source)
   const selected =
     source.match(/\bconnection\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
     (/\bconnection\s*:\s*env\.get\(['"]DB_CONNECTION['"]/.test(source)
@@ -121,7 +122,11 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
       const directory = await realpath(join(root, 'node_modules', name))
       const fromRoot = pathRelative(root, directory)
       if (fromRoot === '..' || fromRoot.startsWith(`..${sep}`)) continue
-      const installed = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8')) as {
+      const metadata = await safeSetupPath(root, join(fromRoot, 'package.json'))
+      const metadataStat = await lstat(metadata)
+      if (!metadataStat.isFile())
+        throw new Error(`Setup cannot inspect non-regular file ${metadata}`)
+      const installed = JSON.parse(await readFile(metadata, 'utf8')) as {
         version?: string
       }
       if (typeof installed.version === 'string') installedVersions[name] = installed.version
@@ -150,23 +155,21 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     existingChoices = parseSetupChoices(JSON.parse(files['config/account_kit_setup.json']))
   }
   const existingPrefix = existingChoices?.routePrefix ?? null
-  const routeSource = (files['start/routes.ts'] ?? '').replace(
-    /\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm,
-    '$1'
-  )
+  const routeSource = stripSourceComments(files['start/routes.ts'] ?? '')
   const routeDefinitions = [
     ...routeSource.matchAll(/\.(get|post|put|patch|delete|any)\(\s*['"]([^'"]+)['"]/g),
   ].map((match) => ({ method: match[1].toUpperCase(), path: match[2] }))
   const routePaths = routeDefinitions.map(({ path }) => path)
+  const authSource = stripSourceComments(files['config/auth.ts'] ?? '')
   return {
     root,
     existingInstallation: Boolean(
       files['config/account_kit.ts'] || files['config/account_kit_setup.json']
     ),
     files,
-    guards: Object.keys(guardStrategies(files['config/auth.ts'] ?? '')),
-    guardStrategies: guardStrategies(files['config/auth.ts'] ?? ''),
-    guardModels: guardModels(files['config/auth.ts'] ?? ''),
+    guards: Object.keys(guardStrategies(authSource)),
+    guardStrategies: guardStrategies(authSource),
+    guardModels: guardModels(authSource),
     database: databaseKind(files['config/database.ts'] ?? ''),
     connection: files['config/database.ts'] ? 'default' : 'unknown',
     installedPackages,
