@@ -202,7 +202,7 @@ export async function completeVerification(
           current.unverifiedEmail === proof.email &&
           current.email === proof.current_email
       )
-      await deps.config.users.setPassword(user.id, input.password!, trx)
+      await deps.config.users.setPassword(user.id, input.password, trx)
       await activateClaim(trx, deps.config, user.id)
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
