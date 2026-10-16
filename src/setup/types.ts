@@ -91,6 +91,7 @@ export interface SetupInspection {
   guards: string[]
   guardStrategies: Record<string, GuardStrategy>
   guardModels: Record<string, string>
+  guardTokenProviders: Record<string, string>
   installedVersions: Record<string, string>
   database: 'sqlite' | 'postgres' | 'unsupported' | 'unknown'
   connection: 'default' | 'unsupported' | 'unknown'

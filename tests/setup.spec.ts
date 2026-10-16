@@ -20,6 +20,7 @@ import ts from 'typescript'
 import SetupAccountKit from '../commands/setup.js'
 import RetirementImpact from '../commands/retirement_impact.js'
 import { AccountKit } from '../src/account_kit.js'
+import { createMailNotifications } from '../src/notifications.js'
 
 const cleanupRoots: string[] = []
 import { defaultSetupChoices } from '../src/setup/defaults.js'
@@ -37,7 +38,7 @@ async function fixture() {
   await mkdir(join(root, 'app/services'), { recursive: true })
   await writeFile(
     join(root, 'app/models/user.ts'),
-    "import { BaseModel, column } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: number; static accessTokens = tokens; email!: string; password!: string; emailVerifiedAt!: Date }\n"
+    "import { BaseModel, column } from '@adonisjs/lucid/orm'\nimport { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: number; static accessTokens = DbAccessTokensProvider.forModel(User); email!: string; password!: string; emailVerifiedAt!: Date }\n"
   )
   await writeFile(
     join(root, 'app/services/account_kit_policy.ts'),
@@ -83,7 +84,7 @@ async function fixture() {
   }
   await writeFile(
     join(root, 'config/auth.ts'),
-    "import { defineConfig } from '@adonisjs/auth'\nimport { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'\nimport { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'\nexport default defineConfig({ guards: { web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }), api: tokensGuard({ provider: tokensUserProvider({ model: () => import('#models/user') }) })\n} })\n"
+    "import { defineConfig } from '@adonisjs/auth'\nimport { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'\nimport { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'\nexport default defineConfig({ guards: { web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }), api: tokensGuard({ provider: tokensUserProvider({ tokens: 'accessTokens', model: () => import('#models/user') }) })\n} })\n"
   )
   await writeFile(
     join(root, 'config/database.ts'),
@@ -1223,6 +1224,232 @@ test.group('onboarding plan and apply', (group) => {
       const result = await named.accountKit().handle(resolver, ctx, async () => 'passed')
       assert.equal(result, 'passed', path)
       assert.isTrue(ctx.gated, path)
+    }
+  })
+
+  test('selected token setup requires a proven model provider and matching native guard property', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.authentication!.strategy = 'access_tokens'
+    choices.authentication!.guard = 'api'
+    delete choices.authentication!.session
+    choices.authentication!.token = { revocation: true, lifetime: '1d', abilities: ['*'] }
+    const modelPath = join(root, 'app/models/user.ts')
+    const authPath = join(root, 'config/auth.ts')
+    const nativeModel = await readFile(modelPath, 'utf8')
+    const nativeAuth = await readFile(authPath, 'utf8')
+    const modelCases = [
+      nativeModel.replace('DbAccessTokensProvider.forModel(User)', '{}'),
+      nativeModel.replace('DbAccessTokensProvider.forModel(User)', 'opaqueProvider'),
+      nativeModel.replace(
+        'DbAccessTokensProvider.forModel(User)',
+        'DbAccessTokensProvider.forModel(Other)'
+      ),
+      nativeModel.replace('DbAccessTokensProvider.forModel(User)', 'OtherProvider.forModel(User)'),
+      `${nativeModel}\nDbAccessTokensProvider.forModel = () => ({})\n`,
+    ]
+    for (const model of modelCases) {
+      await writeFile(modelPath, model)
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'user.model' && severity === 'error'
+        ),
+        model
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
+    }
+    await writeFile(
+      modelPath,
+      nativeModel
+        .replace(
+          'import { DbAccessTokensProvider }',
+          'import { DbAccessTokensProvider as NativeTokens }'
+        )
+        .replace('DbAccessTokensProvider.forModel(User)', 'NativeTokens.forModel(User)')
+    )
+    const aliased = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      aliased.diagnostics.some(
+        ({ field, severity }) => field === 'user.model' && severity === 'error'
+      ),
+      JSON.stringify(aliased.diagnostics)
+    )
+    await writeFile(
+      modelPath,
+      nativeModel.replace(
+        'DbAccessTokensProvider.forModel(User)',
+        '(DbAccessTokensProvider.forModel(User) as typeof DbAccessTokensProvider)'
+      )
+    )
+    const wrapped = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      wrapped.diagnostics.some(
+        ({ field, severity }) => field === 'user.model' && severity === 'error'
+      ),
+      JSON.stringify(wrapped.diagnostics)
+    )
+    await writeFile(modelPath, nativeModel)
+    for (const configured of ["tokens: 'otherTokens'", 'tokens: tokenProperty', '']) {
+      await writeFile(
+        authPath,
+        nativeAuth.replace("tokens: 'accessTokens',", configured ? `${configured},` : '')
+      )
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'authentication.guard' && severity === 'error'
+        ),
+        configured
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
+    }
+    await writeFile(authPath, nativeAuth)
+    const valid = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      valid.diagnostics.some(
+        ({ field, severity }) =>
+          ['user.model', 'authentication.guard'].includes(field) && severity === 'error'
+      ),
+      JSON.stringify(valid.diagnostics)
+    )
+
+    await writeFile(
+      authPath,
+      nativeAuth
+        .replace('tokensUserProvider }', 'tokensUserProvider as NativeUserProvider }')
+        .replace('tokensUserProvider({', 'NativeUserProvider({')
+    )
+    const aliasedGuard = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      aliasedGuard.diagnostics.some(
+        ({ field, severity }) => field === 'authentication.guard' && severity === 'error'
+      ),
+      JSON.stringify(aliasedGuard.diagnostics)
+    )
+
+    choices.authentication!.strategy = 'session'
+    choices.authentication!.guard = 'web'
+    delete choices.authentication!.token
+    choices.authentication!.session = {
+      secureCookie: true,
+      csrf: true,
+      originChecked: true,
+      persistentStore: true,
+    }
+    await writeFile(modelPath, nativeModel.replace('DbAccessTokensProvider.forModel(User)', '{}'))
+    const session = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      session.diagnostics.some(
+        ({ field, severity }) => field === 'user.model' && severity === 'error'
+      ),
+      JSON.stringify(session.diagnostics)
+    )
+  })
+
+  test('generated Mail callbacks resolve the live service after configuration evaluation', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.mail.integration = 'adonisjs-mail'
+    choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+    choices.mail.transportEnv = 'MAIL_MAILER'
+    choices.policy.registrationFields = []
+    choices.mail.destinations = { passwordReset: 'account/recovery' }
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const generated = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content
+    const mailUrl = `data:text/javascript,${encodeURIComponent('let mail; export { mail as default }; export const bindMail = value => { mail = value }')}`
+    const service = await import(mailUrl)
+    const executable = generated
+      .replace(/^import .*\n/gm, '')
+      .replace('export default defineConfig(', 'return defineConfig(')
+      .replaceAll('@adonisjs/mail/services/main', mailUrl)
+    const compiled = ts.transpileModule(executable, {
+      compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
+    }).outputText
+    const previous = {
+      ACCOUNT_MAIL_FROM: process.env.ACCOUNT_MAIL_FROM,
+      APP_URL: process.env.APP_URL,
+      FRONTEND_URL: process.env.FRONTEND_URL,
+    }
+    process.env.ACCOUNT_MAIL_FROM = 'accounts@example.test'
+    process.env.APP_URL = 'http://localhost:3333'
+    process.env.FRONTEND_URL = 'http://localhost:3000'
+    try {
+      const configured = new Function(
+        'env',
+        'app',
+        'createLucidAdapter',
+        'createActionUrls',
+        'createMailNotifications',
+        'defineConfig',
+        'accountKitPolicy',
+        'mail',
+        compiled
+      )(
+        { get: () => ({ release: () => 'test-secret' }) },
+        { inProduction: false, inTest: true },
+        () => ({}),
+        () => ({}),
+        createMailNotifications,
+        (value: unknown) => value,
+        { canAccess: async () => true },
+        undefined
+      ) as { notify: { passwordChanged: (user: { email: string }) => Promise<void> } }
+      const sent: string[] = []
+      const manager = {
+        async sendLater(this: { delivered: boolean }, render: (message: any) => void) {
+          this.delivered = true
+          const message = {
+            to: (address: string) => {
+              sent.push(address)
+              return message
+            },
+            from: () => message,
+            subject: () => message,
+            html: () => message,
+            text: () => message,
+          }
+          render(message)
+        },
+        delivered: false,
+      }
+      service.bindMail(manager)
+      await configured.notify.passwordChanged({ email: 'recipient@example.test' })
+      assert.deepEqual(sent, ['recipient@example.test'])
+      assert.isTrue(manager.delivered)
+    } finally {
+      for (const [name, value] of Object.entries(previous)) {
+        if (value === undefined) delete process.env[name]
+        else process.env[name] = value
+      }
     }
   })
 
