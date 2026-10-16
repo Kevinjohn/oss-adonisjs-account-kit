@@ -182,6 +182,32 @@ test.group('authentication contract', (group) => {
     })
   })
 
+  test('every invalid-credential failure waits out the request floor', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+      minRequestMs: 150,
+    })
+    const guard = {
+      strategy: 'access_tokens' as const,
+      name: 'api',
+      establish: async () => 'token',
+      terminate: async () => {},
+    }
+    for (const [index, email] of ['missing@example.test', user.email].entries()) {
+      const started = performance.now()
+      await assert.rejects(
+        () =>
+          account.authentication.login(
+            { email, password: 'wrong', clientKey: `floor-${index}` },
+            guard
+          ),
+        'Invalid email or password'
+      )
+      assert.isAtLeast(performance.now() - started, 150)
+    }
+  })
+
   test('allows a limited inactive login but denies protected access', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
     const { account } = makeService(kit, {
@@ -279,7 +305,10 @@ test.group('authentication contract', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
     const guard = sessionGuard()
     for (let i = 0; i < 12; i++) {
       await account.authentication.login(
@@ -311,7 +340,10 @@ test.group('authentication contract', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
     for (let index = 0; index < 9; index++) {
       await assert.rejects(
         () =>

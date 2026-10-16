@@ -99,6 +99,19 @@ function invitationId(value: string): number {
   return id
 }
 
+/** Flatten committed router definitions into one entry per method for collision checks. */
+function routeEntries(router: Router) {
+  return (router.toJSON().root ?? []).flatMap((route) =>
+    route.methods.map((method) => ({
+      method,
+      path: route.pattern,
+      name: route.name,
+      tokens: route.tokens,
+      matchers: route.matchers,
+    }))
+  )
+}
+
 function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
   for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
@@ -208,6 +221,7 @@ async function execute<Credential>(
 
   switch (route.name) {
     case 'auth.csrf':
+      response.header('Cache-Control', 'no-store')
       return response.ok({ csrfToken })
     case 'auth.login': {
       const { email, password } = await request.validateUsing(loginValidator)
@@ -419,15 +433,7 @@ export function registerManagedRoutes<Credential>(
     !options.guard.publicCredential
   )
     throw new Error('Managed access-token routes require publicCredential')
-  const existing = (router.toJSON().root ?? []).flatMap((route) =>
-    route.methods.map((method) => ({
-      method,
-      path: route.pattern,
-      name: route.name,
-      tokens: route.tokens,
-      matchers: route.matchers,
-    }))
-  )
+  const existing = routeEntries(router)
   const routes = planManagedRoutes(
     {
       prefix: options.prefix,
@@ -478,15 +484,7 @@ export function registerManagedRoutes<Credential>(
   const commit = router.commit
   router.commit = function (this: Router, ...args: Parameters<Router['commit']>) {
     const result = commit.apply(this, args)
-    const committed = (this.toJSON().root ?? []).flatMap((item) =>
-      item.methods.map((method) => ({
-        method,
-        path: item.pattern,
-        name: item.name,
-        tokens: item.tokens,
-        matchers: item.matchers,
-      }))
-    )
+    const committed = routeEntries(this)
     assertManagedRouteCollisions(routes, committed)
     return result
   }
