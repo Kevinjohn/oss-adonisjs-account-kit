@@ -7,6 +7,9 @@ export const migrationNames = [
   'create_account_email_changes',
   'add_email_verified_at_to_users',
   'create_account_transaction_lock',
+  'evolve_identity_contract',
+  'create_social_identities',
+  'retire_account_email_changes',
 ]
 
 function isMissing(error: unknown): boolean {
@@ -30,6 +33,7 @@ export function migrationSchema(usersTable = 'users', userIdType: UserIdType = '
   return {
     usersTable: JSON.stringify(usersTable),
     userIdColumn: column('user_id'),
+    tokenableIdColumn: column('tokenable_id'),
     inviterIdColumn: column('inviter_id'),
   }
 }

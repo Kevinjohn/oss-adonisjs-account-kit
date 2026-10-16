@@ -52,7 +52,8 @@ export default defineConfig({
   },
   notify: {
     passwordResetProvision: (user, url) => notifications.send('recovery', user.email, url),
-    accountActivationProvision: (user, url) => notifications.send('verification', user.email, url),
+    accountActivationProvision: (user, url) =>
+      notifications.send('verification', user.unverifiedEmail ?? user.email, url),
     invitationProvision: (invitation, url) =>
       notifications.send('invitation', invitation.email, url),
     emailChangeProvision: (_user, newEmail, url) =>

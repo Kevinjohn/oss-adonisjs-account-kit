@@ -13,9 +13,9 @@ test.group('published account kit migrations', (group) => {
     const recoveryColumns = Object.keys(recoveryColumnInfo)
     assert.deepEqual(recoveryColumns, [
       'id',
-      'user_id',
+      'tokenable_id',
       'email',
-      'token_hash',
+      'hash',
       'expires_at',
       'created_at',
     ])
@@ -42,14 +42,15 @@ test.group('published account kit migrations', (group) => {
         )
       )
     }
-    const emailChangeColumnInfo = await kit.db.connection().columnsInfo('account_email_changes')
+    const emailChangeColumnInfo = await kit.db.connection().columnsInfo('email_verification_tokens')
     const emailChangeColumns = Object.keys(emailChangeColumnInfo)
     assert.deepEqual(emailChangeColumns, [
       'id',
-      'user_id',
+      'tokenable_id',
+      'email',
       'current_email',
-      'new_email',
-      'token_hash',
+      'purpose',
+      'hash',
       'expires_at',
       'created_at',
     ])
@@ -96,9 +97,9 @@ test.group('published account kit migrations', (group) => {
     const secondUserId = typeof secondUser === 'object' ? secondUser.id : secondUser
 
     await kit.db.table('password_reset_tokens').insert({
-      user_id: firstUserId,
+      tokenable_id: firstUserId,
       email: 'first@example.test',
-      token_hash: 'a'.repeat(64),
+      hash: 'a'.repeat(64),
       expires_at: now,
       created_at: now,
     })
@@ -111,30 +112,28 @@ test.group('published account kit migrations', (group) => {
       created_at: now,
       updated_at: now,
     })
-    await kit.db.table('account_email_changes').insert({
-      user_id: firstUserId,
-      current_email: 'first@example.test',
-      new_email: 'next@example.test',
-      token_hash: 'c'.repeat(64),
+    await kit.db.table('email_verification_tokens').insert({
+      tokenable_id: firstUserId,
+      email: 'next@example.test',
+      hash: 'c'.repeat(64),
       expires_at: now,
       created_at: now,
     })
 
     await assert.rejects(() =>
       kit.db.table('password_reset_tokens').insert({
-        user_id: firstUserId,
+        tokenable_id: firstUserId,
         email: 'first@example.test',
-        token_hash: 'd'.repeat(64),
+        hash: 'd'.repeat(64),
         expires_at: now,
         created_at: now,
       })
     )
     await assert.rejects(() =>
-      kit.db.table('account_email_changes').insert({
-        user_id: firstUserId,
-        current_email: 'first@example.test',
-        new_email: 'another@example.test',
-        token_hash: 'e'.repeat(64),
+      kit.db.table('email_verification_tokens').insert({
+        tokenable_id: firstUserId,
+        email: 'another@example.test',
+        hash: 'e'.repeat(64),
         expires_at: now,
         created_at: now,
       })
@@ -142,9 +141,9 @@ test.group('published account kit migrations', (group) => {
 
     await assert.rejects(() =>
       kit.db.table('password_reset_tokens').insert({
-        user_id: secondUserId,
+        tokenable_id: secondUserId,
         email: 'second@example.test',
-        token_hash: 'a'.repeat(64),
+        hash: 'a'.repeat(64),
         expires_at: now,
         created_at: now,
       })
@@ -172,19 +171,22 @@ test.group('published account kit migrations', (group) => {
       })
     )
     await assert.rejects(() =>
-      kit.db.table('account_email_changes').insert({
-        user_id: secondUserId,
-        current_email: 'second@example.test',
-        new_email: 'next@example.test',
-        token_hash: 'c'.repeat(64),
+      kit.db.table('email_verification_tokens').insert({
+        tokenable_id: secondUserId,
+        email: 'next@example.test',
+        hash: 'c'.repeat(64),
         expires_at: now,
         created_at: now,
       })
     )
 
     await kit.db.from('users').where('id', firstUserId).delete()
-    assert.isNull(await kit.db.from('password_reset_tokens').where('user_id', firstUserId).first())
-    assert.isNull(await kit.db.from('account_email_changes').where('user_id', firstUserId).first())
+    assert.isNull(
+      await kit.db.from('password_reset_tokens').where('tokenable_id', firstUserId).first()
+    )
+    assert.isNull(
+      await kit.db.from('email_verification_tokens').where('tokenable_id', firstUserId).first()
+    )
     const invitation = await kit.db
       .from('account_invitations')
       .where('email', 'invite@example.test')

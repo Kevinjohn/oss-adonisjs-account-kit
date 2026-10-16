@@ -17,9 +17,9 @@ test.group('expired-token pruning', (group) => {
     const live = DateTime.utc().plus({ days: 1 }).toISO()
     for (const [index, expiresAt] of [expired, live].entries()) {
       await kit.db.table('password_reset_tokens').insert({
-        user_id: index === 0 ? user.id : other.id,
+        tokenable_id: index === 0 ? user.id : other.id,
         email: index === 0 ? user.email : 'other@example.test',
-        token_hash: `recovery-${index}`,
+        hash: `recovery-${index}`,
         expires_at: expiresAt,
         created_at: expired,
       })
@@ -32,27 +32,26 @@ test.group('expired-token pruning', (group) => {
         created_at: expired,
         updated_at: expired,
       })
-      await kit.db.table('account_email_changes').insert({
-        user_id: index === 0 ? user.id : other.id,
-        current_email: index === 0 ? user.email : 'other@example.test',
-        new_email: `next-${index}@example.test`,
-        token_hash: `email-${index}`,
+      await kit.db.table('email_verification_tokens').insert({
+        tokenable_id: index === 0 ? user.id : other.id,
+        email: `next-${index}@example.test`,
+        hash: `email-${index}`,
         expires_at: expiresAt,
         created_at: expired,
       })
     }
-    const expected = { recovery: 1, invitations: 1, emailChanges: 1 }
+    const expected = { recovery: 1, invitations: 1, emailVerifications: 1 }
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, dryRun: true }), expected)
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 2)
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1 }), expected)
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1 }), {
       recovery: 0,
       invitations: 0,
-      emailChanges: 0,
+      emailVerifications: 0,
     })
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 
   test('rechecks expiry after selection so a refreshed invitation survives', async ({ assert }) => {
@@ -116,23 +115,22 @@ test.group('expired-token pruning', (group) => {
       created_at: expired,
       updated_at: expired,
     })
-    await kit.db.table('account_email_changes').insert({
-      user_id: user.id,
-      current_email: user.email,
-      new_email: 'next@example.test',
-      token_hash: 'next-hash',
+    await kit.db.table('email_verification_tokens').insert({
+      tokenable_id: user.id,
+      email: 'next@example.test',
+      hash: 'next-hash',
       expires_at: expired,
       created_at: expired,
     })
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, maxBatches: 1 }), {
       recovery: 0,
       invitations: 1,
-      emailChanges: 0,
+      emailVerifications: 0,
     })
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, maxBatches: 1 }), {
       recovery: 0,
       invitations: 0,
-      emailChanges: 1,
+      emailVerifications: 1,
     })
   })
 

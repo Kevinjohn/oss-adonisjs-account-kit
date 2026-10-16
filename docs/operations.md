@@ -21,8 +21,9 @@ do not trust arbitrary forwarded-IP headers. See [password reset and invitation 
 ## Expired-row pruning
 
 The explicit `account-kit:prune` Ace command removes expired password reset, invitation, and
-email-change rows in bounded batches. It is not scheduled automatically. Defaults are 100 rows per
-batch and at most 100 batches; each setting accepts a value from 1 through 1000. Use the command's
+email-verification proofs (activation and email change) in bounded batches. It is not scheduled
+automatically. Defaults are 100 rows per batch and at most 100 batches; each setting accepts a
+value from 1 through 1000. Use the command's
 dry-run option to estimate eligible rows before deletion, then schedule it through the application's
 own maintenance mechanism if needed.
 

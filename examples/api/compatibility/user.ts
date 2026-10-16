@@ -13,6 +13,9 @@ export default class User extends BaseModel {
   @column()
   declare email: string
 
+  @column({ columnName: 'unverified_email' })
+  declare unverifiedEmail: string | null
+
   @column()
   declare password: string | null
 

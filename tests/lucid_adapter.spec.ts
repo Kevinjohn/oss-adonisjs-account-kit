@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
-import { DateTime } from 'luxon'
+import { column } from '@adonisjs/lucid/orm'
+import { type DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { defineConfig } from '../src/config.js'
 import { lockUser, transaction } from '../src/db.js'
@@ -164,7 +165,6 @@ test.group('maintained Lucid adapter', (group) => {
       },
       verifyPassword: async (stored, password) => stored === `hashed:${password}`,
     })
-    const at = DateTime.local().startOf('second')
     assert.deepEqual(await adapter.resolveMetadata(), {
       table: 'users',
       primaryKey: 'id',
@@ -176,7 +176,7 @@ test.group('maintained Lucid adapter', (group) => {
         {
           email: '  Ada@Example.Test ',
           password: 'controlled-password',
-          emailVerifiedAt: at,
+          unverifiedEmail: null,
           registrationData: {
             fullName: 'Ada Lovelace',
             id: 900,
@@ -195,7 +195,7 @@ test.group('maintained Lucid adapter', (group) => {
     assert.equal(row.email, 'ada@example.test')
     assert.equal(row.password, 'hashed:controlled-password')
     assert.equal(row.full_name, 'Ada Lovelace')
-    assert.deepEqual(user.emailVerifiedAt, at)
+    assert.isNull(user.emailVerifiedAt)
   })
 
   test('rejects registration data without an explicit trusted mapper', async ({ assert }) => {
@@ -207,7 +207,7 @@ test.group('maintained Lucid adapter', (group) => {
             {
               email: 'missing-mapper@example.test',
               password: 'password',
-              emailVerifiedAt: DateTime.local(),
+              unverifiedEmail: null,
               registrationData: { fullName: 'Grace Hopper' },
             },
             trx
@@ -234,13 +234,13 @@ test.group('maintained Lucid adapter', (group) => {
             {
               email: 'role-mapper@example.test',
               password: 'password',
-              emailVerifiedAt: DateTime.utc(),
+              unverifiedEmail: null,
               registrationData: {},
             },
             trx
           )
         ),
-      /cannot assign id, email, password, emailVerifiedAt, or role/
+      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role/
     )
     assert.isNull(await adapter.findByEmail('role-mapper@example.test'))
   })
@@ -263,6 +263,20 @@ test.group('maintained Lucid adapter', (group) => {
     await assert.rejects(
       () => alternatePrimaryKeyAdapter.resolveMetadata(),
       /must use the id attribute mapped to the id column/
+    )
+  })
+
+  test('diagnoses a user model whose pending email maps to an unsupported column', async ({
+    assert,
+  }) => {
+    class AlternatePendingColumnUser extends LucidUser {
+      @column({ columnName: 'pending_email' })
+      declare unverifiedEmail: string | null
+    }
+    const adapter = createLucidAdapter(async () => AlternatePendingColumnUser)
+    await assert.rejects(
+      () => adapter.resolveMetadata(),
+      /unverifiedEmail attribute mapped to the unverified_email column/
     )
   })
 })

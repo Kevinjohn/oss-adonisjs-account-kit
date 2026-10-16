@@ -58,7 +58,7 @@ test.group('managed transaction wrapper', (group) => {
         {
           email: 'global@example.test',
           password: 'originalPassword123',
-          emailVerifiedAt: DateTime.utc(),
+          unverifiedEmail: null,
         },
         trx
       )
@@ -170,7 +170,7 @@ test.group('managed transaction wrapper', (group) => {
           {
             email: 'deferred@example.test',
             password: 'originalPassword123',
-            emailVerifiedAt: DateTime.utc(),
+            unverifiedEmail: null,
           },
           trx
         )

@@ -57,12 +57,12 @@ test.group('passwordReset.request', (group) => {
     const [notifiedUser, url] = recorder.calls[0].args
     assert.equal((notifiedUser as typeof user).id, user.id)
     const raw = tokenFrom(url)
-    assert.match(raw, /^[A-Za-z0-9_-]{43}$/)
+    assert.match(raw, /^[A-Za-z0-9_-]{54}$/)
     const rows = await kit.db.from('password_reset_tokens')
     assert.lengthOf(rows, 1)
-    assert.equal(rows[0].user_id, user.id)
+    assert.equal(rows[0].tokenable_id, user.id)
     assert.equal(rows[0].email, user.email)
-    assert.equal(rows[0].token_hash, hashToken(raw))
+    assert.equal(rows[0].hash, hashToken(raw))
     assert.isFalse(Object.values(rows[0]).includes(raw))
     assert.isNotNull(rows[0].expires_at)
     assert.isNotNull(rows[0].created_at)
@@ -78,7 +78,7 @@ test.group('passwordReset.request', (group) => {
     const first = await kit.db.from('password_reset_tokens').first()
     await account.passwordReset.request({ email: 'person@example.test', clientKey: 'second' })
     const second = await kit.db.from('password_reset_tokens').first()
-    assert.notEqual(first.token_hash, second.token_hash)
+    assert.notEqual(first.hash, second.hash)
     await Promise.all([
       account.passwordReset.request({ email: 'person@example.test', clientKey: 'third' }),
       account.passwordReset.request({ email: 'person@example.test', clientKey: 'fourth' }),
@@ -88,7 +88,7 @@ test.group('passwordReset.request', (group) => {
     const concurrentHashes = recorder.calls
       .slice(2)
       .map((call) => hashToken(tokenFrom(call.args[1])))
-    assert.include(concurrentHashes, rows[0].token_hash)
+    assert.include(concurrentHashes, rows[0].hash)
     assert.lengthOf(recorder.calls, 4)
   })
 
@@ -105,20 +105,20 @@ test.group('passwordReset.request', (group) => {
         calls++
         assert.equal(current.id, user.id)
         assert.equal(current.email, user.email)
-        const row = await trx.from('password_reset_tokens').where('user_id', user.id).first()
+        const row = await trx.from('password_reset_tokens').where('tokenable_id', user.id).first()
         assert.isNotNull(row)
         if (calls === 2) throw failure
       },
     })
     await account.passwordReset.request({ email: user.email, clientKey: 'first' })
-    const before = await kit.db.from('password_reset_tokens').where('user_id', user.id).first()
+    const before = await kit.db.from('password_reset_tokens').where('tokenable_id', user.id).first()
     try {
       await account.passwordReset.request({ email: user.email, clientKey: 'second' })
       assert.fail('expected claim refusal')
     } catch (error) {
       assert.equal(error, failure)
     }
-    const after = await kit.db.from('password_reset_tokens').where('user_id', user.id).first()
+    const after = await kit.db.from('password_reset_tokens').where('tokenable_id', user.id).first()
     assert.deepEqual(after, before)
     assert.equal(calls, 2)
     assert.lengthOf(recorder.calls, 1)
@@ -153,8 +153,8 @@ test.group('passwordReset.request', (group) => {
     assert.equal(lifecycle, 1)
     assert.lengthOf(recorder.calls, 1)
     const token = tokenFrom(recorder.calls[0].args[1])
-    const row = await kit.db.from('password_reset_tokens').where('user_id', user.id).first()
-    assert.equal(row.token_hash, hashToken(token))
+    const row = await kit.db.from('password_reset_tokens').where('tokenable_id', user.id).first()
+    assert.equal(row.hash, hashToken(token))
   })
 
   test('stale preflight email does not replace a password reset token or notify', async ({
@@ -524,15 +524,14 @@ test.group('passwordReset.reset', (group) => {
     const failure = new Error('setPassword failed')
     let callbackCalls = 0
     const emailChange = {
-      user_id: user.id,
-      current_email: user.email,
-      new_email: 'next@example.test',
-      token_hash: hashToken(generateToken()),
+      tokenable_id: user.id,
+      email: 'next@example.test',
+      hash: hashToken(generateToken()),
       expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
       created_at: DateTime.utc().toISO(),
     }
-    await kit.db.table('account_email_changes').insert(emailChange)
-    const emailChangeRows = await kit.db.from('account_email_changes')
+    await kit.db.table('email_verification_tokens').insert(emailChange)
+    const emailChangeRows = await kit.db.from('email_verification_tokens')
     const account = service(
       {
         onCredentialsChanged: async () => {
@@ -553,7 +552,7 @@ test.group('passwordReset.reset', (group) => {
     )
     assert.equal(await storedPassword(), user.password)
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
-    assert.deepEqual(await kit.db.from('account_email_changes'), emailChangeRows)
+    assert.deepEqual(await kit.db.from('email_verification_tokens'), emailChangeRows)
     assert.equal(callbackCalls, 0)
   })
 
@@ -561,11 +560,10 @@ test.group('passwordReset.reset', (group) => {
     assert,
   }) => {
     const { account, token, user } = await issue({ verified: false, password: null })
-    await kit.db.table('account_email_changes').insert({
-      user_id: user.id,
-      current_email: user.email,
-      new_email: 'next@example.test',
-      token_hash: hashToken(generateToken()),
+    await kit.db.table('email_verification_tokens').insert({
+      tokenable_id: user.id,
+      email: 'next@example.test',
+      hash: hashToken(generateToken()),
       expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
       created_at: DateTime.utc().toISO(),
     })
@@ -573,7 +571,7 @@ test.group('passwordReset.reset', (group) => {
     assert.isTrue(result.hasPassword)
     assert.isNotNull(result.emailVerifiedAt)
     assert.isTrue(await kit.hash.verify((await storedPassword())!, 'new-password123'))
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('post-commit callback receives the reloaded user once', async ({ assert }) => {
@@ -613,9 +611,9 @@ test.group('passwordReset.reset', (group) => {
       })
       const user = await customKit.db.from('users').first()
       await customKit.db.table('password_reset_tokens').insert({
-        user_id: user.id,
+        tokenable_id: user.id,
         email,
-        token_hash: hashToken(token),
+        hash: hashToken(token),
         expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
         created_at: DateTime.utc().toISO(),
       })
@@ -733,7 +731,7 @@ test.group('passwordReset.inspect', (group) => {
         {
           email: 'person@example.test',
           password: 'password123',
-          emailVerifiedAt: DateTime.utc(),
+          unverifiedEmail: null,
         },
         trx
       )
@@ -754,7 +752,7 @@ test.group('passwordReset.inspect', (group) => {
     assert.isTrue(await account.passwordReset.inspect({ token }))
     const rows = await kit.db.from('password_reset_tokens')
     assert.lengthOf(rows, 1)
-    assert.equal(rows[0].token_hash, hashToken(token))
+    assert.equal(rows[0].hash, hashToken(token))
   })
 
   test('expired token is rejected', async ({ assert }) => {

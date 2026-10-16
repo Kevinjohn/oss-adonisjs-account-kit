@@ -1,24 +1,27 @@
 import { randomUUID } from 'node:crypto'
-import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import { lockUser, transaction } from './db.js'
-import { deliver, postCommit } from './effects.js'
+import { consumeUserToken, lockUser, transaction } from './db.js'
+import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { consume } from './throttle.js'
-import type { ResolvedConfig, VerificationCompleteInput, VerificationSendInput } from './types.js'
-
-const VERIFICATION_PURPOSE = 'account-kit:verify-email'
+import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { expiresAt } from './ttl.js'
+import type {
+  ResolvedConfig,
+  UserId,
+  VerificationCompleteInput,
+  VerificationSendInput,
+} from './types.js'
 
 export async function sendVerification(
-  deps: { config: ResolvedConfig; encryption: Encryption; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
   input: VerificationSendInput
 ): Promise<'sent' | 'already_verified'> {
   const user = await deps.config.users.findById(input.userId)
   if (!user) throw new InvalidInputError('Unknown user')
-  if (user.emailVerifiedAt !== null) return 'already_verified'
-
+  if (user.unverifiedEmail !== user.email) return 'already_verified'
   await consume(
     deps.limiter,
     'verification:user',
@@ -27,47 +30,85 @@ export async function sendVerification(
     deps.config.limiterSecret,
     deps.config.limiterNamespace
   )
-  const expiresIn = deps.config.expiresIn.emailVerification
-  const token = deps.encryption.encrypt(
-    { userId: user.id, email: user.email },
-    typeof expiresIn === 'number' ? expiresIn * 1000 : expiresIn,
-    VERIFICATION_PURPOSE
+  const token = generateToken(deps.config.tokenSecretLength)
+  const { value: issuedUser, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      await lockUser(trx, deps.config, user.id)
+      const current = await deps.config.users.findById(user.id, trx)
+      if (!current || current.unverifiedEmail !== current.email) return null
+      const now = DateTime.utc()
+      await trx
+        .table('email_verification_tokens')
+        .insert({
+          tokenable_id: current.id,
+          email: current.unverifiedEmail,
+          current_email: current.email,
+          purpose: 'activation',
+          hash: hashToken(token),
+          expires_at: expiresAt(now, deps.config.expiresIn.emailVerification).toISO(),
+          created_at: now.toISO(),
+        })
+        .onConflict('tokenable_id')
+        .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
+      return current
+    })
   )
-  await deliver('Verification notification failed', () =>
-    deps.config.notify.accountActivationProvision(user, deps.config.urls.emailVerification(token))
+  if (!issuedUser) {
+    if (fault) throw fault
+    return 'already_verified'
+  }
+  await finishCommitted(fault, 'Verification issued but follow-up failed', () =>
+    deliver('Verification notification failed', () =>
+      deps.config.notify.accountActivationProvision(
+        issuedUser,
+        deps.config.urls.emailVerification(token)
+      )
+    )
   )
   return 'sent'
 }
 
 export async function completeVerification(
-  deps: { config: ResolvedConfig; db: Database; encryption: Encryption },
+  deps: { config: ResolvedConfig; db: Database },
   input: VerificationCompleteInput
-): Promise<'verified' | 'already_verified'> {
-  if (typeof input.token !== 'string') throw new InvalidTokenError()
-  const payload: unknown = deps.encryption.decrypt(input.token, VERIFICATION_PURPOSE)
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload))
-    throw new InvalidTokenError()
-  const { userId, email } = payload as { userId?: unknown; email?: unknown }
-  if ((typeof userId !== 'number' && typeof userId !== 'string') || typeof email !== 'string')
-    throw new InvalidTokenError()
-
+): Promise<'verified'> {
+  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
-  const outcome = await transaction(deps.db, async (trx) => {
-    await lockUser(trx, deps.config, userId)
-    const user = await deps.config.users.findById(userId, trx)
-    if (!user || user.email !== email) throw new InvalidTokenError()
-    if (user.emailVerifiedAt !== null) return 'already_verified'
-    await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-    return 'verified'
-  })
-  if (outcome === 'verified') {
-    await postCommit('Verification follow-up failed', [
+  const { value: outcome, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      const { user } = await consumeUserToken<{
+        tokenable_id: UserId
+        email: string
+        current_email: string
+        purpose: string
+      }>(
+        trx,
+        deps.config,
+        'email_verification_tokens',
+        input.token,
+        (proof, current) =>
+          proof.purpose === 'activation' &&
+          current.unverifiedEmail === current.email &&
+          current.unverifiedEmail === proof.email &&
+          current.email === proof.current_email
+      )
+      await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
+      await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
+      return user.id
+    })
+  )
+  await finishCommitted(fault, 'Verification committed but follow-up failed', () =>
+    postCommit('Verification follow-up failed', [
       {
         kind: 'observer',
         run: () =>
-          deps.config.onLifecycleEvent?.({ type: 'verification.completed', userId, operationId }),
+          deps.config.onLifecycleEvent?.({
+            type: 'verification.completed',
+            userId: outcome,
+            operationId,
+          }),
       },
     ])
-  }
-  return outcome
+  )
+  return 'verified'
 }
