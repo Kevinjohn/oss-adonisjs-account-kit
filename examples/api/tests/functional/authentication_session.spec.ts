@@ -130,6 +130,28 @@ test('inactive session may replace its unconfirmed email through the guarded rou
   assert.equal(correction.status(), 202, JSON.stringify(correction.body()))
 })
 
+test('signup establishes a limited session for an inactive account', async ({ client, assert }) => {
+  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
+  const bootstrap = await client.get('/api/v1/auth/csrf')
+  const signup = await client
+    .post('/api/v1/auth/signup')
+    .header('cookie', rawCookies(bootstrap))
+    .header('x-csrf-token', (bootstrap.body() as { csrfToken: string }).csrfToken)
+    .json({
+      fullName: 'Session Signup',
+      email: `signup-session-${randomUUID()}@example.test`,
+      password: 'NewSessionPass123!',
+      passwordConfirmation: 'NewSessionPass123!',
+    })
+  assert.equal(signup.status(), 200, JSON.stringify(signup.body()))
+  const cookies = rawCookies(signup)
+  assert.isNotEmpty(cookies)
+  assert.notProperty((signup.body() as { data: Record<string, unknown> }).data, 'token')
+  const protectedResponse = await client.get('/account-kit/invitations').header('cookie', cookies)
+  assert.equal(protectedResponse.status(), 403)
+  assert.equal((protectedResponse.body() as unknown as { code: string }).code, 'unverified_email')
+})
+
 test('a password change revokes every previously issued browser session', async ({
   client,
   assert,

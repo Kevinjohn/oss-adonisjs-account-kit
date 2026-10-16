@@ -11,6 +11,18 @@ Follow the [identity creation contract](identity-creation.md), especially its ma
 before applying the appended migrations. Custom adapters now accept explicit pending-email and
 nullable-password creation attributes, expose `AccountUser.unverifiedEmail`, and implement
 `setUnverifiedEmail`. The API example has been updated to the new contract.
+Enable and configure registration explicitly as described in [registration](registration.md).
+An inactive activation now needs `emailVerification.complete({ token, password })`; update clients
+to POST a fresh password and confirmation. Token-only activation attempts fail. Existing legacy
+activation links must be reissued after the proof migration. A successful claim replaces an
+earlier password and invalidates credentials issued for the inactive account. Existing
+application-owned signup routes should establish only a limited credential and enforce
+`unverified_email` on protected routes.
+Custom adapters enabled for email verification now need `setPassword`, even when they do not
+change confirmed email addresses. Configured registration field mapping runs on omitted input;
+required profile fields can therefore fail before account creation. Generated setup config omits
+invitations from its enabled capability list. Runtime configuration also leaves invitations
+disabled when `enabled` is omitted, so enable invitations explicitly if the application uses them.
 Custom `markEmailVerified` implementations must clear the pending address in the same transaction
 as the audit timestamp; otherwise an inactive account will not activate. Password reset and
 password change also call `setUnverifiedEmail` to cancel a distinct pending address.
@@ -132,7 +144,8 @@ number of database entries examined.
 - **Invitation listing is paged.** `invitations.list({ actorId, limit?, cursor? })` returns
   `{ items, nextCursor }`, defaults to 25 items, and accepts at most 100. Update controllers and
   clients that previously expected a complete unpaged collection.
-- **Capabilities can be disabled explicitly.** `enabled` defaults to all supported capabilities.
+- **Capabilities can be disabled explicitly.** `enabled` defaults to password reset, email
+  verification, and email/password management; registration and invitations require explicit opt-in.
   A configured subset only requires callbacks for enabled features. Calling a disabled operation
   rejects with `CapabilityDisabledError`.
 - **Credential revocation can be transactional.** Prefer

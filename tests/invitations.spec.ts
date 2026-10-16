@@ -411,6 +411,22 @@ test.group('invitations.accept', (group) => {
 
   const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
 
+  test('applies the shared new-password policy before consuming an invitation', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account, recorder } = service({
+      passwordPolicy: { mixedCase: true, numbers: true, minScore: 3 },
+    })
+    const { token } = await issue(account, recorder, actor.id)
+    await assert.rejects(
+      () => account.invitations.accept({ token, password: 'password123' }),
+      InvalidInputError
+    )
+    assert.lengthOf(await kit.db.from('account_invitations'), 1)
+    await account.invitations.accept({ token, password: 'LongerPassword12345' })
+  })
+
   async function issue(
     account: AccountKit,
     recorder: ReturnType<typeof makeNotify>,

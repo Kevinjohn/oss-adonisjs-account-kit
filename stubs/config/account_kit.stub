@@ -16,6 +16,9 @@ const notConfigured = (method: string) => async () => {
 
 export default defineConfig({
   users,
+  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
+  // Choose admission in the application before exposing a public signup route.
+  registration: { availability: 'open' },
   limiterSecret: env.get('APP_KEY').release(),
   authorize: {
     invite: async () => false,

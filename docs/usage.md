@@ -36,11 +36,14 @@ The callback names distinguish a link provision from a completed-operation notic
 
 ### Capabilities
 
-`enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`, and `emailPasswordManagement`.
-It defaults to all four. Configuration validates callbacks needed by enabled capabilities only;
+`enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
+`emailPasswordManagement`, and `registration`. When omitted, registration and invitations are
+disabled; applications select either explicitly. Every configuration supplies
+`registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
-An `emailVerification`-only adapter needs `findById` and `markEmailVerified`, but does not
-need `setEmail`; verification only confirms the current persisted address.
+An `emailVerification`-only adapter needs `findById`, `markEmailVerified`, and `setPassword`, but
+does not need `setEmail`. Inactive activation replaces the earlier password with a fresh one;
+active-account email changes retain their separate proof behavior.
 
 The service methods accept structured inputs. The usual calls are:
 
@@ -50,7 +53,7 @@ const valid = await kit.passwordReset.inspect({ token })
 const user = await kit.passwordReset.reset({ token, password })
 
 await kit.emailVerification.send({ userId })
-await kit.emailVerification.complete({ token })
+await kit.emailVerification.complete({ token, password: freshPassword })
 
 const invitation = await kit.invitations.send({ actorId, email, role })
 const page = await kit.invitations.list({ actorId, limit: 25 })

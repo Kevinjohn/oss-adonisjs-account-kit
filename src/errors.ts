@@ -52,6 +52,10 @@ export class EmailAlreadyRegisteredError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'
   static status = 409
 }
+export class RegistrationEmailAlreadyRegisteredError extends EmailAlreadyRegisteredError {
+  static status = 422
+  readonly field = 'email'
+}
 export class InvitationPendingError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_INVITATION_PENDING'
   static status = 409

@@ -47,6 +47,7 @@ test.group('maintained Lucid adapter', (group) => {
     const packageConfig = defineConfig({
       users: adapter,
       enabled: [],
+      registration: { availability: 'open' },
       urls: {},
       notify: {},
       limiterSecret: 'contract-limiter-secret-with-more-than-32-bytes',

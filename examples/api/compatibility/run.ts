@@ -117,6 +117,8 @@ let insertDeferredFailure = false
 const account = new AccountKit({
   config: defineConfig({
     limiterSecret: 'minimum-consumer-test-secret-32-bytes-long',
+    enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
+    registration: { availability: 'closed' },
     minRequestMs: 0,
     throttle: { requests: 100, duration: '15m' },
     invitationThrottle: {
@@ -414,8 +416,16 @@ try {
   })
   assert.equal(await account.emailVerification.send({ userId: unverifiedUser.id }), 'sent')
   const verificationToken = tokenFromUrl(notifications.emailVerificationUrl)
-  assert.equal(await account.emailVerification.complete({ token: verificationToken }), 'verified')
-  await assert.rejects(() => account.emailVerification.complete({ token: verificationToken }))
+  assert.equal(
+    await account.emailVerification.complete({
+      token: verificationToken,
+      password: 'NewPassword123',
+    }),
+    'verified'
+  )
+  await assert.rejects(() =>
+    account.emailVerification.complete({ token: verificationToken, password: 'NewPassword123' })
+  )
   await unverifiedUser.refresh()
   assert.ok(unverifiedUser.emailVerifiedAt)
   console.log('MINIMUM_STAGE email-verification-send-complete-verified-replay')

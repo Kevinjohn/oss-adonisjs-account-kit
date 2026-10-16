@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto'
+import { credentialsChanged } from './authentication.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
+import { isPasswordAllowed } from './password.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -72,6 +74,8 @@ export async function completeVerification(
   deps: { config: ResolvedConfig; db: Database },
   input: VerificationCompleteInput
 ): Promise<'verified'> {
+  if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
+    throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
   const { value: outcome, fault } = await settleCommitted(
@@ -92,9 +96,17 @@ export async function completeVerification(
           current.unverifiedEmail === proof.email &&
           current.email === proof.current_email
       )
+      await deps.config.users.setPassword(user.id, input.password, trx)
       await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
       await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
-      return user.id
+      const reloaded = await deps.config.users.findById(user.id, trx)
+      if (!reloaded) throw new InvalidTokenError()
+      await credentialsChanged(trx, deps.config, reloaded, {
+        operation: 'registration_claim',
+        operationId,
+        userId: user.id,
+      })
+      return reloaded
     })
   )
   await finishCommitted(fault, 'Verification committed but follow-up failed', () =>
@@ -102,9 +114,18 @@ export async function completeVerification(
       {
         kind: 'observer',
         run: () =>
+          deps.config.onCredentialsChanged?.(outcome, {
+            operation: 'registration_claim',
+            operationId,
+            userId: outcome.id,
+          }),
+      },
+      {
+        kind: 'observer',
+        run: () =>
           deps.config.onLifecycleEvent?.({
             type: 'verification.completed',
-            userId: outcome,
+            userId: outcome.id,
             operationId,
           }),
       },
