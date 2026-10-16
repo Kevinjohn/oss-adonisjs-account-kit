@@ -1,11 +1,12 @@
 # Application-owned integration
 
 Use this guide for the service-integration mode, where the application owns its HTTP routes and
-controllers and calls Account Kit's public account operations. The product roadmap also includes a
-separate optional managed-backend mode, explicitly enabled during onboarding, where the package
-maintains the HTTP backend while frontends remain application-owned. This guide describes the
-service-integration mode and does not claim that managed setup is available or validated. Choosing
-the existing `web` session or `api` access-token guard below is an authentication choice within the
+controllers and calls Account Kit's public account operations. Account Kit also provides an optional
+managed-backend mode, explicitly enabled during onboarding, where the package maintains selected
+HTTP endpoints while the application owns its frontend and application-specific policies. This
+guide describes service integration; the [setup guide](setup.md), [managed HTTP contract](managed-http.md),
+and [developer evaluation record](developer-evaluation.md) cover the managed mode. Choosing the
+existing `web` session or `api` access-token guard below is an authentication choice within the
 application-owned mode, not a choice between consumption modes. Account Kit does not register these
 application-owned routes, choose the application's response format, or replace its authentication
 guard. The [API consumer example](../examples/api/README.md)
@@ -213,6 +214,10 @@ the fixture's HTTP routes; resolving `AccountKit` only provides its services.
    application-owned worker.
 5. Exercise the enabled lifecycle against the installed package and selected database. Keep the
    frontend, public origins, mail transport, and deployment configuration in application scope.
+   For managed setup, the command validates selected mail-origin values from its process
+   environment. Pass the selected origin variables to the setup command or verify the application's
+   loaded values separately; setup does not load `.env` for these origin checks. A remaining origin
+   diagnostic is not evidence that the application failed to load its runtime environment.
 
 ### Developer evaluation protocol
 
@@ -261,5 +266,5 @@ release decision.
 
 ## Changelog
 
-This guide records the application-owned integration boundary and the agreed developer-evaluation
-protocol. It does not change the package's runtime contract.
+This guide records the application-owned integration boundary and links to the managed setup and
+developer-evaluation evidence. It does not change the package's runtime contract.
