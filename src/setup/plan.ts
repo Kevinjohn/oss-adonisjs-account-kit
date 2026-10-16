@@ -988,6 +988,40 @@ async function planRouteImport(
     return bindings && source.ts.isNamespaceImport(bindings) ? [bindings.name.text] : []
   })
   const mountBinding = importedName(source, 'adonisjs-account-kit/http', 'registerManagedRoutes')
+  const routeRouter = defaultImportName(source, '@adonisjs/core/services/router')
+  if (
+    hasAmbiguousRuntimeModuleImports(source, '@adonisjs/core/services/router') ||
+    (routeRouter &&
+      hasUnsafeBindingReferences(
+        source,
+        routeRouter,
+        (call) =>
+          source.ts.isPropertyAccessExpression(call.expression) &&
+          source.ts.isIdentifier(call.expression.expression) &&
+          call.expression.expression.text === routeRouter &&
+          [
+            'get',
+            'post',
+            'put',
+            'patch',
+            'delete',
+            'any',
+            'match',
+            'group',
+            'resource',
+            'on',
+            'redirect',
+            'route',
+          ].includes(call.expression.name.text)
+      ))
+  ) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Resolve router service provenance before mounting managed routes'
+    )
+    return
+  }
   let unsupportedMount =
     hasAmbiguousRuntimeModuleImports(source, 'adonisjs-account-kit/http') ||
     namedMounts.length > 1 ||
@@ -1091,6 +1125,71 @@ function callArray(
       matches.push(node.arguments[0])
   })
   return matches.length === 1 ? matches[0] : null
+}
+
+function directClassBaseHeritage(source: SetupSource, reference: TypeScript.Identifier): boolean {
+  const { ts } = source
+  const expression = reference.parent
+  return (
+    ts.isExpressionWithTypeArguments(expression) &&
+    expression.expression === reference &&
+    ts.isHeritageClause(expression.parent) &&
+    expression.parent.token === ts.SyntaxKind.ExtendsKeyword &&
+    ts.isClassDeclaration(expression.parent.parent)
+  )
+}
+
+function safeKernelService(
+  source: SetupSource,
+  module: string,
+  binding: string,
+  array: TypeScript.ArrayLiteralExpression
+): boolean {
+  const { ts } = source
+  return (
+    defaultImportName(source, module) === binding &&
+    !hasUnsafeBindingReferences(source, binding, (call) => {
+      const method =
+        ts.isPropertyAccessExpression(call.expression) &&
+        ts.isIdentifier(call.expression.expression) &&
+        call.expression.expression.text === binding
+          ? call.expression.name.text
+          : null
+      if (method === 'use')
+        return (
+          call.arguments.length === 1 &&
+          call.arguments[0] === array &&
+          ts.isExpressionStatement(call.parent) &&
+          call.parent.parent === source.file
+        )
+      if (binding === 'server' && method === 'errorHandler')
+        return (
+          call.arguments.length === 1 &&
+          Boolean(lazyImportPath(source, call.arguments[0])) &&
+          ts.isExpressionStatement(call.parent) &&
+          call.parent.parent === source.file
+        )
+      if (binding === 'router' && method === 'named')
+        return (
+          call.arguments.length === 1 &&
+          ts.isObjectLiteralExpression(call.arguments[0]) &&
+          !hasUnsafeObjectEntries(source, call.arguments[0]) &&
+          call.arguments[0].properties.every(
+            (property) =>
+              ts.isPropertyAssignment(property) &&
+              Boolean(lazyImportPath(source, property.initializer))
+          ) &&
+          ts.isVariableDeclaration(call.parent) &&
+          ts.isIdentifier(call.parent.name) &&
+          call.parent.name.text === 'middleware' &&
+          ts.isVariableDeclarationList(call.parent.parent) &&
+          Boolean(call.parent.parent.flags & ts.NodeFlags.Const) &&
+          ts.isVariableStatement(call.parent.parent.parent) &&
+          call.parent.parent.parent.parent === source.file
+        )
+      return false
+    })
+  )
 }
 
 async function planArrayImports(
@@ -1216,8 +1315,8 @@ async function planRouterMiddleware(
   if (
     !array ||
     !server ||
-    defaultImportName(source, '@adonisjs/core/services/router') !== 'router' ||
-    defaultImportName(source, '@adonisjs/core/services/server') !== 'server'
+    !safeKernelService(source, '@adonisjs/core/services/router', 'router', array) ||
+    !safeKernelService(source, '@adonisjs/core/services/server', 'server', server)
   ) {
     diagnostic(
       diagnostics,
@@ -1320,7 +1419,7 @@ async function planServerProofMiddleware(
     !previous ||
     !source ||
     !array ||
-    defaultImportName(source, '@adonisjs/core/services/server') !== 'server'
+    !safeKernelService(source, '@adonisjs/core/services/server', 'server', array)
   ) {
     diagnostic(
       diagnostics,
@@ -2326,6 +2425,41 @@ export async function planSetup(
         !hasUnsafeBindingReferences(model, authFinderBinding!, (call) => call === finderCall) &&
         onlyImportedReference(schemaBinding, composeCall.arguments[0]) &&
         onlyImportedReference(hashBinding, finderCall.arguments[0])
+      const composedBase =
+        composeCall &&
+        ts.isIdentifier(composeCall.expression) &&
+        composeCall.expression.text === composeBinding &&
+        composeCall.arguments.length === 2 &&
+        ts.isIdentifier(composeCall.arguments[0]) &&
+        composeCall.arguments[0].text === baseModelBinding &&
+        finderCall &&
+        ts.isIdentifier(finderCall.expression) &&
+        finderCall.expression.text === authFinderBinding &&
+        finderCall.arguments.length === 1 &&
+        ts.isIdentifier(finderCall.arguments[0]) &&
+        finderCall.arguments[0].text === hashBinding
+      const safeBaseComposition =
+        composedBase &&
+        !hasUnsafeBindingReferences(model, composeBinding!, (call) => call === composeCall) &&
+        !hasUnsafeBindingReferences(model, authFinderBinding!, (call) => call === finderCall) &&
+        onlyImportedReference(hashBinding, finderCall.arguments[0])
+      if (
+        baseModelBinding &&
+        hasUnsafeBindingReferences(
+          model,
+          baseModelBinding,
+          () => false,
+          (reference) =>
+            (directClassBaseHeritage(model, reference) &&
+              reference.parent.parent.parent === selectedClass) ||
+            Boolean(safeBaseComposition && reference === composeCall?.arguments[0])
+        )
+      )
+        diagnostic(
+          diagnostics,
+          'user.connection',
+          'Resolve imported BaseModel provenance before generated migrations'
+        )
       if (safeComposition && schemaBinding) {
         const schemaPath = 'database/schema.ts'
         try {
@@ -2364,31 +2498,15 @@ export async function planSetup(
               parsed.ts.isIdentifier(clause.types[0].expression) &&
               clause.types[0].expression.text === base
           )
-          let unsafeBase = false
-          if (base)
-            walk(parsed, (node) => {
-              if (
-                !parsed.ts.isIdentifier(node) ||
-                node.text !== base ||
-                isTypeOnlyReference(parsed, node)
-              )
-                return
-              if (
-                parsed.ts.isImportSpecifier(node.parent) &&
-                (node.parent.name === node || node.parent.propertyName === node)
-              )
-                return
-              if (
-                parsed.ts.isExpressionWithTypeArguments(node.parent) &&
-                node.parent.expression === node &&
-                parsed.ts.isHeritageClause(node.parent.parent) &&
-                node.parent.parent.token === parsed.ts.SyntaxKind.ExtendsKeyword
-              )
-                return
-              if (parsed.ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
-                return
-              unsafeBase = true
-            })
+          const unsafeBase = Boolean(
+            base &&
+            hasUnsafeBindingReferences(
+              parsed,
+              base,
+              () => false,
+              (reference) => directClassBaseHeritage(parsed, reference)
+            )
+          )
           const unsafeColumn =
             !column ||
             hasUnsafeBindingReferences(
@@ -2607,12 +2725,7 @@ export async function planSetup(
             (item) =>
               (ts.isIdentifier(item.expression) && item.expression.text === baseModelBinding) ||
               (composed && schemaClass !== null) ||
-              (ts.isCallExpression(item.expression) &&
-                ts.isIdentifier(item.expression.expression) &&
-                item.expression.expression.text ===
-                  importedName(model, '@adonisjs/core/helpers', 'compose') &&
-                ts.isIdentifier(item.expression.arguments[0]) &&
-                item.expression.arguments[0].text === baseModelBinding)
+              (safeBaseComposition && item.expression === composeCall)
           )
       )
       if (!extendsBase)
@@ -2776,7 +2889,7 @@ export async function planSetup(
         } catch {
           // The integration diagnostic above already blocks an uninspectable selection.
         }
-        if (diagnosticSelection?.kind === 'cookie' || diagnosticSelection?.name === 'cookie')
+        if (diagnosticSelection?.kind === 'cookie')
           diagnostic(
             diagnostics,
             'config/session.ts',

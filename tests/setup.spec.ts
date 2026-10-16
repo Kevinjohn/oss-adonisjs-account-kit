@@ -969,6 +969,164 @@ test.group('onboarding plan and apply', (group) => {
     }
   })
 
+  test('model inheritance rejects unproved mixins and imported BaseModel mutations', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const modelPath = join(root, 'app/models/user.ts')
+    await writeFile(
+      modelPath,
+      "import { BaseModel, column } from '@adonisjs/lucid/orm'\nimport { compose } from '@adonisjs/core/helpers'\nimport { withAuthFinder } from '@adonisjs/auth/mixins/lucid'\nimport hash from '@adonisjs/core/services/hash'\nexport default class User extends compose(BaseModel, withAuthFinder(hash)) { @column({ isPrimary: true }) declare id: number }\n"
+    )
+    const native = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      native.diagnostics.some(
+        ({ severity, field }) =>
+          severity === 'error' && ['user.model', 'user.connection', 'user.idType'].includes(field)
+      ),
+      JSON.stringify(native.diagnostics)
+    )
+    for (const source of [
+      "import { BaseModel, column } from '@adonisjs/lucid/orm'\nimport { compose } from '@adonisjs/core/helpers'\nconst arbitraryMixin = (superclass: typeof BaseModel) => class extends superclass { static boot() { super.boot(); this.table = 'members' } }\nexport default class User extends compose(BaseModel, arbitraryMixin) { @column({ isPrimary: true }) declare id: number }\n",
+      "import { BaseModel, column } from '@adonisjs/lucid/orm'\nBaseModel.connection = 'archive'\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: number }\n",
+      "import { BaseModel, column } from '@adonisjs/lucid/orm'\nconst alias = BaseModel\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: number }\n",
+    ]) {
+      await writeFile(modelPath, source)
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ severity, field }) =>
+            severity === 'error' && ['user.model', 'user.connection'].includes(field)
+        ),
+        JSON.stringify(plan.diagnostics)
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      const files = await readdir(join(root, 'config'))
+      assert.notInclude(files, 'account_kit_setup.json')
+    }
+  })
+
+  test('kernel and route service mutations block before generated middleware is written', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const kernel = await readFile(join(root, 'start/kernel.ts'), 'utf8')
+    await writeFile(
+      join(root, 'start/kernel.ts'),
+      `${kernel}\nserver.errorHandler(() => import('#exceptions/handler'))\nexport const middleware = router.named({ auth: () => import('#middleware/auth_middleware') })\ndeclare module 'app/kernel' { type RouterService = typeof router; type ServerService = typeof server }\n`
+    )
+    const typedKernel = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      typedKernel.diagnostics.some(
+        ({ field, severity }) => field === 'start/kernel.ts' && severity === 'error'
+      ),
+      JSON.stringify(typedKernel.diagnostics)
+    )
+    for (const mutation of [
+      'router.use = () => router',
+      'server.use = () => server',
+      'const alias = router',
+      'const { use } = server',
+      "const otherRouter = await import('@adonisjs/core/services/router')",
+      "const otherServer = require('@adonisjs/core/services/server')",
+    ]) {
+      await writeFile(join(root, 'start/kernel.ts'), `${kernel}\n${mutation}\n`)
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'start/kernel.ts' && severity === 'error'
+        ),
+        `${mutation}: ${JSON.stringify(plan.diagnostics)}`
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      const files = await readdir(join(root, 'config'))
+      assert.notInclude(files, 'account_kit_setup.json')
+    }
+    await writeFile(join(root, 'start/kernel.ts'), kernel)
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      "import router from '@adonisjs/core/services/router'\nrouter.get('/health', () => 'ok')\n"
+    )
+    const conventionalRoute = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      conventionalRoute.diagnostics.some(
+        ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+      ),
+      JSON.stringify(conventionalRoute.diagnostics)
+    )
+    for (const mutation of [
+      'router.get = () => router',
+      'const alias = router',
+      "const otherRouter = await import('@adonisjs/core/services/router')",
+    ]) {
+      await writeFile(
+        join(root, 'start/routes.ts'),
+        `import router from '@adonisjs/core/services/router'\n${mutation}\n`
+      )
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        ),
+        `${mutation}: ${JSON.stringify(plan.diagnostics)}`
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      const files = await readdir(join(root, 'config'))
+      assert.notInclude(files, 'account_kit_setup.json')
+    }
+  })
+
+  test('session backend follows its proven factory instead of its selected alias', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    for (const [name, factory, blocked] of [
+      ['cookie', 'database', false],
+      ['database', 'cookie', true],
+    ] as const) {
+      await writeFile(
+        join(root, 'config/session.ts'),
+        `import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: '${name}', stores: { ${name}: stores.${factory}() } })\nexport default sessionConfig\n`
+      )
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      const sessionErrors = plan.diagnostics.filter(
+        ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+      )
+      assert.equal(sessionErrors.length > 0, blocked, JSON.stringify(plan.diagnostics))
+      if (blocked) {
+        await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+        const files = await readdir(join(root, 'config'))
+        assert.notInclude(files, 'account_kit_setup.json')
+      } else {
+        assert.include(
+          plan.changes.find(({ path }) => path === 'config/session.ts')!.content,
+          'protectManagedSessionConfig'
+        )
+      }
+    }
+  })
+
   test('retirement uses a DB-derived count and a declared maintenance window', async ({
     assert,
   }) => {

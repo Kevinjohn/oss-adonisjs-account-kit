@@ -1101,7 +1101,7 @@ export default class User extends BaseModel { static table = 'users'; static '\u
         "import { BaseModel } from '@adonisjs/lucid/orm'\nimport { compose } from '@adonisjs/core/helpers'\nexport default class User extends compose(BaseModel, withTokens) { static table = 'users' }"
       )
       const composed = await planSetup(choices, state)
-      assert.isFalse(
+      assert.isTrue(
         composed.diagnostics.some(
           ({ field, severity }) => field === 'user.connection' && severity === 'error'
         )

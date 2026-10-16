@@ -168,7 +168,8 @@ export function exactCall(
 export function hasUnsafeBindingReferences(
   source: SetupSource,
   binding: string,
-  allowedCall: (call: TypeScript.CallExpression) => boolean
+  allowedCall: (call: TypeScript.CallExpression) => boolean,
+  allowedReference: (reference: TypeScript.Identifier) => boolean = () => false
 ): boolean {
   const { ts } = source
   let unsafe = false
@@ -184,6 +185,7 @@ export function hasUnsafeBindingReferences(
       (ts.isPropertyAccessExpression(parent) && parent.name === node)
     )
       return
+    if (allowedReference(node)) return
     const member =
       ts.isPropertyAccessExpression(parent) && parent.expression === node ? parent : null
     const call =
