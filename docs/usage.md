@@ -53,6 +53,7 @@ const valid = await kit.passwordReset.inspect({ token })
 const user = await kit.passwordReset.reset({ token, password })
 
 await kit.emailVerification.send({ userId })
+const activationValid = await kit.emailVerification.inspect({ token })
 await kit.emailVerification.complete({ token, password: freshPassword })
 
 const invitation = await kit.invitations.send({ actorId, email, role })
@@ -63,7 +64,14 @@ await kit.invitations.resend({ actorId, invitationId: invitation.id })
 await kit.invitations.revoke({ actorId, invitationId: invitation.id })
 
 await kit.emailPasswordManagement.changePassword({ actorId, currentPassword, newPassword })
+const profile = await kit.emailPasswordManagement.updateProfile({
+  actorId,
+  currentPassword,
+  email,
+  registrationData,
+})
 await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail })
+const emailChangeValid = await kit.emailPasswordManagement.inspectEmailChange({ token })
 await kit.emailPasswordManagement.completeEmailChange({ token })
 ```
 
@@ -80,6 +88,32 @@ Password reset requests consume both a client-key budget and a normalized-email 
 request does not replace the currently stored password reset token, so an already-issued unexpired link
 remains redeemable. A later successful issuance rotates the user's token and invalidates its
 predecessor.
+
+Inspection checks that the proof still belongs to the account's current address without consuming
+it. Reset and activation completion each consume their proof under the account lock. An activation
+link also requires a new password, so claiming an inactive account replaces the earlier password
+and invokes the configured credential revocation hook.
+
+### A resend within one minute keeps the same acknowledgement
+
+Repeated activation requests or requests for the same pending email issue one message while
+the matching proof remains live within a minute. They return the same success result without
+replacing the link; the request throttle still counts each call. A later resend, a changed
+pending address, or one after proof expiry rotates the
+single-use proof. Requesting the
+confirmed address cancels a distinct pending change and deletes its proof; a new pending address
+supersedes the previous one. An inactive account changing its address updates both email columns,
+sends an activation link, and stays inactive until that link is submitted with a new password.
+`inspect` and `inspectEmailChange` are read-only checks for browser navigation; submit the link
+through the corresponding completion method after an explicit user action.
+
+`updateProfile` is the profile write surface. It accepts an optional `email` and optional
+`registrationData` under current-password proof. The email follows the same pending-address
+rules as `requestEmailChange`; only fields returned by `registration.mapFields` may reach the
+adapter. Supplying registration data requires `UsersAdapter.updateRegistrationData`, which the
+maintained Lucid adapter implements through `mapRegistrationData`. The field write and any
+pending-address change share one transaction. Return values are reloaded account records;
+application HTTP responses should use an explicit account transformer.
 
 Build the password reset `clientKey` from `request.ip()` only after configuring Adonis trusted proxies
 for the known proxy addresses and forwarded-header policy. Do not accept a client-provided key or
@@ -135,8 +169,9 @@ notification and bearer capture run only after a verified commit.
 for all application writes, such as role assignment. Throwing rolls back both the account and
 application writes.
 
-The package admits passwords of 8–256 UTF-16 units without changing their bytes. Applications
-may enforce their own narrower policy before calling it.
+The shared new-password policy applies to registration, reset, invitation acceptance, activation,
+and password change. The service ceiling is 256 UTF-16 units. Login still checks an existing
+password even when the new-password policy would reject it.
 
 Use `onCredentialsChangedTransaction(user, context, trx)` for token/session revocation that must
 commit atomically with a password or email change. The context contains `operation`,

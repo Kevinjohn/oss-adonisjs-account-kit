@@ -1,4 +1,5 @@
 import { test, timeTravel } from '@japa/runner'
+import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import { defineConfig } from '../src/account_kit.js'
 import {
@@ -9,7 +10,7 @@ import {
   ThrottledError,
 } from '../src/errors.js'
 import { lockRow, transaction } from '../src/db.js'
-import { generateToken } from '../src/tokens.js'
+import { generateToken, hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import {
@@ -115,21 +116,82 @@ test.group('emailVerification.send', (group) => {
     )
   })
 
-  test('resend invalidates the prior proof and accepts the latest', async ({ assert }) => {
+  test('resend within one minute preserves the proof and acknowledgement', async ({ assert }) => {
+    const id = await createUser()
+    const { account, recorder } = service()
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    const oldToken = tokenFrom(recorder.calls[0].args[1])
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    assert.lengthOf(recorder.calls, 1)
+    const proof = await kit.db.from('email_verification_tokens').first()
+    assert.equal(proof.hash, hashToken(oldToken))
+    assert.equal(
+      await account.emailVerification.complete({ token: oldToken, password: 'NewPassword123' }),
+      'verified'
+    )
+  })
+
+  test('suppressed resends still consume the request throttle', async ({ assert }) => {
+    const id = await createUser()
+    const { account, recorder } = service({ throttle: { requests: 2, duration: '15m' } })
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    const token = tokenFrom(recorder.calls[0].args[1])
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    await assert.rejects(() => account.emailVerification.send({ userId: id }), ThrottledError)
+    assert.lengthOf(recorder.calls, 1)
+    assert.isTrue(await account.emailVerification.inspect({ token }))
+  })
+
+  test('resend after one minute rotates the single-use proof', async ({ assert }) => {
     const id = await createUser()
     const { account, recorder } = service()
     await account.emailVerification.send({ userId: id })
     const oldToken = tokenFrom(recorder.calls[0].args[1])
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', id)
+      .update({
+        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+      })
     await account.emailVerification.send({ userId: id })
-    const latestToken = tokenFrom(recorder.calls[1].args[1])
-    await assert.rejects(
-      () => account.emailVerification.complete({ token: oldToken, password: 'NewPassword123' }),
-      InvalidTokenError
+    assert.lengthOf(recorder.calls, 2)
+    assert.isFalse(await account.emailVerification.inspect({ token: oldToken }))
+    assert.isTrue(
+      await account.emailVerification.inspect({ token: tokenFrom(recorder.calls[1].args[1]) })
     )
-    assert.equal(
-      await account.emailVerification.complete({ token: latestToken, password: 'NewPassword123' }),
-      'verified'
+  })
+
+  test('an expired activation proof can be reissued inside the suppression window', async ({
+    assert,
+  }) => {
+    const id = await createUser()
+    const { account, recorder } = service({ expiresIn: { emailVerification: 1 } })
+    await account.emailVerification.send({ userId: id })
+    const oldToken = tokenFrom(recorder.calls[0].args[1])
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', id)
+      .update({
+        expires_at: DateTime.utc().minus({ seconds: 1 }).toISO(),
+      })
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    assert.lengthOf(recorder.calls, 2)
+    assert.isFalse(await account.emailVerification.inspect({ token: oldToken }))
+    assert.isTrue(
+      await account.emailVerification.inspect({ token: tokenFrom(recorder.calls[1].args[1]) })
     )
+  })
+
+  test('inspection checks current address and leaves live proof untouched', async ({ assert }) => {
+    const id = await createUser()
+    const { account, recorder } = service()
+    await account.emailVerification.send({ userId: id })
+    const token = tokenFrom(recorder.calls[0].args[1])
+    assert.isTrue(await account.emailVerification.inspect({ token }))
+    assert.isTrue(await account.emailVerification.inspect({ token }))
+    await kit.db.from('users').where('id', id).update({ email: 'changed@example.test' })
+    assert.isFalse(await account.emailVerification.inspect({ token }))
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 
   test('delivers activation after a committed cleanup fault', async ({ assert }) => {
@@ -162,8 +224,15 @@ test.group('emailVerification.send', (group) => {
   test('sixth unverified send is throttled', async ({ assert }) => {
     const id = await createUser()
     const { account, recorder } = service()
-    for (let index = 0; index < 5; index++)
+    for (let index = 0; index < 5; index++) {
       assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+      await kit.db
+        .from('email_verification_tokens')
+        .where('tokenable_id', id)
+        .update({
+          created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+        })
+    }
     try {
       await account.emailVerification.send({ userId: id })
       assert.fail('expected throttle')
@@ -186,6 +255,12 @@ test.group('emailVerification.send', (group) => {
       assert.instanceOf(error, DeliveryError)
       assert.equal((error as DeliveryError).cause instanceof Error, true)
     }
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', id)
+      .update({
+        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+      })
     const failure = new Error('URL failed')
     const defaults = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     const { account: brokenUrl } = service({

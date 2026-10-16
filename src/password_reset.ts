@@ -23,17 +23,19 @@ import type {
 } from './types.js'
 
 export async function inspectPasswordReset(
-  db: Database,
+  deps: { config: ResolvedConfig; db: Database },
   input: PasswordResetInspectInput
 ): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
-  const row = await db
+  const row = await deps.db
     .from('password_reset_tokens')
-    .select(db.raw('1'))
+    .select('tokenable_id', 'email')
     .where('hash', hashToken(input.token))
     .where('expires_at', '>', DateTime.utc().toISO())
     .first()
-  return row !== null
+  if (!row) return false
+  const user = await deps.config.users.findById(row.tokenable_id)
+  return user !== null && user.email === row.email
 }
 
 export async function completePasswordReset(

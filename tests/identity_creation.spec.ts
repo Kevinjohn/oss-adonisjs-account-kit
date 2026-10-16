@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { consumeUserToken, transaction } from '../src/db.js'
 import LucidUser from './fixtures/lucid_user.js'
@@ -124,14 +125,18 @@ test.group('identity creation contract', (group) => {
       () => account.emailVerification.complete({ token: oldProof, password: 'NewPassword123' }),
       InvalidTokenError
     )
-    const newProof = tokenFrom(recorder.calls.at(-1)!.args[2])
+    const newProof = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
-      () => account.emailVerification.complete({ token: newProof, password: 'NewPassword123' }),
+      () => account.emailPasswordManagement.completeEmailChange({ token: newProof }),
       InvalidTokenError
     )
-    const changed = await account.emailPasswordManagement.completeEmailChange({ token: newProof })
+    assert.equal(
+      await account.emailVerification.complete({ token: newProof, password: 'NewPassword123' }),
+      'verified'
+    )
+    const changed = await kit.db.from('users').where('id', user.id).first()
     assert.equal(changed.email, 'next@example.test')
-    assert.isNull(changed.unverifiedEmail)
+    assert.isNull(changed.unverified_email)
   })
 
   test('inactive email write revokes credentials transactionally and rolls back on callback failure', async ({
@@ -185,7 +190,7 @@ test.group('identity creation contract', (group) => {
     })
     assert.equal(callbackUser?.email, 'next@example.test')
     assert.equal(callbackUser?.unverifiedEmail, 'next@example.test')
-    const noticeUser = recorder.calls.find((call) => call.method === 'emailChangeProvision')
+    const noticeUser = recorder.calls.find((call) => call.method === 'accountActivationProvision')
       ?.args[0] as { email: string; unverifiedEmail: string | null }
     assert.equal(noticeUser.email, 'next@example.test')
     assert.equal(noticeUser.unverifiedEmail, 'next@example.test')
@@ -213,7 +218,7 @@ test.group('identity creation contract', (group) => {
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['emailChangeProvision']
+      ['accountActivationProvision']
     )
     const changed = await kit.db.from('users').where('id', user.id).first()
     assert.equal(changed.email, 'next@example.test')
@@ -286,7 +291,9 @@ test.group('identity creation contract', (group) => {
     assert.equal(changed.email, 'next@example.test')
   })
 
-  test('inactive activation resend replaces its pending email-change proof', async ({ assert }) => {
+  test('inactive activation resend suppresses then replaces its pending activation proof', async ({
+    assert,
+  }) => {
     const user = await insertUser(kit, { verified: false })
     const { account, recorder } = makeService(kit)
     await account.emailPasswordManagement.requestEmailChange({
@@ -294,11 +301,19 @@ test.group('identity creation contract', (group) => {
       currentPassword: 'password123',
       newEmail: 'next@example.test',
     })
-    const oldProof = tokenFrom(recorder.calls[0].args[2])
+    const oldProof = tokenFrom(recorder.calls[0].args[1])
+    assert.equal(await account.emailVerification.send({ userId: user.id }), 'sent')
+    assert.lengthOf(recorder.calls, 1)
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .update({
+        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+      })
     assert.equal(await account.emailVerification.send({ userId: user.id }), 'sent')
     const activationProof = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
-      () => account.emailPasswordManagement.completeEmailChange({ token: oldProof }),
+      () => account.emailVerification.complete({ token: oldProof, password: 'NewPassword123' }),
       InvalidTokenError
     )
     assert.equal(

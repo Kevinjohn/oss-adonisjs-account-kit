@@ -15,6 +15,7 @@ import {
   type PostCommitError,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
+import { mapRegistrationFields } from './registration_fields.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -22,11 +23,29 @@ import type {
   AccountUser,
   ChangePasswordInput,
   CompleteEmailChangeInput,
+  InspectEmailChangeInput,
   RequestEmailChangeInput,
   ResolvedConfig,
   Trx,
+  UpdateProfileInput,
   UserId,
 } from './types.js'
+
+export async function inspectEmailChange(
+  deps: { config: ResolvedConfig; db: Database },
+  input: InspectEmailChangeInput
+): Promise<boolean> {
+  if (!isTokenShaped(input.token)) return false
+  const proof = await deps.db
+    .from('email_verification_tokens')
+    .select('tokenable_id', 'email', 'current_email', 'purpose')
+    .where('hash', hashToken(input.token))
+    .where('expires_at', '>', DateTime.utc().toISO())
+    .first()
+  if (!proof || proof.purpose !== 'email_change') return false
+  const user = await deps.config.users.findById(proof.tokenable_id)
+  return user !== null && user.email === proof.current_email && user.unverifiedEmail === proof.email
+}
 
 /** Lock the actor and prove the current password before any credential write. */
 async function confirmActor(
@@ -99,8 +118,26 @@ export async function requestEmailChange(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
   input: RequestEmailChangeInput
 ): Promise<void> {
-  if (!isEmailShaped(input.newEmail)) throw new InvalidInputError('Invalid email')
-  const newEmail = normaliseEmail(input.newEmail)
+  await updateProfile(deps, {
+    actorId: input.actorId,
+    currentPassword: input.currentPassword,
+    email: input.newEmail,
+  })
+}
+
+export async function updateProfile(
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  input: UpdateProfileInput
+): Promise<AccountUser> {
+  const hasRegistrationData = Object.hasOwn(input, 'registrationData')
+  if (input.email === undefined && !hasRegistrationData)
+    throw new InvalidInputError('Profile update is empty')
+  if (input.email !== undefined && !isEmailShaped(input.email))
+    throw new InvalidInputError('Invalid email')
+  const newEmail = input.email === undefined ? undefined : normaliseEmail(input.email)
+  const registrationData = hasRegistrationData
+    ? await mapRegistrationFields(deps.config, input.registrationData)
+    : undefined
   await consume(
     deps.limiter,
     'identity:user',
@@ -112,24 +149,54 @@ export async function requestEmailChange(
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
-  let issued: { user: AccountUser; changedConfirmedEmail: boolean } | null
+  let issued: { user: AccountUser; changedConfirmedEmail: boolean; send: boolean }
   let fault: PostCommitError | undefined
   try {
     ;({ value: issued, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
         const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
-        if (newEmail === current.email) {
-          if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email) {
+        if (registrationData !== undefined) {
+          if (!deps.config.users.updateRegistrationData)
+            throw new InvalidInputError('Profile fields are not supported by the user adapter')
+          await deps.config.users.updateRegistrationData(current.id, registrationData, trx)
+        }
+        if (newEmail === undefined || newEmail === current.email) {
+          if (
+            newEmail !== undefined &&
+            current.unverifiedEmail !== null &&
+            current.unverifiedEmail !== current.email
+          ) {
             await deps.config.users.setUnverifiedEmail(current.id, null, trx)
             await trx.from('email_verification_tokens').where('tokenable_id', current.id).delete()
           }
-          return null
+          const reloaded = await deps.config.users.findById(current.id, trx)
+          if (!reloaded) throw new InvalidInputError('Unknown actor')
+          return { user: reloaded, changedConfirmedEmail: false, send: false }
         }
         if (await deps.config.users.findByEmail(newEmail, trx))
           throw new EmailAlreadyRegisteredError()
 
         const now = DateTime.utc()
         const inactive = current.unverifiedEmail === current.email
+        if (current.unverifiedEmail === newEmail) {
+          const previous = await trx
+            .from('email_verification_tokens')
+            .select('created_at', 'expires_at', 'email', 'current_email', 'purpose')
+            .where('tokenable_id', current.id)
+            .first()
+          if (
+            previous?.purpose === 'email_change' &&
+            previous.email === newEmail &&
+            previous.current_email === current.email &&
+            DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
+            DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
+              now.minus({ minutes: 1 }).toMillis()
+          ) {
+            const reloaded = await deps.config.users.findById(current.id, trx)
+            if (!reloaded) throw new InvalidInputError('Unknown actor')
+            return { user: reloaded, changedConfirmedEmail: false, send: false }
+          }
+        }
         if (inactive) {
           await deps.config.users.setEmail(current.id, newEmail, trx)
           await trx.from('password_reset_tokens').where('tokenable_id', current.id).delete()
@@ -141,7 +208,7 @@ export async function requestEmailChange(
             tokenable_id: current.id,
             email: newEmail,
             current_email: inactive ? newEmail : current.email,
-            purpose: 'email_change',
+            purpose: inactive ? 'activation' : 'email_change',
             hash: hashToken(token),
             expires_at: expiresAt(now, deps.config.expiresIn.emailChange).toISO(),
             created_at: now.toISO(),
@@ -159,7 +226,7 @@ export async function requestEmailChange(
         }
         const issuedUser = await deps.config.users.findById(current.id, trx)
         if (!issuedUser) throw new InvalidInputError('Unknown actor')
-        return { user: issuedUser, changedConfirmedEmail: inactive }
+        return { user: issuedUser, changedConfirmedEmail: inactive, send: true }
       })
     ))
   } catch (error) {
@@ -167,12 +234,13 @@ export async function requestEmailChange(
       throw new EmailAlreadyRegisteredError()
     throw error
   }
-  if (!issued) {
+  if (!issued.send) {
     if (fault) throw fault
-    return
+    return issued.user
   }
 
   const { user: actor, changedConfirmedEmail } = issued
+  if (newEmail === undefined) throw new Error('Missing email for issued profile proof')
   const context = { operation: 'email_change' as const, operationId, userId: actor.id }
   await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
     postCommit('Email change follow-up failed', [
@@ -184,11 +252,16 @@ export async function requestEmailChange(
       {
         kind: 'delivery',
         run: () =>
-          deps.config.notify.emailChangeProvision(
-            actor,
-            newEmail,
-            deps.config.urls.emailChange(token)
-          ),
+          changedConfirmedEmail
+            ? deps.config.notify.accountActivationProvision(
+                actor,
+                deps.config.urls.emailVerification(token)
+              )
+            : deps.config.notify.emailChangeProvision(
+                actor,
+                newEmail,
+                deps.config.urls.emailChange(token)
+              ),
       },
       {
         kind: 'observer',
@@ -201,6 +274,7 @@ export async function requestEmailChange(
       },
     ])
   )
+  return actor
 }
 
 interface EmailChangeRow {

@@ -49,6 +49,7 @@ export interface UsersAdapter {
   setPassword(id: UserId, password: string, trx: Trx): Promise<void>
   setEmail(id: UserId, email: string, trx: Trx): Promise<void>
   setUnverifiedEmail(id: UserId, email: string | null, trx: Trx): Promise<void>
+  updateRegistrationData?(id: UserId, data: Record<string, unknown>, trx: Trx): Promise<void>
   markEmailVerified(id: UserId, at: DateTime, trx: Trx): Promise<void>
   verifyPassword(id: UserId, password: string, trx: Trx): Promise<boolean>
 }
@@ -302,6 +303,9 @@ export interface PasswordResetCompleteInput {
 export interface VerificationSendInput {
   userId: UserId
 }
+export interface VerificationInspectInput {
+  token: string
+}
 export interface VerificationCompleteInput {
   token: string
   password: string
@@ -342,6 +346,15 @@ export interface RequestEmailChangeInput {
   currentPassword: string
   newEmail: string
 }
+export interface UpdateProfileInput {
+  actorId: UserId
+  currentPassword: string
+  email?: string
+  registrationData?: unknown
+}
 export interface CompleteEmailChangeInput {
+  token: string
+}
+export interface InspectEmailChangeInput {
   token: string
 }

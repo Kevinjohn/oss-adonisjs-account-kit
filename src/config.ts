@@ -59,7 +59,9 @@ const requiredHooks: Record<Capability, string[]> = {
   ],
   emailPasswordManagement: [
     'urls.emailChange',
+    'urls.emailVerification',
     'notify.emailChangeProvision',
+    'notify.accountActivationProvision',
     'notify.emailChanged',
     'notify.passwordChanged',
   ],
@@ -106,6 +108,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     enabled.some((name) => !capabilities.includes(name))
   )
     throw new Error('account_kit: enabled must contain unique supported capability names')
+  if (enabled.includes('emailPasswordManagement') && !enabled.includes('emailVerification'))
+    throw new Error('account_kit: emailPasswordManagement requires emailVerification')
   for (const name of ['authorize', 'urls', 'notify', 'expiresIn', 'invitationThrottle'] as const) {
     const value = config[name]
     if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value)))

@@ -14,8 +14,30 @@ import type {
   ResolvedConfig,
   UserId,
   VerificationCompleteInput,
+  VerificationInspectInput,
   VerificationSendInput,
 } from './types.js'
+
+export async function inspectVerification(
+  deps: { config: ResolvedConfig; db: Database },
+  input: VerificationInspectInput
+): Promise<boolean> {
+  if (!isTokenShaped(input.token)) return false
+  const proof = await deps.db
+    .from('email_verification_tokens')
+    .select('tokenable_id', 'email', 'current_email', 'purpose')
+    .where('hash', hashToken(input.token))
+    .where('expires_at', '>', DateTime.utc().toISO())
+    .first()
+  if (!proof || proof.purpose !== 'activation') return false
+  const user = await deps.config.users.findById(proof.tokenable_id)
+  return (
+    user !== null &&
+    user.email === proof.current_email &&
+    user.unverifiedEmail === user.email &&
+    user.unverifiedEmail === proof.email
+  )
+}
 
 export async function sendVerification(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
@@ -32,6 +54,20 @@ export async function sendVerification(
     deps.config.limiterSecret,
     deps.config.limiterNamespace
   )
+  const recent = await deps.db
+    .from('email_verification_tokens')
+    .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
+    .where('tokenable_id', user.id)
+    .first()
+  if (
+    recent?.purpose === 'activation' &&
+    recent.email === user.email &&
+    recent.current_email === user.email &&
+    DateTime.fromJSDate(new Date(recent.expires_at)).toMillis() > DateTime.utc().toMillis() &&
+    DateTime.fromJSDate(new Date(recent.created_at)).toMillis() >
+      DateTime.utc().minus({ minutes: 1 }).toMillis()
+  )
+    return 'sent'
   const token = generateToken(deps.config.tokenSecretLength)
   const { value: issuedUser, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
@@ -39,6 +75,20 @@ export async function sendVerification(
       const current = await deps.config.users.findById(user.id, trx)
       if (!current || current.unverifiedEmail !== current.email) return null
       const now = DateTime.utc()
+      const previous = await trx
+        .from('email_verification_tokens')
+        .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
+        .where('tokenable_id', current.id)
+        .first()
+      if (
+        previous?.purpose === 'activation' &&
+        previous.email === current.email &&
+        previous.current_email === current.email &&
+        DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
+        DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
+          now.minus({ minutes: 1 }).toMillis()
+      )
+        return false
       await trx
         .table('email_verification_tokens')
         .insert({
@@ -55,6 +105,10 @@ export async function sendVerification(
       return current
     })
   )
+  if (issuedUser === false) {
+    if (fault) throw fault
+    return 'sent'
+  }
   if (!issuedUser) {
     if (fault) throw fault
     return 'already_verified'

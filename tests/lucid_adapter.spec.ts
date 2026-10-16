@@ -246,6 +246,46 @@ test.group('maintained Lucid adapter', (group) => {
     assert.isNull(await adapter.findByEmail('role-mapper@example.test'))
   })
 
+  test('profile mapping persists configured fields and rejects protected writes', async ({
+    assert,
+  }) => {
+    const adapter = createLucidAdapter(async () => LucidUser, {
+      mapRegistrationData(data, user) {
+        user.fullName = (data as { fullName: string }).fullName
+      },
+    })
+    const user = await transaction(kit.db, (trx) =>
+      adapter.create(
+        {
+          email: 'profile@example.test',
+          password: 'password123',
+          unverifiedEmail: null,
+          registrationData: { fullName: 'First Name' },
+        },
+        trx
+      )
+    )
+    await transaction(kit.db, (trx) =>
+      adapter.updateRegistrationData!(user.id, { fullName: 'New Name' }, trx)
+    )
+    let row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.full_name, 'New Name')
+    assert.equal(row.email, user.email)
+
+    const unsafe = createLucidAdapter(async () => LucidUser, {
+      mapRegistrationData(_data, model) {
+        model.role = 'admin'
+      },
+    })
+    await assert.rejects(
+      () => transaction(kit.db, (trx) => unsafe.updateRegistrationData!(user.id, {}, trx)),
+      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role/
+    )
+    row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.full_name, 'New Name')
+    assert.isNull(row.role)
+  })
+
   test('rejects named connections and physical primary keys other than id', async ({ assert }) => {
     class NamedConnectionUser extends LucidUser {
       static connection = 'tenant'
