@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto'
+import { performance } from 'node:perf_hooks'
+import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import { errors } from '@adonisjs/limiter'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction, userMetadata } from './db.js'
+import { normaliseEmail } from './email.js'
 import { limiterKey } from './throttle.js'
 import {
   CapabilityDisabledError,
@@ -144,7 +147,7 @@ export function authenticationService(deps: Dependencies) {
       )
         throw new InvalidCredentialsError()
 
-      const email = input.email.trim().toLowerCase()
+      const email = normaliseEmail(input.email)
       const key = (operation: string, value: string) =>
         limiterKey(operation, value, deps.config.limiterSecret, deps.config.limiterNamespace)
       const clientKey = key('login:client', input.clientKey)
@@ -155,6 +158,7 @@ export function authenticationService(deps: Dependencies) {
       if (clientState && clientState.remaining <= 0)
         throw new ThrottledError(clientState.availableIn)
       let verified: { account: CurrentAccount; revision: string | null }
+      const started = performance.now()
       try {
         const [limitError, result] = await identityLimiter.penalize(identityKey, () =>
           transaction(deps.db, async (trx) => {
@@ -179,7 +183,16 @@ export function authenticationService(deps: Dependencies) {
         if (limitError) throw limitError
         verified = result!
       } catch (error) {
-        if (error instanceof InvalidCredentialsError) await clientLimiter.increment(clientKey)
+        if (error instanceof InvalidCredentialsError) {
+          await clientLimiter.increment(clientKey)
+          // Unknown and passwordless emails skip password hashing. Wait out the configured floor
+          // so failure timing does not reveal which addresses have usable accounts.
+          let remaining = deps.config.minRequestMs - (performance.now() - started)
+          while (remaining > 0) {
+            await delay(Math.ceil(remaining))
+            remaining = deps.config.minRequestMs - (performance.now() - started)
+          }
+        }
         if (error instanceof errors.E_TOO_MANY_REQUESTS)
           throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
         throw error

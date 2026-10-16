@@ -13,6 +13,7 @@ import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
+import type { PostCommitError } from './errors.js'
 import type { AccountUser, RegistrationInput, ResolvedConfig } from './types.js'
 
 /** Create an inactive account and its activation proof in one transaction. */
@@ -32,7 +33,7 @@ export async function register(
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
   let created: AccountUser
-  let fault: Awaited<ReturnType<typeof settleCommitted<AccountUser>>>['fault']
+  let fault: PostCommitError | undefined
   try {
     ;({ value: created, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
