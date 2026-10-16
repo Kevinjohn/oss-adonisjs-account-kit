@@ -140,6 +140,8 @@ export interface AccountKitConfig {
   authorize?: Partial<AuthorizationCallbacks>
   urls: Partial<UrlCallbacks>
   notify: Partial<NotificationCallbacks>
+  /** Application-owned delivery guarantee; durable requires an application queue or outbox. */
+  delivery?: 'best-effort' | 'durable' | 'capture'
   onInvitationAccepted?: (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
   onCredentialsChanged?: (user: AccountUser, context: CredentialChangeContext) => Promise<void>
   onPasswordResetIssuedTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
@@ -252,6 +254,7 @@ export interface ResolvedConfig extends Omit<
   | 'authorize'
   | 'urls'
   | 'notify'
+  | 'delivery'
   | 'onInvitationAccepted'
   | 'usersTable'
   | 'limiterNamespace'
@@ -266,6 +269,7 @@ export interface ResolvedConfig extends Omit<
   authorize: AuthorizationCallbacks
   urls: UrlCallbacks
   notify: NotificationCallbacks
+  delivery: 'best-effort' | 'durable' | 'capture'
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   usersTable: string
   limiterNamespace: string
