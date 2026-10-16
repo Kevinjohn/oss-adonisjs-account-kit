@@ -1,0 +1,31 @@
+# Session reference integration
+
+## Configuration
+
+Set `ACCOUNT_KIT_AUTH_STRATEGY=session` to select the existing `web` guard. Configure a shared server-side `SESSION_DRIVER` for a multi-instance deployment; the fixture uses `memory` only in single-process tests and rejects `cookie` because logout could not invalidate a replayed self-contained cookie. The example disables remember-me tokens and sets its session cookie to `httpOnly`, `sameSite: 'lax'`, and `secure` in production. Use HTTPS for `APP_URL`, configure trusted proxies before relying on `request.ip()`, and allow only trusted browser origins in production CORS configuration. Cookie-backed requests require Shield CSRF protection, including unauthenticated login and signup.
+
+## How it works
+
+First request `GET /api/v1/auth/csrf`; the response supplies a CSRF token and an HTTP-only session cookie and has `Cache-Control: no-store`. Send that cookie and the token in `x-csrf-token` on every state-changing request. Login uses `kit.authentication.login` with the existing `web` guard, regenerates the session identifier, and records the account's credential revision. It does not put credentials in a URL or return a bearer token. A failed login has the same public response whether the account is missing, passwordless, disabled, or the password is wrong. The service counts failures under both client and normalized-identity limits; successful attempts do not spend either failure budget.
+
+`POST /api/v1/auth/signup` creates an inactive account and a limited session. An inactive account may use routes guarded by `AccountAccessMiddleware`, such as `POST /api/v1/account/email-verification/send` and `PATCH /api/v1/account/profile` to correct an unconfirmed address. Correcting that address revokes the old session, although the committed profile update returns success. `VerifiedAccountMiddleware` additionally requires an active account on protected routes. The application-owned `GET /api/v1/account/profile` route uses the access middleware and returns the package's safe current-account projection. Apply the appropriate middleware to every application-owned route needing these guarantees. A route without it has no session-revision or restriction check.
+
+Password reset uses `POST /api/v1/auth/password-reset` and `GET`/`POST /api/v1/auth/password-reset/:token`. A known or unknown address receives the same acknowledgement. GET inspects the proof without consuming it; POST consumes it once. Activation uses `GET`/`POST /api/v1/auth/email-verification/:token`: GET only inspects, while POST requires the owner's fresh password and claims an inactive account. Claiming revokes any session issued before ownership proof. Proof responses, including rejected CSRF submissions, use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+
+An active account can request a pending email change with `PATCH /api/v1/account/profile`; the confirmed address remains in use until `POST /api/v1/auth/email-change/:token` completes. GET on the proof path inspects without consuming it. Completion advances the revision, so the former browser session is rejected. The same profile endpoint accepts only the configured registration fields. The example invitation authority comes from its application-owned `role_assignments` policy: an owner can send, list, resend, and revoke under `/api/v1/account/invitations`, while a recipient inspects or accepts under `/api/v1/auth/invitations/:token`. Invitation acceptance writes the role through the package transaction callback. Authority is checked at issuance and management, but is not rechecked at acceptance.
+
+Package password reset, password change, confirmed-email change, and restriction changes advance `credentials_changed_at`. The middleware compares that database value with the revision captured at login, so all pre-existing sessions are rejected on protected routes across instances sharing the database. Login also rechecks revision before returning access, rejecting a credential established from superseded evidence. Direct application writes to credentials, email, verification state, restrictions, or provider rows are outside these guarantees; use package operations.
+
+`POST /api/v1/account/logout` ends the current server-side session. It does not revoke every credential. The old cookie is rejected; after a fresh CSRF bootstrap, a repeated authenticated logout returns 401. A repeat with the old CSRF token can fail CSRF validation first with 403.
+
+## Files delta
+
+`app/controllers/session_controller.ts` adapts the existing guard and exposes CSRF bootstrap. `app/middleware/account_access_middleware.ts` and `app/middleware/verified_account_middleware.ts` gate application-owned and package-backed routes. `config/auth.ts`, `config/session.ts`, `config/shield.ts`, and `config/cors.ts` show the guard, cookie, CSRF, and origin settings. `tests/functional/authentication_session.spec.ts` exercises browser authentication and revocation on an application-owned route. `tests/functional/reference_session.spec.ts` checks login failure consistency, activation, pending email change, and invitation lifecycle through installed HTTP.
+
+## Manual steps
+
+Choose a shared server-side session store, trusted proxy policy, HTTPS origin, production CORS allowlist, and cookie scope for the deployment. Apply the users-table credential-revision migration before accepting new sessions. Protect all application-owned routes that need revocation or active-account checks. Redact proof path segments in access logs (`/api/v1/auth/password-reset/:token`, `/email-verification/:token`, `/email-change/:token`, and `/invitations/:token`). Configure a worker for durable account mail and inspect failed delivery records; the fixture's in-memory capture is for tests. Run the installed-consumer tests for SQLite and PostgreSQL with `ACCOUNT_KIT_AUTH_STRATEGY=session` coverage.
+
+## Changelog
+
+The [Unreleased changelog](../../CHANGELOG.md#unreleased) records the session reference and non-cacheable CSRF bootstrap.
