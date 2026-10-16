@@ -439,12 +439,18 @@ async function runFresh(candidate, runName) {
   run('pnpm', ['run', 'lint'], appRoot, env)
   run('pnpm', ['run', 'format:check'], appRoot, env)
   if (!prepareOnly) {
-    run('pnpm', ['run', 'test'], appRoot, env)
+    run('pnpm', ['run', 'test'], appRoot, { ...env, ACCOUNT_KIT_AUTH_STRATEGY: 'access_tokens' })
     run('pnpm', ['run', 'test:session'], appRoot, {
       ...env,
       ACCOUNT_KIT_AUTH_STRATEGY: 'session',
       SESSION_DRIVER: 'memory',
     })
+    run(
+      'pnpm',
+      ['exec', 'node', 'ace', 'test', '--files=tests/functional/release_scenarios.spec.ts'],
+      appRoot,
+      { ...env, ACCOUNT_KIT_AUTH_STRATEGY: 'session', SESSION_DRIVER: 'memory' }
+    )
     expectFailure(
       'pnpm',
       ['run', 'test:session'],
@@ -615,7 +621,7 @@ async function runServiceOnly(candidate, runName) {
     scripts: { build: 'tsc', start: 'node build/service.js' },
     devDependencies: {
       '@adonisjs/assembler': '^8.0.0',
-      '@adonisjs/redis': '^9.0.0',
+      '@adonisjs/redis': '^10.0.0',
       '@types/json-schema': '^7.0.15',
       '@types/luxon': '^3.7.5',
       '@types/node': '^24.10.0',
