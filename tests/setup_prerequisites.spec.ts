@@ -5,6 +5,7 @@ import { test } from '@japa/runner'
 import ts from 'typescript'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
+import { stripSourceComments } from '../src/setup/source_text.js'
 import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
 
 const versions: Record<string, string> = {
@@ -230,6 +231,215 @@ test.group('setup prerequisite inspection', () => {
         excluded.prerequisites.some((item) => item.includes('application-owned CSRF bootstrap'))
       )
       assert.isFalse(excluded.prerequisites.some((item) => item.includes('GET /account/auth/csrf')))
+    })
+  })
+
+  test('commented middleware is not treated as installed', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "server.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  // () => import('@adonisjs/session/session_middleware'),\n  // () => import('@adonisjs/shield/shield_middleware'),\n  // () => import('@adonisjs/auth/initialize_auth_middleware'),\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])"
+      const plan = await planSetup(choices, state)
+      const kernel = plan.changes.find(({ path }) => path === 'start/kernel.ts')
+      assert.equal(kernel?.action, 'update')
+      const executable = stripSourceComments(kernel!.content)
+      for (const name of [
+        '@adonisjs/session/session_middleware',
+        '@adonisjs/shield/shield_middleware',
+        '@adonisjs/auth/initialize_auth_middleware',
+      ])
+        assert.equal(executable.split(name).length - 1, 1)
+    })
+  })
+
+  test('model metadata ignores comments and rejects every explicit connection', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state, root) => {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        "export default class User extends BaseModel {\n // static table = 'users'\n static table = 'members'\n // static connection = 'other'\n static connection = 'default'\n }"
+      )
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'user.table'
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'user.connection' &&
+            severity === 'error' &&
+            message.includes('explicit connection')
+        )
+      )
+    })
+  })
+
+  test('runtime feature dependency does not depend on verification policy', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      choices.features = ['authentication', 'emailPasswordManagement']
+      choices.managed = ['authentication', 'emailPasswordManagement']
+      choices.policy.registration = 'closed'
+      choices.policy.verificationRequired = false
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'features'
+      )
+    })
+  })
+
+  test('maintained Mail validates brand and sender without leaking values', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      choices.mail.integration = 'adonisjs-mail'
+      choices.mail.appName = 'Brand\r\nInjected'
+      state.files['config/mail.ts'] = 'export default defineConfig({ mailers: {} })'
+      const prior = process.env.ACCOUNT_MAIL_FROM
+      process.env.ACCOUNT_MAIL_FROM = 'person@example.test\nInjected'
+      try {
+        const plan = await planSetup(choices, state)
+        assert.include(
+          plan.diagnostics.map(({ field }) => field),
+          'mail.appName'
+        )
+        assert.include(
+          plan.diagnostics.map(({ field }) => field),
+          'mail.senderEnv'
+        )
+        assert.isFalse(JSON.stringify(plan.diagnostics).includes('person@example.test'))
+        process.env.ACCOUNT_MAIL_FROM = '   '
+        const blank = await planSetup(choices, state)
+        assert.isTrue(
+          blank.diagnostics.some(
+            ({ field, severity }) => field === 'mail.senderEnv' && severity === 'error'
+          )
+        )
+      } finally {
+        if (prior === undefined) delete process.env.ACCOUNT_MAIL_FROM
+        else process.env.ACCOUNT_MAIL_FROM = prior
+      }
+    })
+  })
+
+  test('production memory sessions conflict with persistence claims', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        "export default { store: 'memory', stores: { memory: stores.memory() } }"
+      choices.authentication!.session!.persistentStore = true
+      const plan = await planSetup(choices, state, { production: true })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'config/session.ts' &&
+            severity === 'error' &&
+            message.includes('persistent shared')
+        )
+      )
+    })
+  })
+
+  test('callback files alone do not certify external configuration', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'policy.callbacks'
+      )
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'mail.callbacks'
+      )
+      assert.isFalse(plan.readiness.externalConfigured)
+    })
+  })
+
+  test('excluded managed signup permits application admission and rejects prototype field names', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.policy.registration = 'application'
+      choices.managedExcept = ['auth.signup']
+      choices.policy.registrationFields = [{ name: '__proto__', type: 'string', required: false }]
+      const plan = await planSetup(choices, state)
+      assert.isFalse(plan.diagnostics.some(({ field }) => field === 'policy.registration'))
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'policy.registrationFields.0.name'
+      )
+    })
+  })
+
+  test('managed session wrapper is replayable, reversible, and protects owner edits', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      const original =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER'), stores: { database: stores.database() } })\nexport default sessionConfig\n"
+      state.files['config/session.ts'] = original
+      const initial = await planSetup(choices, state)
+      const session = initial.changes.find(({ path }) => path === 'config/session.ts')!
+      assert.equal(session.action, 'update')
+      assert.include(session.content, 'protectManagedSessionConfig')
+      assert.include(session.content, 'accountKitSelectedSessionStore === "database"')
+      state.files['config/session.ts'] = session.content
+      state.existingChoices = structuredClone(choices)
+      const repeated = await planSetup(choices, state)
+      assert.equal(
+        repeated.changes.find(({ path }) => path === 'config/session.ts')?.action,
+        'unchanged'
+      )
+      const oldDriver = process.env.SESSION_DRIVER
+      process.env.SESSION_DRIVER = 'database'
+      try {
+        const selected = await planSetup(choices, state)
+        assert.isFalse(selected.diagnostics.some(({ field }) => field === 'config/session.ts'))
+      } finally {
+        if (oldDriver === undefined) delete process.env.SESSION_DRIVER
+        else process.env.SESSION_DRIVER = oldDriver
+      }
+      const disabled = structuredClone(choices)
+      disabled.managed = []
+      const retirement = await planSetup(disabled, state)
+      const unwrapped = retirement.changes.find(({ path }) => path === 'config/session.ts')!
+      assert.equal(unwrapped.action, 'update')
+      assert.equal(unwrapped.content, original)
+      state.files['config/session.ts'] = unwrapped.content
+      state.existingChoices = disabled
+      const reenabled = await planSetup(choices, state)
+      assert.equal(
+        reenabled.changes.find(({ path }) => path === 'config/session.ts')?.content,
+        session.content
+      )
+      state.files['config/session.ts'] = session.content.replace("'destroy'", "'destroyOther'")
+      const ownerEdit = await planSetup(choices, state)
+      assert.isTrue(ownerEdit.diagnostics.some(({ field }) => field === 'config/session.ts'))
+    })
+  })
+
+  test('unsupported session config requires manual protection before apply', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        'export default defineConfig({ store: pickSessionStore(), stores: { custom: makeStore() } })'
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'config/session.ts' &&
+            severity === 'error' &&
+            message.includes('protectManagedSessionConfig')
+        )
+      )
+      state.files['config/session.ts'] =
+        "const sessionConfig = defineConfig({ store: 'custom', unrelated: { custom: stores.database() }, stores: { custom: makeStore() } })\nexport default sessionConfig\n"
+      const unrelated = await planSetup(choices, state)
+      assert.isTrue(
+        unrelated.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'config/session.ts' &&
+            severity === 'error' &&
+            message.includes('protectManagedSessionConfig')
+        )
+      )
     })
   })
 })
