@@ -36,6 +36,7 @@
     "format": "prettier --write .",
     "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
     "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=provider.spec.ts",
+    "test:built-setup": "cross-env TEST_BUILT_SETUP=1 pnpm quick:test --files=setup.spec.ts",
     "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",
     "precompile": "pnpm lint",
@@ -98,7 +99,8 @@
     "@adonisjs/mail": "^10.0.0",
     "@adonisjs/session": "^8.1.0",
     "@vinejs/vine": "^4.4.0",
-    "luxon": "^3.0.0"
+    "luxon": "^3.0.0",
+    "typescript": "^5.9.3 || ^6.0.3"
   },
   "peerDependenciesMeta": {
     "@adonisjs/assembler": {
@@ -111,6 +113,9 @@
       "optional": true
     },
     "@vinejs/vine": {
+      "optional": true
+    },
+    "typescript": {
       "optional": true
     }
   },
@@ -130,7 +135,9 @@
       "./services/main.ts",
       "./http/main.ts",
       "./commands/main.ts",
-      "./commands/prune.ts"
+      "./commands/prune.ts",
+      "./commands/setup.ts",
+      "./commands/retirement_impact.ts"
     ],
     "outDir": "./build",
     "clean": true,

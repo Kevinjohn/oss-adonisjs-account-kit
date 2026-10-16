@@ -1,10 +1,13 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep database assertions next to the operation they inspect. */
 
 import { test } from '@japa/runner'
+import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
+import { AccountKit } from '../src/account_kit.js'
+import RetirementImpact from '../commands/retirement_impact.js'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -20,6 +23,114 @@ const sessionGuard = (events: string[] = []) => ({
 
 test.group('authentication contract', (group) => {
   const kit = useTestApp(group)
+
+  test('counts accounts that would lose password login from adapter truth without mutation', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'password@example.test' })
+    await insertUser(kit, { email: 'provider@example.test', password: null })
+    const before = await kit.db.from('users').count('* as total').first()
+    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    const impact = await account.authentication.retirementImpact({ passwordLogin: false })
+    assert.equal(impact.inspectedAccounts, 2)
+    assert.equal(impact.affectedAccounts, 1)
+    assert.isTrue(Number.isFinite(Date.parse(impact.checkedAt)))
+    assert.deepEqual(await kit.db.from('users').count('* as total').first(), before)
+    await assert.rejects(
+      () =>
+        account.authentication.retirementImpact({ passwordLogin: false, providers: ['google'] }),
+      /Social identity inventory is unavailable/
+    )
+  })
+
+  test('booted Ace retirement inventory returns a structured count', async ({ assert }) => {
+    await insertUser(kit, { email: 'password@example.test' })
+    await insertUser(kit, { email: 'other@example.test', password: null })
+    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    kit.app.container.bindValue(AccountKit, account)
+    const kernel = new Kernel(kit.app)
+    kernel.addLoader(new ListLoader([RetirementImpact]))
+    const result = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [
+      '--quiet',
+    ])
+    assert.isNotNull(result.impact)
+    if (!result.impact) throw new Error('Missing retirement impact')
+    assert.equal(result.impact.inspectedAccounts, 2)
+    assert.equal(result.impact.affectedAccounts, 1)
+  })
+
+  test('retirement inventory follows configured string IDs and user table', async ({ assert }) => {
+    await kit.db.connection().schema.createTable('retirement_users', (table) => {
+      table.string('id', 254).primary()
+      table.string('email')
+      table.string('password').nullable()
+      table.string('unverified_email').nullable()
+      table.timestamp('email_verified_at').nullable()
+    })
+    try {
+      await kit.db.table('retirement_users').insert([
+        { id: 'acct-a', email: 'a@example.test', password: await kit.hash.make('password123') },
+        { id: 'acct-b', email: 'b@example.test', password: null },
+      ])
+      const { account } = makeService(kit, {
+        users: makeUsersAdapter(kit.db, kit.hash, 'retirement_users'),
+        usersTable: 'retirement_users',
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+      const impact = await account.authentication.retirementImpact({ passwordLogin: false })
+      assert.equal(impact.inspectedAccounts, 2)
+      assert.equal(impact.affectedAccounts, 1)
+    } finally {
+      await kit.db.connection().schema.dropTable('retirement_users')
+    }
+  })
+
+  test('retirement inventory pages UUID-like IDs and trusts adapter password state without a password column', async ({
+    assert,
+  }) => {
+    await kit.db.connection().schema.createTable('retirement_identities', (table) => {
+      table.string('id', 254).primary()
+    })
+    try {
+      const ids = Array.from(
+        { length: 502 },
+        (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`
+      )
+      for (let index = 0; index < ids.length; index += 100)
+        await kit.db
+          .table('retirement_identities')
+          .insert(ids.slice(index, index + 100).map((id) => ({ id })))
+      const users = {
+        ...makeUsersAdapter(kit.db, kit.hash, 'retirement_identities'),
+        findById: async (id: number | string) => ({
+          id,
+          email: `${id}@example.test`,
+          unverifiedEmail: null,
+          hasPassword: id === ids[0] || id === ids[501],
+          emailVerifiedAt: null,
+        }),
+      }
+      const { account } = makeService(kit, {
+        users,
+        usersTable: 'retirement_identities',
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+      const impact = await account.authentication.retirementImpact({ passwordLogin: false })
+      assert.equal(impact.inspectedAccounts, 502)
+      assert.equal(impact.affectedAccounts, 2)
+      const unresolved = makeService(kit, {
+        users: { ...users, findById: async () => null },
+        usersTable: 'retirement_identities',
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+      await assert.rejects(
+        () => unresolved.account.authentication.retirementImpact({ passwordLogin: false }),
+        /could not resolve/
+      )
+    } finally {
+      await kit.db.connection().schema.dropTable('retirement_identities')
+    }
+  })
 
   test('rejects invalid credentials with one public error and counts failures only', async ({
     assert,
@@ -332,6 +443,64 @@ test.group('authentication contract', (group) => {
     })
     await assert.rejects(
       () => first.authentication.current({ userId: user.id, revision: login.credential }),
+      'Invalid session'
+    )
+  })
+
+  test('authentication-only restriction restoration leaves the old token revoked', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, {
+      enabled: [],
+      authentication: {
+        strategy: 'access_tokens',
+        guard: 'api',
+        canAccess: async (candidate, trx) =>
+          !(await trx.from('users').select('disabled_at').where('id', candidate.id).first())
+            ?.disabled_at,
+      },
+    })
+    let issued = 0
+    const guard = {
+      strategy: 'access_tokens' as const,
+      name: 'api',
+      establish: async (id: number | string) => {
+        const [tokenId] = await kit.db
+          .table('auth_access_tokens')
+          .insert({ tokenable_id: id, hash: `issued-${++issued}` })
+          .returning('id')
+        return unwrapId(tokenId)
+      },
+      terminate: async () => {},
+    }
+    const original = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'before' },
+      guard
+    )
+    await account.authentication.current({ userId: user.id, tokenId: original.credential })
+    await account.authentication.changeRestriction({
+      userId: user.id,
+      change: async (_candidate, trx) => {
+        await trx
+          .from('users')
+          .where('id', user.id)
+          .update({ disabled_at: new Date().toISOString() })
+      },
+    })
+    await account.authentication.changeRestriction({
+      userId: user.id,
+      change: async (_candidate, trx) => {
+        await trx.from('users').where('id', user.id).update({ disabled_at: null })
+      },
+    })
+    const fresh = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'after' },
+      guard
+    )
+    await account.authentication.current({ userId: user.id, tokenId: fresh.credential })
+    await assert.rejects(
+      () => account.authentication.current({ userId: user.id, tokenId: original.credential }),
       'Invalid session'
     )
   })
