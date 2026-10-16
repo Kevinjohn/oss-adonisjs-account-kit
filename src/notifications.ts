@@ -72,6 +72,16 @@ const templates: Record<
     heading: 'Your password changed',
     body: 'The password on your account was changed. If this was unexpected, contact support immediately.',
   },
+  socialIdentityLinked: {
+    subject: 'A social sign-in method was linked',
+    heading: 'A social sign-in method was linked',
+    body: '{provider} sign-in was linked to your account. If this was unexpected, contact support immediately.',
+  },
+  socialIdentityUnlinked: {
+    subject: 'A social sign-in method was removed',
+    heading: 'A social sign-in method was removed',
+    body: '{provider} sign-in was removed from your account. If this was unexpected, contact support immediately.',
+  },
 }
 
 function escapeHtml(value: string): string {
@@ -84,7 +94,7 @@ function escapeHtml(value: string): string {
 
 export function renderAccountMessage(
   kind: AccountMessageKind,
-  values: { brandName: string; actionUrl?: string },
+  values: { brandName: string; actionUrl?: string; providerName?: string },
   emailLayout?: (body: string) => string
 ): RenderedAccountMessage {
   const template = templates[kind]
@@ -100,10 +110,13 @@ export function renderAccountMessage(
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password)
       throw new Error('account_kit: action URL must be a trusted HTTP(S) URL')
   }
+  if (template.body.includes('{provider}') && !values.providerName)
+    throw new Error(`account_kit: ${kind} requires a provider name`)
+  const messageBody = template.body.replace('{provider}', values.providerName ?? '')
   const subject = `${values.brandName}: ${template.subject}`
   const actionText = template.action ? `\n\n${template.action}: ${values.actionUrl}` : ''
-  const text = `${values.brandName}\n\n${template.heading}\n\n${template.body}${actionText}\n`
-  const body = `<main><p>${escapeHtml(values.brandName)}</p><h1>${escapeHtml(template.heading)}</h1><p>${escapeHtml(template.body)}</p>${template.action ? `<p><a href="${escapeHtml(values.actionUrl!)}">${escapeHtml(template.action)}</a></p><p>Or copy this link: ${escapeHtml(values.actionUrl!)}</p>` : ''}</main>`
+  const text = `${values.brandName}\n\n${template.heading}\n\n${messageBody}${actionText}\n`
+  const body = `<main><p>${escapeHtml(values.brandName)}</p><h1>${escapeHtml(template.heading)}</h1><p>${escapeHtml(messageBody)}</p>${template.action ? `<p><a href="${escapeHtml(values.actionUrl!)}">${escapeHtml(template.action)}</a></p><p>Or copy this link: ${escapeHtml(values.actionUrl!)}</p>` : ''}</main>`
   return {
     subject,
     text,
@@ -151,10 +164,15 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
     /[\r\n]/.test(options.brandName)
   )
     throw new Error('account_kit: from and brandName are required')
-  async function send(kind: AccountMessageKind, recipient: string, actionUrl?: string) {
+  async function send(
+    kind: AccountMessageKind,
+    recipient: string,
+    actionUrl?: string,
+    providerName?: string
+  ) {
     const rendered = renderAccountMessage(
       kind,
-      { brandName: options.brandName, actionUrl },
+      { brandName: options.brandName, actionUrl, providerName },
       options.emailLayout
     )
     await options.mail.sendLater((message) => {
@@ -186,6 +204,28 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
     emailChanged: (previousEmail) => send('emailChanged', previousEmail),
     passwordResetCompleted: (user) => send('passwordResetCompleted', user.email),
     passwordChanged: (user) => send('passwordChanged', user.email),
+    socialIdentityLinked: (user, identity) =>
+      send(
+        'socialIdentityLinked',
+        user.email,
+        undefined,
+        identity.provider === 'google'
+          ? 'Google'
+          : identity.provider === 'github'
+            ? 'GitHub'
+            : 'Social'
+      ),
+    socialIdentityUnlinked: (user, identity) =>
+      send(
+        'socialIdentityUnlinked',
+        user.email,
+        undefined,
+        identity.provider === 'google'
+          ? 'Google'
+          : identity.provider === 'github'
+            ? 'GitHub'
+            : 'Social'
+      ),
   }
 }
 

@@ -260,7 +260,7 @@ test.group('onboarding plan and apply', (group) => {
     ])
     assert.lengthOf(
       plan.changes.filter(({ action }) => action === 'create'),
-      15
+      17
     )
     assert.isFalse(plan.readiness.productionReady)
     assert.isFalse(plan.readiness.migrationsApplied)
@@ -297,7 +297,7 @@ test.group('onboarding plan and apply', (group) => {
     })
     assert.equal(resumed.changes[0].action, 'unchanged')
     const written = await applySetup(root, resumed)
-    assert.lengthOf(written, 18)
+    assert.lengthOf(written, 20)
     assert.include(await readFile(join(root, 'start/routes.ts'), 'utf8'), originalRoutes.trim())
     assert.include(
       await readFile(join(root, 'start/routes.ts'), 'utf8'),

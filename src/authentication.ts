@@ -25,7 +25,7 @@ import type {
 
 type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
 
-function configured(deps: Dependencies) {
+function configured(deps: Pick<Dependencies, 'config'>) {
   const auth = deps.config.authentication
   if (!auth) throw new CapabilityDisabledError('Authentication is disabled')
   return auth
@@ -46,7 +46,11 @@ function normalizeStamp(value: unknown): string | null {
   return at.toUTC().toISO()
 }
 
-async function revision(trx: Trx, config: ResolvedConfig, userId: UserId): Promise<string | null> {
+export async function revision(
+  trx: Trx,
+  config: ResolvedConfig,
+  userId: UserId
+): Promise<string | null> {
   const metadata = await userMetadata(config)
   const table = metadata.table
   const row = await trx.from(table).select('credentials_changed_at').where('id', userId).first()
@@ -82,11 +86,15 @@ export async function credentialsChanged(
   user: AccountUser,
   context: Parameters<NonNullable<ResolvedConfig['onCredentialsChangedTransaction']>>[1]
 ): Promise<void> {
+  if (config.enabled.includes('socialAuthentication')) {
+    await trx.from('social_sensitive_proofs').where('user_id', user.id).delete()
+    await trx.from('social_transactions').where('user_id', user.id).delete()
+  }
   if (config.authentication) await advanceCredentialRevision(trx, config, user.id)
   await config.onCredentialsChangedTransaction?.(user, context, trx)
 }
 
-function safeAccount(user: AccountUser): CurrentAccount {
+export function safeAccount(user: AccountUser): CurrentAccount {
   return {
     id: user.id,
     email: user.email,
@@ -96,8 +104,8 @@ function safeAccount(user: AccountUser): CurrentAccount {
   }
 }
 
-async function currentInTransaction(
-  deps: Dependencies,
+export async function currentInTransaction(
+  deps: Pick<Dependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx
 ): Promise<CurrentAccount> {
