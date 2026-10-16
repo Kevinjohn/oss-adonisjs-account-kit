@@ -2957,10 +2957,11 @@ export async function planSetup(
       }
     }
   }
+  const migrationTimestamp = options.timestamp ?? Date.now()
   for (const [index, name] of migrationNames.entries()) {
     const suffix = `_account_kit_${name}.ts`
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
-    const path = `database/migrations/${existing ?? `${options.timestamp ?? Date.now() + index}${suffix}`}`
+    const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
     const content = await migrationContent(name, choices)
     addChange(
       changes,

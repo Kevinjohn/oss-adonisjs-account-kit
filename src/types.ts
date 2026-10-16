@@ -236,7 +236,7 @@ export interface SocialIdentity {
 
 export interface SocialBeginInput {
   provider: SocialProviderName
-  intent: SocialIntent
+  intent: Exclude<SocialIntent, 'confirm'>
   current?: CurrentAccountInput
   purpose?: SensitivePurpose
   /** SHA-256 base64url challenge of a verifier held by the initiating client. */

@@ -159,13 +159,18 @@ test.group('onboarding plan and apply', (group) => {
     for (const root of cleanupRoots) await rm(root, { recursive: true, force: true })
   })
 
-  for (const usersTable of ['users', 'accounts']) {
-    test(`applies every planned migration for ${usersTable} on a fresh schema`, async ({
+  for (const [usersTable, timestamp] of [
+    ['users', undefined],
+    ['users', 1234],
+    ['accounts', undefined],
+    ['accounts', 1234],
+  ] as const) {
+    test(`applies every planned migration for ${usersTable} with ${timestamp === undefined ? 'clock' : 'fixed'} timestamp`, async ({
       assert,
     }) => {
       const { root, choices } = await fixture()
       choices.user.table = usersTable
-      const plan = await planSetup(choices, await inspectSetup(root))
+      const plan = await planSetup(choices, await inspectSetup(root), { timestamp })
       const migrations = plan.changes.filter((change) =>
         change.path.startsWith('database/migrations/')
       )
