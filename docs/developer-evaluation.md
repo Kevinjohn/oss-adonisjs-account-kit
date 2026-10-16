@@ -79,8 +79,8 @@ identify which changes belong to package setup and which responsibilities remain
   not treat them as proof that migrations were absent or that production readiness was established.
 - Setup continued to report `APP_URL` as required for the two mail-origin fields although the
   disposable application's `.env` contained its loopback value and the application booted. The
-  setup origin validator reads the setup process environment; it does not load `.env` for these
-  origin checks. Operators should supply the selected origin variables to the setup command or
+  post-evaluation diagnosis confirmed that the setup origin validator reads the setup process
+  environment and does not load `.env` for these origin checks. Operators should supply the selected origin variables to the setup command or
   verify the application's loaded values separately. The observed diagnostic was not evidence of
   an application boot failure.
 - Local capture allowed proof inspection but did not send mail. No SMTP transport, recipient

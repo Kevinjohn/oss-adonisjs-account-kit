@@ -20,7 +20,7 @@ The nine verification layers below include the Social integration layer as an ex
 
 ## Phase 1 scenario traceability
 
-These are scenario-to-test mappings, not pass claims. Candidate-specific outcomes belong in the final pull request check record. The installed-consumer command must use the same immutable archive for every database, guard, and supported schema variant in the declared matrix.
+These are scenario-to-test mappings, not pass claims; the linked #49 technical walkthrough is the sole candidate-specific outcome recorded here. Other candidate-specific outcomes belong in the final pull request check record. The installed-consumer command must use the same immutable archive for every database, guard, and supported schema variant in the declared matrix.
 
 ### Packed managed-setup procedure
 
