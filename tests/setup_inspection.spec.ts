@@ -111,7 +111,7 @@ test('mutated environment getter cannot certify database fallback', async ({ ass
     const plan = await planSetup(defaultSetupChoices(), state)
     assert.isTrue(
       plan.diagnostics.some(
-        ({ field, severity }) => field === 'database.client' && severity === 'action'
+        ({ field, severity }) => field === 'database.client' && severity === 'error'
       )
     )
   } finally {
@@ -277,8 +277,7 @@ test('database selection uses process, dotenv, then literal default without gues
       const plan = await planSetup(defaultSetupChoices(), unsupported)
       assert.isTrue(
         plan.diagnostics.some(
-          ({ field, severity }) =>
-            field === 'database.client' && severity === (selected === 'mysql' ? 'error' : 'action')
+          ({ field, severity }) => field === 'database.client' && severity === 'error'
         )
       )
     }
