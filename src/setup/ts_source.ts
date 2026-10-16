@@ -27,7 +27,41 @@ export async function parseSetupSource(text: string): Promise<SetupSource> {
   return { ts, file, text }
 }
 
+/** Multiple runtime views of a module make a selected import's provenance ambiguous. */
+export function hasAmbiguousRuntimeModuleImports(source: SetupSource, module: string): boolean {
+  const { ts } = source
+  const bindings = source.file.statements
+    .filter(ts.isImportDeclaration)
+    .filter(
+      (node) =>
+        ts.isStringLiteral(node.moduleSpecifier) &&
+        node.moduleSpecifier.text === module &&
+        !node.importClause?.isTypeOnly
+    )
+    .map((node) => node.importClause)
+    .filter((clause): clause is TypeScript.ImportClause => Boolean(clause))
+    .filter(
+      (clause) =>
+        clause.name ||
+        (clause.namedBindings &&
+          (ts.isNamespaceImport(clause.namedBindings) ||
+            clause.namedBindings.elements.some((element) => !element.isTypeOnly)))
+    )
+  if (bindings.length > 1) return true
+  const clause = bindings[0]
+  if (!clause) return false
+  const named = clause.namedBindings
+  if (named && ts.isNamespaceImport(named)) return true
+  if (!named || !ts.isNamedImports(named)) return false
+  const exports = named.elements
+    .filter((element) => !element.isTypeOnly)
+    .map((element) => element.propertyName?.text ?? element.name.text)
+  if (clause.name && exports.length) return true
+  return new Set(exports).size !== exports.length
+}
+
 export function importedName(source: SetupSource, module: string, imported: string): string | null {
+  if (hasAmbiguousRuntimeModuleImports(source, module)) return null
   const { ts, file } = source
   const matches = file.statements
     .filter(ts.isImportDeclaration)
@@ -49,6 +83,7 @@ export function importedName(source: SetupSource, module: string, imported: stri
 }
 
 export function defaultImportName(source: SetupSource, module: string): string | null {
+  if (hasAmbiguousRuntimeModuleImports(source, module)) return null
   const { ts, file } = source
   const matches = file.statements
     .filter(ts.isImportDeclaration)
