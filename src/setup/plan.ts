@@ -1971,6 +1971,107 @@ function classColumns(
   return { columns, unsafe }
 }
 
+/** Keep automatic model inspection within declarations whose class evaluation is understood. */
+function unsupportedClassRuntime(
+  source: SetupSource,
+  selected: TypeScript.ClassDeclaration,
+  schema: boolean
+): boolean {
+  const { ts } = source
+  if (ts.canHaveDecorators(selected) && ts.getDecorators(selected)?.length) return true
+  const provider = importedName(source, '@adonisjs/auth/access_tokens', 'DbAccessTokensProvider')
+  for (const member of selected.members) {
+    if (ts.isConstructorDeclaration(member) || ts.isClassStaticBlockDeclaration(member)) return true
+    const modifiers = ts.canHaveModifiers(member) ? ts.getModifiers(member) : undefined
+    const decorators = ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : []
+    if (decorators.length && !ts.isPropertyDeclaration(member)) return true
+    const staticMember = modifiers?.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword
+    )
+    if (!staticMember) {
+      if (
+        (ts.isGetAccessorDeclaration(member) || ts.isSetAccessorDeclaration(member)) &&
+        ts.isIdentifier(member.name) &&
+        member.name.text === 'id'
+      )
+        return true
+      if (
+        ts.isPropertyDeclaration(member) &&
+        member.initializer &&
+        !(
+          schema &&
+          ts.isIdentifier(member.name) &&
+          member.name.text === '$columns' &&
+          ts.isPropertyAccessExpression(member.initializer) &&
+          ts.isIdentifier(member.initializer.expression) &&
+          member.initializer.expression.text === selected.name?.text &&
+          member.initializer.name.text === '$columns'
+        )
+      )
+        return true
+      continue
+    }
+    if (!ts.isPropertyDeclaration(member) || !ts.isIdentifier(member.name)) return true
+    const name = member.name.text
+    if (['table', 'connection', 'primaryKey', 'namingStrategy'].includes(name)) continue
+    if (schema && name === '$columns') {
+      const initializer = member.initializer && unwrapStaticExpression(source, member.initializer)
+      if (
+        !initializer ||
+        !ts.isArrayLiteralExpression(initializer) ||
+        initializer.elements.some((element) => !ts.isStringLiteral(element))
+      )
+        return true
+      continue
+    }
+    if (!schema && name === 'accessTokens') {
+      const initializer = member.initializer
+      if (initializer && ts.isIdentifier(initializer)) continue
+      if (
+        initializer &&
+        provider &&
+        exactCall(source, initializer, provider, 'forModel') &&
+        initializer.arguments.length === 1 &&
+        ts.isIdentifier(initializer.arguments[0]) &&
+        initializer.arguments[0].text === selected.name?.text
+      )
+        continue
+    }
+    return true
+  }
+  return false
+}
+
+/** Confirm the runtime package alias resolves to the exact contained source we inspect. */
+async function conventionalSetupImport(
+  root: string,
+  specifier: string,
+  wildcard: string,
+  wildcardTarget: string,
+  exactTarget: string
+): Promise<boolean> {
+  const packagePath = await safeSetupPath(root, 'package.json')
+  const packageStat = await lstat(packagePath)
+  if (!packageStat.isFile()) throw new Error('Setup cannot inspect non-regular package.json')
+  const manifest = JSON.parse(await readFile(packagePath, 'utf8')) as {
+    imports?: Record<string, unknown>
+  }
+  const imports = manifest.imports ?? {}
+  const overlaps = Object.keys(imports).some((key) => {
+    if (key === specifier || key === wildcard) return false
+    const star = key.indexOf('*')
+    return (
+      star >= 0 &&
+      specifier.startsWith(key.slice(0, star)) &&
+      specifier.endsWith(key.slice(star + 1))
+    )
+  })
+  if (overlaps) return false
+  return imports[specifier] === undefined
+    ? imports[wildcard] === wildcardTarget
+    : imports[specifier] === exactTarget
+}
+
 export async function planSetup(
   choices: SetupChoices,
   state: SetupInspection,
@@ -2035,6 +2136,20 @@ export async function planSetup(
   ) {
     const modelPath = `app/models/${choices.user.model.slice('#models/'.length)}.ts`
     try {
+      if (
+        !(await conventionalSetupImport(
+          state.root,
+          choices.user.model,
+          '#models/*',
+          './app/models/*.js',
+          `./${modelPath.slice(0, -3)}.js`
+        ))
+      )
+        diagnostic(
+          diagnostics,
+          'user.model',
+          `Setup cannot resolve ${choices.user.model} to the inspected model`
+        )
       const modelFile = await safeSetupPath(state.root, modelPath)
       const modelStat = await lstat(modelFile)
       if (!modelStat.isFile())
@@ -2136,7 +2251,11 @@ export async function planSetup(
           )
             mutatedModel = true
         })
-      if (unsafeMetadata || mutatedModel)
+      if (
+        unsafeMetadata ||
+        mutatedModel ||
+        (selectedClass && unsupportedClassRuntime(model, selectedClass, false))
+      )
         diagnostic(
           diagnostics,
           'user.model',
@@ -2210,28 +2329,15 @@ export async function planSetup(
       if (safeComposition && schemaBinding) {
         const schemaPath = 'database/schema.ts'
         try {
-          const packagePath = await safeSetupPath(state.root, 'package.json')
-          const packageStat = await lstat(packagePath)
-          if (!packageStat.isFile())
-            throw new Error('Setup cannot inspect non-regular package.json')
-          const manifest = JSON.parse(await readFile(packagePath, 'utf8')) as {
-            imports?: Record<string, unknown>
-          }
-          const exactAlias = manifest.imports?.['#database/schema']
-          const overlapping = Object.keys(manifest.imports ?? {}).some((key) => {
-            if (key === '#database/schema' || key === '#database/*') return false
-            const wildcard = key.indexOf('*')
-            if (wildcard < 0) return false
-            return (
-              '#database/schema'.startsWith(key.slice(0, wildcard)) &&
-              '#database/schema'.endsWith(key.slice(wildcard + 1))
-            )
-          })
-          const mapped =
-            exactAlias === undefined
-              ? manifest.imports?.['#database/*'] === './database/*.js'
-              : exactAlias === './database/schema.js'
-          if (!mapped || overlapping)
+          if (
+            !(await conventionalSetupImport(
+              state.root,
+              '#database/schema',
+              '#database/*',
+              './database/*.js',
+              './database/schema.js'
+            ))
+          )
             throw new Error('Setup cannot resolve #database/schema to the inspected schema')
           const path = await safeSetupPath(state.root, schemaPath)
           const schemaStat = await lstat(path)
@@ -2349,7 +2455,15 @@ export async function planSetup(
                     member.name.text === name
                 ).length! > 1
             )
-          if (directBase && !unsafeBase && !unsafeColumn && !escaped && !metadataUnsafe) {
+          if (
+            directBase &&
+            !unsafeBase &&
+            !unsafeColumn &&
+            !escaped &&
+            !metadataUnsafe &&
+            candidate &&
+            !unsupportedClassRuntime(parsed, candidate, true)
+          ) {
             schemaClass = candidate
             schemaSource = parsed
           }
@@ -2403,14 +2517,17 @@ export async function planSetup(
           'user.idType',
           'Resolve model column decorators before generating migrations'
         )
-      if (composed && schemaClass && schemaSource && modelColumns && inheritedColumns) {
-        const effective = new Map([...inheritedColumns.columns, ...modelColumns.columns])
+      if (selectedClass && modelColumns) {
+        const effective = new Map([
+          ...(inheritedColumns?.columns ?? new Map()),
+          ...modelColumns.columns,
+        ])
         const primary = [...effective.entries()].filter(([, value]) => value.primary)
         const id = effective.get(choices.user.primaryKey)
         const expectedType =
           choices.user.idType === 'integer'
-            ? schemaSource.ts.SyntaxKind.NumberKeyword
-            : schemaSource.ts.SyntaxKind.StringKeyword
+            ? ts.SyntaxKind.NumberKeyword
+            : ts.SyntaxKind.StringKeyword
         if (
           !id ||
           !id.primary ||
@@ -2422,21 +2539,9 @@ export async function planSetup(
           diagnostic(
             diagnostics,
             'user.idType',
-            'Composed model must expose one physical id primary column with the selected TypeScript id type'
+            'Model must expose one physical id primary column with the selected TypeScript id type'
           )
-      } else if (
-        modelColumns?.columns.size &&
-        [...modelColumns.columns.entries()].some(
-          ([name, column]) =>
-            (column.primary && name !== choices.user.primaryKey) ||
-            (name === choices.user.primaryKey && column.physical !== choices.user.primaryKey)
-        )
-      )
-        diagnostic(
-          diagnostics,
-          'user.idType',
-          'Model columns must preserve the selected physical id primary key'
-        )
+      }
       const tableMember = staticMember('table')
       const tableInitializer =
         tableMember.length === 1 && ts.isPropertyDeclaration(tableMember[0])
