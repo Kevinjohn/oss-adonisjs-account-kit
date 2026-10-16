@@ -29,6 +29,9 @@ importers:
       '@adonisjs/prettier-config':
         specifier: ^1.4.5
         version: 1.5.0(prettier@3.9.10)
+      '@adonisjs/session':
+        specifier: ^8.1.0
+        version: 8.1.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))
       '@adonisjs/tsconfig':
         specifier: ^2.0.0
         version: 2.0.0
@@ -301,6 +304,40 @@ packages:
   '@adonisjs/repl@5.0.0':
     resolution: {integrity: sha512-cPp0w5svYUA3M1gdxQBO2Mx5g+SZfPweqKCAxk7C1Os/Qu67JKgWqXqNnl1q0Tzv/l0L19Ms1C7ivzQxeBNajg==}
     engines: {node: '>=24.0.0'}
+
+  '@adonisjs/session@8.1.0':
+    resolution: {integrity: sha512-hTd5m49Ro8XhxVQN0yyCeDOihDhj+mFIVltzeWPXkCxK19JHAtA++TAygxSUEhvcm56IVS43XWNE1lNIOPjMJA==}
+    engines: {node: '>=24.0.0'}
+    peerDependencies:
+      '@adonisjs/assembler': ^8.0.0-next.26 || ^8.0.0
+      '@adonisjs/core': ^7.0.0-next.16 || ^7.0.0
+      '@adonisjs/lucid': ^22.0.0-next.0 || ^22.0.0
+      '@adonisjs/redis': ^10.0.0-next.2 || ^10.0.0
+      '@aws-sdk/client-dynamodb': ^3.955.0
+      '@aws-sdk/util-dynamodb': ^3.955.0
+      '@japa/api-client': ^3.1.0
+      '@japa/browser-client': ^2.0.3
+      '@japa/plugin-adonisjs': ^5.1.0-next.0 || ^5.1.0
+      edge.js: ^6.4.0
+    peerDependenciesMeta:
+      '@adonisjs/assembler':
+        optional: true
+      '@adonisjs/lucid':
+        optional: true
+      '@adonisjs/redis':
+        optional: true
+      '@aws-sdk/client-dynamodb':
+        optional: true
+      '@aws-sdk/util-dynamodb':
+        optional: true
+      '@japa/api-client':
+        optional: true
+      '@japa/browser-client':
+        optional: true
+      '@japa/plugin-adonisjs':
+        optional: true
+      edge.js:
+        optional: true
 
   '@adonisjs/tsconfig@2.0.0':
     resolution: {integrity: sha512-Uz8qvB6KR9otCh9zei2VEj7tPwdsrT7R+voYoN4tUfEijWRdTNgJ8d1CtyLKHaggCCOwZIwZLVklV/h2FDHgNw==}
@@ -3768,6 +3805,15 @@ snapshots:
     dependencies:
       '@poppinss/colors': 4.1.6
       string-width: 8.3.0
+
+  '@adonisjs/session@8.1.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))':
+    dependencies:
+      '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1)
+      '@poppinss/macroable': 1.1.2
+      '@poppinss/utils': 7.1.2
+    optionalDependencies:
+      '@adonisjs/assembler': 8.5.2(typescript@5.9.3)
+      '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
 
   '@adonisjs/tsconfig@2.0.0': {}
 
