@@ -26,6 +26,7 @@ This project has no published releases yet. The current candidate remains versio
 - The API example adds application-owned Google and GitHub social routes for both selected guards, with client and session PKCE handoff, required-field continuation, proof-protected linking, and account methods.
 - Phase 2 social identity proceeds under decision D06 (issue #14), which approves the Google and GitHub providers; issue #57 tracks the phase. Phase 2 remains separately released from Phase 1.
 - Optional Google and GitHub social identity services add safe linking, provider email verification, recent proof, relationship notices, and one-time PKCE handoff.
+- `socialAuthentication.unlink` is a credential change with the new `social_unlink` operation: it advances the credential revision in the unlink transaction, ending sessions and tokens established through the removed provider (and the caller's own), and runs `onCredentialsChangedTransaction` and `onCredentialsChanged`.
 - Provider-only recent proof requires separately verified authentication-time evidence; the maintained Google and GitHub Ally adapters do not supply it, so social-only accounts use password reset followed by password re-entry for sensitive changes.
 - `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential logout.
 - `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
