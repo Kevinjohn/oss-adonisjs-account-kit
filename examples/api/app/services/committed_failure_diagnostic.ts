@@ -1,0 +1,26 @@
+import { channel } from 'node:diagnostics_channel'
+import { DeliveryError, type PostCommitError } from 'adonisjs-account-kit'
+
+type SafeLogger = { error: (details: object, message: string) => void }
+type Failure = 'delivery' | 'post_commit' | 'credential_establishment'
+
+export const followUpFailureChannel = channel('account_kit.reference.follow_up_failure')
+
+function reportFailure(logger: SafeLogger, operation: string, failure: Failure) {
+  const details = { event: 'account_kit_follow_up_failed', operation, failure }
+  logger.error(details, 'Account operation committed but a follow-up failed')
+  followUpFailureChannel.publish(details)
+}
+
+/** Report follow-up failures without recording an address, proof, credential, or raw exception. */
+export function reportCommittedFailure(
+  logger: SafeLogger,
+  error: DeliveryError | PostCommitError,
+  operation: string
+) {
+  reportFailure(logger, operation, error instanceof DeliveryError ? 'delivery' : 'post_commit')
+}
+
+export function reportCredentialEstablishmentFailure(logger: SafeLogger, operation: string) {
+  reportFailure(logger, operation, 'credential_establishment')
+}

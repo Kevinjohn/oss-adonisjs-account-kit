@@ -19,13 +19,13 @@ test('stage-3 recovery baseline persists through real HTTP requests', async ({
     password: 'OriginalPass123!',
   })
 
-  const requested = await client.post('/account-kit/recovery').json({ email: user.email })
+  const requested = await client.post('/api/v1/auth/password-reset').json({ email: user.email })
   assert.equal(requested.status(), 202)
   assert.deepEqual(requested.body(), {
     message: 'If the account exists, instructions will be sent.',
   })
   const token = tokenFrom(notifications.events.find((event) => event.kind === 'recovery')!.value)
-  const path = `/account-kit/recovery/${encodeURIComponent(token)}`
+  const path = `/api/v1/auth/password-reset/${encodeURIComponent(token)}`
   assert.equal((await client.get(path)).status(), 200)
   const reset = await client.post(path).json({
     password: 'BaselineReset123!',
@@ -41,6 +41,6 @@ test('stage-3 recovery baseline persists through real HTTP requests', async ({
         .post(path)
         .json({ password: 'ReplayReset123!', passwordConfirmation: 'ReplayReset123!' })
     ).status(),
-    422
+    400
   )
 })

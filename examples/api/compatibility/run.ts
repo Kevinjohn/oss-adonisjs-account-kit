@@ -118,7 +118,16 @@ const account = new AccountKit({
   config: defineConfig({
     limiterSecret: 'minimum-consumer-test-secret-32-bytes-long',
     enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
-    registration: { availability: 'closed' },
+    registration: {
+      availability: 'closed',
+      mapFields: (input) => {
+        const fullName = (input as { fullName?: unknown } | null)?.fullName
+        if (typeof fullName !== 'string' || fullName.trim() === '') {
+          throw new Error('A full name is required')
+        }
+        return { fullName: fullName.trim() }
+      },
+    },
     minRequestMs: 0,
     throttle: { requests: 100, duration: '15m' },
     invitationThrottle: {
