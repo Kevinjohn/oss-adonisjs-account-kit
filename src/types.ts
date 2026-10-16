@@ -65,7 +65,8 @@ export interface Invitation {
 
 export type Capability =
   'passwordReset' | 'emailVerification' | 'invitations' | 'emailPasswordManagement'
-export type CredentialOperation = 'password_reset' | 'password_change' | 'email_change'
+export type CredentialOperation =
+  'password_reset' | 'password_change' | 'email_change' | 'access_restriction'
 
 export interface CredentialChangeContext {
   operation: CredentialOperation
@@ -156,7 +157,73 @@ export interface AccountKitConfig {
   invitationThrottle?: Partial<InvitationThrottle>
   minRequestMs?: number
   tokenSecretLength?: number
+  authentication?: AuthenticationConfig
 }
+
+export interface AuthenticationConfig {
+  strategy: 'session' | 'access_tokens'
+  guard: string
+  /** Return false to deny login and protected access. Called under the account lock. */
+  canAccess?: (user: AccountUser, trx: Trx) => Promise<boolean>
+  clientLimit?: ThrottleBudget
+  identityLimit?: ThrottleBudget & { blockDuration?: string }
+  tokenAbilities?: string[]
+  tokenExpiresIn?: string | number
+  tokenTable?: string
+}
+
+export interface ResolvedAuthenticationConfig extends Omit<
+  AuthenticationConfig,
+  'clientLimit' | 'identityLimit' | 'tokenAbilities' | 'tokenExpiresIn' | 'tokenTable' | 'canAccess'
+> {
+  clientLimit: ThrottleBudget
+  identityLimit: ThrottleBudget & { blockDuration: string }
+  tokenAbilities: string[]
+  tokenExpiresIn: string | number | null
+  tokenTable: string
+  canAccess: (user: AccountUser, trx: Trx) => Promise<boolean>
+}
+
+export interface PasswordLoginInput {
+  email: string
+  password: string
+  /** Stable, trusted client identity derived after proxy configuration. */
+  clientKey: string
+}
+
+export interface CurrentAccount {
+  id: UserId
+  email: string
+  unverifiedEmail: string | null
+  hasPassword: boolean
+  active: boolean
+}
+
+export interface CurrentAccountInput {
+  userId: UserId
+  /** Mandatory for session guards, even when the current database stamp is null. */
+  revision?: string | null
+  /** Trusted identifier from the authenticated access-token guard. Mandatory for token guards. */
+  tokenId?: UserId
+}
+
+export type AuthenticationGuard<Credential> =
+  | {
+      strategy: 'session'
+      name: string
+      establish(userId: UserId, revision: string | null): Promise<Credential>
+      terminate(credential?: Credential): Promise<void>
+    }
+  | {
+      strategy: 'access_tokens'
+      name: string
+      establish(
+        userId: UserId,
+        abilities: string[],
+        expiresIn: string | number | null
+      ): Promise<Credential>
+      terminate(credential?: Credential): Promise<void>
+    }
 
 export interface ResolvedConfig extends Omit<
   AccountKitConfig,
@@ -171,6 +238,7 @@ export interface ResolvedConfig extends Omit<
   | 'throttle'
   | 'invitationThrottle'
   | 'minRequestMs'
+  | 'authentication'
 > {
   enabled: Capability[]
   authorize: AuthorizationCallbacks
@@ -184,6 +252,7 @@ export interface ResolvedConfig extends Omit<
   invitationThrottle: InvitationThrottle
   minRequestMs: number
   tokenSecretLength: number
+  authentication?: ResolvedAuthenticationConfig
 }
 
 export interface InvitationPage {

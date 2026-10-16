@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
+import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
 import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
@@ -72,11 +73,11 @@ export async function changePassword(
       await trx.from('email_verification_tokens').where('tokenable_id', actor.id).delete()
       const reloaded = await deps.config.users.findById(actor.id, trx)
       if (!reloaded) throw new InvalidInputError('Unknown actor')
-      await deps.config.onCredentialsChangedTransaction?.(
-        reloaded,
-        { operation: 'password_change', operationId, userId: reloaded.id },
-        trx
-      )
+      await credentialsChanged(trx, deps.config, reloaded, {
+        operation: 'password_change',
+        operationId,
+        userId: reloaded.id,
+      })
       return reloaded
     })
   )
@@ -149,11 +150,11 @@ export async function requestEmailChange(
         if (inactive) {
           const reloaded = await deps.config.users.findById(current.id, trx)
           if (!reloaded) throw new InvalidInputError('Unknown actor')
-          await deps.config.onCredentialsChangedTransaction?.(
-            reloaded,
-            { operation: 'email_change', operationId, userId: current.id },
-            trx
-          )
+          await credentialsChanged(trx, deps.config, reloaded, {
+            operation: 'email_change',
+            operationId,
+            userId: current.id,
+          })
         }
         const issuedUser = await deps.config.users.findById(current.id, trx)
         if (!issuedUser) throw new InvalidInputError('Unknown actor')
@@ -238,11 +239,11 @@ export async function completeEmailChange(
         await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
-        await deps.config.onCredentialsChangedTransaction?.(
-          reloaded,
-          { operation: 'email_change', operationId, userId: reloaded.id },
-          trx
-        )
+        await credentialsChanged(trx, deps.config, reloaded, {
+          operation: 'email_change',
+          operationId,
+          userId: reloaded.id,
+        })
         return { user: reloaded, previousEmail: user.email }
       })
     ))

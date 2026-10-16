@@ -46,4 +46,6 @@ router.use([
  */
 export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
+  accountAccess: () => import('#middleware/account_access_middleware'),
+  verifiedAccount: () => import('#middleware/verified_account_middleware'),
 })

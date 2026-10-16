@@ -99,6 +99,29 @@ function run(command, args, cwd, env = process.env) {
   return result.stdout
 }
 
+function expectFailure(command, args, cwd, env, expected) {
+  const result = spawnSync(command, args, {
+    cwd,
+    env,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  })
+  const outputText = [result.stdout, result.stderr].filter(Boolean).join('')
+  commands.push({
+    command,
+    args,
+    cwd: relative(repoRoot, cwd) || '.',
+    exitCode: result.status ?? 1,
+  })
+  if (result.error || result.status === 0 || !outputText.includes(expected)) {
+    throw new Error(`Expected ${command} ${args.join(' ')} to reject: ${expected}`)
+  }
+  output.push({
+    command: `${command} ${args.join(' ')} (expected rejection)`,
+    text: redact(outputText),
+  })
+}
+
 async function digest(path) {
   return createHash('sha256')
     .update(await readFile(path))
@@ -178,6 +201,7 @@ async function installArchive(appRoot, archive) {
   setCompatibilityVersions(manifest)
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   run('pnpm', ['install', '--no-frozen-lockfile'], appRoot)
+  await ensureExclusivePostgresDatabase(appRoot)
 
   const installed = join(appRoot, 'node_modules/adonisjs-account-kit')
   const installedPath = await realpath(installed)
@@ -252,6 +276,32 @@ async function resetExclusivePostgresSchema(appRoot) {
   await client.query('DROP SCHEMA public CASCADE')
   await client.query('CREATE SCHEMA public')
   await client.end()
+}
+
+async function ensureExclusivePostgresDatabase(appRoot) {
+  if (database !== 'postgres') return
+  const databaseName = process.env.DB_DATABASE ?? 'account_kit_consumer'
+  if (databaseName !== 'account_kit_consumer') {
+    throw new Error('PostgreSQL consumer runs require the dedicated account_kit_consumer database')
+  }
+  const require = createRequire(join(appRoot, 'package.json'))
+  const { Client } = require('pg')
+  const client = new Client({
+    host: process.env.DB_HOST ?? '127.0.0.1',
+    port: Number(process.env.DB_PORT ?? '55432'),
+    user: process.env.DB_USER ?? 'account_kit',
+    password: secret || undefined,
+    database: 'postgres',
+  })
+  await client.connect()
+  try {
+    const existing = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+      databaseName,
+    ])
+    if (existing.rowCount === 0) await client.query('CREATE DATABASE account_kit_consumer')
+  } finally {
+    await client.end()
+  }
 }
 
 async function hashFiles(paths) {
@@ -388,7 +438,21 @@ async function runFresh(candidate, runName) {
   run('pnpm', ['run', 'typecheck'], appRoot, env)
   run('pnpm', ['run', 'lint'], appRoot, env)
   run('pnpm', ['run', 'format:check'], appRoot, env)
-  if (!prepareOnly) run('pnpm', ['run', 'test'], appRoot, env)
+  if (!prepareOnly) {
+    run('pnpm', ['run', 'test'], appRoot, env)
+    run('pnpm', ['run', 'test:session'], appRoot, {
+      ...env,
+      ACCOUNT_KIT_AUTH_STRATEGY: 'session',
+      SESSION_DRIVER: 'memory',
+    })
+    expectFailure(
+      'pnpm',
+      ['run', 'test:session'],
+      appRoot,
+      { ...env, ACCOUNT_KIT_AUTH_STRATEGY: 'session', SESSION_DRIVER: 'cookie' },
+      'session authentication requires a server-side session store'
+    )
+  }
   return {
     appRoot,
     installed,
@@ -461,6 +525,7 @@ async function runUpgrade(candidate, baseline, runName) {
     '_account_kit_evolve_identity_contract.ts',
     '_account_kit_create_social_identities.ts',
     '_account_kit_retire_account_email_changes.ts',
+    '_account_kit_add_credentials_changed_at_to_users.ts',
   ]
   if (
     newlyGenerated.length !== expectedSuffixes.length ||
@@ -468,7 +533,7 @@ async function runUpgrade(candidate, baseline, runName) {
     expectedSuffixes.some((suffix) => !newlyGenerated.some((file) => file.endsWith(suffix)))
   ) {
     throw new Error(
-      `Upgrade should add only the five expected account migrations; added: ${newlyGenerated.join(', ')}`
+      `Upgrade should add only the six expected account migrations; added: ${newlyGenerated.join(', ')}`
     )
   }
   // Rehearse the documented application-owned table rename without editing applied migrations.
@@ -503,6 +568,11 @@ export default class extends BaseSchema {
     ACCOUNT_KIT_UPGRADE_PHASE: 'candidate',
   })
   run('pnpm', ['run', 'test'], appRoot, env)
+  run('pnpm', ['run', 'test:session'], appRoot, {
+    ...env,
+    ACCOUNT_KIT_AUTH_STRATEGY: 'session',
+    SESSION_DRIVER: 'memory',
+  })
   return {
     appRoot,
     baselineInstall,

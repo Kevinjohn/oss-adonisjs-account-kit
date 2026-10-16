@@ -228,6 +228,7 @@ export class SocialIdentitySchema extends BaseModel {
 
 export class UserSchema extends BaseModel {
   static $columns = [
+    'credentialsChangedAt',
     'createdAt',
     'email',
     'emailVerifiedAt',
@@ -238,6 +239,8 @@ export class UserSchema extends BaseModel {
     'updatedAt',
   ] as const
   $columns = UserSchema.$columns
+  @column.dateTime()
+  declare credentialsChangedAt: DateTime | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()

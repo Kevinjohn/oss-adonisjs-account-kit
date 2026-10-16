@@ -76,12 +76,13 @@ test('configures the package idempotently without replacing application-owned fi
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
     let migrationFiles = firstMigrationFiles.sort()
-    assert.lengthOf(migrationFiles, 8)
+    assert.lengthOf(migrationFiles, 9)
     assert.deepEqual(
       migrationFiles
         .map((filename) => filename.replace(/^.*_account_kit_/, '').replace(/\.ts$/, ''))
         .sort(),
       [
+        'add_credentials_changed_at_to_users',
         'add_email_verified_at_to_users',
         'create_account_email_changes',
         'create_account_invitations',

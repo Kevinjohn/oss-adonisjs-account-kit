@@ -8,6 +8,7 @@ test.group('published account kit migrations', (group) => {
   }) => {
     const userColumns = await kit.db.connection().columnsInfo('users')
     assert.isTrue(userColumns.email_verified_at.nullable)
+    assert.isTrue(userColumns.credentials_changed_at.nullable)
 
     const recoveryColumnInfo = await kit.db.connection().columnsInfo('password_reset_tokens')
     const recoveryColumns = Object.keys(recoveryColumnInfo)

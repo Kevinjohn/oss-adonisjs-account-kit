@@ -81,6 +81,9 @@ export default class AccountKitController {
 
   async invitationSend({ auth, request, response }: HttpContext) {
     const actor = await auth.getUserOrFail()
+    if (actor.currentAccessToken && !actor.currentAccessToken.allows('invitations:create')) {
+      return response.forbidden({ code: 'missing_ability' })
+    }
     const { email, role } = await request.validateUsing(invitationValidator)
     const invitation = await (
       await this.kit()

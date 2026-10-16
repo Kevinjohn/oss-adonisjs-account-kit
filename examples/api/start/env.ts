@@ -29,6 +29,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_DATABASE: Env.schema.string.optional(),
   ACCOUNT_KIT_USERS_TABLE: Env.schema.string.optional(),
   ACCOUNT_KIT_USER_ID_TYPE: Env.schema.enum.optional(['integer', 'string', 'uuid'] as const),
+  ACCOUNT_KIT_AUTH_STRATEGY: Env.schema.enum.optional(['session', 'access_tokens'] as const),
 
   // Session
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),

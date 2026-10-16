@@ -1,4 +1,5 @@
 import { defineConfig } from '@adonisjs/shield'
+import env from '#start/env'
 
 const shieldConfig = defineConfig({
   /**
@@ -30,7 +31,7 @@ const shieldConfig = defineConfig({
     /**
      * Enable CSRF token verification for state-changing requests.
      */
-    enabled: false,
+    enabled: env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session',
 
     /**
      * Route patterns to exclude from CSRF checks.
