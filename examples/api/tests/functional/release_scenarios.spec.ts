@@ -88,10 +88,11 @@ test('a recipient can accept after the inviter loses issuance permission', async
       .header('cookie', ownerCredential.cookie!)
       .header('x-csrf-token', ownerCredential.csrf!)
   }
-  assert.equal(
-    (await deniedSend.json({ email: `denied-${suffix}@example.test`, role: 'member' })).status(),
-    403
-  )
+  const denied = await deniedSend.json({
+    email: `denied-${suffix}@example.test`,
+    role: 'member',
+  })
+  assert.equal(denied.status(), 403)
 
   const acceptance = client.post(`/api/v1/auth/invitations/${encodeURIComponent(token)}`)
   if (sessionMode) {
