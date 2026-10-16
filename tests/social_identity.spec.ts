@@ -447,6 +447,101 @@ test.group('social proof and relationship atomicity', (group) => {
     })
   })
 
+  const linkGoogle = async (
+    account: ReturnType<typeof makeService>['account'],
+    userId: number | string
+  ) => {
+    const linkProof = await account.socialAuthentication.provePassword({
+      current: current(userId),
+      password: 'password123',
+      purpose: 'social_link',
+    })
+    const linking = await account.socialAuthentication.begin({
+      provider: 'google',
+      intent: 'link',
+      current: current(userId),
+      clientChallenge,
+      proof: linkProof,
+    })
+    await account.socialAuthentication.callback({
+      state: linking.state,
+      callback: {},
+      current: current(userId),
+    })
+    const [relation] = await account.socialAuthentication.list({ current: current(userId) })
+    return relation
+  }
+
+  test('unlink advances the credential revision and ends the caller session', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const operations: string[] = []
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: { providers: { google: provider('revoked-unlink', user.email, true) } },
+      authentication: { strategy: 'session', guard: 'web' },
+      onCredentialsChangedTransaction: async (changed, context, trx) => {
+        assert.equal(changed.id, user.id)
+        assert.equal(context.userId, user.id)
+        assert.isString(context.operationId)
+        assert.lengthOf(await trx.from('social_identities').where('user_id', user.id), 0)
+        operations.push(context.operation)
+      },
+    })
+    const relation = await linkGoogle(account, user.id)
+    const before = await kit.db.from('users').where('id', user.id).first()
+    const unlinkProof = await account.socialAuthentication.provePassword({
+      current: current(user.id),
+      password: 'password123',
+      purpose: 'social_unlink',
+    })
+    await account.socialAuthentication.unlink({
+      current: current(user.id),
+      identityId: relation.id,
+      proof: unlinkProof,
+    })
+    const after = await kit.db.from('users').where('id', user.id).first()
+    assert.notEqual(String(after.credentials_changed_at), String(before.credentials_changed_at))
+    assert.deepEqual(operations, ['social_unlink'])
+    await assert.rejects(
+      () => account.socialAuthentication.list({ current: current(user.id) }),
+      'Invalid session'
+    )
+    assert.lengthOf(await kit.db.from('social_sensitive_proofs').where('user_id', user.id), 0)
+    assert.lengthOf(await kit.db.from('social_transactions').where('user_id', user.id), 0)
+  })
+
+  test('unlink runs the post-commit credential hook after the relationship is removed', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const seen: Array<{ operation: string; remaining: number }> = []
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: { providers: { google: provider('hooked-unlink', user.email, true) } },
+      authentication: { strategy: 'session', guard: 'web' },
+      onCredentialsChanged: async (changed, context) => {
+        const remaining = await kit.db.from('social_identities').where('user_id', changed.id)
+        seen.push({ operation: context.operation, remaining: remaining.length })
+      },
+    })
+    const relation = await linkGoogle(account, user.id)
+    const unlinkProof = await account.socialAuthentication.provePassword({
+      current: current(user.id),
+      password: 'password123',
+      purpose: 'social_unlink',
+    })
+    await account.socialAuthentication.unlink({
+      current: current(user.id),
+      identityId: relation.id,
+      proof: unlinkProof,
+    })
+    assert.deepEqual(seen, [{ operation: 'social_unlink', remaining: 0 }])
+  })
+
   test('unlink invalidates proof issued through the removed provider', async ({ assert }) => {
     const user = await insertUser(kit, { email: 'unlink-proof@example.test', password: null })
     const timestamp = new Date().toISOString()
@@ -783,6 +878,7 @@ test.group('social proof and relationship atomicity', (group) => {
       identityId: identity.id,
       proof: wrong,
     })
+    // The unlink advanced the credential revision, so the session that performed it is over.
     await assert.rejects(
       () =>
         account.socialAuthentication.unlink({
@@ -790,7 +886,7 @@ test.group('social proof and relationship atomicity', (group) => {
           identityId: identity.id,
           proof: wrong,
         }),
-      'Social account was not found'
+      'Invalid session'
     )
     assert.lengthOf(await kit.db.from('social_identities'), 0)
   })
@@ -1327,6 +1423,7 @@ test.group('social races and post-commit effects', (group) => {
       proof: unlinkProof,
     })
     assert.lengthOf(await kit.db.from('social_identities').where('user_id', created.userId), 0)
+    // Unlinking advanced the revision again, so the post-reset session is over too.
     await assert.rejects(
       () =>
         account.socialAuthentication.unlink({
@@ -1334,7 +1431,7 @@ test.group('social races and post-commit effects', (group) => {
           identityId: confirmed.id,
           proof: unlinkProof,
         }),
-      'Social account was not found'
+      'Invalid session'
     )
   })
 })
@@ -2030,7 +2127,7 @@ test.group('social association and continuation regressions', (group) => {
           identityId: relations[0].id,
           proof: unlinkProof,
         }),
-      'Social identity unlinked but notice failed'
+      'Social identity unlinked but a follow-up failed'
     )
     assert.lengthOf(await kit.db.from('social_identities'), 0)
     assert.equal(

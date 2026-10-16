@@ -77,6 +77,7 @@ export type CredentialOperation =
   | 'email_change'
   | 'access_restriction'
   | 'registration_claim'
+  | 'social_unlink'
 
 export interface CredentialChangeContext {
   operation: CredentialOperation
