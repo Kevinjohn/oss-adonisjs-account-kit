@@ -38,6 +38,8 @@ revocation, and client handling, and [token API reference](TOKENS.md) for bearer
 confirmation, error formats, and log redaction. The example permits a limited inactive credential to correct an
 unconfirmed email, while `VerifiedAccountMiddleware` rejects it on verified routes. Bearer tokens
 must have the `invitations:create` ability before the invitation-send controller acts.
+The [session reference](SESSION.md) gives the browser bootstrap, cookie, logout, and application-route
+revocation walkthrough.
 
 The credential-notice outbox stores password-reset and password-change operation IDs, kinds, and
 recipient addresses; it does not store passwords or bearer tokens. In token mode, package credential
