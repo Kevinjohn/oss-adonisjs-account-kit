@@ -63,6 +63,19 @@ const nativeMailTransports = new Set([
   'postmark',
 ])
 
+function managedExclusions(choices: SetupChoices): ManagedRoute['name'][] {
+  return [
+    ...new Set([
+      ...(choices.managedExcept ?? []),
+      ...(choices.social.status === 'enabled' &&
+      choices.managed.includes('socialAuthentication') &&
+      choices.policy.registration === 'application'
+        ? (['auth.oauth.registration'] as const)
+        : []),
+    ]),
+  ]
+}
+
 function selectedManagedRoutes(
   choices: SetupChoices,
   existing: readonly ExistingRoute[] = []
@@ -73,7 +86,7 @@ function selectedManagedRoutes(
       prefix: choices.routePrefix,
       strategy: choices.authentication.strategy,
       enabled: choices.managed,
-      except: choices.managedExcept ?? [],
+      except: managedExclusions(choices),
     },
     existing
   )
@@ -130,7 +143,8 @@ function validate(
   state: SetupInspection,
   production: boolean,
   retirementImpact: SetupPlan['retirementImpact'],
-  retirementMaintenanceWindow: boolean
+  retirementMaintenanceWindow: boolean,
+  runtimeInventoryUnavailable: boolean
 ) {
   const diagnostics: SetupDiagnostic[] = []
   if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
@@ -577,37 +591,154 @@ function validate(
       'mail.delivery',
       'Durable delivery requires application-owned notification callbacks backed by a verified queue or outbox'
     )
-  if (choices.social.status === 'approved-pending') {
+  if (choices.social.status === 'enabled') {
     if (
       !choices.social.providers.length ||
       choices.social.providers.some((provider) => !['google', 'github'].includes(provider)) ||
       new Set(choices.social.providers).size !== choices.social.providers.length
     )
       diagnostic(diagnostics, 'social.providers', 'Select unique Google and/or GitHub providers')
+    if (!choices.features.includes('socialAuthentication'))
+      diagnostic(diagnostics, 'features', 'Selected social providers require socialAuthentication')
+    if (
+      !choices.features.includes('registration') ||
+      !choices.features.includes('emailVerification')
+    )
+      diagnostic(
+        diagnostics,
+        'features',
+        'Social creation requires registration and emailVerification'
+      )
+    if (!choices.features.includes('passwordReset'))
+      diagnostic(
+        diagnostics,
+        'social.sensitiveActions',
+        'Standard Ally callbacks do not prove fresh authentication. Enable passwordReset so social-only users can establish a first password, sign in with it, then re-enter it for purpose-bound sensitive-action proof'
+      )
+    if (!choices.authentication)
+      diagnostic(diagnostics, 'authentication', 'Social authentication requires a selected guard')
+    if (choices.mode === 'managed' && !choices.managed.includes('socialAuthentication'))
+      diagnostic(
+        diagnostics,
+        'managed',
+        'Selected managed social providers require managed socialAuthentication'
+      )
+    validateOrigin(
+      diagnostics,
+      'social.callbackOriginEnv',
+      choices.social.callbackOriginEnv,
+      production
+    )
+    if (
+      !choices.social.callbackPath.startsWith('/') ||
+      !choices.social.callbackPath.includes('{provider}') ||
+      choices.social.callbackPath.includes('?') ||
+      choices.social.callbackPath.includes('#') ||
+      choices.social.callbackPath.includes('..') ||
+      choices.social.callbackPath.includes('\\') ||
+      choices.social.callbackPath.startsWith('//')
+    )
+      diagnostic(
+        diagnostics,
+        'social.callbackPath',
+        'Use a safe absolute path containing {provider}'
+      )
+    if (
+      choices.authentication?.strategy === 'session' &&
+      choices.social.callbackPath !== `${choices.routePrefix}/auth/oauth/{provider}/callback`
+    )
+      diagnostic(
+        diagnostics,
+        'social.callbackPath',
+        'Session callbacks must use the managed callback route'
+      )
+    if (choices.policy.registration === 'application' && choices.mode === 'managed')
+      diagnostic(
+        diagnostics,
+        'social.admission',
+        'Application registration requires a trusted server admit extension; generated managed completion is excluded until supplied',
+        'action'
+      )
+    for (const provider of choices.social.providers) {
+      const refs = choices.social.credentials[provider]
+      if (!refs || !envName.test(refs.clientIdEnv) || !envName.test(refs.clientSecretEnv)) {
+        diagnostic(
+          diagnostics,
+          `social.credentials.${provider}`,
+          'Provide credential environment variable names for this provider'
+        )
+        continue
+      }
+      for (const [key, env] of Object.entries(refs))
+        if (!process.env[env])
+          diagnostic(
+            diagnostics,
+            `social.credentials.${provider}.${key}`,
+            `${env} must be set before readiness can pass`,
+            'action'
+          )
+    }
+    for (const name of Object.keys(choices.social.credentials))
+      if (!choices.social.providers.includes(name as 'google' | 'github'))
+        diagnostic(
+          diagnostics,
+          `social.credentials.${name}`,
+          'Disabled providers must not carry credential references'
+        )
+    if (!state.installedPackages.includes('@adonisjs/ally'))
+      diagnostic(
+        diagnostics,
+        'social',
+        'Install @adonisjs/ally before activating social sign-in',
+        'action'
+      )
+    if (!state.files['config/ally.ts'])
+      diagnostic(
+        diagnostics,
+        'config/ally.ts',
+        'Configure selected providers in Ally with the displayed callbacks',
+        'action'
+      )
+  }
+  if (
+    choices.social.status === 'not-applicable' &&
+    choices.features.includes('socialAuthentication')
+  )
+    diagnostic(diagnostics, 'social', 'Enabled socialAuthentication requires selected providers')
+  const beforeProviders =
+    retirementImpact?.currentProviders ??
+    (state.existingChoices?.social.status === 'enabled'
+      ? state.existingChoices.social.providers
+      : [])
+  const afterProviders = choices.social.status === 'enabled' ? choices.social.providers : []
+  const providerRetirement = beforeProviders.some((provider) => !afterProviders.includes(provider))
+  const passwordRetirement =
+    (retirementImpact?.currentPasswordLogin ?? Boolean(state.existingChoices?.authentication)) &&
+    !choices.authentication
+  if (runtimeInventoryUnavailable && state.existingChoices)
     diagnostic(
       diagnostics,
-      'social',
-      'Social identity is approved but is not installed by this setup yet',
-      'action'
+      'authentication.retirement',
+      'Booted login-method inventory is unavailable; verify Account Kit configuration and database access before reconfiguration'
     )
-  }
-  if (state.existingChoices?.authentication && !choices.authentication) {
+  if (providerRetirement || passwordRetirement) {
+    const field = providerRetirement ? 'social.retirement' : 'authentication.retirement'
     if (!retirementImpact)
       diagnostic(
         diagnostics,
-        'authentication.retirement',
+        field,
         'Read-only retirement impact count is unavailable; verify Account Kit provider, configuration and database access, then retry'
       )
     else if (retirementImpact.affectedAccounts > 0)
       diagnostic(
         diagnostics,
-        'authentication.retirement',
+        field,
         `${retirementImpact.affectedAccounts} of ${retirementImpact.inspectedAccounts} accounts would lose their last usable login; complete an owner-managed credential migration before retrying`
       )
     else if (!retirementMaintenanceWindow)
       diagnostic(
         diagnostics,
-        'authentication.retirement',
+        field,
         'Zero affected accounts were found, but retirement requires --retirement-maintenance-window to prevent concurrent credential changes'
       )
   }
@@ -628,6 +759,16 @@ function generatedEnv(choices: SetupChoices): string {
     names.add(choices.mail.frontendOriginEnv)
     if (choices.mail.senderEnv) names.add(choices.mail.senderEnv)
     if (choices.mail.transportEnv) names.add(choices.mail.transportEnv)
+  }
+  if (choices.social.status === 'enabled') {
+    names.add(choices.social.callbackOriginEnv)
+    for (const provider of choices.social.providers) {
+      const refs = choices.social.credentials[provider]
+      if (refs) {
+        names.add(refs.clientIdEnv)
+        names.add(refs.clientSecretEnv)
+      }
+    }
   }
   return [
     '# Account Kit deployment values; supply real values through your deployment environment',
@@ -718,6 +859,10 @@ function changedFields(before: unknown, after: unknown, path = ''): string[] {
 }
 
 function managedRoutesSource(choices: SetupChoices): string {
+  const social =
+    choices.social.status === 'enabled' && choices.managed.includes('socialAuthentication')
+      ? choices.social
+      : null
   return [
     "import router from '@adonisjs/core/services/router'",
     "import app from '@adonisjs/core/services/app'",
@@ -728,12 +873,15 @@ function managedRoutesSource(choices: SetupChoices): string {
     'registerManagedRoutes(router, {',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
-    ...('managedExcept' in choices
-      ? [`  except: ${JSON.stringify(choices.managedExcept ?? [])},`]
+    ...('managedExcept' in choices || managedExclusions(choices).length
+      ? [`  except: ${JSON.stringify(managedExclusions(choices))},`]
       : []),
     `  verificationRequired: ${choices.policy.verificationRequired},`,
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
+    ...(social
+      ? [`  extensions: { social: { providers: ${JSON.stringify(social.providers)} } },`]
+      : []),
     '})',
     '',
   ].join('\n')
@@ -763,6 +911,44 @@ function retainedGeneratedChoices(state: SetupInspection): SetupChoices | null {
   } catch {
     return null
   }
+}
+
+function allyConfigSource(choices: SetupChoices): string {
+  if (choices.social.status !== 'enabled') throw new Error('Social providers are not selected')
+  const social = choices.social
+  const origin = social.callbackOriginEnv
+  return [
+    "import { defineConfig, services } from '@adonisjs/ally'",
+    "import type { InferSocialProviders } from '@adonisjs/ally/types'",
+    '',
+    'const requiredEnv = (name: string): string => {',
+    '  const value = process.env[name]',
+    '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
+    '  return value',
+    '}',
+    '',
+    'const allyConfig = defineConfig({',
+    ...social.providers.map((provider) => {
+      const refs = social.credentials[provider]!
+      const path = social.callbackPath.replace('{provider}', provider)
+      return [
+        `  ${provider}: services.${provider}({`,
+        `    clientId: requiredEnv(${JSON.stringify(refs.clientIdEnv)}),`,
+        `    clientSecret: requiredEnv(${JSON.stringify(refs.clientSecretEnv)}),`,
+        `    callbackUrl: new URL(${JSON.stringify(path)}, requiredEnv(${JSON.stringify(origin)})).toString(),`,
+        ...(provider === 'github' ? ["    scopes: ['user:email'],"] : []),
+        '  }),',
+      ].join('\n')
+    }),
+    '})',
+    '',
+    "declare module '@adonisjs/ally/types' {",
+    '  interface SocialProviders extends InferSocialProviders<typeof allyConfig> {}',
+    '}',
+    '',
+    'export default allyConfig',
+    '',
+  ].join('\n')
 }
 
 function managedGuardSource(choices: SetupChoices): string {
@@ -809,8 +995,9 @@ function proofHeadersMiddlewareSource(choices: SetupChoices): string {
     '',
     'const applyProofHeaders = managedProofHeadersMiddleware({',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
+    `  strategy: ${JSON.stringify(choices.authentication?.strategy ?? 'session')},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
-    `  except: ${JSON.stringify(choices.managedExcept ?? [])},`,
+    `  except: ${JSON.stringify(managedExclusions(choices))},`,
     '})',
     '',
     'export default class AccountKitProofHeadersMiddleware {',
@@ -825,6 +1012,7 @@ function proofHeadersMiddlewareSource(choices: SetupChoices): string {
 function accountConfigSource(choices: SetupChoices): string {
   const emailEnabled = hasEmailFlow(choices)
   const managedMail = emailEnabled && choices.mail.integration === 'adonisjs-mail'
+  const social = choices.social.status === 'enabled' ? choices.social : null
   const serviceCapabilities = choices.features.filter((name) => name !== 'authentication')
   const usesPolicy =
     choices.policy.accessRestrictionHook || choices.features.includes('invitations')
@@ -836,6 +1024,7 @@ function accountConfigSource(choices: SetupChoices): string {
       'defineConfig',
       ...(choices.user.adapter === 'lucid' ? ['createLucidAdapter'] : []),
       ...(managedMail ? ['createMailNotifications'] : []),
+      ...(social ? ['createAllySocialProvider'] : []),
     ].join(', ')} } from 'adonisjs-account-kit'`,
     ...(choices.user.adapter === 'custom'
       ? ["import users from '#services/account_kit_users'"]
@@ -847,6 +1036,7 @@ function accountConfigSource(choices: SetupChoices): string {
     ...(choices.policy.registrationFields.length
       ? ["import { InvalidInputError } from 'adonisjs-account-kit/errors'"]
       : []),
+    ...(social ? ["import type { HttpContext } from '@adonisjs/core/http'"] : []),
     '',
     ...(emailEnabled
       ? [
@@ -873,8 +1063,10 @@ function accountConfigSource(choices: SetupChoices): string {
           '      continue',
           '    }',
           '    if (typeof value !== field.type) throw new InvalidInputError(`account_kit: registrationData.${field.name} must be ${field.type}`)',
-          "    if (field.type === 'string' && typeof value === 'string' && field.maxLength !== undefined && value.length > field.maxLength) throw new InvalidInputError(`account_kit: registrationData.${field.name} is too long`)",
-          '    output[field.name] = value',
+          "    const mapped = field.required && typeof value === 'string' ? value.trim() : value",
+          "    if (field.required && mapped === '') throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)",
+          "    if (field.type === 'string' && typeof mapped === 'string' && field.maxLength !== undefined && mapped.length > field.maxLength) throw new InvalidInputError(`account_kit: registrationData.${field.name} is too long`)",
+          '    output[field.name] = mapped',
           '  }',
           '  return output',
           '}',
@@ -921,6 +1113,20 @@ function accountConfigSource(choices: SetupChoices): string {
           ...(choices.policy.accessRestrictionHook
             ? ['    canAccess: accountKitPolicy.canAccess,']
             : []),
+          '  },',
+        ]
+      : []),
+    ...(social
+      ? [
+          '  socialAuthentication: {',
+          '    providers: {',
+          ...social.providers.flatMap((provider) => [
+            `      ${provider}: createAllySocialProvider({`,
+            `        authorizationUrl: (state, context) => (context as HttpContext).ally.use('${provider}').stateless().redirectUrl((request) => request.param('state', state)),`,
+            `        user: (callback) => (callback as HttpContext).ally.use('${provider}').stateless().user(),`,
+            '      }),',
+          ]),
+          '    },',
           '  },',
         ]
       : []),
@@ -2200,6 +2406,7 @@ export async function planSetup(
     timestamp?: number
     retirementImpact?: SetupPlan['retirementImpact']
     retirementMaintenanceWindow?: boolean
+    runtimeInventoryUnavailable?: boolean
   } = {}
 ): Promise<SetupPlan> {
   choices = parseSetupChoices(choices)
@@ -2208,7 +2415,8 @@ export async function planSetup(
     state,
     options.production ?? false,
     options.retirementImpact ?? null,
-    options.retirementMaintenanceWindow ?? false
+    options.retirementMaintenanceWindow ?? false,
+    options.runtimeInventoryUnavailable ?? false
   )
   if (
     hasEmailFlow(choices) &&
@@ -2785,6 +2993,23 @@ export async function planSetup(
     'Document deployment references'
   )
   await planSessionConfigIntegration(changes, state, choices, diagnostics)
+  if (choices.social.status === 'enabled') {
+    if (state.files['config/ally.ts'] === undefined)
+      addChange(
+        changes,
+        state,
+        'config/ally.ts',
+        allyConfigSource(choices),
+        'Configure selected Ally providers using deployment references and exact callbacks'
+      )
+    else
+      diagnostic(
+        diagnostics,
+        'config/ally.ts',
+        'Review the existing Ally configuration and add selected providers without replacing existing providers',
+        'action'
+      )
+  }
   if (
     !choices.authentication &&
     state.existingChoices?.authentication &&
@@ -2859,6 +3084,7 @@ export async function planSetup(
     '@adonisjs/limiter/limiter_provider',
     'adonisjs-account-kit/providers/account_kit_provider',
     ...(choices.managed.length ? ['@adonisjs/auth/auth_provider'] : []),
+    ...(choices.social.status === 'enabled' ? ['@adonisjs/ally/ally_provider'] : []),
     ...(choices.authentication?.strategy === 'session' && choices.managed.length
       ? ['@adonisjs/session/session_provider', '@adonisjs/shield/shield_provider']
       : []),
@@ -3029,6 +3255,7 @@ export async function planSetup(
     ...(hasEmailFlow(choices) && choices.mail.integration === 'adonisjs-mail'
       ? ['@adonisjs/mail']
       : []),
+    ...(choices.social.status === 'enabled' ? ['@adonisjs/ally'] : []),
   ]
   const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
@@ -3096,6 +3323,20 @@ export async function planSetup(
         `Installed ${name}@${version} is outside supported ^${minimum.join('.')} range`
       )
   }
+  if (choices.social.status === 'enabled') {
+    const allyVersion = state.installedVersions['@adonisjs/ally']
+    const patch = allyVersion?.match(/^6\.3\.(\d+)$/)?.[1]
+    if (
+      state.installedPackages.includes('@adonisjs/ally') &&
+      (patch === undefined || Number(patch) < 2)
+    )
+      diagnostic(
+        diagnostics,
+        'dependencies.@adonisjs/ally',
+        `Installed @adonisjs/ally@${allyVersion || 'unknown'} is outside the verified range >=6.3.2 <6.4.0`
+      )
+  }
+  const socialChoices = choices.social.status === 'enabled' ? choices.social : null
   const csrfLocation = endpointLocations.find(({ name }) => name === 'auth.csrf')?.path
   const prerequisites = [
     ...missingPackages.map((name) => `Install ${name} explicitly with pnpm add ${name}`),
@@ -3113,6 +3354,26 @@ export async function planSetup(
           csrfLocation
             ? `Exercise GET ${csrfLocation} and a CSRF-protected POST with the deployed Shield configuration`
             : 'Provide and exercise an application-owned CSRF bootstrap endpoint and a CSRF-protected POST with the deployed Shield configuration',
+        ]
+      : []),
+    ...(socialChoices
+      ? socialChoices.providers.map((provider) => {
+          const origin = process.env[socialChoices.callbackOriginEnv]
+          const path = socialChoices.callbackPath.replace('{provider}', provider)
+          let callback = '$' + '{' + socialChoices.callbackOriginEnv + '}' + path
+          if (origin) {
+            try {
+              callback = new URL(path, origin).toString()
+            } catch {
+              // validateOrigin reports the invalid deployment value.
+            }
+          }
+          return `Register ${provider} callback ${callback} in the provider console and verify its Ally settings`
+        })
+      : []),
+    ...(socialChoices
+      ? [
+          'Verify D14 first-password reset, password login, and password re-entry for social-only sensitive actions; standard Google and GitHub Ally callbacks cannot establish fresh provider reauthentication proof',
         ]
       : []),
     'Verify model email uniqueness, normalization, hashing and transaction behavior',
@@ -3159,8 +3420,8 @@ export async function planSetup(
         ? `${choices.mail.integration}; ${choices.mail.delivery}`
         : 'not applicable: no email capability selected',
       social:
-        choices.social.status === 'approved-pending'
-          ? 'approved, pending installed implementation'
+        choices.social.status === 'enabled'
+          ? `${choices.social.providers.map((provider) => (provider === 'google' ? 'Google' : 'GitHub')).join(', ')} selected; stable subject identities; matching email requires linking proof; missing or unverified email requires collection/verification; standard Ally has no fresh provider reauthentication proof; social-only sensitive actions require first-password reset, password login, then password re-entry; ${choices.authentication?.strategy === 'access_tokens' ? 'client POST callback and PKCE token exchange' : 'session callback and server-held PKCE verifier'}`
           : `not applicable: ${choices.social.reason}`,
       policy: `${choices.policy.registration} registration; verification ${choices.policy.verificationRequired ? 'required' : 'optional'}`,
     },

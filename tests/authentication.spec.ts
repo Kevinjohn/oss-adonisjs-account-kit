@@ -30,17 +30,112 @@ test.group('authentication contract', (group) => {
     await insertUser(kit, { email: 'password@example.test' })
     await insertUser(kit, { email: 'provider@example.test', password: null })
     const before = await kit.db.from('users').count('* as total').first()
-    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: {
+          google: {
+            authorizationUrl: async () => 'https://provider.example',
+            resolve: async () => ({ subject: 'g-1', email: null, emailVerified: false }),
+          },
+          github: {
+            authorizationUrl: async () => 'https://provider.example',
+            resolve: async () => ({ subject: 'gh-1', email: null, emailVerified: false }),
+          },
+        },
+      },
+    })
     const impact = await account.authentication.retirementImpact({ passwordLogin: false })
     assert.equal(impact.inspectedAccounts, 2)
     assert.equal(impact.affectedAccounts, 1)
     assert.isTrue(Number.isFinite(Date.parse(impact.checkedAt)))
     assert.deepEqual(await kit.db.from('users').count('* as total').first(), before)
-    await assert.rejects(
-      () =>
-        account.authentication.retirementImpact({ passwordLogin: false, providers: ['google'] }),
-      /Social identity inventory is unavailable/
-    )
+    const withProviderInventory = await account.authentication.retirementImpact({
+      passwordLogin: false,
+      providers: ['google'],
+    })
+    assert.equal(withProviderInventory.affectedAccounts, 1)
+  })
+
+  test('provider retirement counts only accounts losing their last confirmed usable method', async ({
+    assert,
+  }) => {
+    const password = await insertUser(kit, { email: 'password@example.test' })
+    const google = await insertUser(kit, { email: 'google@example.test', password: null })
+    const both = await insertUser(kit, { email: 'both@example.test', password: null })
+    const pending = await insertUser(kit, { email: 'pending@example.test', password: null })
+    const now = new Date().toISOString()
+    await kit.db.table('social_identities').insert([
+      {
+        user_id: google.id,
+        provider: 'google',
+        provider_user_id: 'g-1',
+        email: google.email,
+        email_verified: true,
+        confirmed_at: now,
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        user_id: both.id,
+        provider: 'google',
+        provider_user_id: 'g-2',
+        email: both.email,
+        email_verified: true,
+        confirmed_at: now,
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        user_id: both.id,
+        provider: 'github',
+        provider_user_id: 'gh-2',
+        email: both.email,
+        email_verified: true,
+        confirmed_at: now,
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        user_id: pending.id,
+        provider: 'google',
+        provider_user_id: 'g-pending',
+        email: pending.email,
+        email_verified: true,
+        confirmed_at: null,
+        created_at: now,
+        updated_at: now,
+      },
+    ])
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: {
+          google: {
+            authorizationUrl: async () => 'https://provider.example',
+            resolve: async () => ({ subject: 'g-1', email: null, emailVerified: false }),
+          },
+          github: {
+            authorizationUrl: async () => 'https://provider.example',
+            resolve: async () => ({ subject: 'gh-1', email: null, emailVerified: false }),
+          },
+        },
+      },
+    })
+    const retainPassword = await account.authentication.retirementImpact({
+      passwordLogin: true,
+      providers: ['github'],
+    })
+    assert.equal(retainPassword.inspectedAccounts, 4)
+    assert.equal(retainPassword.affectedAccounts, 1)
+    const retirePassword = await account.authentication.retirementImpact({
+      passwordLogin: false,
+      providers: ['github'],
+    })
+    assert.equal(retirePassword.affectedAccounts, 2)
+    assert.equal(password.hasPassword, true)
   })
 
   test('booted Ace retirement inventory returns a structured count', async ({ assert }) => {
@@ -57,6 +152,12 @@ test.group('authentication contract', (group) => {
     if (!result.impact) throw new Error('Missing retirement impact')
     assert.equal(result.impact.inspectedAccounts, 2)
     assert.equal(result.impact.affectedAccounts, 1)
+    const retainPassword = await kernel.exec<typeof RetirementImpact>(
+      'account-kit:retirement-impact',
+      ['--quiet', '--keep-password-login', '--providers=github']
+    )
+    assert.isNull(retainPassword.failure)
+    assert.equal(retainPassword.impact?.affectedAccounts, 0)
   })
 
   test('retirement inventory follows configured string IDs and user table', async ({ assert }) => {

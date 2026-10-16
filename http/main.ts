@@ -18,6 +18,7 @@ export type {
   ManagedQuery,
   ManagedRequestBodies,
   ManagedRequestBody,
+  ManagedSocialFlowBody,
   ManagedSuccessBodies,
   ManagedSuccessBody,
 } from '../src/http/contracts.js'

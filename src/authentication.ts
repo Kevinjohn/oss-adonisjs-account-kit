@@ -137,22 +137,34 @@ export async function currentInTransaction(
 
 export function authenticationService(deps: Dependencies) {
   return {
-    /** Read-only, point-in-time inventory; run again inside the owner's maintenance window. */
+    /** Read-only impact of the login methods that remain after a proposed change. */
     async retirementImpact(input: {
       passwordLogin: boolean
-      providers?: readonly string[]
+      providers?: readonly ('google' | 'github')[]
     }): Promise<{
       inspectedAccounts: number
       affectedAccounts: number
       checkedAt: string
+      currentProviders: Array<'google' | 'github'>
+      currentPasswordLogin: boolean
     }> {
       configured(deps)
-      if (input.passwordLogin !== false)
-        throw new Error('Password-login retirement must be selected explicitly')
-      if (input.providers?.length)
-        throw new Error(
-          'Social identity inventory is unavailable until provider integration is installed'
-        )
+      if (typeof input.passwordLogin !== 'boolean')
+        throw new Error('Remaining password-login policy must be selected explicitly')
+      if (
+        input.providers &&
+        (new Set(input.providers).size !== input.providers.length ||
+          input.providers.some((provider) => provider !== 'google' && provider !== 'github'))
+      )
+        throw new Error('Remaining provider inventory must use unique supported providers')
+      const currentProviders = new Set(
+        deps.config.enabled.includes('socialAuthentication')
+          ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as Array<
+              'google' | 'github'
+            >)
+          : []
+      )
+      const remainingProviders = input.providers ?? [...currentProviders]
       const { table } = await userMetadata(deps.config)
       let inspectedAccounts = 0
       let affectedAccounts = 0
@@ -162,6 +174,25 @@ export function authenticationService(deps: Dependencies) {
         if (lastId !== undefined) query.where('id', '>', lastId)
         const rows = await query
         if (!rows.length) break
+        const identities = currentProviders.size
+          ? await deps.db
+              .from('social_identities')
+              .whereIn(
+                'user_id',
+                rows.map((row) => row.id as UserId)
+              )
+              .whereNotNull('confirmed_at')
+              .select('user_id', 'provider')
+          : []
+        const byUser = new Map<string, Set<string>>()
+        for (const identity of identities) {
+          if (identity.provider !== 'google' && identity.provider !== 'github')
+            throw new Error('Unknown confirmed provider in login inventory')
+          const key = String(identity.user_id)
+          const values = byUser.get(key) ?? new Set<string>()
+          values.add(identity.provider)
+          byUser.set(key, values)
+        }
         for (const row of rows) {
           const id = row.id as UserId
           const user = await deps.config.users.findById(id)
@@ -171,11 +202,26 @@ export function authenticationService(deps: Dependencies) {
               'Account adapter must report whether each inventoried user has a password'
             )
           inspectedAccounts++
-          if (user.hasPassword) affectedAccounts++
+          const confirmed = byUser.get(String(id)) ?? new Set<string>()
+          const hadUsableMethod =
+            user.hasPassword ||
+            [...confirmed].some((provider) => currentProviders.has(provider as 'google' | 'github'))
+          const retainsMethod =
+            (input.passwordLogin && user.hasPassword) ||
+            remainingProviders.some(
+              (provider) => currentProviders.has(provider) && confirmed.has(provider)
+            )
+          if (hadUsableMethod && !retainsMethod) affectedAccounts++
           lastId = id
         }
       }
-      return { inspectedAccounts, affectedAccounts, checkedAt: new Date().toISOString() }
+      return {
+        inspectedAccounts,
+        affectedAccounts,
+        checkedAt: new Date().toISOString(),
+        currentProviders: [...currentProviders],
+        currentPasswordLogin: true,
+      }
     },
 
     async login<Credential>(
