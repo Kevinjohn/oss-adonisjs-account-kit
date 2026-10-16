@@ -61,7 +61,8 @@ export interface Invitation {
   updatedAt: DateTime
 }
 
-export type Capability = 'recovery' | 'verification' | 'invitations' | 'credentials'
+export type Capability =
+  'passwordReset' | 'emailVerification' | 'invitations' | 'emailPasswordManagement'
 export type CredentialOperation = 'password_reset' | 'password_change' | 'email_change'
 
 export interface CredentialChangeContext {
@@ -74,7 +75,7 @@ export type LifecycleEvent =
   | {
       type:
         | 'verification.completed'
-        | 'recovery.requested'
+        | 'password_reset.requested'
         | 'password.reset'
         | 'password.changed'
         | 'email_change.requested'
@@ -99,18 +100,18 @@ export interface AuthorizationCallbacks {
   listInvitations(actor: AccountUser, context?: AuthorizationContext): Promise<boolean>
 }
 export interface UrlCallbacks {
-  recovery(token: string): string
-  verification(token: string): string
+  passwordReset(token: string): string
+  emailVerification(token: string): string
   invitation(token: string): string
   emailChange(token: string): string
 }
 export interface NotificationCallbacks {
-  recovery(user: AccountUser, url: string): Promise<void>
-  verification(user: AccountUser, url: string): Promise<void>
-  invitation(invitation: Invitation, url: string): Promise<void>
-  emailChangeConfirm(user: AccountUser, newEmail: string, url: string): Promise<void>
+  passwordResetProvision(user: AccountUser, url: string): Promise<void>
+  accountActivationProvision(user: AccountUser, url: string): Promise<void>
+  invitationProvision(invitation: Invitation, url: string): Promise<void>
+  emailChangeProvision(user: AccountUser, newEmail: string, url: string): Promise<void>
   emailChanged(previousEmail: string, user: AccountUser): Promise<void>
-  passwordReset(user: AccountUser, context: CredentialChangeContext): Promise<void>
+  passwordResetCompleted(user: AccountUser, context: CredentialChangeContext): Promise<void>
   passwordChanged(user: AccountUser, context: CredentialChangeContext): Promise<void>
 }
 export interface ThrottleBudget {
@@ -132,7 +133,7 @@ export interface AccountKitConfig {
   notify: Partial<NotificationCallbacks>
   onInvitationAccepted?: (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
   onCredentialsChanged?: (user: AccountUser, context: CredentialChangeContext) => Promise<void>
-  onRecoveryIssuedTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
+  onPasswordResetIssuedTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
   onCredentialsChangedTransaction?: (
     user: AccountUser,
     context: CredentialChangeContext,
@@ -143,7 +144,12 @@ export interface AccountKitConfig {
   emailConstraint?: string
   limiterSecret: string
   limiterNamespace?: string
-  ttl?: { recovery?: string; verification?: string; invitation?: string; emailChange?: string }
+  expiresIn?: {
+    passwordReset?: string | number
+    emailVerification?: string | number
+    invitation?: string | number
+    emailChange?: string | number
+  }
   throttle?: Partial<ThrottleBudget>
   invitationThrottle?: Partial<InvitationThrottle>
   minRequestMs?: number
@@ -158,7 +164,7 @@ export interface ResolvedConfig extends Omit<
   | 'onInvitationAccepted'
   | 'usersTable'
   | 'limiterNamespace'
-  | 'ttl'
+  | 'expiresIn'
   | 'throttle'
   | 'invitationThrottle'
   | 'minRequestMs'
@@ -170,7 +176,7 @@ export interface ResolvedConfig extends Omit<
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   usersTable: string
   limiterNamespace: string
-  ttl: Required<NonNullable<AccountKitConfig['ttl']>>
+  expiresIn: Required<NonNullable<AccountKitConfig['expiresIn']>>
   throttle: ThrottleBudget
   invitationThrottle: InvitationThrottle
   minRequestMs: number
@@ -181,14 +187,14 @@ export interface InvitationPage {
   nextCursor: string | null
 }
 
-export interface RecoveryRequestInput {
+export interface PasswordResetRequestInput {
   email: string
   clientKey: string
 }
-export interface RecoveryInspectInput {
+export interface PasswordResetInspectInput {
   token: string
 }
-export interface RecoveryResetInput {
+export interface PasswordResetCompleteInput {
   token: string
   password: string
 }
@@ -224,16 +230,16 @@ export interface InvitationsRevokeInput {
   actorId: UserId
   invitationId: number
 }
-export interface CredentialsChangePasswordInput {
+export interface ChangePasswordInput {
   actorId: UserId
   currentPassword: string
   newPassword: string
 }
-export interface CredentialsRequestEmailChangeInput {
+export interface RequestEmailChangeInput {
   actorId: UserId
   currentPassword: string
   newEmail: string
 }
-export interface CredentialsCompleteEmailChangeInput {
+export interface CompleteEmailChangeInput {
   token: string
 }

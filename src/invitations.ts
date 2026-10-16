@@ -114,7 +114,7 @@ export async function resendInvitation(
       .where('id', input.invitationId)
       .update({
         token_hash: hashToken(token),
-        expires_at: expiresAt(now, deps.config.ttl.invitation).toISO(),
+        expires_at: expiresAt(now, deps.config.expiresIn.invitation).toISO(),
         updated_at: now.toISO(),
       })
       .returning('*')
@@ -125,7 +125,8 @@ export async function resendInvitation(
   await postCommit('Invitation follow-up failed', [
     {
       kind: 'delivery',
-      run: () => deps.config.notify.invitation(invitation, deps.config.urls.invitation(token)),
+      run: () =>
+        deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
     },
     {
       kind: 'observer',
@@ -343,7 +344,7 @@ export async function sendInvitation(
             role: input.role,
             inviter_id: actor.id,
             token_hash: hashToken(token),
-            expires_at: expiresAt(now, deps.config.ttl.invitation).toISO(),
+            expires_at: expiresAt(now, deps.config.expiresIn.invitation).toISO(),
             created_at: now.toISO(),
             updated_at: now.toISO(),
           })
@@ -360,7 +361,8 @@ export async function sendInvitation(
     postCommit('Invitation follow-up failed', [
       {
         kind: 'delivery',
-        run: () => deps.config.notify.invitation(invitation, deps.config.urls.invitation(token)),
+        run: () =>
+          deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
       },
       {
         kind: 'observer',

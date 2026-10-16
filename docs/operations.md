@@ -13,14 +13,14 @@ to 10 sends per actor per hour, 3 sends per recipient per hour, 10 resends per a
 3 resends per invitation per hour. Override individual budgets with `throttle` and
 `invitationThrottle` in config. Keep budgets consistent across instances sharing limiter storage.
 
-Recovery issuance is limited by both client key and normalized email. When a request is throttled,
-the existing unexpired recovery link remains redeemable; the next successful issuance replaces it.
+Password reset issuance is limited by both client key and normalized email. When a request is throttled,
+the existing unexpired password reset link remains redeemable; the next successful issuance replaces it.
 Use a client key derived from the request IP only behind correctly configured trusted proxies, and
-do not trust arbitrary forwarded-IP headers. See [recovery and invitation rules](usage.md#recovery-and-invitation-rules).
+do not trust arbitrary forwarded-IP headers. See [password reset and invitation rules](usage.md#a-reset-link-works-once-then-expires).
 
 ## Expired-row pruning
 
-The explicit `account-kit:prune` Ace command removes expired recovery, invitation, and
+The explicit `account-kit:prune` Ace command removes expired password reset, invitation, and
 email-change rows in bounded batches. It is not scheduled automatically. Defaults are 100 rows per
 batch and at most 100 batches; each setting accepts a value from 1 through 1000. Use the command's
 dry-run option to estimate eligible rows before deletion, then schedule it through the application's
@@ -49,7 +49,7 @@ and persist a distinct notice intent. The captured test transport simulates an i
 production delivery requires durable receiver deduplication and coordinated worker claims.
 
 If a post-commit callback fails, the operation may already have committed. `PostCommitError` marks
-this with `committed: true`; do not blindly retry the mutation. Recovery request handlers are the
+this with `committed: true`; do not blindly retry the mutation. Password reset request handlers are the
 exception: suppress both `DeliveryError` and `PostCommitError` and return the generic accepted
 response to preserve account-existence privacy.
 

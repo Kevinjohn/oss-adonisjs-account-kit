@@ -8,23 +8,23 @@ import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 test.group('capability configuration', (group) => {
   const kit = useTestApp(group)
 
-  test('accepts a recovery-only configuration without unrelated callbacks', ({ assert }) => {
+  test('accepts a password-reset-only configuration without unrelated callbacks', ({ assert }) => {
     const input: AccountKitConfig = {
       users: makeUsersAdapter(kit.db, kit.hash),
-      enabled: ['recovery'],
-      urls: { recovery: (token) => `https://example.test/recovery/${token}` },
+      enabled: ['passwordReset'],
+      urls: { passwordReset: (token) => `https://example.test/recovery/${token}` },
       notify: {
-        recovery: async () => {},
-        passwordReset: async () => {},
+        passwordResetProvision: async () => {},
+        passwordResetCompleted: async () => {},
       },
       limiterSecret: 'test_only_shared_limiter_secret_32_bytes',
     }
 
     const resolved = defineConfig(input)
-    assert.deepEqual(resolved.enabled, ['recovery'])
-    assert.isFunction(resolved.urls.recovery)
-    assert.isFunction(resolved.notify.recovery)
-    assert.isFunction(resolved.notify.passwordReset)
+    assert.deepEqual(resolved.enabled, ['passwordReset'])
+    assert.isFunction(resolved.urls.passwordReset)
+    assert.isFunction(resolved.notify.passwordResetProvision)
+    assert.isFunction(resolved.notify.passwordResetCompleted)
     assert.isFunction(resolved.urls.invitation)
     assert.isFunction(resolved.authorize.invite)
     assert.isFunction(resolved.onInvitationAccepted)
@@ -35,25 +35,37 @@ test.group('capability configuration', (group) => {
   }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const base = makeConfig({ users })
-    assert.deepEqual(defineConfig({ ...base, enabled: ['credentials', 'verification'] }).enabled, [
-      'credentials',
-      'verification',
-    ])
-    assert.throws(() => defineConfig({ ...base, enabled: ['recovery', 'recovery'] }), /enabled/)
+    assert.deepEqual(
+      defineConfig({ ...base, enabled: ['emailPasswordManagement', 'emailVerification'] }).enabled,
+      ['emailPasswordManagement', 'emailVerification']
+    )
+    assert.throws(
+      () => defineConfig({ ...base, enabled: ['passwordReset', 'passwordReset'] }),
+      /enabled/
+    )
     assert.throws(() => defineConfig({ ...base, enabled: ['unknown'] as never }), /enabled/)
 
     assert.throws(
-      () => defineConfig({ ...base, enabled: ['recovery'], urls: {} }),
-      /urls\.recovery must be a function/
+      () => defineConfig({ ...base, enabled: ['passwordReset'], urls: {} }),
+      /urls\.passwordReset must be a function/
     )
     assert.throws(
       () =>
         defineConfig({
           ...base,
-          enabled: ['recovery'],
-          notify: { ...base.notify, passwordReset: undefined },
+          enabled: ['passwordReset'],
+          notify: { ...base.notify, passwordResetProvision: undefined },
         }),
-      /notify\.passwordReset must be a function/
+      /notify\.passwordResetProvision must be a function/
+    )
+    assert.throws(
+      () =>
+        defineConfig({
+          ...base,
+          enabled: ['passwordReset'],
+          notify: { ...base.notify, passwordResetCompleted: undefined },
+        }),
+      /notify\.passwordResetCompleted must be a function/
     )
     assert.throws(
       () =>
@@ -68,7 +80,7 @@ test.group('capability configuration', (group) => {
       () =>
         defineConfig({
           ...base,
-          enabled: ['verification'],
+          enabled: ['emailVerification'],
           users: { ...users, markEmailVerified: undefined } as never,
         }),
       /users\.markEmailVerified must be a function/
@@ -76,7 +88,10 @@ test.group('capability configuration', (group) => {
   })
 
   test('requires supplied hooks to be callable but does not execute placeholders', ({ assert }) => {
-    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['recovery'] })
+    const base = makeConfig({
+      users: makeUsersAdapter(kit.db, kit.hash),
+      enabled: ['passwordReset'],
+    })
     assert.throws(
       () => defineConfig({ ...base, onLifecycleEvent: 'not callable' } as never),
       /onLifecycleEvent must be a function/
@@ -118,8 +133,8 @@ test.group('capability configuration', (group) => {
       /invitationThrottle\.sendRecipient\.duration/
     )
     assert.throws(
-      () => defineConfig({ ...base, onRecoveryIssuedTransaction: 'invalid' } as never),
-      /onRecoveryIssuedTransaction must be a function/
+      () => defineConfig({ ...base, onPasswordResetIssuedTransaction: 'invalid' } as never),
+      /onPasswordResetIssuedTransaction must be a function/
     )
     assert.throws(
       () =>
@@ -146,12 +161,12 @@ test.group('capability configuration', (group) => {
       Object.keys(adapter).map((key) => [key, fail])
     ) as unknown as typeof adapter
     const callbacks = {
-      recovery: fail,
-      verification: fail,
-      invitation: fail,
-      emailChangeConfirm: fail,
+      passwordResetProvision: fail,
+      accountActivationProvision: fail,
+      invitationProvision: fail,
+      emailChangeProvision: fail,
       emailChanged: fail,
-      passwordReset: fail,
+      passwordResetCompleted: fail,
       passwordChanged: fail,
     }
     const countNotify = async () => {
@@ -172,11 +187,11 @@ test.group('capability configuration', (group) => {
     const onQuery = () => queryCount++
     knex.on('query', onQuery)
     const operations: Array<() => Promise<unknown>> = [
-      () => account.recovery.request({ email: '', clientKey: '' }),
-      () => account.recovery.inspect({ token: '' }),
-      () => account.recovery.reset({ token: '', password: '' }),
-      () => account.verification.send({ userId: 0 }),
-      () => account.verification.complete({ token: '' }),
+      () => account.passwordReset.request({ email: '', clientKey: '' }),
+      () => account.passwordReset.inspect({ token: '' }),
+      () => account.passwordReset.reset({ token: '', password: '' }),
+      () => account.emailVerification.send({ userId: 0 }),
+      () => account.emailVerification.complete({ token: '' }),
       () => account.invitations.send({ actorId: 0, email: '', role: '' }),
       () => account.invitations.list({ actorId: 0 }),
       () => account.invitations.inspect({ token: '' }),
@@ -184,10 +199,18 @@ test.group('capability configuration', (group) => {
       () => account.invitations.resend({ actorId: 0, invitationId: 0 }),
       () => account.invitations.revoke({ actorId: 0, invitationId: 0 }),
       () =>
-        account.credentials.changePassword({ actorId: 0, currentPassword: '', newPassword: '' }),
+        account.emailPasswordManagement.changePassword({
+          actorId: 0,
+          currentPassword: '',
+          newPassword: '',
+        }),
       () =>
-        account.credentials.requestEmailChange({ actorId: 0, currentPassword: '', newEmail: '' }),
-      () => account.credentials.completeEmailChange({ token: '' }),
+        account.emailPasswordManagement.requestEmailChange({
+          actorId: 0,
+          currentPassword: '',
+          newEmail: '',
+        }),
+      () => account.emailPasswordManagement.completeEmailChange({ token: '' }),
     ]
     try {
       for (const operation of operations) {

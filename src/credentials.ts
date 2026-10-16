@@ -19,9 +19,9 @@ import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountUser,
-  CredentialsChangePasswordInput,
-  CredentialsCompleteEmailChangeInput,
-  CredentialsRequestEmailChangeInput,
+  ChangePasswordInput,
+  CompleteEmailChangeInput,
+  RequestEmailChangeInput,
   ResolvedConfig,
   Trx,
   UserId,
@@ -49,7 +49,7 @@ async function confirmActor(
 
 export async function changePassword(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
-  input: CredentialsChangePasswordInput
+  input: ChangePasswordInput
 ): Promise<void> {
   if (!isPasswordShaped(input.newPassword)) throw new InvalidInputError('Invalid new password')
 
@@ -66,7 +66,7 @@ export async function changePassword(
     transaction(deps.db, async (trx) => {
       const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
       await deps.config.users.setPassword(actor.id, input.newPassword, trx)
-      await trx.from('account_recovery_tokens').where('user_id', actor.id).delete()
+      await trx.from('password_reset_tokens').where('user_id', actor.id).delete()
       await trx.from('account_email_changes').where('user_id', actor.id).delete()
       const reloaded = await deps.config.users.findById(actor.id, trx)
       if (!reloaded) throw new InvalidInputError('Unknown actor')
@@ -93,7 +93,7 @@ export async function changePassword(
 
 export async function requestEmailChange(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
-  input: CredentialsRequestEmailChangeInput
+  input: RequestEmailChangeInput
 ): Promise<void> {
   if (!isEmailShaped(input.newEmail)) throw new InvalidInputError('Invalid email')
   const newEmail = normaliseEmail(input.newEmail)
@@ -123,7 +123,7 @@ export async function requestEmailChange(
           current_email: current.email,
           new_email: newEmail,
           token_hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.ttl.emailChange).toISO(),
+          expires_at: expiresAt(now, deps.config.expiresIn.emailChange).toISO(),
           created_at: now.toISO(),
         })
         .onConflict('user_id')
@@ -141,7 +141,7 @@ export async function requestEmailChange(
       {
         kind: 'delivery',
         run: () =>
-          deps.config.notify.emailChangeConfirm(
+          deps.config.notify.emailChangeProvision(
             actor,
             newEmail,
             deps.config.urls.emailChange(token)
@@ -168,7 +168,7 @@ interface EmailChangeRow {
 
 export async function completeEmailChange(
   deps: { config: ResolvedConfig; db: Database },
-  input: CredentialsCompleteEmailChangeInput
+  input: CompleteEmailChangeInput
 ): Promise<AccountUser> {
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
@@ -190,7 +190,7 @@ export async function completeEmailChange(
 
         await deps.config.users.setEmail(user.id, row.new_email, trx)
         await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-        await trx.from('account_recovery_tokens').where('user_id', user.id).delete()
+        await trx.from('password_reset_tokens').where('user_id', user.id).delete()
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
         await deps.config.onCredentialsChangedTransaction?.(

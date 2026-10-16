@@ -2,7 +2,7 @@ import { access, readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 
 export const migrationNames = [
-  'create_account_recovery_tokens',
+  'create_password_reset_tokens',
   'create_account_invitations',
   'create_account_email_changes',
   'add_email_verified_at_to_users',

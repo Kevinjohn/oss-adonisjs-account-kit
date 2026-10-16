@@ -13,12 +13,17 @@ import type {
   UrlCallbacks,
 } from './types.js'
 
-const capabilities: Capability[] = ['recovery', 'verification', 'invitations', 'credentials']
+const capabilities: Capability[] = [
+  'passwordReset',
+  'emailVerification',
+  'invitations',
+  'emailPasswordManagement',
+]
 const adapterMethods: Record<Capability, string[]> = {
-  recovery: ['findByEmail', 'findById', 'setPassword', 'markEmailVerified'],
-  verification: ['findById', 'markEmailVerified'],
+  passwordReset: ['findByEmail', 'findById', 'setPassword', 'markEmailVerified'],
+  emailVerification: ['findById', 'markEmailVerified'],
   invitations: ['findByEmail', 'findById', 'create'],
-  credentials: [
+  emailPasswordManagement: [
     'findByEmail',
     'findById',
     'setPassword',
@@ -28,19 +33,23 @@ const adapterMethods: Record<Capability, string[]> = {
   ],
 }
 const requiredHooks: Record<Capability, string[]> = {
-  recovery: ['urls.recovery', 'notify.recovery', 'notify.passwordReset'],
-  verification: ['urls.verification', 'notify.verification'],
+  passwordReset: [
+    'urls.passwordReset',
+    'notify.passwordResetProvision',
+    'notify.passwordResetCompleted',
+  ],
+  emailVerification: ['urls.emailVerification', 'notify.accountActivationProvision'],
   invitations: [
     'authorize.invite',
     'authorize.manageInvitation',
     'authorize.listInvitations',
     'urls.invitation',
-    'notify.invitation',
+    'notify.invitationProvision',
     'onInvitationAccepted',
   ],
-  credentials: [
+  emailPasswordManagement: [
     'urls.emailChange',
-    'notify.emailChangeConfirm',
+    'notify.emailChangeProvision',
     'notify.emailChanged',
     'notify.passwordChanged',
   ],
@@ -84,7 +93,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     enabled.some((name) => !capabilities.includes(name))
   )
     throw new Error('account_kit: enabled must contain unique supported capability names')
-  for (const name of ['authorize', 'urls', 'notify', 'ttl', 'invitationThrottle'] as const) {
+  for (const name of ['authorize', 'urls', 'notify', 'expiresIn', 'invitationThrottle'] as const) {
     const value = config[name]
     if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value)))
       throw new Error(`account_kit: ${name} must be an object`)
@@ -106,7 +115,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     'onInvitationAccepted',
     'onCredentialsChanged',
     'onCredentialsChangedTransaction',
-    'onRecoveryIssuedTransaction',
+    'onPasswordResetIssuedTransaction',
     'onLifecycleEvent',
   ] as const) {
     if (config[hook] !== undefined && typeof config[hook] !== 'function')
@@ -127,13 +136,13 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error(
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
-  const ttl = {
-    recovery: config.ttl?.recovery ?? '1h',
-    verification: config.ttl?.verification ?? '1h',
-    invitation: config.ttl?.invitation ?? '7d',
-    emailChange: config.ttl?.emailChange ?? '1h',
+  const expiresIn = {
+    passwordReset: config.expiresIn?.passwordReset ?? '1h',
+    emailVerification: config.expiresIn?.emailVerification ?? '1h',
+    invitation: config.expiresIn?.invitation ?? '7d',
+    emailChange: config.expiresIn?.emailChange ?? '1h',
   }
-  for (const value of Object.values(ttl)) expiresAt(DateTime.utc(), value)
+  for (const value of Object.values(expiresIn)) expiresAt(DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
   const invitationThrottle = Object.fromEntries(
     ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
@@ -168,7 +177,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   return {
     ...config,
     enabled: [...enabled],
-    ttl,
+    expiresIn,
     throttle,
     invitationThrottle,
     minRequestMs,
@@ -181,19 +190,19 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       ...config.authorize,
     } as AuthorizationCallbacks,
     urls: {
-      recovery: disabled,
-      verification: disabled,
+      passwordReset: disabled,
+      emailVerification: disabled,
       invitation: disabled,
       emailChange: disabled,
       ...config.urls,
     } as UrlCallbacks,
     notify: {
-      recovery: disabled,
-      verification: disabled,
-      invitation: disabled,
-      emailChangeConfirm: disabled,
+      passwordResetProvision: disabled,
+      passwordResetCompleted: disabled,
+      accountActivationProvision: disabled,
+      invitationProvision: disabled,
+      emailChangeProvision: disabled,
       emailChanged: disabled,
-      passwordReset: disabled,
       passwordChanged: disabled,
       ...config.notify,
     } as NotificationCallbacks,

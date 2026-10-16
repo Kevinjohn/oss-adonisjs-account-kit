@@ -82,17 +82,17 @@ test.group('database users adapter', (group) => {
     )
     const recorder = makeNotify()
     const user = { id: 1, email: 'a@example.test', hasPassword: false, emailVerifiedAt: null }
-    await recorder.notify.recovery(user, 'https://example.test/reset')
-    recorder.failOn('verification')
+    await recorder.notify.passwordResetProvision(user, 'https://example.test/reset')
+    recorder.failOn('accountActivationProvision')
     try {
-      await recorder.notify.verification(user, 'https://example.test/verify')
+      await recorder.notify.accountActivationProvision(user, 'https://example.test/verify')
       assert.fail('expected notification failure')
     } catch (error) {
-      assert.equal((error as Error).message, 'notify.verification failed')
+      assert.equal((error as Error).message, 'notify.accountActivationProvision failed')
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['recovery', 'verification']
+      ['passwordResetProvision', 'accountActivationProvision']
     )
   })
 })

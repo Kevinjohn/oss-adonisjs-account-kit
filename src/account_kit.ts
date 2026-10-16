@@ -3,7 +3,11 @@ import { CapabilityDisabledError } from './errors.js'
 import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { inspectRecovery, requestRecovery, resetRecovery } from './recovery.js'
+import {
+  inspectPasswordReset,
+  requestPasswordReset,
+  completePasswordReset,
+} from './password_reset.js'
 import { completeVerification, sendVerification } from './verification.js'
 import { changePassword, completeEmailChange, requestEmailChange } from './credentials.js'
 import {
@@ -16,9 +20,9 @@ import {
 } from './invitations.js'
 import type {
   AccountUser,
-  CredentialsChangePasswordInput,
-  CredentialsCompleteEmailChangeInput,
-  CredentialsRequestEmailChangeInput,
+  ChangePasswordInput,
+  CompleteEmailChangeInput,
+  RequestEmailChangeInput,
   Invitation,
   InvitationPage,
   Capability,
@@ -28,9 +32,9 @@ import type {
   InvitationsResendInput,
   InvitationsRevokeInput,
   InvitationsSendInput,
-  RecoveryInspectInput,
-  RecoveryRequestInput,
-  RecoveryResetInput,
+  PasswordResetInspectInput,
+  PasswordResetRequestInput,
+  PasswordResetCompleteInput,
   ResolvedConfig,
   VerificationCompleteInput,
   VerificationSendInput,
@@ -58,19 +62,19 @@ export class AccountKit {
     prune: (input: PruneInput = {}) => pruneExpired(this.deps.db, input),
   }
 
-  readonly recovery = {
-    request: (input: RecoveryRequestInput): Promise<void> =>
-      this.enabled('recovery', () => requestRecovery(this.deps, input)),
-    inspect: (input: RecoveryInspectInput): Promise<boolean> =>
-      this.enabled('recovery', () => inspectRecovery(this.deps.db, input)),
-    reset: (input: RecoveryResetInput): Promise<AccountUser> =>
-      this.enabled('recovery', () => resetRecovery(this.deps, input)),
+  readonly passwordReset = {
+    request: (input: PasswordResetRequestInput): Promise<void> =>
+      this.enabled('passwordReset', () => requestPasswordReset(this.deps, input)),
+    inspect: (input: PasswordResetInspectInput): Promise<boolean> =>
+      this.enabled('passwordReset', () => inspectPasswordReset(this.deps.db, input)),
+    reset: (input: PasswordResetCompleteInput): Promise<AccountUser> =>
+      this.enabled('passwordReset', () => completePasswordReset(this.deps, input)),
   }
-  readonly verification = {
+  readonly emailVerification = {
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
-      this.enabled('verification', () => sendVerification(this.deps, input)),
+      this.enabled('emailVerification', () => sendVerification(this.deps, input)),
     complete: (input: VerificationCompleteInput): Promise<'verified' | 'already_verified'> =>
-      this.enabled('verification', () => completeVerification(this.deps, input)),
+      this.enabled('emailVerification', () => completeVerification(this.deps, input)),
   }
   readonly invitations = {
     send: (input: InvitationsSendInput): Promise<Invitation> =>
@@ -86,12 +90,12 @@ export class AccountKit {
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
   }
-  readonly credentials = {
-    changePassword: (input: CredentialsChangePasswordInput): Promise<void> =>
-      this.enabled('credentials', () => changePassword(this.deps, input)),
-    requestEmailChange: (input: CredentialsRequestEmailChangeInput): Promise<void> =>
-      this.enabled('credentials', () => requestEmailChange(this.deps, input)),
-    completeEmailChange: (input: CredentialsCompleteEmailChangeInput): Promise<AccountUser> =>
-      this.enabled('credentials', () => completeEmailChange(this.deps, input)),
+  readonly emailPasswordManagement = {
+    changePassword: (input: ChangePasswordInput): Promise<void> =>
+      this.enabled('emailPasswordManagement', () => changePassword(this.deps, input)),
+    requestEmailChange: (input: RequestEmailChangeInput): Promise<void> =>
+      this.enabled('emailPasswordManagement', () => requestEmailChange(this.deps, input)),
+    completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
+      this.enabled('emailPasswordManagement', () => completeEmailChange(this.deps, input)),
   }
 }

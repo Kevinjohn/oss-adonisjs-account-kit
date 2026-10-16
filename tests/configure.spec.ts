@@ -40,7 +40,7 @@ test('configures the package idempotently without replacing application-owned fi
     const existingConfig = 'export default { ownerSetting: true }\n'
     const existingMigrationPath = join(
       migrationsDirectory,
-      'custom_account_kit_create_account_recovery_tokens.ts'
+      'custom_account_kit_create_password_reset_tokens.ts'
     )
     const existingMigration = '// application-owned migration\n'
     await writeFile(existingMigrationPath, existingMigration)
@@ -85,8 +85,8 @@ test('configures the package idempotently without replacing application-owned fi
         'add_email_verified_at_to_users',
         'create_account_email_changes',
         'create_account_invitations',
-        'create_account_recovery_tokens',
         'create_account_transaction_lock',
+        'create_password_reset_tokens',
       ]
     )
     const firstRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')

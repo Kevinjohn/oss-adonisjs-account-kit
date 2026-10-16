@@ -27,13 +27,14 @@ export async function sendVerification(
     deps.config.limiterSecret,
     deps.config.limiterNamespace
   )
+  const expiresIn = deps.config.expiresIn.emailVerification
   const token = deps.encryption.encrypt(
     { userId: user.id, email: user.email },
-    deps.config.ttl.verification,
+    typeof expiresIn === 'number' ? expiresIn * 1000 : expiresIn,
     VERIFICATION_PURPOSE
   )
   await deliver('Verification notification failed', () =>
-    deps.config.notify.verification(user, deps.config.urls.verification(token))
+    deps.config.notify.accountActivationProvision(user, deps.config.urls.emailVerification(token))
   )
   return 'sent'
 }

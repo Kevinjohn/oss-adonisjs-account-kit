@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 
-type TokenTable = 'account_recovery_tokens' | 'account_invitations' | 'account_email_changes'
+type TokenTable = 'password_reset_tokens' | 'account_invitations' | 'account_email_changes'
 
 export interface PruneInput {
   batchSize?: number
@@ -16,7 +16,7 @@ export interface PruneCounts {
 }
 
 const TABLES: Array<[keyof PruneCounts, TokenTable]> = [
-  ['recovery', 'account_recovery_tokens'],
+  ['recovery', 'password_reset_tokens'],
   ['invitations', 'account_invitations'],
   ['emailChanges', 'account_email_changes'],
 ]
