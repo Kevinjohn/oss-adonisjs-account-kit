@@ -138,7 +138,7 @@ export interface SetupPlan {
     externalConfigured: boolean
     workflowVerified: false
     productionReady: false
-    delivery: 'best effort' | 'durable'
+    delivery: 'best effort' | 'durable' | 'not applicable'
   }
   pillars: Record<'features' | 'user' | 'authentication' | 'mail' | 'social' | 'policy', string>
 }

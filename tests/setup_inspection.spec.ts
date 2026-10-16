@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
-import { stripSourceComments } from '../src/setup/source_text.js'
+import { maskSourceLiteralBodies, stripSourceComments } from '../src/setup/source_text.js'
 
 async function applicationRoot() {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-inspect-'))
@@ -29,6 +29,15 @@ test('source inspection removes comments while preserving escaped and template l
   assert.match(inspected, /`\/\/ literal \$\{\s+value \}`/)
   assert.notInclude(inspected, 'web: sessionGuard')
   assert.notInclude(inspected, 'api: tokensGuard')
+  const withLiterals =
+    'const example = `web: sessionGuard({ model: () => import("#models/ghost") }) ${"api: tokensGuard()"}`\n' +
+    'const actual = { "web": sessionGuard({}) } // "api": tokensGuard()\n' +
+    'const unicode = "😀"'
+  const masked = maskSourceLiteralBodies(withLiterals)
+  assert.notInclude(masked, 'ghost')
+  assert.notInclude(masked, 'tokensGuard')
+  assert.include(masked, '"   ": sessionGuard')
+  assert.equal(masked.length, withLiterals.length)
 })
 
 test('commented guards and models do not become setup prerequisites', async ({ assert }) => {
@@ -59,6 +68,49 @@ test('commented guards and models do not become setup prerequisites', async ({ a
     const live = await inspectSetup(root)
     assert.deepEqual(live.guardStrategies, { web: 'session', api: 'access_tokens' })
     assert.deepEqual(live.guardModels, { web: '#models/user', api: '#models/user' })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('quoted and template examples cannot invent guards or models', async ({ assert }) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(
+      join(root, 'config/auth.ts'),
+      [
+        'const example = `guards: { ghost: tokensGuard({ provider: tokensUserProvider({ model: () => import("#models/ghost") }) }) }`',
+        'const quoted = "api: tokensGuard({ provider: tokensUserProvider({ model: () => import(\\\"#models/ghost\\\") }) })"',
+        'export default { guards: { "web": sessionGuard({ provider: sessionUserProvider({ model: () => import("#models/user") }) }) } }',
+      ].join('\n')
+    )
+    const state = await inspectSetup(root)
+    assert.deepEqual(state.guardStrategies, { web: 'session' })
+    assert.deepEqual(state.guardModels, { web: '#models/user' })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('quoted database examples cannot override the executable connection', async ({ assert }) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(
+      join(root, 'config/database.ts'),
+      [
+        'const example = `connection: "sqlite", connections: { sqlite: { client: "better-sqlite3" } }`',
+        'const quoted = "client: \\\"better-sqlite3\\\""',
+        'export default { connection: "mysql", connections: { mysql: { client: "mysql2" }, sqlite: { client: "better-sqlite3" } } }',
+      ].join('\n')
+    )
+    const unsupported = await inspectSetup(root)
+    assert.equal(unsupported.database, 'unsupported')
+    await writeFile(
+      join(root, 'config/database.ts'),
+      'export default { connection: "sqlite", connections: { "sqlite": { client: "better-sqlite3" } } }'
+    )
+    const sqlite = await inspectSetup(root)
+    assert.equal(sqlite.database, 'sqlite')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
