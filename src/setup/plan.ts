@@ -1171,7 +1171,12 @@ function nativeSessionConfiguration(source: string): {
       structure.slice(match.index, match.index + 6) === 'import' &&
       match[1].split(',').some((binding) => binding.trim() === 'stores')
   )
-  if (!nativeImport || /\b(?:const|let|var|function)\s+stores\b/.test(structure)) return null
+  if (
+    !nativeImport ||
+    /\b(?:const|let|var|function)\s+stores\b/.test(structure) ||
+    /\b(?:const|let|var)\s*\{[^}]*\bstores\b[^}]*\}/.test(structure)
+  )
+    return null
   const configMatch = /\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(\s*\{/.exec(structure)
   const exports = [...structure.matchAll(/\bexport\s+default\s+sessionConfig\b/g)]
   if (!configMatch || exports.length !== 1) return null
@@ -1202,6 +1207,26 @@ function nativeSessionConfiguration(source: string): {
   const mapOpening = maps[0].index + maps[0][0].lastIndexOf('{')
   const mapClosing = closingBrace(structure, mapOpening)
   if (mapClosing < 0 || mapClosing >= closing) return null
+  if (
+    [...structure.matchAll(/\.\.\./g)].some(
+      (match) =>
+        match.index > mapOpening &&
+        match.index < mapClosing &&
+        braceDepth(structure, mapOpening, match.index) === 1
+    )
+  )
+    return null
+  const mapKeys = [
+    ...executable.matchAll(/(?:['"]([A-Za-z_][A-Za-z0-9_]*)['"]|\b([A-Za-z_][A-Za-z0-9_]*))\s*:/g),
+  ]
+    .filter(
+      (match) =>
+        match.index > mapOpening &&
+        match.index < mapClosing &&
+        braceDepth(structure, mapOpening, match.index) === 1
+    )
+    .map((match) => match[1] ?? match[2])
+  if (new Set(mapKeys).size !== mapKeys.length) return null
   const allowedStores = [
     ...executable.matchAll(
       /(?:['"]([A-Za-z_][A-Za-z0-9_]*)['"]|\b([A-Za-z_][A-Za-z0-9_]*))\s*:\s*stores\.(database|memory)\s*\(/g

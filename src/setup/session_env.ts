@@ -6,6 +6,17 @@ import { parseEnv } from 'node:util'
 import { EnvLoader } from '@adonisjs/core/env'
 import { safeSetupPath } from './safe_path.js'
 
+function hasClosingQuote(text: string, quote: string): boolean {
+  for (let index = 0; index < text.length; index++) {
+    if (text[index] === '\\') {
+      index++
+      continue
+    }
+    if (text[index] === quote) return true
+  }
+  return false
+}
+
 /** Resolve one selected enum without loading an application's other environment values. */
 export async function selectedSessionEnvironment(
   root: string,
@@ -27,8 +38,21 @@ export async function selectedSessionEnvironment(
     const lines = createInterface({ input: stream, crlfDelay: Infinity })
     let value: string | null = null
     let found = false
+    let multilineQuote: '"' | "'" | null = null
     try {
       for await (const line of lines) {
+        if (multilineQuote) {
+          if (new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line))
+            throw new Error('Selected session environment assignment is inside a multiline value')
+          if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
+          continue
+        }
+        const quotedAssignment = /^\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*\s*=\s*(['"])/.exec(line)
+        if (quotedAssignment) {
+          const rest = line.slice(quotedAssignment[0].length)
+          if (!hasClosingQuote(rest, quotedAssignment[1]))
+            multilineQuote = quotedAssignment[1] as '"' | "'"
+        }
         if (!new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line)) continue
         if (found || !new RegExp(`^\\s*(?:export\\s+)?${variable}\\s*=`).test(line))
           throw new Error('Selected session environment assignment is ambiguous')

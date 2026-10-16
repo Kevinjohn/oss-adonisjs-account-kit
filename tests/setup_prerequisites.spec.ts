@@ -592,6 +592,25 @@ test.group('setup prerequisite inspection', () => {
     })
   })
 
+  test('a later store override cannot borrow an earlier native attestation', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      for (const stores of [
+        'database: stores.database(), database: customStore()',
+        'database: stores.database(), ...customStores',
+      ]) {
+        state.files['config/session.ts'] =
+          `import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: 'database', stores: { ${stores} } })\nexport default sessionConfig\n`
+        const plan = await planSetup(choices, state)
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+          )
+        )
+        assert.isUndefined(plan.changes.find(({ path }) => path === 'config/session.ts'))
+      }
+    })
+  })
+
   test('selected session environment follows Adonis precedence without exposing other values', async ({
     assert,
   }) => {
@@ -669,6 +688,7 @@ test.group('setup prerequisite inspection', () => {
           'SESSION_DRIVER=$OTHER\n',
           'SESSION_DRIVER=database\nSESSION_DRIVER=custom\n',
           'SESSION_DRIVER="database\n',
+          'PRIVATE_TEXT="first line\nSESSION_DRIVER=database\nlast line"\n',
         ]) {
           await writeFile(join(root, '.env'), assignment)
           const rejected = await planSetup(choices, state)
