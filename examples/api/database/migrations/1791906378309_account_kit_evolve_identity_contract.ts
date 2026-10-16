@@ -43,7 +43,9 @@ export default class extends BaseSchema {
         .from(usersTable)
         .whereNull('email_verified_at')
         .update({ unverified_email: db.raw('email') })
-      const changes = await db.from('account_email_changes')
+      const changes = await db
+        .from('account_email_changes')
+        .where('expires_at', '>', new Date().toISOString())
       for (const change of changes) {
         const user = await db.from(usersTable).where('id', change.user_id).first()
         if (!user || user.email !== change.current_email) {

@@ -103,10 +103,10 @@ proof state, restrictions, or provider associations bypass related invalidation 
 ### Deployment boundary
 
 Use a maintenance window with no old/new version overlap. Do not use a rolling deployment. Stop old
-web instances, scheduled commands, and application-owned workers first; apply the reviewed
-migrations; then start the new version and its workers. Send traffic to the new version only after
-migrations and configuration checks succeed. This prevents old code from writing against renamed
-or evolved tables.
+web instances, scheduled commands, and application-owned workers first; take and verify a
+restorable full database backup; apply the reviewed migrations; then start the new version and its
+workers. Send traffic to the new version only after migrations and configuration checks succeed.
+This prevents old code from writing against renamed or evolved tables.
 
 Preserving outstanding one-use proof rows preserves those proofs through migration. Legacy
 encrypted repeatable activation links use another format and must be reissued as one-use proofs
@@ -306,8 +306,9 @@ and secret length as described above; default lifetimes remain unchanged.
    `accountErrorResponse` export in the central exception handler and update pagination consumers
    and password reset failure handling. The upgrade fixture keeps its baseline-compatible handler until
    this explicit integration step.
-5. Review generated migrations against the application schema, then run migrations in a controlled
-   deployment. The package cannot rewrite already-applied schema.
+5. Review generated migrations against the application schema. Take and verify a restorable full
+   database backup, then run migrations in a controlled deployment; the rollback boundary above
+   depends on that backup. The package cannot rewrite already-applied schema.
 6. Typecheck and run package-specific consumer tests before deployment. Verify that the limiter
    secret and namespace are consistent across application instances.
 

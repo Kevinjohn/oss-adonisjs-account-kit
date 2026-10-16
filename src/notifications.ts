@@ -205,28 +205,14 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
     passwordResetCompleted: (user) => send('passwordResetCompleted', user.email),
     passwordChanged: (user) => send('passwordChanged', user.email),
     socialIdentityLinked: (user, identity) =>
-      send(
-        'socialIdentityLinked',
-        user.email,
-        undefined,
-        identity.provider === 'google'
-          ? 'Google'
-          : identity.provider === 'github'
-            ? 'GitHub'
-            : 'Social'
-      ),
+      send('socialIdentityLinked', user.email, undefined, providerLabel(identity.provider)),
     socialIdentityUnlinked: (user, identity) =>
-      send(
-        'socialIdentityUnlinked',
-        user.email,
-        undefined,
-        identity.provider === 'google'
-          ? 'Google'
-          : identity.provider === 'github'
-            ? 'GitHub'
-            : 'Social'
-      ),
+      send('socialIdentityUnlinked', user.email, undefined, providerLabel(identity.provider)),
   }
+}
+
+function providerLabel(provider: string): string {
+  return provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : 'Social'
 }
 
 export interface ActionUrlOptions {
