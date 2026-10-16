@@ -132,6 +132,47 @@ async function currentInTransaction(
 
 export function authenticationService(deps: Dependencies) {
   return {
+    /** Read-only, point-in-time inventory; run again inside the owner's maintenance window. */
+    async retirementImpact(input: {
+      passwordLogin: boolean
+      providers?: readonly string[]
+    }): Promise<{
+      inspectedAccounts: number
+      affectedAccounts: number
+      checkedAt: string
+    }> {
+      configured(deps)
+      if (input.passwordLogin !== false)
+        throw new Error('Password-login retirement must be selected explicitly')
+      if (input.providers?.length)
+        throw new Error(
+          'Social identity inventory is unavailable until provider integration is installed'
+        )
+      const { table } = await userMetadata(deps.config)
+      let inspectedAccounts = 0
+      let affectedAccounts = 0
+      let lastId: UserId | undefined
+      for (;;) {
+        const query = deps.db.from(table).select('id').orderBy('id', 'asc').limit(500)
+        if (lastId !== undefined) query.where('id', '>', lastId)
+        const rows = await query
+        if (!rows.length) break
+        for (const row of rows) {
+          const id = row.id as UserId
+          const user = await deps.config.users.findById(id)
+          if (!user) throw new Error('Account adapter could not resolve an inventoried user')
+          if (typeof user.hasPassword !== 'boolean')
+            throw new Error(
+              'Account adapter must report whether each inventoried user has a password'
+            )
+          inspectedAccounts++
+          if (user.hasPassword) affectedAccounts++
+          lastId = id
+        }
+      }
+      return { inspectedAccounts, affectedAccounts, checkedAt: new Date().toISOString() }
+    },
+
     async login<Credential>(
       input: PasswordLoginInput,
       guard: AuthenticationGuard<Credential>
