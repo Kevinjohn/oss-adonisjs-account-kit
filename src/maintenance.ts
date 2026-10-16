@@ -1,7 +1,13 @@
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 
-type TokenTable = 'password_reset_tokens' | 'account_invitations' | 'email_verification_tokens'
+type TokenTable =
+  | 'password_reset_tokens'
+  | 'account_invitations'
+  | 'email_verification_tokens'
+  | 'social_transactions'
+  | 'social_sensitive_proofs'
+  | 'social_handoff_codes'
 
 export interface PruneInput {
   batchSize?: number
@@ -13,12 +19,18 @@ export interface PruneCounts {
   recovery: number
   invitations: number
   emailVerifications: number
+  socialTransactions: number
+  socialSensitiveProofs: number
+  socialHandoffCodes: number
 }
 
 const TABLES: Array<[keyof PruneCounts, TokenTable]> = [
   ['recovery', 'password_reset_tokens'],
   ['invitations', 'account_invitations'],
   ['emailVerifications', 'email_verification_tokens'],
+  ['socialTransactions', 'social_transactions'],
+  ['socialSensitiveProofs', 'social_sensitive_proofs'],
+  ['socialHandoffCodes', 'social_handoff_codes'],
 ]
 
 /** Remove expired rows in small batches, rechecking expiry when each selected batch is deleted. */
@@ -30,7 +42,14 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
   if (!Number.isSafeInteger(maxBatches) || maxBatches < 1 || maxBatches > 1000)
     throw new RangeError('maxBatches must be an integer from 1 to 1000')
   const cutoff = DateTime.utc().toISO()
-  const counts: PruneCounts = { recovery: 0, invitations: 0, emailVerifications: 0 }
+  const counts: PruneCounts = {
+    recovery: 0,
+    invitations: 0,
+    emailVerifications: 0,
+    socialTransactions: 0,
+    socialSensitiveProofs: 0,
+    socialHandoffCodes: 0,
+  }
   const cursors = new Map<TokenTable, number>()
   const done = new Set<TokenTable>()
   for (let batch = 0; batch < maxBatches && done.size < TABLES.length;) {

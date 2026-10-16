@@ -3,7 +3,7 @@ import { credentialsChanged } from './authentication.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
-import { consumeUserToken, lockUser, transaction } from './db.js'
+import { consumeUserToken, consumeUserTokenHash, lockUser, transaction } from './db.js'
 import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
@@ -16,6 +16,7 @@ import type {
   VerificationCompleteInput,
   VerificationInspectInput,
   VerificationSendInput,
+  Trx,
 } from './types.js'
 
 export async function inspectVerification(
@@ -37,6 +38,57 @@ export async function inspectVerification(
     user.unverifiedEmail === user.email &&
     user.unverifiedEmail === proof.email
   )
+}
+
+/** Shared activation effects; caller must hold the account lock and have consumed email proof. */
+async function activateClaim(
+  trx: Trx,
+  config: ResolvedConfig,
+  userId: UserId,
+  confirmedSocialIdentityId?: number
+): Promise<void> {
+  await config.users.markEmailVerified(userId, DateTime.utc(), trx)
+  await trx.from('password_reset_tokens').where('tokenable_id', userId).delete()
+  if (config.enabled.includes('socialAuthentication')) {
+    const pending = trx.from('social_identities').where('user_id', userId).whereNull('confirmed_at')
+    if (confirmedSocialIdentityId !== undefined) pending.whereNot('id', confirmedSocialIdentityId)
+    await pending.delete()
+    if (confirmedSocialIdentityId !== undefined)
+      await trx
+        .from('social_identities')
+        .where('user_id', userId)
+        .where('id', confirmedSocialIdentityId)
+        .whereNull('confirmed_at')
+        .update({ confirmed_at: DateTime.utc().toISO() })
+    await trx.from('social_transactions').where('user_id', userId).delete()
+  }
+}
+
+/** Consume email ownership proof under the user lock. Only a matched provider can be confirmed. */
+export async function completeActivationByHash(
+  trx: Trx,
+  config: ResolvedConfig,
+  tokenHash: string,
+  confirmedSocialIdentityId?: number
+): Promise<UserId> {
+  const { user } = await consumeUserTokenHash<{
+    tokenable_id: UserId
+    email: string
+    current_email: string
+    purpose: string
+  }>(
+    trx,
+    config,
+    'email_verification_tokens',
+    tokenHash,
+    (proof, current) =>
+      proof.purpose === 'activation' &&
+      current.unverifiedEmail === current.email &&
+      current.unverifiedEmail === proof.email &&
+      current.email === proof.current_email
+  )
+  await activateClaim(trx, config, user.id, confirmedSocialIdentityId)
+  return user.id
 }
 
 export async function sendVerification(
@@ -151,8 +203,7 @@ export async function completeVerification(
           current.email === proof.current_email
       )
       await deps.config.users.setPassword(user.id, input.password, trx)
-      await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-      await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
+      await activateClaim(trx, deps.config, user.id)
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await credentialsChanged(trx, deps.config, reloaded, {

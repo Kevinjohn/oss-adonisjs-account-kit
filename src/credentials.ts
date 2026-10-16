@@ -16,6 +16,7 @@ import {
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
+import { consumeSocialSensitiveProof } from './social_identity.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -47,17 +48,24 @@ export async function inspectEmailChange(
   return user !== null && user.email === proof.current_email && user.unverifiedEmail === proof.email
 }
 
-/** Lock the actor and prove the current password before any credential write. */
+/** Lock the actor and consume the credential proof inside the same write transaction. */
 async function confirmActor(
   config: ResolvedConfig,
   trx: Trx,
   actorId: UserId,
-  currentPassword: unknown
+  currentPassword: unknown,
+  recentProof: unknown,
+  purpose: 'email_change' | 'password_change'
 ): Promise<AccountUser> {
   await lockUser(trx, config, actorId)
   const actor = await config.users.findById(actorId, trx)
   if (!actor) throw new InvalidInputError('Unknown actor')
-  if (!actor.hasPassword) throw new NoPasswordError()
+  if (!actor.hasPassword) {
+    if (!config.enabled.includes('socialAuthentication')) throw new NoPasswordError()
+    if (typeof recentProof !== 'string') throw new IdentityNotConfirmedError()
+    await consumeSocialSensitiveProof(trx, config, actor.id, purpose, recentProof)
+    return actor
+  }
   if (
     typeof currentPassword !== 'string' ||
     currentPassword.length === 0 ||
@@ -85,7 +93,14 @@ export async function changePassword(
   const operationId = randomUUID()
   const { value: user, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
+      const actor = await confirmActor(
+        deps.config,
+        trx,
+        input.actorId,
+        input.currentPassword,
+        input.recentProof,
+        'password_change'
+      )
       await deps.config.users.setPassword(actor.id, input.newPassword, trx)
       if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
         await deps.config.users.setUnverifiedEmail(actor.id, null, trx)
@@ -121,6 +136,7 @@ export async function requestEmailChange(
   await updateProfile(deps, {
     actorId: input.actorId,
     currentPassword: input.currentPassword,
+    recentProof: input.recentProof,
     email: input.newEmail,
   })
 }
@@ -154,7 +170,14 @@ export async function updateProfile(
   try {
     ;({ value: issued, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
-        const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
+        const current = await confirmActor(
+          deps.config,
+          trx,
+          input.actorId,
+          input.currentPassword,
+          input.recentProof,
+          'email_change'
+        )
         if (registrationData !== undefined) {
           if (!deps.config.users.updateRegistrationData)
             throw new InvalidInputError('Profile fields are not supported by the user adapter')

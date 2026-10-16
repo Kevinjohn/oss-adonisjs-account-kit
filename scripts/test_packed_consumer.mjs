@@ -532,14 +532,16 @@ async function runUpgrade(candidate, baseline, runName) {
     '_account_kit_create_social_identities.ts',
     '_account_kit_retire_account_email_changes.ts',
     '_account_kit_add_credentials_changed_at_to_users.ts',
+    '_account_kit_create_social_transactions.ts',
+    '_account_kit_add_social_identity_confirmation.ts',
   ]
   if (
     newlyGenerated.length !== expectedSuffixes.length ||
     !resetMigration ||
-    expectedSuffixes.some((suffix) => !newlyGenerated.some((file) => file.endsWith(suffix)))
+    expectedSuffixes.some((suffix, index) => !newlyGenerated[index]?.endsWith(suffix))
   ) {
     throw new Error(
-      `Upgrade should add only the six expected account migrations; added: ${newlyGenerated.join(', ')}`
+      `Upgrade should add only the eight expected account migrations in order; added: ${newlyGenerated.join(', ')}`
     )
   }
   // Rehearse the documented application-owned table rename without editing applied migrations.

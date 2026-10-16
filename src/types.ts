@@ -65,7 +65,12 @@ export interface Invitation {
 }
 
 export type Capability =
-  'passwordReset' | 'emailVerification' | 'invitations' | 'emailPasswordManagement' | 'registration'
+  | 'passwordReset'
+  | 'emailVerification'
+  | 'invitations'
+  | 'emailPasswordManagement'
+  | 'registration'
+  | 'socialAuthentication'
 export type CredentialOperation =
   | 'password_reset'
   | 'password_change'
@@ -122,6 +127,8 @@ export interface NotificationCallbacks {
   emailChanged(previousEmail: string, user: AccountUser): Promise<void>
   passwordResetCompleted(user: AccountUser, context: CredentialChangeContext): Promise<void>
   passwordChanged(user: AccountUser, context: CredentialChangeContext): Promise<void>
+  socialIdentityLinked(user: AccountUser, identity: SocialIdentity): Promise<void>
+  socialIdentityUnlinked(user: AccountUser, identity: SocialIdentity): Promise<void>
 }
 export interface ThrottleBudget {
   requests: number
@@ -171,6 +178,7 @@ export interface AccountKitConfig {
     mapFields?: (input: unknown) => Promise<Record<string, unknown>> | Record<string, unknown>
   }
   passwordPolicy?: Partial<PasswordPolicy>
+  socialAuthentication?: SocialAuthenticationConfig
 }
 
 export interface PasswordPolicy {
@@ -182,6 +190,80 @@ export interface PasswordPolicy {
   symbols: boolean
   minScore: 0 | 1 | 2 | 3 | 4
 }
+
+export type SocialProviderName = 'google' | 'github'
+export type SocialIntent = 'login' | 'link' | 'reauth' | 'confirm'
+export type SensitivePurpose = 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
+
+/** Returned only after the configured adapter verifies provider authentication evidence. */
+export interface VerifiedSocialAuthentication {
+  verified: true
+  subject: string
+  /** Provider-attested authentication time as an ISO 8601 UTC timestamp. */
+  authenticatedAt: string
+}
+
+/** The application uses Ally at this boundary. Provider credentials never reach Account Kit. */
+export interface SocialProvider {
+  authorizationUrl(state: string, context?: unknown): Promise<string>
+  resolve(callback: unknown): Promise<{
+    subject: string
+    email: string | null
+    emailVerified: boolean
+    name?: string | null
+    nickname?: string | null
+    avatarUrl?: string | null
+  }>
+  /** Omit when this provider cannot attest a fresh authentication event. */
+  verifyFreshAuthentication?(
+    callback: unknown,
+    expected: { state: string; subject: string }
+  ): Promise<VerifiedSocialAuthentication | null>
+}
+
+export interface SocialAuthenticationConfig {
+  providers: Partial<Record<SocialProviderName, SocialProvider>>
+}
+
+export interface SocialIdentity {
+  id: number
+  userId: UserId
+  provider: SocialProviderName
+  providerUserId: string
+  email: string | null
+  emailVerified: boolean
+}
+
+export interface SocialBeginInput {
+  provider: SocialProviderName
+  intent: Exclude<SocialIntent, 'confirm'>
+  current?: CurrentAccountInput
+  purpose?: SensitivePurpose
+  /** SHA-256 base64url challenge of a verifier held by the initiating client. */
+  clientChallenge: string
+  /** Opaque request context for a request-scoped provider adapter. */
+  context?: unknown
+  /** Recent social_link proof kept in the server transaction, never in the provider URL. */
+  proof?: string
+}
+
+export interface SocialCallbackInput {
+  state: string
+  /** The route provider, when the caller has a provider-specific callback URL. */
+  provider?: SocialProviderName
+  callback: unknown
+  intent?: SocialIntent
+  current?: CurrentAccountInput
+  proof?: string
+  verificationToken?: string
+}
+
+export type SocialCallbackResult =
+  | { status: 'linked' | 'new'; userId: UserId; handoffCode?: string }
+  | { status: 'new'; continuation: string }
+  | { status: 'new'; emailVerificationRequired: true }
+  | { status: 'link_required' }
+  | { status: 'reauthenticated'; proof: string }
 
 export interface AuthenticationConfig {
   strategy: 'session' | 'access_tokens'
@@ -342,17 +424,21 @@ export interface InvitationsRevokeInput {
 }
 export interface ChangePasswordInput {
   actorId: UserId
-  currentPassword: string
+  currentPassword?: string
+  /** Purpose-bound proof issued by a fresh provider reauthentication for social-only accounts. */
+  recentProof?: string
   newPassword: string
 }
 export interface RequestEmailChangeInput {
   actorId: UserId
-  currentPassword: string
+  currentPassword?: string
+  recentProof?: string
   newEmail: string
 }
 export interface UpdateProfileInput {
   actorId: UserId
-  currentPassword: string
+  currentPassword?: string
+  recentProof?: string
   email?: string
   registrationData?: unknown
 }

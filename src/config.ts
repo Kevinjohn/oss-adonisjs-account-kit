@@ -20,6 +20,7 @@ const capabilities: Capability[] = [
   'invitations',
   'emailPasswordManagement',
   'registration',
+  'socialAuthentication',
 ]
 const adapterMethods: Record<Capability, string[]> = {
   passwordReset: [
@@ -41,6 +42,7 @@ const adapterMethods: Record<Capability, string[]> = {
     'verifyPassword',
   ],
   registration: ['findByEmail', 'findById', 'create'],
+  socialAuthentication: ['findByEmail', 'findById', 'create', 'verifyPassword'],
 }
 const requiredHooks: Record<Capability, string[]> = {
   passwordReset: [
@@ -66,6 +68,7 @@ const requiredHooks: Record<Capability, string[]> = {
     'notify.passwordChanged',
   ],
   registration: ['urls.emailVerification', 'notify.accountActivationProvision'],
+  socialAuthentication: ['notify.socialIdentityLinked', 'notify.socialIdentityUnlinked'],
 }
 
 function budget(
@@ -106,7 +109,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error('account_kit: delivery must be best-effort, durable, or capture')
   const enabled =
     config.enabled ??
-    capabilities.filter((name) => name !== 'registration' && name !== 'invitations')
+    capabilities.filter(
+      (name) => !['registration', 'invitations', 'socialAuthentication'].includes(name)
+    )
   if (
     !Array.isArray(enabled) ||
     new Set(enabled).size !== enabled.length ||
@@ -139,11 +144,39 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   )
     throw new Error('account_kit: registration.availability must be open, closed, or application')
   if (
-    enabled.includes('registration') &&
     config.registration.mapFields !== undefined &&
     typeof config.registration.mapFields !== 'function'
   )
     throw new Error('account_kit: registration.mapFields must be a function')
+  if (enabled.includes('socialAuthentication')) {
+    if (!enabled.includes('emailVerification'))
+      throw new Error(
+        'account_kit: socialAuthentication requires emailVerification for unverified provider email'
+      )
+    const social = config.socialAuthentication
+    if (!social || !social.providers || !config.registration || !config.authentication)
+      throw new Error(
+        'account_kit: socialAuthentication requires providers, registration and authentication'
+      )
+    const names = Object.keys(social.providers)
+    if (names.length === 0 || names.some((name) => name !== 'google' && name !== 'github'))
+      throw new Error('account_kit: socialAuthentication supports google and github only')
+    for (const name of names) {
+      const provider = social.providers[name as 'google' | 'github']
+      if (
+        typeof provider?.authorizationUrl !== 'function' ||
+        typeof provider.resolve !== 'function'
+      )
+        throw new Error(`account_kit: socialAuthentication.providers.${name} must use Ally`)
+      if (
+        provider.verifyFreshAuthentication !== undefined &&
+        typeof provider.verifyFreshAuthentication !== 'function'
+      )
+        throw new Error(
+          `account_kit: socialAuthentication.providers.${name}.verifyFreshAuthentication must be a function`
+        )
+    }
+  }
   for (const hook of [
     'onInvitationAccepted',
     'onCredentialsChanged',
@@ -330,6 +363,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       emailChangeProvision: disabled,
       emailChanged: disabled,
       passwordChanged: disabled,
+      socialIdentityLinked: disabled,
+      socialIdentityUnlinked: disabled,
       ...config.notify,
     } as NotificationCallbacks,
     onInvitationAccepted: config.onInvitationAccepted ?? disabled,

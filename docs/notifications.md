@@ -80,10 +80,14 @@ system, choose `best-effort`; this is allowed in production and the report says 
 ## How it works
 
 The maintained templates cover password reset, account activation, invitation and email-change
-links, plus password-reset, password-change and email-change security notices. Each message has
+links, plus password-reset, password-change, email-change, social-link and social-unlink security notices. Each message has
 an HTML heading, descriptive link text, and a plain-text version containing the full URL.
 Dynamic text and URLs are HTML escaped. `createMailNotifications` calls AdonisJS Mail's
 `sendLater`, after the account operation has committed. It does not install a queue or outbox.
+Social notices name Google or GitHub and go only to the account address confirmed at the time
+of the relationship change. Pending provider associations and unconfirmed addresses do not
+trigger them. Configure the maintained callbacks directly through `notify` when enabling
+`socialAuthentication`; no separate social transport is needed.
 
 `sendLater` acceptance means the configured Mail delivery mechanism accepted the message; it
 does not prove recipient delivery. With `best-effort`, Account Kit does not retry a failed or

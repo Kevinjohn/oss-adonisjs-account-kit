@@ -32,6 +32,8 @@ test.group('maintained notifications', () => {
       'emailChanged',
       'passwordResetCompleted',
       'passwordChanged',
+      'socialIdentityLinked',
+      'socialIdentityUnlinked',
     ] as const
     const expected = {
       passwordResetProvision: [
@@ -65,11 +67,22 @@ test.group('maintained notifications', () => {
         null,
       ],
       passwordChanged: ['Your password changed', 'The password on your account was changed.', null],
+      socialIdentityLinked: [
+        'A social sign-in method was linked',
+        'Google sign-in was linked to your account.',
+        null,
+      ],
+      socialIdentityUnlinked: [
+        'A social sign-in method was removed',
+        'Google sign-in was removed from your account.',
+        null,
+      ],
     } as const
     for (const kind of kinds) {
       const rendered = renderAccountMessage(kind, {
         brandName: '<Company & Co>',
         actionUrl: 'https://example.test/action?a=1&b="<bad>"',
+        providerName: 'Google',
       })
       assert.include(rendered.text, '<Company & Co>')
       assert.notInclude(rendered.html, '<Company & Co>')
@@ -96,6 +109,20 @@ test.group('maintained notifications', () => {
         assert.notInclude(rendered.html, '<a ')
       }
     }
+  })
+
+  test('escapes provider text in social notices and requires a provider name', ({ assert }) => {
+    assert.throws(
+      () => renderAccountMessage('socialIdentityLinked', { brandName: 'Example' }),
+      'requires a provider name'
+    )
+    const rendered = renderAccountMessage('socialIdentityLinked', {
+      brandName: 'Example',
+      providerName: '<unsafe & provider>',
+    })
+    assert.include(rendered.text, '<unsafe & provider> sign-in')
+    assert.include(rendered.html, '&lt;unsafe &amp; provider&gt; sign-in')
+    assert.notInclude(rendered.html, '<unsafe')
   })
 
   test('queues through Mail sendLater with configured sender and layout, including security notices', async ({
@@ -150,12 +177,25 @@ test.group('maintained notifications', () => {
       operationId: '2',
       userId: 1,
     })
-    assert.lengthOf(messages, 7)
+    const identity = {
+      id: 4,
+      userId: user.id,
+      provider: 'google' as const,
+      providerUserId: 'google-subject',
+      email: user.email,
+      emailVerified: true,
+    }
+    await notify.socialIdentityLinked(user, identity)
+    await notify.socialIdentityUnlinked(user, identity)
+    assert.lengthOf(messages, 9)
     assert.equal(messages[0].from, 'Accounts <accounts@example.test>')
     assert.equal(messages[3].to, 'new@example.test')
     assert.equal(messages[4].to, 'old@example.test')
     assert.include(messages[0].html as string, 'class="custom"')
     assert.include(messages[0].text as string, 'https://example.test/reset')
+    assert.equal(messages[7].to, user.email)
+    assert.include(messages[7].text as string, 'Google sign-in was linked')
+    assert.include(messages[8].html as string, 'Google sign-in was removed')
   })
 
   test('rejects sender and brand header breaks before queuing', ({ assert }) => {
@@ -371,13 +411,26 @@ test.group('maintained mail operation', (group) => {
     })
     try {
       await notify.passwordResetProvision(user, 'https://app.example.test/reset/example-proof')
-      for (let attempt = 0; attempt < 100 && messages.length === 0; attempt++)
+      const identity = {
+        id: 5,
+        userId: user.id,
+        provider: 'github' as const,
+        providerUserId: 'github-subject',
+        email: user.email,
+        emailVerified: true,
+      }
+      await notify.socialIdentityLinked(user, identity)
+      await notify.socialIdentityUnlinked(user, identity)
+      for (let attempt = 0; attempt < 100 && messages.length < 3; attempt++)
         await new Promise((resolve) => setTimeout(resolve, 10))
-      assert.lengthOf(messages, 1)
+      assert.lengthOf(messages, 3)
       assert.deepEqual(messages[0].to, ['person@example.test'])
       assert.equal(messages[0].from, 'Accounts <accounts@example.test>')
       assert.include(messages[0].html as string, 'Reset password')
       assert.include(messages[0].text as string, 'https://app.example.test/reset/example-proof')
+      assert.deepEqual(messages[1].to, ['person@example.test'])
+      assert.include(messages[1].text as string, 'GitHub sign-in was linked')
+      assert.include(messages[2].html as string, 'GitHub sign-in was removed')
     } finally {
       await manager.closeAll()
     }
@@ -456,5 +509,83 @@ test.group('maintained mail operation', (group) => {
       await account.passwordReset.request({ email: 'absent@example.test', clientKey: 'second' })
     )
     assert.deepEqual(calls, ['queued-after-commit'])
+  })
+
+  test('social notice queue failure follows committed link and unlink operations', async ({
+    assert,
+  }) => {
+    const local = await insertUser(kit, { email: 'social-mail@example.test' })
+    const states: string[] = []
+    const mail = {
+      sendLater: async (_callback: (message: any) => void) => {
+        const rows = await kit.db.from('social_identities').where('user_id', local.id)
+        states.push(String(rows.length))
+        throw new Error('notice queue failed')
+      },
+    }
+    const notify = createMailNotifications({
+      mail,
+      from: 'accounts@example.test',
+      brandName: 'Example',
+    })
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: {
+          google: {
+            authorizationUrl: async (state: string) => `https://provider.test/start?state=${state}`,
+            resolve: async () => ({
+              subject: 'mail-subject',
+              email: local.email,
+              emailVerified: true,
+            }),
+          },
+        },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+      notify,
+    })
+    const current = { userId: local.id, revision: null }
+    const clientChallenge = 'a'.repeat(43)
+    const begin = await account.socialAuthentication.begin({
+      provider: 'google',
+      intent: 'link',
+      current,
+      clientChallenge,
+    })
+    const linkProof = await account.socialAuthentication.provePassword({
+      current,
+      password: 'password123',
+      purpose: 'social_link',
+    })
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.callback({
+          state: begin.state,
+          callback: {},
+          current,
+          proof: linkProof,
+        }),
+      DeliveryError
+    )
+    const relations = await account.socialAuthentication.list({ current })
+    const relation = relations[0]
+    assert.isDefined(relation)
+    const unlinkProof = await account.socialAuthentication.provePassword({
+      current,
+      password: 'password123',
+      purpose: 'social_unlink',
+    })
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.unlink({
+          current,
+          identityId: relation.id,
+          proof: unlinkProof,
+        }),
+      DeliveryError
+    )
+    assert.deepEqual(states, ['1', '0'])
+    assert.lengthOf(await kit.db.from('social_identities').where('user_id', local.id), 0)
   })
 })

@@ -2957,11 +2957,11 @@ export async function planSetup(
       }
     }
   }
-  const requiredMigrations = migrationNames.filter((name) => name !== 'create_social_identities')
-  for (const [index, name] of requiredMigrations.entries()) {
+  const migrationTimestamp = options.timestamp ?? Date.now()
+  for (const [index, name] of migrationNames.entries()) {
     const suffix = `_account_kit_${name}.ts`
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
-    const path = `database/migrations/${existing ?? `${options.timestamp ?? Date.now() + index}${suffix}`}`
+    const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
     const content = await migrationContent(name, choices)
     addChange(
       changes,
@@ -3131,7 +3131,7 @@ export async function planSetup(
     endpointLocations,
     migrationState: !state.migrationNames.some((file) => file.includes('_account_kit_'))
       ? 'not-generated'
-      : requiredMigrations.every((name) =>
+      : migrationNames.every((name) =>
             state.migrationNames.some((file) => file.endsWith(`_account_kit_${name}.ts`))
           )
         ? 'generated-application-unknown'
