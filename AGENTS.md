@@ -14,21 +14,25 @@
   `pnpm quick:test` (SQLite), `pnpm test:pg-service`, and `pnpm test:pg` (local PostgreSQL 16
   required; see docs/verification.md for the external-server alternative).
 
-## File size and responsibility
+## Single Responsibility Principle (files)
 
-This is a guideline, not a rule. It exists because one-responsibility files are easier for a
-newcomer, a reviewer, or a language model to hold in their head.
+Each file does one thing and is named for it. This keeps the codebase easy to hold in your head,
+even if it means more files.
 
-- Aim for one responsibility per file, named for that responsibility. A reader should be able to
-  guess what `src/setup/config_inspection.ts` does without opening it.
-- Treat about 800 lines as the point to look for a seam, and about 1,500 as the point to split in
-  the next change that touches the file. Neither number blocks a merge; a file that stays large on
-  purpose (a data table, generated code, one long table-driven test) says why in a short comment
-  at the top.
-- Split by responsibility, not by line count. Keep the existing entry point re-exporting what its
-  importers use, so nothing outside the directory changes. Move code without editing it, in its
-  own commit, and verify with the repository scripts before any further edit.
-- Test files follow the source they cover: one spec per module or closely related pair, with
-  shared fixtures lifted once into `tests/helpers/`. Do not rename tests while moving them.
-- The costs are real: more files to navigate, more import lines, and the temptation to split
-  before a seam exists. When a file is under the first threshold and cohesive, leave it alone.
+1. One responsibility per file. If you need "and" to describe it, it is two files.
+2. Name the file for the responsibility. A reader should guess what
+   `src/setup/config_inspection.ts` does without opening it.
+3. Split at a seam, not at a line count. A seam is a group of functions that share data or a
+   purpose and that the rest of the file only calls. A file that just forwards calls is not a
+   seam; leave it in place.
+4. Size is a prompt, not a rule. At about 800 lines, look for a seam. At about 1,500, split in the
+   next change that touches the file. A file kept large on purpose (a data table, generated code,
+   one long table-driven test) says why in a short comment at the top.
+5. Keep the entry point. The original file re-exports what its importers use, so nothing outside
+   the directory changes.
+6. Move, do not edit. A split commit only moves code. Run the repository scripts before any
+   further change.
+7. Tests follow the source. One spec per module or closely related pair. Shared fixtures go in
+   `tests/helpers/` once. Do not rename tests while moving them.
+8. Small and cohesive is finished. Do not split a file that is under the first threshold and does
+   one thing.
