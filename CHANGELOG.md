@@ -18,6 +18,7 @@ This project has no published releases yet. The current candidate remains versio
 - The reference profile PATCH updates configured fields and pending email through the public profile operation, including inactive-address correction and credential revocation.
 - Reference account errors now use stable JSON and JSON:API envelopes while Vine validation retains its 422 response.
 - Bad-login errors in the API reference now return 401 with the same generic response for absent, wrong-password, restricted, and passwordless accounts.
+- Optional `adonisjs-account-kit/http` entry provides explicitly registered managed JSON routes, selected-guard adapters, route exclusions, validators, safe responses, and shared protection for application-owned routes.
 - `AccountKit.authentication` adds named session or opaque-token login, failed-attempt limits, safe current-account access, and current-credential logout.
 - `authentication.changeRestriction` records package-managed access-policy changes and revokes credentials through the selected guard policy.
 - `users.credentials_changed_at` (column) invalidates existing browser sessions and login attempts using superseded account evidence.
