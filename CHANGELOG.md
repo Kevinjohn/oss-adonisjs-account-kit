@@ -21,6 +21,7 @@ This project has no published releases yet. The current candidate remains versio
 - Bad-login errors in the API reference now return 401 with the same generic response for absent, wrong-password, restricted, and passwordless accounts.
 - Optional `adonisjs-account-kit/http` entry provides explicitly registered managed JSON routes, selected-guard adapters, route exclusions, validators, safe responses, and shared protection for application-owned routes.
 - `account-kit:setup` (command) previews, validates, applies, replays, and diagnoses six-pillar onboarding choices in `config/account_kit_setup.json` (file).
+- The API example adds application-owned Google and GitHub social routes for both selected guards, with client and session PKCE handoff, required-field continuation, proof-protected linking, and account methods.
 - Phase 2 social identity proceeds under decision D06 (issue #14), which approves the Google and GitHub providers; issue #57 tracks the phase. Phase 2 remains separately released from Phase 1.
 - Optional Google and GitHub social identity services add safe linking, provider email verification, recent proof, relationship notices, and one-time PKCE handoff.
 - Provider-only recent proof requires separately verified authentication-time evidence; the maintained Google and GitHub Ally adapters do not supply it, so social-only accounts use password reset followed by password re-entry for sensitive changes.
