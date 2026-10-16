@@ -6,6 +6,7 @@ import { errors } from '@adonisjs/limiter'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction, userMetadata } from './db.js'
+import { normaliseEmail } from './email.js'
 import { limiterKey } from './throttle.js'
 import {
   CapabilityDisabledError,
@@ -146,7 +147,7 @@ export function authenticationService(deps: Dependencies) {
       )
         throw new InvalidCredentialsError()
 
-      const email = input.email.trim().toLowerCase()
+      const email = normaliseEmail(input.email)
       const key = (operation: string, value: string) =>
         limiterKey(operation, value, deps.config.limiterSecret, deps.config.limiterNamespace)
       const clientKey = key('login:client', input.clientKey)
