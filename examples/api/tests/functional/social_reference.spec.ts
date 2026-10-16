@@ -12,6 +12,11 @@ const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
 
 type Body = Record<string, unknown>
 const body = (response: { body(): unknown }) => response.body() as Body
+const continuationFrom = (response: { body(): unknown }): string => {
+  const continuation = body(response).continuation
+  if (typeof continuation !== 'string') throw new Error('Expected social continuation')
+  return continuation
+}
 
 test('token client completes a verified social registration through one PKCE exchange', async ({
   client,
@@ -41,13 +46,13 @@ test('token client completes a verified social registration through one PKCE exc
   })
   assert.equal(callback.status(), 200, JSON.stringify(callback.body()))
   assert.equal(body(callback).status, 'new')
-  assert.isString(body(callback).continuation)
+  const continuation = continuationFrom(callback)
   assert.notProperty(body(callback), 'token')
   assert.lengthOf(await db.from('users').where('email', email), 0)
 
   for (const fullName of ['   ', 'A'.repeat(101)]) {
     const invalid = await client.post('/api/v1/auth/oauth/registration').json({
-      continuation: body(callback).continuation,
+      continuation,
       fullName,
     })
     assert.equal(invalid.status(), 422, JSON.stringify(invalid.body()))
@@ -56,7 +61,7 @@ test('token client completes a verified social registration through one PKCE exc
   }
 
   const completed = await client.post('/api/v1/auth/oauth/registration').json({
-    continuation: body(callback).continuation,
+    continuation,
     fullName: '  Confirmed Name  ',
   })
   assert.equal(completed.status(), 200, JSON.stringify(completed.body()))
@@ -210,8 +215,9 @@ test('missing provider email stays inactive until local proof and fresh provider
   })
   assert.equal(callback.status(), 200)
   const email = `collected-social-${randomUUID()}@example.test`
+  const continuation = continuationFrom(callback)
   const complete = await client.post('/api/v1/auth/oauth/registration').json({
-    continuation: body(callback).continuation,
+    continuation,
     email,
     fullName: 'Collected Social User',
   })

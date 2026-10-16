@@ -143,7 +143,7 @@ export default class SocialAuthController {
   async completeRegistration(ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
     const continuation = requiredString(ctx.request.input('continuation'), 'continuation')
-    const { fullName } = await ctx.request.validateUsing(socialRegistrationValidator)
+    const { fullName, email } = await ctx.request.validateUsing(socialRegistrationValidator)
     const pending =
       socialStrategy() === 'session'
         ? (ctx.session.get('socialContinuation') as BrowserContinuation | undefined)
@@ -155,7 +155,7 @@ export default class SocialAuthController {
       await this.kit()
     ).socialAuthentication.completeRegistration({
       continuation,
-      email: ctx.request.input('email'),
+      email,
       registrationData: { fullName },
     })
     if (pending?.continuation === continuation) {
