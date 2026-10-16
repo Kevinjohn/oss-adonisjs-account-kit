@@ -177,7 +177,7 @@ export function hasUnsafeBindingReferences(
     const parent = node.parent
     if (
       (ts.isImportClause(parent) && parent.name === node) ||
-      (ts.isImportSpecifier(parent) && parent.name === node) ||
+      (ts.isImportSpecifier(parent) && (parent.name === node || parent.propertyName === node)) ||
       (ts.isNamespaceImport(parent) && parent.name === node) ||
       (ts.isPropertyAssignment(parent) && parent.name === node) ||
       (ts.isPropertyAccessExpression(parent) && parent.name === node)
@@ -188,7 +188,9 @@ export function hasUnsafeBindingReferences(
     const call =
       member && ts.isCallExpression(member.parent) && member.parent.expression === member
         ? member.parent
-        : null
+        : ts.isCallExpression(parent) && parent.expression === node
+          ? parent
+          : null
     if (!call || !allowedCall(call)) unsafe = true
   })
   return unsafe
@@ -198,6 +200,23 @@ export function safeEnvGetter(source: SetupSource, binding: string): boolean {
   return !hasUnsafeBindingReferences(source, binding, (call) =>
     exactCall(source, call, binding, 'get')
   )
+}
+
+/** Remove syntax-only wrappers before classifying an inspected expression. */
+export function unwrapStaticExpression(
+  source: SetupSource,
+  expression: TypeScript.Expression
+): TypeScript.Expression {
+  const { ts } = source
+  while (
+    ts.isParenthesizedExpression(expression) ||
+    ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isNonNullExpression(expression) ||
+    ts.isTypeAssertionExpression(expression)
+  )
+    expression = expression.expression
+  return expression
 }
 
 export function defaultExpression(source: SetupSource): {

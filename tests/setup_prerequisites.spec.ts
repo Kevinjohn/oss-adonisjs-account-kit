@@ -1,10 +1,11 @@
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import ts from 'typescript'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
+import { applySetup } from '../src/setup/apply.js'
 import { stripSourceComments } from '../src/setup/source_text.js'
 import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
 
@@ -1361,13 +1362,22 @@ export default class User extends BaseModel { static table = 'users'; static '\u
           '{}',
           '({} satisfies object)',
           '(/smtp/ as unknown)',
+          '<any>null',
+          '(<unknown>null)!',
+          '<any>(null as unknown)',
+          '(<any>undefined)!',
+          '<any>false',
+          '<any>({})',
         ]) {
           state.files['config/mail.ts'] =
             `import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: ${value} } })`
           const invalid = await planSetup(choices, state)
           assert.isTrue(
             invalid.diagnostics.some(
-              ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
+              ({ field, severity, message }) =>
+                field === 'config/mail.ts' &&
+                severity === 'error' &&
+                message.includes('callable transport provider')
             )
           )
           assert.isFalse(invalid.readiness.configurationValid)
@@ -1402,6 +1412,66 @@ export default class User extends BaseModel { static table = 'users'; static '\u
           )
         )
         assert.isFalse(native.readiness.externalConfigured)
+        state.files['config/mail.ts'] =
+          "import { defineConfig as mailConfig, transports as mailTransport } from '@adonisjs/mail'\nexport default mailConfig({ default: 'smtp', mailers: { smtp: mailTransport.smtp({}) } })"
+        const aliasedNative = await planSetup(choices, state)
+        assert.isTrue(
+          aliasedNative.diagnostics.some(
+            ({ field, severity, message }) =>
+              field === 'config/mail.ts' &&
+              severity === 'action' &&
+              message.includes('Verify the selected')
+          )
+        )
+        state.files['config/mail.ts'] =
+          "import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: (<any>(() => ({})))! } })"
+        const callable = await planSetup(choices, state)
+        assert.isTrue(
+          callable.diagnostics.some(
+            ({ field, severity, message }) =>
+              field === 'config/mail.ts' &&
+              severity === 'action' &&
+              message.includes('Verify the selected')
+          )
+        )
+      } finally {
+        if (previous === undefined) delete process.env.MAIL_MAILER
+        else process.env.MAIL_MAILER = previous
+      }
+    })
+  })
+
+  test('unsafe Mail configuration blocks apply without writing files', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      choices.mail.integration = 'adonisjs-mail'
+      choices.mail.transportEnv = 'MAIL_MAILER'
+      const previous = process.env.MAIL_MAILER
+      process.env.MAIL_MAILER = 'smtp'
+      const cases = [
+        "import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: <any>null } })",
+        "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nenv.get = () => 'missing'\nexport default defineConfig({ default: env.get('MAIL_MAILER', 'smtp'), mailers: { smtp: () => ({}) } })",
+        "import { defineConfig, transports } from '@adonisjs/mail'\ntransports.smtp = () => null\nexport default defineConfig({ default: 'smtp', mailers: { smtp: transports.smtp({}) } })",
+        "import { defineConfig, transports } from '@adonisjs/mail'\nconst config = defineConfig({ default: 'smtp', mailers: { smtp: transports.smtp({}) } })\nconfig.mailers.smtp = null\nexport default config",
+        "import { defineConfig } from '@adonisjs/mail'\nconst selected = 'smtp'\nexport default defineConfig({ default: selected, mailers: { smtp: () => ({}) } })",
+        "import { defineConfig } from '@adonisjs/mail'\nexport default customConfig({ default: 'smtp', mailers: { smtp: () => ({}) } })",
+        "import { defineConfig, transports } from '@adonisjs/mail'\nimport env from '#start/env'\nenv.get = () => 'missing'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: transports.smtp({ host: env.get('MAIL_HOST') }) } })",
+        "import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: false ? () => ({}) : () => ({}) } })",
+        "import { defineConfig, transports } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: transports.unknown({}) } })",
+      ]
+      try {
+        for (const mail of cases) {
+          state.files['config/mail.ts'] = mail
+          const before = await readdir(root)
+          const plan = await planSetup(choices, state, { apply: true })
+          assert.isTrue(
+            plan.diagnostics.some(
+              ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
+            ),
+            mail
+          )
+          await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+          assert.deepEqual(await readdir(root), before)
+        }
       } finally {
         if (previous === undefined) delete process.env.MAIL_MAILER
         else process.env.MAIL_MAILER = previous
