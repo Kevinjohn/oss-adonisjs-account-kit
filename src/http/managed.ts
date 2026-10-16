@@ -208,6 +208,7 @@ async function execute<Credential>(
 
   switch (route.name) {
     case 'auth.csrf':
+      response.header('Cache-Control', 'no-store')
       return response.ok({ csrfToken })
     case 'auth.login': {
       const { email, password } = await request.validateUsing(loginValidator)
