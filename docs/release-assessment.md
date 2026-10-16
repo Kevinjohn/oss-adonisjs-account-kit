@@ -101,7 +101,7 @@ The reference integration has request-scoped Ally adapter fixtures, session-held
 
 ## Schema and migration traceability
 
-`configure.ts` exports nine package migration names: `create_password_reset_tokens`, `create_account_invitations`, `create_account_email_changes`, `add_email_verified_at_to_users`, `create_account_transaction_lock`, `evolve_identity_contract`, `create_social_identities`, `retire_account_email_changes`, and `add_credentials_changed_at_to_users`. `src/setup/plan.ts` derives applicable migration files from that list and omits `create_social_identities` when social is not selected. The installed evidence record must list generated and applied migrations for each required fresh or upgrade case. `docs/usage.md` intentionally refers to “the package migration files” without a stale count.
+`configure.ts` exports eleven package migration names: `create_password_reset_tokens`, `create_account_invitations`, `create_account_email_changes`, `add_email_verified_at_to_users`, `create_account_transaction_lock`, `evolve_identity_contract`, `create_social_identities`, `retire_account_email_changes`, `add_credentials_changed_at_to_users`, `create_social_transactions`, and `add_social_identity_confirmation`. `src/setup/plan.ts` plans the full migration chain from that list regardless of whether social is selected. The installed evidence record must list generated and applied migrations for each required fresh or upgrade case. `docs/usage.md` intentionally refers to “the package migration files” without a stale count.
 
 ## Supported boundaries and release limitations
 
