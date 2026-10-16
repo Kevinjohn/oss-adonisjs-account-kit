@@ -15,6 +15,9 @@ pending address and a nullable local password. `registrationData` is passed only
 application mapping callback; request properties are never copied directly to the user model.
 Email-verification-only adapters also implement `setPassword`, because inactive activation now
 replaces the password supplied by an earlier registrant.
+`updateRegistrationData(id, mappedData, trx)` is required only when profile updates include
+configured registration fields. The maintained Lucid adapter applies those fields through the
+same trusted `mapRegistrationData` callback and rejects edits to controlled account fields.
 Keep ID, password hash, verification state, and roles under trusted account policy. Configure
 `tokenSecretLength` as 40 bytes by default (16–64 allowed). Existing expiry defaults remain one
 hour for reset, activation, and email change, and seven days for invitations.
@@ -29,14 +32,17 @@ columns. Social-only creation can set `password: null`; `hasPassword` then repor
 Invitations create an already verified user with a null pending address.
 
 Activation and email-change proofs share `email_verification_tokens` but have distinct purposes.
-Only a hash is stored. A resend or replacement invalidates the prior proof; completion checks
+Only a hash is stored. A resend within one minute preserves the live proof and acknowledgement;
+a later resend or replacement invalidates the prior proof. Completion checks
 expiry, current address, pending address and purpose under the user lock, then consumes the proof
 once in the transaction. Password-reset proof rows remain in `password_reset_tokens`.
-An inactive user's email change updates both addresses and supersedes an earlier activation
-proof. An active user's change leaves the confirmed address in place until completion; requesting
+An inactive user's email change updates both addresses, sends a fresh activation message, and
+supersedes an earlier activation proof. Its proof requires activation with a new password and
+cannot complete through the active-account email-change operation. An active user's change leaves
+the confirmed address in place until completion; requesting
 the confirmed address again cancels a pending change. An active account's activation resend
 cannot replace its pending email-change proof; an inactive account's resend replaces the older
-proof, and only the latest can be used. Password change cancels a distinct pending change while
+proof after the suppression window, and only the latest can be used. Password change cancels a distinct pending change while
 leaving equal addresses inactive. An email-bound password reset cancels a distinct pending change
 and activates an account with equal addresses, preserving the previous reset behavior. Changing
 an inactive account's confirmed address invokes the configured credential revocation hook in its

@@ -228,6 +228,26 @@ export function createLucidAdapter<Model extends ModelRow>(
       })
     },
 
+    async updateRegistrationData(id, data, trx) {
+      if (!options.mapRegistrationData)
+        throw new Error('account_kit: registrationData requires mapRegistrationData')
+      const User = await model()
+      const user = await find(query(User, trx), 'id', id)
+      if (!user) return
+      const before = {
+        id: user.id,
+        email: user.email,
+        unverifiedEmail: user.unverifiedEmail,
+        password: user.password,
+        emailVerifiedAt: user.emailVerifiedAt,
+        role: (user as unknown as Record<string, unknown>).role,
+      }
+      await options.mapRegistrationData(data, user as Model)
+      assertSafeRegistrationMapping(user, before)
+      user.useTransaction(trx)
+      await user.save()
+    },
+
     async markEmailVerified(id, at, trx) {
       await updateUser(id, trx, (user) => {
         user.unverifiedEmail = null

@@ -768,6 +768,13 @@ test.group('passwordReset.inspect', (group) => {
     assert.equal(rows[0].hash, hashToken(token))
   })
 
+  test('inspection rejects a proof after the account address changes', async ({ assert }) => {
+    const { account, token } = await issue()
+    await kit.db.from('users').update({ email: 'replacement@example.test' })
+    assert.isFalse(await account.passwordReset.inspect({ token }))
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
+  })
+
   test('expired token is rejected', async ({ assert }) => {
     const { account, token } = await issue()
     await kit.db.from('password_reset_tokens').update({

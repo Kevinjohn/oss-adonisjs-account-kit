@@ -232,7 +232,13 @@ test.group('invitation management contracts', (group) => {
         return created
       },
     }
-    const { account, recorder } = makeService(kit, { users: validating })
+    const { account, recorder } = makeService(kit, {
+      users: validating,
+      registration: {
+        availability: 'closed',
+        mapFields: (input) => input as Record<string, unknown>,
+      },
+    })
     const invitation = await account.invitations.send({
       actorId: actor.id,
       email: 'invitee@example.test',
@@ -261,5 +267,79 @@ test.group('invitation management contracts', (group) => {
     })
     assert.equal(created.email, invitation.email)
     assert.equal(savedName, 'Person')
+  })
+
+  test('unmapped or protected invitation fields never reach a permissive adapter', async ({
+    assert,
+  }) => {
+    const actor = await insertUser(kit, { email: 'actor@example.test' })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let createCalls = 0
+    const permissive: UsersAdapter = {
+      ...users,
+      async create(attrs, trx) {
+        createCalls++
+        return users.create(attrs, trx)
+      },
+    }
+    const { account, recorder } = makeService(kit, {
+      users: permissive,
+      registration: {
+        availability: 'closed',
+        mapFields: (input) => input as Record<string, unknown>,
+      },
+    })
+    await account.invitations.send({
+      actorId: actor.id,
+      email: 'invitee@example.test',
+      role: 'user',
+    })
+    const token = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await assert.rejects(
+      () =>
+        account.invitations.accept({
+          token,
+          password: 'password123',
+          registrationData: { role: 'admin' },
+        }),
+      InvalidInputError
+    )
+    assert.equal(createCalls, 0)
+    assert.lengthOf(await kit.db.from('account_invitations'), 1)
+  })
+
+  test('invitation fields without a configured mapper are rejected before creation', async ({
+    assert,
+  }) => {
+    const actor = await insertUser(kit, { email: 'actor@example.test' })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let createCalls = 0
+    const { account, recorder } = makeService(kit, {
+      users: {
+        ...users,
+        async create(attrs, trx) {
+          createCalls++
+          return users.create(attrs, trx)
+        },
+      },
+      registration: { availability: 'closed' },
+    })
+    await account.invitations.send({
+      actorId: actor.id,
+      email: 'invitee@example.test',
+      role: 'user',
+    })
+    const token = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await assert.rejects(
+      () =>
+        account.invitations.accept({
+          token,
+          password: 'password123',
+          registrationData: { role: 'admin' },
+        }),
+      InvalidInputError
+    )
+    assert.equal(createCalls, 0)
+    assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })
 })
