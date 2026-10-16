@@ -7,6 +7,7 @@ export const featureNames = [
   'passwordReset',
   'emailPasswordManagement',
   'invitations',
+  'socialAuthentication',
 ] as const
 
 export type SetupFeature = (typeof featureNames)[number]
@@ -81,7 +82,16 @@ export interface SetupChoices {
   }
   social:
     | { status: 'not-applicable'; reason: string }
-    | { status: 'approved-pending'; providers: Array<'google' | 'github'> }
+    | {
+        status: 'enabled'
+        providers: Array<'google' | 'github'>
+        callbackOriginEnv: string
+        /** Absolute path with a {provider} placeholder; token clients own this destination. */
+        callbackPath: string
+        credentials: Partial<
+          Record<'google' | 'github', { clientIdEnv: string; clientSecretEnv: string }>
+        >
+      }
 }
 
 export interface SetupInspection {
@@ -127,6 +137,9 @@ export interface SetupPlan {
     inspectedAccounts: number
     affectedAccounts: number
     checkedAt: string
+    /** Booted login methods observed by the inventory, independent of persisted setup choices. */
+    currentProviders?: Array<'google' | 'github'>
+    currentPasswordLogin?: boolean
   } | null
   prerequisites: string[]
   endpoints: string[]

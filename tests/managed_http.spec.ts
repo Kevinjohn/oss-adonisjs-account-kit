@@ -553,6 +553,184 @@ test.group('managed HTTP dispatch', () => {
     })
   })
 
+  test('session password login updates the visitor-local methods hint after credential establishment', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const kit = {
+      managedHttp: { assertGuard: () => {} },
+      authentication: {
+        login: async () => ({
+          account: {
+            id: 7,
+            email: 'a@example.test',
+            unverifiedEmail: null,
+            hasPassword: true,
+            active: true,
+          },
+          credential: {},
+        }),
+      },
+      socialAuthentication: {},
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, revision: null }),
+      },
+      enabled: ['authentication', 'socialAuthentication'],
+      extensions: { social: { providers: ['google'] } },
+    })
+    const values = new Map<string, unknown>()
+    const ctx = context()
+    ;(ctx as unknown as HttpContext & { session: unknown }).session = {
+      get: (key: string) => values.get(key),
+      put: (key: string, value: unknown) => values.set(key, value),
+      forget: (key: string) => values.delete(key),
+    }
+    ;(ctx.request as typeof ctx.request & { csrfToken: string }).csrfToken = 'trusted-csrf'
+    await routes.get('POST /api/v1/auth/login')!(ctx)
+    assert.deepEqual(await routes.get('GET /api/v1/auth/methods')!(ctx), {
+      status: 200,
+      body: { providers: ['google'], lastUsedMethod: 'password' },
+    })
+  })
+
+  test('a committed social GET callback returns accepted when notification delivery fails', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {} },
+      socialAuthentication: {
+        callback: async () => {
+          throw new DeliveryError('Notification failed after commit')
+        },
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, tokenId: 11 }),
+        publicCredential: () => 'opaque',
+      },
+      enabled: ['socialAuthentication'],
+      extensions: { social: { providers: ['google'] } },
+    })
+    const ctx = context({ provider: 'google' })
+    Object.assign(ctx.request, {
+      input: (key: string) =>
+        ({ state: 'valid-state', code: 'provider-code' })[key as 'state' | 'code'],
+    })
+    const output = await routes.get('GET /api/v1/auth/oauth/:provider/callback')!(ctx)
+    assert.deepEqual(output, { status: 202, body: { committed: true } })
+  })
+
+  test('a committed social unlink returns typed accepted when notification delivery fails', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const account = {
+      id: 7,
+      email: 'a@example.test',
+      unverifiedEmail: null,
+      hasPassword: true,
+      active: true,
+    }
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {} },
+      authentication: { current: async () => account },
+      socialAuthentication: {
+        unlink: async () => {
+          throw new DeliveryError('Notification failed after unlink commit')
+        },
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, tokenId: 11 }),
+        publicCredential: () => 'opaque',
+      },
+      enabled: ['socialAuthentication'],
+      extensions: { social: { providers: ['google'] } },
+    })
+    const ctx = context({ id: '1' })
+    Object.assign(ctx.request, { validateUsing: async () => ({ proof: 'valid-proof' }) })
+    const output = await routes.get('DELETE /api/v1/account/social-identities/:id')!(ctx)
+    const body: ManagedSuccessBody<'account.socialIdentities.unlink'> = { committed: true }
+    assert.deepEqual(output, { status: 202, body })
+  })
+
+  test('last-method writes run only when methods is mounted and cannot fail an issued login', async ({
+    assert,
+  }) => {
+    for (const selection of ['password-only', 'methods-excluded', 'methods-enabled'] as const) {
+      const { router, routes, context } = fixture()
+      let hintWrites = 0
+      const account = {
+        id: 7,
+        email: 'a@example.test',
+        unverifiedEmail: null,
+        hasPassword: true,
+        active: true,
+      }
+      const kit = {
+        managedHttp: { assertGuard: () => {} },
+        authentication: { login: async () => ({ account, credential: {} }) },
+      } as unknown as AccountKit
+      registerManagedRoutes(router, {
+        prefix: '/api/v1',
+        kit: async () => kit,
+        guard: {
+          strategy: 'session',
+          name: 'web',
+          forRequest: () => ({}) as never,
+          current: async () => ({ userId: 7, revision: null }),
+        },
+        enabled:
+          selection === 'password-only'
+            ? ['authentication']
+            : ['authentication', 'socialAuthentication'],
+        except: selection === 'methods-excluded' ? ['auth.methods'] : [],
+        extensions: {
+          social: {
+            providers: ['google'],
+            rememberLastUsedMethod: async () => {
+              hintWrites++
+              throw new Error('cookie write failed')
+            },
+          },
+        },
+      })
+      const ctx = context()
+      ;(ctx.request as typeof ctx.request & { csrfToken: string }).csrfToken = 'trusted-csrf'
+      ;(ctx as unknown as HttpContext & { session: unknown }).session = {
+        get: () => null,
+        put: () => {
+          hintWrites++
+          throw new Error('session write failed')
+        },
+        forget: () => {},
+      }
+      const result = await routes.get('POST /api/v1/auth/login')!(ctx)
+      assert.equal((result as { status: number }).status, 200)
+      assert.equal(hintWrites, selection === 'methods-enabled' ? 1 : 0)
+    }
+  })
+
   test('signup establishes the selected limited credential through authentication', async ({
     assert,
   }) => {
@@ -998,6 +1176,75 @@ test.group('managed HTTP dispatch', () => {
     }
   })
 
+  test('sensitive account routes forward a purpose-bound proof to shared services', async ({
+    assert,
+  }) => {
+    const { router, routes, context } = fixture()
+    const account = {
+      id: 7,
+      email: 'a@example.test',
+      unverifiedEmail: null,
+      hasPassword: false,
+      active: true,
+    }
+    const calls: Array<{ operation: string; input: unknown }> = []
+    const kit = {
+      managedHttp: { assertGuard: () => {}, consume: async () => {}, passwordAllowed: () => true },
+      authentication: {
+        current: async () => account,
+        requireActive: async () => account,
+      },
+      emailPasswordManagement: {
+        changePassword: async (input: unknown) => calls.push({ operation: 'password', input }),
+        updateProfile: async (input: unknown) => {
+          calls.push({ operation: 'profile', input })
+          return account
+        },
+      },
+    } as unknown as AccountKit
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'access_tokens',
+        name: 'api',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 7, tokenId: 11 }),
+      },
+      enabled: ['emailPasswordManagement'],
+    })
+    const password = context()
+    Object.assign(password.request, {
+      validateUsing: async () => ({ newPassword: 'new-password', recentProof: 'password-proof' }),
+    })
+    await routes.get('POST /api/v1/account/password')!(password)
+    const profile = context()
+    Object.assign(profile.request, {
+      validateUsing: async () => ({ email: 'new@example.test', recentProof: 'email-proof' }),
+    })
+    await routes.get('PATCH /api/v1/account/profile')!(profile)
+    assert.deepEqual(calls, [
+      {
+        operation: 'password',
+        input: {
+          actorId: 7,
+          currentPassword: undefined,
+          recentProof: 'password-proof',
+          newPassword: 'new-password',
+        },
+      },
+      {
+        operation: 'profile',
+        input: {
+          actorId: 7,
+          currentPassword: undefined,
+          recentProof: 'email-proof',
+          email: 'new@example.test',
+        },
+      },
+    ])
+  })
+
   test('post-commit notification failure remains a successful write response', async ({
     assert,
   }) => {
@@ -1079,6 +1326,21 @@ test.group('managed HTTP dispatch', () => {
   test('invitation query contract is separate from its empty request body', ({ assert }) => {
     const query: ManagedQuery<'account.invitation.list'> = { limit: 25, cursor: 'opaque' }
     assert.deepEqual(query, { limit: 25, cursor: 'opaque' })
+  })
+
+  test('social GET callback query contract represents success and provider denial', ({
+    assert,
+  }) => {
+    const success: ManagedQuery<'auth.oauth.callback'> = {
+      code: 'provider-code',
+      state: 'bound-state',
+    }
+    const denial: ManagedQuery<'auth.oauth.callback'> = {
+      error: 'access_denied',
+      state: 'bound-state',
+    }
+    assert.deepEqual(success, { code: 'provider-code', state: 'bound-state' })
+    assert.deepEqual(denial, { error: 'access_denied', state: 'bound-state' })
   })
 
   test('negotiated errors preserve an existing Vary value', async ({ assert }) => {

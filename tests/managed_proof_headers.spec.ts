@@ -7,6 +7,7 @@ test.group('early managed proof headers', () => {
   }) => {
     const early = managedProofHeadersMiddleware({
       prefix: '/api/v1',
+      strategy: 'session',
       enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'invitations'],
     })
     for (const suffix of ['password-reset', 'email-verification', 'email-change', 'invitations']) {
@@ -32,6 +33,7 @@ test.group('early managed proof headers', () => {
   test('does not claim excluded or unrelated routes', async ({ assert }) => {
     const early = managedProofHeadersMiddleware({
       prefix: '/api/v1',
+      strategy: 'session',
       enabled: ['passwordReset'],
       except: ['auth.passwordReset.inspect'],
     })
@@ -49,6 +51,45 @@ test.group('early managed proof headers', () => {
         async () => undefined
       )
       assert.equal(headers['Cache-Control'] === 'no-store', expected)
+    }
+  })
+
+  test('token callback and exchange keep proof headers on early rejection and respect exclusions', async ({
+    assert,
+  }) => {
+    const early = managedProofHeadersMiddleware({
+      prefix: '/api/v1',
+      strategy: 'access_tokens',
+      enabled: ['socialAuthentication'],
+      except: ['auth.oauth.redirect'],
+    })
+    for (const [method, path, protectedRoute] of [
+      ['POST', '/api/v1/auth/oauth/google/callback', true],
+      ['POST', '/api/v1/auth/oauth/token', true],
+      ['POST', '/api/v1/auth/oauth/google/redirect', false],
+      ['GET', '/api/v1/auth/oauth/google/callback', true],
+    ] as const) {
+      const headers: Record<string, string> = {}
+      await assert.rejects(() =>
+        early(
+          {
+            request: { method: () => method, url: () => path },
+            response: { header: (name: string, value: string) => (headers[name] = value) },
+          } as never,
+          async () => {
+            throw new Error('parser or CSRF rejected request')
+          }
+        )
+      )
+      assert.deepEqual(
+        headers,
+        protectedRoute
+          ? {
+              'Cache-Control': 'no-store',
+              'Referrer-Policy': 'no-referrer',
+            }
+          : {}
+      )
     }
   })
 })
