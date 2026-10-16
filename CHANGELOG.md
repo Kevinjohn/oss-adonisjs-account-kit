@@ -6,6 +6,7 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Added
 
+- The application-owned integration guide documents controller/service boundaries, HTTP error handling, and the agreed developer walkthrough protocol.
 - `AccountKit.registration.register` (export) creates inactive accounts with trusted mapped fields, a durable activation proof, and uniform duplicate-email errors.
 - `registration.availability` (required config key) selects open/closed/application admission and defaults to open in generated config; `registration.mapFields` (config key) selects trusted additional fields.
 - Configured `registration.mapFields` now receives `undefined` when profile input is omitted, so required application fields can reject registration; mapped output must be a plain object.
