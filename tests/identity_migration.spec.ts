@@ -132,6 +132,18 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       expires_at: future,
       created_at: now,
     })
+    const [expiredChangeId] = await kit.db
+      .table('users')
+      .insert({ email: 'expired-change@example.test', password: 'hash', created_at: now })
+      .returning('id')
+    await kit.db.table('account_email_changes').insert({
+      user_id: id(expiredChangeId),
+      current_email: 'expired-change@example.test',
+      new_email: 'expired-next@example.test',
+      token_hash: hashToken(generateToken(32)),
+      expires_at: new Date(Date.now() - 3600_000).toISOString(),
+      created_at: now,
+    })
     const [staleId] = await kit.db
       .table('users')
       .insert({ email: 'stale@example.test', password: 'hash', created_at: now })
@@ -144,9 +156,9 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       expires_at: future,
       created_at: now,
     })
-    assert.lengthOf(await kit.db.from('account_email_changes'), 3)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 4)
     await assert.rejects(() => writeMigrations(evolution, 100), /proof no longer matches its user/)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 3)
+    assert.lengthOf(await kit.db.from('account_email_changes'), 4)
     await kit.db.from('account_email_changes').where('user_id', id(staleId)).delete()
     await writeMigrations(evolution, 100)
     const inactive = await kit.db.from('users').where('id', id(inactiveId)).first()
@@ -160,6 +172,13 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     assert.equal(inactiveChanging.email, 'inactive-next@example.test')
     assert.equal(inactiveChanging.unverified_email, 'inactive-next@example.test')
     assert.isNull(inactiveChanging.email_verified_at)
+    const expiredChange = await kit.db.from('users').where('id', id(expiredChangeId)).first()
+    assert.equal(expiredChange.email, 'expired-change@example.test')
+    assert.equal(expiredChange.unverified_email, 'expired-change@example.test')
+    assert.lengthOf(
+      await kit.db.from('email_verification_tokens').where('tokenable_id', id(expiredChangeId)),
+      0
+    )
     const reset = await kit.db.from('password_reset_tokens').first()
     assert.equal(reset.tokenable_id, id(inactiveId))
     assert.equal(reset.hash, hashToken(resetToken))
@@ -204,7 +223,7 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
   }
 }).timeout(30_000)
 
-test('API example evolution rejects stale proofs without deleting their source rows', async ({
+test('API example evolution rejects stale proofs and skips expired ones without deleting source rows', async ({
   assert,
 }) => {
   const kit = await bootTestApp()
@@ -282,6 +301,19 @@ test('API example evolution rejects stale proofs without deleting their source r
     assert.lengthOf(await kit.db.from('account_email_changes'), 1)
     const preserved = await kit.db.from('users').where('id', userId).first()
     assert.equal(preserved.email, 'current@example.test')
+    await kit.db.from('account_email_changes').delete()
+    await kit.db.table('account_email_changes').insert({
+      ...proof,
+      current_email: 'current@example.test',
+      expires_at: new Date(Date.now() - 3600_000).toISOString(),
+    })
+    const retry = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
+    await retry.run()
+    if (retry.error) throw retry.error
+    const unchanged = await kit.db.from('users').where('id', userId).first()
+    assert.equal(unchanged.email, 'current@example.test')
+    assert.equal(unchanged.unverified_email, 'current@example.test')
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   } finally {
     await kit.close()
   }
