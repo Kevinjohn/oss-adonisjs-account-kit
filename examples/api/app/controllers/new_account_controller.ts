@@ -15,6 +15,7 @@ import {
   reportCommittedFailure,
   reportCredentialEstablishmentFailure,
 } from '#services/committed_failure_diagnostic'
+import { rememberLastUsedMethod } from '#services/last_used_method'
 
 export default class NewAccountController {
   async store(ctx: HttpContext) {
@@ -56,6 +57,7 @@ export default class NewAccountController {
       })
     }
     const user = await User.findOrFail(result.account.id)
+    rememberLastUsedMethod(ctx, 'password')
     return serialize({
       user: UserTransformer.transform(user),
       ...(strategy === 'access_tokens'

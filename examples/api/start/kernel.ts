@@ -24,6 +24,7 @@ server.errorHandler(() => import('#exceptions/handler'))
  */
 server.use([
   () => import('#middleware/proof_response_headers_middleware'),
+  () => import('#middleware/social_response_headers_middleware'),
   () => import('#middleware/force_json_response_middleware'),
   () => import('#middleware/container_bindings_middleware'),
   () => import('@adonisjs/cors/cors_middleware'),
@@ -49,4 +50,5 @@ export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
   accountAccess: () => import('#middleware/account_access_middleware'),
   verifiedAccount: () => import('#middleware/verified_account_middleware'),
+  socialThrottle: () => import('#middleware/social_throttle_middleware'),
 })
