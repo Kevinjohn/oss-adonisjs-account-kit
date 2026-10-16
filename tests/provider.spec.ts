@@ -15,10 +15,13 @@ test.group('account kit provider', (group) => {
     const first = await kit.app.container.make(AccountKit)
     const second = await kit.app.container.make(AccountKit)
     assert.equal(first, second)
-    assert.property(first.recovery, 'request')
-    assert.property(first.verification, 'send')
+    assert.property(first.passwordReset, 'request')
+    assert.property(first.emailVerification, 'send')
     assert.property(first.invitations, 'accept')
-    assert.property(first.credentials, 'completeEmailChange')
+    assert.property(first.emailPasswordManagement, 'completeEmailChange')
+    assert.notProperty(first, 'recovery')
+    assert.notProperty(first, 'verification')
+    assert.notProperty(first, 'credentials')
   })
 
   // A fresh app: the shared one has already cached the singleton.

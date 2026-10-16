@@ -18,7 +18,7 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
-test.group('verification.send', (group) => {
+test.group('emailVerification.send', (group) => {
   const kit = useTestApp(group)
 
   const createUser = async (verified = false) => {
@@ -32,10 +32,10 @@ test.group('verification.send', (group) => {
     assert,
   }) => {
     const id = await createUser()
-    const { account, recorder } = service({ ttl: { verification: '2h' } })
-    assert.equal(await account.verification.send({ userId: id }), 'sent')
+    const { account, recorder } = service({ expiresIn: { emailVerification: '2h' } })
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
     assert.lengthOf(recorder.calls, 1)
-    assert.equal(recorder.calls[0].method, 'verification')
+    assert.equal(recorder.calls[0].method, 'accountActivationProvision')
     const [user, url] = recorder.calls[0].args
     assert.equal((user as { id: number }).id, id)
     const token = tokenFrom(url)
@@ -46,14 +46,32 @@ test.group('verification.send', (group) => {
     assert.isNull(kit.encryption.decrypt(token, 'wrong-purpose'))
   })
 
+  test('interprets numeric verification expiry as seconds when issuing a proof', async ({
+    assert,
+  }) => {
+    const id = await createUser()
+    const { account, recorder } = service({ expiresIn: { emailVerification: 3600 } })
+    const issuedAt = Date.now()
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    const token = tokenFrom(recorder.calls[0].args[1])
+
+    timeTravel(new Date(issuedAt + 59 * 60 * 1000))
+    assert.deepEqual(kit.encryption.decrypt(token, 'account-kit:verify-email'), {
+      userId: id,
+      email: 'person@example.test',
+    })
+    timeTravel(new Date(issuedAt + 61 * 60 * 1000))
+    assert.isNull(kit.encryption.decrypt(token, 'account-kit:verify-email'))
+  })
+
   test('missing user rejects and verified user returns without throttling or notification', async ({
     assert,
   }) => {
     const id = await createUser(true)
     const { account, recorder } = service()
-    await assert.rejects(() => account.verification.send({ userId: 99999 }), InvalidInputError)
+    await assert.rejects(() => account.emailVerification.send({ userId: 99999 }), InvalidInputError)
     for (let index = 0; index < 6; index++)
-      assert.equal(await account.verification.send({ userId: id }), 'already_verified')
+      assert.equal(await account.emailVerification.send({ userId: id }), 'already_verified')
     assert.lengthOf(recorder.calls, 0)
   })
 
@@ -61,9 +79,9 @@ test.group('verification.send', (group) => {
     const id = await createUser()
     const { account, recorder } = service()
     for (let index = 0; index < 5; index++)
-      assert.equal(await account.verification.send({ userId: id }), 'sent')
+      assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
     try {
-      await account.verification.send({ userId: id })
+      await account.emailVerification.send({ userId: id })
       assert.fail('expected throttle')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
@@ -75,10 +93,10 @@ test.group('verification.send', (group) => {
   test('notification and URL failures carry their cause', async ({ assert }) => {
     const id = await createUser()
     const recorder = makeNotify()
-    recorder.failOn('verification')
+    recorder.failOn('accountActivationProvision')
     const { account } = service({ notify: recorder.notify })
     try {
-      await account.verification.send({ userId: id })
+      await account.emailVerification.send({ userId: id })
       assert.fail('expected delivery failure')
     } catch (error) {
       assert.instanceOf(error, DeliveryError)
@@ -89,13 +107,13 @@ test.group('verification.send', (group) => {
     const { account: brokenUrl } = service({
       urls: {
         ...defaults.urls,
-        verification: () => {
+        emailVerification: () => {
           throw failure
         },
       },
     })
     try {
-      await brokenUrl.verification.send({ userId: id })
+      await brokenUrl.emailVerification.send({ userId: id })
       assert.fail('expected URL failure')
     } catch (error) {
       assert.instanceOf(error, DeliveryError)
@@ -104,7 +122,7 @@ test.group('verification.send', (group) => {
   })
 })
 
-test.group('verification.complete', (group) => {
+test.group('emailVerification.complete', (group) => {
   const kit = useTestApp(group)
 
   const createUser = async (verified = false) => {
@@ -117,7 +135,7 @@ test.group('verification.complete', (group) => {
   async function issue() {
     const id = await createUser()
     const { account, recorder } = service()
-    await account.verification.send({ userId: id })
+    await account.emailVerification.send({ userId: id })
     const token = tokenFrom(recorder.calls[0].args[1])
     return { id, account, token }
   }
@@ -132,10 +150,10 @@ test.group('verification.complete', (group) => {
         callbacks++
       },
     }).account
-    assert.equal(await withCallback.verification.complete({ token }), 'verified')
+    assert.equal(await withCallback.emailVerification.complete({ token }), 'verified')
     const verified = await kit.db.from('users').where('id', id).first()
     assert.isNotNull(verified.email_verified_at)
-    assert.equal(await account.verification.complete({ token }), 'already_verified')
+    assert.equal(await account.emailVerification.complete({ token }), 'already_verified')
     assert.equal(callbacks, 0)
   })
 
@@ -145,7 +163,7 @@ test.group('verification.complete', (group) => {
     const payload = { userId: id, email: 'person@example.test' }
     const wrongPurpose = kit.encryption.encrypt(payload, '1h', 'different-purpose')
     await assert.rejects(
-      () => account.verification.complete({ token: wrongPurpose }),
+      () => account.emailVerification.complete({ token: wrongPurpose }),
       InvalidTokenError
     )
     const row = await kit.db.from('users').where('id', id).first()
@@ -161,7 +179,10 @@ test.group('verification.complete', (group) => {
       'account-kit:verify-email'
     )
     timeTravel(new Date(Date.now() + 3_600_001))
-    await assert.rejects(() => account.verification.complete({ token: expired }), InvalidTokenError)
+    await assert.rejects(
+      () => account.emailVerification.complete({ token: expired }),
+      InvalidTokenError
+    )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
   })
@@ -172,7 +193,7 @@ test.group('verification.complete', (group) => {
     const payload = { userId: id, email: 'person@example.test' }
     for (const value of [null, 42, '', 'not-encrypted'])
       await assert.rejects(
-        () => account.verification.complete({ token: value as never }),
+        () => account.emailVerification.complete({ token: value as never }),
         InvalidTokenError
       )
     for (const invalid of [
@@ -183,7 +204,7 @@ test.group('verification.complete', (group) => {
       { userId: id, email: 42 },
     ]) {
       const token = kit.encryption.encrypt(invalid, '1h', 'account-kit:verify-email')
-      await assert.rejects(() => account.verification.complete({ token }), InvalidTokenError)
+      await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
     }
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
@@ -192,11 +213,11 @@ test.group('verification.complete', (group) => {
   test('rejects a prior-email token and a deleted user', async ({ assert }) => {
     const { id, account, token } = await issue()
     await kit.db.from('users').where('id', id).update({ email: 'changed@example.test' })
-    await assert.rejects(() => account.verification.complete({ token }), InvalidTokenError)
+    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
     await kit.db.from('users').where('id', id).delete()
-    await assert.rejects(() => account.verification.complete({ token }), InvalidTokenError)
+    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
   })
 
   test('holds the user lock while checking the current email', async ({ assert }) => {
@@ -224,7 +245,7 @@ test.group('verification.complete', (group) => {
       })
     )
     const account = accountKit(kit, config)
-    const verifying = account.verification.complete({ token })
+    const verifying = account.emailVerification.complete({ token })
     try {
       await ready
       await assert.rejects(async () => {
@@ -282,7 +303,7 @@ test.group('verification.complete', (group) => {
     }
     knex.on('query', onQuery)
     try {
-      const verifying = account.verification.complete({ token })
+      const verifying = account.emailVerification.complete({ token })
       await attemptedLock
       releaseChange()
       await changing

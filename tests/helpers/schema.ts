@@ -14,7 +14,7 @@ export async function resetSchema(
   await schema.dropTableIfExists('account_transaction_lock')
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
-  await schema.dropTableIfExists('account_recovery_tokens')
+  await schema.dropTableIfExists('password_reset_tokens')
   await schema.dropTableIfExists('adonis_schema_versions')
   await schema.dropTableIfExists('adonis_schema')
   await schema.dropTableIfExists('users')
@@ -57,7 +57,7 @@ export async function resetSchema(
 const dataTables = [
   'account_email_changes',
   'account_invitations',
-  'account_recovery_tokens',
+  'password_reset_tokens',
   'users',
 ]
 

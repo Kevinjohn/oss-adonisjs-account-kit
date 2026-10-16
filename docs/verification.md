@@ -2,8 +2,8 @@
 
 Validation uses Node 24 and pnpm. Local checks are authoritative; the repository workflows remain manual and were not dispatched.
 
-The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 205
-SQLite tests, 205 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
+The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 221
+SQLite tests, 221 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
 model hooks, central locking, transaction cleanup, bounded pagination, limiter privacy, credential
 effects and pruning. Installed-consumer outcomes are recorded separately for the exact archive;
 package test totals alone do not establish distribution compatibility.
@@ -33,6 +33,43 @@ pnpm test:consumer -- --database=postgres
 pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=sqlite
 pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=postgres
 ```
+
+### Vocabulary alignment: 15 October 2026
+
+The vocabulary implementation and review fixes at `f526a5e4e94ff730a8f63873a23b54619820e288`
+pass on Node 24.21.0 and pnpm 11.23.0: lint, typecheck, build, 221 SQLite tests, 221 PostgreSQL
+16.15 tests and four built-export tests. Lint, typecheck, build and SQLite tests emit no warnings.
+The 61 PostgreSQL service checks retain their passing evidence because their implementation and
+harness are unchanged. The final source tree also passes the repository formatter.
+
+Fresh and historical-upgrade packed API consumers pass on SQLite and PostgreSQL, including
+configuration, migrations, application lint/format/typecheck and all five HTTP tests per consumer.
+The upgrade scenario also runs its dedicated baseline and candidate assertions. Both database
+runs installed the same candidate archive, SHA-256
+`3a78a1823ddb3ea950ca0a1e880f522555da2fe5d0c2b0b4a72381836c7260f2`.
+The historical stage-3 baseline archive was verified against SHA-256
+`a98d746e90bef50bb71ba6d5bd4b0b138a302314bc2eeedcf998232b725606df`.
+The PostgreSQL test server was stopped after validation. Later documentation-only changes do not
+change the verified implementation; these archives are local test evidence, not published packages.
+
+The upgrade fixture leaves a reset token outstanding before migration, then compares its ID,
+user, email, hash, expiry and creation timestamp after the table rename. It inspects and redeems
+the same proof, rejects replay, verifies the changed password and retains the user/role/migration
+checks. The raw proof travels only through a mode-0600 temporary file, removed before redemption
+assertions. A mutation that deleted token rows during migration failed at the expected missing-row
+assertion; the harness was restored byte-for-byte before PostgreSQL verification.
+
+The packaging regression first reproduced private-document inclusion, then passed with explicit
+archive exclusions. Inspection of the actual candidate archive confirmed that private planning
+and review files are absent while public documentation and examples remain. The minimum-version
+SQLite consumer passes and its captured output reports `passwordReset` and `emailVerification`
+in the public-operation marker, with corresponding current stage labels.
+
+The numeric-seconds expiry helper and real encrypted email-verification proof regressions retain
+their earlier mutation evidence: each failed without numeric handling and passed after restoration.
+The verification proof remains valid after 59 minutes and expires by 61 minutes for a 3600-second
+setting. All three requested review fixes are addressed; no required findings remain. No package
+publication or hosted workflow execution was performed.
 
 ### Local PostgreSQL package tests
 
@@ -142,7 +179,7 @@ the pull request; historical development archives do not count as evidence for i
 
 The latest-compatible API fixture exercises fresh and upgraded applications on both databases,
 including all HTTP flows, required profile data, string/UUID IDs and a custom table, confirmations,
-non-disclosing recovery responses, permission failures, scanner-safe inspection, token revocation,
+non-disclosing password reset responses, permission failures, scanner-safe inspection, token revocation,
 and retryable outbox delivery. The exact-floor consumer independently typechecks the public
 package API and exercises rollback, deferred commit failure, post-commit failure and concurrent
 acceptance on both databases. See [compatibility](compatibility.md) for the distinct dependency sets.

@@ -29,9 +29,12 @@ for (const usersTable of tableNames) {
       const { account, recorder } = makeService(kit, { users, usersTable, minRequestMs: 0 })
 
       await kit.db.from(usersTable).where('id', actor.id).update({ email_verified_at: null })
-      await account.verification.send({ userId: actor.id })
+      await account.emailVerification.send({ userId: actor.id })
       const verificationToken = tokenFrom(recorder.calls.at(-1)!.args[1])
-      assert.equal(await account.verification.complete({ token: verificationToken }), 'verified')
+      assert.equal(
+        await account.emailVerification.complete({ token: verificationToken }),
+        'verified'
+      )
 
       await account.invitations.send({
         actorId: actor.id,
@@ -45,25 +48,27 @@ for (const usersTable of tableNames) {
       })
       assert.equal(invited.email, 'invited@example.test')
 
-      await account.recovery.request({ email: actor.email, clientKey: 'custom-table-client' })
+      await account.passwordReset.request({ email: actor.email, clientKey: 'custom-table-client' })
       const recoveryToken = tokenFrom(recorder.calls.at(-1)!.args[1])
-      const reset = await account.recovery.reset({
+      const reset = await account.passwordReset.reset({
         token: recoveryToken,
         password: 'resetPassword123',
       })
       assert.equal(reset.id, actor.id)
-      await account.credentials.changePassword({
+      await account.emailPasswordManagement.changePassword({
         actorId: actor.id,
         currentPassword: 'resetPassword123',
         newPassword: 'changedPassword123',
       })
-      await account.credentials.requestEmailChange({
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: actor.id,
         currentPassword: 'changedPassword123',
         newEmail: 'next@example.test',
       })
       const emailToken = tokenFrom(recorder.calls.at(-1)!.args[2])
-      const changed = await account.credentials.completeEmailChange({ token: emailToken })
+      const changed = await account.emailPasswordManagement.completeEmailChange({
+        token: emailToken,
+      })
       assert.equal(changed.email, 'next@example.test')
 
       // Registration wins after the precheck but before setEmail. The real unique
@@ -81,14 +86,14 @@ for (const usersTable of tableNames) {
           },
         },
       })
-      await racing.credentials.requestEmailChange({
+      await racing.emailPasswordManagement.requestEmailChange({
         actorId: actor.id,
         currentPassword: 'changedPassword123',
         newEmail: 'race@example.test',
       })
       const raceToken = tokenFrom(raceRecorder.calls.at(-1)!.args[2])
       await assert.rejects(
-        () => racing.credentials.completeEmailChange({ token: raceToken }),
+        () => racing.emailPasswordManagement.completeEmailChange({ token: raceToken }),
         EmailAlreadyRegisteredError
       )
       const restored = await users.findById(actor.id)

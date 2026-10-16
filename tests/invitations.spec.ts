@@ -61,15 +61,15 @@ test.group('invitations.send', (group) => {
     const recorder = makeNotify()
     let visibleAtNotification = false
     const { account } = service({
-      ttl: { invitation: '2d' },
+      expiresIn: { invitation: '2d' },
       notify: {
         ...recorder.notify,
-        invitation: async (invitation, url) => {
+        invitationProvision: async (invitation, url) => {
           visibleAtNotification = !!(await kit.db
             .from('account_invitations')
             .where('id', invitation.id)
             .first())
-          await recorder.notify.invitation(invitation, url)
+          await recorder.notify.invitationProvision(invitation, url)
         },
       },
     })
@@ -242,7 +242,7 @@ test.group('invitations.send', (group) => {
   test('notification and URL failures preserve the committed invitation', async ({ assert }) => {
     const actor = await createActor()
     const recorder = makeNotify()
-    recorder.failOn('invitation')
+    recorder.failOn('invitationProvision')
     const { account } = service({ notify: recorder.notify })
     try {
       await account.invitations.send({ actorId: actor.id, email: 'one@example.test', role: 'user' })
@@ -300,7 +300,7 @@ test.group('invitations.send', (group) => {
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
-      ['invitation']
+      ['invitationProvision']
     )
     assert.deepEqual(events, ['invitation.sent'])
     const row = await kit.db.from('account_invitations').where('email', 'new@example.test').first()
@@ -757,7 +757,7 @@ test.group('invitations.resend and revoke', (group) => {
     const { account } = service({
       notify: {
         ...recorder.notify,
-        invitation: async (invitation, url) => {
+        invitationProvision: async (invitation, url) => {
           if (recorder.calls.length === 1) {
             const raw = tokenFrom(url)
             const committed = await kit.db
@@ -766,7 +766,7 @@ test.group('invitations.resend and revoke', (group) => {
               .first()
             visibleAtNotification = committed?.token_hash === hashToken(raw)
           }
-          await recorder.notify.invitation(invitation, url)
+          await recorder.notify.invitationProvision(invitation, url)
         },
       },
     })
@@ -883,7 +883,7 @@ test.group('invitations.resend and revoke', (group) => {
     const recorder = makeNotify()
     const { account } = service({ notify: recorder.notify })
     const { invitation, token: oldToken } = await issue(account, recorder, actor.id)
-    recorder.failOn('invitation')
+    recorder.failOn('invitationProvision')
     try {
       await account.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
       assert.fail('expected delivery failure')

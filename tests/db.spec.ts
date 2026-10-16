@@ -138,8 +138,8 @@ test.group('database helpers', (group) => {
       )
       .exec()
     try {
-      assert.equal(await account.verification.complete({ token }), 'already_verified')
-      await account.credentials.requestEmailChange({
+      assert.equal(await account.emailVerification.complete({ token }), 'already_verified')
+      await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
         currentPassword: 'password123',
         newEmail: ' PERSON@EXAMPLE.TEST ',
@@ -164,7 +164,7 @@ test.group('database helpers', (group) => {
     const schema = kit.db.connection().schema
     await schema.dropTableIfExists('account_email_changes')
     await schema.dropTableIfExists('account_invitations')
-    await schema.dropTableIfExists('account_recovery_tokens')
+    await schema.dropTableIfExists('password_reset_tokens')
     await schema.dropTableIfExists('users')
     await schema.dropTableIfExists('accounts')
     await schema.createTable('accounts', (table) => {

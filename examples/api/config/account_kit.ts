@@ -45,20 +45,21 @@ export default defineConfig({
     listInvitations: async (actor) => isOwner(actor.id),
   },
   urls: {
-    recovery: (token) => accountUrl('recovery', token),
-    verification: (token) => accountUrl('verification', token),
+    passwordReset: (token) => accountUrl('recovery', token),
+    emailVerification: (token) => accountUrl('verification', token),
     invitation: (token) => accountUrl('invitation', token),
     emailChange: (token) => accountUrl('email-change', token),
   },
   notify: {
-    recovery: (user, url) => notifications.send('recovery', user.email, url),
-    verification: (user, url) => notifications.send('verification', user.email, url),
-    invitation: (invitation, url) => notifications.send('invitation', invitation.email, url),
-    emailChangeConfirm: (_user, newEmail, url) =>
+    passwordResetProvision: (user, url) => notifications.send('recovery', user.email, url),
+    accountActivationProvision: (user, url) => notifications.send('verification', user.email, url),
+    invitationProvision: (invitation, url) =>
+      notifications.send('invitation', invitation.email, url),
+    emailChangeProvision: (_user, newEmail, url) =>
       notifications.send('emailChangeConfirm', newEmail, url),
     emailChanged: (previousEmail, user) =>
       notifications.send('emailChanged', previousEmail, user.email),
-    passwordReset: (user, context) =>
+    passwordResetCompleted: (user, context) =>
       notifications.deliverCredentialNotice(context.operationId, context.operation, user.email),
     passwordChanged: (user, context) =>
       notifications.deliverCredentialNotice(context.operationId, context.operation, user.email),

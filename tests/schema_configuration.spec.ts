@@ -43,7 +43,7 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       for (const table of [
         'account_email_changes',
         'account_invitations',
-        'account_recovery_tokens',
+        'password_reset_tokens',
         'account_transaction_lock',
         'adonis_schema_versions',
         'adonis_schema',
@@ -82,7 +82,7 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       await up.run()
       if (up.error) throw up.error
 
-      assert.isTrue(await tableExists(kit, 'account_recovery_tokens'))
+      assert.isTrue(await tableExists(kit, 'password_reset_tokens'))
       assert.isTrue(await tableExists(kit, 'account_invitations'))
       assert.isTrue(await tableExists(kit, 'account_email_changes'))
 
@@ -97,7 +97,7 @@ test('generates and rolls back migrations for every user ID type and reserved cu
         'account_transaction_lock',
         'account_email_changes',
         'account_invitations',
-        'account_recovery_tokens',
+        'password_reset_tokens',
       ]) {
         assert.isFalse(await tableExists(kit, table))
       }
@@ -106,7 +106,7 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       for (const table of [
         'account_email_changes',
         'account_invitations',
-        'account_recovery_tokens',
+        'password_reset_tokens',
         'account_transaction_lock',
         usersTable,
       ]) {

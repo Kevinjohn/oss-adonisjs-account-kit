@@ -36,7 +36,7 @@ export default class AccountKitController {
   async recoveryRequest({ request, response }: HttpContext) {
     const { email } = await request.validateUsing(recoveryRequestValidator)
     try {
-      await (await this.kit()).recovery.request({ email, clientKey: request.ip() })
+      await (await this.kit()).passwordReset.request({ email, clientKey: request.ip() })
     } catch (error) {
       if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
     }
@@ -45,7 +45,7 @@ export default class AccountKitController {
 
   async recoveryInspect({ params, response }: HttpContext) {
     response.header('Referrer-Policy', 'no-referrer')
-    return (await (await this.kit()).recovery.inspect({ token: params.token }))
+    return (await (await this.kit()).passwordReset.inspect({ token: params.token }))
       ? response.ok({ valid: true })
       : response.unprocessableEntity(invalidLink)
   }
@@ -54,7 +54,7 @@ export default class AccountKitController {
     response.header('Referrer-Policy', 'no-referrer')
     const { password } = await request.validateUsing(passwordValidator)
     try {
-      await (await this.kit()).recovery.reset({ token: params.token, password })
+      await (await this.kit()).passwordReset.reset({ token: params.token, password })
       return response.accepted({ message: 'Password reset.' })
     } catch (error) {
       if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)
@@ -64,14 +64,14 @@ export default class AccountKitController {
 
   async verificationSend({ auth, response }: HttpContext) {
     const actor = await auth.getUserOrFail()
-    const result = await (await this.kit()).verification.send({ userId: actor.id })
+    const result = await (await this.kit()).emailVerification.send({ userId: actor.id })
     return response.ok({ result })
   }
 
   async verificationComplete({ params, response }: HttpContext) {
     response.header('Referrer-Policy', 'no-referrer')
     try {
-      const result = await (await this.kit()).verification.complete({ token: params.token })
+      const result = await (await this.kit()).emailVerification.complete({ token: params.token })
       return response.ok({ result })
     } catch (error) {
       if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)
@@ -157,7 +157,7 @@ export default class AccountKitController {
     const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
     await (
       await this.kit()
-    ).credentials.changePassword({
+    ).emailPasswordManagement.changePassword({
       actorId: actor.id,
       currentPassword,
       newPassword,
@@ -170,7 +170,7 @@ export default class AccountKitController {
     const { currentPassword, newEmail } = await request.validateUsing(emailChangeValidator)
     await (
       await this.kit()
-    ).credentials.requestEmailChange({
+    ).emailPasswordManagement.requestEmailChange({
       actorId: actor.id,
       currentPassword,
       newEmail,
@@ -186,7 +186,9 @@ export default class AccountKitController {
   async emailChangeComplete({ params, response }: HttpContext) {
     response.header('Referrer-Policy', 'no-referrer')
     try {
-      const user = await (await this.kit()).credentials.completeEmailChange({ token: params.token })
+      const user = await (
+        await this.kit()
+      ).emailPasswordManagement.completeEmailChange({ token: params.token })
       return response.ok({ email: user.email, verified: Boolean(user.emailVerifiedAt) })
     } catch (error) {
       if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)

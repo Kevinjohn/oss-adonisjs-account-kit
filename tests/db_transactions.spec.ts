@@ -82,7 +82,7 @@ test.group('managed transaction wrapper', (group) => {
       await outer.from('users').where('id', user.id).update({ email_verified_at: null })
       await assert.rejects(
         () =>
-          account.credentials.changePassword({
+          account.emailPasswordManagement.changePassword({
             actorId: user.id,
             currentPassword: 'originalPassword123',
             newPassword: 'changedPassword123',
@@ -197,7 +197,7 @@ test.group('managed transaction wrapper', (group) => {
       )
       let failure: unknown
       try {
-        await account.credentials.changePassword({
+        await account.emailPasswordManagement.changePassword({
           actorId: user.id,
           currentPassword: 'originalPassword123',
           newPassword: 'changedPassword123',

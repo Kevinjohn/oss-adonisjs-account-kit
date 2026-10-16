@@ -119,7 +119,7 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
   }
 }
 
-type TokenTable = 'account_recovery_tokens' | 'account_email_changes' | 'account_invitations'
+type TokenTable = 'password_reset_tokens' | 'account_email_changes' | 'account_invitations'
 
 /** Delete one unexpired token row and return it, or null when no live row matched. */
 export async function consumeToken<Row>(
@@ -147,7 +147,7 @@ export async function consumeToken<Row>(
 export async function consumeUserToken<Row extends { user_id: UserId }>(
   trx: Trx,
   config: ResolvedConfig,
-  table: 'account_recovery_tokens' | 'account_email_changes',
+  table: 'password_reset_tokens' | 'account_email_changes',
   token: string,
   emailOf: (row: Row) => string
 ): Promise<{ row: Row; user: AccountUser }> {

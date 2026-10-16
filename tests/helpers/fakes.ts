@@ -82,12 +82,13 @@ export function makeNotify() {
     if (failing === method) throw new Error(`notify.${method} failed`)
   }
   const notify: NotificationCallbacks = {
-    recovery: (user, url) => record('recovery', user, url),
-    verification: (user, url) => record('verification', user, url),
-    invitation: (invitation, url) => record('invitation', invitation, url),
-    emailChangeConfirm: (user, newEmail, url) => record('emailChangeConfirm', user, newEmail, url),
+    passwordResetProvision: (user, url) => record('passwordResetProvision', user, url),
+    accountActivationProvision: (user, url) => record('accountActivationProvision', user, url),
+    invitationProvision: (invitation, url) => record('invitationProvision', invitation, url),
+    emailChangeProvision: (user, newEmail, url) =>
+      record('emailChangeProvision', user, newEmail, url),
     emailChanged: (previousEmail, user) => record('emailChanged', previousEmail, user),
-    passwordReset: (user, context) => record('passwordReset', user, context),
+    passwordResetCompleted: (user, context) => record('passwordResetCompleted', user, context),
     passwordChanged: (user, context) => record('passwordChanged', user, context),
   }
   return {
@@ -115,8 +116,8 @@ export function makeConfig(
     limiterSecret: 'test_only_shared_limiter_secret_32_bytes',
     authorize: allowAll,
     urls: {
-      recovery: (token) => `https://example.test/recovery/${token}`,
-      verification: (token) => `https://example.test/verification/${token}`,
+      passwordReset: (token) => `https://example.test/recovery/${token}`,
+      emailVerification: (token) => `https://example.test/verification/${token}`,
       invitation: (token) => `https://example.test/invitation/${token}`,
       emailChange: (token) => `https://example.test/email-change/${token}`,
     },

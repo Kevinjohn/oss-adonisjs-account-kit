@@ -64,9 +64,9 @@ export class AccountInvitationSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
-export class AccountRecoveryTokenSchema extends BaseModel {
+export class PasswordResetTokenSchema extends BaseModel {
   static $columns = ['createdAt', 'email', 'expiresAt', 'id', 'tokenHash', 'userId'] as const
-  $columns = AccountRecoveryTokenSchema.$columns
+  $columns = PasswordResetTokenSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
