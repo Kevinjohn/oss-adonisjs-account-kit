@@ -1367,7 +1367,7 @@ async function mailerSelectionState(
   text: string,
   root: string,
   transportEnv: string | null
-): Promise<'missing' | 'unresolved' | 'present'> {
+): Promise<'missing' | 'invalid' | 'unresolved' | 'present'> {
   let source: SetupSource
   try {
     source = await parseSetupSource(text)
@@ -1419,7 +1419,22 @@ async function mailerSelectionState(
     }
   }
   if (!selected) return 'unresolved'
-  return directProperty(source, mailers, selected) ? 'present' : 'missing'
+  const mailer = directProperty(source, mailers, selected)
+  if (!mailer) return 'missing'
+  let value: TypeScript.Expression = mailer.initializer
+  while (
+    ts.isParenthesizedExpression(value) ||
+    ts.isAsExpression(value) ||
+    ts.isSatisfiesExpression(value)
+  )
+    value = value.expression
+  if (
+    value.kind === ts.SyntaxKind.NullKeyword ||
+    ts.isVoidExpression(value) ||
+    (ts.isIdentifier(value) && value.text === 'undefined')
+  )
+    return 'invalid'
+  return 'present'
 }
 
 async function limiterConfigurationState(
@@ -1824,6 +1839,12 @@ export async function planSetup(
         diagnostics,
         'config/mail.ts',
         'Selected Mail mailer is absent from the configured mailers map'
+      )
+    else if (selection === 'invalid')
+      diagnostic(
+        diagnostics,
+        'config/mail.ts',
+        'Selected Mail mailer has a null or undefined transport'
       )
     else
       diagnostic(

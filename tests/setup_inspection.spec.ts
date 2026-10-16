@@ -119,6 +119,39 @@ test('mutated environment getter cannot certify database fallback', async ({ ass
   }
 })
 
+test('additional executable environment imports invalidate database selection', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  const previous = process.env.DB_CONNECTION
+  try {
+    delete process.env.DB_CONNECTION
+    const database = join(root, 'config/database.ts')
+    await writeFile(
+      database,
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nimport * as envModule from '#start/env'\nenvModule.default.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
+    )
+    const namespaceAlias = await inspectSetup(root)
+    assert.equal(namespaceAlias.database, 'unknown')
+    await writeFile(
+      database,
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nimport { default as alternative } from '#start/env'\nalternative.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
+    )
+    const namedAlias = await inspectSetup(root)
+    assert.equal(namedAlias.database, 'unknown')
+    await writeFile(
+      database,
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nimport type * as EnvTypes from '#start/env'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' } } })"
+    )
+    const typeOnly = await inspectSetup(root)
+    assert.equal(typeOnly.database, 'sqlite')
+  } finally {
+    if (previous === undefined) delete process.env.DB_CONNECTION
+    else process.env.DB_CONNECTION = previous
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('quoted and template examples cannot invent guards or models', async ({ assert }) => {
   const root = await applicationRoot()
   try {

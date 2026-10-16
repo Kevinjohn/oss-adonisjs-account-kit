@@ -1208,6 +1208,37 @@ export default class User extends BaseModel { static table = 'users'; static '\u
     })
   })
 
+  test('additional runtime module imports invalidate session and Limiter provenance', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        "import env from '#start/env'\nimport * as envModule from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nenvModule.default.get = () => 'cookie'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER', 'database'), stores: { database: stores.database() } })\nexport default sessionConfig"
+      const session = await planSetup(choices, state)
+      assert.isTrue(
+        session.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nimport * as limiter from '@adonisjs/limiter'\nlimiter.stores.memory = () => { throw new Error('broken') }\nexport default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })"
+      const limiter = await planSetup(choices, state)
+      assert.isTrue(
+        limiter.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+      state.files['config/limiter.ts'] =
+        "import env from '#start/env'\nimport { default as otherEnv } from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/limiter'\notherEnv.get = () => 'unknown'\nexport default defineConfig({ default: env.get('LIMITER_STORE', 'memory'), stores: { memory: stores.memory({}) } })"
+      const limiterEnv = await planSetup(choices, state)
+      assert.isTrue(
+        limiterEnv.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
   test('local Shield wrapper cannot attest CSRF without the framework import', async ({
     assert,
   }) => {
@@ -1257,6 +1288,45 @@ export default class User extends BaseModel { static table = 'users'; static '\u
           )
         )
         assert.isFalse(selected.readiness.externalConfigured)
+      } finally {
+        if (previous === undefined) delete process.env.MAIL_MAILER
+        else process.env.MAIL_MAILER = previous
+      }
+    })
+  })
+
+  test('maintained Mail rejects nullish selected values and ambiguous environment imports', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.mail.integration = 'adonisjs-mail'
+      choices.mail.transportEnv = 'MAIL_MAILER'
+      const previous = process.env.MAIL_MAILER
+      process.env.MAIL_MAILER = 'smtp'
+      try {
+        for (const value of ['null', 'undefined', 'void 0', '(null as unknown)']) {
+          state.files['config/mail.ts'] =
+            `import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: ${value} } })`
+          const invalid = await planSetup(choices, state)
+          assert.isTrue(
+            invalid.diagnostics.some(
+              ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
+            )
+          )
+          assert.isFalse(invalid.readiness.configurationValid)
+        }
+        state.files['config/mail.ts'] =
+          "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nimport * as envModule from '#start/env'\nenvModule.default.get = () => 'other'\nexport default defineConfig({ default: env.get('MAIL_MAILER', 'smtp'), mailers: { smtp: customTransport() } })"
+        const ambiguous = await planSetup(choices, state)
+        assert.isTrue(
+          ambiguous.diagnostics.some(
+            ({ field, severity, message }) =>
+              field === 'config/mail.ts' &&
+              severity === 'action' &&
+              message.includes('Confirm the selected')
+          )
+        )
+        assert.isFalse(ambiguous.readiness.externalConfigured)
       } finally {
         if (previous === undefined) delete process.env.MAIL_MAILER
         else process.env.MAIL_MAILER = previous
