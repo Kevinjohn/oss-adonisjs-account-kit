@@ -30,6 +30,7 @@ import {
   parseSetupSource,
   safeEnvGetter,
   topLevelConfig,
+  unwrapStaticExpression,
   walk,
   type SetupSource,
 } from './ts_source.js'
@@ -1387,7 +1388,7 @@ async function mailerSelectionState(
   try {
     source = await parseSetupSource(text)
   } catch {
-    return 'unresolved'
+    return 'unsafe'
   }
   const { ts } = source
   if (
@@ -1395,8 +1396,23 @@ async function mailerSelectionState(
     hasAmbiguousRuntimeModuleImports(source, '#start/env')
   )
     return 'unsafe'
-  const target = defaultExpression(source)?.expression
+  const envBinding =
+    defaultImportName(source, '#start/env') ?? importedName(source, '#start/env', 'default')
+  if (envBinding && !safeEnvGetter(source, envBinding)) return 'unsafe'
+  const exported = defaultExpression(source)?.expression
+  if (!exported) return 'unsafe'
+  const target = unwrapStaticExpression(source, exported)
   const factory = importedName(source, '@adonisjs/mail', 'defineConfig')
+  if (
+    factory &&
+    hasUnsafeBindingReferences(
+      source,
+      factory,
+      (call) =>
+        ts.isIdentifier(call.expression) && call.expression.text === factory && call === target
+    )
+  )
+    return 'unsafe'
   const object =
     target && ts.isObjectLiteralExpression(target)
       ? target
@@ -1409,18 +1425,18 @@ async function mailerSelectionState(
           ts.isObjectLiteralExpression(target.arguments[0])
         ? target.arguments[0]
         : null
-  if (!object || hasUnsafeObjectEntries(source, object)) return 'unresolved'
-  const mailers = directProperty(source, object, 'mailers')?.initializer
+  if (!object || hasUnsafeObjectEntries(source, object)) return 'unsafe'
+  const mailersValue = directProperty(source, object, 'mailers')?.initializer
+  const mailers = mailersValue && unwrapStaticExpression(source, mailersValue)
   if (!mailers || !ts.isObjectLiteralExpression(mailers) || hasUnsafeObjectEntries(source, mailers))
-    return 'unresolved'
+    return 'unsafe'
   if (mailers.properties.length === 0) return 'missing'
-  const selector = directProperty(source, object, 'default')?.initializer
+  const selectorValue = directProperty(source, object, 'default')?.initializer
+  const selector = selectorValue && unwrapStaticExpression(source, selectorValue)
   let selected: string | null = null
   if (selector && ts.isStringLiteral(selector)) selected = selector.text
   else if (selector && transportEnv) {
-    const env = defaultImportName(source, '#start/env')
-    if (!env || !safeEnvGetter(source, env) || !exactCall(source, selector, env, 'get'))
-      return 'unresolved'
+    if (!envBinding || !exactCall(source, selector, envBinding, 'get')) return 'unsafe'
     const args = selector.arguments
     if (
       args.length < 1 ||
@@ -1429,26 +1445,19 @@ async function mailerSelectionState(
       args[0].text !== transportEnv ||
       (args.length === 2 && !ts.isStringLiteral(args[1]))
     )
-      return 'unresolved'
+      return 'unsafe'
     try {
       selected =
         (await resolveSelectedEnvironment(root, transportEnv)) ??
         (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
     } catch {
-      return 'unresolved'
+      return 'unsafe'
     }
   }
-  if (!selected) return 'unresolved'
+  if (!selected) return 'unsafe'
   const mailer = directProperty(source, mailers, selected)
   if (!mailer) return 'missing'
-  let value: TypeScript.Expression = mailer.initializer
-  while (
-    ts.isParenthesizedExpression(value) ||
-    ts.isAsExpression(value) ||
-    ts.isSatisfiesExpression(value) ||
-    ts.isNonNullExpression(value)
-  )
-    value = value.expression
+  const value = unwrapStaticExpression(source, mailer.initializer)
   if (
     value.kind === ts.SyntaxKind.NullKeyword ||
     ts.isVoidExpression(value) ||
@@ -1466,16 +1475,10 @@ async function mailerSelectionState(
     ts.isPrefixUnaryExpression(value)
   )
     return 'invalid'
-  if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) return 'present'
   const transports = importedName(source, '@adonisjs/mail', 'transports')
   if (
     transports &&
-    ts.isCallExpression(value) &&
-    ts.isPropertyAccessExpression(value.expression) &&
-    ts.isIdentifier(value.expression.expression) &&
-    value.expression.expression.text === transports &&
-    nativeMailTransports.has(value.expression.name.text) &&
-    !hasUnsafeBindingReferences(
+    hasUnsafeBindingReferences(
       source,
       transports,
       (call) =>
@@ -1483,8 +1486,28 @@ async function mailerSelectionState(
         nativeMailTransports.has(call.expression.name.text)
     )
   )
+    return 'unsafe'
+  if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) return 'present'
+  if (
+    transports &&
+    ts.isCallExpression(value) &&
+    ts.isPropertyAccessExpression(value.expression) &&
+    ts.isIdentifier(value.expression.expression) &&
+    value.expression.expression.text === transports &&
+    nativeMailTransports.has(value.expression.name.text)
+  )
     return 'present'
-  return 'unresolved'
+  if (
+    ts.isCallExpression(value) &&
+    (ts.isIdentifier(value.expression) || ts.isPropertyAccessExpression(value.expression)) &&
+    !(
+      ts.isPropertyAccessExpression(value.expression) &&
+      ts.isIdentifier(value.expression.expression) &&
+      [envBinding, transports].includes(value.expression.expression.text)
+    )
+  )
+    return 'unresolved'
+  return 'unsafe'
 }
 
 async function limiterConfigurationState(
