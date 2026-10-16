@@ -1,4 +1,14 @@
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  lstat,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  readlink,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -442,6 +452,33 @@ test.group('onboarding plan and apply', (group) => {
     await assert.rejects(() => applySetup(root, plan), /Setup conflict/)
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
     assert.equal(await readFile(join(root, last.path), 'utf8'), '// owner changed this migration\n')
+  })
+
+  test('apply rejects a destination symlink before writing and preserves its target', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const outside = await mkdtemp(join(tmpdir(), 'account-setup-leaf-target-'))
+    cleanupRoots.push(outside)
+    const external = join(outside, 'owner.txt')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(plan.diagnostics.some(({ severity }) => severity === 'error'))
+    const change = plan.changes.find(({ path }) => path === 'config/account_kit_setup.json')!
+    assert.equal(change.action, 'create')
+    const linked = join(root, change.path)
+    await writeFile(external, change.content)
+    await symlink(external, linked)
+    const before = await readdir(join(root, 'config'))
+    await assert.rejects(() => applySetup(root, plan), /non-regular file/)
+    assert.deepEqual(await readdir(join(root, 'config')), before)
+    const linkedStat = await lstat(linked)
+    assert.isTrue(linkedStat.isSymbolicLink())
+    assert.equal(await readlink(linked), external)
+    assert.equal(await readFile(external, 'utf8'), change.content)
+    assert.notInclude(await readdir(root), '.account-kit-setup.lock')
   })
 
   test('temporary write failure stays unpublished and a competing create is never replaced', async ({
