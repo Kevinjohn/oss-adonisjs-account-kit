@@ -14,7 +14,7 @@ import {
   NoPasswordError,
   type PostCommitError,
 } from './errors.js'
-import { isPasswordShaped } from './password.js'
+import { isPasswordAllowed } from './password.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -52,7 +52,8 @@ export async function changePassword(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
   input: ChangePasswordInput
 ): Promise<void> {
-  if (!isPasswordShaped(input.newPassword)) throw new InvalidInputError('Invalid new password')
+  if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
+    throw new InvalidInputError('Invalid new password')
 
   await consume(
     deps.limiter,

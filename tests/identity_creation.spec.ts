@@ -43,8 +43,14 @@ test.group('identity creation contract', (group) => {
       .first()
     assert.exists(row)
     assert.notEqual(row.hash, token)
-    assert.equal(await account.emailVerification.complete({ token }), 'verified')
-    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
+    assert.equal(
+      await account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      'verified'
+    )
+    await assert.rejects(
+      () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      InvalidTokenError
+    )
   })
 
   test('a failed activation write rolls back proof consumption and state together', async ({
@@ -63,7 +69,7 @@ test.group('identity creation contract', (group) => {
     await account.emailVerification.send({ userId: user.id })
     const token = tokenFrom(recorder.calls[0].args[1])
     await assert.rejects(
-      () => account.emailVerification.complete({ token }),
+      () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
       /activation write failed/
     )
     assert.lengthOf(
@@ -73,7 +79,13 @@ test.group('identity creation contract', (group) => {
     const pending = await kit.db.from('users').where('id', user.id).first()
     assert.equal(pending.unverified_email, pending.email)
     assert.isNull(pending.email_verified_at)
-    assert.equal(await makeService(kit).account.emailVerification.complete({ token }), 'verified')
+    assert.equal(
+      await makeService(kit).account.emailVerification.complete({
+        token,
+        password: 'NewPassword123',
+      }),
+      'verified'
+    )
   })
 
   test('token consumption removes the live proof atomically before account-state writes', async ({
@@ -109,12 +121,12 @@ test.group('identity creation contract', (group) => {
     assert.equal(pending.unverified_email, 'next@example.test')
     assert.isNull(pending.email_verified_at)
     await assert.rejects(
-      () => account.emailVerification.complete({ token: oldProof }),
+      () => account.emailVerification.complete({ token: oldProof, password: 'NewPassword123' }),
       InvalidTokenError
     )
     const newProof = tokenFrom(recorder.calls.at(-1)!.args[2])
     await assert.rejects(
-      () => account.emailVerification.complete({ token: newProof }),
+      () => account.emailVerification.complete({ token: newProof, password: 'NewPassword123' }),
       InvalidTokenError
     )
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: newProof })
@@ -267,7 +279,7 @@ test.group('identity creation contract', (group) => {
     assert.equal(await account.emailVerification.send({ userId: user.id }), 'already_verified')
     assert.equal(recorder.calls.length, 1)
     await assert.rejects(
-      () => account.emailVerification.complete({ token: proof }),
+      () => account.emailVerification.complete({ token: proof, password: 'NewPassword123' }),
       InvalidTokenError
     )
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: proof })
@@ -289,7 +301,13 @@ test.group('identity creation contract', (group) => {
       () => account.emailPasswordManagement.completeEmailChange({ token: oldProof }),
       InvalidTokenError
     )
-    assert.equal(await account.emailVerification.complete({ token: activationProof }), 'verified')
+    assert.equal(
+      await account.emailVerification.complete({
+        token: activationProof,
+        password: 'NewPassword123',
+      }),
+      'verified'
+    )
   })
 
   test('email-change completion rejects an activation-purpose proof for the pending address', async ({

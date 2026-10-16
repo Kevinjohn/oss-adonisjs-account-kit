@@ -35,7 +35,10 @@ for (const usersTable of tableNames) {
       await account.emailVerification.send({ userId: actor.id })
       const verificationToken = tokenFrom(recorder.calls.at(-1)!.args[1])
       assert.equal(
-        await account.emailVerification.complete({ token: verificationToken }),
+        await account.emailVerification.complete({
+          token: verificationToken,
+          password: 'NewPassword123',
+        }),
         'verified'
       )
 

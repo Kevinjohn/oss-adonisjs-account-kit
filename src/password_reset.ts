@@ -9,7 +9,7 @@ import { consumeUserToken, lockUser, transaction } from './db.js'
 import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
-import { isPasswordShaped } from './password.js'
+import { isPasswordAllowed } from './password.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -40,7 +40,8 @@ export async function completePasswordReset(
   deps: { config: ResolvedConfig; db: Database },
   input: PasswordResetCompleteInput
 ): Promise<AccountUser> {
-  if (!isPasswordShaped(input.password)) throw new InvalidInputError('Invalid password')
+  if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
+    throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
 

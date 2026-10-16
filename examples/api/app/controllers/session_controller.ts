@@ -1,35 +1,21 @@
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit } from 'adonisjs-account-kit'
-import User from '#models/user'
 import { loginValidator } from '#validators/user'
+import { sessionGuard } from '#services/account_kit_guards'
 
 export default class SessionController {
   csrf({ request }: HttpContext) {
     return { csrfToken: request.csrfToken }
   }
 
-  async store({ auth, request, session, serialize }: HttpContext) {
+  async store(ctx: HttpContext) {
+    const { request, serialize } = ctx
     const { email, password } = await request.validateUsing(loginValidator)
     const kit = await app.container.make(AccountKit)
-    const guard = auth.use('web')
     const result = await kit.authentication.login(
       { email, password, clientKey: request.ip() },
-      {
-        strategy: 'session',
-        name: 'web',
-        async establish(userId, revision) {
-          session.regenerate()
-          await guard.login(await User.findOrFail(userId))
-          session.put('accountKitRevision', revision ?? '')
-          return undefined
-        },
-        async terminate() {
-          await guard.logout()
-          session.clear()
-          session.regenerate()
-        },
-      }
+      sessionGuard(ctx)
     )
     return serialize({ user: result.account })
   }

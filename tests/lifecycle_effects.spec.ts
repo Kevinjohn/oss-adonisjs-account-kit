@@ -269,8 +269,14 @@ test.group('credential and lifecycle effects', (group) => {
     })
     await account.emailVerification.send({ userId: user.id })
     const token = tokenFrom(recorder.calls[0].args[1])
-    assert.equal(await account.emailVerification.complete({ token }), 'verified')
-    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
+    assert.equal(
+      await account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      'verified'
+    )
+    await assert.rejects(
+      () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
+      InvalidTokenError
+    )
     assert.deepEqual(
       events.map((event) => event.type),
       ['verification.completed']

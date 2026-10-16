@@ -44,37 +44,44 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   const registered = await User.findByOrFail('email', 'registration@example.test')
   assert.equal(registered.unverifiedEmail, registered.email)
   assert.isNull(registered.emailVerifiedAt)
-  const registrationActivation = await client
-    .post('/account-kit/verification/send')
-    .loginAs(registered)
-    .json({})
-  assert.equal(registrationActivation.status(), 200)
-  assert.equal(registrationActivation.body().result, 'sent')
+  assert.lengthOf(
+    notifications.events.filter((event) => event.kind === 'verification'),
+    1
+  )
   const registrationToken = tokenFrom(
-    notifications.events.find((event) => event.kind === 'verification')!.value
+    notifications.events.filter((event) => event.kind === 'verification').at(-1)!.value
   )
-  const activation = await client.get(
-    `/account-kit/verification/${encodeURIComponent(registrationToken)}`
-  )
+  const activation = await client
+    .post(`/account-kit/verification/${encodeURIComponent(registrationToken)}`)
+    .json({ password: 'ClaimantPass123!', passwordConfirmation: 'ClaimantPass123!' })
   assert.equal(activation.body().result, 'verified')
   assert.isNull((await User.findByOrFail('email', registered.email)).unverifiedEmail)
   notifications.reset()
   assert.isString(registrationBody.data.token)
   assert.notProperty(registrationBody.data.user, 'password')
-  assert.equal(
-    (
-      await client.post('/api/v1/auth/signup').json({
-        fullName: 'Duplicate User',
-        email: 'REGISTRATION@EXAMPLE.TEST',
-        password: 'DuplicatePass123!',
-        passwordConfirmation: 'DuplicatePass123!',
-      })
-    ).status(),
-    422
-  )
+  const duplicate = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Duplicate User',
+    email: 'REGISTRATION@EXAMPLE.TEST',
+    password: 'DuplicatePass123!',
+    passwordConfirmation: 'DuplicatePass123!',
+  })
+  assert.equal(duplicate.status(), 422)
+  assert.deepEqual(duplicate.body(), {
+    errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
+  })
+  await db.table('role_assignments').insert({ user_id: registered.id, role: 'disabled' })
+  const restrictedDuplicate = await client.post('/api/v1/auth/signup').json({
+    fullName: 'Duplicate User',
+    email: registered.email,
+    password: 'DuplicatePass123!',
+    passwordConfirmation: 'DuplicatePass123!',
+  })
+  assert.equal(restrictedDuplicate.status(), 422)
+  assert.deepEqual(restrictedDuplicate.body(), duplicate.body())
+  await db.from('role_assignments').where('user_id', registered.id).delete()
   const normalizedLogin = await client.post('/api/v1/auth/login').json({
     email: ' REGISTRATION@EXAMPLE.TEST ',
-    password: 'RegistrationPass123!',
+    password: 'ClaimantPass123!',
   })
   assert.equal(normalizedLogin.status(), 200)
 
@@ -257,7 +264,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     password: 'VerifyPass123!',
   })
   const anonymousVerify = await client.post('/account-kit/verification/send').json({})
-  assert.equal(anonymousVerify.status(), 401)
+  assert.equal(anonymousVerify.status(), 401, JSON.stringify(anonymousVerify.body()))
   const sendVerification = await client
     .post('/account-kit/verification/send')
     .loginAs(verificationUser)
@@ -268,10 +275,19 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     notifications.events.find((event) => event.kind === 'verification')!.value
   )
   const verificationPath = `/account-kit/verification/${encodeURIComponent(verificationToken)}`
-  const verificationFirst = await client.get(verificationPath)
+  const verificationFirst = await client
+    .post(verificationPath)
+    .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
   assert.equal(verificationFirst.header('referrer-policy'), 'no-referrer')
   assert.equal((verificationFirst.body() as { result: string }).result, 'verified')
-  assert.equal((await client.get(verificationPath)).status(), 422)
+  assert.equal(
+    (
+      await client
+        .post(verificationPath)
+        .json({ password: 'ReplacementPass123!', passwordConfirmation: 'ReplacementPass123!' })
+    ).status(),
+    422
+  )
   assert.equal(
     (
       (

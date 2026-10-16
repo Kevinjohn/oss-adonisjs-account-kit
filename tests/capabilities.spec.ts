@@ -12,6 +12,7 @@ test.group('capability configuration', (group) => {
     const input: AccountKitConfig = {
       users: makeUsersAdapter(kit.db, kit.hash),
       enabled: ['passwordReset'],
+      registration: { availability: 'open' },
       urls: { passwordReset: (token) => `https://example.test/recovery/${token}` },
       notify: {
         passwordResetProvision: async () => {},
@@ -37,6 +38,15 @@ test.group('capability configuration', (group) => {
       users: { ...users, setEmail: undefined } as never,
     })
     assert.deepEqual(defineConfig(config).enabled, ['emailVerification'])
+  })
+
+  test('rejects verification configuration without password replacement', ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const config = makeConfig({
+      enabled: ['emailVerification'],
+      users: { ...users, setPassword: undefined } as never,
+    })
+    assert.throws(() => defineConfig(config), 'users.setPassword must be a function')
   })
 
   test('validates enabled capability names, duplicates, and required dependencies', ({
@@ -224,7 +234,7 @@ test.group('capability configuration', (group) => {
       () => account.passwordReset.inspect({ token: '' }),
       () => account.passwordReset.reset({ token: '', password: '' }),
       () => account.emailVerification.send({ userId: 0 }),
-      () => account.emailVerification.complete({ token: '' }),
+      () => account.emailVerification.complete({ token: '', password: 'NewPassword123' }),
       () => account.invitations.send({ actorId: 0, email: '', role: '' }),
       () => account.invitations.list({ actorId: 0 }),
       () => account.invitations.inspect({ token: '' }),

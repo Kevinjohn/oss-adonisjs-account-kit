@@ -114,6 +114,27 @@ test.group('emailPasswordManagement', (group) => {
     )
   })
 
+  test('applies the shared policy to a new password without narrowing current-password login', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const account = service({ passwordPolicy: { mixedCase: true, numbers: true, minScore: 3 } })
+    await assert.rejects(
+      () =>
+        account.emailPasswordManagement.changePassword({
+          actorId: user.id,
+          currentPassword: 'oldPassword123',
+          newPassword: 'password123',
+        }),
+      InvalidInputError
+    )
+    await account.emailPasswordManagement.changePassword({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newPassword: 'LongerPassword12345',
+    })
+  })
+
   test('missing actor and missing or wrong proof reject without changing a password', async ({
     assert,
   }) => {

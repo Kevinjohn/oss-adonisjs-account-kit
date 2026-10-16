@@ -11,6 +11,7 @@ import {
 import { completeVerification, sendVerification } from './verification.js'
 import { changePassword, completeEmailChange, requestEmailChange } from './credentials.js'
 import { authenticationService } from './authentication.js'
+import { register } from './registration.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -37,6 +38,7 @@ import type {
   PasswordResetRequestInput,
   PasswordResetCompleteInput,
   ResolvedConfig,
+  RegistrationInput,
   VerificationCompleteInput,
   VerificationSendInput,
 } from './types.js'
@@ -65,6 +67,11 @@ export class AccountKit {
 
   get authentication() {
     return authenticationService(this.deps)
+  }
+
+  readonly registration = {
+    register: (input: RegistrationInput): Promise<AccountUser> =>
+      this.enabled('registration', () => register(this.deps, input)),
   }
 
   readonly passwordReset = {
