@@ -30,6 +30,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   ACCOUNT_KIT_USERS_TABLE: Env.schema.string.optional(),
   ACCOUNT_KIT_USER_ID_TYPE: Env.schema.enum.optional(['integer', 'string', 'uuid'] as const),
   ACCOUNT_KIT_AUTH_STRATEGY: Env.schema.enum.optional(['session', 'access_tokens'] as const),
+  GOOGLE_CLIENT_ID: Env.schema.string.optional(),
+  GOOGLE_CLIENT_SECRET: Env.schema.string.optional(),
+  GITHUB_CLIENT_ID: Env.schema.string.optional(),
+  GITHUB_CLIENT_SECRET: Env.schema.string.optional(),
+  SOCIAL_CLIENT_CALLBACK_URL: Env.schema.string.optional({ format: 'url', tld: false }),
 
   // Session
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
