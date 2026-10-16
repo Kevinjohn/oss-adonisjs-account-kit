@@ -25,7 +25,7 @@ async function fixture() {
   await mkdir(join(root, 'app/services'), { recursive: true })
   await writeFile(
     join(root, 'app/models/user.ts'),
-    'export default class User extends BaseModel { static accessTokens = tokens; email!: string; password!: string; emailVerifiedAt!: Date }\n'
+    "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static accessTokens = tokens; email!: string; password!: string; emailVerifiedAt!: Date }\n"
   )
   await writeFile(
     join(root, 'app/services/account_kit_policy.ts'),
@@ -365,22 +365,28 @@ test.group('onboarding plan and apply', (group) => {
   }) => {
     const { root, choices } = await fixture()
     const previousApp = process.env.APP_URL
-    const previousFrontend = process.env.ACCOUNT_FRONTEND_URL
+    const previousFrontend = process.env.FRONTEND_URL
     process.env.APP_URL = 'http://account.example.test/root/'
-    process.env.ACCOUNT_FRONTEND_URL = 'http://account.example.test/'
+    process.env.FRONTEND_URL = 'http://account.example.test/'
     try {
       const plan = await planSetup(choices, await inspectSetup(root), { production: true })
       assert.includeMembers(
         plan.diagnostics.map(({ field }) => field),
         ['mail.backendOriginEnv', 'mail.frontendOriginEnv']
       )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'mail.frontendOriginEnv' && severity === 'error' && /HTTPS/i.test(message)
+        )
+      )
       assert.notInclude(JSON.stringify(plan.diagnostics), 'account.example.test')
       assert.isFalse(plan.readiness.productionReady)
     } finally {
       if (previousApp === undefined) delete process.env.APP_URL
       else process.env.APP_URL = previousApp
-      if (previousFrontend === undefined) delete process.env.ACCOUNT_FRONTEND_URL
-      else process.env.ACCOUNT_FRONTEND_URL = previousFrontend
+      if (previousFrontend === undefined) delete process.env.FRONTEND_URL
+      else process.env.FRONTEND_URL = previousFrontend
     }
   })
 

@@ -416,6 +416,8 @@ function validate(
     !choices.features.includes('emailVerification')
   )
     diagnostic(diagnostics, 'features', 'Email/password management requires email verification')
+  if (choices.features.includes('registration') && !choices.features.includes('emailVerification'))
+    diagnostic(diagnostics, 'features', 'Registration requires the email verification service')
   if (choices.policy.verificationRequired) {
     for (const action of ['logout', 'verificationResend', 'passwordReset'] as const) {
       if (!choices.policy.unverifiedActions.includes(action))
@@ -938,15 +940,30 @@ async function planRouteImport(
     return
   }
   let directMount = false
+  const mountBinding = importedName(source, 'adonisjs-account-kit/http', 'registerManagedRoutes')
+  let unsupportedMount = false
   walk(source, (node) => {
     if (
       source.ts.isCallExpression(node) &&
       source.ts.isIdentifier(node.expression) &&
-      node.expression.text === 'registerManagedRoutes'
+      node.expression.text === mountBinding
     )
       directMount = true
+    if (
+      source.ts.isCallExpression(node) &&
+      source.ts.isIdentifier(node.expression) &&
+      node.expression.text === 'registerManagedRoutes' &&
+      !mountBinding
+    )
+      unsupportedMount = true
+    if (
+      source.ts.isCallExpression(node) &&
+      source.ts.isPropertyAccessExpression(node.expression) &&
+      node.expression.name.text === 'registerManagedRoutes'
+    )
+      unsupportedMount = true
   })
-  if (directMount) {
+  if (directMount || unsupportedMount) {
     diagnostic(
       diagnostics,
       path,
@@ -957,6 +974,13 @@ async function planRouteImport(
   const imports = source.file.statements
     .filter(source.ts.isImportDeclaration)
     .filter((node) => source.ts.isStringLiteral(node.moduleSpecifier))
+    .filter(
+      (node) =>
+        !node.importClause?.isTypeOnly &&
+        (!node.importClause?.namedBindings ||
+          !source.ts.isNamedImports(node.importClause.namedBindings) ||
+          node.importClause.namedBindings.elements.some((element) => !element.isTypeOnly))
+    )
     .map((node) => (node.moduleSpecifier as TypeScript.StringLiteral).text)
   if (imports.includes('./account_kit_routes.js')) {
     changes.push({
@@ -1249,7 +1273,16 @@ async function planServerProofMiddleware(
     return
   }
   const name = '#middleware/account_kit_proof_headers_middleware'
-  if (array.elements.some((entry) => lazyImportPath(source, entry) === name)) return
+  const proofPosition = array.elements.findIndex((entry) => lazyImportPath(source, entry) === name)
+  if (proofPosition === 0) return
+  if (proofPosition > 0) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Move proof response headers to the first server.use position, before body parsing or terminating middleware'
+    )
+    return
+  }
   const at = array.getStart(source.file) + 1
   const content = previous.slice(0, at) + `\n  () => import('${name}'),` + previous.slice(at)
   if (existing) {
@@ -1333,7 +1366,8 @@ async function limiterConfigurationState(
     !source.ts.isCallExpression(factory) ||
     !source.ts.isPropertyAccessExpression(factory.expression) ||
     !source.ts.isIdentifier(factory.expression.expression) ||
-    factory.expression.expression.text !== storesName
+    factory.expression.expression.text !== storesName ||
+    !['database', 'memory', 'redis'].includes(factory.expression.name.text)
   )
     return 'invalid'
   return 'valid'
@@ -1532,7 +1566,7 @@ ${exportEnd}`
 async function unwrapManagedSessionConfig(source: string, root: string): Promise<string | null> {
   if (!source.startsWith(sessionImport)) return null
   const selectionMatch = source.match(
-    /\/\/ account-kit:session-selection:start\nconst accountKitSelectedSessionStore = (.+)\n\/\/ account-kit:session-selection:end\n/
+    /\/\/ account-kit:session-selection:start\nconst accountKitSelectedSessionStore = ([\s\S]*?)\n\/\/ account-kit:session-selection:end\n/
   )
   const exportMatch = source.match(
     /\/\/ account-kit:session-export:start\n[\s\S]*?\/\/ account-kit:session-export:end\n/
@@ -1678,6 +1712,7 @@ export async function planSetup(
           )
       )
       const selectedClass = classes.length === 1 ? classes[0] : null
+      const baseModelBinding = importedName(model, '@adonisjs/lucid/orm', 'BaseModel')
       if (
         !selectedClass ||
         !selectedClass.heritageClauses?.some(
@@ -1699,6 +1734,30 @@ export async function planSetup(
             (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) &&
             member.name.text === name
         ) ?? []
+      const unsafeMetadata = selectedClass?.members.some(
+        (member) =>
+          ts.isPropertyDeclaration(member) &&
+          Boolean(
+            member.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+          ) &&
+          ts.isComputedPropertyName(member.name)
+      )
+      let mutatedModel = false
+      if (selectedClass?.name)
+        walk(model, (node) => {
+          if (
+            ts.isIdentifier(node) &&
+            node.text === selectedClass.name!.text &&
+            node !== selectedClass.name
+          )
+            mutatedModel = true
+        })
+      if (unsafeMetadata || mutatedModel)
+        diagnostic(
+          diagnostics,
+          'user.model',
+          'Model static metadata or later class references require manual review before generated migrations'
+        )
       if (
         choices.authentication?.strategy === 'access_tokens' &&
         staticMember('accessTokens').length !== 1
@@ -1738,15 +1797,21 @@ export async function planSetup(
         (clause) =>
           clause.token === ts.SyntaxKind.ExtendsKeyword &&
           clause.types.some(
-            (item) => ts.isIdentifier(item.expression) && item.expression.text === 'BaseModel'
+            (item) =>
+              (ts.isIdentifier(item.expression) && item.expression.text === baseModelBinding) ||
+              (ts.isCallExpression(item.expression) &&
+                ts.isIdentifier(item.expression.expression) &&
+                item.expression.expression.text ===
+                  importedName(model, '@adonisjs/core/helpers', 'compose') &&
+                ts.isIdentifier(item.expression.arguments[0]) &&
+                item.expression.arguments[0].text === baseModelBinding)
           )
       )
       if (!extendsBase)
         diagnostic(
           diagnostics,
           'user.connection',
-          'Verify the model connection, including inherited or dynamic mapping, is the default',
-          'action'
+          'Resolve the imported Lucid BaseModel inheritance before using this model for generated migrations'
         )
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
