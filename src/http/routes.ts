@@ -5,6 +5,7 @@ export type ManagedCapability =
   | 'emailVerification'
   | 'emailPasswordManagement'
   | 'invitations'
+  | 'socialAuthentication'
 
 export type ManagedEndpointName =
   | 'auth.signup'
@@ -28,6 +29,16 @@ export type ManagedEndpointName =
   | 'account.invitation.list'
   | 'account.invitation.resend'
   | 'account.invitation.revoke'
+  | 'auth.oauth.redirect'
+  | 'auth.oauth.callback'
+  | 'auth.oauth.complete'
+  | 'auth.oauth.registration'
+  | 'auth.oauth.confirmation'
+  | 'auth.oauth.token'
+  | 'auth.methods'
+  | 'account.socialProof.password'
+  | 'account.socialIdentities.list'
+  | 'account.socialIdentities.unlink'
 
 export interface ManagedRoute {
   name: ManagedEndpointName
@@ -36,7 +47,7 @@ export interface ManagedRoute {
   path: string
   access: 'public' | 'limited' | 'active'
   proof?: true
-  strategy?: 'session'
+  strategy?: 'session' | 'access_tokens'
 }
 
 export interface ManagedRouteSelection {
@@ -218,6 +229,86 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     method: 'DELETE',
     suffix: 'account/invitations/:id',
     access: 'active',
+  },
+  {
+    name: 'auth.oauth.redirect',
+    capability: 'socialAuthentication',
+    method: 'POST',
+    suffix: 'auth/oauth/:provider/redirect',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.oauth.callback',
+    capability: 'socialAuthentication',
+    method: 'GET',
+    suffix: 'auth/oauth/:provider/callback',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.oauth.complete',
+    capability: 'socialAuthentication',
+    method: 'POST',
+    suffix: 'auth/oauth/:provider/callback',
+    access: 'public',
+    proof: true,
+    strategy: 'access_tokens',
+  },
+  {
+    name: 'auth.oauth.registration',
+    capability: 'socialAuthentication',
+    method: 'POST',
+    suffix: 'auth/oauth/registration',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.oauth.confirmation',
+    capability: 'socialAuthentication',
+    method: 'POST',
+    suffix: 'auth/oauth/:provider/confirmation',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.oauth.token',
+    capability: 'socialAuthentication',
+    method: 'POST',
+    suffix: 'auth/oauth/token',
+    access: 'public',
+    proof: true,
+    strategy: 'access_tokens',
+  },
+  {
+    name: 'auth.methods',
+    capability: 'socialAuthentication',
+    method: 'GET',
+    suffix: 'auth/methods',
+    access: 'public',
+  },
+  {
+    name: 'account.socialProof.password',
+    capability: 'socialAuthentication',
+    method: 'POST',
+    suffix: 'account/social-proof/password',
+    access: 'limited',
+    proof: true,
+  },
+  {
+    name: 'account.socialIdentities.list',
+    capability: 'socialAuthentication',
+    method: 'GET',
+    suffix: 'account/social-identities',
+    access: 'limited',
+  },
+  {
+    name: 'account.socialIdentities.unlink',
+    capability: 'socialAuthentication',
+    method: 'DELETE',
+    suffix: 'account/social-identities/:id',
+    access: 'limited',
+    proof: true,
   },
 ]
 

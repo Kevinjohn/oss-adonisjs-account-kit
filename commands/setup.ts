@@ -233,10 +233,37 @@ export default class SetupAccountKit extends BaseCommand {
       if (providers.some((name) => name !== 'google' && name !== 'github'))
         throw new Error('social.providers: choose google and/or github')
       choices.social = {
-        status: 'approved-pending',
+        status: 'enabled',
         providers: [...new Set(providers)] as Array<'google' | 'github'>,
+        callbackOriginEnv:
+          (await ask('Social callback origin environment name (ACCOUNT_SOCIAL_ORIGIN)')) ||
+          'ACCOUNT_SOCIAL_ORIGIN',
+        callbackPath:
+          (await ask('Social callback path with {provider} placeholder')) ||
+          (choices.authentication?.strategy === 'access_tokens'
+            ? '/auth/oauth/{provider}/callback'
+            : `${choices.routePrefix}/auth/oauth/{provider}/callback`),
+        credentials: {},
       }
-      this.logger.info('Social identity is approved but pending installed implementation')
+      for (const provider of choices.social.providers) {
+        choices.social.credentials[provider] = {
+          clientIdEnv:
+            (await ask(
+              `${provider} client ID environment name (${provider.toUpperCase()}_CLIENT_ID)`
+            )) || `${provider.toUpperCase()}_CLIENT_ID`,
+          clientSecretEnv:
+            (await ask(
+              `${provider} client secret environment name (${provider.toUpperCase()}_CLIENT_SECRET)`
+            )) || `${provider.toUpperCase()}_CLIENT_SECRET`,
+        }
+      }
+      if (!choices.features.includes('socialAuthentication'))
+        choices.features.push('socialAuthentication')
+      if (choices.mode === 'managed' && !choices.managed.includes('socialAuthentication'))
+        choices.managed.push('socialAuthentication')
+      this.logger.info(
+        'Selected providers require Ally console callbacks and deployment credentials'
+      )
     }
     return choices
   }
@@ -254,18 +281,27 @@ export default class SetupAccountKit extends BaseCommand {
       choices = parseSetupChoices(JSON.parse(content))
     } else choices = await this.interactiveChoices()
     let retirementImpact: RetirementImpact['impact'] | null = null
-    if (state.existingChoices?.authentication && !choices.authentication) {
+    let runtimeInventoryUnavailable = false
+    const remainingProviders = choices.social.status === 'enabled' ? choices.social.providers : []
+    if (state.existingChoices) {
       try {
         const inventory = await this.kernel.exec<typeof RetirementImpact>(
           'account-kit:retirement-impact',
-          ['--quiet']
+          [
+            '--quiet',
+            ...(choices.authentication ? ['--keep-password-login'] : []),
+            `--providers=${remainingProviders.length ? remainingProviders.join(',') : 'none'}`,
+          ]
         )
         retirementImpact = inventory.impact
-        if (inventory.failure)
+        if (inventory.failure || !inventory.impact) {
+          runtimeInventoryUnavailable = true
           this.logger.warning(
             'Read-only account inventory could not query the application database'
           )
+        }
       } catch {
+        runtimeInventoryUnavailable = true
         this.logger.warning(
           'Read-only account inventory could not start; login retirement remains blocked'
         )
@@ -276,6 +312,7 @@ export default class SetupAccountKit extends BaseCommand {
       production: this.production,
       retirementImpact,
       retirementMaintenanceWindow: this.retirementMaintenanceWindow,
+      runtimeInventoryUnavailable,
     })
     this.logger.info(
       JSON.stringify(

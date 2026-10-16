@@ -24,6 +24,7 @@ const inspectedFiles = [
   'config/database.ts',
   'config/limiter.ts',
   'config/mail.ts',
+  'config/ally.ts',
   'config/shield.ts',
   'config/session.ts',
   'config/account_kit.ts',

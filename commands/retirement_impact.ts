@@ -1,14 +1,20 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
 
-/** Booted, read-only inventory for a proposed password-login retirement. */
+/** Booted, read-only inventory for proposed login-method retirement. */
 export default class RetirementImpact extends BaseCommand {
   static commandName = 'account-kit:retirement-impact'
-  static description = 'Count accounts affected by retiring password login'
+  static description = 'Count accounts affected by retiring login methods'
   static options = { startApp: true }
 
   @flags.boolean({ description: 'Return the structured result without printing it' })
   declare quiet: boolean
+
+  @flags.boolean({ description: 'Password login remains enabled after this change' })
+  declare keepPasswordLogin: boolean
+
+  @flags.string({ description: 'Comma-separated provider names remaining after this change' })
+  declare providers: string
 
   impact: Awaited<ReturnType<AccountKit['authentication']['retirementImpact']>> | null = null
   failure: 'inventory_unavailable' | null = null
@@ -16,7 +22,18 @@ export default class RetirementImpact extends BaseCommand {
   async run(): Promise<void> {
     try {
       const kit = await this.app.container.make(AccountKit)
-      this.impact = await kit.authentication.retirementImpact({ passwordLogin: false })
+      const providers =
+        this.providers === undefined
+          ? undefined
+          : this.providers === 'none'
+            ? []
+            : this.providers.length
+              ? this.providers.split(',')
+              : []
+      this.impact = await kit.authentication.retirementImpact({
+        passwordLogin: this.keepPasswordLogin === true,
+        providers: providers as ('google' | 'github')[] | undefined,
+      })
       if (!this.quiet) this.logger.info(JSON.stringify(this.impact))
     } catch {
       this.failure = 'inventory_unavailable'

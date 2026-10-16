@@ -21,6 +21,11 @@ import {
   type ManagedMessage,
 } from './responses.js'
 import {
+  executeManagedSocial,
+  rememberManagedMethod,
+  type ManagedSocialExtension,
+} from './social.js'
+import {
   assertManagedRouteCollisions,
   planManagedRoutes,
   type ManagedCapability,
@@ -55,6 +60,7 @@ export interface ManagedGuard<Credential> {
 export interface ManagedExtensions {
   /** Public wording only; the stable status and machine code cannot be changed. */
   message?: ManagedMessage
+  social?: ManagedSocialExtension
   registration?: {
     /** HTTP schema; field mapping and domain rules remain in the public registration service. */
     validate(context: HttpContext): Promise<{
@@ -68,7 +74,8 @@ export interface ManagedExtensions {
   }
   profile?: {
     validate(context: HttpContext): Promise<{
-      currentPassword: string
+      currentPassword?: string
+      recentProof?: string
       email?: string
       registrationData?: unknown
     }>
@@ -187,7 +194,8 @@ function recoveryDiagnostic(
 async function execute<Credential>(
   route: ManagedRoute,
   context: HttpContext,
-  options: ManagedRoutesOptions<Credential>
+  options: ManagedRoutesOptions<Credential>,
+  methodsEnabled: boolean
 ): Promise<unknown> {
   responseHeaders(context, route)
   const { request, response, params } = context
@@ -219,6 +227,16 @@ async function execute<Credential>(
     }
   }
 
+  if (route.capability === 'socialAuthentication')
+    return executeManagedSocial(
+      route.name,
+      context,
+      kit,
+      options.guard,
+      options.extensions!.social!,
+      methodsEnabled
+    )
+
   switch (route.name) {
     case 'auth.csrf':
       response.header('Cache-Control', 'no-store')
@@ -229,6 +247,8 @@ async function execute<Credential>(
         { email, password, clientKey: request.ip() },
         options.guard.forRequest(context)
       )
+      if (methodsEnabled)
+        await rememberManagedMethod(context, 'password', options.extensions?.social)
       return response.ok({
         account: await representIssued(result.account),
         ...(options.guard.strategy === 'access_tokens'
@@ -289,12 +309,14 @@ async function execute<Credential>(
       return response.created({ account: await representIssued(currentAccount(user)) })
     }
     case 'account.password.change': {
-      const { currentPassword, newPassword } = await request.validateUsing(passwordChangeValidator)
+      const { currentPassword, recentProof, newPassword } =
+        await request.validateUsing(passwordChangeValidator)
       if (!kit.managedHttp.passwordAllowed(newPassword))
         return passwordPolicyError(context, 'newPassword')
       await kit.emailPasswordManagement.changePassword({
         actorId: actorId!,
         currentPassword,
+        recentProof,
         newPassword,
       })
       return response.ok({ changed: true })
@@ -408,6 +430,7 @@ async function executePending<Credential>(
       const user = await kit.emailPasswordManagement.updateProfile({
         actorId: actorId!,
         currentPassword: input.currentPassword,
+        recentProof: input.recentProof,
         email: input.email,
         ...('registrationData' in input ? { registrationData: input.registrationData } : {}),
       })
@@ -428,11 +451,23 @@ export function registerManagedRoutes<Credential>(
   if (
     options.guard.strategy === 'access_tokens' &&
     options.enabled.some(
-      (capability) => capability === 'authentication' || capability === 'registration'
+      (capability) =>
+        capability === 'authentication' ||
+        capability === 'registration' ||
+        capability === 'socialAuthentication'
     ) &&
     !options.guard.publicCredential
   )
     throw new Error('Managed access-token routes require publicCredential')
+  if (
+    options.enabled.includes('socialAuthentication') &&
+    (!options.extensions?.social ||
+      !options.extensions.social.providers.length ||
+      options.extensions.social.providers.some((name) => name !== 'google' && name !== 'github') ||
+      new Set(options.extensions.social.providers).size !==
+        options.extensions.social.providers.length)
+  )
+    throw new Error('Managed social routes require a selected Google or GitHub provider inventory')
   const existing = routeEntries(router)
   const routes = planManagedRoutes(
     {
@@ -444,14 +479,15 @@ export function registerManagedRoutes<Credential>(
     existing,
     mounted.has(router)
   )
+  const methodsEnabled = routes.some(({ name }) => name === 'auth.methods')
   for (const route of routes) {
     router
       .route(route.path, [route.method], async (context) => {
         try {
-          return await execute(route, context, options)
+          return await execute(route, context, options, methodsEnabled)
         } catch (error) {
           if (
-            route.method !== 'GET' &&
+            (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
             (error instanceof PostCommitError || error instanceof DeliveryError)
           ) {
             recoveryDiagnostic(
@@ -464,13 +500,14 @@ export function registerManagedRoutes<Credential>(
           const mapped = managedErrorResponse(error, {
             accept: context.request.header('accept'),
             message: options.extensions?.message,
-            proof: route.proof
-              ? route.name.includes('passwordReset')
-                ? 'password'
-                : route.name.includes('invitation')
-                  ? 'invitation'
-                  : 'email'
-              : undefined,
+            proof:
+              route.proof && route.capability !== 'socialAuthentication'
+                ? route.name.includes('passwordReset')
+                  ? 'password'
+                  : route.name.includes('invitation')
+                    ? 'invitation'
+                    : 'email'
+                : undefined,
           })
           if (!mapped) throw error
           applyMappedHeaders(context, mapped)

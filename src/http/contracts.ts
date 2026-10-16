@@ -1,5 +1,6 @@
 import type { CurrentAccount, InvitationPage } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
+import type { SocialProviderName } from '../types.js'
 
 /** Default request bodies; `:token` and `:id` values are URL path parameters. */
 export interface ManagedRequestBodies {
@@ -27,12 +28,14 @@ export interface ManagedRequestBodies {
   'account.logout': undefined
   'account.profile.show': undefined
   'account.profile.update': {
-    currentPassword: string
+    currentPassword?: string
+    recentProof?: string
     email?: string
     registrationData?: Record<string, unknown>
   }
   'account.password.change': {
-    currentPassword: string
+    currentPassword?: string
+    recentProof?: string
     newPassword: string
     newPasswordConfirmation: string
   }
@@ -41,6 +44,28 @@ export interface ManagedRequestBodies {
   'account.invitation.list': undefined
   'account.invitation.resend': undefined
   'account.invitation.revoke': undefined
+  'auth.oauth.redirect': {
+    intent?: 'login' | 'link' | 'reauth'
+    purpose?: 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
+    proof?: string
+    clientChallenge?: string
+  }
+  'auth.oauth.callback': undefined
+  'auth.oauth.complete': {
+    code: string
+    state: string
+    intent?: 'login' | 'link' | 'reauth' | 'confirm'
+  }
+  'auth.oauth.registration': { continuation: string; email?: string; registrationData?: unknown }
+  'auth.oauth.confirmation': { verificationToken: string; clientChallenge?: string }
+  'auth.oauth.token': { code: string; verifier: string }
+  'auth.methods': undefined
+  'account.socialProof.password': {
+    password: string
+    purpose: 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
+  }
+  'account.socialIdentities.list': undefined
+  'account.socialIdentities.unlink': { proof: string }
 }
 
 export type ManagedRequestBody<Name extends ManagedEndpointName> = ManagedRequestBodies[Name]
@@ -59,6 +84,15 @@ export interface ManagedQueries {
   'auth.invitation.accept': undefined
   'auth.emailChange.inspect': undefined
   'auth.emailChange.complete': undefined
+  'auth.oauth.redirect': undefined
+  'auth.oauth.callback':
+    | { code: string; state: string; error?: never }
+    | { error: string; state?: string; code?: string }
+  'auth.oauth.complete': undefined
+  'auth.oauth.registration': undefined
+  'auth.oauth.confirmation': undefined
+  'auth.oauth.token': undefined
+  'auth.methods': undefined
   'account.logout': undefined
   'account.profile.show': undefined
   'account.profile.update': undefined
@@ -68,6 +102,9 @@ export interface ManagedQueries {
   'account.invitation.list': { limit?: number; cursor?: string }
   'account.invitation.resend': undefined
   'account.invitation.revoke': undefined
+  'account.socialProof.password': undefined
+  'account.socialIdentities.list': undefined
+  'account.socialIdentities.unlink': undefined
 }
 
 export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name]
@@ -76,6 +113,16 @@ export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name
 export interface ManagedCommittedSuccess {
   committed: true
 }
+
+export type ManagedSocialFlowBody =
+  | ManagedCommittedSuccess
+  | { status: 'linked' | 'new'; account: CurrentAccount }
+  | { status: 'linked' | 'new'; code: string }
+  | { status: 'linked' | 'new' }
+  | { status: 'new'; continuation: string }
+  | { status: 'new'; emailVerificationRequired: true }
+  | { status: 'link_required' }
+  | { status: 'reauthenticated'; proof: string }
 
 /** Base response bodies before application-owned account representation is added. */
 export interface ManagedSuccessBodies {
@@ -102,6 +149,26 @@ export interface ManagedSuccessBodies {
   'account.invitation.list': InvitationPage
   'account.invitation.resend': { id: number } | ManagedCommittedSuccess
   'account.invitation.revoke': undefined | ManagedCommittedSuccess
+  'auth.oauth.redirect': { authorizationUrl: string }
+  'auth.oauth.callback': ManagedSocialFlowBody
+  'auth.oauth.complete': ManagedSocialFlowBody
+  'auth.oauth.registration': ManagedSocialFlowBody
+  'auth.oauth.confirmation': { authorizationUrl: string }
+  'auth.oauth.token': { account: CurrentAccount; token: string }
+  'auth.methods': {
+    providers: readonly SocialProviderName[]
+    lastUsedMethod: 'password' | SocialProviderName | null
+  }
+  'account.socialProof.password': { proof: string }
+  'account.socialIdentities.list': {
+    identities: Array<{
+      id: number
+      provider: SocialProviderName
+      email: string | null
+      emailVerified: boolean
+    }>
+  }
+  'account.socialIdentities.unlink': undefined | ManagedCommittedSuccess
 }
 
 export type ManagedSuccessBody<Name extends ManagedEndpointName> = ManagedSuccessBodies[Name]

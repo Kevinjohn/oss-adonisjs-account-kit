@@ -193,12 +193,29 @@ export function parseSetupChoices(input: unknown): SetupChoices {
   if (!social || typeof social !== 'object' || Array.isArray(social))
     throw new Error('social: expected an object')
   const status = (social as Record<string, unknown>).status
-  if (status === 'approved-pending') {
-    const approved = record(social, 'social', ['status', 'providers'])
-    strings(approved.providers, 'social.providers')
+  if (status === 'enabled') {
+    const selected = record(social, 'social', [
+      'status',
+      'providers',
+      'callbackOriginEnv',
+      'callbackPath',
+      'credentials',
+    ])
+    strings(selected.providers, 'social.providers')
+    string(selected.callbackOriginEnv, 'social.callbackOriginEnv')
+    string(selected.callbackPath, 'social.callbackPath')
+    const credentials = record(selected.credentials, 'social.credentials', [], ['google', 'github'])
+    for (const [provider, value] of Object.entries(credentials)) {
+      const entry = record(value, `social.credentials.${provider}`, [
+        'clientIdEnv',
+        'clientSecretEnv',
+      ])
+      string(entry.clientIdEnv, `social.credentials.${provider}.clientIdEnv`)
+      string(entry.clientSecretEnv, `social.credentials.${provider}.clientSecretEnv`)
+    }
   } else if (status === 'not-applicable') {
     const skipped = record(social, 'social', ['status', 'reason'])
     string(skipped.reason, 'social.reason')
-  } else throw new Error('social.status: expected approved-pending or not-applicable')
+  } else throw new Error('social.status: expected enabled or not-applicable')
   return input as SetupChoices
 }
