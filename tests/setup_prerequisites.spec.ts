@@ -636,6 +636,7 @@ test.group('setup prerequisite inspection', () => {
     await withFixture(async (choices, state) => {
       for (const stores of [
         'database: stores.database(), database: customStore()',
+        String.raw`database: stores.database(), '\u0064atabase': customStore()`,
         'database: stores.database(), ...customStores',
       ]) {
         state.files['config/session.ts'] =
@@ -648,6 +649,19 @@ test.group('setup prerequisite inspection', () => {
         )
         assert.isUndefined(plan.changes.find(({ path }) => path === 'config/session.ts'))
       }
+    })
+  })
+
+  test('escaped Shield keys cannot override inspected CSRF state', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/shield.ts'] =
+        String.raw`export default { csrf: { enabled: true, '\u0065nabled': false } }`
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/shield.ts' && severity === 'error'
+        )
+      )
     })
   })
 
@@ -1042,6 +1056,10 @@ test.group('setup prerequisite inspection', () => {
         "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users'; static ['table'] = 'members' }",
         "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static ['connection'] = 'other' }",
         "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users' }\nUser.table = 'members'",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users'; static { this.table = 'members' } }",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static get connection() { return 'other' } }",
+        String.raw`import { BaseModel } from '@adonisjs/lucid/orm'
+export default class User extends BaseModel { static table = 'users'; static '\u0074able' = 'members' }`,
       ]) {
         await writeFile(model, source)
         const plan = await planSetup(choices, state)
@@ -1051,6 +1069,18 @@ test.group('setup prerequisite inspection', () => {
           )
         )
       }
+      choices.authentication!.strategy = 'access_tokens'
+      await writeFile(
+        model,
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static accessTokens = tokens; static { this.accessTokens = otherTokens } }"
+      )
+      const mutatedTokens = await planSetup(choices, state)
+      assert.isTrue(
+        mutatedTokens.diagnostics.some(
+          ({ field, severity }) => field === 'user.model' && severity === 'error'
+        )
+      )
+      choices.authentication!.strategy = 'session'
       await writeFile(
         model,
         "export default class User extends BaseModel { static table = 'users' }"
@@ -1093,6 +1123,44 @@ test.group('setup prerequisite inspection', () => {
         )
       )
       assert.isFalse(alias.changes.some(({ path }) => path === 'start/routes.ts'))
+      state.files['start/routes.ts'] =
+        "import { registerManagedRoutes } from 'adonisjs-account-kit/http'\nconst mount = registerManagedRoutes\nmount(router, {})\n"
+      const escaped = await planSetup(choices, state)
+      assert.isTrue(
+        escaped.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        )
+      )
+      assert.isFalse(escaped.changes.some(({ path }) => path === 'start/routes.ts'))
+      state.files['start/routes.ts'] =
+        "import type { registerManagedRoutes } from 'adonisjs-account-kit/http'\nconst example = 'registerManagedRoutes'\n"
+      const typeOnlyName = await planSetup(choices, state)
+      assert.isFalse(
+        typeOnlyName.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('authentication retirement identifies application-owned access middleware cleanup', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.existingChoices = structuredClone(choices)
+      state.files['app/middleware/account_kit_access_middleware.ts'] =
+        'export default class AccountAccess {}'
+      choices.authentication = null
+      choices.managed = []
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'authentication.retirement' &&
+            severity === 'action' &&
+            message.includes('application-owned routes')
+        )
+      )
     })
   })
 })

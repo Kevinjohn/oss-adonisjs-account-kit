@@ -943,6 +943,13 @@ async function planRouteImport(
   const mountBinding = importedName(source, 'adonisjs-account-kit/http', 'registerManagedRoutes')
   let unsupportedMount = false
   walk(source, (node) => {
+    if (mountBinding && source.ts.isIdentifier(node) && node.text === mountBinding) {
+      const parent = node.parent
+      const declaration = source.ts.isImportSpecifier(parent) && parent.name === node
+      const call = source.ts.isCallExpression(parent) && parent.expression === node
+      const propertyName = source.ts.isPropertyAccessExpression(parent) && parent.name === node
+      if (!declaration && !call && !propertyName) unsupportedMount = true
+    }
     if (
       source.ts.isCallExpression(node) &&
       source.ts.isIdentifier(node.expression) &&
@@ -1734,14 +1741,26 @@ export async function planSetup(
             (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) &&
             member.name.text === name
         ) ?? []
-      const unsafeMetadata = selectedClass?.members.some(
-        (member) =>
-          ts.isPropertyDeclaration(member) &&
-          Boolean(
-            member.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
-          ) &&
-          ts.isComputedPropertyName(member.name)
-      )
+      const metadataNames = ['table', 'connection', 'accessTokens']
+      const unsafeMetadata =
+        selectedClass?.members.some((member) => {
+          if (ts.isClassStaticBlockDeclaration(member)) return true
+          if (
+            !ts.canHaveModifiers(member) ||
+            !ts
+              .getModifiers(member)
+              ?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+          )
+            return false
+          const name = member.name
+          if (!name) return false
+          if (ts.isComputedPropertyName(name)) return true
+          return (
+            !ts.isPropertyDeclaration(member) &&
+            (ts.isIdentifier(name) || ts.isStringLiteral(name)) &&
+            metadataNames.includes(name.text)
+          )
+        }) || metadataNames.some((name) => staticMember(name).length > 1)
       let mutatedModel = false
       if (selectedClass?.name)
         walk(model, (node) => {
@@ -1840,6 +1859,17 @@ export async function planSetup(
     'Document deployment references'
   )
   await planSessionConfigIntegration(changes, state, choices, diagnostics)
+  if (
+    !choices.authentication &&
+    state.existingChoices?.authentication &&
+    state.files['app/middleware/account_kit_access_middleware.ts']
+  )
+    diagnostic(
+      diagnostics,
+      'authentication.retirement',
+      'Review application-owned routes for the generated account access middleware and remove or replace their references after authentication retirement',
+      'action'
+    )
   if (
     choices.authentication &&
     (choices.managed.length || state.files['app/services/account_kit_guard.ts'])

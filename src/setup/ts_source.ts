@@ -69,8 +69,10 @@ export function directProperty(
   if (hasUnsafeObjectEntries(source, object)) return null
   const matches = object.properties.filter((property) => {
     if (!property.name) return false
-    if (ts.isComputedPropertyName(property.name)) return false
-    return property.name.getText(source.file).replace(/^['"]|['"]$/g, '') === name
+    return (
+      (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+      property.name.text === name
+    )
   })
   return matches.length === 1 && ts.isPropertyAssignment(matches[0]) ? matches[0] : null
 }
@@ -82,8 +84,12 @@ export function hasUnsafeObjectEntries(
   const { ts } = source
   const names = new Set<string>()
   for (const property of object.properties) {
-    if (!ts.isPropertyAssignment(property) || ts.isComputedPropertyName(property.name)) return true
-    const name = property.name.getText(source.file).replace(/^['"]|['"]$/g, '')
+    if (
+      !ts.isPropertyAssignment(property) ||
+      !(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name))
+    )
+      return true
+    const name = property.name.text
     if (names.has(name)) return true
     names.add(name)
   }
