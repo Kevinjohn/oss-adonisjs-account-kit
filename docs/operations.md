@@ -196,13 +196,14 @@ do not trust arbitrary forwarded-IP headers. See [password reset and invitation 
 
 ### Expired-row pruning
 
-The explicit `account-kit:prune` Ace command removes expired password reset, invitation, and
-email-verification proofs (activation and email change) in bounded batches. It is not scheduled
-automatically. Defaults are 100 rows per batch and at most 100 batches; each setting accepts a
-value from 1 through 1000. Use the command's
-dry-run option to estimate eligible rows before deletion. A daily run is a reasonable starting
-schedule if expired proofs should be removed; tune frequency and batch limits to retention and
-database load, then schedule the command through the application's maintenance mechanism.
+The explicit `account-kit:prune` Ace command removes expired password reset, invitation,
+email-verification (activation and email change), social transaction, sensitive-action proof,
+and social handoff-code rows in bounded batches. It is not scheduled automatically. Defaults are
+100 rows per batch and at most 100 batches; each setting accepts a value from 1 through 1000. Use
+the command's dry-run option to estimate eligible rows before deletion. A daily run is a
+reasonable starting schedule if expired proofs should be removed; tune frequency and batch limits
+to retention and database load, then schedule the command through the application's maintenance
+mechanism.
 
 ```sh
 pnpm exec node ace account-kit:prune --dry-run
@@ -210,10 +211,10 @@ pnpm exec node ace account-kit:prune
 ```
 
 The command captures one expiry cutoff for the run, selects IDs in bounded batches, and rechecks
-that each row is still expired at deletion time. Counts report rows actually deleted (or rows
-eligible in dry-run mode). It does not delete users, access tokens, web sessions, team memberships,
-or application-owned records. If a run reaches its batch cap, schedule another run rather than
-raising the cap without considering database load.
+that each row is still expired at deletion time. Output reports all six row counts, showing rows
+actually deleted (or rows eligible in dry-run mode). It does not delete users, social identities,
+access tokens, web sessions, team memberships, or application-owned records. If a run reaches its
+batch cap, schedule another run rather than raising the cap without considering database load.
 
 Run `pnpm exec node ace account-kit:prune --help` in the configured application to see the
 installed command options.
