@@ -8,7 +8,11 @@ const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
 const fullName = () => vine.string().trim().minLength(1).maxLength(100)
 
 /** The social continuation collects the same trusted name as self-signup. */
-export const socialRegistrationValidator = vine.create({ fullName: fullName() })
+export const socialRegistrationValidator = vine.create({
+  continuation: vine.string().minLength(1),
+  fullName: fullName(),
+  email: email().optional(),
+})
 
 /**
  * Validator to use when performing self-signup
