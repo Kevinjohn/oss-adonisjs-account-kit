@@ -133,13 +133,12 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     !['open', 'closed', 'application'].includes(config.registration.availability)
   )
     throw new Error('account_kit: registration.availability must be open, closed, or application')
-  if (enabled.includes('registration')) {
-    if (
-      config.registration.mapFields !== undefined &&
-      typeof config.registration.mapFields !== 'function'
-    )
-      throw new Error('account_kit: registration.mapFields must be a function')
-  }
+  if (
+    enabled.includes('registration') &&
+    config.registration.mapFields !== undefined &&
+    typeof config.registration.mapFields !== 'function'
+  )
+    throw new Error('account_kit: registration.mapFields must be a function')
   for (const hook of [
     'onInvitationAccepted',
     'onCredentialsChanged',
