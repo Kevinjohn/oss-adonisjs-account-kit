@@ -48,7 +48,7 @@ test('token client completes a verified social registration through one PKCE exc
   assert.equal(body(callback).status, 'new')
   const continuation = continuationFrom(callback)
   assert.notProperty(body(callback), 'token')
-  assert.lengthOf(await db.from('users').where('email', email), 0)
+  assert.lengthOf(await db.from(User.table).where('email', email), 0)
 
   for (const fullName of ['   ', 'A'.repeat(101)]) {
     const invalid = await client.post('/api/v1/auth/oauth/registration').json({
@@ -57,7 +57,7 @@ test('token client completes a verified social registration through one PKCE exc
     })
     assert.equal(invalid.status(), 422, JSON.stringify(invalid.body()))
     assert.include(JSON.stringify(invalid.body()), 'fullName')
-    assert.lengthOf(await db.from('users').where('email', email), 0)
+    assert.lengthOf(await db.from(User.table).where('email', email), 0)
   }
 
   const completed = await client.post('/api/v1/auth/oauth/registration').json({
