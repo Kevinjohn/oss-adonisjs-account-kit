@@ -16,7 +16,7 @@ import { parseSetupChoices } from './parse.js'
 import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
 import { createActionUrls } from '../notifications.js'
 import { stripSourceComments } from './source_text.js'
-import { selectedSessionEnvironment } from './session_env.js'
+import { resolveSelectedEnvironment, selectedSessionEnvironment } from './session_env.js'
 import {
   defaultExpression,
   defaultImportName,
@@ -24,8 +24,10 @@ import {
   exactCall,
   exportedObject,
   hasUnsafeObjectEntries,
+  hasUnsafeBindingReferences,
   importedName,
   parseSetupSource,
+  safeEnvGetter,
   topLevelConfig,
   walk,
   type SetupSource,
@@ -940,8 +942,32 @@ async function planRouteImport(
     return
   }
   let directMount = false
+  const mountImports = source.file.statements
+    .filter(source.ts.isImportDeclaration)
+    .filter(
+      (node) =>
+        source.ts.isStringLiteral(node.moduleSpecifier) &&
+        node.moduleSpecifier.text === 'adonisjs-account-kit/http' &&
+        !node.importClause?.isTypeOnly
+    )
+  const namedMounts = mountImports.flatMap((node) => {
+    const bindings = node.importClause?.namedBindings
+    return bindings && source.ts.isNamedImports(bindings)
+      ? bindings.elements.filter(
+          (element) =>
+            !element.isTypeOnly &&
+            (element.propertyName?.text ?? element.name.text) === 'registerManagedRoutes'
+        )
+      : []
+  })
+  const namespaceMounts = mountImports.flatMap((node) => {
+    const bindings = node.importClause?.namedBindings
+    return bindings && source.ts.isNamespaceImport(bindings) ? [bindings.name.text] : []
+  })
   const mountBinding = importedName(source, 'adonisjs-account-kit/http', 'registerManagedRoutes')
-  let unsupportedMount = false
+  let unsupportedMount =
+    namedMounts.length > 1 ||
+    namespaceMounts.some((name) => hasUnsafeBindingReferences(source, name, () => false))
   walk(source, (node) => {
     if (mountBinding && source.ts.isIdentifier(node) && node.text === mountBinding) {
       const parent = node.parent
@@ -1313,10 +1339,21 @@ async function shieldCsrfState(text: string): Promise<'true' | 'false' | 'dynami
   } catch {
     return 'missing'
   }
-  const object = exportedObject(
-    source,
-    importedName(source, '@adonisjs/shield', 'defineConfig') ?? '__unbound_define_config__'
-  )
+  const shieldFactory = importedName(source, '@adonisjs/shield', 'defineConfig')
+  const target = defaultExpression(source)
+  const expression = target?.expression
+  const object =
+    expression && source.ts.isObjectLiteralExpression(expression)
+      ? expression
+      : shieldFactory &&
+          expression &&
+          source.ts.isCallExpression(expression) &&
+          source.ts.isIdentifier(expression.expression) &&
+          expression.expression.text === shieldFactory &&
+          expression.arguments.length === 1 &&
+          source.ts.isObjectLiteralExpression(expression.arguments[0])
+        ? expression.arguments[0]
+        : null
   const csrf = object && directProperty(source, object, 'csrf')
   if (!csrf || !source.ts.isObjectLiteralExpression(csrf.initializer)) return 'missing'
   const enabled = directProperty(source, csrf.initializer, 'enabled')
@@ -1324,6 +1361,65 @@ async function shieldCsrfState(text: string): Promise<'true' | 'false' | 'dynami
   if (enabled.initializer.kind === source.ts.SyntaxKind.TrueKeyword) return 'true'
   if (enabled.initializer.kind === source.ts.SyntaxKind.FalseKeyword) return 'false'
   return 'dynamic'
+}
+
+async function mailerSelectionState(
+  text: string,
+  root: string,
+  transportEnv: string | null
+): Promise<'missing' | 'unresolved' | 'present'> {
+  let source: SetupSource
+  try {
+    source = await parseSetupSource(text)
+  } catch {
+    return 'unresolved'
+  }
+  const { ts } = source
+  const target = defaultExpression(source)?.expression
+  const factory = importedName(source, '@adonisjs/mail', 'defineConfig')
+  const object =
+    target && ts.isObjectLiteralExpression(target)
+      ? target
+      : factory &&
+          target &&
+          ts.isCallExpression(target) &&
+          ts.isIdentifier(target.expression) &&
+          target.expression.text === factory &&
+          target.arguments.length === 1 &&
+          ts.isObjectLiteralExpression(target.arguments[0])
+        ? target.arguments[0]
+        : null
+  if (!object || hasUnsafeObjectEntries(source, object)) return 'unresolved'
+  const mailers = directProperty(source, object, 'mailers')?.initializer
+  if (!mailers || !ts.isObjectLiteralExpression(mailers) || hasUnsafeObjectEntries(source, mailers))
+    return 'unresolved'
+  if (mailers.properties.length === 0) return 'missing'
+  const selector = directProperty(source, object, 'default')?.initializer
+  let selected: string | null = null
+  if (selector && ts.isStringLiteral(selector)) selected = selector.text
+  else if (selector && transportEnv) {
+    const env = defaultImportName(source, '#start/env')
+    if (!env || !safeEnvGetter(source, env) || !exactCall(source, selector, env, 'get'))
+      return 'unresolved'
+    const args = selector.arguments
+    if (
+      args.length < 1 ||
+      args.length > 2 ||
+      !ts.isStringLiteral(args[0]) ||
+      args[0].text !== transportEnv ||
+      (args.length === 2 && !ts.isStringLiteral(args[1]))
+    )
+      return 'unresolved'
+    try {
+      selected =
+        (await resolveSelectedEnvironment(root, transportEnv)) ??
+        (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+    } catch {
+      return 'unresolved'
+    }
+  }
+  if (!selected) return 'unresolved'
+  return directProperty(source, mailers, selected) ? 'present' : 'missing'
 }
 
 async function limiterConfigurationState(
@@ -1348,7 +1444,8 @@ async function limiterConfigurationState(
   if (source.ts.isStringLiteral(selected)) name = selected.text
   else {
     const env = defaultImportName(source, '#start/env')
-    if (!env || !exactCall(source, selected, env, 'get')) return 'unresolved'
+    if (!env || !exactCall(source, selected, env, 'get') || !safeEnvGetter(source, env))
+      return 'unresolved'
     const args = selected.arguments
     if (
       args.length < 1 ||
@@ -1375,6 +1472,17 @@ async function limiterConfigurationState(
     !source.ts.isIdentifier(factory.expression.expression) ||
     factory.expression.expression.text !== storesName ||
     !['database', 'memory', 'redis'].includes(factory.expression.name.text)
+  )
+    return 'invalid'
+  if (
+    hasUnsafeBindingReferences(source, storesName, (call) => {
+      if (!source.ts.isPropertyAccessExpression(call.expression)) return false
+      return (
+        ['database', 'memory', 'redis'].includes(call.expression.name.text) &&
+        call.getStart(source.file) > stores.getStart(source.file) &&
+        call.getEnd() < stores.getEnd()
+      )
+    })
   )
     return 'invalid'
   return 'valid'
@@ -1434,7 +1542,12 @@ async function nativeSessionConfiguration(
   if (ts.isStringLiteral(store.initializer)) selectedName = store.initializer.text
   else {
     const envBinding = defaultImportName(source, '#start/env')
-    if (!envBinding || !exactCall(source, store.initializer, envBinding, 'get')) return null
+    if (
+      !envBinding ||
+      !exactCall(source, store.initializer, envBinding, 'get') ||
+      !safeEnvGetter(source, envBinding)
+    )
+      return null
     const args = store.initializer.arguments
     if (
       args.length < 1 ||
@@ -1502,7 +1615,7 @@ async function selectedSessionDiagnostic(
   const source = await parseSetupSource(text)
   const object = exportedObject(
     source,
-    importedName(source, '@adonisjs/session', 'defineConfig') ?? '__unbound_define_config__'
+    importedName(source, '@adonisjs/session', 'defineConfig') ?? undefined
   )
   const store = object && directProperty(source, object, 'store')
   const stores = object && directProperty(source, object, 'stores')
@@ -1511,6 +1624,7 @@ async function selectedSessionDiagnostic(
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
   else if (
     defaultImportName(source, '#start/env') &&
+    safeEnvGetter(source, defaultImportName(source, '#start/env')!) &&
     exactCall(source, store.initializer, defaultImportName(source, '#start/env')!, 'get') &&
     store.initializer.arguments.length >= 1 &&
     source.ts.isStringLiteral(store.initializer.arguments[0])
@@ -1695,6 +1809,32 @@ export async function planSetup(
     options.retirementImpact ?? null,
     options.retirementMaintenanceWindow ?? false
   )
+  if (
+    hasEmailFlow(choices) &&
+    choices.mail.integration === 'adonisjs-mail' &&
+    state.files['config/mail.ts']
+  ) {
+    const selection = await mailerSelectionState(
+      state.files['config/mail.ts'],
+      state.root,
+      choices.mail.transportEnv
+    )
+    if (selection === 'missing')
+      diagnostic(
+        diagnostics,
+        'config/mail.ts',
+        'Selected Mail mailer is absent from the configured mailers map'
+      )
+    else
+      diagnostic(
+        diagnostics,
+        'config/mail.ts',
+        selection === 'unresolved'
+          ? 'Confirm the selected Mail mailer and its transport configuration manually before readiness'
+          : 'Verify the selected Mail transport delivers messages with the deployed configuration before readiness',
+        'action'
+      )
+  }
   if (
     choices.user.adapter === 'lucid' &&
     /^#models\/[A-Za-z_][A-Za-z0-9_/]*$/.test(choices.user.model) &&

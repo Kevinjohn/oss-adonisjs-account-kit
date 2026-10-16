@@ -1140,6 +1140,19 @@ export default class User extends BaseModel { static table = 'users'; static '\u
           ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
         )
       )
+      for (const routes of [
+        "import * as account from 'adonisjs-account-kit/http'\nconst mount = account.registerManagedRoutes\nmount(router, {})\n",
+        "import { registerManagedRoutes as first, registerManagedRoutes as second } from 'adonisjs-account-kit/http'\nsecond(router, {})\n",
+      ]) {
+        state.files['start/routes.ts'] = routes
+        const hidden = await planSetup(choices, state)
+        assert.isTrue(
+          hidden.diagnostics.some(
+            ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+          )
+        )
+        assert.isFalse(hidden.changes.some(({ path }) => path === 'start/routes.ts'))
+      }
     })
   })
 
@@ -1161,6 +1174,93 @@ export default class User extends BaseModel { static table = 'users'; static '\u
             message.includes('application-owned routes')
         )
       )
+    })
+  })
+
+  test('mutated Limiter and environment bindings cannot certify selected factories', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nstores.memory = () => { throw new Error('broken') }\nexport default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })"
+      const mutatedFactory = await planSetup(choices, state)
+      assert.isTrue(
+        mutatedFactory.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+      state.files['config/limiter.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/limiter'\nenv.get = () => 'unknown'\nexport default defineConfig({ default: env.get('LIMITER_STORE', 'memory'), stores: { memory: stores.memory({}) } })"
+      const mutatedEnv = await planSetup(choices, state)
+      assert.isTrue(
+        mutatedEnv.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+      state.files['config/session.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nenv.get = () => 'cookie'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER', 'database'), stores: { database: stores.database() } })\nexport default sessionConfig"
+      const mutatedSession = await planSetup(choices, state)
+      assert.isTrue(
+        mutatedSession.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('local Shield wrapper cannot attest CSRF without the framework import', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/shield.ts'] =
+        'const __unbound_define_config__ = (config: any) => ({ csrf: { enabled: false } })\nexport default __unbound_define_config__({ csrf: { enabled: true } })'
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/shield.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('maintained Mail requires a selected mailer and remains unverified statically', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.mail.integration = 'adonisjs-mail'
+      choices.mail.transportEnv = 'MAIL_MAILER'
+      const previous = process.env.MAIL_MAILER
+      process.env.MAIL_MAILER = 'smtp'
+      try {
+        state.files['config/mail.ts'] =
+          "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: {} })"
+        const empty = await planSetup(choices, state)
+        assert.isTrue(
+          empty.diagnostics.some(
+            ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
+          )
+        )
+        state.files['config/mail.ts'] =
+          "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: { other: customTransport() } })"
+        const wrong = await planSetup(choices, state)
+        assert.isTrue(
+          wrong.diagnostics.some(
+            ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
+          )
+        )
+        state.files['config/mail.ts'] =
+          "import { defineConfig } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: { smtp: customTransport() } })"
+        const selected = await planSetup(choices, state)
+        assert.isTrue(
+          selected.diagnostics.some(
+            ({ field, severity }) => field === 'config/mail.ts' && severity === 'action'
+          )
+        )
+        assert.isFalse(selected.readiness.externalConfigured)
+      } finally {
+        if (previous === undefined) delete process.env.MAIL_MAILER
+        else process.env.MAIL_MAILER = previous
+      }
     })
   })
 })
