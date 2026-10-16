@@ -150,7 +150,7 @@ export async function completeVerification(
           current.unverifiedEmail === proof.email &&
           current.email === proof.current_email
       )
-      await deps.config.users.setPassword(user.id, input.password!, trx)
+      await deps.config.users.setPassword(user.id, input.password, trx)
       await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
       await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
       const reloaded = await deps.config.users.findById(user.id, trx)
