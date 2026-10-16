@@ -65,15 +65,6 @@ async function activateClaim(
 }
 
 /** Consume email ownership proof under the user lock. Only a matched provider can be confirmed. */
-export async function completeActivation(
-  trx: Trx,
-  config: ResolvedConfig,
-  token: string,
-  confirmedSocialIdentityId?: number
-): Promise<UserId> {
-  return completeActivationByHash(trx, config, hashToken(token), confirmedSocialIdentityId)
-}
-
 export async function completeActivationByHash(
   trx: Trx,
   config: ResolvedConfig,
