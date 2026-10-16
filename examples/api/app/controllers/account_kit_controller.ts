@@ -125,7 +125,7 @@ export default class AccountKitController {
       return response.created({
         id: user.id,
         email: user.email,
-        verified: Boolean(user.emailVerifiedAt),
+        verified: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
       })
     } catch (error) {
       if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)
@@ -189,7 +189,10 @@ export default class AccountKitController {
       const user = await (
         await this.kit()
       ).emailPasswordManagement.completeEmailChange({ token: params.token })
-      return response.ok({ email: user.email, verified: Boolean(user.emailVerifiedAt) })
+      return response.ok({
+        email: user.email,
+        verified: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
+      })
     } catch (error) {
       if (error instanceof InvalidTokenError) return response.unprocessableEntity(invalidLink)
       throw error

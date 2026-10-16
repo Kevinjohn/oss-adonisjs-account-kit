@@ -7,6 +7,7 @@ export type { UsersAdapterMetadata } from '../src/types.js'
 type ModelRow = {
   id: UserId
   email: string
+  unverifiedEmail: string | null
   password: string | null
   emailVerifiedAt: DateTime | null
   useTransaction(trx: Trx): unknown
@@ -32,8 +33,8 @@ export interface LucidAdapterOptions<Model extends ModelRow = ModelRow> {
 
 type LucidCreateAttrs = {
   email: string
-  password: string
-  emailVerifiedAt: DateTime
+  unverifiedEmail: string | null
+  password: string | null
   registrationData?: unknown
 }
 
@@ -54,6 +55,7 @@ function toAccountUser(user: ModelRow): AccountUser {
   return {
     id: user.id,
     email: user.email,
+    unverifiedEmail: user.unverifiedEmail,
     hasPassword: user.password !== null,
     emailVerifiedAt: user.emailVerifiedAt,
   }
@@ -66,18 +68,21 @@ function query(User: AccountModel, trx?: Trx): Query {
 
 function assertSafeRegistrationMapping(
   user: ModelRow,
-  before: Pick<ModelRow, 'id' | 'email' | 'password' | 'emailVerifiedAt'> & { role: unknown }
+  before: Pick<ModelRow, 'id' | 'email' | 'unverifiedEmail' | 'password' | 'emailVerifiedAt'> & {
+    role: unknown
+  }
 ): void {
   const values = user as unknown as Record<string, unknown>
   if (
     user.id !== before.id ||
     user.email !== before.email ||
+    user.unverifiedEmail !== before.unverifiedEmail ||
     user.password !== before.password ||
     user.emailVerifiedAt !== before.emailVerifiedAt ||
     values.role !== before.role
   ) {
     throw new Error(
-      'account_kit: mapRegistrationData cannot assign id, email, password, emailVerifiedAt, or role'
+      'account_kit: mapRegistrationData cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role'
     )
   }
 }
@@ -112,6 +117,18 @@ export function createLucidAdapter<Model extends ModelRow>(
       throw new Error(
         'account_kit: Lucid user models must use the id attribute mapped to the id column'
       )
+    }
+    for (const [attribute, column] of [
+      ['email', 'email'],
+      ['unverifiedEmail', 'unverified_email'],
+      ['password', 'password'],
+      ['emailVerifiedAt', 'email_verified_at'],
+    ] as const) {
+      if (User.$getColumn(attribute)?.columnName !== column) {
+        throw new Error(
+          `account_kit: Lucid user models must use the ${attribute} attribute mapped to the ${column} column`
+        )
+      }
     }
     if (!User.table) throw new Error('account_kit: Lucid user model must define a table')
 
@@ -169,6 +186,7 @@ export function createLucidAdapter<Model extends ModelRow>(
       const before = {
         id: user.id,
         email: user.email,
+        unverifiedEmail: user.unverifiedEmail,
         password: user.password,
         emailVerifiedAt: user.emailVerifiedAt,
         role: (user as unknown as Record<string, unknown>).role,
@@ -183,8 +201,10 @@ export function createLucidAdapter<Model extends ModelRow>(
       }
 
       user.email = normalizeEmail(attrs.email)
+      user.unverifiedEmail =
+        attrs.unverifiedEmail === null ? null : normalizeEmail(attrs.unverifiedEmail)
       user.password = attrs.password
-      user.emailVerifiedAt = attrs.emailVerifiedAt
+      user.emailVerifiedAt = null
       user.useTransaction(trx)
       await user.save()
       return toAccountUser(user)
@@ -202,8 +222,15 @@ export function createLucidAdapter<Model extends ModelRow>(
       })
     },
 
+    async setUnverifiedEmail(id, email, trx) {
+      await updateUser(id, trx, (user) => {
+        user.unverifiedEmail = email === null ? null : normalizeEmail(email)
+      })
+    },
+
     async markEmailVerified(id, at, trx) {
       await updateUser(id, trx, (user) => {
+        user.unverifiedEmail = null
         user.emailVerifiedAt = at
       })
     },

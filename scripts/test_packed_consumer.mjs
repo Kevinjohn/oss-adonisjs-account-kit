@@ -42,7 +42,7 @@ const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL
 const baselineInput = option('baseline-tarball', process.env.BASELINE_TARBALL)
 const candidateRevision = option('candidate-revision', process.env.CANDIDATE_REVISION)
 const baselineRevision = option('baseline-revision', process.env.BASELINE_REVISION)
-const supportedModes = new Set(['fresh', 'upgrade', 'both', 'minimum'])
+const supportedModes = new Set(['fresh', 'upgrade', 'both', 'minimum', 'service-only'])
 
 if (!supportedModes.has(mode)) throw new Error(`Unknown mode: ${mode}`)
 if (prepareOnly && mode !== 'fresh') {
@@ -455,13 +455,20 @@ async function runUpgrade(candidate, baseline, runName) {
   const resetMigration = newlyGenerated.find((file) =>
     file.endsWith('_account_kit_create_password_reset_tokens.ts')
   )
+  const expectedSuffixes = [
+    '_account_kit_create_password_reset_tokens.ts',
+    '_account_kit_create_account_transaction_lock.ts',
+    '_account_kit_evolve_identity_contract.ts',
+    '_account_kit_create_social_identities.ts',
+    '_account_kit_retire_account_email_changes.ts',
+  ]
   if (
-    newlyGenerated.length !== 2 ||
+    newlyGenerated.length !== expectedSuffixes.length ||
     !resetMigration ||
-    !newlyGenerated.some((file) => file.endsWith('_account_kit_create_account_transaction_lock.ts'))
+    expectedSuffixes.some((suffix) => !newlyGenerated.some((file) => file.endsWith(suffix)))
   ) {
     throw new Error(
-      `Upgrade should add only the reset-token and transaction-lock migrations; added: ${newlyGenerated.join(', ')}`
+      `Upgrade should add only the five expected account migrations; added: ${newlyGenerated.join(', ')}`
     )
   }
   // Rehearse the documented application-owned table rename without editing applied migrations.
@@ -519,6 +526,119 @@ async function runMinimumCompatibility(candidate, runName) {
   return { appRoot, installed, scenario: 'minimal exact-floor runtime semantics' }
 }
 
+async function runServiceOnly(candidate, runName) {
+  const appRoot = join(tempRoot, runName)
+  await mkdir(appRoot)
+  const manifest = {
+    name: 'account-kit-service-only-consumer',
+    private: true,
+    type: 'module',
+    dependencies: {
+      '@adonisjs/core': '^7.0.0',
+      '@adonisjs/lucid': '^22.4.2',
+      '@adonisjs/limiter': '^3.0.0',
+      'adonisjs-account-kit': `file:${resolve(candidate)}`,
+      'luxon': '^3.0.0',
+      [database === 'sqlite' ? 'better-sqlite3' : 'pg']:
+        database === 'sqlite' ? '^12.11.1' : '^8.23.1',
+    },
+    scripts: { build: 'tsc', start: 'node build/service.js' },
+    devDependencies: {
+      '@adonisjs/assembler': '^8.0.0',
+      '@adonisjs/redis': '^9.0.0',
+      '@types/json-schema': '^7.0.15',
+      '@types/luxon': '^3.7.5',
+      '@types/node': '^24.10.0',
+      '@types/picomatch': '^4.0.0',
+      '@types/yargs-parser': '^21.0.3',
+      '@vinejs/vine': '^4.0.0',
+      'json-schema': '^0.4.0',
+      'typescript': '~6.0.3',
+    },
+  }
+  await writeFile(join(appRoot, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
+  await writeFile(join(appRoot, 'pnpm-workspace.yaml'), 'allowBuilds:\n  better-sqlite3: true\n')
+  await writeFile(
+    join(appRoot, 'tsconfig.json'),
+    `${JSON.stringify({ compilerOptions: { module: 'NodeNext', moduleResolution: 'NodeNext', target: 'ES2022', strict: true, skipLibCheck: false, outDir: 'build' }, files: ['service.ts'] }, null, 2)}\n`
+  )
+  await writeFile(
+    join(appRoot, 'service.ts'),
+    `import { createRequire } from 'node:module'
+import { IgnitorFactory } from '@adonisjs/core/factories'
+import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
+import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
+import { AccountKit, defineConfig, type UsersAdapter } from 'adonisjs-account-kit'
+
+const require = createRequire(import.meta.url)
+for (const name of ['@adonisjs/auth', '@adonisjs/session', '@adonisjs/shield', '@tuyau/core', '@adonisjs/mail', '@adonisjs/ally']) {
+  try { require.resolve(name); throw new Error('Backend-only dependency installed: ' + name) }
+  catch (error) { if ((error as { code?: string }).code !== 'MODULE_NOT_FOUND') throw error }
+}
+const connection = ${
+      database === 'sqlite'
+        ? `{ client: 'better-sqlite3' as const, connection: { filename: './service.sqlite' }, useNullAsDefault: true }`
+        : `{ client: 'pg' as const, connection: { host: process.env.DB_HOST ?? '127.0.0.1', port: Number(process.env.DB_PORT ?? '55432'), user: process.env.DB_USER ?? 'account_kit', password: process.env.DB_PASSWORD ?? '', database: process.env.DB_DATABASE ?? 'account_kit_consumer' } }`
+    }
+const ignitor = new IgnitorFactory().withCoreProviders().withCoreConfig().merge({
+  rcFileContents: { providers: [
+    () => import('@adonisjs/lucid/database_provider'),
+    () => import('@adonisjs/limiter/limiter_provider'),
+    () => import('adonisjs-account-kit/providers/account_kit_provider'),
+  ] },
+  config: {
+    database: defineDatabaseConfig({ connection: 'service', connections: { service: connection } }),
+    limiter: defineLimiterConfig({ default: 'memory', stores: { memory: stores.memory({}) } }),
+  },
+}).create(new URL('../', import.meta.url))
+const app = ignitor.createApp('console')
+try {
+  await app.init()
+  await app.boot()
+  const db = await app.container.make('lucid.db')
+  const result = await db.connection().rawQuery('select 1 as value').exec()
+  if (!result) throw new Error('Database did not start')
+  const users = {
+    findById: async () => ({ id: 1, email: 'active@example.test', unverifiedEmail: null, hasPassword: false, emailVerifiedAt: null }),
+    markEmailVerified: async () => {},
+  } as unknown as UsersAdapter
+  app.config.set('account_kit', defineConfig({
+    enabled: ['emailVerification'],
+    limiterSecret: 'service_only_consumer_secret_32_bytes',
+    users,
+    urls: { emailVerification: (token) => 'https://example.test/activate/' + token },
+    notify: { accountActivationProvision: async () => {} },
+  }))
+  const service: AccountKit = await app.container.make(AccountKit)
+  if (await service.emailVerification.send({ userId: 1 }) !== 'already_verified') throw new Error('Service did not boot')
+  console.log('Compiled service-only startup passed; backend-only dependencies absent')
+} finally {
+  await ignitor.terminate()
+}
+`
+  )
+  run('pnpm', ['install', '--no-frozen-lockfile'], appRoot)
+  const installed = await realpath(join(appRoot, 'node_modules/adonisjs-account-kit'))
+  if (!installed.startsWith(`${await realpath(join(appRoot, 'node_modules'))}/`)) {
+    throw new Error('Service-only package resolved outside isolated consumer')
+  }
+  run('pnpm', ['run', 'build'], appRoot)
+  run('pnpm', ['run', 'start'], appRoot, databaseEnvironment(appRoot))
+  return {
+    appRoot,
+    installed,
+    scenario: 'isolated service-only compile and startup without backend-only dependencies',
+    absentDependencies: [
+      '@adonisjs/auth',
+      '@adonisjs/session',
+      '@adonisjs/shield',
+      '@tuyau/core',
+      '@adonisjs/mail',
+      '@adonisjs/ally',
+    ],
+  }
+}
+
 const evidence = {
   revision: run('git', ['rev-parse', 'HEAD'], repoRoot).trim(),
   sourceChanges: run('git', ['status', '--short'], repoRoot).trim(),
@@ -551,6 +671,9 @@ try {
   }
   if (mode === 'minimum') {
     evidence.runs.push(await runMinimumCompatibility(candidate, `minimum-${database}`))
+  }
+  if (mode === 'service-only') {
+    evidence.runs.push(await runServiceOnly(candidate, `service-only-${database}`))
   }
   if (mode === 'upgrade' || mode === 'both') {
     const baseline = resolve(baselineInput)

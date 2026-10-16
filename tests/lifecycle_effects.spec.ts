@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { DeliveryError, PostCommitError } from '../src/errors.js'
+import { DeliveryError, InvalidTokenError, PostCommitError } from '../src/errors.js'
 import { postCommit } from '../src/effects.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import type { CredentialChangeContext, LifecycleEvent } from '../src/types.js'
@@ -148,9 +148,9 @@ test.group('credential and lifecycle effects', (group) => {
     const user = await insertUser(kit)
     const token = generateToken()
     await kit.db.table('password_reset_tokens').insert({
-      user_id: user.id,
+      tokenable_id: user.id,
       email: user.email,
-      token_hash: hashToken(token),
+      hash: hashToken(token),
       expires_at: DateTime.utc().plus({ hours: 1 }).toISO(),
       created_at: DateTime.utc().toISO(),
     })
@@ -261,19 +261,16 @@ test.group('credential and lifecycle effects', (group) => {
 
   test('verification emits once for the actual change, never on repeat', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
-    const token = kit.encryption.encrypt(
-      { userId: user.id, email: user.email },
-      '1h',
-      'account-kit:verify-email'
-    )
     const events: LifecycleEvent[] = []
-    const { account } = makeService(kit, {
+    const { account, recorder } = makeService(kit, {
       onLifecycleEvent: async (event) => {
         events.push(event)
       },
     })
+    await account.emailVerification.send({ userId: user.id })
+    const token = tokenFrom(recorder.calls[0].args[1])
     assert.equal(await account.emailVerification.complete({ token }), 'verified')
-    assert.equal(await account.emailVerification.complete({ token }), 'already_verified')
+    await assert.rejects(() => account.emailVerification.complete({ token }), InvalidTokenError)
     assert.deepEqual(
       events.map((event) => event.type),
       ['verification.completed']
@@ -303,7 +300,7 @@ test.group('credential and lifecycle effects', (group) => {
       () => account.emailPasswordManagement.completeEmailChange({ token }),
       /revoke failed/
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     const unchanged = await kit.db.from('users').where('id', user.id).first()
     assert.equal(unchanged.email, user.email)
     fail = false
@@ -311,7 +308,7 @@ test.group('credential and lifecycle effects', (group) => {
     assert.equal(changed.email, 'next@example.test')
     assert.equal(contexts.at(-1)?.operation, 'email_change')
     assert.equal(contexts.at(-1)?.userId, user.id)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('email request listener failure leaves a usable link and same-email proof emits no event', async ({
@@ -352,7 +349,7 @@ test.group('credential and lifecycle effects', (group) => {
       recorder.calls.map((call) => call.method),
       ['emailChangeProvision']
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 
   test('reset notice still runs when legacy callback and lifecycle listener fail', async ({
@@ -361,9 +358,9 @@ test.group('credential and lifecycle effects', (group) => {
     const user = await insertUser(kit)
     const token = generateToken()
     await kit.db.table('password_reset_tokens').insert({
-      user_id: user.id,
+      tokenable_id: user.id,
       email: user.email,
-      token_hash: hashToken(token),
+      hash: hashToken(token),
       expires_at: DateTime.utc().plus({ hours: 1 }).toISO(),
       created_at: DateTime.utc().toISO(),
     })
@@ -443,7 +440,7 @@ test.group('credential and lifecycle effects', (group) => {
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
     const changed = await kit.db.from('users').where('id', user.id).first()
     assert.equal(changed.email, 'next@example.test')
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('SQLite retry rolls back the first revocation and emits one committed event and notice', async ({

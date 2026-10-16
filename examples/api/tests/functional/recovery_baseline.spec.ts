@@ -33,8 +33,8 @@ test('stage-3 recovery baseline persists through real HTTP requests', async ({
   })
   assert.equal(reset.status(), 202)
   await user.refresh()
-  assert.isTrue(await hash.verify(user.password, 'BaselineReset123!'))
-  assert.isNotNull(user.emailVerifiedAt)
+  assert.isTrue(await hash.verify(user.password!, 'BaselineReset123!'))
+  assert.isNull(user.unverifiedEmail)
   assert.equal(
     (
       await client

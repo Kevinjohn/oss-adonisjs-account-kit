@@ -76,7 +76,7 @@ export async function resendInvitation(
 ): Promise<Invitation> {
   requireInvitationId(input.invitationId)
   const actor = await requireActor(deps.config, input.actorId)
-  const token = generateToken()
+  const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
   // Both policy reads receive a transaction. The first commits before the limiter touches its
   // store; the second protects the row through rotation and catches intervening policy changes.
@@ -192,16 +192,19 @@ export async function acceptInvitation(
         const user = await deps.config.users.create(
           {
             email: row.email,
+            unverifiedEmail: null,
             password: input.password,
-            emailVerifiedAt: now,
             registrationData: input.registrationData,
           },
           trx
         )
-        await deps.config.onInvitationAccepted(user, toInvitation(row), trx)
+        await deps.config.users.markEmailVerified(user.id, now, trx)
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
-        return { user: reloaded, invitationId: row.id }
+        await deps.config.onInvitationAccepted(reloaded, toInvitation(row), trx)
+        const accepted = await deps.config.users.findById(user.id, trx)
+        if (!accepted) throw new InvalidTokenError()
+        return { user: accepted, invitationId: row.id }
       })
     ))
   } catch (error) {
@@ -323,7 +326,7 @@ export async function sendInvitation(
     deps.config.limiterNamespace
   )
 
-  const token = generateToken()
+  const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
   let invitation: Invitation
   let fault: PostCommitError | undefined

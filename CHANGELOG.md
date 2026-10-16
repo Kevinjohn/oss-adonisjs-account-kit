@@ -6,6 +6,12 @@ This project has no published releases yet. The current candidate remains versio
 
 ### Added
 
+- `users.unverified_email` (column) records a pending address; active state follows the confirmed/pending pair.
+- `email_verification_tokens` (table) stores hashed, expiring, single-use activation and email-change proofs.
+- `social_identities` (table) stores unique provider subjects and user-linked identity metadata without credentials.
+- `tokenSecretLength` (config key) defaults to 40 bytes.
+- An isolated packed service-only consumer check covers compilation and startup on both databases without backend-only dependencies.
+
 - Password reset, email verification, invitations, password changes, and verified email changes with
   package-owned transactions and application callbacks.
 - A maintained lazy Lucid adapter that derives the model table, validates the physical `id` key
@@ -19,6 +25,23 @@ This project has no published releases yet. The current candidate remains versio
   automatically.
 
 ### Changed
+
+- `UsersAdapter.create({ email, password, emailVerifiedAt, registrationData? })` → `UsersAdapter.create({ email, unverifiedEmail, password, registrationData? })` (export contract).
+- `AccountUser.emailVerifiedAt` authorization state → `AccountUser.unverifiedEmail` confirmed/pending authorization state (export contract); the timestamp remains audit metadata.
+- `UsersAdapter.setUnverifiedEmail` (export contract) is required for pending-address writes.
+- `UsersAdapter.markEmailVerified` (export contract) now clears `unverifiedEmail` while recording the audit timestamp.
+- Email-verification-only configuration no longer requires `UsersAdapter.setEmail` (adapter capability contract).
+- `PruneCounts.emailChanges` → `PruneCounts.emailVerifications` (export property).
+- `emailVerification.complete` return type `'verified' | 'already_verified'` → `'verified'` (export contract); replay now rejects an invalid proof.
+- `users.password NOT NULL` → `users.password NULL` (column), allowing no local password.
+- `password_reset_tokens.user_id` → `password_reset_tokens.tokenable_id` (column).
+- `password_reset_tokens.token_hash` → `password_reset_tokens.hash` (column).
+- `account_email_changes` → `email_verification_tokens` (table) for pending email-change proofs.
+- Repeatable encrypted activation link → stored, hashed, one-use activation proof (service contract).
+- An inactive account's email change now updates both confirmed and pending addresses and invalidates the prior proof (service contract).
+- Password reset and password change now cancel a distinct pending email change in the same transaction (service contract).
+- Inactive-account email changes now run the configured credential revocation hook when the confirmed address changes, transactionally or after commit (service contract).
+- Activation completion still delivers `verification.completed` after a committed transaction cleanup failure, then reports the committed fault.
 
 - `recovery (capability)` → `passwordReset` (config key).
 - `verification (capability)` → `emailVerification` (config key).

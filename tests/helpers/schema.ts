@@ -12,6 +12,8 @@ export async function resetSchema(
   const usersTable = options.usersTable ?? 'users'
   const schema = kit.db.connection().schema
   await schema.dropTableIfExists('account_transaction_lock')
+  await schema.dropTableIfExists('email_verification_tokens')
+  await schema.dropTableIfExists('social_identities')
   await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
   await schema.dropTableIfExists('password_reset_tokens')
@@ -55,9 +57,10 @@ export async function resetSchema(
 }
 
 const dataTables = [
-  'account_email_changes',
   'account_invitations',
   'password_reset_tokens',
+  'email_verification_tokens',
+  'social_identities',
   'users',
 ]
 

@@ -119,7 +119,7 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
   }
 }
 
-type TokenTable = 'password_reset_tokens' | 'account_email_changes' | 'account_invitations'
+type TokenTable = 'password_reset_tokens' | 'email_verification_tokens' | 'account_invitations'
 
 /** Delete one unexpired token row and return it, or null when no live row matched. */
 export async function consumeToken<Row>(
@@ -128,8 +128,9 @@ export async function consumeToken<Row>(
   tokenHash: string,
   now: string
 ): Promise<Row | null> {
+  const hashColumn = table === 'account_invitations' ? 'token_hash' : 'hash'
   const result: unknown = await trx
-    .rawQuery(`delete from ${table} where token_hash = ? and expires_at > ? returning *`, [
+    .rawQuery(`delete from ${table} where ${hashColumn} = ? and expires_at > ? returning *`, [
       tokenHash,
       now,
     ])
@@ -144,20 +145,20 @@ export async function consumeToken<Row>(
  * before touching a token table, so the unlocked lookup only chooses the lock target; the
  * consuming delete then revalidates the live token.
  */
-export async function consumeUserToken<Row extends { user_id: UserId }>(
+export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
   trx: Trx,
   config: ResolvedConfig,
-  table: 'password_reset_tokens' | 'account_email_changes',
+  table: 'password_reset_tokens' | 'email_verification_tokens',
   token: string,
-  emailOf: (row: Row) => string
+  validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {
   const tokenHash = hashToken(token)
-  const candidate = await trx.from(table).select('user_id').where('token_hash', tokenHash).first()
+  const candidate = await trx.from(table).select('tokenable_id').where('hash', tokenHash).first()
   if (!candidate) throw new InvalidTokenError()
-  await lockUser(trx, config, candidate.user_id)
-  const user = await config.users.findById(candidate.user_id, trx)
+  await lockUser(trx, config, candidate.tokenable_id)
+  const user = await config.users.findById(candidate.tokenable_id, trx)
   const row = await consumeToken<Row>(trx, table, tokenHash, DateTime.utc().toISO())
-  if (!row || row.user_id !== candidate.user_id || !user || user.email !== emailOf(row))
+  if (!row || row.tokenable_id !== candidate.tokenable_id || !user || !validForUser(row, user))
     throw new InvalidTokenError()
   return { row, user }
 }

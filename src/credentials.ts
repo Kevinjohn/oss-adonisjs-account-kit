@@ -66,8 +66,10 @@ export async function changePassword(
     transaction(deps.db, async (trx) => {
       const actor = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
       await deps.config.users.setPassword(actor.id, input.newPassword, trx)
-      await trx.from('password_reset_tokens').where('user_id', actor.id).delete()
-      await trx.from('account_email_changes').where('user_id', actor.id).delete()
+      if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
+        await deps.config.users.setUnverifiedEmail(actor.id, null, trx)
+      await trx.from('password_reset_tokens').where('tokenable_id', actor.id).delete()
+      await trx.from('email_verification_tokens').where('tokenable_id', actor.id).delete()
       const reloaded = await deps.config.users.findById(actor.id, trx)
       if (!reloaded) throw new InvalidInputError('Unknown actor')
       await deps.config.onCredentialsChangedTransaction?.(
@@ -106,38 +108,77 @@ export async function requestEmailChange(
     deps.config.limiterNamespace
   )
 
-  const token = generateToken()
+  const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
-  const { value: actor, fault } = await settleCommitted(
-    transaction(deps.db, async (trx) => {
-      const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
-      if (newEmail === current.email) return null
-      if (await deps.config.users.findByEmail(newEmail, trx))
-        throw new EmailAlreadyRegisteredError()
+  let issued: { user: AccountUser; changedConfirmedEmail: boolean } | null
+  let fault: PostCommitError | undefined
+  try {
+    ;({ value: issued, fault } = await settleCommitted(
+      transaction(deps.db, async (trx) => {
+        const current = await confirmActor(deps.config, trx, input.actorId, input.currentPassword)
+        if (newEmail === current.email) {
+          if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email) {
+            await deps.config.users.setUnverifiedEmail(current.id, null, trx)
+            await trx.from('email_verification_tokens').where('tokenable_id', current.id).delete()
+          }
+          return null
+        }
+        if (await deps.config.users.findByEmail(newEmail, trx))
+          throw new EmailAlreadyRegisteredError()
 
-      const now = DateTime.utc()
-      await trx
-        .table('account_email_changes')
-        .insert({
-          user_id: current.id,
-          current_email: current.email,
-          new_email: newEmail,
-          token_hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.expiresIn.emailChange).toISO(),
-          created_at: now.toISO(),
-        })
-        .onConflict('user_id')
-        .merge(['current_email', 'new_email', 'token_hash', 'expires_at', 'created_at'])
-      return current
-    })
-  )
-  if (!actor) {
+        const now = DateTime.utc()
+        const inactive = current.unverifiedEmail === current.email
+        if (inactive) {
+          await deps.config.users.setEmail(current.id, newEmail, trx)
+          await trx.from('password_reset_tokens').where('tokenable_id', current.id).delete()
+        }
+        await deps.config.users.setUnverifiedEmail(current.id, newEmail, trx)
+        await trx
+          .table('email_verification_tokens')
+          .insert({
+            tokenable_id: current.id,
+            email: newEmail,
+            current_email: inactive ? newEmail : current.email,
+            purpose: 'email_change',
+            hash: hashToken(token),
+            expires_at: expiresAt(now, deps.config.expiresIn.emailChange).toISO(),
+            created_at: now.toISO(),
+          })
+          .onConflict('tokenable_id')
+          .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
+        if (inactive) {
+          const reloaded = await deps.config.users.findById(current.id, trx)
+          if (!reloaded) throw new InvalidInputError('Unknown actor')
+          await deps.config.onCredentialsChangedTransaction?.(
+            reloaded,
+            { operation: 'email_change', operationId, userId: current.id },
+            trx
+          )
+        }
+        const issuedUser = await deps.config.users.findById(current.id, trx)
+        if (!issuedUser) throw new InvalidInputError('Unknown actor')
+        return { user: issuedUser, changedConfirmedEmail: inactive }
+      })
+    ))
+  } catch (error) {
+    if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
+      throw new EmailAlreadyRegisteredError()
+    throw error
+  }
+  if (!issued) {
     if (fault) throw fault
     return
   }
 
+  const { user: actor, changedConfirmedEmail } = issued
+  const context = { operation: 'email_change' as const, operationId, userId: actor.id }
   await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
     postCommit('Email change follow-up failed', [
+      {
+        kind: 'observer',
+        run: () =>
+          changedConfirmedEmail ? deps.config.onCredentialsChanged?.(actor, context) : undefined,
+      },
       {
         kind: 'delivery',
         run: () =>
@@ -161,9 +202,10 @@ export async function requestEmailChange(
 }
 
 interface EmailChangeRow {
-  user_id: UserId
+  tokenable_id: UserId
+  email: string
   current_email: string
-  new_email: string
+  purpose: string
 }
 
 export async function completeEmailChange(
@@ -181,16 +223,19 @@ export async function completeEmailChange(
         const { row, user } = await consumeUserToken<EmailChangeRow>(
           trx,
           deps.config,
-          'account_email_changes',
+          'email_verification_tokens',
           input.token,
-          (candidate) => candidate.current_email
+          (candidate, current) =>
+            candidate.purpose === 'email_change' &&
+            candidate.email === current.unverifiedEmail &&
+            candidate.current_email === current.email
         )
-        if (await deps.config.users.findByEmail(row.new_email, trx))
-          throw new EmailAlreadyRegisteredError()
+        const colliding = await deps.config.users.findByEmail(row.email, trx)
+        if (colliding && colliding.id !== user.id) throw new EmailAlreadyRegisteredError()
 
-        await deps.config.users.setEmail(user.id, row.new_email, trx)
+        await deps.config.users.setEmail(user.id, row.email, trx)
         await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-        await trx.from('password_reset_tokens').where('user_id', user.id).delete()
+        await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
         await deps.config.onCredentialsChangedTransaction?.(
@@ -198,7 +243,7 @@ export async function completeEmailChange(
           { operation: 'email_change', operationId, userId: reloaded.id },
           trx
         )
-        return { user: reloaded, previousEmail: row.current_email }
+        return { user: reloaded, previousEmail: user.email }
       })
     ))
   } catch (error) {

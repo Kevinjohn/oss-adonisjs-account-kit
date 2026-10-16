@@ -30,12 +30,14 @@ function assertSameUser(
     {
       id: actual.id,
       email: actual.email,
+      unverifiedEmail: actual.unverifiedEmail,
       hasPassword: actual.hasPassword,
       emailVerifiedAt: actual.emailVerifiedAt?.toMillis() ?? null,
     },
     {
       id: expected.id,
       email: expected.email,
+      unverifiedEmail: expected.unverifiedEmail,
       hasPassword: expected.hasPassword,
       emailVerifiedAt: expected.emailVerifiedAt?.toMillis() ?? null,
     }
@@ -58,7 +60,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       {
         email: ` ${email.toUpperCase()} `,
         password,
-        emailVerifiedAt: verifiedAt,
+        unverifiedEmail: null,
         ...(fixture.registrationData !== undefined
           ? { registrationData: fixture.registrationData }
           : {}),
@@ -67,9 +69,10 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     )
     const read = await fixture.adapter.findByEmail(email.toUpperCase(), trx)
     assertSameUser(read, user)
+    await fixture.adapter.markEmailVerified(user.id, verifiedAt, trx)
     assert.equal(await fixture.adapter.verifyPassword(user.id, password, trx), true)
     assert.equal(await fixture.adapter.verifyPassword(user.id, 'incorrect-password', trx), false)
-    return user
+    return (await fixture.adapter.findById(user.id, trx))!
   })
 
   assert.equal(created.email, email, 'created addresses should be normalized')
@@ -91,7 +94,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
         {
           email: email.toUpperCase(),
           password,
-          emailVerifiedAt: verifiedAt,
+          unverifiedEmail: null,
           ...(fixture.registrationData !== undefined
             ? { registrationData: fixture.registrationData }
             : {}),
@@ -190,4 +193,65 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     )
     assert.equal(await fixture.adapter.verifyPassword(afterVerification.id, password, trx), false)
   })
+
+  const inactiveEmail = `${prefix}-inactive@example.test`
+  const inactive = await fixture.transaction((trx) =>
+    fixture.adapter.create(
+      {
+        email: ` ${inactiveEmail.toUpperCase()} `,
+        unverifiedEmail: ` ${inactiveEmail.toUpperCase()} `,
+        password: null,
+        ...(fixture.registrationData !== undefined
+          ? { registrationData: fixture.registrationData }
+          : {}),
+      },
+      trx
+    )
+  )
+  assert.equal(inactive.email, inactiveEmail)
+  assert.equal(inactive.unverifiedEmail, inactiveEmail)
+  assert.equal(inactive.hasPassword, false)
+  assert.equal(inactive.emailVerifiedAt, null)
+  assert.equal(await fixture.storedPassword(inactive.id), null)
+  assertSameUser(await fixture.adapter.findById(inactive.id), inactive)
+
+  const pendingEmail = `${prefix}-pending@example.test`
+  await assert.rejects(
+    fixture.transaction(async (trx) => {
+      await fixture.adapter.setUnverifiedEmail(inactive.id, ` ${pendingEmail.toUpperCase()} `, trx)
+      const pending = await fixture.adapter.findById(inactive.id, trx)
+      assert.equal(pending?.unverifiedEmail, pendingEmail)
+      throw new Error('pending address rollback')
+    }),
+    /pending address rollback/
+  )
+  assertSameUser(await fixture.adapter.findById(inactive.id), inactive)
+  await fixture.transaction((trx) =>
+    fixture.adapter.setUnverifiedEmail(inactive.id, ` ${pendingEmail.toUpperCase()} `, trx)
+  )
+  const persistedPending = await fixture.adapter.findById(inactive.id)
+  assert.equal(persistedPending?.unverifiedEmail, pendingEmail)
+  await assert.rejects(
+    fixture.transaction(async (trx) => {
+      await fixture.adapter.setUnverifiedEmail(inactive.id, null, trx)
+      const cleared = await fixture.adapter.findById(inactive.id, trx)
+      assert.equal(cleared?.unverifiedEmail, null)
+      throw new Error('pending clear rollback')
+    }),
+    /pending clear rollback/
+  )
+  const restoredPending = await fixture.adapter.findById(inactive.id)
+  assert.equal(restoredPending?.unverifiedEmail, pendingEmail)
+  await fixture.transaction((trx) => fixture.adapter.setUnverifiedEmail(inactive.id, null, trx))
+  const persistedClear = await fixture.adapter.findById(inactive.id)
+  assert.equal(persistedClear?.unverifiedEmail, null)
+  await fixture.transaction((trx) =>
+    fixture.adapter.setUnverifiedEmail(inactive.id, pendingEmail, trx)
+  )
+  await fixture.transaction((trx) =>
+    fixture.adapter.markEmailVerified(inactive.id, verifiedAt, trx)
+  )
+  const activated = await fixture.adapter.findById(inactive.id)
+  assert.equal(activated?.unverifiedEmail, null, 'markEmailVerified must clear pending email')
+  assert.equal(activated?.emailVerifiedAt?.toMillis(), verifiedAt.toMillis())
 }

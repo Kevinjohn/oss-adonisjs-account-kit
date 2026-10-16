@@ -36,17 +36,16 @@ test.group('emailPasswordManagement', (group) => {
     const recoveryToken = generateToken()
     const emailToken = generateToken()
     await kit.db.table('password_reset_tokens').insert({
-      user_id: user.id,
+      tokenable_id: user.id,
       email: user.email,
-      token_hash: hashToken(recoveryToken),
+      hash: hashToken(recoveryToken),
       expires_at: now.plus({ hours: 1 }).toISO(),
       created_at: now.toISO(),
     })
-    await kit.db.table('account_email_changes').insert({
-      user_id: user.id,
-      current_email: user.email,
-      new_email: 'next@example.test',
-      token_hash: hashToken(emailToken),
+    await kit.db.table('email_verification_tokens').insert({
+      tokenable_id: user.id,
+      email: 'next@example.test',
+      hash: hashToken(emailToken),
       expires_at: now.plus({ hours: 1 }).toISO(),
       created_at: now.toISO(),
     })
@@ -225,8 +224,14 @@ test.group('emailPasswordManagement', (group) => {
         callbackUser = changed
         const row = await kit.db.from('users').where('id', changed.id).first()
         sawCommitted = await kit.hash.verify(row.password, 'newPassword123')
-        assert.lengthOf(await kit.db.from('password_reset_tokens').where('user_id', changed.id), 0)
-        assert.lengthOf(await kit.db.from('account_email_changes').where('user_id', changed.id), 0)
+        assert.lengthOf(
+          await kit.db.from('password_reset_tokens').where('tokenable_id', changed.id),
+          0
+        )
+        assert.lengthOf(
+          await kit.db.from('email_verification_tokens').where('tokenable_id', changed.id),
+          0
+        )
       },
     })
     assert.isUndefined(
@@ -271,7 +276,7 @@ test.group('emailPasswordManagement', (group) => {
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('accepts 256 UTF-16 units for a password change', async ({ assert }) => {
@@ -359,7 +364,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.isTrue(await kit.hash.verify(row.password, 'oldPassword123'))
     assert.isFalse(await kit.hash.verify(row.password, 'newPassword123'))
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     assert.equal(callbacks, 0)
   })
 
@@ -520,11 +525,10 @@ test.group('emailPasswordManagement', (group) => {
       currentPassword: 'oldPassword123',
       newEmail: ' NEW@EXAMPLE.TEST ',
     })
-    const row = await kit.db.from('account_email_changes').first()
-    assert.equal(row.current_email, user.email)
-    assert.equal(row.new_email, 'new@example.test')
+    const row = await kit.db.from('email_verification_tokens').first()
+    assert.equal(row.email, 'new@example.test')
     const token = tokenFrom(recorder.calls[0].args[2])
-    assert.equal(row.token_hash, hashToken(token))
+    assert.equal(row.hash, hashToken(token))
     const changed = await account.emailPasswordManagement.completeEmailChange({ token })
     assert.equal(changed.email, 'new@example.test')
     assert.isNotNull(changed.emailVerifiedAt)
@@ -555,7 +559,7 @@ test.group('emailPasswordManagement', (group) => {
           }),
         InvalidInputError
       )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
     assert.lengthOf(recorder.calls, 0)
     for (const currentPassword of [undefined, '', 'incorrect'])
       await assert.rejects(
@@ -576,7 +580,7 @@ test.group('emailPasswordManagement', (group) => {
         }),
       InvalidInputError
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('request rejects social-only accounts and already registered target email', async ({
@@ -611,7 +615,7 @@ test.group('emailPasswordManagement', (group) => {
         }),
       EmailAlreadyRegisteredError
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('same normalized email is a proved no-op without row or delivery', async ({ assert }) => {
@@ -635,7 +639,7 @@ test.group('emailPasswordManagement', (group) => {
       })
     )
     assert.lengthOf(recorder.calls, 0)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
     for (let index = 0; index < 3; index++)
       await account.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
@@ -696,7 +700,7 @@ test.group('emailPasswordManagement', (group) => {
     }
     assert.equal(lookups, 5)
     assert.equal(proofs, 5)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('request holds the actor lock through the password proof', async ({ assert }) => {
@@ -773,21 +777,20 @@ test.group('emailPasswordManagement', (group) => {
     const recorder = makeNotify()
     const account = service({ notify: recorder.notify })
     const first = await issueEmailChange(account, user, recorder)
-    const before = await kit.db.from('account_email_changes').first()
+    const before = await kit.db.from('email_verification_tokens').first()
     const stale = DateTime.utc().minus({ days: 2 }).toISO()
-    await kit.db.from('account_email_changes').where('user_id', user.id).update({
-      current_email: 'stale@example.test',
+    await kit.db.from('email_verification_tokens').where('tokenable_id', user.id).update({
+      email: 'stale@example.test',
       expires_at: stale,
       created_at: stale,
     })
     const second = await issueEmailChange(account, user, recorder, 'other@example.test')
-    const rows = await kit.db.from('account_email_changes')
+    const rows = await kit.db.from('email_verification_tokens')
     assert.lengthOf(rows, 1)
-    assert.equal(rows[0].user_id, user.id)
-    assert.equal(rows[0].current_email, user.email)
-    assert.equal(rows[0].new_email, 'other@example.test')
-    assert.equal(rows[0].token_hash, hashToken(second))
-    assert.notEqual(rows[0].token_hash, before.token_hash)
+    assert.equal(rows[0].tokenable_id, user.id)
+    assert.equal(rows[0].email, 'other@example.test')
+    assert.equal(rows[0].hash, hashToken(second))
+    assert.notEqual(rows[0].hash, before.hash)
     assert.notEqual(new Date(rows[0].created_at).valueOf(), new Date(stale).valueOf())
     assert.isNotNull(rows[0].created_at)
     assert.isAbove(new Date(rows[0].expires_at).valueOf(), new Date(rows[0].created_at).valueOf())
@@ -814,7 +817,7 @@ test.group('emailPasswordManagement', (group) => {
         }),
       DeliveryError
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     assert.lengthOf(recorder.calls, 1)
   })
 
@@ -842,7 +845,7 @@ test.group('emailPasswordManagement', (group) => {
       assert.instanceOf(error, DeliveryError)
       assert.equal((error as DeliveryError).cause, failure)
     }
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 
   test('complete invalidates password reset tokens, reloads a verified user, and orders postcommit callbacks', async ({
@@ -861,7 +864,7 @@ test.group('emailPasswordManagement', (group) => {
           events.push('notify')
           assert.equal(previous, user.email)
           assert.equal(changed.email, 'new@example.test')
-          assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+          assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
           assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
         },
       },
@@ -897,21 +900,21 @@ test.group('emailPasswordManagement', (group) => {
       )
     const token = await issueEmailChange(account, user, recorder)
     await kit.db
-      .from('account_email_changes')
-      .where('user_id', user.id)
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
       .update({ expires_at: DateTime.utc().minus({ second: 1 }).toISO() })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
       InvalidTokenError
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     const second = await issueEmailChange(account, user, recorder)
     await kit.db.from('users').where('id', user.id).update({ email: 'changed@example.test' })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: second }),
       InvalidTokenError
     )
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     const third = await issueEmailChange(
       account,
       { ...user, email: 'changed@example.test' },
@@ -951,7 +954,7 @@ test.group('emailPasswordManagement', (group) => {
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, user.email)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     assert.equal(setEmailCalls, 0)
   })
 
@@ -979,7 +982,7 @@ test.group('emailPasswordManagement', (group) => {
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, user.email)
     assert.lengthOf(await kit.db.from('users'), 1)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 
   test('password change invalidates an email-change link', async ({ assert }) => {
@@ -1042,7 +1045,7 @@ test.group('emailPasswordManagement', (group) => {
     )
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, user.email)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 
   test('emailChanged failure reports cause after the new email committed', async ({ assert }) => {
@@ -1072,7 +1075,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.equal(credentialsCalls, 1)
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('onCredentialsChanged failure still notifies the previous email and preserves the committed change', async ({
@@ -1100,7 +1103,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.equal(notice!.args[0], 'person@example.test')
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('both post-commit failures are reported together in order', async ({ assert }) => {
@@ -1195,7 +1198,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.deepEqual(calls, ['credentials', 'notice:person@example.test', 'email_change.completed'])
     const stored = await kit.db.from('users').where('id', user.id).first()
     assert.equal(stored.email, 'new@example.test')
-    assert.lengthOf(await kit.db.from('account_email_changes'), 0)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
 
   test('delivers the email-change link once after a committed cleanup fault', async ({
@@ -1231,8 +1234,11 @@ test.group('emailPasswordManagement', (group) => {
       ['emailChangeProvision']
     )
     assert.deepEqual(events, ['email_change.requested'])
-    const row = await kit.db.from('account_email_changes').where('user_id', user.id).first()
-    assert.equal(row.token_hash, hashToken(tokenFrom(recorder.calls[0].args[2])))
+    const row = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .first()
+    assert.equal(row.hash, hashToken(tokenFrom(recorder.calls[0].args[2])))
   })
 
   test('a follow-up failure after a committed cleanup fault reports both causes', async ({
@@ -1266,6 +1272,6 @@ test.group('emailPasswordManagement', (group) => {
       assert.deepEqual((cause as AggregateError).errors, [failure, observerFailure])
     }
     assert.lengthOf(recorder.calls, 1)
-    assert.lengthOf(await kit.db.from('account_email_changes'), 1)
+    assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })
 })

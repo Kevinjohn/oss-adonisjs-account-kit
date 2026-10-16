@@ -30,6 +30,15 @@ test.group('capability configuration', (group) => {
     assert.isFunction(resolved.onInvitationAccepted)
   })
 
+  test('accepts an email-verification-only adapter without setEmail', ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const config = makeConfig({
+      enabled: ['emailVerification'],
+      users: { ...users, setEmail: undefined } as never,
+    })
+    assert.deepEqual(defineConfig(config).enabled, ['emailVerification'])
+  })
+
   test('validates enabled capability names, duplicates, and required dependencies', ({
     assert,
   }) => {
@@ -85,7 +94,31 @@ test.group('capability configuration', (group) => {
         }),
       /users\.markEmailVerified must be a function/
     )
+    assert.throws(
+      () =>
+        defineConfig({
+          ...base,
+          enabled: ['invitations'],
+          users: { ...users, markEmailVerified: undefined } as never,
+        }),
+      /users\.markEmailVerified must be a function/
+    )
   })
+
+  for (const capability of ['passwordReset', 'emailPasswordManagement'] as const) {
+    test(`${capability} requires a pending-email setter`, ({ assert }) => {
+      const users = makeUsersAdapter(kit.db, kit.hash)
+      assert.throws(
+        () =>
+          defineConfig({
+            ...makeConfig({ users }),
+            enabled: [capability],
+            users: { ...users, setUnverifiedEmail: undefined } as never,
+          }),
+        /users\.setUnverifiedEmail must be a function/
+      )
+    })
+  }
 
   test('requires supplied hooks to be callable but does not execute placeholders', ({ assert }) => {
     const base = makeConfig({

@@ -19,7 +19,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   await db.from('role_assignments').delete()
   await db.from('password_reset_tokens').delete()
   await db.from('account_invitations').delete()
-  await db.from('account_email_changes').delete()
+  await db.from('email_verification_tokens').delete()
   await db.from('auth_access_tokens').delete()
   await User.query().delete()
 
@@ -41,6 +41,24 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   }>(registration)
   assert.equal(registrationBody.data.user.fullName, 'Registration User')
   assert.equal(registrationBody.data.user.email, 'registration@example.test')
+  const registered = await User.findByOrFail('email', 'registration@example.test')
+  assert.equal(registered.unverifiedEmail, registered.email)
+  assert.isNull(registered.emailVerifiedAt)
+  const registrationActivation = await client
+    .post('/account-kit/verification/send')
+    .loginAs(registered)
+    .json({})
+  assert.equal(registrationActivation.status(), 200)
+  assert.equal(registrationActivation.body().result, 'sent')
+  const registrationToken = tokenFrom(
+    notifications.events.find((event) => event.kind === 'verification')!.value
+  )
+  const activation = await client.get(
+    `/account-kit/verification/${encodeURIComponent(registrationToken)}`
+  )
+  assert.equal(activation.body().result, 'verified')
+  assert.isNull((await User.findByOrFail('email', registered.email)).unverifiedEmail)
+  notifications.reset()
   assert.isString(registrationBody.data.token)
   assert.notProperty(registrationBody.data.user, 'password')
   assert.equal(
@@ -127,8 +145,8 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   })
   assert.equal(reset.status(), 202)
   await recoveryUser.refresh()
-  assert.isTrue(await hash.verify(recoveryUser.password, 'RecoveredPass123!'))
-  assert.isNotNull(recoveryUser.emailVerifiedAt)
+  assert.isTrue(await hash.verify(recoveryUser.password!, 'RecoveredPass123!'))
+  assert.isNull(recoveryUser.unverifiedEmail)
   assert.equal(
     Number(
       (
@@ -235,6 +253,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   const verificationUser = await User.create({
     fullName: 'Verify User',
     email: 'verify@example.test',
+    unverifiedEmail: 'verify@example.test',
     password: 'VerifyPass123!',
   })
   const anonymousVerify = await client.post('/account-kit/verification/send').json({})
@@ -252,10 +271,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   const verificationFirst = await client.get(verificationPath)
   assert.equal(verificationFirst.header('referrer-policy'), 'no-referrer')
   assert.equal((verificationFirst.body() as { result: string }).result, 'verified')
-  assert.equal(
-    ((await client.get(verificationPath)).body() as { result: string }).result,
-    'already_verified'
-  )
+  assert.equal((await client.get(verificationPath)).status(), 422)
   assert.equal(
     (
       (
@@ -340,7 +356,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
   assert.equal((accepted.body() as { verified: boolean }).verified, true)
   const invited = await User.findByOrFail('email', 'new-member@example.test')
   assert.equal(invited.fullName, 'New Member')
-  assert.isTrue(await hash.verify(invited.password, 'MemberPass123!'))
+  assert.isTrue(await hash.verify(invited.password!, 'MemberPass123!'))
   const role = await db.from('role_assignments').where('user_id', invited.id).first()
   assert.equal(role.role, 'editor')
   assert.equal(
@@ -505,7 +521,7 @@ test('account workflows over HTTP commit, notify, and enforce token boundaries',
     })
   assert.equal(changePassword.status(), 200)
   await passwordUser.refresh()
-  assert.isTrue(await hash.verify(passwordUser.password, 'ChangedPass123!'))
+  assert.isTrue(await hash.verify(passwordUser.password!, 'ChangedPass123!'))
   const passwordChangeNotice = notifications.events.find(
     (event) => event.kind === 'passwordChanged'
   )!

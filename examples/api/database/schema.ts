@@ -7,33 +7,6 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
-export class AccountEmailChangeSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'currentEmail',
-    'expiresAt',
-    'id',
-    'newEmail',
-    'tokenHash',
-    'userId',
-  ] as const
-  $columns = AccountEmailChangeSchema.$columns
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-  @column()
-  declare currentEmail: string
-  @column.dateTime()
-  declare expiresAt: DateTime
-  @column({ isPrimary: true })
-  declare id: number
-  @column()
-  declare newEmail: string
-  @column()
-  declare tokenHash: string
-  @column()
-  declare userId: number
-}
-
 export class AccountInvitationSchema extends BaseModel {
   static $columns = [
     'createdAt',
@@ -64,21 +37,46 @@ export class AccountInvitationSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
-export class PasswordResetTokenSchema extends BaseModel {
-  static $columns = ['createdAt', 'email', 'expiresAt', 'id', 'tokenHash', 'userId'] as const
-  $columns = PasswordResetTokenSchema.$columns
+export class AccountKitOutboxSchema extends BaseModel {
+  static $columns = [
+    'attempts',
+    'createdAt',
+    'id',
+    'lastError',
+    'operation',
+    'operationId',
+    'recipientEmail',
+    'sentAt',
+    'userId',
+  ] as const
+  $columns = AccountKitOutboxSchema.$columns
+  @column()
+  declare attempts: number
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
-  @column()
-  declare email: string
-  @column.dateTime()
-  declare expiresAt: DateTime
   @column({ isPrimary: true })
   declare id: number
   @column()
-  declare tokenHash: string
+  declare lastError: string | null
+  @column()
+  declare operation: string
+  @column()
+  declare operationId: string
+  @column()
+  declare recipientEmail: string
+  @column.dateTime()
+  declare sentAt: DateTime | null
   @column()
   declare userId: number
+}
+
+export class AccountTransactionLockSchema extends BaseModel {
+  static $columns = ['id', 'version'] as const
+  $columns = AccountTransactionLockSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare version: number
 }
 
 export class AuthAccessTokenSchema extends BaseModel {
@@ -117,6 +115,53 @@ export class AuthAccessTokenSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
+export class EmailVerificationTokenSchema extends BaseModel {
+  static $columns = [
+    'createdAt',
+    'currentEmail',
+    'email',
+    'expiresAt',
+    'hash',
+    'id',
+    'purpose',
+    'tokenableId',
+  ] as const
+  $columns = EmailVerificationTokenSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare currentEmail: string
+  @column()
+  declare email: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare purpose: string
+  @column()
+  declare tokenableId: number
+}
+
+export class PasswordResetTokenSchema extends BaseModel {
+  static $columns = ['createdAt', 'email', 'expiresAt', 'hash', 'id', 'tokenableId'] as const
+  $columns = PasswordResetTokenSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare tokenableId: number
+}
+
 export class RateLimitSchema extends BaseModel {
   static $columns = ['expire', 'key', 'points'] as const
   $columns = RateLimitSchema.$columns
@@ -139,6 +184,48 @@ export class RoleAssignmentSchema extends BaseModel {
   declare userId: number
 }
 
+export class SocialIdentitySchema extends BaseModel {
+  static $columns = [
+    'avatarUrl',
+    'createdAt',
+    'email',
+    'emailVerified',
+    'id',
+    'meta',
+    'name',
+    'nickname',
+    'provider',
+    'providerUserId',
+    'updatedAt',
+    'userId',
+  ] as const
+  $columns = SocialIdentitySchema.$columns
+  @column()
+  declare avatarUrl: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string | null
+  @column()
+  declare emailVerified: boolean
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare meta: any | null
+  @column()
+  declare name: string | null
+  @column()
+  declare nickname: string | null
+  @column()
+  declare provider: string
+  @column()
+  declare providerUserId: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class UserSchema extends BaseModel {
   static $columns = [
     'createdAt',
@@ -147,6 +234,7 @@ export class UserSchema extends BaseModel {
     'fullName',
     'id',
     'password',
+    'unverifiedEmail',
     'updatedAt',
   ] as const
   $columns = UserSchema.$columns
@@ -161,7 +249,9 @@ export class UserSchema extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
   @column({ serializeAs: null })
-  declare password: string
+  declare password: string | null
+  @column()
+  declare unverifiedEmail: string | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }

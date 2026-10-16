@@ -66,7 +66,7 @@ if (phase) {
       await user.refresh()
       assert.equal(user.fullName, 'Existing User')
       assert.equal(user.email, email)
-      assert.isTrue(await hash.verify(user.password, 'BaselineReset123!'))
+      assert.isTrue(await hash.verify(user.password!, 'BaselineReset123!'))
 
       const pendingRequest = await client.post('/account-kit/recovery').json({ email })
       assert.equal(pendingRequest.status(), 202)
@@ -99,7 +99,7 @@ if (phase) {
     const user = await User.findBy('email', email)
     assert.isNotNull(user)
     assert.equal(user!.fullName, 'Existing User')
-    assert.isTrue(await hash.verify(user!.password, 'BaselineReset123!'))
+    assert.isTrue(await hash.verify(user!.password!, 'BaselineReset123!'))
     const role = await db.from('role_assignments').where('user_id', user!.id).first()
     assert.equal(role?.role, 'owner')
     assert.isNotNull(await db.from('adonis_schema').where('name', customMigration).first())
@@ -114,9 +114,9 @@ if (phase) {
     assert.isNotNull(row)
     if (!row) throw new Error('The upgraded password-reset token row was not preserved')
     assert.equal(Number(row.id), proof.row.id)
-    assert.equal(Number(row.user_id), proof.row.user_id)
+    assert.equal(Number(row.tokenable_id), proof.row.user_id)
     assert.equal(row.email, proof.row.email)
-    assert.equal(row.token_hash, proof.row.token_hash)
+    assert.equal(row.hash, proof.row.token_hash)
     assert.equal(expiryIso(row.expires_at), proof.row.expires_at)
     assert.equal(expiryIso(row.created_at), proof.row.created_at)
 
@@ -134,6 +134,6 @@ if (phase) {
     })
     assert.equal(replay.status(), 422)
     await user!.refresh()
-    assert.isTrue(await hash.verify(user!.password, 'UpgradeReset123!'))
+    assert.isTrue(await hash.verify(user!.password!, 'UpgradeReset123!'))
   })
 }

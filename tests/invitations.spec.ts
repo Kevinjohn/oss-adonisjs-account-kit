@@ -87,7 +87,7 @@ test.group('invitations.send', (group) => {
     const [notified, url] = recorder.calls[0].args
     assert.deepEqual(notified, invitation)
     const raw = tokenFrom(url)
-    assert.match(raw, /^[A-Za-z0-9_-]{43}$/)
+    assert.match(raw, /^[A-Za-z0-9_-]{54}$/)
     const row = await kit.db.from('account_invitations').where('id', invitation.id).first()
     assert.equal(row.email, invitation.email)
     assert.equal(row.role, 'admin')
@@ -439,6 +439,11 @@ test.group('invitations.accept', (group) => {
         callbackUser = user
         const row = await trx.from('users').where('id', user.id).first()
         assert.equal(row.email, 'person@example.test')
+        assert.equal(
+          user.emailVerifiedAt?.toISO(),
+          DateTime.fromJSDate(new Date(row.email_verified_at)).toUTC().toISO()
+        )
+        assert.isNull(user.unverifiedEmail)
         await trx
           .from('users')
           .where('id', user.id)
@@ -460,6 +465,7 @@ test.group('invitations.accept', (group) => {
       DateTime.fromJSDate(new Date(stored.email_verified_at)).toUTC().toISO()
     )
     assert.notEqual(accepted.emailVerifiedAt?.toISO(), callbackUser?.emailVerifiedAt?.toISO())
+    assert.isNull(callbackUser?.unverifiedEmail)
     assert.notEqual(stored.password, 'newPassword123')
     assert.isTrue(await kit.hash.verify(stored.password, 'newPassword123'))
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
@@ -560,7 +566,7 @@ test.group('invitations.accept', (group) => {
         {
           email: invitation.email,
           password: 'existingPassword123',
-          emailVerifiedAt: DateTime.utc(),
+          unverifiedEmail: null,
         },
         trx
       )
@@ -659,7 +665,7 @@ test.group('invitations.accept', (group) => {
           {
             email: invitation.email,
             password: 'plainPassword123',
-            emailVerifiedAt: DateTime.utc(),
+            unverifiedEmail: null,
           },
           trx
         )
@@ -714,7 +720,7 @@ test.group('invitations.accept', (group) => {
             {
               email: invitation.email,
               password: 'plainPassword123',
-              emailVerifiedAt: DateTime.utc(),
+              unverifiedEmail: null,
             },
             trx
           )
@@ -975,7 +981,7 @@ test.group('invitations.resend and revoke', (group) => {
             {
               email: 'actor@example.test',
               password: 'password123',
-              emailVerifiedAt: DateTime.utc(),
+              unverifiedEmail: null,
             },
             trx
           )

@@ -1,11 +1,16 @@
 import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import type Configure from '@adonisjs/core/commands/configure'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
+import { BaseModel, beforeCreate, column } from '@adonisjs/lucid/orm'
+import type { DateTime } from 'luxon'
 import { configure, migrationNames, migrationSchema, type UserIdType } from '../configure.js'
+import { createLucidAdapter } from '../adapters/lucid.js'
+import { transaction } from '../src/db.js'
 import { bootTestApp } from './helpers/app.js'
 
 const idTypes: UserIdType[] = ['integer', 'string', 'uuid']
@@ -32,16 +37,18 @@ async function tableExists(kit: Awaited<ReturnType<typeof bootTestApp>>, table: 
     .first())
 }
 
-test('generates and rolls back migrations for every user ID type and reserved custom table', async ({
-  assert,
-}) => {
-  for (const userIdType of idTypes) {
+for (const userIdType of idTypes) {
+  test(`generates and rolls back migrations for ${userIdType} IDs and reserved custom table`, async ({
+    assert,
+  }) => {
     const usersTable = reservedUsersTable[userIdType]
     const kit = await bootTestApp()
     try {
       const schema = kit.db.connection().schema
       for (const table of [
         'account_email_changes',
+        'email_verification_tokens',
+        'social_identities',
         'account_invitations',
         'password_reset_tokens',
         'account_transaction_lock',
@@ -55,6 +62,7 @@ test('generates and rolls back migrations for every user ID type and reserved cu
         else if (userIdType === 'uuid') table.uuid('id').primary()
         else table.string('id', 254).primary()
         table.string('email', 254).notNullable().unique()
+        table.string('password').notNullable()
       })
 
       await symlink(
@@ -84,7 +92,75 @@ test('generates and rolls back migrations for every user ID type and reserved cu
 
       assert.isTrue(await tableExists(kit, 'password_reset_tokens'))
       assert.isTrue(await tableExists(kit, 'account_invitations'))
-      assert.isTrue(await tableExists(kit, 'account_email_changes'))
+      assert.isTrue(await tableExists(kit, 'email_verification_tokens'))
+      assert.isTrue(await tableExists(kit, 'social_identities'))
+      assert.isFalse(await tableExists(kit, 'account_email_changes'))
+
+      class SchemaUser extends BaseModel {
+        static table = usersTable
+        static selfAssignPrimaryKey = userIdType !== 'integer'
+
+        @column({ isPrimary: true })
+        declare id: number | string
+
+        @column()
+        declare email: string
+
+        @column({ columnName: 'unverified_email' })
+        declare unverifiedEmail: string | null
+
+        @column()
+        declare password: string | null
+
+        @column.dateTime({ columnName: 'email_verified_at' })
+        declare emailVerifiedAt: DateTime | null
+
+        @beforeCreate()
+        static assignId(user: SchemaUser) {
+          if (userIdType !== 'integer')
+            user.id = userIdType === 'uuid' ? randomUUID() : `member-${randomUUID()}`
+        }
+      }
+      const adapter = createLucidAdapter(async () => SchemaUser)
+      const created = await transaction(kit.db, (trx) =>
+        adapter.create(
+          {
+            email: ' Pending@Example.Test ',
+            unverifiedEmail: ' Pending@Example.Test ',
+            password: null,
+          },
+          trx
+        )
+      )
+      assert.equal(created.email, 'pending@example.test')
+      assert.equal(created.unverifiedEmail, 'pending@example.test')
+      assert.isFalse(created.hasPassword)
+      assert.isNull(created.emailVerifiedAt)
+      assert.equal(typeof created.id, userIdType === 'integer' ? 'number' : 'string')
+      if (userIdType === 'uuid') assert.match(String(created.id), /^[0-9a-f-]{36}$/)
+      const persisted = await kit.db.from(usersTable).where('id', created.id).first()
+      assert.isNull(persisted.password)
+      assert.equal(persisted.unverified_email, created.email)
+      const reloaded = await adapter.findById(created.id)
+      assert.equal(reloaded?.unverifiedEmail, created.email)
+
+      const identity = {
+        user_id: created.id,
+        provider: 'example',
+        provider_user_id: `subject-${userIdType}`,
+        email_verified: false,
+        created_at: new Date(),
+        updated_at: new Date(),
+      }
+      await kit.db.table('social_identities').insert(identity)
+      const orphanId = userIdType === 'integer' ? 999999 : randomUUID()
+      await assert.rejects(() =>
+        kit.db
+          .table('social_identities')
+          .insert({ ...identity, user_id: orphanId, provider_user_id: `orphan-${userIdType}` })
+      )
+      await kit.db.from(usersTable).where('id', created.id).delete()
+      assert.lengthOf(await kit.db.from('social_identities').where('user_id', created.id), 0)
 
       const down = new MigrationRunner(kit.db, kit.app, {
         direction: 'down',
@@ -96,6 +172,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       for (const table of [
         'account_transaction_lock',
         'account_email_changes',
+        'email_verification_tokens',
+        'social_identities',
         'account_invitations',
         'password_reset_tokens',
       ]) {
@@ -105,6 +183,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
     } finally {
       for (const table of [
         'account_email_changes',
+        'email_verification_tokens',
+        'social_identities',
         'account_invitations',
         'password_reset_tokens',
         'account_transaction_lock',
@@ -114,8 +194,8 @@ test('generates and rolls back migrations for every user ID type and reserved cu
       }
       await kit.close()
     }
-  }
-}).timeout(30_000)
+  }).timeout(30_000)
+}
 
 test('migration schema quotes reserved table names and selects each supported ID column type', async ({
   assert,
