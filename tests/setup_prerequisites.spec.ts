@@ -27,7 +27,11 @@ async function fixture() {
   await mkdir(join(root, 'app/models'), { recursive: true })
   await writeFile(
     join(root, 'app/models/user.ts'),
-    "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel {}"
+    "import { BaseModel, column } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: number }"
+  )
+  await writeFile(
+    join(root, 'package.json'),
+    JSON.stringify({ imports: { '#models/*': './app/models/*.js' } })
   )
   const choices = defaultSetupChoices()
   choices.policy.accessRestrictionHook = true

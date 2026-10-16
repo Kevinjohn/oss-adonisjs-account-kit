@@ -35,7 +35,7 @@ async function fixture() {
   await mkdir(join(root, 'app/services'), { recursive: true })
   await writeFile(
     join(root, 'app/models/user.ts'),
-    "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static accessTokens = tokens; email!: string; password!: string; emailVerifiedAt!: Date }\n"
+    "import { BaseModel, column } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: number; static accessTokens = tokens; email!: string; password!: string; emailVerifiedAt!: Date }\n"
   )
   await writeFile(
     join(root, 'app/services/account_kit_policy.ts'),
@@ -59,6 +59,7 @@ async function fixture() {
         '@vinejs/vine': '4',
         'adonisjs-account-kit': '0',
       },
+      imports: { '#models/*': './app/models/*.js', '#database/*': './database/*.js' },
     })
   )
   for (const [name, version] of Object.entries({
@@ -343,7 +344,7 @@ test.group('onboarding plan and apply', (group) => {
     )
   })
 
-  test('boots a stock schema-composed starter with inert routes until application revocation is verified', async ({
+  test('plans and applies a stock schema-composed starter with inert routes until application revocation is verified', async ({
     assert,
   }) => {
     const { root } = await fixture()
@@ -375,7 +376,7 @@ test.group('onboarding plan and apply', (group) => {
     )
     const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
     manifest.dependencies['@adonisjs/mail'] = '10'
-    manifest.imports = { '#database/*': './database/*.js' }
+    manifest.imports = { '#models/*': './app/models/*.js', '#database/*': './database/*.js' }
     await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
     const plan = await planSetup(choices, await inspectSetup(root), {
       apply: true,
@@ -470,7 +471,7 @@ test.group('onboarding plan and apply', (group) => {
       await writeFile(join(root, path), await stock(path))
     }
     const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-    manifest.imports = { '#database/*': './database/*.js' }
+    manifest.imports = { '#models/*': './app/models/*.js', '#database/*': './database/*.js' }
     await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
     choices.mail.integration = 'adonisjs-mail'
     choices.mail.senderEnv = 'MAIL_FROM_ADDRESS'
@@ -531,6 +532,32 @@ test.group('onboarding plan and apply', (group) => {
       )
     )
     await assert.rejects(() => applySetup(root, wrongId), /blocking diagnostics/)
+    for (const member of [
+      '@column({ isPrimary: true }) get alternateId() { return 1 }',
+      "static boot() { super.boot(); this.table = 'members' }",
+      'static get $columnsDefinitions() { return new Map() }',
+      'constructor() { super() }',
+    ]) {
+      await writeFile(
+        join(root, 'database/schema.ts'),
+        schema.replace(
+          'export class UserSchema extends BaseModel {',
+          `export class UserSchema extends BaseModel {\n  ${member}`
+        )
+      )
+      const unsupported = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        unsupported.diagnostics.some(
+          ({ field, severity }) =>
+            ['user.idType', 'user.connection'].includes(field) && severity === 'error'
+        ),
+        `${member}: ${JSON.stringify(unsupported.diagnostics)}`
+      )
+      await assert.rejects(() => applySetup(root, unsupported), /blocking diagnostics/)
+    }
     await writeFile(
       join(root, 'database/schema.ts'),
       schema.replace(
@@ -828,7 +855,7 @@ test.group('onboarding plan and apply', (group) => {
       )
     )
     const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-    manifest.imports = { '#database/*': './database/*.js' }
+    manifest.imports = { '#models/*': './app/models/*.js', '#database/*': './database/*.js' }
     await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
     const target = join(outside, 'schema.ts')
     await writeFile(
@@ -847,6 +874,99 @@ test.group('onboarding plan and apply', (group) => {
     )
     assert.equal(await readlink(join(root, 'database/schema.ts')), target)
     assert.equal(await readFile(target, 'utf8'), original)
+  })
+
+  test('direct Lucid models enforce the same physical id, decorator and runtime-hook boundary', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const path = join(root, 'app/models/user.ts')
+    const direct = (id: 'number' | 'string') =>
+      `import { BaseModel, column } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { @column({ isPrimary: true }) declare id: ${id} }\n`
+    for (const [idType, annotation] of [
+      ['integer', 'number'],
+      ['string', 'string'],
+      ['uuid', 'string'],
+    ] as const) {
+      choices.user.idType = idType
+      await writeFile(path, direct(annotation))
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isFalse(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'user.idType' && severity === 'error'
+        ),
+        JSON.stringify(plan.diagnostics)
+      )
+    }
+    choices.user.idType = 'integer'
+    for (const source of [
+      direct('string'),
+      direct('number').replace(
+        '@column({ isPrimary: true })',
+        "@column({ isPrimary: true, columnName: 'other_id' })"
+      ),
+      direct('number').replace(
+        'declare id: number',
+        'declare id: number; @column({ isPrimary: true }) get alternateId() { return 1 }'
+      ),
+      direct('number').replace(
+        'declare id: number',
+        "declare id: number; static boot() { super.boot(); this.table = 'members' }"
+      ),
+      direct('number').replace(
+        'declare id: number',
+        'declare id: number; static get $columnsDefinitions() { return new Map() }'
+      ),
+      direct('number').replace(
+        'declare id: number',
+        'declare id: number; constructor() { super() }'
+      ),
+      direct('number').replace('declare id: number', 'declare id: number; static booted = true'),
+      direct('number').replace('export default class User', '@custom\nexport default class User'),
+    ]) {
+      await writeFile(path, source)
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) =>
+            ['user.idType', 'user.model'].includes(field) && severity === 'error'
+        ),
+        `${source}: ${JSON.stringify(plan.diagnostics)}`
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      const configFiles = await readdir(join(root, 'config'))
+      assert.notInclude(configFiles, 'account_kit_setup.json')
+    }
+  })
+
+  test('model import-map redirects block planning and apply before writes', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+    for (const imports of [
+      { '#models/*': './app/models/*.js', '#models/user': './elsewhere/user.js' },
+      { '#models/*': './app/models/*.js', '#models/u*': './elsewhere/*.js' },
+    ]) {
+      manifest.imports = imports
+      await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'user.model' && severity === 'error'
+        )
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      const configFiles = await readdir(join(root, 'config'))
+      assert.notInclude(configFiles, 'account_kit_setup.json')
+    }
   })
 
   test('retirement uses a DB-derived count and a declared maintenance window', async ({
