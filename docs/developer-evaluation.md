@@ -105,9 +105,11 @@ The attempt record also retains these execution events:
   returned 200. No credential or proof value is included in this record.
 
 These events are recorded as harness or execution corrections, not candidate failures or human
-assistance. The fixed tasks passed using published documentation. Local capture and the technical
-fallback do not replace the product owner's remaining review of origin diagnostics, migration
-status reporting, production delivery integration, and the managed-mode documentation consistency.
+assistance. The fixed tasks passed using published documentation. The managed-mode documentation
+inconsistency found during the walkthrough is resolved by the guide reconciliation in this change.
+Product-owner review of origin diagnostics, migration-status reporting, and production delivery
+integration remains outstanding. Local capture and the technical fallback do not replace those
+reviews.
 
 ## Changelog
 
