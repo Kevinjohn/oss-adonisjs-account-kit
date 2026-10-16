@@ -52,6 +52,7 @@ test.group('account kit provider', (group) => {
       const adapter = await import('adonisjs-account-kit/adapters/lucid')
       const contract = await import('adonisjs-account-kit/testing/adapter_contract')
       const commands = await import('adonisjs-account-kit/commands')
+      const http = await import('adonisjs-account-kit/http')
       assert.isFunction(root.AccountKit)
       assert.isFunction(root.defineConfig)
       assert.isFunction(root.configure)
@@ -62,6 +63,8 @@ test.group('account kit provider', (group) => {
       assert.isFunction(contract.assertUsersAdapterContract)
       assert.isFunction(commands.getMetaData)
       assert.isFunction(commands.getCommand)
+      assert.isFunction(http.registerManagedRoutes)
+      assert.isFunction(http.createManagedGuard)
       const built = await bootTestApp({ accountKitProvider: 'build' })
       try {
         await resetSchema(built)
