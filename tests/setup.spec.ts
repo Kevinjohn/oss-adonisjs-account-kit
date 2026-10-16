@@ -343,6 +343,265 @@ test.group('onboarding plan and apply', (group) => {
     )
   })
 
+  test('boots a stock schema-composed starter with inert routes until application revocation is verified', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    const choices = parseSetupChoices(
+      JSON.parse(
+        await readFile(
+          new URL('./fixtures/native_starter/setup-choices.json', import.meta.url),
+          'utf8'
+        )
+      )
+    )
+    const stock = (path: string) =>
+      readFile(new URL(`./fixtures/native_starter/${path}.fixture`, import.meta.url), 'utf8')
+    for (const path of [
+      'config/auth.ts',
+      'config/mail.ts',
+      'config/limiter.ts',
+      'app/models/user.ts',
+      'database/schema.ts',
+    ]) {
+      await mkdir(join(root, path.substring(0, path.lastIndexOf('/'))), { recursive: true })
+      await writeFile(join(root, path), await stock(path))
+    }
+    await writeFile(join(root, '.env'), 'MAIL_MAILER=smtp\nLIMITER_STORE=database\n')
+    await mkdir(join(root, 'node_modules/@adonisjs/mail'), { recursive: true })
+    await writeFile(
+      join(root, 'node_modules/@adonisjs/mail/package.json'),
+      JSON.stringify({ name: '@adonisjs/mail', version: '10.0.0' })
+    )
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+    manifest.dependencies['@adonisjs/mail'] = '10'
+    manifest.imports = { '#database/*': './database/*.js' }
+    await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      plan.diagnostics.some(({ severity }) => severity === 'error'),
+      JSON.stringify(plan.diagnostics)
+    )
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, severity }) =>
+          field === 'authentication.applicationRouteRevocation' && severity === 'action'
+      )
+    )
+    assert.deepEqual(plan.endpointLocations, [])
+    assert.isFalse(
+      plan.changes
+        .find(({ path }) => path === 'start/account_kit_routes.ts')
+        ?.content.includes('registerManagedRoutes(')
+    )
+    await applySetup(root, plan)
+    assert.notInclude(
+      await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
+      'registerManagedRoutes('
+    )
+    const replay = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      replay.diagnostics.some(({ severity }) => severity === 'error'),
+      JSON.stringify(replay.diagnostics)
+    )
+    assert.isTrue(replay.changes.every(({ action }) => action === 'unchanged'))
+    assert.deepEqual(await applySetup(root, replay), [])
+    const activeChoices = structuredClone(choices)
+    activeChoices.authentication!.applicationRouteRevocation = true
+    const activation = await planSetup(activeChoices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      activation.diagnostics.some(({ severity }) => severity === 'error'),
+      JSON.stringify(activation.diagnostics)
+    )
+    assert.include(
+      activation.changes.find(({ path }) => path === 'start/account_kit_routes.ts')?.content,
+      'registerManagedRoutes('
+    )
+    assert.equal(
+      activation.changes.find(({ path }) => path === 'start/account_kit_routes.ts')?.action,
+      'update'
+    )
+    await applySetup(root, activation)
+    assert.include(
+      await readFile(join(root, 'start/account_kit_routes.ts'), 'utf8'),
+      'registerManagedRoutes('
+    )
+    assert.isFalse(activation.readiness.workflowVerified)
+    const tokenChoices = structuredClone(activeChoices)
+    tokenChoices.authentication = {
+      strategy: 'access_tokens',
+      guard: 'api',
+      token: { revocation: true, lifetime: '1d', abilities: ['*'] },
+      applicationRouteRevocation: true,
+    }
+    const tokenPlan = await planSetup(tokenChoices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isFalse(
+      tokenPlan.diagnostics.some(({ severity }) => severity === 'error'),
+      JSON.stringify(tokenPlan.diagnostics)
+    )
+  })
+
+  test('stock type augmentations stay safe while runtime config and schema mutations block setup', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const stock = (path: string) =>
+      readFile(new URL(`./fixtures/native_starter/${path}.fixture`, import.meta.url), 'utf8')
+    for (const path of [
+      'config/auth.ts',
+      'config/mail.ts',
+      'config/limiter.ts',
+      'app/models/user.ts',
+      'database/schema.ts',
+    ]) {
+      await mkdir(join(root, path.substring(0, path.lastIndexOf('/'))), { recursive: true })
+      await writeFile(join(root, path), await stock(path))
+    }
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+    manifest.imports = { '#database/*': './database/*.js' }
+    await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+    choices.mail.integration = 'adonisjs-mail'
+    choices.mail.senderEnv = 'MAIL_FROM_ADDRESS'
+    choices.mail.transportEnv = 'MAIL_MAILER'
+    await writeFile(join(root, '.env'), 'MAIL_MAILER=smtp\nLIMITER_STORE=database\n')
+    choices.authentication!.applicationRouteRevocation = true
+    for (const [path, mutation, field] of [
+      ['config/auth.ts', 'authConfig.guards.web = null', 'authentication.guard'],
+      ['config/mail.ts', 'mailConfig.mailers.smtp = null', 'config/mail.ts'],
+      ['config/limiter.ts', 'limiterConfig.stores.database = null', 'config/limiter.ts'],
+      ['database/schema.ts', "UserSchema.table = 'other'", 'user.connection'],
+      ['database/schema.ts', "BaseModel.table = 'other'", 'user.connection'],
+      ['database/schema.ts', 'column.dateTime = () => null', 'user.connection'],
+      ['app/models/user.ts', "User.table = 'other'", 'user.model'],
+      ['app/models/user.ts', "UserSchema.table = 'other'", 'user.connection'],
+    ] as const) {
+      await writeFile(join(root, path), `${await stock(path)}\n${mutation}\n`)
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field: found, severity }) => found === field && severity === 'error'
+        ),
+        `${path}: ${JSON.stringify(plan.diagnostics)}`
+      )
+      await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+      const configFiles = await readdir(join(root, 'config'))
+      assert.isFalse(configFiles.includes('account_kit_setup.json'))
+      await writeFile(join(root, path), await stock(path))
+    }
+    const schema = await stock('database/schema.ts')
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replaceAll(
+        '@column({ isPrimary: true })\n  declare id: number',
+        '@column()\n  declare id: number'
+      )
+    )
+    const wrongId = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      wrongId.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await assert.rejects(() => applySetup(root, wrongId), /blocking diagnostics/)
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replaceAll(
+        '@column({ isPrimary: true })',
+        "@column({ isPrimary: true, columnName: 'other_id' })"
+      )
+    )
+    const wrongColumn = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      wrongColumn.diagnostics.some(
+        ({ field, severity }) => field === 'user.idType' && severity === 'error'
+      )
+    )
+    await writeFile(
+      join(root, 'database/schema.ts'),
+      schema.replace(
+        'export class UserSchema extends BaseModel {',
+        'export class UserSchema extends BaseModel {\n  static table = unknownTable'
+      )
+    )
+    const unknownTable = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      unknownTable.diagnostics.some(
+        ({ field, severity }) => field === 'user.table' && severity === 'error'
+      )
+    )
+    await writeFile(join(root, 'database/schema.ts'), schema)
+    manifest.imports = { '#database/*': './elsewhere/*.js' }
+    await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+    const remapped = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.isTrue(
+      remapped.diagnostics.some(
+        ({ field, severity }) => field === 'user.connection' && severity === 'error'
+      )
+    )
+    await assert.rejects(() => applySetup(root, remapped), /blocking diagnostics/)
+  })
+
+  test('schema-composed model inspection refuses a linked schema leaf', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const outside = await mkdtemp(join(tmpdir(), 'account-schema-outside-'))
+    cleanupRoots.push(outside)
+    await mkdir(join(root, 'database'), { recursive: true })
+    await writeFile(
+      join(root, 'app/models/user.ts'),
+      await readFile(
+        new URL('./fixtures/native_starter/app/models/user.ts.fixture', import.meta.url),
+        'utf8'
+      )
+    )
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+    manifest.imports = { '#database/*': './database/*.js' }
+    await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+    const target = join(outside, 'schema.ts')
+    await writeFile(
+      target,
+      await readFile(
+        new URL('./fixtures/native_starter/database/schema.ts.fixture', import.meta.url),
+        'utf8'
+      )
+    )
+    await symlink(target, join(root, 'database/schema.ts'))
+    const original = await readFile(target, 'utf8')
+    const state = await inspectSetup(root)
+    await assert.rejects(
+      () => planSetup(choices, state, { apply: true, timestamp: 1234 }),
+      /non-regular schema/
+    )
+    assert.equal(await readlink(join(root, 'database/schema.ts')), target)
+    assert.equal(await readFile(target, 'utf8'), original)
+  })
+
   test('retirement uses a DB-derived count and a declared maintenance window', async ({
     assert,
   }) => {
