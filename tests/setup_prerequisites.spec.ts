@@ -57,6 +57,7 @@ async function fixture() {
     guards: ['web'],
     guardStrategies: { web: 'session' },
     guardModels: { web: '#models/user' },
+    guardTokenProviders: {},
     installedVersions: { ...versions },
     installedPackages: Object.keys(versions),
     database: 'sqlite',

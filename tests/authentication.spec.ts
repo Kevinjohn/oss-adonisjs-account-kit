@@ -415,6 +415,63 @@ test.group('authentication contract', (group) => {
     )
   })
 
+  test('authentication-only restriction restoration leaves the old token revoked', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, {
+      enabled: [],
+      authentication: {
+        strategy: 'access_tokens',
+        guard: 'api',
+        canAccess: async (candidate, trx) =>
+          !(await trx.from('users').select('disabled_at').where('id', candidate.id).first())
+            ?.disabled_at,
+      },
+    })
+    let issued = 0
+    const guard = {
+      strategy: 'access_tokens' as const,
+      name: 'api',
+      establish: async (id: number | string) => {
+        const [tokenId] = await kit.db
+          .table('auth_access_tokens')
+          .insert({ tokenable_id: id, hash: `issued-${++issued}` })
+        return tokenId as number
+      },
+      terminate: async () => {},
+    }
+    const original = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'before' },
+      guard
+    )
+    await account.authentication.current({ userId: user.id, tokenId: original.credential })
+    await account.authentication.changeRestriction({
+      userId: user.id,
+      change: async (_candidate, trx) => {
+        await trx
+          .from('users')
+          .where('id', user.id)
+          .update({ disabled_at: new Date().toISOString() })
+      },
+    })
+    await account.authentication.changeRestriction({
+      userId: user.id,
+      change: async (_candidate, trx) => {
+        await trx.from('users').where('id', user.id).update({ disabled_at: null })
+      },
+    })
+    const fresh = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'after' },
+      guard
+    )
+    await account.authentication.current({ userId: user.id, tokenId: fresh.credential })
+    await assert.rejects(
+      () => account.authentication.current({ userId: user.id, tokenId: original.credential }),
+      'Invalid session'
+    )
+  })
+
   for (const strategy of ['session', 'access_tokens'] as const) {
     test(`inactive email replacement revokes existing ${strategy} credentials`, async ({
       assert,

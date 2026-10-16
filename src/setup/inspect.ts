@@ -105,17 +105,19 @@ function directModel(
 async function inspectGuards(sourceText: string): Promise<{
   strategies: SetupInspection['guardStrategies']
   models: SetupInspection['guardModels']
+  tokenProviders: SetupInspection['guardTokenProviders']
 }> {
   const strategies: SetupInspection['guardStrategies'] = {}
   const models: SetupInspection['guardModels'] = {}
-  if (!sourceText) return { strategies, models }
+  const tokenProviders: SetupInspection['guardTokenProviders'] = {}
+  if (!sourceText) return { strategies, models, tokenProviders }
   const source = await parseSetupSource(sourceText)
   const configName = importedName(source, '@adonisjs/auth', 'defineConfig')
   const config = configName && topLevelConfig(source, configName)?.object
   const guards =
     config && directObject(source, directProperty(source, config, 'guards')?.initializer ?? config)
   if (!config || !guards || guards === config || hasUnsafeObjectEntries(source, guards))
-    return { strategies, models }
+    return { strategies, models, tokenProviders }
   const bindings = [
     {
       kind: 'session' as const,
@@ -147,8 +149,12 @@ async function inspectGuards(sourceText: string): Promise<{
     const providerOptions = providerCall && directObject(source, providerCall.arguments[0])
     const model = providerOptions && directModel(source, providerOptions)
     if (model) models[name] = model
+    if (binding.kind === 'access_tokens' && providerOptions) {
+      const tokens = directProperty(source, providerOptions, 'tokens')?.initializer
+      if (tokens && source.ts.isStringLiteral(tokens)) tokenProviders[name] = tokens.text
+    }
   }
-  return { strategies, models }
+  return { strategies, models, tokenProviders }
 }
 
 async function databaseKind(
@@ -296,7 +302,7 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
   const existingPrefix = existingChoices?.routePrefix ?? null
   const routeDefinitions = await staticRouteDefinitions(files['start/routes.ts'] ?? '')
   const routePaths = routeDefinitions.map(({ path }) => path)
-  const { strategies, models } = await inspectGuards(files['config/auth.ts'] ?? '')
+  const { strategies, models, tokenProviders } = await inspectGuards(files['config/auth.ts'] ?? '')
   return {
     root,
     existingInstallation: Boolean(
@@ -306,6 +312,7 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     guards: Object.keys(strategies),
     guardStrategies: strategies,
     guardModels: models,
+    guardTokenProviders: tokenProviders,
     database: await databaseKind(files['config/database.ts'] ?? '', root),
     connection: files['config/database.ts'] ? 'default' : 'unknown',
     installedPackages,

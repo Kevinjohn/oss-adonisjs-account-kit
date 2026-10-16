@@ -277,6 +277,15 @@ function validate(
         'authentication.guard',
         'Selected guard must load the selected user model through its conventional user provider'
       )
+    if (
+      choices.authentication.strategy === 'access_tokens' &&
+      state.guardTokenProviders[choices.authentication.guard] !== 'accessTokens'
+    )
+      diagnostic(
+        diagnostics,
+        'authentication.guard',
+        'Selected token guard must use the model accessTokens provider'
+      )
     if (choices.authentication.strategy === 'session') {
       if (!choices.authentication.session)
         diagnostic(
@@ -822,7 +831,6 @@ function accountConfigSource(choices: SetupChoices): string {
   const imports = [
     "import env from '#start/env'",
     ...(emailEnabled ? ["import app from '@adonisjs/core/services/app'"] : []),
-    ...(managedMail ? ["import mail from '@adonisjs/mail/services/main'"] : []),
     `import { ${[
       ...(emailEnabled ? ['createActionUrls'] : []),
       'defineConfig',
@@ -931,7 +939,7 @@ function accountConfigSource(choices: SetupChoices): string {
       : managedMail
         ? [
             '  notify: createMailNotifications({',
-            '    mail,',
+            "    mail: { sendLater: async (render) => (await import('@adonisjs/mail/services/main')).default.sendLater(render) },",
             `    from: requiredEnv(${JSON.stringify(choices.mail.senderEnv)}),`,
             `    brandName: ${JSON.stringify(choices.mail.appName)},`,
             '  }),',
@@ -2131,8 +2139,13 @@ function unsupportedClassRuntime(
       continue
     }
     if (!schema && name === 'accessTokens') {
-      const initializer = member.initializer
-      if (initializer && ts.isIdentifier(initializer)) continue
+      const initializer = member.initializer && unwrapStaticExpression(source, member.initializer)
+      if (
+        initializer &&
+        (ts.isIdentifier(initializer) ||
+          (ts.isObjectLiteralExpression(initializer) && initializer.properties.length === 0))
+      )
+        continue
       if (
         initializer &&
         provider &&
@@ -2328,8 +2341,22 @@ export async function planSetup(
       const nativeProvider = staticMember('accessTokens')[0]
       const nativeProviderCall =
         nativeProvider && ts.isPropertyDeclaration(nativeProvider)
-          ? nativeProvider.initializer
+          ? nativeProvider.initializer && unwrapStaticExpression(model, nativeProvider.initializer)
           : undefined
+      const supportedTokenProvider = Boolean(
+        nativeProviderCall &&
+        providerBinding &&
+        exactCall(model, nativeProviderCall, providerBinding, 'forModel') &&
+        nativeProviderCall.arguments.length === 1 &&
+        ts.isIdentifier(nativeProviderCall.arguments[0]) &&
+        nativeProviderCall.arguments[0].text === selectedClass?.name?.text &&
+        !hasUnsafeBindingReferences(
+          model,
+          providerBinding,
+          (call) =>
+            call === nativeProviderCall && exactCall(model, call, providerBinding, 'forModel')
+        )
+      )
       const safeSelfReference = (node: TypeScript.Identifier) =>
         Boolean(
           node.parent &&
@@ -2367,14 +2394,11 @@ export async function planSetup(
           'user.model',
           'Model static metadata or later class references require manual review before generated migrations'
         )
-      if (
-        choices.authentication?.strategy === 'access_tokens' &&
-        staticMember('accessTokens').length !== 1
-      )
+      if (choices.authentication?.strategy === 'access_tokens' && !supportedTokenProvider)
         diagnostic(
           diagnostics,
           'user.model',
-          'Token guard model must expose its existing static accessTokens provider'
+          'Token guard model must initialize accessTokens with the supported DbAccessTokensProvider.forModel(User) provider'
         )
       let schemaClass: TypeScript.ClassDeclaration | null = null
       let schemaSource: SetupSource | null = null
