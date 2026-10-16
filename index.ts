@@ -11,3 +11,21 @@ export type { LucidAdapterOptions, LucidModelLoader } from './adapters/lucid.ts'
 export { accountErrorResponse } from './src/http.ts'
 export type { AccountErrorResponse } from './src/http.ts'
 export type { PruneInput, PruneCounts } from './src/maintenance.ts'
+export {
+  PasswordResetProvision,
+  AccountActivationProvision,
+  InvitationProvision,
+  EmailChangeProvision,
+  createActionUrls,
+  createMailNotifications,
+  notificationReadiness,
+  renderAccountMessage,
+} from './src/notifications.ts'
+export type {
+  AccountMailMessage,
+  AccountMailService,
+  ActionUrlOptions,
+  MailNotificationOptions,
+  NotificationReadinessInput,
+  RenderedAccountMessage,
+} from './src/notifications.ts'

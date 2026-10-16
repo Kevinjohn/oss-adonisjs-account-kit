@@ -99,6 +99,11 @@ function disabled(): never {
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!config || typeof config !== 'object' || !config.users || typeof config.users !== 'object')
     throw new Error('account_kit: users adapter must be configured')
+  if (
+    config.delivery !== undefined &&
+    !['best-effort', 'durable', 'capture'].includes(config.delivery)
+  )
+    throw new Error('account_kit: delivery must be best-effort, durable, or capture')
   const enabled =
     config.enabled ??
     capabilities.filter((name) => name !== 'registration' && name !== 'invitations')
@@ -294,6 +299,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   return {
     ...config,
     enabled: [...enabled],
+    delivery: config.delivery ?? 'best-effort',
     expiresIn,
     throttle,
     invitationThrottle,
