@@ -1,11 +1,33 @@
 import { test } from '@japa/runner'
+import { configProvider } from '@adonisjs/core/config'
+import { stores } from '@adonisjs/session'
 import { InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
+import { protectManagedSessionConfig } from '../src/http/session_store.js'
 
-class DatabaseStore {}
-const serverSessionConfig = {
-  store: 'browser',
-  stores: { browser: () => new DatabaseStore() },
+class ServerStore {}
+
+async function protectedContext(
+  selected: () => unknown = () => new ServerStore(),
+  store = 'browser',
+  verifyStore: (value: unknown) => boolean = (value) => value instanceof ServerStore
+) {
+  const config = await configProvider.resolve<{
+    store: string
+    stores: Record<string, (context: never, config: never) => unknown>
+  }>(
+    {} as never,
+    protectManagedSessionConfig(
+      configProvider.create(async () => ({ store, stores: { [store]: selected } })),
+      {
+        verifyStore,
+      }
+    )
+  )
+  if (!config) throw new Error('Test session config did not resolve')
+  const context = {} as never
+  config.stores[store](context, config as never)
+  return { context, config }
 }
 
 test.group('managed existing-guard adapters', () => {
@@ -25,10 +47,11 @@ test.group('managed existing-guard adapters', () => {
       name: 'web',
       loadUser: async () => User,
     })
-    const ctx = {
+    const { context, config } = await protectedContext()
+    const ctx = Object.assign(context, {
       auth: { use: () => ({ authenticate: async () => ({}) }) },
-      session: { config: serverSessionConfig, get: () => undefined },
-    } as never
+      session: { config, get: () => undefined },
+    }) as never
     await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
   })
   test('reads Lucid proxy user and token IDs even when property membership is hidden', async ({
@@ -45,10 +68,11 @@ test.group('managed existing-guard adapters', () => {
         has: () => false,
       }
     )
-    const ctx = {
+    const { context, config } = await protectedContext()
+    const ctx = Object.assign(context, {
       auth: { use: () => ({ authenticate: async () => user }) },
-      session: { config: serverSessionConfig, get: () => '' },
-    } as never
+      session: { config, get: () => '' },
+    }) as never
     const session = createManagedGuard({
       strategy: 'session',
       name: 'web',
@@ -110,7 +134,7 @@ test.group('managed existing-guard adapters', () => {
     )
     assert.deepEqual(deleted, [18])
   })
-  test('refuses cookie-backed sessions before issuing or trusting a credential', async ({
+  test('refuses sessions without the protected configuration before issuing or trusting a credential', async ({
     assert,
   }) => {
     const adapter = createManagedGuard({
@@ -119,48 +143,113 @@ test.group('managed existing-guard adapters', () => {
       loadUser: async () => ({ findOrFail: async () => ({ id: 1 }) }),
     })
     const ctx = { session: { config: { store: 'cookie' } } } as never
-    assert.throws(() => adapter.forRequest(ctx), /server-side session store/)
-    await assert.rejects(() => adapter.current(ctx), /server-side session store/)
+    assert.throws(() => adapter.forRequest(ctx), /protectManagedSessionConfig/)
+    await assert.rejects(() => adapter.current(ctx), /protectManagedSessionConfig/)
   })
-  test('refuses an aliased cookie backend and unknown stores without an explicit verifier', async ({
+  test('rejects cookie ancestry on the actual selected instance before custom attestation', async ({
     assert,
   }) => {
-    class CookieStore {}
-    class CustomStore {}
-    let authenticated = false
-    const adapter = createManagedGuard({
+    const nativeCookieFactory = await configProvider.resolve<
+      (context: never, config: never) => object
+    >({} as never, stores.cookie())
+    if (!nativeCookieFactory) throw new Error('Native cookie factory did not resolve')
+    const Cookie = nativeCookieFactory({} as never, { cookie: {} } as never).constructor as new (
+      config: unknown,
+      context: unknown
+    ) => object
+    class DatabaseStore extends Cookie {
+      constructor() {
+        super({}, {})
+      }
+    }
+    let attestationCalls = 0
+    await assert.rejects(
+      () =>
+        protectedContext(
+          () => new DatabaseStore(),
+          'browser',
+          () => {
+            attestationCalls++
+            return true
+          }
+        ),
+      /revocable server-side store/
+    )
+    assert.equal(attestationCalls, 0)
+    await assert.rejects(
+      () =>
+        protectedContext(
+          () => nativeCookieFactory({} as never, { cookie: {} } as never),
+          'database',
+          () => true
+        ),
+      /revocable server-side store/
+    )
+    await assert.rejects(
+      () =>
+        protectedContext(
+          () => ({}),
+          'database',
+          () => false
+        ),
+      /revocable server-side store/
+    )
+    await assert.rejects(
+      () =>
+        protectedContext(() => new ServerStore(), 'database', (() =>
+          Promise.resolve(true)) as never),
+      /revocable server-side store/
+    )
+  })
+  test('verifies each actual selected instance and accepts a server backend under cookie key', async ({
+    assert,
+  }) => {
+    const nativeCookieFactory = await configProvider.resolve<
+      (context: never, config: never) => object
+    >({} as never, stores.cookie())
+    if (!nativeCookieFactory) throw new Error('Native cookie factory did not resolve')
+    let selectedCalls = 0
+    const selected = () => {
+      selectedCalls++
+      return selectedCalls === 1
+        ? new ServerStore()
+        : nativeCookieFactory({} as never, { cookie: {} } as never)
+    }
+    const config = await configProvider.resolve<{
+      store: string
+      stores: Record<string, (context: never, config: never) => unknown>
+    }>(
+      {} as never,
+      protectManagedSessionConfig(
+        configProvider.create(async () => ({ store: 'cookie', stores: { cookie: selected } })),
+        {
+          verifyStore: (value) => value instanceof ServerStore,
+        }
+      )
+    )
+    if (!config) throw new Error('Test session config did not resolve')
+    const first = { session: { config } } as never
+    config.stores.cookie(first, config as never)
+    const guard = createManagedGuard({
       strategy: 'session',
       name: 'web',
       loadUser: async () => ({ findOrFail: async () => ({ id: 1 }) }),
     })
-    const context = (factory: () => unknown) =>
-      ({
-        session: {
-          config: { store: 'browser', stores: { browser: factory } },
-          get: () => undefined,
-        },
-        auth: {
-          use: () => ({
-            authenticate: async () => {
-              authenticated = true
-              return { id: 1 }
-            },
-          }),
-        },
-      }) as never
-    const cookie = context(() => new CookieStore())
-    assert.throws(() => adapter.forRequest(cookie), /server-side session store/)
-    await assert.rejects(() => adapter.current(cookie), /server-side session store/)
-    assert.isFalse(authenticated)
-    const unknown = context(() => new CustomStore())
-    assert.throws(() => adapter.forRequest(unknown), /verified server-side session store/)
-    const trusted = createManagedGuard({
-      strategy: 'session',
-      name: 'web',
-      loadUser: async () => ({ findOrFail: async () => ({ id: 1 }) }),
-      verifySessionStore: (store) => store instanceof CustomStore,
-    })
-    assert.deepEqual(await trusted.current(unknown), { userId: 1 })
+    assert.doesNotThrow(() => guard.forRequest(first))
+    assert.equal(selectedCalls, 1)
+    const second = { session: { config } } as never
+    assert.throws(
+      () => config.stores.cookie(second, config as never),
+      /revocable server-side store/
+    )
+    assert.throws(() => guard.forRequest(second), /protectManagedSessionConfig/)
+    assert.equal(selectedCalls, 2)
+    const mismatched = { session: { config: { ...config } } } as never
+    assert.throws(() => guard.forRequest(mismatched), /protectManagedSessionConfig/)
+    const original = config.stores.cookie
+    config.stores.cookie = () => new ServerStore()
+    assert.throws(() => guard.forRequest(first), /protectManagedSessionConfig/)
+    config.stores.cookie = original
   })
   test('session login regenerates, captures revision, and current reads only authenticated state', async ({
     assert,
@@ -168,7 +257,8 @@ test.group('managed existing-guard adapters', () => {
     const actions: string[] = []
     const values = new Map<string, unknown>()
     const user = { id: 42 }
-    const ctx = {
+    const { context, config } = await protectedContext()
+    const ctx = Object.assign(context, {
       auth: {
         use: (name: string) => {
           assert.equal(name, 'web')
@@ -184,7 +274,7 @@ test.group('managed existing-guard adapters', () => {
         },
       },
       session: {
-        config: serverSessionConfig,
+        config,
         regenerate: () => {
           actions.push('regenerate')
         },
@@ -197,7 +287,7 @@ test.group('managed existing-guard adapters', () => {
           values.clear()
         },
       },
-    } as never
+    }) as never
     const adapter = createManagedGuard({
       strategy: 'session',
       name: 'web',
@@ -266,8 +356,9 @@ test.group('managed existing-guard adapters', () => {
     const unauthorised = Object.assign(new Error('private guard details'), {
       code: 'E_UNAUTHORIZED_ACCESS',
     })
-    const ctx = {
-      session: { config: serverSessionConfig },
+    const { context, config } = await protectedContext()
+    const ctx = Object.assign(context, {
+      session: { config },
       auth: {
         use: () => ({
           authenticate: async () => {
@@ -275,11 +366,12 @@ test.group('managed existing-guard adapters', () => {
           },
         }),
       },
-    } as never
+    }) as never
     await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
     const databaseFailure = new Error('database offline')
-    const outage = {
-      session: { config: serverSessionConfig },
+    const { context: outageContext, config: outageConfig } = await protectedContext()
+    const outage = Object.assign(outageContext, {
+      session: { config: outageConfig },
       auth: {
         use: () => ({
           authenticate: async () => {
@@ -287,7 +379,7 @@ test.group('managed existing-guard adapters', () => {
           },
         }),
       },
-    } as never
+    }) as never
     await assert.rejects(() => adapter.current(outage), /database offline/)
   })
 

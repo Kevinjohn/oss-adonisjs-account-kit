@@ -4,7 +4,31 @@
 
 Import `registerManagedRoutes` from `adonisjs-account-kit/http` in the application's routes file. Calling it is the activation step; importing the package or configuring services registers no route. The HTTP entry requires AdonisJS Core and VineJS. Service-only applications do not import it and do not need VineJS.
 
-Call the function once with a static absolute `prefix` such as `/api/v1`, a `kit` resolver, one existing `guard`, an explicit `enabled` capability list, and an optional `except` list of endpoint names. The guard name and strategy must match `defineConfig({ authentication })`. The `guard.forRequest(context)` callback adapts the selected AdonisJS guard to the public `AuthenticationGuard` service contract. `guard.current(context)` must authenticate that same guard and return a trusted `CurrentAccountInput`, including the captured session revision or current token identifier; it must never take identity from a body or URL. Token logout also supplies `logoutCredential(context)`. Account Kit does not create, replace, or select a guard implicitly. The concrete session factory checks the selected AdonisJS store backend, rejecting cookie-backed stores even when they use another name: an old self-contained cookie can replay after logout. Use a shared server-side store. Built-in memory, database, file, Redis, and DynamoDB stores are recognized; an application-defined store needs `createManagedGuard({ verifySessionStore: (store) => ... })` to attest that its `destroy` operation revokes old credentials. An absent or unresolved store fails closed.
+Call the function once with a static absolute `prefix` such as `/api/v1`, a `kit` resolver, one existing `guard`, an explicit `enabled` capability list, and an optional `except` list of endpoint names. The guard name and strategy must match `defineConfig({ authentication })`. The `guard.forRequest(context)` callback adapts the selected AdonisJS guard to the public `AuthenticationGuard` service contract. `guard.current(context)` must authenticate that same guard and return a trusted `CurrentAccountInput`, including the captured session revision or current token identifier; it must never take identity from a body or URL. Token logout also supplies `logoutCredential(context)`. Account Kit does not create, replace, or select a guard implicitly. For session guards, protect the selected session configuration before Adonis creates its session middleware. The wrapper checks the exact store instance used by the request and rejects native cookie-backed stores, including aliases and subclasses: an old self-contained cookie can replay after logout. The required `verifyStore` callback is trusted application configuration that attests central revocation for the actual non-cookie store. It must reject unknown or unverified custom stores. Use a shared server-side store across application instances. An unprotected session configuration fails closed with a setup error.
+
+In `config/session.ts`, wrap the `defineConfig(...)` provider before exporting it:
+
+```ts
+import { defineConfig, stores } from '@adonisjs/session'
+import { protectManagedSessionConfig } from 'adonisjs-account-kit/http'
+import { isTrustedRevocableSessionStore } from '#services/session_store_policy'
+
+const sessionConfig = defineConfig({
+  // Keep the application's cookie, age, store and stores settings here.
+  store: 'database',
+  stores: { database: stores.database(), cookie: stores.cookie() },
+})
+
+export default protectManagedSessionConfig(sessionConfig, {
+  verifyStore: (actual) => {
+    // Attest the configured server-side implementation's destroy/revocation behavior.
+    // Reject an implementation whose destroyed IDs can still be replayed.
+    return isTrustedRevocableSessionStore(actual)
+  },
+})
+```
+
+`isTrustedRevocableSessionStore` is an application-owned check for the selected store implementation; a method named `destroy` alone does not establish revocation. The wrapper is resolved at boot, before `SessionMiddleware` captures the configuration. It invokes the selected factory once for each request, validates and returns that exact store, and binds proof to the request and configuration. Install it even when the selected store key is an alias or the canonical `cookie` key has been replaced by a server-backed factory. Direct callers who omit the wrapper receive an actionable fail-closed error from `createManagedGuard`.
 
 ```ts
 import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/http'

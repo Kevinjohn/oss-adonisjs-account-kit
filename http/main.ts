@@ -1,5 +1,6 @@
 export { registerManagedRoutes } from '../src/http/managed.js'
 export { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
+export { protectManagedSessionConfig } from '../src/http/session_store.js'
 export { managedProofHeadersMiddleware } from '../src/http/proof_headers.js'
 export type {
   ManagedTokenCredential,
