@@ -292,7 +292,11 @@ function validate(
       'policy.registration',
       'Open registration requires registration to be enabled'
     )
-  if (choices.managed.includes('registration') && choices.policy.registration !== 'open')
+  if (
+    choices.managed.includes('registration') &&
+    !choices.managedExcept?.includes('auth.signup') &&
+    choices.policy.registration !== 'open'
+  )
     diagnostic(
       diagnostics,
       'policy.registration',
@@ -313,6 +317,9 @@ function validate(
     'isadmin',
     'accesstokens',
     'credentialschangedat',
+    '__proto__',
+    'prototype',
+    'constructor',
   ])
   const fieldNames = new Set<string>()
   for (const [index, field] of choices.policy.registrationFields.entries()) {
@@ -366,6 +373,13 @@ function validate(
       'policy',
       'Provide #services/account_kit_policy callbacks before activation'
     )
+  else if (choices.policy.accessRestrictionHook || choices.features.includes('invitations'))
+    diagnostic(
+      diagnostics,
+      'policy.callbacks',
+      'Verify the application-owned policy callbacks implement the selected access and invitation contracts at runtime',
+      'action'
+    )
   if (choices.authentication && !choices.policy.accessRestrictionHook)
     diagnostic(
       diagnostics,
@@ -378,6 +392,11 @@ function validate(
       'policy.verificationRequired',
       'Verification-gated access requires email verification'
     )
+  if (
+    choices.features.includes('emailPasswordManagement') &&
+    !choices.features.includes('emailVerification')
+  )
+    diagnostic(diagnostics, 'features', 'Email/password management requires email verification')
   if (choices.policy.verificationRequired) {
     for (const action of ['logout', 'verificationResend', 'passwordReset'] as const) {
       if (!choices.policy.unverifiedActions.includes(action))
@@ -422,7 +441,14 @@ function validate(
       'mail.integration',
       'Provide #services/account_kit_notifications before activation'
     )
-  if (!choices.mail.appName.trim())
+  else if (choices.mail.integration === 'custom')
+    diagnostic(
+      diagnostics,
+      'mail.callbacks',
+      'Verify the application-owned notification callbacks for every selected email flow and a real delivery transport',
+      'action'
+    )
+  if (!choices.mail.appName.trim() || /[\r\n]/.test(choices.mail.appName))
     diagnostic(diagnostics, 'mail.appName', 'Application identity is required')
   if (choices.mail.integration === 'adonisjs-mail' && !choices.mail.senderEnv)
     diagnostic(diagnostics, 'mail.senderEnv', 'Sender environment reference is required')
@@ -431,13 +457,17 @@ function validate(
   if (choices.mail.integration === 'adonisjs-mail') {
     for (const field of ['senderEnv', 'transportEnv'] as const) {
       const name = choices.mail[field]
-      if (name && envName.test(name) && !process.env[name])
+      if (!name || !envName.test(name)) continue
+      const value = process.env[name]
+      if (value === undefined || value === '')
         diagnostic(
           diagnostics,
           `mail.${field}`,
           `${name} must be set before readiness can pass`,
           'action'
         )
+      else if (!value.trim() || (field === 'senderEnv' && /[\r\n]/.test(value)))
+        diagnostic(diagnostics, `mail.${field}`, 'Configured value must be nonblank and safe')
     }
   }
   for (const [feature, destination] of Object.entries(emailDestinations)) {
@@ -851,7 +881,7 @@ function planRouteImport(
     return
   }
   const importLine = "import './account_kit_routes.js'"
-  const executable = withoutComments(previous)
+  const executable = stripSourceComments(previous)
   if (/\bregisterManagedRoutes\s*\(/.test(executable)) {
     diagnostic(
       diagnostics,
@@ -891,7 +921,7 @@ function planArrayImports(
   imports: string[]
 ) {
   const previous = state.files[path]
-  const markerIndex = previous === undefined ? -1 : withoutComments(previous).indexOf(marker)
+  const markerIndex = previous === undefined ? -1 : stripSourceComments(previous).indexOf(marker)
   if (previous === undefined || markerIndex < 0) {
     diagnostic(
       diagnostics,
@@ -900,7 +930,7 @@ function planArrayImports(
     )
     return
   }
-  const executable = withoutComments(previous)
+  const executable = stripSourceComments(previous)
   const missing = imports.filter(
     (name) =>
       !new RegExp(
@@ -928,12 +958,6 @@ function planArrayImports(
   })
 }
 
-function withoutComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\/|(^|\s)\/\/[^\n]*/gm, (comment) =>
-    comment.replace(/[^\n]/g, ' ')
-  )
-}
-
 function planRouterMiddleware(
   changes: SetupFileChange[],
   state: SetupInspection,
@@ -942,17 +966,20 @@ function planRouterMiddleware(
 ) {
   const path = 'start/kernel.ts'
   const previous = state.files[path]
-  const start = previous?.indexOf('router.use([') ?? -1
-  const end = start < 0 ? -1 : previous!.indexOf('])', start)
-  if (!previous || start < 0 || end < 0 || previous.indexOf('router.use([', start + 1) >= 0) {
+  const executable = previous ? stripSourceComments(previous) : ''
+  const start = executable.indexOf('router.use([')
+  const end = start < 0 ? -1 : executable.indexOf('])', start)
+  if (!previous || start < 0 || end < 0 || executable.indexOf('router.use([', start + 1) >= 0) {
     diagnostic(diagnostics, path, 'Expected one conventional router.use array in start/kernel.ts')
     return
   }
   const block = previous.slice(start + 'router.use(['.length, end)
-  const serverStart = previous.indexOf('server.use([')
-  const serverEnd = serverStart < 0 ? -1 : previous.indexOf('])', serverStart)
-  const serverBlock = serverEnd < 0 ? '' : previous.slice(serverStart, serverEnd)
+  const executableBlock = executable.slice(start + 'router.use(['.length, end)
+  const serverStart = executable.indexOf('server.use([')
+  const serverEnd = serverStart < 0 ? -1 : executable.indexOf('])', serverStart)
+  const serverBlock = serverEnd < 0 ? '' : executable.slice(serverStart, serverEnd)
   const lines = block.split('\n')
+  const activeLines = executableBlock.split('\n')
   const body = '@adonisjs/core/bodyparser_middleware'
   const ordered = [
     body,
@@ -970,8 +997,8 @@ function planRouterMiddleware(
     return
   }
   if (
-    lines.filter((line) => line.includes(body)).length !== 1 ||
-    ordered.some((name) => lines.filter((line) => line.includes(name)).length > 1)
+    activeLines.filter((line) => line.includes(body)).length !== 1 ||
+    ordered.some((name) => activeLines.filter((line) => line.includes(name)).length > 1)
   ) {
     diagnostic(
       diagnostics,
@@ -981,7 +1008,7 @@ function planRouterMiddleware(
     return
   }
   const existingIndexes = ordered
-    .map((name) => lines.findIndex((line) => line.includes(name)))
+    .map((name) => activeLines.findIndex((line) => line.includes(name)))
     .filter((index) => index >= 0)
   if (
     existingIndexes.some(
@@ -997,12 +1024,13 @@ function planRouterMiddleware(
   }
   let changed = false
   for (let index = 1; index < ordered.length; index++) {
-    if (lines.some((line) => line.includes(ordered[index]))) continue
-    const previousIndex = lines.findIndex((line) => line.includes(ordered[index - 1]))
+    if (activeLines.some((line) => line.includes(ordered[index]))) continue
+    const previousIndex = activeLines.findIndex((line) => line.includes(ordered[index - 1]))
     if (previousIndex < 0) throw new Error('Missing previously planned router middleware')
     if (!/[,\s]$/.test(lines[previousIndex].trimEnd()))
       lines[previousIndex] = `${lines[previousIndex].trimEnd()},`
     lines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
+    activeLines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
     changed = true
   }
   changes.push({
@@ -1024,9 +1052,10 @@ function planServerProofMiddleware(
   const path = 'start/kernel.ts'
   const existing = changes.find((change) => change.path === path)
   const previous = existing?.content ?? state.files[path]
-  const start = previous?.indexOf('server.use([') ?? -1
-  const end = start < 0 ? -1 : previous!.indexOf('])', start)
-  if (!previous || start < 0 || end < 0 || previous.indexOf('server.use([', start + 1) >= 0) {
+  const executable = previous ? stripSourceComments(previous) : ''
+  const start = executable.indexOf('server.use([')
+  const end = start < 0 ? -1 : executable.indexOf('])', start)
+  if (!previous || start < 0 || end < 0 || executable.indexOf('server.use([', start + 1) >= 0) {
     diagnostic(
       diagnostics,
       path,
@@ -1035,7 +1064,7 @@ function planServerProofMiddleware(
     return
   }
   const name = '#middleware/account_kit_proof_headers_middleware'
-  const block = withoutComments(previous.slice(start, end))
+  const block = executable.slice(start, end)
   if (block.includes(name)) return
   const content =
     previous.slice(0, start + 'server.use(['.length) +
@@ -1053,6 +1082,171 @@ function planServerProofMiddleware(
       content,
       reason: 'Install early proof response headers before body parsing and Shield',
     })
+}
+
+const sessionImport =
+  "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from 'adonisjs-account-kit/http'\n// account-kit:session-import:end\n"
+const selectionStart = '// account-kit:session-selection:start\n'
+const selectionEnd = '\n// account-kit:session-selection:end\n'
+const exportStart = '// account-kit:session-export:start\n'
+const exportEnd = '// account-kit:session-export:end\n'
+
+function inspectedNativeSessionStores(
+  source: string,
+  executable: string,
+  configStart: number,
+  exportStartIndex: number
+): Array<{ name: string; kind: 'database' | 'memory' }> | null {
+  const configBody = executable.slice(configStart, exportStartIndex)
+  const maps = [...configBody.matchAll(/\bstores\s*:\s*\{/g)]
+  if (maps.length !== 1) return null
+  const opening = configStart + maps[0].index + maps[0][0].lastIndexOf('{')
+  const depths: number[] = []
+  let depth = 1
+  let quote: "'" | '"' | '`' | null = null
+  let closing = -1
+  for (let index = opening + 1; index < exportStartIndex; index++) {
+    const character = executable[index]
+    depths[index] = depth
+    if (quote) {
+      if (character === '\\') index++
+      else if (character === quote) quote = null
+      continue
+    }
+    if (character === "'" || character === '"' || character === '`') quote = character
+    else if (character === '{') depth++
+    else if (character === '}' && --depth === 0) {
+      closing = index
+      break
+    }
+  }
+  if (closing < 0) return null
+  return [...source.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*:\s*stores\.(database|memory)\s*\(/g)]
+    .filter(
+      (match) =>
+        match.index > opening &&
+        match.index < closing &&
+        depths[match.index] === 1 &&
+        executable.slice(match.index, match.index + match[0].length) === match[0]
+    )
+    .map((match) => ({ name: match[1], kind: match[2] as 'database' | 'memory' }))
+}
+
+function renderManagedSessionConfig(source: string): string | null {
+  const executable = stripSourceComments(source)
+  if (!/\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(/.test(executable)) return null
+  if (executable.match(/\bexport\s+default\s+sessionConfig\b/g)?.length !== 1) return null
+  const selected = executable.match(
+    /\bstore\s*:\s*(env\.get\(['"]SESSION_DRIVER['"]\)|['"][^'"]+['"])/g
+  )
+  if (selected?.length !== 1) return null
+  const originalStore = selected[0].replace(/^\bstore\s*:\s*/, '')
+  const configStart = executable.search(/\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(/)
+  const exportMatch = /\bexport\s+default\s+sessionConfig\b/.exec(executable)!
+  const allowedStores = inspectedNativeSessionStores(
+    source,
+    executable,
+    configStart,
+    exportMatch.index
+  )
+  if (!allowedStores?.length) return null
+  const selector = 'accountKitSelectedSessionStore'
+  const selection = `${selectionStart}const ${selector} = ${originalStore}${selectionEnd}`
+  const verify = allowedStores
+    .map(({ name, kind }) =>
+      kind === 'memory'
+        ? `(${selector} === ${JSON.stringify(name)} && process.env.NODE_ENV !== 'production')`
+        : `${selector} === ${JSON.stringify(name)}`
+    )
+    .join(' || ')
+  const wrappedExport = `${exportStart}export default protectManagedSessionConfig(sessionConfig, {
+  verifyStore: (actual) =>
+    (${verify}) &&
+    actual !== null &&
+    typeof actual === 'object' &&
+    ['read', 'write', 'destroy', 'touch'].every(
+      (method) => typeof (actual as Record<string, unknown>)[method] === 'function'
+    ),
+})
+${exportEnd}`
+  const storeStart = executable.indexOf(selected[0])
+  return (
+    sessionImport +
+    source.slice(0, configStart) +
+    selection +
+    source.slice(configStart, storeStart) +
+    source.slice(storeStart, exportMatch.index).replace(selected[0], `store: ${selector}`) +
+    wrappedExport +
+    source.slice(exportMatch.index + exportMatch[0].length)
+  )
+}
+
+function unwrapManagedSessionConfig(source: string): string | null {
+  if (!source.startsWith(sessionImport)) return null
+  const selectionMatch = source.match(
+    /\/\/ account-kit:session-selection:start\nconst accountKitSelectedSessionStore = (.+)\n\/\/ account-kit:session-selection:end\n/
+  )
+  const exportMatch = source.match(
+    /\/\/ account-kit:session-export:start\n[\s\S]*?\/\/ account-kit:session-export:end\n/
+  )
+  if (!selectionMatch || !exportMatch) return null
+  const base = source
+    .slice(sessionImport.length)
+    .replace(selectionMatch[0], '')
+    .replace('store: accountKitSelectedSessionStore', `store: ${selectionMatch[1]}`)
+    .replace(exportMatch[0], 'export default sessionConfig')
+  return renderManagedSessionConfig(base) === source ? base : null
+}
+
+function planSessionConfigIntegration(
+  changes: SetupFileChange[],
+  state: SetupInspection,
+  choices: SetupChoices,
+  diagnostics: SetupDiagnostic[]
+) {
+  const path = 'config/session.ts'
+  const previous = state.files[path]
+  if (!previous) return
+  const wantsManagedSession =
+    choices.managed.length > 0 && choices.authentication?.strategy === 'session'
+  const wasManaged = previous.includes('account-kit:session-import:start')
+  const base = wasManaged ? unwrapManagedSessionConfig(previous) : previous
+  if (base === null) {
+    diagnostic(
+      diagnostics,
+      path,
+      'The managed session integration was edited; restore its marked block or reconcile it manually before setup'
+    )
+    return
+  }
+  if (!wantsManagedSession && !wasManaged) return
+  if (!wasManaged && /\bprotectManagedSessionConfig\s*\(/.test(stripSourceComments(previous))) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Verify the existing application-owned session protection wrapper before enabling managed session routes',
+      'action'
+    )
+    return
+  }
+  const content = wantsManagedSession ? renderManagedSessionConfig(base) : base
+  if (content === null) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Use a conventional const sessionConfig = defineConfig(...) and export default sessionConfig, or wire protectManagedSessionConfig manually before managed session activation'
+    )
+    return
+  }
+  changes.push({
+    path,
+    action: previous === content ? 'unchanged' : 'update',
+    expected: previous,
+    content,
+    reason: wantsManagedSession
+      ? 'Verify the selected server-side session store before issuing managed credentials'
+      : 'Retire the setup-owned managed session verification wrapper',
+  })
 }
 
 /** Build the complete proposal before a write. Apply refuses every conflict in this plan. */
@@ -1086,7 +1280,7 @@ export async function planSetup(
       const modelStat = await lstat(modelFile)
       if (!modelStat.isFile())
         throw new Error(`Setup cannot inspect non-regular model ${modelPath}`)
-      const model = await readFile(modelFile, 'utf8')
+      const model = stripSourceComments(await readFile(modelFile, 'utf8'))
       if (!/export\s+default\s+class\s+\w+\s+extends\s+/.test(model))
         diagnostic(
           diagnostics,
@@ -1110,11 +1304,11 @@ export async function planSetup(
           'user.table',
           `Model table ${table} differs from selected ${choices.user.table}`
         )
-      if (connection && connection !== 'default')
+      if (/\bstatic\s+connection\s*=/.test(model))
         diagnostic(
           diagnostics,
           'user.connection',
-          `Model connection ${connection} differs from selected default`
+          'Selected Lucid model must not declare an explicit connection override'
         )
       if (!table)
         diagnostic(
@@ -1123,10 +1317,7 @@ export async function planSetup(
           'Verify the model table, including inherited or inferred mapping, matches the generated migrations',
           'action'
         )
-      if (
-        !connection &&
-        (/\bstatic\s+connection\s*=/.test(model) || !/extends\s+BaseModel\b/.test(model))
-      )
+      if (!connection && !/extends\s+BaseModel\b/.test(model))
         diagnostic(
           diagnostics,
           'user.connection',
@@ -1159,6 +1350,7 @@ export async function planSetup(
     state.existingChoices ? generatedEnv(state.existingChoices) : null,
     'Document deployment references'
   )
+  planSessionConfigIntegration(changes, state, choices, diagnostics)
   if (
     choices.authentication &&
     (choices.managed.length || state.files['app/services/account_kit_guard.ts'])
@@ -1261,9 +1453,14 @@ export async function planSetup(
         const sessionConfig = stripSourceComments(state.files['config/session.ts'])
         const selectedStore =
           sessionConfig.match(/\bstore\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
-          (/\bstore\s*:\s*env\.get\(['"]SESSION_DRIVER['"]\)/.test(sessionConfig)
+          (/\bstore\s*:\s*(?:env\.get\(['"]SESSION_DRIVER['"]\)|accountKitSelectedSessionStore)/.test(
+            sessionConfig
+          ) &&
+          /\b(?:store\s*:\s*|accountKitSelectedSessionStore\s*=\s*)env\.get\(['"]SESSION_DRIVER['"]\)/.test(
+            sessionConfig
+          )
             ? process.env.SESSION_DRIVER
-            : undefined)
+            : sessionConfig.match(/\baccountKitSelectedSessionStore\s*=\s*['"]([^'"]+)['"]/)?.[1])
         const configuredStore = selectedStore
           ? sessionConfig.match(
               new RegExp(
@@ -1287,6 +1484,12 @@ export async function planSetup(
             diagnostics,
             'config/session.ts',
             `Selected session store ${selectedStore} is not configured in config/session.ts`
+          )
+        else if (options.production && configuredStore === 'memory')
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            'Production requires a persistent shared session store; selected memory storage cannot satisfy persistentStore verification'
           )
         else if (
           configuredStore === 'database' &&

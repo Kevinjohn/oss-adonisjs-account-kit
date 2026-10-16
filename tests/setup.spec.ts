@@ -76,7 +76,10 @@ async function fixture() {
     'export default defineConfig({ default: "database", stores: { database: stores.database({ tableName: "rate_limits" }) } })\n'
   )
   await writeFile(join(root, 'config/shield.ts'), 'export default { csrf: { enabled: true } }\n')
-  await writeFile(join(root, 'config/session.ts'), 'export default { cookie: {} }\n')
+  await writeFile(
+    join(root, 'config/session.ts'),
+    "import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: 'database', stores: { database: stores.database() } })\nexport default sessionConfig\n"
+  )
   await writeFile(join(root, 'adonisrc.ts'), 'export default { providers: [] }\n')
   await writeFile(join(root, 'start/routes.ts'), '// application routes\n')
   await writeFile(
@@ -259,7 +262,7 @@ test.group('onboarding plan and apply', (group) => {
     })
     assert.equal(resumed.changes[0].action, 'unchanged')
     const written = await applySetup(root, resumed)
-    assert.lengthOf(written, 17)
+    assert.lengthOf(written, 18)
     assert.include(await readFile(join(root, 'start/routes.ts'), 'utf8'), originalRoutes.trim())
     assert.include(
       await readFile(join(root, 'start/routes.ts'), 'utf8'),
