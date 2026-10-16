@@ -210,7 +210,7 @@ test('browser social link rejects a session invalidated after initiation', async
     email: user.email,
     emailVerified: true,
   })
-  await db.from('users').where('id', user.id).update({ credentials_changed_at: new Date() })
+  await db.from(User.table).where('id', user.id).update({ credentials_changed_at: new Date() })
   const callback = await client
     .get(`/api/v1/auth/oauth/github/callback?state=${state}&code=stale-code`)
     .header('cookie', rawCookies(started) || cookie)
