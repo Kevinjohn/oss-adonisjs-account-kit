@@ -1143,6 +1143,8 @@ export default class User extends BaseModel { static table = 'users'; static '\u
       for (const routes of [
         "import * as account from 'adonisjs-account-kit/http'\nconst mount = account.registerManagedRoutes\nmount(router, {})\n",
         "import { registerManagedRoutes as first, registerManagedRoutes as second } from 'adonisjs-account-kit/http'\nsecond(router, {})\n",
+        "import { registerManagedRoutes as mount } from 'adonisjs-account-kit/http'\nimport { createManagedGuard } from 'adonisjs-account-kit/http'\nmount(router, {})\n",
+        "import { registerManagedRoutes as mount } from 'adonisjs-account-kit/http'\nconst other = await import('adonisjs-account-kit/http')\nmount(router, {})\n",
       ]) {
         state.files['start/routes.ts'] = routes
         const hidden = await planSetup(choices, state)
@@ -1239,6 +1241,47 @@ export default class User extends BaseModel { static table = 'users'; static '\u
     })
   })
 
+  test('dynamic module views cannot certify selected session and Limiter factories', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst other = await import(`#start/env`)\nother.default.get = () => 'cookie'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER', 'database'), stores: { database: stores.database() } })\nexport default sessionConfig"
+      const session = await planSetup(choices, state)
+      assert.isTrue(
+        session.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+      state.files['config/session.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: 'database', stores: { database: stores.database() } })\nexport default sessionConfig"
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nconst other = await import('@adonisjs/limiter')\nother.stores.memory = () => { throw new Error('broken') }\nexport default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })"
+      const limiter = await planSetup(choices, state)
+      assert.isTrue(
+        limiter.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nconst moduleName = '@adonisjs/limiter'\nconst other = await import(moduleName)\nother.stores.memory = () => { throw new Error('broken') }\nexport default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })"
+      const computed = await planSetup(choices, state)
+      assert.isTrue(
+        computed.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nconst other = require('@adonisjs/limiter')\nother.stores.memory = () => { throw new Error('broken') }\nexport default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })"
+      const required = await planSetup(choices, state)
+      assert.isTrue(
+        required.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
   test('local Shield wrapper cannot attest CSRF without the framework import', async ({
     assert,
   }) => {
@@ -1304,7 +1347,21 @@ export default class User extends BaseModel { static table = 'users'; static '\u
       const previous = process.env.MAIL_MAILER
       process.env.MAIL_MAILER = 'smtp'
       try {
-        for (const value of ['null', 'undefined', 'void 0', '(null as unknown)']) {
+        for (const value of [
+          'null',
+          'undefined',
+          'void 0',
+          '(null as unknown)',
+          'null!',
+          'undefined!',
+          'false',
+          '42',
+          "'smtp'",
+          '[]',
+          '{}',
+          '({} satisfies object)',
+          '(/smtp/ as unknown)',
+        ]) {
           state.files['config/mail.ts'] =
             `import { defineConfig } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: ${value} } })`
           const invalid = await planSetup(choices, state)
@@ -1321,12 +1378,30 @@ export default class User extends BaseModel { static table = 'users'; static '\u
         assert.isTrue(
           ambiguous.diagnostics.some(
             ({ field, severity, message }) =>
-              field === 'config/mail.ts' &&
-              severity === 'action' &&
-              message.includes('Confirm the selected')
+              field === 'config/mail.ts' && severity === 'error' && message.includes('provenance')
           )
         )
         assert.isFalse(ambiguous.readiness.externalConfigured)
+        state.files['config/mail.ts'] =
+          "import { defineConfig, transports } from '@adonisjs/mail'\nimport env from '#start/env'\nconst other = await import('#start/env')\nother.default.get = () => 'other'\nexport default defineConfig({ default: env.get('MAIL_MAILER', 'smtp'), mailers: { smtp: transports.smtp({}) } })"
+        const dynamicEnv = await planSetup(choices, state)
+        assert.isTrue(
+          dynamicEnv.diagnostics.some(
+            ({ field, severity }) => field === 'config/mail.ts' && severity === 'error'
+          )
+        )
+        state.files['config/mail.ts'] =
+          "import { defineConfig, transports } from '@adonisjs/mail'\nexport default defineConfig({ default: 'smtp', mailers: { smtp: transports.smtp({}) } })"
+        const native = await planSetup(choices, state)
+        assert.isTrue(
+          native.diagnostics.some(
+            ({ field, severity, message }) =>
+              field === 'config/mail.ts' &&
+              severity === 'action' &&
+              message.includes('Verify the selected')
+          )
+        )
+        assert.isFalse(native.readiness.externalConfigured)
       } finally {
         if (previous === undefined) delete process.env.MAIL_MAILER
         else process.env.MAIL_MAILER = previous

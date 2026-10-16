@@ -30,6 +30,23 @@ export async function parseSetupSource(text: string): Promise<SetupSource> {
 /** Multiple runtime views of a module make a selected import's provenance ambiguous. */
 export function hasAmbiguousRuntimeModuleImports(source: SetupSource, module: string): boolean {
   const { ts } = source
+  let dynamicExposure = false
+  walk(source, (node) => {
+    if (!ts.isCallExpression(node)) return
+    const isImport = node.expression.kind === ts.SyntaxKind.ImportKeyword
+    const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require'
+    if (!isImport && !isRequire) return
+    const specifier = node.arguments[0]
+    if (
+      !specifier ||
+      (!ts.isStringLiteral(specifier) && !ts.isNoSubstitutionTemplateLiteral(specifier))
+    ) {
+      dynamicExposure = true
+    } else if (specifier.text === module) {
+      dynamicExposure = true
+    }
+  })
+  if (dynamicExposure) return true
   const bindings = source.file.statements
     .filter(ts.isImportDeclaration)
     .filter(

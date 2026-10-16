@@ -23,6 +23,7 @@ import {
   directProperty,
   exactCall,
   exportedObject,
+  hasAmbiguousRuntimeModuleImports,
   hasUnsafeObjectEntries,
   hasUnsafeBindingReferences,
   importedName,
@@ -50,6 +51,15 @@ function hasEmailFlow(choices: SetupChoices): boolean {
 const envName = /^[A-Z][A-Z0-9_]*$/
 const sqlName = /^[A-Za-z_][A-Za-z0-9_]*$/
 const routePrefix = /^\/[A-Za-z0-9/_-]*$/
+const nativeMailTransports = new Set([
+  'smtp',
+  'ses',
+  'mailgun',
+  'sparkpost',
+  'resend',
+  'brevo',
+  'postmark',
+])
 
 function selectedManagedRoutes(
   choices: SetupChoices,
@@ -198,7 +208,11 @@ function validate(
   if (state.database === 'unsupported')
     diagnostic(diagnostics, 'database.client', 'Only SQLite and PostgreSQL 16 are supported')
   if (state.database === 'unknown')
-    diagnostic(diagnostics, 'database.client', 'Verify SQLite or PostgreSQL 16 client', 'action')
+    diagnostic(
+      diagnostics,
+      'database.client',
+      'Resolve the selected SQLite or PostgreSQL 16 client before setup'
+    )
   if (!sqlName.test(choices.user.table))
     diagnostic(diagnostics, 'user.table', 'Use a plain SQL identifier')
   if (!['lucid', 'custom'].includes(choices.user.adapter))
@@ -966,6 +980,7 @@ async function planRouteImport(
   })
   const mountBinding = importedName(source, 'adonisjs-account-kit/http', 'registerManagedRoutes')
   let unsupportedMount =
+    hasAmbiguousRuntimeModuleImports(source, 'adonisjs-account-kit/http') ||
     namedMounts.length > 1 ||
     namespaceMounts.some((name) => hasUnsafeBindingReferences(source, name, () => false))
   walk(source, (node) => {
@@ -1367,7 +1382,7 @@ async function mailerSelectionState(
   text: string,
   root: string,
   transportEnv: string | null
-): Promise<'missing' | 'invalid' | 'unresolved' | 'present'> {
+): Promise<'missing' | 'invalid' | 'unsafe' | 'unresolved' | 'present'> {
   let source: SetupSource
   try {
     source = await parseSetupSource(text)
@@ -1375,6 +1390,11 @@ async function mailerSelectionState(
     return 'unresolved'
   }
   const { ts } = source
+  if (
+    hasAmbiguousRuntimeModuleImports(source, '@adonisjs/mail') ||
+    hasAmbiguousRuntimeModuleImports(source, '#start/env')
+  )
+    return 'unsafe'
   const target = defaultExpression(source)?.expression
   const factory = importedName(source, '@adonisjs/mail', 'defineConfig')
   const object =
@@ -1425,16 +1445,46 @@ async function mailerSelectionState(
   while (
     ts.isParenthesizedExpression(value) ||
     ts.isAsExpression(value) ||
-    ts.isSatisfiesExpression(value)
+    ts.isSatisfiesExpression(value) ||
+    ts.isNonNullExpression(value)
   )
     value = value.expression
   if (
     value.kind === ts.SyntaxKind.NullKeyword ||
     ts.isVoidExpression(value) ||
-    (ts.isIdentifier(value) && value.text === 'undefined')
+    (ts.isIdentifier(value) && value.text === 'undefined') ||
+    value.kind === ts.SyntaxKind.TrueKeyword ||
+    value.kind === ts.SyntaxKind.FalseKeyword ||
+    ts.isNumericLiteral(value) ||
+    ts.isBigIntLiteral(value) ||
+    ts.isStringLiteral(value) ||
+    ts.isNoSubstitutionTemplateLiteral(value) ||
+    ts.isTemplateExpression(value) ||
+    ts.isArrayLiteralExpression(value) ||
+    ts.isObjectLiteralExpression(value) ||
+    ts.isRegularExpressionLiteral(value) ||
+    ts.isPrefixUnaryExpression(value)
   )
     return 'invalid'
-  return 'present'
+  if (ts.isArrowFunction(value) || ts.isFunctionExpression(value)) return 'present'
+  const transports = importedName(source, '@adonisjs/mail', 'transports')
+  if (
+    transports &&
+    ts.isCallExpression(value) &&
+    ts.isPropertyAccessExpression(value.expression) &&
+    ts.isIdentifier(value.expression.expression) &&
+    value.expression.expression.text === transports &&
+    nativeMailTransports.has(value.expression.name.text) &&
+    !hasUnsafeBindingReferences(
+      source,
+      transports,
+      (call) =>
+        ts.isPropertyAccessExpression(call.expression) &&
+        nativeMailTransports.has(call.expression.name.text)
+    )
+  )
+    return 'present'
+  return 'unresolved'
 }
 
 async function limiterConfigurationState(
@@ -1844,7 +1894,13 @@ export async function planSetup(
       diagnostic(
         diagnostics,
         'config/mail.ts',
-        'Selected Mail mailer has a null or undefined transport'
+        'Selected Mail mailer must be a callable transport provider'
+      )
+    else if (selection === 'unsafe')
+      diagnostic(
+        diagnostics,
+        'config/mail.ts',
+        'Resolve runtime Mail and environment module provenance before setup'
       )
     else
       diagnostic(

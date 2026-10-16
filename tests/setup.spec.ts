@@ -212,6 +212,25 @@ test.group('onboarding plan and apply', (group) => {
     await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
   })
 
+  test('unresolved database selection blocks apply before any write', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nconst other = await import('#start/env')\nother.default.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
+    )
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'unknown')
+    const before = await readdir(root)
+    const plan = await planSetup(choices, state, { apply: true, timestamp: 1234 })
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, severity }) => field === 'database.client' && severity === 'error'
+      )
+    )
+    await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
+    assert.deepEqual(await readdir(root), before)
+  })
+
   test('assesses six pillars and previews every file without mutation', async ({ assert }) => {
     const { root, choices } = await fixture()
     const state = await inspectSetup(root)
