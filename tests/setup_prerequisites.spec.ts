@@ -352,6 +352,13 @@ test.group('setup prerequisite inspection', () => {
     assert,
   }) => {
     await withFixture(async (choices, state) => {
+      const inert = await planSetup(choices, state)
+      assert.isTrue(
+        inert.prerequisites.some((item) => item.includes('application-owned CSRF bootstrap'))
+      )
+      assert.isFalse(inert.prerequisites.some((item) => item.includes('GET /account/auth/csrf')))
+
+      choices.authentication!.applicationRouteRevocation = true
       const standard = await planSetup(choices, state)
       assert.isTrue(standard.prerequisites.some((item) => item.includes('GET /account/auth/csrf')))
       choices.managedExcept = ['auth.csrf']

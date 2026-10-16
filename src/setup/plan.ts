@@ -772,16 +772,23 @@ function managedGuardSource(choices: SetupChoices): string {
 
 function managedAccessMiddlewareSource(choices: SetupChoices): string {
   return [
+    "import type { HttpContext } from '@adonisjs/core/http'",
     "import app from '@adonisjs/core/services/app'",
     "import { AccountKit } from 'adonisjs-account-kit'",
     "import { managedAccountMiddleware } from 'adonisjs-account-kit/http'",
     "import { accountKitGuard } from '#services/account_kit_guard'",
     '',
-    'export default managedAccountMiddleware({',
+    'const checkAccess = managedAccountMiddleware({',
     '  kit: () => app.container.make(AccountKit),',
     '  guard: accountKitGuard,',
     `  active: ${choices.policy.verificationRequired},`,
     '})',
+    '',
+    'export default class AccountKitAccessMiddleware {',
+    '  handle(ctx: HttpContext, next: () => Promise<unknown>): Promise<unknown> {',
+    '    return checkAccess(ctx, next)',
+    '  }',
+    '}',
     '',
   ].join('\n')
 }
@@ -2685,13 +2692,13 @@ export async function planSetup(
           'user.connection',
           'Selected Lucid model must not declare an explicit connection override'
         )
-      if (composed && schemaClass && !table && selectedClass?.name?.text !== 'User')
+      if (!table && selectedClass?.name?.text !== 'User')
         diagnostic(
           diagnostics,
           'user.table',
           'Confirm the final model table mapping before generated migrations'
         )
-      if (composed && schemaClass && !table && choices.user.table !== 'users')
+      if (!table && choices.user.table !== 'users')
         diagnostic(
           diagnostics,
           'user.table',
@@ -2710,13 +2717,6 @@ export async function planSetup(
           diagnostics,
           'user.table',
           'Resolve schema table evaluation before generated migrations'
-        )
-      if (!table && !composed)
-        diagnostic(
-          diagnostics,
-          'user.table',
-          'Verify the model table, including inherited or inferred mapping, matches the generated migrations',
-          'action'
         )
       const extendsBase = selectedClass?.heritageClauses?.some(
         (clause) =>
@@ -3072,7 +3072,7 @@ export async function planSetup(
         `Installed ${name}@${version} is outside supported ^${minimum.join('.')} range`
       )
   }
-  const csrfLocation = plannedEndpointLocations.find(({ name }) => name === 'auth.csrf')?.path
+  const csrfLocation = endpointLocations.find(({ name }) => name === 'auth.csrf')?.path
   const prerequisites = [
     ...missingPackages.map((name) => `Install ${name} explicitly with pnpm add ${name}`),
     'Review generated migrations, then run node ace migration:run explicitly',
