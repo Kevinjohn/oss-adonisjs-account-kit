@@ -26,7 +26,7 @@ async function fixture() {
   await mkdir(join(root, 'app/models'), { recursive: true })
   await writeFile(
     join(root, 'app/models/user.ts'),
-    'export default class User extends BaseModel {}'
+    "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel {}"
   )
   const choices = defaultSetupChoices()
   choices.policy.accessRestrictionHook = true
@@ -944,6 +944,155 @@ test.group('setup prerequisite inspection', () => {
         if (prior === undefined) delete process.env.APP_SESSION_STORE
         else process.env.APP_SESSION_STORE = prior
       }
+    })
+  })
+
+  test('ambiguous config objects and later bindings cannot certify integrations', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['adonisrc.ts'] =
+        'const config = { providers: [] }; config.providers = []; export default config'
+      state.files['config/shield.ts'] =
+        "export default { csrf: { enabled: true, ['enabled']: false } }"
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nexport default defineConfig({ default: 'memory', stores: { memory: stores.doesNotExist({}) } })"
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'adonisrc.ts' && severity === 'error'
+        )
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/shield.ts' && severity === 'error'
+        )
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('existing proof middleware must lead server middleware', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/core/bodyparser_middleware'), () => import('#middleware/account_kit_proof_headers_middleware')])\nrouter.use([])"
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'start/kernel.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('multiline selected session wrapper survives replay and removal', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      state.files['config/session.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get(\n  'SESSION_DRIVER',\n  'database'\n), stores: { database: stores.database() } })\nexport default sessionConfig\n"
+      const first = await planSetup(choices, state)
+      const wrapped = first.changes.find(({ path }) => path === 'config/session.ts')!.content
+      state.files['config/session.ts'] = wrapped
+      const replay = await planSetup(choices, state)
+      assert.isFalse(
+        replay.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+      choices.managed = []
+      const removed = await planSetup(choices, state)
+      assert.isFalse(
+        removed.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+      assert.include(
+        removed.changes.find(({ path }) => path === 'config/session.ts')!.content,
+        "env.get(\n  'SESSION_DRIVER'"
+      )
+      void root
+    })
+  })
+
+  test('registration requires verification service even with application-owned endpoints', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.features = ['registration']
+      choices.managed = []
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'features' &&
+            severity === 'error' &&
+            message.includes('Registration requires')
+        )
+      )
+    })
+  })
+
+  test('computed or later-mutated model metadata cannot certify migrations', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      const model = join(root, 'app/models/user.ts')
+      for (const source of [
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users'; static ['table'] = 'members' }",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static ['connection'] = 'other' }",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users' }\nUser.table = 'members'",
+      ]) {
+        await writeFile(model, source)
+        const plan = await planSetup(choices, state)
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity }) => field === 'user.model' && severity === 'error'
+          )
+        )
+      }
+      await writeFile(
+        model,
+        "export default class User extends BaseModel { static table = 'users' }"
+      )
+      const unresolved = await planSetup(choices, state)
+      assert.isTrue(
+        unresolved.diagnostics.some(
+          ({ field, severity }) => field === 'user.connection' && severity === 'error'
+        )
+      )
+      await writeFile(
+        model,
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nimport { compose } from '@adonisjs/core/helpers'\nexport default class User extends compose(BaseModel, withTokens) { static table = 'users' }"
+      )
+      const composed = await planSetup(choices, state)
+      assert.isFalse(
+        composed.diagnostics.some(
+          ({ field, severity }) => field === 'user.connection' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('route mount distinguishes type imports and aliased executable registration', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/routes.ts'] = "import type {} from './account_kit_routes.js'\n"
+      const typeOnly = await planSetup(choices, state)
+      assert.include(
+        typeOnly.changes.find(({ path }) => path === 'start/routes.ts')!.content,
+        "import './account_kit_routes.js'"
+      )
+      state.files['start/routes.ts'] =
+        "import { registerManagedRoutes as mount } from 'adonisjs-account-kit/http'\nmount(router, {})\n"
+      const alias = await planSetup(choices, state)
+      assert.isTrue(
+        alias.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        )
+      )
+      assert.isFalse(alias.changes.some(({ path }) => path === 'start/routes.ts'))
     })
   })
 })

@@ -66,7 +66,7 @@ export function directProperty(
   name: string
 ): TypeScript.PropertyAssignment | null {
   const { ts } = source
-  if (object.properties.some((property) => ts.isSpreadAssignment(property))) return null
+  if (hasUnsafeObjectEntries(source, object)) return null
   const matches = object.properties.filter((property) => {
     if (!property.name) return false
     if (ts.isComputedPropertyName(property.name)) return false
@@ -125,6 +125,18 @@ export function defaultExpression(source: SetupSource): {
     if (matching.length !== 1 || !matching[0].initializer) return null
     declaration = matching[0]
     initializer = matching[0].initializer!
+    let unsafe = false
+    walk(source, (node) => {
+      if (
+        ts.isIdentifier(node) &&
+        node.text === expression.text &&
+        node !== declaration?.name &&
+        node !== expression &&
+        !(ts.isPropertyAssignment(node.parent) && node.parent.name === node)
+      )
+        unsafe = true
+    })
+    if (unsafe) return null
   }
   return { expression: initializer, declaration, exportAssignment: exports[0] }
 }

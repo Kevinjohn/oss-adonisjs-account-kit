@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
+import { defaultSetupChoices } from '../src/setup/defaults.js'
+import { planSetup } from '../src/setup/plan.js'
 import { stripSourceComments } from '../src/setup/source_text.js'
 
 async function applicationRoot() {
@@ -62,6 +64,36 @@ test('commented guards and models do not become setup prerequisites', async ({ a
     const live = await inspectSetup(root)
     assert.deepEqual(live.guardStrategies, { web: 'session', api: 'access_tokens' })
     assert.deepEqual(live.guardModels, { web: '#models/user', api: '#models/user' })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('changed and ambiguous exported config cannot certify guards or database', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  try {
+    const auth = join(root, 'config/auth.ts')
+    await writeFile(
+      auth,
+      "import { defineConfig } from '@adonisjs/auth'\nimport { sessionGuard } from '@adonisjs/auth/session'\nconst config = defineConfig({ guards: { web: sessionGuard({}) } })\nconfig.guards = {}\nexport default config"
+    )
+    const mutatedAuth = await inspectSetup(root)
+    assert.deepEqual(mutatedAuth.guardStrategies, {})
+    await writeFile(
+      auth,
+      "import { defineConfig } from '@adonisjs/auth'\nimport { sessionGuard } from '@adonisjs/auth/session'\nexport default defineConfig({ guards: { web: sessionGuard({}), ['web']: null } })"
+    )
+    const ambiguousAuth = await inspectSetup(root)
+    assert.deepEqual(ambiguousAuth.guardStrategies, {})
+    const database = join(root, 'config/database.ts')
+    await writeFile(
+      database,
+      "import { defineConfig } from '@adonisjs/lucid'\nconst config = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3' } } })\nconfig.connection = 'mysql'\nexport default config"
+    )
+    const mutatedDatabase = await inspectSetup(root)
+    assert.equal(mutatedDatabase.database, 'unknown')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -177,7 +209,7 @@ test('database selection uses process, dotenv, then literal default without gues
       [
         "import { defineConfig } from '@adonisjs/lucid'",
         "import env from '#start/env'",
-        'export default defineConfig({ connection: env.get("DB_CONNECTION", "sqlite"), connections: { sqlite: { client: "better-sqlite3" }, pg: { client: "pg" } } })',
+        'export default defineConfig({ connection: env.get("DB_CONNECTION", "sqlite"), connections: { sqlite: { client: "better-sqlite3" }, pg: { client: "pg" }, mysql: { client: "mysql2" } } })',
       ].join('\n')
     )
     const fallback = await inspectSetup(root)
@@ -185,6 +217,19 @@ test('database selection uses process, dotenv, then literal default without gues
     await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
     const dotenv = await inspectSetup(root)
     assert.equal(dotenv.database, 'postgres')
+    for (const selected of ['mysql', 'unconfigured']) {
+      await writeFile(join(root, '.env'), `DB_CONNECTION=${selected}\n`)
+      const unsupported = await inspectSetup(root)
+      assert.equal(unsupported.database, selected === 'mysql' ? 'unsupported' : 'unknown')
+      const plan = await planSetup(defaultSetupChoices(), unsupported)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) =>
+            field === 'database.client' && severity === (selected === 'mysql' ? 'error' : 'action')
+        )
+      )
+    }
+    await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
     process.env.DB_CONNECTION = 'sqlite'
     const processSelected = await inspectSetup(root)
     assert.equal(processSelected.database, 'sqlite')
