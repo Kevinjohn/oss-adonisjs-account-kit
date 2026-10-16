@@ -1,10 +1,15 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { currentInTransaction, revision, safeAccount } from './authentication.js'
+import {
+  credentialsChanged,
+  currentInTransaction,
+  revision,
+  safeAccount,
+} from './authentication.js'
 import { lockUser, transaction, isUserEmailUniqueViolation } from './db.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import {
@@ -857,6 +862,8 @@ export function socialIdentityService(deps: Dependencies) {
       proof: string
     }): Promise<void> {
       let notice: { user: AccountUser; relation: SocialIdentity } | undefined
+      let changed: AccountUser | undefined
+      const operationId = randomUUID()
       const { fault } = await settleCommitted(
         transaction(deps.db, async (trx) => {
           const user = await authenticated(deps, input.current, trx)
@@ -882,27 +889,43 @@ export function socialIdentityService(deps: Dependencies) {
             .where('id', input.identityId)
             .where('user_id', user.id)
             .delete()
-          // A pending callback may already be waiting on provider assurance. Removing its
-          // state under the account lock also prevents a later relink from reviving it.
-          await trx
-            .from('social_transactions')
-            .where('user_id', user.id)
-            .where('intent', 'reauth')
-            .delete()
-          await trx.from('social_sensitive_proofs').where('user_id', user.id).delete()
+          // Removing a login method is a credential change: advance the revision so sessions
+          // and tokens established through the provider end, clear pending callbacks (including
+          // one already resolving provider assurance, so a later relink cannot revive it) and
+          // sensitive proofs, and run the application's transactional hook.
+          changed = (await deps.config.users.findById(user.id, trx)) ?? user
+          await credentialsChanged(trx, deps.config, changed, {
+            operation: 'social_unlink',
+            operationId,
+            userId: user.id,
+          })
           if (row.confirmed_at) notice = { user, relation: identity(row) }
         })
       )
       await finishCommitted(fault, 'Social unlink committed but follow-up failed', async () => {
+        const effects: PostCommitEffect[] = []
+        if (changed) {
+          const user = changed
+          effects.push({
+            kind: 'observer',
+            run: async () => {
+              await deps.config.onCredentialsChanged?.(user, {
+                operation: 'social_unlink',
+                operationId,
+                userId: user.id,
+              })
+            },
+          })
+        }
         if (notice && confirmedRecipient(notice.user)) {
           const { user, relation } = notice
-          await postCommit('Social identity unlinked but notice failed', [
-            {
-              kind: 'delivery',
-              run: () => deps.config.notify.socialIdentityUnlinked(user, relation),
-            },
-          ])
+          effects.push({
+            kind: 'delivery',
+            run: () => deps.config.notify.socialIdentityUnlinked(user, relation),
+          })
         }
+        if (effects.length)
+          await postCommit('Social identity unlinked but a follow-up failed', effects)
       })
     },
   }
