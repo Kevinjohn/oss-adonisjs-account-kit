@@ -99,7 +99,8 @@
     "@adonisjs/mail": "^10.0.0",
     "@adonisjs/session": "^8.1.0",
     "@vinejs/vine": "^4.4.0",
-    "luxon": "^3.0.0"
+    "luxon": "^3.0.0",
+    "typescript": "^5.9.3 || ^6.0.3"
   },
   "peerDependenciesMeta": {
     "@adonisjs/assembler": {
@@ -112,6 +113,9 @@
       "optional": true
     },
     "@vinejs/vine": {
+      "optional": true
+    },
+    "typescript": {
       "optional": true
     }
   },
