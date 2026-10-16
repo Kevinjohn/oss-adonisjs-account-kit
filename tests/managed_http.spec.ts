@@ -143,6 +143,31 @@ test.group('managed HTTP dispatch', () => {
     const open = new AccountKit({ config: { registration: { availability: 'open' } } } as never)
     assert.doesNotThrow(() => open.managedHttp.assertPublicRegistration())
   })
+  test('the session CSRF bootstrap response is never cacheable', async ({ assert }) => {
+    const { router, routes, context } = fixture()
+    const kit = new AccountKit({
+      config: {
+        registration: { availability: 'open' },
+        authentication: { guard: 'web', strategy: 'session' },
+      },
+    } as never)
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => kit,
+      guard: {
+        strategy: 'session',
+        name: 'web',
+        forRequest: () => ({}) as never,
+        current: async () => ({ userId: 1, revision: null }),
+      },
+      enabled: ['passwordReset'],
+    })
+    const ctx = context()
+    Object.assign(ctx.request, { csrfToken: 'session-secret' })
+    const output = await routes.get('GET /api/v1/auth/csrf')!(ctx)
+    assert.deepEqual(output, { status: 200, body: { csrfToken: 'session-secret' } })
+    assert.equal(ctx.headers['Cache-Control'], 'no-store')
+  })
   test('application-owned registration never reaches the managed signup service', async ({
     assert,
   }) => {
