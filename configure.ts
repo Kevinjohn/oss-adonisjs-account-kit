@@ -10,6 +10,7 @@ export const migrationNames = [
   'evolve_identity_contract',
   'create_social_identities',
   'retire_account_email_changes',
+  'add_credentials_changed_at_to_users',
 ]
 
 function isMissing(error: unknown): boolean {

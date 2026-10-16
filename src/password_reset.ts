@@ -2,6 +2,7 @@ import { performance } from 'node:perf_hooks'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
+import { credentialsChanged } from './authentication.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { consumeUserToken, lockUser, transaction } from './db.js'
@@ -64,11 +65,11 @@ export async function completePasswordReset(
       await trx.from('email_verification_tokens').where('tokenable_id', row.tokenable_id).delete()
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
       if (!reloaded) throw new InvalidTokenError()
-      await deps.config.onCredentialsChangedTransaction?.(
-        reloaded,
-        { operation: 'password_reset', operationId, userId: reloaded.id },
-        trx
-      )
+      await credentialsChanged(trx, deps.config, reloaded, {
+        operation: 'password_reset',
+        operationId,
+        userId: reloaded.id,
+      })
       return reloaded
     })
   )

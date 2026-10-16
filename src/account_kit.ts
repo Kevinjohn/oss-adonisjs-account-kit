@@ -10,6 +10,7 @@ import {
 } from './password_reset.js'
 import { completeVerification, sendVerification } from './verification.js'
 import { changePassword, completeEmailChange, requestEmailChange } from './credentials.js'
+import { authenticationService } from './authentication.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -60,6 +61,10 @@ export class AccountKit {
 
   readonly maintenance = {
     prune: (input: PruneInput = {}) => pruneExpired(this.deps.db, input),
+  }
+
+  get authentication() {
+    return authenticationService(this.deps)
   }
 
   readonly passwordReset = {

@@ -3,6 +3,8 @@
 `AccountKit` is registered by the package provider and resolved from the Adonis container. The
 complete application wiring is in the [API consumer example](../examples/api/README.md), including
 routes, validation, central HTTP error mapping, Lucid model setup, and notification callbacks.
+See [authentication integration](authentication.md) for the selected guard, session/CSRF
+bootstrap, token handling, revocation, and required route middleware.
 
 ## Configuration
 

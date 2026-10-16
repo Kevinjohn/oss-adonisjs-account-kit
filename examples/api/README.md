@@ -26,17 +26,22 @@ rejects replay. The proof is transferred between phases in a mode-0600 temporary
 before redemption assertions.
 
 Before adapting these routes, configure trusted proxy addresses so `request.ip()` cannot be spoofed.
-Login allows five attempts per client and normalized email pair, and 20 attempts per client, within
-15 minutes. Limiter keys are HMACs derived from `APP_KEY` and do not persist email addresses or client
-IPs. The password reset limiter
-also uses `request.ip()` as its client key. Keep `APP_URL` on HTTPS in production so generated links
-are secure. These example routes use bearer-token authentication. If you adapt
-them to cookie-authenticated browser sessions, enable and validate CSRF protection for state-changing
-requests rather than assuming JSON content types provide it.
+Login counts failed attempts only: ten per client and five per client plus normalized email per
+minute, with a 20-minute identity block. Limiter keys are HMACs derived from `APP_KEY` and do not
+persist email addresses or client IPs. The password reset limiter also uses `request.ip()` as its
+client key. Keep `APP_URL` on HTTPS in production so generated links are secure. Set
+`ACCOUNT_KIT_AUTH_STRATEGY=session` to use the existing `web` guard, a server-side session store,
+CSRF bootstrap, and HTTP-only browser cookies; the default uses the existing `api` bearer-token
+guard. The cookie session store is rejected because it cannot invalidate a replayed cookie on
+logout. See [authentication integration](../../docs/authentication.md) for setup, route protection,
+revocation, and client handling. The example permits a limited inactive credential to correct an
+unconfirmed email, while `VerifiedAccountMiddleware` rejects it on verified routes. Bearer tokens
+must have the `invitations:create` ability before the invitation-send controller acts.
 
 The credential-notice outbox stores password-reset and password-change operation IDs, kinds, and
-recipient addresses; it does not store passwords or bearer tokens. Credential changes revoke API
-tokens transactionally for every operation. In this example, the old-address email-change security
+recipient addresses; it does not store passwords or bearer tokens. In token mode, package credential
+changes delete API tokens transactionally; in session mode they advance the session revision. In
+this example, the old-address email-change security
 notice remains best-effort post-commit; an application that needs durable delivery must persist the
 previous recipient transactionally in its own outbox recipe.
 
