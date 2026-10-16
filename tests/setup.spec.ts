@@ -54,10 +54,10 @@ async function fixture() {
     '@adonisjs/core': '7.0.0',
     '@adonisjs/lucid': '22.4.2',
     '@adonisjs/limiter': '3.0.0',
-    '@adonisjs/auth': '10.0.0',
-    '@adonisjs/session': '8.0.0',
+    '@adonisjs/auth': '10.1.0',
+    '@adonisjs/session': '8.1.0',
     '@adonisjs/shield': '9.0.0',
-    '@vinejs/vine': '4.0.0',
+    '@vinejs/vine': '4.4.0',
     'adonisjs-account-kit': '0.0.0',
   })) {
     await mkdir(join(root, 'node_modules', name), { recursive: true })
@@ -73,7 +73,7 @@ async function fixture() {
   await writeFile(join(root, 'config/database.ts'), "export default { client: 'better-sqlite3' }\n")
   await writeFile(
     join(root, 'config/limiter.ts'),
-    'export default defineConfig({ default: "database" })\n'
+    'export default defineConfig({ default: "database", stores: { database: stores.database({ tableName: "rate_limits" }) } })\n'
   )
   await writeFile(join(root, 'config/shield.ts'), 'export default { csrf: { enabled: true } }\n')
   await writeFile(join(root, 'config/session.ts'), 'export default { cookie: {} }\n')

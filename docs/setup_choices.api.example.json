@@ -45,7 +45,7 @@
     "transportEnv": "MAIL_MAILER",
     "appName": "My application",
     "backendOriginEnv": "APP_URL",
-    "frontendOriginEnv": "ACCOUNT_FRONTEND_URL",
+    "frontendOriginEnv": "FRONTEND_URL",
     "destinations": {
       "emailVerification": "account/verification",
       "passwordReset": "account/recovery",

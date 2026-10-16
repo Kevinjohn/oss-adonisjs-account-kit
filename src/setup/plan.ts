@@ -14,6 +14,8 @@ import type {
 import { featureNames } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
+import { createActionUrls } from '../notifications.js'
+import { stripSourceComments } from './source_text.js'
 
 const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']['destinations']>> =
   {
@@ -450,21 +452,21 @@ function validate(
       )
   }
   for (const [field, destination] of Object.entries(choices.mail.destinations)) {
-    if (
-      destination &&
-      (destination.startsWith('/') ||
-        destination.startsWith('//') ||
-        destination.includes('..') ||
-        destination.includes('\\') ||
-        destination.includes('?') ||
-        destination.includes('#') ||
-        /^[a-z][a-z\d+.-]*:/i.test(destination))
-    )
+    if (destination === undefined) continue
+    try {
+      createActionUrls({
+        backendOrigin: 'https://setup.invalid',
+        appFrontendUrl: 'https://setup.invalid/app/',
+        environment: 'test',
+        destinations: { [field]: destination },
+      })
+    } catch {
       diagnostic(
         diagnostics,
         `mail.destinations.${field}`,
-        'Use a safe relative path without query or fragment'
+        'Use a safe relative frontend path without whitespace, traversal, query or fragment'
       )
+    }
   }
   validateOrigin(diagnostics, 'mail.backendOriginEnv', choices.mail.backendOriginEnv, production)
   validateOrigin(diagnostics, 'mail.frontendOriginEnv', choices.mail.frontendOriginEnv, production)
@@ -742,7 +744,7 @@ function accountConfigSource(choices: SetupChoices): string {
     ...(choices.policy.registrationFields.length
       ? [
           '',
-          `const registrationFields = ${JSON.stringify(choices.policy.registrationFields)} as const`,
+          `const registrationFields: ReadonlyArray<{ name: string; type: 'string' | 'number' | 'boolean'; required: boolean; maxLength?: number }> = ${JSON.stringify(choices.policy.registrationFields)}`,
           'const mapRegistrationFields = (input: unknown): Record<string, unknown> => {',
           "  if (input !== undefined && (!input || typeof input !== 'object' || Array.isArray(input))) throw new InvalidInputError('account_kit: registrationData must be an object')",
           '  const source = (input ?? {}) as Record<string, unknown>',
@@ -755,7 +757,7 @@ function accountConfigSource(choices: SetupChoices): string {
           '      continue',
           '    }',
           '    if (typeof value !== field.type) throw new InvalidInputError(`account_kit: registrationData.${field.name} must be ${field.type}`)',
-          "    if (field.type === 'string' && typeof value === 'string' && 'maxLength' in field && value.length > field.maxLength) throw new InvalidInputError(`account_kit: registrationData.${field.name} is too long`)",
+          "    if (field.type === 'string' && typeof value === 'string' && field.maxLength !== undefined && value.length > field.maxLength) throw new InvalidInputError(`account_kit: registrationData.${field.name} is too long`)",
           '    output[field.name] = value',
           '  }',
           '  return output',
@@ -1215,7 +1217,7 @@ export async function planSetup(
     )
   }
   planArrayImports(changes, state, diagnostics, 'adonisrc.ts', 'providers: [', [
-    '@adonisjs/core/providers/vinejs_provider',
+    ...(choices.managed.length ? ['@adonisjs/core/providers/vinejs_provider'] : []),
     '@adonisjs/lucid/database_provider',
     '@adonisjs/limiter/limiter_provider',
     'adonisjs-account-kit/providers/account_kit_provider',
@@ -1235,13 +1237,14 @@ export async function planSetup(
     planServerProofMiddleware(changes, state, diagnostics)
     if (choices.authentication?.strategy === 'session') {
       const shieldConfig = state.files['config/shield.ts']
-      if (!shieldConfig || /csrf\s*:\s*\{[^}]*enabled\s*:\s*false/s.test(shieldConfig))
+      const executableShield = shieldConfig ? stripSourceComments(shieldConfig) : ''
+      if (!shieldConfig || /csrf\s*:\s*\{[^}]*enabled\s*:\s*false/s.test(executableShield))
         diagnostic(
           diagnostics,
           'config/shield.ts',
           'Session managed POSTs require configured Shield CSRF protection'
         )
-      else if (!/csrf\s*:\s*\{[^}]*enabled\s*:\s*true\b/s.test(shieldConfig))
+      else if (!/csrf\s*:\s*\{[^}]*enabled\s*:\s*true\b/s.test(executableShield))
         diagnostic(
           diagnostics,
           'config/shield.ts',
@@ -1255,13 +1258,20 @@ export async function planSetup(
           'Session guard requires configured cookie and session storage'
         )
       else {
-        const sessionConfig = state.files['config/session.ts']
+        const sessionConfig = stripSourceComments(state.files['config/session.ts'])
         const selectedStore =
           sessionConfig.match(/\bstore\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
           (/\bstore\s*:\s*env\.get\(['"]SESSION_DRIVER['"]\)/.test(sessionConfig)
             ? process.env.SESSION_DRIVER
             : undefined)
-        if (selectedStore === 'cookie')
+        const configuredStore = selectedStore
+          ? sessionConfig.match(
+              new RegExp(
+                `\\b${selectedStore.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:\\s*stores\\.([A-Za-z]+)\\s*\\(`
+              )
+            )?.[1]
+          : undefined
+        if (selectedStore === 'cookie' || configuredStore === 'cookie')
           diagnostic(
             diagnostics,
             'config/session.ts',
@@ -1269,7 +1279,9 @@ export async function planSetup(
           )
         else if (
           selectedStore &&
-          !new RegExp(`\\b${selectedStore}\\s*:\\s*stores\\.`).test(sessionConfig)
+          !new RegExp(`\\b${selectedStore.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:`).test(
+            sessionConfig
+          )
         )
           diagnostic(
             diagnostics,
@@ -1277,7 +1289,7 @@ export async function planSetup(
             `Selected session store ${selectedStore} is not configured in config/session.ts`
           )
         else if (
-          selectedStore === 'database' &&
+          configuredStore === 'database' &&
           !state.migrationNames.some((name) => /session/i.test(name))
         )
           diagnostic(
@@ -1286,11 +1298,11 @@ export async function planSetup(
             'Database session storage requires an application session-table migration and a verified applied table',
             'action'
           )
-        else if (!selectedStore)
+        else if (!selectedStore || !['database', 'memory'].includes(configuredStore ?? ''))
           diagnostic(
             diagnostics,
             'config/session.ts',
-            'Verify the selected runtime session store is server-side and preserves logout revocation across requests',
+            'Verify the selected runtime session store resolves to a server-side implementation and preserves logout revocation across requests',
             'action'
           )
       }
@@ -1340,7 +1352,7 @@ export async function planSetup(
     // Invalid choices are reported above; preview remains inspectable.
   }
   const endpoints = endpointLocations.map(({ name }) => name)
-  const missingPackages = [
+  const selectedPackages = [
     '@adonisjs/core',
     '@adonisjs/lucid',
     '@adonisjs/limiter',
@@ -1350,37 +1362,75 @@ export async function planSetup(
       ? ['@adonisjs/session', '@adonisjs/shield']
       : []),
     ...(choices.mail.integration === 'adonisjs-mail' ? ['@adonisjs/mail'] : []),
-  ].filter((name) => !state.installedPackages.includes(name))
+  ]
+  const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
     diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
+  const limiterConfig = state.files['config/limiter.ts']
+    ? stripSourceComments(state.files['config/limiter.ts'])
+    : ''
+  const limiterDefault =
+    limiterConfig.match(/\bdefault\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
+    (/\bdefault\s*:\s*env\.get\(['"]LIMITER_STORE['"]\)/.test(limiterConfig)
+      ? process.env.LIMITER_STORE
+      : undefined)
   if (
-    !state.files['config/limiter.ts'] ||
-    !/\bdefineConfig\s*\(/.test(withoutComments(state.files['config/limiter.ts']))
+    !/\bdefineConfig\s*\(/.test(limiterConfig) ||
+    !/\bdefault\s*:/.test(limiterConfig) ||
+    !/\bstores\s*:\s*\{/.test(limiterConfig)
   )
     diagnostic(
       diagnostics,
       'config/limiter.ts',
-      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts must use defineConfig'
+      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts needs defineConfig, default and stores'
     )
-  const supportedMajors: Record<string, number> = {
-    '@adonisjs/core': 7,
-    '@adonisjs/lucid': 22,
-    '@adonisjs/limiter': 3,
-    '@adonisjs/auth': 10,
-    '@adonisjs/session': 8,
-    '@adonisjs/shield': 9,
-    '@vinejs/vine': 4,
-    '@adonisjs/mail': 10,
+  else if (!limiterDefault)
+    diagnostic(
+      diagnostics,
+      'config/limiter.ts',
+      'Verify LIMITER_STORE resolves to a configured limiter store at runtime',
+      'action'
+    )
+  else if (
+    !new RegExp(
+      `\\b${limiterDefault.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:\\s*stores\\.[A-Za-z]+\\s*\\(`
+    ).test(limiterConfig)
+  )
+    diagnostic(
+      diagnostics,
+      'config/limiter.ts',
+      `Selected limiter store ${limiterDefault} needs a configured stores.${limiterDefault} factory`
+    )
+  const minimumVersions: Record<string, readonly [number, number, number]> = {
+    '@adonisjs/core': [7, 0, 0],
+    '@adonisjs/lucid': [22, 4, 2],
+    '@adonisjs/limiter': [3, 0, 0],
+    '@adonisjs/auth': [10, 1, 0],
+    '@adonisjs/session': [8, 1, 0],
+    '@adonisjs/shield': [9, 0, 0],
+    '@vinejs/vine': [4, 4, 0],
+    '@adonisjs/mail': [10, 0, 0],
   }
-  for (const [name, major] of Object.entries(supportedMajors)) {
+  for (const name of selectedPackages) {
+    const minimum = minimumVersions[name]
+    if (!minimum) continue
     const version = state.installedVersions[name]
-    if (version && Number(version.match(/^(\d+)\./)?.[1]) !== major)
+    if (!version) continue
+    const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:\+[^\s]+)?$/)
+    const parts = match?.slice(1).map(Number)
+    if (
+      !parts ||
+      parts[0] !== minimum[0] ||
+      parts[1] < minimum[1] ||
+      (parts[1] === minimum[1] && parts[2] < minimum[2])
+    )
       diagnostic(
         diagnostics,
         `dependencies.${name}`,
-        `Installed ${name}@${version} is outside supported major ${major}`
+        `Installed ${name}@${version} is outside supported ^${minimum.join('.')} range`
       )
   }
+  const csrfLocation = endpointLocations.find(({ name }) => name === 'auth.csrf')?.path
   const prerequisites = [
     ...missingPackages.map((name) => `Install ${name} explicitly with pnpm add ${name}`),
     'Review generated migrations, then run node ace migration:run explicitly',
@@ -1388,7 +1438,11 @@ export async function planSetup(
       ? ['Verify the generated route mount and existing guard prerequisites']
       : []),
     ...(choices.managed.length && choices.authentication?.strategy === 'session'
-      ? ['Exercise GET /auth/csrf and a CSRF-protected POST with the deployed Shield configuration']
+      ? [
+          csrfLocation
+            ? `Exercise GET ${csrfLocation} and a CSRF-protected POST with the deployed Shield configuration`
+            : 'Provide and exercise an application-owned CSRF bootstrap endpoint and a CSRF-protected POST with the deployed Shield configuration',
+        ]
       : []),
     'Verify model email uniqueness, normalization, hashing and transaction behavior',
   ]
