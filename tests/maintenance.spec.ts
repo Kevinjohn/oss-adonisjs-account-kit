@@ -40,7 +40,14 @@ test.group('expired-token pruning', (group) => {
         created_at: expired,
       })
     }
-    const expected = { recovery: 1, invitations: 1, emailVerifications: 1 }
+    const expected = {
+      recovery: 1,
+      invitations: 1,
+      emailVerifications: 1,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
+    }
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, dryRun: true }), expected)
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 2)
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1 }), expected)
@@ -48,6 +55,9 @@ test.group('expired-token pruning', (group) => {
       recovery: 0,
       invitations: 0,
       emailVerifications: 0,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
     })
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
@@ -126,11 +136,17 @@ test.group('expired-token pruning', (group) => {
       recovery: 0,
       invitations: 1,
       emailVerifications: 0,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
     })
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, maxBatches: 1 }), {
       recovery: 0,
       invitations: 0,
       emailVerifications: 1,
+      socialTransactions: 0,
+      socialSensitiveProofs: 0,
+      socialHandoffCodes: 0,
     })
   })
 

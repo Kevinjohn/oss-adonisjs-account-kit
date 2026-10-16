@@ -101,6 +101,8 @@ export function makeNotify() {
     emailChanged: (previousEmail, user) => record('emailChanged', previousEmail, user),
     passwordResetCompleted: (user, context) => record('passwordResetCompleted', user, context),
     passwordChanged: (user, context) => record('passwordChanged', user, context),
+    socialIdentityLinked: (user, identity) => record('socialIdentityLinked', user, identity),
+    socialIdentityUnlinked: (user, identity) => record('socialIdentityUnlinked', user, identity),
   }
   return {
     notify,

@@ -20,6 +20,7 @@ import {
 } from './credentials.js'
 import { consume } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
+import { socialIdentityService } from './social_identity.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -110,6 +111,12 @@ export class AccountKit {
   readonly registration = {
     register: (input: RegistrationInput): Promise<AccountUser> =>
       this.enabled('registration', () => register(this.deps, input)),
+  }
+
+  get socialAuthentication() {
+    if (!this.deps.config.enabled.includes('socialAuthentication'))
+      throw new CapabilityDisabledError('Social authentication is disabled')
+    return socialIdentityService(this.deps)
   }
 
   readonly passwordReset = {

@@ -91,3 +91,45 @@ export class UnverifiedEmailError extends AccountKitError {
     super('unverified_email')
   }
 }
+export class SocialTransactionError extends AccountKitError {
+  static code = 'E_SOCIAL_TRANSACTION_INVALID'
+  static status = 400
+  constructor(options?: ErrorOptions) {
+    super('Invalid social transaction', options)
+  }
+}
+export class SocialIdentityAlreadyLinkedError extends AccountKitError {
+  static code = 'E_SOCIAL_IDENTITY_ALREADY_LINKED'
+  static status = 409
+  constructor() {
+    super('Social identity is already linked')
+  }
+}
+export class SocialEmailMissingError extends AccountKitError {
+  static code = 'E_SOCIAL_EMAIL_MISSING'
+  static status = 422
+  constructor() {
+    super('Social email is required')
+  }
+}
+export class SocialUserNotFoundError extends AccountKitError {
+  static code = 'E_SOCIAL_USER_NOT_FOUND'
+  static status = 404
+  constructor() {
+    super('Social account was not found')
+  }
+}
+export class SocialProofError extends AccountKitError {
+  static code = 'E_SOCIAL_PROOF_INVALID'
+  static status = 403
+  constructor() {
+    super('Invalid recent authentication proof')
+  }
+}
+export class LastLoginMethodError extends AccountKitError {
+  static code = 'E_SOCIAL_LAST_LOGIN_METHOD'
+  static status = 409
+  constructor() {
+    super('At least one login method must remain')
+  }
+}
