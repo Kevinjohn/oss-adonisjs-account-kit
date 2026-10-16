@@ -253,7 +253,7 @@ conventions.
 
 ## Files delta
 
-Configure generates `config/account_kit.ts` and eight package migration files. The reset-token
+Configure generates `config/account_kit.ts` and the package migration files. The reset-token
 stub is `create_password_reset_tokens.stub` and generates
 `*_account_kit_create_password_reset_tokens.ts`, creating `password_reset_tokens`. On upgrade,
 the reset-token columns are renamed in place from `user_id` to `tokenable_id` and from
