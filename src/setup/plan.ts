@@ -15,7 +15,8 @@ import { featureNames } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
 import { createActionUrls } from '../notifications.js'
-import { stripSourceComments } from './source_text.js'
+import { maskSourceLiteralBodies, stripSourceComments } from './source_text.js'
+import { selectedSessionEnvironment } from './session_env.js'
 
 const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']['destinations']>> =
   {
@@ -25,6 +26,10 @@ const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']
     invitations: 'invitation',
     emailPasswordManagement: 'emailChange',
   }
+
+function hasEmailFlow(choices: SetupChoices): boolean {
+  return choices.features.some((feature) => feature in emailDestinations)
+}
 
 const envName = /^[A-Z][A-Z0-9_]*$/
 const sqlName = /^[A-Za-z_][A-Za-z0-9_]*$/
@@ -413,26 +418,32 @@ function validate(
     )
   )
     diagnostic(diagnostics, 'policy.unverifiedActions', 'Unsupported limited action')
-  if (!['adonisjs-mail', 'custom'].includes(choices.mail.integration))
+  const emailEnabled = hasEmailFlow(choices)
+  if (emailEnabled && !['adonisjs-mail', 'custom'].includes(choices.mail.integration))
     diagnostic(diagnostics, 'mail.integration', 'Choose adonisjs-mail or custom')
-  if (!['best-effort', 'durable'].includes(choices.mail.delivery))
+  if (emailEnabled && !['best-effort', 'durable'].includes(choices.mail.delivery))
     diagnostic(diagnostics, 'mail.delivery', 'Choose best-effort or durable')
   for (const field of ['senderEnv', 'transportEnv'] as const) {
     const name = choices.mail[field]
-    if (name && !envName.test(name))
+    if (emailEnabled && name && !envName.test(name))
       diagnostic(
         diagnostics,
         `mail.${field}`,
         'Use an uppercase environment variable name, not a secret'
       )
   }
-  if (choices.mail.integration === 'adonisjs-mail' && !state.files['config/mail.ts'])
+  if (
+    emailEnabled &&
+    choices.mail.integration === 'adonisjs-mail' &&
+    !state.files['config/mail.ts']
+  )
     diagnostic(
       diagnostics,
       'config/mail.ts',
       'Configure AdonisJS Mail with a real transport before applying'
     )
   if (
+    emailEnabled &&
     choices.mail.integration === 'custom' &&
     !state.files['app/services/account_kit_notifications.ts']
   )
@@ -441,20 +452,20 @@ function validate(
       'mail.integration',
       'Provide #services/account_kit_notifications before activation'
     )
-  else if (choices.mail.integration === 'custom')
+  else if (emailEnabled && choices.mail.integration === 'custom')
     diagnostic(
       diagnostics,
       'mail.callbacks',
       'Verify the application-owned notification callbacks for every selected email flow and a real delivery transport',
       'action'
     )
-  if (!choices.mail.appName.trim() || /[\r\n]/.test(choices.mail.appName))
+  if (emailEnabled && (!choices.mail.appName.trim() || /[\r\n]/.test(choices.mail.appName)))
     diagnostic(diagnostics, 'mail.appName', 'Application identity is required')
-  if (choices.mail.integration === 'adonisjs-mail' && !choices.mail.senderEnv)
+  if (emailEnabled && choices.mail.integration === 'adonisjs-mail' && !choices.mail.senderEnv)
     diagnostic(diagnostics, 'mail.senderEnv', 'Sender environment reference is required')
-  if (choices.mail.integration === 'adonisjs-mail' && !choices.mail.transportEnv)
+  if (emailEnabled && choices.mail.integration === 'adonisjs-mail' && !choices.mail.transportEnv)
     diagnostic(diagnostics, 'mail.transportEnv', 'Transport environment reference is required')
-  if (choices.mail.integration === 'adonisjs-mail') {
+  if (emailEnabled && choices.mail.integration === 'adonisjs-mail') {
     for (const field of ['senderEnv', 'transportEnv'] as const) {
       const name = choices.mail[field]
       if (!name || !envName.test(name)) continue
@@ -472,6 +483,7 @@ function validate(
   }
   for (const [feature, destination] of Object.entries(emailDestinations)) {
     if (
+      emailEnabled &&
       choices.features.includes(feature as SetupFeature) &&
       !choices.mail.destinations[destination!]
     )
@@ -481,7 +493,9 @@ function validate(
         'Enabled email flow needs a relative frontend destination'
       )
   }
-  for (const [field, destination] of Object.entries(choices.mail.destinations)) {
+  for (const [field, destination] of Object.entries(
+    emailEnabled ? choices.mail.destinations : {}
+  )) {
     if (destination === undefined) continue
     try {
       createActionUrls({
@@ -498,15 +512,22 @@ function validate(
       )
     }
   }
-  validateOrigin(diagnostics, 'mail.backendOriginEnv', choices.mail.backendOriginEnv, production)
-  validateOrigin(diagnostics, 'mail.frontendOriginEnv', choices.mail.frontendOriginEnv, production)
-  if (choices.mail.delivery === 'durable' && !choices.mail.durableWorkerVerified)
+  if (emailEnabled) {
+    validateOrigin(diagnostics, 'mail.backendOriginEnv', choices.mail.backendOriginEnv, production)
+    validateOrigin(
+      diagnostics,
+      'mail.frontendOriginEnv',
+      choices.mail.frontendOriginEnv,
+      production
+    )
+  }
+  if (emailEnabled && choices.mail.delivery === 'durable' && !choices.mail.durableWorkerVerified)
     diagnostic(
       diagnostics,
       'mail.durableWorkerVerified',
       'Verify application-owned queue/outbox worker and retry before durable readiness'
     )
-  if (choices.mail.delivery === 'durable' && choices.mail.integration !== 'custom')
+  if (emailEnabled && choices.mail.delivery === 'durable' && choices.mail.integration !== 'custom')
     diagnostic(
       diagnostics,
       'mail.delivery',
@@ -557,9 +578,13 @@ function validate(
 }
 
 function generatedEnv(choices: SetupChoices): string {
-  const names = new Set<string>([choices.mail.backendOriginEnv, choices.mail.frontendOriginEnv])
-  if (choices.mail.senderEnv) names.add(choices.mail.senderEnv)
-  if (choices.mail.transportEnv) names.add(choices.mail.transportEnv)
+  const names = new Set<string>()
+  if (hasEmailFlow(choices)) {
+    names.add(choices.mail.backendOriginEnv)
+    names.add(choices.mail.frontendOriginEnv)
+    if (choices.mail.senderEnv) names.add(choices.mail.senderEnv)
+    if (choices.mail.transportEnv) names.add(choices.mail.transportEnv)
+  }
   return [
     '# Account Kit deployment values; supply real values through your deployment environment',
     ...[...names].sort().map((name) => `${name}=`),
@@ -741,16 +766,17 @@ function proofHeadersMiddlewareSource(choices: SetupChoices): string {
 }
 
 function accountConfigSource(choices: SetupChoices): string {
-  const managedMail = choices.mail.integration === 'adonisjs-mail'
+  const emailEnabled = hasEmailFlow(choices)
+  const managedMail = emailEnabled && choices.mail.integration === 'adonisjs-mail'
   const serviceCapabilities = choices.features.filter((name) => name !== 'authentication')
   const usesPolicy =
     choices.policy.accessRestrictionHook || choices.features.includes('invitations')
   const imports = [
     "import env from '#start/env'",
-    "import app from '@adonisjs/core/services/app'",
+    ...(emailEnabled ? ["import app from '@adonisjs/core/services/app'"] : []),
     ...(managedMail ? ["import mail from '@adonisjs/mail/services/main'"] : []),
     `import { ${[
-      'createActionUrls',
+      ...(emailEnabled ? ['createActionUrls'] : []),
       'defineConfig',
       ...(choices.user.adapter === 'lucid' ? ['createLucidAdapter'] : []),
       ...(managedMail ? ['createMailNotifications'] : []),
@@ -758,7 +784,7 @@ function accountConfigSource(choices: SetupChoices): string {
     ...(choices.user.adapter === 'custom'
       ? ["import users from '#services/account_kit_users'"]
       : []),
-    ...(managedMail
+    ...(!emailEnabled || managedMail
       ? []
       : ["import { accountKitNotifications } from '#services/account_kit_notifications'"]),
     ...(usesPolicy ? ["import { accountKitPolicy } from '#services/account_kit_policy'"] : []),
@@ -766,11 +792,15 @@ function accountConfigSource(choices: SetupChoices): string {
       ? ["import { InvalidInputError } from 'adonisjs-account-kit/errors'"]
       : []),
     '',
-    'const requiredEnv = (name: string): string => {',
-    '  const value = process.env[name]',
-    '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
-    '  return value',
-    '}',
+    ...(emailEnabled
+      ? [
+          'const requiredEnv = (name: string): string => {',
+          '  const value = process.env[name]',
+          '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
+          '  return value',
+          '}',
+        ]
+      : []),
     ...(choices.policy.registrationFields.length
       ? [
           '',
@@ -781,7 +811,7 @@ function accountConfigSource(choices: SetupChoices): string {
           '  const output: Record<string, unknown> = {}',
           '  for (const key of Object.keys(source)) if (!registrationFields.some((field) => field.name === key)) throw new InvalidInputError(`account_kit: registrationData.${key} is not allowed`)',
           '  for (const field of registrationFields) {',
-          '    const value = source[field.name]',
+          '    const value = Object.prototype.hasOwnProperty.call(source, field.name) ? source[field.name] : undefined',
           '    if (value === undefined) {',
           '      if (field.required) throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)',
           '      continue',
@@ -801,7 +831,7 @@ function accountConfigSource(choices: SetupChoices): string {
             '  mapRegistrationData: (data, user) => {',
             '    const fields = mapRegistrationFields(data)',
             '    for (const field of registrationFields) {',
-            '      if (field.name in fields) (user as unknown as Record<string, unknown>)[field.name] = fields[field.name]',
+            '      if (Object.prototype.hasOwnProperty.call(fields, field.name)) (user as unknown as Record<string, unknown>)[field.name] = fields[field.name]',
             '    }',
             '  },',
             '})',
@@ -819,7 +849,7 @@ function accountConfigSource(choices: SetupChoices): string {
     `  enabled: ${JSON.stringify(serviceCapabilities)},`,
     `  registration: { availability: ${JSON.stringify(choices.policy.registration)}${choices.policy.registrationFields.length ? ', mapFields: mapRegistrationFields' : ''} },`,
     `  passwordPolicy: ${JSON.stringify(choices.policy.password)},`,
-    `  delivery: ${JSON.stringify(choices.mail.delivery)},`,
+    ...(emailEnabled ? [`  delivery: ${JSON.stringify(choices.mail.delivery)},`] : []),
     "  limiterSecret: env.get('APP_KEY').release(),",
     ...(choices.authentication
       ? [
@@ -838,21 +868,27 @@ function accountConfigSource(choices: SetupChoices): string {
           '  },',
         ]
       : []),
-    '  urls: createActionUrls({',
-    `    backendOrigin: requiredEnv(${JSON.stringify(choices.mail.backendOriginEnv)}),`,
-    `    appFrontendUrl: requiredEnv(${JSON.stringify(choices.mail.frontendOriginEnv)}),`,
-    "    environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',",
-    `    destinations: ${JSON.stringify(choices.mail.destinations)},`,
-    '  }),',
-    ...(managedMail
+    ...(emailEnabled
       ? [
-          '  notify: createMailNotifications({',
-          '    mail,',
-          `    from: requiredEnv(${JSON.stringify(choices.mail.senderEnv)}),`,
-          `    brandName: ${JSON.stringify(choices.mail.appName)},`,
+          '  urls: createActionUrls({',
+          `    backendOrigin: requiredEnv(${JSON.stringify(choices.mail.backendOriginEnv)}),`,
+          `    appFrontendUrl: requiredEnv(${JSON.stringify(choices.mail.frontendOriginEnv)}),`,
+          "    environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',",
+          `    destinations: ${JSON.stringify(choices.mail.destinations)},`,
           '  }),',
         ]
-      : ['  notify: accountKitNotifications,']),
+      : ['  urls: {},']),
+    ...(!emailEnabled
+      ? ['  notify: {},']
+      : managedMail
+        ? [
+            '  notify: createMailNotifications({',
+            '    mail,',
+            `    from: requiredEnv(${JSON.stringify(choices.mail.senderEnv)}),`,
+            `    brandName: ${JSON.stringify(choices.mail.appName)},`,
+            '  }),',
+          ]
+        : ['  notify: accountKitNotifications,']),
     ...(choices.features.includes('invitations')
       ? [
           '  authorize: accountKitPolicy.authorize,',
@@ -1027,8 +1063,17 @@ function planRouterMiddleware(
     if (activeLines.some((line) => line.includes(ordered[index]))) continue
     const previousIndex = activeLines.findIndex((line) => line.includes(ordered[index - 1]))
     if (previousIndex < 0) throw new Error('Missing previously planned router middleware')
-    if (!/[,\s]$/.test(lines[previousIndex].trimEnd()))
-      lines[previousIndex] = `${lines[previousIndex].trimEnd()},`
+    const expressionEnd = activeLines[previousIndex].trimEnd().length
+    if (!activeLines[previousIndex].slice(0, expressionEnd).endsWith(',')) {
+      lines[previousIndex] =
+        lines[previousIndex].slice(0, expressionEnd) +
+        ',' +
+        lines[previousIndex].slice(expressionEnd)
+      activeLines[previousIndex] =
+        activeLines[previousIndex].slice(0, expressionEnd) +
+        ',' +
+        activeLines[previousIndex].slice(expressionEnd)
+    }
     lines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
     activeLines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
     changed = true
@@ -1091,65 +1136,124 @@ const selectionEnd = '\n// account-kit:session-selection:end\n'
 const exportStart = '// account-kit:session-export:start\n'
 const exportEnd = '// account-kit:session-export:end\n'
 
-function inspectedNativeSessionStores(
-  source: string,
-  executable: string,
-  configStart: number,
-  exportStartIndex: number
-): Array<{ name: string; kind: 'database' | 'memory' }> | null {
-  const configBody = executable.slice(configStart, exportStartIndex)
-  const maps = [...configBody.matchAll(/\bstores\s*:\s*\{/g)]
-  if (maps.length !== 1) return null
-  const opening = configStart + maps[0].index + maps[0][0].lastIndexOf('{')
-  const depths: number[] = []
-  let depth = 1
-  let quote: "'" | '"' | '`' | null = null
-  let closing = -1
-  for (let index = opening + 1; index < exportStartIndex; index++) {
-    const character = executable[index]
-    depths[index] = depth
-    if (quote) {
-      if (character === '\\') index++
-      else if (character === quote) quote = null
-      continue
-    }
-    if (character === "'" || character === '"' || character === '`') quote = character
-    else if (character === '{') depth++
-    else if (character === '}' && --depth === 0) {
-      closing = index
-      break
-    }
+function braceDepth(source: string, opening: number, position: number): number {
+  let depth = 0
+  for (let index = opening; index < position; index++) {
+    if (source[index] === '{') depth++
+    else if (source[index] === '}') depth--
   }
-  if (closing < 0) return null
-  return [...source.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*:\s*stores\.(database|memory)\s*\(/g)]
-    .filter(
-      (match) =>
-        match.index > opening &&
-        match.index < closing &&
-        depths[match.index] === 1 &&
-        executable.slice(match.index, match.index + match[0].length) === match[0]
-    )
-    .map((match) => ({ name: match[1], kind: match[2] as 'database' | 'memory' }))
+  return depth
+}
+
+function closingBrace(source: string, opening: number): number {
+  let depth = 0
+  for (let index = opening; index < source.length; index++) {
+    if (source[index] === '{') depth++
+    else if (source[index] === '}' && --depth === 0) return index
+  }
+  return -1
+}
+
+function nativeSessionConfiguration(source: string): {
+  configStart: number
+  exportStartIndex: number
+  originalStore: string
+  originalSelection: string
+  storeStart: number
+  allowedStores: Array<{ name: string; kind: 'database' | 'memory' }>
+} | null {
+  const executable = stripSourceComments(source)
+  const structure = maskSourceLiteralBodies(source)
+  const nativeImport = [
+    ...executable.matchAll(/\bimport\s*\{([^}]*)\}\s*from\s*(['"])@adonisjs\/session\2/g),
+  ].some(
+    (match) =>
+      structure.slice(match.index, match.index + 6) === 'import' &&
+      match[1].split(',').some((binding) => binding.trim() === 'stores')
+  )
+  if (!nativeImport || /\b(?:const|let|var|function)\s+stores\b/.test(structure)) return null
+  const configMatch = /\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(\s*\{/.exec(structure)
+  const exports = [...structure.matchAll(/\bexport\s+default\s+sessionConfig\b/g)]
+  if (!configMatch || exports.length !== 1) return null
+  const configStart = configMatch.index
+  const opening = configStart + configMatch[0].lastIndexOf('{')
+  const closing = closingBrace(structure, opening)
+  const exportStartIndex = exports[0].index
+  if (closing < 0 || closing >= exportStartIndex) return null
+  const selected = [
+    ...executable.matchAll(
+      /\bstore\s*:\s*(env\.get\(\s*['"][A-Z][A-Z0-9_]*['"](?:\s*,\s*['"][A-Za-z_][A-Za-z0-9_]*['"])?\s*\)|['"][^'"]+['"])/g
+    ),
+  ].filter(
+    (match) =>
+      match.index > opening &&
+      match.index < closing &&
+      structure.slice(match.index, match.index + 5) === 'store' &&
+      braceDepth(structure, opening, match.index) === 1
+  )
+  const maps = [...executable.matchAll(/\bstores\s*:\s*\{/g)].filter(
+    (match) =>
+      match.index > opening &&
+      match.index < closing &&
+      structure.slice(match.index, match.index + 6) === 'stores' &&
+      braceDepth(structure, opening, match.index) === 1
+  )
+  if (selected.length !== 1 || maps.length !== 1) return null
+  const mapOpening = maps[0].index + maps[0][0].lastIndexOf('{')
+  const mapClosing = closingBrace(structure, mapOpening)
+  if (mapClosing < 0 || mapClosing >= closing) return null
+  const allowedStores = [
+    ...executable.matchAll(
+      /(?:['"]([A-Za-z_][A-Za-z0-9_]*)['"]|\b([A-Za-z_][A-Za-z0-9_]*))\s*:\s*stores\.(database|memory)\s*\(/g
+    ),
+  ]
+    .filter((match) => {
+      const factory = match[0].lastIndexOf('stores.')
+      return (
+        match.index > mapOpening &&
+        match.index < mapClosing &&
+        braceDepth(structure, mapOpening, match.index) === 1 &&
+        structure.slice(match.index + factory, match.index + factory + 7) === 'stores.'
+      )
+    })
+    .map((match) => ({ name: match[1] ?? match[2], kind: match[3] as 'database' | 'memory' }))
+  if (!allowedStores.length) return null
+  return {
+    configStart,
+    exportStartIndex,
+    originalStore: selected[0][1],
+    originalSelection: selected[0][0],
+    storeStart: selected[0].index,
+    allowedStores,
+  }
+}
+
+async function selectedNativeSessionStore(source: string, root: string): Promise<boolean> {
+  const inspected = nativeSessionConfiguration(source)
+  if (!inspected) return false
+  let selected = inspected.originalStore.slice(1, -1)
+  if (inspected.originalStore.startsWith('env.get(')) {
+    const selector =
+      /^env\.get\(\s*['"]([A-Z][A-Z0-9_]*)['"](?:\s*,\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"])?\s*\)$/.exec(
+        inspected.originalStore
+      )
+    if (!selector) return false
+    selected = (await selectedSessionEnvironment(root, selector[1])) ?? selector[2] ?? ''
+  }
+  return inspected.allowedStores.some(({ name }) => name === selected)
 }
 
 function renderManagedSessionConfig(source: string): string | null {
-  const executable = stripSourceComments(source)
-  if (!/\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(/.test(executable)) return null
-  if (executable.match(/\bexport\s+default\s+sessionConfig\b/g)?.length !== 1) return null
-  const selected = executable.match(
-    /\bstore\s*:\s*(env\.get\(['"]SESSION_DRIVER['"]\)|['"][^'"]+['"])/g
-  )
-  if (selected?.length !== 1) return null
-  const originalStore = selected[0].replace(/^\bstore\s*:\s*/, '')
-  const configStart = executable.search(/\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(/)
-  const exportMatch = /\bexport\s+default\s+sessionConfig\b/.exec(executable)!
-  const allowedStores = inspectedNativeSessionStores(
-    source,
-    executable,
+  const inspected = nativeSessionConfiguration(source)
+  if (!inspected) return null
+  const {
     configStart,
-    exportMatch.index
-  )
-  if (!allowedStores?.length) return null
+    exportStartIndex,
+    originalStore,
+    originalSelection,
+    storeStart,
+    allowedStores,
+  } = inspected
   const selector = 'accountKitSelectedSessionStore'
   const selection = `${selectionStart}const ${selector} = ${originalStore}${selectionEnd}`
   const verify = allowedStores
@@ -1169,15 +1273,15 @@ function renderManagedSessionConfig(source: string): string | null {
     ),
 })
 ${exportEnd}`
-  const storeStart = executable.indexOf(selected[0])
   return (
     sessionImport +
     source.slice(0, configStart) +
     selection +
     source.slice(configStart, storeStart) +
-    source.slice(storeStart, exportMatch.index).replace(selected[0], `store: ${selector}`) +
+    `store: ${selector}` +
+    source.slice(storeStart + originalSelection.length, exportStartIndex) +
     wrappedExport +
-    source.slice(exportMatch.index + exportMatch[0].length)
+    source.slice(exportStartIndex + 'export default sessionConfig'.length)
   )
 }
 
@@ -1198,12 +1302,12 @@ function unwrapManagedSessionConfig(source: string): string | null {
   return renderManagedSessionConfig(base) === source ? base : null
 }
 
-function planSessionConfigIntegration(
+async function planSessionConfigIntegration(
   changes: SetupFileChange[],
   state: SetupInspection,
   choices: SetupChoices,
   diagnostics: SetupDiagnostic[]
-) {
+): Promise<void> {
   const path = 'config/session.ts'
   const previous = state.files[path]
   if (!previous) return
@@ -1226,6 +1330,27 @@ function planSessionConfigIntegration(
       path,
       'Verify the existing application-owned session protection wrapper before enabling managed session routes',
       'action'
+    )
+    return
+  }
+  let selectedNative = false
+  if (wantsManagedSession) {
+    try {
+      selectedNative = await selectedNativeSessionStore(base, state.root)
+    } catch {
+      diagnostic(
+        diagnostics,
+        path,
+        'Inspect the selected session environment assignment and file path; only a direct native store name is supported'
+      )
+      return
+    }
+  }
+  if (wantsManagedSession && !selectedNative) {
+    diagnostic(
+      diagnostics,
+      path,
+      'The selected session factory must be an inspected native database or development memory store; custom or unresolved selections need a truthful application-owned protectManagedSessionConfig wrapper'
     )
     return
   }
@@ -1350,7 +1475,7 @@ export async function planSetup(
     state.existingChoices ? generatedEnv(state.existingChoices) : null,
     'Document deployment references'
   )
-  planSessionConfigIntegration(changes, state, choices, diagnostics)
+  await planSessionConfigIntegration(changes, state, choices, diagnostics)
   if (
     choices.authentication &&
     (choices.managed.length || state.files['app/services/account_kit_guard.ts'])
@@ -1417,7 +1542,9 @@ export async function planSetup(
     ...(choices.authentication?.strategy === 'session' && choices.managed.length
       ? ['@adonisjs/session/session_provider', '@adonisjs/shield/shield_provider']
       : []),
-    ...(choices.mail.integration === 'adonisjs-mail' ? ['@adonisjs/mail/mail_provider'] : []),
+    ...(hasEmailFlow(choices) && choices.mail.integration === 'adonisjs-mail'
+      ? ['@adonisjs/mail/mail_provider']
+      : []),
   ])
   if (choices.managed.length) {
     planRouterMiddleware(
@@ -1564,7 +1691,9 @@ export async function planSetup(
     ...(choices.authentication?.strategy === 'session' && choices.managed.length
       ? ['@adonisjs/session', '@adonisjs/shield']
       : []),
-    ...(choices.mail.integration === 'adonisjs-mail' ? ['@adonisjs/mail'] : []),
+    ...(hasEmailFlow(choices) && choices.mail.integration === 'adonisjs-mail'
+      ? ['@adonisjs/mail']
+      : []),
   ]
   const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
@@ -1675,7 +1804,11 @@ export async function planSetup(
       externalConfigured: !hasError && !hasAction,
       workflowVerified: false,
       productionReady: false,
-      delivery: choices.mail.delivery === 'durable' ? 'durable' : 'best effort',
+      delivery: !hasEmailFlow(choices)
+        ? 'not applicable'
+        : choices.mail.delivery === 'durable'
+          ? 'durable'
+          : 'best effort',
     },
     pillars: {
       features: `${choices.features.length} services; ${choices.managed.length} managed groups`,
@@ -1683,7 +1816,9 @@ export async function planSetup(
       authentication: choices.authentication
         ? `${choices.authentication.strategy} guard ${choices.authentication.guard}`
         : 'not applicable: no authentication endpoints selected',
-      mail: `${choices.mail.integration}; ${choices.mail.delivery}`,
+      mail: hasEmailFlow(choices)
+        ? `${choices.mail.integration}; ${choices.mail.delivery}`
+        : 'not applicable: no email capability selected',
       social:
         choices.social.status === 'approved-pending'
           ? 'approved, pending installed implementation'

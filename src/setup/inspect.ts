@@ -3,7 +3,7 @@ import { join, relative as pathRelative, sep } from 'node:path'
 import { safeSetupPath } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
-import { stripSourceComments } from './source_text.js'
+import { maskSourceLiteralBodies, stripSourceComments } from './source_text.js'
 
 const inspectedFiles = [
   'package.json',
@@ -41,57 +41,84 @@ async function readOptional(root: string, relative: string): Promise<string | nu
   }
 }
 
-function guardStrategies(source: string): SetupInspection['guardStrategies'] {
+function matchedLiteral(source: string, match: RegExpMatchArray, group: number): string | null {
+  const range = match.indices?.[group]
+  if (!range) return null
+  const literal = source.slice(...range)
+  const value = /^(['"])([^'"\\]*)\1$/.exec(literal)
+  return value?.[2] ?? null
+}
+
+function matchedKey(source: string, match: RegExpMatchArray): string | null {
+  const range = match.indices?.[1]
+  if (!range) return null
+  const key = source.slice(...range)
+  const name = key[0] === "'" || key[0] === '"' ? matchedLiteral(source, match, 1) : key
+  return name && /^[A-Za-z_][\w-]*$/.test(name) ? name : null
+}
+
+function guardStrategies(source: string, structure: string): SetupInspection['guardStrategies'] {
   const strategies: SetupInspection['guardStrategies'] = {}
-  for (const match of source.matchAll(
-    /(?:^|[,{\n])\s*(['"]?[\w-]+['"]?)\s*:\s*(sessionGuard|tokensGuard)\s*\(/g
-  ))
-    strategies[match[1].replace(/^['"]|['"]$/g, '')] =
-      match[2] === 'sessionGuard' ? 'session' : 'access_tokens'
+  for (const match of structure.matchAll(
+    /(?:^|[,{\n])\s*(['"]\s*['"]|[\w-]+)\s*:\s*(sessionGuard|tokensGuard)\s*\(/dg
+  )) {
+    const name = matchedKey(source, match)
+    if (!name) continue
+    strategies[name] = match[2] === 'sessionGuard' ? 'session' : 'access_tokens'
+  }
   return strategies
 }
 
-function guardModels(source: string): SetupInspection['guardModels'] {
+function guardModels(source: string, structure: string): SetupInspection['guardModels'] {
   const models: Record<string, string> = {}
-  for (const match of source.matchAll(
-    /(?:^|[,{\n])\s*['"]?([\w-]+)['"]?\s*:\s*(?:sessionGuard|tokensGuard)\s*\(\s*\{[^}]*?provider\s*:\s*(?:sessionUserProvider|tokensUserProvider)\s*\(\s*\{[^}]*?model\s*:\s*\(\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)/g
-  ))
-    models[match[1]] = match[2]
+  for (const match of structure.matchAll(
+    /(?:^|[,{\n])\s*(['"]\s*['"]|[\w-]+)\s*:\s*(?:sessionGuard|tokensGuard)\s*\(\s*\{[^}]*?provider\s*:\s*(?:sessionUserProvider|tokensUserProvider)\s*\(\s*\{[^}]*?model\s*:\s*\(\)\s*=>\s*import\(\s*(['"]\s*['"])\s*\)/dg
+  )) {
+    const name = matchedKey(source, match)
+    const model = matchedLiteral(source, match, 2)
+    if (name && model) models[name] = model
+  }
   return models
 }
 
 function databaseKind(source: string): SetupInspection['database'] {
   if (!source) return 'unknown'
-  source = stripSourceComments(source)
-  const selected =
-    source.match(/\bconnection\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
-    (/\bconnection\s*:\s*env\.get\(['"]DB_CONNECTION['"]/.test(source)
-      ? (process.env.DB_CONNECTION ??
-        source.match(
-          /\bconnection\s*:\s*env\.get\(['"]DB_CONNECTION['"]\s*,\s*['"]([^'"]+)['"]/
-        )?.[1])
-      : undefined)
-  let clientSource = source
+  const structure = maskSourceLiteralBodies(source)
+  const literalSelection = /\bconnection\s*:\s*(['"]\s*['"])/d.exec(structure)
+  const environmentSelection =
+    /\bconnection\s*:\s*env\.get\(\s*(['"]\s*['"])(?:\s*,\s*(['"]\s*['"]))?/d.exec(structure)
+  const selected = literalSelection
+    ? matchedLiteral(source, literalSelection, 1)
+    : environmentSelection && matchedLiteral(source, environmentSelection, 1) === 'DB_CONNECTION'
+      ? (process.env.DB_CONNECTION ?? matchedLiteral(source, environmentSelection, 2))
+      : null
+  let clientSource = structure
+  let clientOriginal = source
   if (selected) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(selected)) return 'unknown'
-    const connections = source.indexOf('connections:')
+    const connections = /\bconnections\s*:/.exec(structure)?.index ?? -1
     if (connections < 0) return 'unknown'
-    const entry = new RegExp(
-      `(?:^|[,\\s{])(?:['"]${selected}['"]|${selected})\\s*:\\s*(?:defineConfig\\s*\\()?\\s*\\{`
-    ).exec(source.slice(connections))
+    const entries = structure.slice(connections)
+    const entry = [
+      ...entries.matchAll(
+        /(?:^|[,\s{])(['"]\s*['"]|[A-Za-z_][\w]*)\s*:\s*(?:defineConfig\s*\()?\s*\{/dg
+      ),
+    ].find((match) => matchedKey(source.slice(connections), match) === selected)
     if (!entry) return 'unknown'
     const begin = connections + entry.index + entry[0].length
     let depth = 1
     let end = begin
-    while (end < source.length && depth) {
-      if (source[end] === '{') depth++
-      if (source[end] === '}') depth--
+    while (end < structure.length && depth) {
+      if (structure[end] === '{') depth++
+      if (structure[end] === '}') depth--
       end++
     }
     if (depth) return 'unknown'
-    clientSource = source.slice(begin, end - 1)
-  } else if (/\bconnections\s*:/.test(source)) return 'unknown'
-  const client = clientSource.match(/\bclient\s*:\s*['"]([^'"]+)['"]/)?.[1]
+    clientSource = structure.slice(begin, end - 1)
+    clientOriginal = source.slice(begin, end - 1)
+  } else if (/\bconnections\s*:/.test(structure)) return 'unknown'
+  const clientMatch = /\bclient\s*:\s*(['"]\s*['"])/d.exec(clientSource)
+  const client = clientMatch ? matchedLiteral(clientOriginal, clientMatch, 1) : null
   if (!client) return 'unknown'
   if (['better-sqlite3', 'sqlite3'].includes(client)) return 'sqlite'
   if (['pg', 'postgres'].includes(client)) return 'postgres'
@@ -160,16 +187,18 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
     ...routeSource.matchAll(/\.(get|post|put|patch|delete|any)\(\s*['"]([^'"]+)['"]/g),
   ].map((match) => ({ method: match[1].toUpperCase(), path: match[2] }))
   const routePaths = routeDefinitions.map(({ path }) => path)
-  const authSource = stripSourceComments(files['config/auth.ts'] ?? '')
+  const authSource = files['config/auth.ts'] ?? ''
+  const authStructure = maskSourceLiteralBodies(authSource)
+  const strategies = guardStrategies(authSource, authStructure)
   return {
     root,
     existingInstallation: Boolean(
       files['config/account_kit.ts'] || files['config/account_kit_setup.json']
     ),
     files,
-    guards: Object.keys(guardStrategies(authSource)),
-    guardStrategies: guardStrategies(authSource),
-    guardModels: guardModels(authSource),
+    guards: Object.keys(strategies),
+    guardStrategies: strategies,
+    guardModels: guardModels(authSource, authStructure),
     database: databaseKind(files['config/database.ts'] ?? ''),
     connection: files['config/database.ts'] ? 'default' : 'unknown',
     installedPackages,
