@@ -174,6 +174,7 @@ export function hasUnsafeBindingReferences(
   let unsafe = false
   walk(source, (node) => {
     if (!ts.isIdentifier(node) || node.text !== binding) return
+    if (isTypeOnlyReference(source, node)) return
     const parent = node.parent
     if (
       (ts.isImportClause(parent) && parent.name === node) ||
@@ -194,6 +195,15 @@ export function hasUnsafeBindingReferences(
     if (!call || !allowedCall(call)) unsafe = true
   })
   return unsafe
+}
+
+/** A type query references a value's type but never reads that value at runtime. */
+export function isTypeOnlyReference(source: SetupSource, node: TypeScript.Node): boolean {
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (source.ts.isTypeNode(parent)) return true
+    if (source.ts.isExpression(parent) || source.ts.isStatement(parent)) return false
+  }
+  return false
 }
 
 export function safeEnvGetter(source: SetupSource, binding: string): boolean {
@@ -245,6 +255,7 @@ export function defaultExpression(source: SetupSource): {
         node.text === expression.text &&
         node !== declaration?.name &&
         node !== expression &&
+        !isTypeOnlyReference(source, node) &&
         !(ts.isPropertyAssignment(node.parent) && node.parent.name === node)
       )
         unsafe = true

@@ -27,6 +27,7 @@ import {
   hasUnsafeObjectEntries,
   hasUnsafeBindingReferences,
   importedName,
+  isTypeOnlyReference,
   parseSetupSource,
   safeEnvGetter,
   topLevelConfig,
@@ -299,7 +300,8 @@ function validate(
       diagnostic(
         diagnostics,
         'authentication.applicationRouteRevocation',
-        'Document and verify revocation on application-owned protected routes'
+        'Generated managed routes remain disabled until application-owned protected routes use the account-access middleware and revocation is verified; rerun setup with this choice true to activate',
+        'action'
       )
   }
   const p = choices.policy.password
@@ -730,6 +732,12 @@ function managedRoutesSource(choices: SetupChoices): string {
 
 function disabledManagedRoutesSource(previous: SetupChoices): string {
   return `// Account Kit managed endpoints are disabled by setup.\n// Previous generated selection: ${Buffer.from(JSON.stringify(previous)).toString('base64url')}\n`
+}
+
+function selectedRouteSource(choices: SetupChoices): string {
+  return choices.authentication?.applicationRouteRevocation
+    ? managedRoutesSource(choices)
+    : disabledManagedRoutesSource(choices)
 }
 
 function retainedGeneratedChoices(state: SetupInspection): SetupChoices | null {
@@ -1960,6 +1968,15 @@ export async function planSetup(
       )
       const selectedClass = classes.length === 1 ? classes[0] : null
       const baseModelBinding = importedName(model, '@adonisjs/lucid/orm', 'BaseModel')
+      const schemaBinding = importedName(model, '#database/schema', 'UserSchema')
+      const composeBinding = importedName(model, '@adonisjs/core/helpers', 'compose')
+      const authFinderBinding = importedName(model, '@adonisjs/auth/mixins/lucid', 'withAuthFinder')
+      const hashBinding = defaultImportName(model, '@adonisjs/core/services/hash')
+      const providerBinding = importedName(
+        model,
+        '@adonisjs/auth/access_tokens',
+        'DbAccessTokensProvider'
+      )
       if (
         !selectedClass ||
         !selectedClass.heritageClauses?.some(
@@ -2002,12 +2019,35 @@ export async function planSetup(
           )
         }) || metadataNames.some((name) => staticMember(name).length > 1)
       let mutatedModel = false
+      const nativeProvider = staticMember('accessTokens')[0]
+      const nativeProviderCall =
+        nativeProvider && ts.isPropertyDeclaration(nativeProvider)
+          ? nativeProvider.initializer
+          : undefined
+      const safeSelfReference = (node: TypeScript.Identifier) =>
+        Boolean(
+          node.parent &&
+          ts.isCallExpression(node.parent) &&
+          node.parent.arguments.length === 1 &&
+          node.parent.arguments[0] === node &&
+          node.parent === nativeProviderCall &&
+          providerBinding &&
+          exactCall(model, node.parent, providerBinding, 'forModel') &&
+          !hasUnsafeBindingReferences(
+            model,
+            providerBinding,
+            (call) =>
+              call === nativeProviderCall && exactCall(model, call, providerBinding, 'forModel')
+          )
+        )
       if (selectedClass?.name)
         walk(model, (node) => {
           if (
             ts.isIdentifier(node) &&
             node.text === selectedClass.name!.text &&
-            node !== selectedClass.name
+            node !== selectedClass.name &&
+            !isTypeOnlyReference(model, node) &&
+            !safeSelfReference(node)
           )
             mutatedModel = true
         })
@@ -2026,20 +2066,291 @@ export async function planSetup(
           'user.model',
           'Token guard model must expose its existing static accessTokens provider'
         )
-      const tableMember = staticMember('table')
+      let schemaClass: TypeScript.ClassDeclaration | null = null
+      let schemaSource: SetupSource | null = null
+      const heritage = selectedClass?.heritageClauses?.find(
+        (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+      )
+      const extended = heritage?.types.length === 1 ? heritage.types[0].expression : null
+      const composeCall = extended && ts.isCallExpression(extended) ? extended : null
+      const finderCall =
+        composeCall && ts.isCallExpression(composeCall.arguments[1])
+          ? composeCall.arguments[1]
+          : null
+      const composed =
+        composeCall &&
+        ts.isIdentifier(composeCall.expression) &&
+        composeCall.expression.text === composeBinding &&
+        composeCall.arguments.length === 2 &&
+        ts.isIdentifier(composeCall.arguments[0]) &&
+        composeCall.arguments[0].text === schemaBinding &&
+        finderCall &&
+        ts.isIdentifier(finderCall.expression) &&
+        finderCall.expression.text === authFinderBinding &&
+        finderCall.arguments.length === 1 &&
+        ts.isIdentifier(finderCall.arguments[0]) &&
+        finderCall.arguments[0].text === hashBinding
+      const onlyImportedReference = (
+        binding: string | null,
+        expected: TypeScript.Node | undefined
+      ) => {
+        if (!binding || !expected) return false
+        let safe = true
+        walk(model, (node) => {
+          if (
+            !ts.isIdentifier(node) ||
+            node.text !== binding ||
+            node === expected ||
+            isTypeOnlyReference(model, node)
+          )
+            return
+          if (
+            ts.isImportSpecifier(node.parent) &&
+            (node.parent.name === node || node.parent.propertyName === node)
+          )
+            return
+          if (ts.isImportClause(node.parent) && node.parent.name === node) return
+          if (ts.isPropertyAssignment(node.parent) && node.parent.name === node) return
+          if (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) return
+          safe = false
+        })
+        return safe
+      }
+      const safeComposition =
+        composed &&
+        !hasUnsafeBindingReferences(model, composeBinding!, (call) => call === composeCall) &&
+        !hasUnsafeBindingReferences(model, authFinderBinding!, (call) => call === finderCall) &&
+        onlyImportedReference(schemaBinding, composeCall.arguments[0]) &&
+        onlyImportedReference(hashBinding, finderCall.arguments[0])
+      if (safeComposition && schemaBinding) {
+        const schemaPath = 'database/schema.ts'
+        try {
+          const packagePath = await safeSetupPath(state.root, 'package.json')
+          const packageStat = await lstat(packagePath)
+          if (!packageStat.isFile())
+            throw new Error('Setup cannot inspect non-regular package.json')
+          const manifest = JSON.parse(await readFile(packagePath, 'utf8')) as {
+            imports?: Record<string, unknown>
+          }
+          const exactAlias = manifest.imports?.['#database/schema']
+          const mapped =
+            exactAlias === undefined
+              ? manifest.imports?.['#database/*'] === './database/*.js'
+              : exactAlias === './database/schema.js'
+          if (!mapped)
+            throw new Error('Setup cannot resolve #database/schema to the inspected schema')
+          const path = await safeSetupPath(state.root, schemaPath)
+          const schemaStat = await lstat(path)
+          if (!schemaStat.isFile())
+            throw new Error(`Setup cannot inspect non-regular schema ${schemaPath}`)
+          const parsed = await parseSetupSource(await readFile(path, 'utf8'))
+          const base = importedName(parsed, '@adonisjs/lucid/orm', 'BaseModel')
+          const column = importedName(parsed, '@adonisjs/lucid/orm', 'column')
+          const matches = parsed.file.statements.filter(
+            (node): node is TypeScript.ClassDeclaration =>
+              parsed.ts.isClassDeclaration(node) &&
+              node.name?.text === 'UserSchema' &&
+              Boolean(
+                node.modifiers?.some(
+                  (modifier) => modifier.kind === parsed.ts.SyntaxKind.ExportKeyword
+                )
+              )
+          )
+          const candidate = matches.length === 1 ? matches[0] : null
+          const directBase = candidate?.heritageClauses?.some(
+            (clause) =>
+              clause.token === parsed.ts.SyntaxKind.ExtendsKeyword &&
+              clause.types.length === 1 &&
+              parsed.ts.isIdentifier(clause.types[0].expression) &&
+              clause.types[0].expression.text === base
+          )
+          let unsafeBase = false
+          if (base)
+            walk(parsed, (node) => {
+              if (
+                !parsed.ts.isIdentifier(node) ||
+                node.text !== base ||
+                isTypeOnlyReference(parsed, node)
+              )
+                return
+              if (
+                parsed.ts.isImportSpecifier(node.parent) &&
+                (node.parent.name === node || node.parent.propertyName === node)
+              )
+                return
+              if (
+                parsed.ts.isExpressionWithTypeArguments(node.parent) &&
+                node.parent.expression === node &&
+                parsed.ts.isHeritageClause(node.parent.parent) &&
+                node.parent.parent.token === parsed.ts.SyntaxKind.ExtendsKeyword
+              )
+                return
+              if (parsed.ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
+                return
+              unsafeBase = true
+            })
+          const unsafeColumn =
+            !column ||
+            hasUnsafeBindingReferences(
+              parsed,
+              column,
+              (call) =>
+                parsed.ts.isDecorator(call.parent) &&
+                ((parsed.ts.isIdentifier(call.expression) && call.expression.text === column) ||
+                  exactCall(parsed, call, column, 'dateTime'))
+            )
+          let escaped = false
+          if (candidate?.name)
+            walk(parsed, (node) => {
+              if (
+                !parsed.ts.isIdentifier(node) ||
+                node.text !== candidate.name!.text ||
+                node === candidate.name ||
+                isTypeOnlyReference(parsed, node)
+              )
+                return
+              if (
+                node.parent &&
+                parsed.ts.isPropertyAccessExpression(node.parent) &&
+                node.parent.expression === node &&
+                node.parent.name.text === '$columns' &&
+                node.parent.parent &&
+                parsed.ts.isPropertyDeclaration(node.parent.parent) &&
+                node.parent.parent.name.getText(parsed.file) === '$columns' &&
+                node.parent.parent.parent === candidate
+              )
+                return
+              escaped = true
+            })
+          const schemaMetadata = ['table', 'connection']
+          const metadataUnsafe =
+            candidate?.members.some((member) => {
+              if (parsed.ts.isClassStaticBlockDeclaration(member)) return true
+              if (
+                !parsed.ts.canHaveModifiers(member) ||
+                !parsed.ts
+                  .getModifiers(member)
+                  ?.some((modifier) => modifier.kind === parsed.ts.SyntaxKind.StaticKeyword)
+              )
+                return false
+              if (!member.name) return false
+              if (parsed.ts.isComputedPropertyName(member.name)) return true
+              return (
+                !parsed.ts.isPropertyDeclaration(member) &&
+                (parsed.ts.isIdentifier(member.name) || parsed.ts.isStringLiteral(member.name)) &&
+                schemaMetadata.includes(member.name.text)
+              )
+            }) ||
+            schemaMetadata.some(
+              (name) =>
+                candidate?.members.filter(
+                  (member) =>
+                    parsed.ts.isPropertyDeclaration(member) &&
+                    member.modifiers?.some(
+                      (modifier) => modifier.kind === parsed.ts.SyntaxKind.StaticKeyword
+                    ) &&
+                    (parsed.ts.isIdentifier(member.name) ||
+                      parsed.ts.isStringLiteral(member.name)) &&
+                    member.name.text === name
+                ).length! > 1
+            )
+          if (directBase && !unsafeBase && !unsafeColumn && !escaped && !metadataUnsafe) {
+            schemaClass = candidate
+            schemaSource = parsed
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            // The missing schema is diagnosed through unresolved inheritance below.
+          } else if (
+            (error as Error).message ===
+            'Setup cannot resolve #database/schema to the inspected schema'
+          ) {
+            diagnostic(diagnostics, 'user.connection', (error as Error).message)
+          } else throw error
+        }
+      }
+      const inheritedMember = (name: string) =>
+        schemaClass?.members.filter(
+          (member) =>
+            schemaSource!.ts.isPropertyDeclaration(member) &&
+            Boolean(
+              member.modifiers?.some(
+                (modifier) => modifier.kind === schemaSource!.ts.SyntaxKind.StaticKeyword
+              )
+            ) &&
+            (schemaSource!.ts.isIdentifier(member.name) ||
+              schemaSource!.ts.isStringLiteral(member.name)) &&
+            member.name.text === name
+        ) ?? []
+      if (composed && schemaClass && schemaSource) {
+        const idMembers = schemaClass.members.filter(
+          (member) =>
+            schemaSource!.ts.isPropertyDeclaration(member) &&
+            schemaSource!.ts.isIdentifier(member.name) &&
+            member.name.text === choices.user.primaryKey
+        )
+        const id =
+          idMembers.length === 1 && schemaSource.ts.isPropertyDeclaration(idMembers[0])
+            ? idMembers[0]
+            : null
+        const columnName = importedName(schemaSource, '@adonisjs/lucid/orm', 'column')
+        const primary = id?.modifiers?.some((modifier) => {
+          if (
+            !schemaSource!.ts.isDecorator(modifier) ||
+            !schemaSource!.ts.isCallExpression(modifier.expression) ||
+            !schemaSource!.ts.isIdentifier(modifier.expression.expression) ||
+            modifier.expression.expression.text !== columnName ||
+            modifier.expression.arguments.length !== 1 ||
+            !schemaSource!.ts.isObjectLiteralExpression(modifier.expression.arguments[0])
+          )
+            return false
+          const columnOptions = modifier.expression.arguments[0]
+          const physicalName = directProperty(
+            schemaSource!,
+            columnOptions,
+            'columnName'
+          )?.initializer
+          return (
+            directProperty(schemaSource!, columnOptions, 'isPrimary')?.initializer.kind ===
+              schemaSource!.ts.SyntaxKind.TrueKeyword &&
+            (!physicalName ||
+              (schemaSource!.ts.isStringLiteral(physicalName) &&
+                physicalName.text === choices.user.primaryKey))
+          )
+        })
+        if (
+          !primary ||
+          id?.type?.kind !== schemaSource.ts.SyntaxKind.NumberKeyword ||
+          choices.user.idType !== 'integer'
+        )
+          diagnostic(
+            diagnostics,
+            'user.idType',
+            'Inherited schema must declare the selected physical primary id with @column({ isPrimary: true })'
+          )
+      }
+      const tableMember = staticMember('table').length
+        ? staticMember('table')
+        : inheritedMember('table')
       const tableInitializer =
         tableMember.length === 1 && ts.isPropertyDeclaration(tableMember[0])
           ? tableMember[0].initializer
           : undefined
       const table =
         tableInitializer && ts.isStringLiteral(tableInitializer) ? tableInitializer.text : null
+      if (tableMember.length && !table)
+        diagnostic(
+          diagnostics,
+          'user.table',
+          'Resolve the inherited or declared model table before generating migrations'
+        )
       if (table && table !== choices.user.table)
         diagnostic(
           diagnostics,
           'user.table',
           `Model table ${table} differs from selected ${choices.user.table}`
         )
-      if (staticMember('connection').length)
+      if (staticMember('connection').length || inheritedMember('connection').length)
         diagnostic(
           diagnostics,
           'user.connection',
@@ -2058,6 +2369,7 @@ export async function planSetup(
           clause.types.some(
             (item) =>
               (ts.isIdentifier(item.expression) && item.expression.text === baseModelBinding) ||
+              (composed && schemaClass !== null) ||
               (ts.isCallExpression(item.expression) &&
                 ts.isIdentifier(item.expression.expression) &&
                 item.expression.expression.text ===
@@ -2136,9 +2448,9 @@ export async function planSetup(
       changes,
       state,
       'start/account_kit_routes.ts',
-      managedRoutesSource(choices),
+      selectedRouteSource(choices),
       state.existingChoices?.authentication && state.existingChoices.managed.length
-        ? managedRoutesSource(state.existingChoices)
+        ? selectedRouteSource(state.existingChoices)
         : retainedChoices
           ? disabledManagedRoutesSource(retainedChoices)
           : null,
@@ -2150,7 +2462,7 @@ export async function planSetup(
       state,
       'start/account_kit_routes.ts',
       disabledManagedRoutesSource(state.existingChoices),
-      managedRoutesSource(state.existingChoices),
+      selectedRouteSource(state.existingChoices),
       'Retire the managed route mount without changing application routes or account data'
     )
   }
@@ -2316,9 +2628,9 @@ export async function planSetup(
       }
     }
   }
-  let endpointLocations: Array<{ name: string; method: string; path: string }> = []
+  let plannedEndpointLocations: Array<{ name: string; method: string; path: string }> = []
   try {
-    endpointLocations = selectedManagedRoutes(choices).map(({ name, method, path }) => ({
+    plannedEndpointLocations = selectedManagedRoutes(choices).map(({ name, method, path }) => ({
       name,
       method,
       path,
@@ -2326,6 +2638,9 @@ export async function planSetup(
   } catch {
     // Invalid choices are reported above; preview remains inspectable.
   }
+  const endpointLocations = choices.authentication?.applicationRouteRevocation
+    ? plannedEndpointLocations
+    : []
   const endpoints = endpointLocations.map(({ name }) => name)
   const selectedPackages = [
     'typescript',
@@ -2407,12 +2722,17 @@ export async function planSetup(
         `Installed ${name}@${version} is outside supported ^${minimum.join('.')} range`
       )
   }
-  const csrfLocation = endpointLocations.find(({ name }) => name === 'auth.csrf')?.path
+  const csrfLocation = plannedEndpointLocations.find(({ name }) => name === 'auth.csrf')?.path
   const prerequisites = [
     ...missingPackages.map((name) => `Install ${name} explicitly with pnpm add ${name}`),
     'Review generated migrations, then run node ace migration:run explicitly',
     ...(choices.managed.length
       ? ['Verify the generated route mount and existing guard prerequisites']
+      : []),
+    ...(choices.managed.length && !choices.authentication?.applicationRouteRevocation
+      ? [
+          'Wire the generated account-access middleware to application-owned protected routes, verify revocation, then rerun setup with applicationRouteRevocation true to activate managed routes',
+        ]
       : []),
     ...(choices.managed.length && choices.authentication?.strategy === 'session'
       ? [
