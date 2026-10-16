@@ -15,8 +15,22 @@ import { featureNames } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
 import { createActionUrls } from '../notifications.js'
-import { maskSourceLiteralBodies, stripSourceComments } from './source_text.js'
+import { stripSourceComments } from './source_text.js'
 import { selectedSessionEnvironment } from './session_env.js'
+import {
+  defaultExpression,
+  defaultImportName,
+  directProperty,
+  exactCall,
+  exportedObject,
+  hasUnsafeObjectEntries,
+  importedName,
+  parseSetupSource,
+  topLevelConfig,
+  walk,
+  type SetupSource,
+} from './ts_source.js'
+import type * as TypeScript from 'typescript'
 
 const emailDestinations: Partial<Record<SetupFeature, keyof SetupChoices['mail']['destinations']>> =
   {
@@ -901,7 +915,7 @@ function accountConfigSource(choices: SetupChoices): string {
   return imports.join('\n')
 }
 
-function planRouteImport(
+async function planRouteImport(
   changes: SetupFileChange[],
   state: SetupInspection,
   diagnostics: SetupDiagnostic[]
@@ -916,9 +930,23 @@ function planRouteImport(
     )
     return
   }
-  const importLine = "import './account_kit_routes.js'"
-  const executable = stripSourceComments(previous)
-  if (/\bregisterManagedRoutes\s*\(/.test(executable)) {
+  let source: SetupSource
+  try {
+    source = await parseSetupSource(previous)
+  } catch {
+    diagnostic(diagnostics, path, 'Application route source must be valid TypeScript before setup')
+    return
+  }
+  let directMount = false
+  walk(source, (node) => {
+    if (
+      source.ts.isCallExpression(node) &&
+      source.ts.isIdentifier(node.expression) &&
+      node.expression.text === 'registerManagedRoutes'
+    )
+      directMount = true
+  })
+  if (directMount) {
     diagnostic(
       diagnostics,
       path,
@@ -926,7 +954,11 @@ function planRouteImport(
     )
     return
   }
-  if (executable.includes(importLine)) {
+  const imports = source.file.statements
+    .filter(source.ts.isImportDeclaration)
+    .filter((node) => source.ts.isStringLiteral(node.moduleSpecifier))
+    .map((node) => (node.moduleSpecifier as TypeScript.StringLiteral).text)
+  if (imports.includes('./account_kit_routes.js')) {
     changes.push({
       path,
       action: 'unchanged',
@@ -935,7 +967,7 @@ function planRouteImport(
     })
     return
   }
-  if (executable.includes('account_kit_routes')) {
+  if (imports.some((name) => name.includes('account_kit_routes'))) {
     diagnostic(diagnostics, path, 'Existing Account Kit route import differs; resolve it manually')
     return
   }
@@ -943,36 +975,91 @@ function planRouteImport(
     path,
     action: 'update',
     expected: previous,
-    content: `${previous.trimEnd()}\n\n${importLine}\n`,
+    content: `${previous.trimEnd()}\n\nimport './account_kit_routes.js'\n`,
     reason: 'Explicitly mount the package-maintained endpoints',
   })
 }
 
-function planArrayImports(
+function lazyImportPath(source: SetupSource, node: TypeScript.Node): string | null {
+  const { ts } = source
+  if (!ts.isArrowFunction(node) || !ts.isCallExpression(node.body)) return null
+  const call = node.body
+  if (
+    call.expression.kind !== ts.SyntaxKind.ImportKeyword ||
+    call.arguments.length !== 1 ||
+    !ts.isStringLiteral(call.arguments[0])
+  )
+    return null
+  return call.arguments[0].text
+}
+
+function callArray(
+  source: SetupSource,
+  receiver: string,
+  method: string
+): TypeScript.ArrayLiteralExpression | null {
+  const matches: TypeScript.ArrayLiteralExpression[] = []
+  walk(source, (node) => {
+    if (
+      exactCall(source, node, receiver, method) &&
+      source.ts.isExpressionStatement(node.parent) &&
+      node.parent.parent === source.file &&
+      node.arguments.length === 1 &&
+      source.ts.isArrayLiteralExpression(node.arguments[0])
+    )
+      matches.push(node.arguments[0])
+  })
+  return matches.length === 1 ? matches[0] : null
+}
+
+async function planArrayImports(
   changes: SetupFileChange[],
   state: SetupInspection,
   diagnostics: SetupDiagnostic[],
   path: string,
-  marker: string,
+  _marker: string,
   imports: string[]
 ) {
   const previous = state.files[path]
-  const markerIndex = previous === undefined ? -1 : stripSourceComments(previous).indexOf(marker)
-  if (previous === undefined || markerIndex < 0) {
+  let source: SetupSource | null = null
+  try {
+    if (previous !== undefined) source = await parseSetupSource(previous)
+  } catch {
+    /* the diagnostic below identifies the supported shape */
+  }
+  const target = source && defaultExpression(source)
+  let object: TypeScript.ObjectLiteralExpression | null = null
+  if (source && target) {
+    if (source.ts.isObjectLiteralExpression(target.expression)) object = target.expression
+    else if (
+      source.ts.isCallExpression(target.expression) &&
+      source.ts.isIdentifier(target.expression.expression) &&
+      target.expression.expression.text ===
+        importedName(source, '@adonisjs/core/app', 'defineConfig') &&
+      target.expression.arguments.length === 1 &&
+      source.ts.isObjectLiteralExpression(target.expression.arguments[0])
+    )
+      object = target.expression.arguments[0]
+  }
+  const providers = source && object && directProperty(source, object, 'providers')
+  if (
+    !previous ||
+    !source ||
+    !providers ||
+    !source.ts.isArrayLiteralExpression(providers.initializer)
+  ) {
     diagnostic(
       diagnostics,
       path,
-      `Expected ${marker} in ${path}; configure these imports manually before activation`
+      `Expected a default-exported providers array in ${path}; configure these imports manually before activation`
     )
     return
   }
-  const executable = stripSourceComments(previous)
-  const missing = imports.filter(
-    (name) =>
-      !new RegExp(
-        `\\bimport\\s*\\(\\s*['"]${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]\\s*\\)`
-      ).test(executable)
+  const array = providers.initializer
+  const present = new Set(
+    array.elements.map((entry) => lazyImportPath(source!, entry)).filter(Boolean)
   )
+  const missing = imports.filter((name) => !present.has(name))
   if (!missing.length) {
     changes.push({
       path,
@@ -982,19 +1069,48 @@ function planArrayImports(
     })
     return
   }
+  const at = array.getStart(source.file) + 1
   changes.push({
     path,
     action: 'update',
     expected: previous,
     content:
-      previous.slice(0, markerIndex + marker.length) +
+      previous.slice(0, at) +
       `\n${missing.map((name) => `    () => import('${name}'),`).join('\n')}` +
-      previous.slice(markerIndex + marker.length),
+      previous.slice(at),
     reason: 'Register required framework providers or middleware',
   })
 }
 
-function planRouterMiddleware(
+function insertAfterArrayElement(
+  source: SetupSource,
+  array: TypeScript.ArrayLiteralExpression,
+  index: number,
+  importPath: string
+): string {
+  const element = array.elements[index]
+  const next = array.elements[index + 1]
+  const limit = next ? next.getStart(source.file) : array.getEnd() - 1
+  const between = source.text.slice(element.getEnd(), limit)
+  const executable = stripSourceComments(between)
+  const comma = executable.indexOf(',')
+  const withComma =
+    comma < 0
+      ? source.text.slice(0, element.getEnd()) + ',' + source.text.slice(element.getEnd())
+      : source.text
+  const afterExpression = element.getEnd() + (comma < 0 ? 1 : comma + 1)
+  const lineComment = between.indexOf('//')
+  const newline = between.indexOf('\n', lineComment < 0 ? 0 : lineComment)
+  const at =
+    lineComment >= 0 && newline >= 0
+      ? element.getEnd() + newline + 1 + (comma < 0 ? 1 : 0)
+      : afterExpression
+  const entry = `  () => import('${importPath}'),`
+  const insertion = at === afterExpression ? `\n${entry}` : `${entry}\n`
+  return withComma.slice(0, at) + insertion + withComma.slice(at)
+}
+
+async function planRouterMiddleware(
   changes: SetupFileChange[],
   state: SetupInspection,
   diagnostics: SetupDiagnostic[],
@@ -1002,20 +1118,33 @@ function planRouterMiddleware(
 ) {
   const path = 'start/kernel.ts'
   const previous = state.files[path]
-  const executable = previous ? stripSourceComments(previous) : ''
-  const start = executable.indexOf('router.use([')
-  const end = start < 0 ? -1 : executable.indexOf('])', start)
-  if (!previous || start < 0 || end < 0 || executable.indexOf('router.use([', start + 1) >= 0) {
+  if (!previous) {
     diagnostic(diagnostics, path, 'Expected one conventional router.use array in start/kernel.ts')
     return
   }
-  const block = previous.slice(start + 'router.use(['.length, end)
-  const executableBlock = executable.slice(start + 'router.use(['.length, end)
-  const serverStart = executable.indexOf('server.use([')
-  const serverEnd = serverStart < 0 ? -1 : executable.indexOf('])', serverStart)
-  const serverBlock = serverEnd < 0 ? '' : executable.slice(serverStart, serverEnd)
-  const lines = block.split('\n')
-  const activeLines = executableBlock.split('\n')
+  let content = previous
+  let source: SetupSource
+  try {
+    source = await parseSetupSource(content)
+  } catch {
+    diagnostic(diagnostics, path, 'Router middleware source must be valid TypeScript before setup')
+    return
+  }
+  let array = callArray(source, 'router', 'use')
+  const server = callArray(source, 'server', 'use')
+  if (
+    !array ||
+    !server ||
+    defaultImportName(source, '@adonisjs/core/services/router') !== 'router' ||
+    defaultImportName(source, '@adonisjs/core/services/server') !== 'server'
+  ) {
+    diagnostic(
+      diagnostics,
+      path,
+      'Expected one conventional server.use and router.use array in start/kernel.ts'
+    )
+    return
+  }
   const body = '@adonisjs/core/bodyparser_middleware'
   const ordered = [
     body,
@@ -1024,7 +1153,9 @@ function planRouterMiddleware(
       : []),
     '@adonisjs/auth/initialize_auth_middleware',
   ]
-  if (ordered.slice(1).some((name) => serverBlock.includes(name))) {
+  if (
+    server.elements.some((entry) => ordered.slice(1).includes(lazyImportPath(source, entry) ?? ''))
+  ) {
     diagnostic(
       diagnostics,
       path,
@@ -1032,9 +1163,11 @@ function planRouterMiddleware(
     )
     return
   }
+  const paths = array.elements.map((entry) => lazyImportPath(source, entry))
   if (
-    activeLines.filter((line) => line.includes(body)).length !== 1 ||
-    ordered.some((name) => activeLines.filter((line) => line.includes(name)).length > 1)
+    paths.some((name) => name === null) ||
+    paths.filter((name) => name === body).length !== 1 ||
+    ordered.some((name) => paths.filter((entry) => entry === name).length > 1)
   ) {
     diagnostic(
       diagnostics,
@@ -1043,14 +1176,8 @@ function planRouterMiddleware(
     )
     return
   }
-  const existingIndexes = ordered
-    .map((name) => activeLines.findIndex((line) => line.includes(name)))
-    .filter((index) => index >= 0)
-  if (
-    existingIndexes.some(
-      (index, position) => position > 0 && index <= existingIndexes[position - 1]
-    )
-  ) {
+  const existing = ordered.map((name) => paths.indexOf(name)).filter((index) => index >= 0)
+  if (existing.some((index, position) => position > 0 && index <= existing[position - 1])) {
     diagnostic(
       diagnostics,
       path,
@@ -1058,38 +1185,42 @@ function planRouterMiddleware(
     )
     return
   }
-  let changed = false
-  for (let index = 1; index < ordered.length; index++) {
-    if (activeLines.some((line) => line.includes(ordered[index]))) continue
-    const previousIndex = activeLines.findIndex((line) => line.includes(ordered[index - 1]))
-    if (previousIndex < 0) throw new Error('Missing previously planned router middleware')
-    const expressionEnd = activeLines[previousIndex].trimEnd().length
-    if (!activeLines[previousIndex].slice(0, expressionEnd).endsWith(',')) {
-      lines[previousIndex] =
-        lines[previousIndex].slice(0, expressionEnd) +
-        ',' +
-        lines[previousIndex].slice(expressionEnd)
-      activeLines[previousIndex] =
-        activeLines[previousIndex].slice(0, expressionEnd) +
-        ',' +
-        activeLines[previousIndex].slice(expressionEnd)
+  for (let position = 1; position < ordered.length; position++) {
+    const currentPaths = array.elements.map((entry) => lazyImportPath(source, entry))
+    if (currentPaths.includes(ordered[position])) continue
+    const preceding = currentPaths.indexOf(ordered[position - 1])
+    if (preceding < 0) throw new Error('Missing previously planned router middleware')
+    content = insertAfterArrayElement(source, array, preceding, ordered[position])
+    try {
+      source = await parseSetupSource(content)
+    } catch {
+      diagnostic(
+        diagnostics,
+        path,
+        'Router middleware layout cannot be changed safely; use a complete import expression before setup'
+      )
+      return
     }
-    lines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
-    activeLines.splice(previousIndex + 1, 0, `  () => import('${ordered[index]}'),`)
-    changed = true
+    array = callArray(source, 'router', 'use')
+    if (!array) {
+      diagnostic(
+        diagnostics,
+        path,
+        'Router middleware layout cannot be changed safely; use a conventional array before setup'
+      )
+      return
+    }
   }
   changes.push({
     path,
-    action: changed ? 'update' : 'unchanged',
+    action: content === previous ? 'unchanged' : 'update',
     expected: previous,
-    content: changed
-      ? previous.slice(0, start + 'router.use(['.length) + lines.join('\n') + previous.slice(end)
-      : previous,
+    content,
     reason: 'Keep account middleware after body parsing on registered routes',
   })
 }
 
-function planServerProofMiddleware(
+async function planServerProofMiddleware(
   changes: SetupFileChange[],
   state: SetupInspection,
   diagnostics: SetupDiagnostic[]
@@ -1097,10 +1228,19 @@ function planServerProofMiddleware(
   const path = 'start/kernel.ts'
   const existing = changes.find((change) => change.path === path)
   const previous = existing?.content ?? state.files[path]
-  const executable = previous ? stripSourceComments(previous) : ''
-  const start = executable.indexOf('server.use([')
-  const end = start < 0 ? -1 : executable.indexOf('])', start)
-  if (!previous || start < 0 || end < 0 || executable.indexOf('server.use([', start + 1) >= 0) {
+  let source: SetupSource | null = null
+  try {
+    if (previous) source = await parseSetupSource(previous)
+  } catch {
+    /* report supported shape below */
+  }
+  const array = source && callArray(source, 'server', 'use')
+  if (
+    !previous ||
+    !source ||
+    !array ||
+    defaultImportName(source, '@adonisjs/core/services/server') !== 'server'
+  ) {
     diagnostic(
       diagnostics,
       path,
@@ -1109,12 +1249,9 @@ function planServerProofMiddleware(
     return
   }
   const name = '#middleware/account_kit_proof_headers_middleware'
-  const block = executable.slice(start, end)
-  if (block.includes(name)) return
-  const content =
-    previous.slice(0, start + 'server.use(['.length) +
-    `\n  () => import('${name}'),` +
-    previous.slice(start + 'server.use(['.length)
+  if (array.elements.some((entry) => lazyImportPath(source, entry) === name)) return
+  const at = array.getStart(source.file) + 1
+  const content = previous.slice(0, at) + `\n  () => import('${name}'),` + previous.slice(at)
   if (existing) {
     existing.content = content
     existing.action = existing.action === 'unchanged' ? 'update' : existing.action
@@ -1129,6 +1266,79 @@ function planServerProofMiddleware(
     })
 }
 
+async function shieldCsrfState(text: string): Promise<'true' | 'false' | 'dynamic' | 'missing'> {
+  let source: SetupSource
+  try {
+    source = await parseSetupSource(text)
+  } catch {
+    return 'missing'
+  }
+  const object = exportedObject(
+    source,
+    importedName(source, '@adonisjs/shield', 'defineConfig') ?? '__unbound_define_config__'
+  )
+  const csrf = object && directProperty(source, object, 'csrf')
+  if (!csrf || !source.ts.isObjectLiteralExpression(csrf.initializer)) return 'missing'
+  const enabled = directProperty(source, csrf.initializer, 'enabled')
+  if (!enabled) return 'missing'
+  if (enabled.initializer.kind === source.ts.SyntaxKind.TrueKeyword) return 'true'
+  if (enabled.initializer.kind === source.ts.SyntaxKind.FalseKeyword) return 'false'
+  return 'dynamic'
+}
+
+async function limiterConfigurationState(
+  text: string,
+  root: string
+): Promise<'valid' | 'invalid' | 'unresolved'> {
+  let source: SetupSource
+  try {
+    source = await parseSetupSource(text)
+  } catch {
+    return 'invalid'
+  }
+  const defineConfigName = importedName(source, '@adonisjs/limiter', 'defineConfig')
+  const storesName = importedName(source, '@adonisjs/limiter', 'stores')
+  const config = defineConfigName && topLevelConfig(source, defineConfigName)?.object
+  if (!config || !storesName || hasUnsafeObjectEntries(source, config)) return 'invalid'
+  const selected = directProperty(source, config, 'default')?.initializer
+  const stores = directProperty(source, config, 'stores')?.initializer
+  if (!selected || !stores || !source.ts.isObjectLiteralExpression(stores)) return 'invalid'
+  if (hasUnsafeObjectEntries(source, stores)) return 'invalid'
+  let name: string | null = null
+  if (source.ts.isStringLiteral(selected)) name = selected.text
+  else {
+    const env = defaultImportName(source, '#start/env')
+    if (!env || !exactCall(source, selected, env, 'get')) return 'unresolved'
+    const args = selected.arguments
+    if (
+      args.length < 1 ||
+      args.length > 2 ||
+      !source.ts.isStringLiteral(args[0]) ||
+      !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
+      (args.length === 2 && !source.ts.isStringLiteral(args[1]))
+    )
+      return 'unresolved'
+    try {
+      name =
+        (await selectedSessionEnvironment(root, args[0].text)) ??
+        (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+    } catch {
+      return 'unresolved'
+    }
+  }
+  if (!name) return 'unresolved'
+  const factory = directProperty(source, stores, name)?.initializer
+  if (
+    !factory ||
+    !source.ts.isCallExpression(factory) ||
+    !source.ts.isPropertyAccessExpression(factory.expression) ||
+    !source.ts.isIdentifier(factory.expression.expression) ||
+    factory.expression.expression.text !== storesName
+  )
+    return 'invalid'
+  return 'valid'
+}
+
 const sessionImport =
   "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from 'adonisjs-account-kit/http'\n// account-kit:session-import:end\n"
 const selectionStart = '// account-kit:session-selection:start\n'
@@ -1136,141 +1346,150 @@ const selectionEnd = '\n// account-kit:session-selection:end\n'
 const exportStart = '// account-kit:session-export:start\n'
 const exportEnd = '// account-kit:session-export:end\n'
 
-function braceDepth(source: string, opening: number, position: number): number {
-  let depth = 0
-  for (let index = opening; index < position; index++) {
-    if (source[index] === '{') depth++
-    else if (source[index] === '}') depth--
-  }
-  return depth
-}
-
-function closingBrace(source: string, opening: number): number {
-  let depth = 0
-  for (let index = opening; index < source.length; index++) {
-    if (source[index] === '{') depth++
-    else if (source[index] === '}' && --depth === 0) return index
-  }
-  return -1
-}
-
-function nativeSessionConfiguration(source: string): {
+interface NativeSessionConfiguration {
   configStart: number
   exportStartIndex: number
   originalStore: string
   originalSelection: string
   storeStart: number
   allowedStores: Array<{ name: string; kind: 'database' | 'memory' }>
-} | null {
-  const executable = stripSourceComments(source)
-  const structure = maskSourceLiteralBodies(source)
-  const nativeImport = [
-    ...executable.matchAll(/\bimport\s*\{([^}]*)\}\s*from\s*(['"])@adonisjs\/session\2/g),
-  ].some(
-    (match) =>
-      structure.slice(match.index, match.index + 6) === 'import' &&
-      match[1].split(',').some((binding) => binding.trim() === 'stores')
-  )
-  if (
-    !nativeImport ||
-    /\b(?:const|let|var|function)\s+stores\b/.test(structure) ||
-    /\b(?:const|let|var)\s*\{[^}]*\bstores\b[^}]*\}/.test(structure)
-  )
-    return null
-  const configMatch = /\bconst\s+sessionConfig\s*=\s*defineConfig\s*\(\s*\{/.exec(structure)
-  const exports = [...structure.matchAll(/\bexport\s+default\s+sessionConfig\b/g)]
-  if (!configMatch || exports.length !== 1) return null
-  const configStart = configMatch.index
-  const opening = configStart + configMatch[0].lastIndexOf('{')
-  const closing = closingBrace(structure, opening)
-  const exportStartIndex = exports[0].index
-  if (closing < 0 || closing >= exportStartIndex) return null
-  const selected = [
-    ...executable.matchAll(
-      /\bstore\s*:\s*(env\.get\(\s*['"][A-Z][A-Z0-9_]*['"](?:\s*,\s*['"][A-Za-z_][A-Za-z0-9_]*['"])?\s*\)|['"][^'"]+['"])/g
-    ),
-  ].filter(
-    (match) =>
-      match.index > opening &&
-      match.index < closing &&
-      structure.slice(match.index, match.index + 5) === 'store' &&
-      braceDepth(structure, opening, match.index) === 1
-  )
-  const maps = [...executable.matchAll(/\bstores\s*:\s*\{/g)].filter(
-    (match) =>
-      match.index > opening &&
-      match.index < closing &&
-      structure.slice(match.index, match.index + 6) === 'stores' &&
-      braceDepth(structure, opening, match.index) === 1
-  )
-  if (selected.length !== 1 || maps.length !== 1) return null
-  const mapOpening = maps[0].index + maps[0][0].lastIndexOf('{')
-  const mapClosing = closingBrace(structure, mapOpening)
-  if (mapClosing < 0 || mapClosing >= closing) return null
-  if (
-    [...structure.matchAll(/\.\.\./g)].some(
-      (match) =>
-        match.index > mapOpening &&
-        match.index < mapClosing &&
-        braceDepth(structure, mapOpening, match.index) === 1
+  selectedName: string | null
+  selected: { name: string; kind: 'database' | 'memory' } | null
+}
+
+async function nativeSessionConfiguration(
+  text: string,
+  root: string
+): Promise<NativeSessionConfiguration | null> {
+  const source = await parseSetupSource(text)
+  const { ts, file } = source
+  const defineConfigName = importedName(source, '@adonisjs/session', 'defineConfig')
+  const storesName = importedName(source, '@adonisjs/session', 'stores')
+  if (!defineConfigName || !storesName) return null
+  const target = topLevelConfig(source, defineConfigName)
+  if (!target?.declaration || hasUnsafeObjectEntries(source, target.object)) return null
+  const declaration = target.declaration
+  if (!ts.isIdentifier(declaration.name) || declaration.name.text !== 'sessionConfig') return null
+  if (!ts.isVariableStatement(declaration.parent.parent)) return null
+  if (!(declaration.parent.flags & ts.NodeFlags.Const)) return null
+  const store = directProperty(source, target.object, 'store')
+  const stores = directProperty(source, target.object, 'stores')
+  if (!store || !stores || !ts.isObjectLiteralExpression(stores.initializer)) return null
+  if (hasUnsafeObjectEntries(source, stores.initializer)) return null
+  const allowedStores: NativeSessionConfiguration['allowedStores'] = []
+  for (const property of stores.initializer.properties) {
+    if (!ts.isPropertyAssignment(property)) return null
+    const name =
+      ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
+        ? property.name.text
+        : null
+    if (!name) return null
+    for (const kind of ['database', 'memory'] as const) {
+      if (exactCall(source, property.initializer, storesName, kind))
+        allowedStores.push({ name, kind })
+    }
+  }
+  let selectedName: string | null = null
+  if (ts.isStringLiteral(store.initializer)) selectedName = store.initializer.text
+  else {
+    const envBinding = defaultImportName(source, '#start/env')
+    if (!envBinding || !exactCall(source, store.initializer, envBinding, 'get')) return null
+    const args = store.initializer.arguments
+    if (
+      args.length < 1 ||
+      args.length > 2 ||
+      !ts.isStringLiteral(args[0]) ||
+      !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
+      (args.length === 2 && !ts.isStringLiteral(args[1]))
     )
-  )
-    return null
-  const mapKeys = [
-    ...executable.matchAll(/(?:['"]([A-Za-z_][A-Za-z0-9_]*)['"]|\b([A-Za-z_][A-Za-z0-9_]*))\s*:/g),
-  ]
-    .filter(
-      (match) =>
-        match.index > mapOpening &&
-        match.index < mapClosing &&
-        braceDepth(structure, mapOpening, match.index) === 1
-    )
-    .map((match) => match[1] ?? match[2])
-  if (new Set(mapKeys).size !== mapKeys.length) return null
-  const allowedStores = [
-    ...executable.matchAll(
-      /(?:['"]([A-Za-z_][A-Za-z0-9_]*)['"]|\b([A-Za-z_][A-Za-z0-9_]*))\s*:\s*stores\.(database|memory)\s*\(/g
-    ),
-  ]
-    .filter((match) => {
-      const factory = match[0].lastIndexOf('stores.')
-      return (
-        match.index > mapOpening &&
-        match.index < mapClosing &&
-        braceDepth(structure, mapOpening, match.index) === 1 &&
-        structure.slice(match.index + factory, match.index + factory + 7) === 'stores.'
+      return null
+    selectedName =
+      (await selectedSessionEnvironment(root, args[0].text)) ??
+      (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+  }
+  let unsafe = false
+  walk(source, (node) => {
+    if (!ts.isIdentifier(node)) return
+    if (node.text === storesName) {
+      if (
+        ts.isImportSpecifier(node.parent) ||
+        (ts.isPropertyAssignment(node.parent) && node.parent.name === node)
       )
-    })
-    .map((match) => ({ name: match[1] ?? match[2], kind: match[3] as 'database' | 'memory' }))
-  if (!allowedStores.length) return null
+        return
+      const property = node.parent
+      const call = property.parent
+      if (
+        ts.isPropertyAccessExpression(property) &&
+        property.expression === node &&
+        ts.isCallExpression(call) &&
+        call.expression === property &&
+        call.getStart(file) > stores.initializer.getStart(file) &&
+        call.getEnd() < stores.initializer.getEnd()
+      )
+        return
+      unsafe = true
+    }
+    if (
+      node.text === 'sessionConfig' &&
+      node !== declaration.name &&
+      node !== target.exportAssignment.expression
+    )
+      unsafe = true
+  })
+  if (unsafe) return null
+  const selected = allowedStores.find(({ name }) => name === selectedName) ?? null
   return {
-    configStart,
-    exportStartIndex,
-    originalStore: selected[0][1],
-    originalSelection: selected[0][0],
-    storeStart: selected[0].index,
+    configStart: declaration.parent.parent.getStart(file),
+    exportStartIndex: target.exportAssignment.getStart(file),
+    originalStore: store.initializer.getText(file),
+    originalSelection: store.getText(file),
+    storeStart: store.getStart(file),
     allowedStores,
+    selectedName,
+    selected,
   }
 }
 
-async function selectedNativeSessionStore(source: string, root: string): Promise<boolean> {
-  const inspected = nativeSessionConfiguration(source)
-  if (!inspected) return false
-  let selected = inspected.originalStore.slice(1, -1)
-  if (inspected.originalStore.startsWith('env.get(')) {
-    const selector =
-      /^env\.get\(\s*['"]([A-Z][A-Z0-9_]*)['"](?:\s*,\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"])?\s*\)$/.exec(
-        inspected.originalStore
-      )
-    if (!selector) return false
-    selected = (await selectedSessionEnvironment(root, selector[1])) ?? selector[2] ?? ''
-  }
-  return inspected.allowedStores.some(({ name }) => name === selected)
+/** A diagnostic-only classifier; it never authorizes automatic attestation. */
+async function selectedSessionDiagnostic(
+  text: string,
+  root: string
+): Promise<{
+  name: string | null
+  kind: string | null
+} | null> {
+  const source = await parseSetupSource(text)
+  const object = exportedObject(
+    source,
+    importedName(source, '@adonisjs/session', 'defineConfig') ?? '__unbound_define_config__'
+  )
+  const store = object && directProperty(source, object, 'store')
+  const stores = object && directProperty(source, object, 'stores')
+  if (!store || !stores || !source.ts.isObjectLiteralExpression(stores.initializer)) return null
+  let name: string | null = null
+  if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
+  else if (
+    defaultImportName(source, '#start/env') &&
+    exactCall(source, store.initializer, defaultImportName(source, '#start/env')!, 'get') &&
+    store.initializer.arguments.length >= 1 &&
+    source.ts.isStringLiteral(store.initializer.arguments[0])
+  )
+    name = await selectedSessionEnvironment(root, store.initializer.arguments[0].text)
+  if (!name) return { name: null, kind: null }
+  const selected = directProperty(source, stores.initializer, name)
+  const initializer = selected?.initializer
+  const kind =
+    initializer &&
+    source.ts.isCallExpression(initializer) &&
+    source.ts.isPropertyAccessExpression(initializer.expression) &&
+    source.ts.isIdentifier(initializer.expression.expression) &&
+    initializer.expression.expression.text === 'stores'
+      ? initializer.expression.name.text
+      : null
+  return { name, kind }
 }
 
-function renderManagedSessionConfig(source: string): string | null {
-  const inspected = nativeSessionConfiguration(source)
-  if (!inspected) return null
+function renderManagedSessionConfig(source: string, inspected: NativeSessionConfiguration): string {
   const {
     configStart,
     exportStartIndex,
@@ -1310,7 +1529,7 @@ ${exportEnd}`
   )
 }
 
-function unwrapManagedSessionConfig(source: string): string | null {
+async function unwrapManagedSessionConfig(source: string, root: string): Promise<string | null> {
   if (!source.startsWith(sessionImport)) return null
   const selectionMatch = source.match(
     /\/\/ account-kit:session-selection:start\nconst accountKitSelectedSessionStore = (.+)\n\/\/ account-kit:session-selection:end\n/
@@ -1324,7 +1543,8 @@ function unwrapManagedSessionConfig(source: string): string | null {
     .replace(selectionMatch[0], '')
     .replace('store: accountKitSelectedSessionStore', `store: ${selectionMatch[1]}`)
     .replace(exportMatch[0], 'export default sessionConfig')
-  return renderManagedSessionConfig(base) === source ? base : null
+  const inspected = await nativeSessionConfiguration(base, root)
+  return inspected && renderManagedSessionConfig(base, inspected) === source ? base : null
 }
 
 async function planSessionConfigIntegration(
@@ -1339,7 +1559,7 @@ async function planSessionConfigIntegration(
   const wantsManagedSession =
     choices.managed.length > 0 && choices.authentication?.strategy === 'session'
   const wasManaged = previous.includes('account-kit:session-import:start')
-  const base = wasManaged ? unwrapManagedSessionConfig(previous) : previous
+  const base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root) : previous
   if (base === null) {
     diagnostic(
       diagnostics,
@@ -1349,7 +1569,21 @@ async function planSessionConfigIntegration(
     return
   }
   if (!wantsManagedSession && !wasManaged) return
-  if (!wasManaged && /\bprotectManagedSessionConfig\s*\(/.test(stripSourceComments(previous))) {
+  const parsed = await parseSetupSource(previous)
+  const existingWrapper = defaultExpression(parsed)
+  const wrapperBinding = importedName(
+    parsed,
+    'adonisjs-account-kit/http',
+    'protectManagedSessionConfig'
+  )
+  if (
+    !wasManaged &&
+    wrapperBinding &&
+    existingWrapper &&
+    parsed.ts.isCallExpression(existingWrapper.expression) &&
+    parsed.ts.isIdentifier(existingWrapper.expression.expression) &&
+    existingWrapper.expression.expression.text === wrapperBinding
+  ) {
     diagnostic(
       diagnostics,
       path,
@@ -1358,10 +1592,10 @@ async function planSessionConfigIntegration(
     )
     return
   }
-  let selectedNative = false
+  let inspected: NativeSessionConfiguration | null = null
   if (wantsManagedSession) {
     try {
-      selectedNative = await selectedNativeSessionStore(base, state.root)
+      inspected = await nativeSessionConfiguration(base, state.root)
     } catch {
       diagnostic(
         diagnostics,
@@ -1371,7 +1605,7 @@ async function planSessionConfigIntegration(
       return
     }
   }
-  if (wantsManagedSession && !selectedNative) {
+  if (wantsManagedSession && !inspected?.selected) {
     diagnostic(
       diagnostics,
       path,
@@ -1379,7 +1613,8 @@ async function planSessionConfigIntegration(
     )
     return
   }
-  const content = wantsManagedSession ? renderManagedSessionConfig(base) : base
+  const content =
+    wantsManagedSession && inspected ? renderManagedSessionConfig(base, inspected) : base
   if (content === null) {
     diagnostic(
       diagnostics,
@@ -1430,31 +1665,63 @@ export async function planSetup(
       const modelStat = await lstat(modelFile)
       if (!modelStat.isFile())
         throw new Error(`Setup cannot inspect non-regular model ${modelPath}`)
-      const model = stripSourceComments(await readFile(modelFile, 'utf8'))
-      if (!/export\s+default\s+class\s+\w+\s+extends\s+/.test(model))
+      const model = await parseSetupSource(await readFile(modelFile, 'utf8'))
+      const { ts } = model
+      const classes = model.file.statements.filter(
+        (node): node is TypeScript.ClassDeclaration =>
+          ts.isClassDeclaration(node) &&
+          Boolean(
+            node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)
+          ) &&
+          Boolean(
+            node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)
+          )
+      )
+      const selectedClass = classes.length === 1 ? classes[0] : null
+      if (
+        !selectedClass ||
+        !selectedClass.heritageClauses?.some(
+          (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
+        )
+      )
         diagnostic(
           diagnostics,
           'user.model',
           'Selected Lucid model must expose a default model class'
         )
+      const staticMember = (name: string) =>
+        selectedClass?.members.filter(
+          (member) =>
+            ts.isPropertyDeclaration(member) &&
+            Boolean(
+              member.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+            ) &&
+            (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) &&
+            member.name.text === name
+        ) ?? []
       if (
         choices.authentication?.strategy === 'access_tokens' &&
-        !/static\s+accessTokens\s*=/.test(model)
+        staticMember('accessTokens').length !== 1
       )
         diagnostic(
           diagnostics,
           'user.model',
           'Token guard model must expose its existing static accessTokens provider'
         )
-      const table = model.match(/\bstatic\s+table\s*=\s*['"]([^'"]+)['"]/)?.[1]
-      const connection = model.match(/\bstatic\s+connection\s*=\s*['"]([^'"]+)['"]/)?.[1]
+      const tableMember = staticMember('table')
+      const tableInitializer =
+        tableMember.length === 1 && ts.isPropertyDeclaration(tableMember[0])
+          ? tableMember[0].initializer
+          : undefined
+      const table =
+        tableInitializer && ts.isStringLiteral(tableInitializer) ? tableInitializer.text : null
       if (table && table !== choices.user.table)
         diagnostic(
           diagnostics,
           'user.table',
           `Model table ${table} differs from selected ${choices.user.table}`
         )
-      if (/\bstatic\s+connection\s*=/.test(model))
+      if (staticMember('connection').length)
         diagnostic(
           diagnostics,
           'user.connection',
@@ -1467,7 +1734,14 @@ export async function planSetup(
           'Verify the model table, including inherited or inferred mapping, matches the generated migrations',
           'action'
         )
-      if (!connection && !/extends\s+BaseModel\b/.test(model))
+      const extendsBase = selectedClass?.heritageClauses?.some(
+        (clause) =>
+          clause.token === ts.SyntaxKind.ExtendsKeyword &&
+          clause.types.some(
+            (item) => ts.isIdentifier(item.expression) && item.expression.text === 'BaseModel'
+          )
+      )
+      if (!extendsBase)
         diagnostic(
           diagnostics,
           'user.connection',
@@ -1558,7 +1832,7 @@ export async function planSetup(
       'Protect proof responses before parser and CSRF failures'
     )
   }
-  planArrayImports(changes, state, diagnostics, 'adonisrc.ts', 'providers: [', [
+  await planArrayImports(changes, state, diagnostics, 'adonisrc.ts', 'providers: [', [
     ...(choices.managed.length ? ['@adonisjs/core/providers/vinejs_provider'] : []),
     '@adonisjs/lucid/database_provider',
     '@adonisjs/limiter/limiter_provider',
@@ -1572,23 +1846,23 @@ export async function planSetup(
       : []),
   ])
   if (choices.managed.length) {
-    planRouterMiddleware(
+    await planRouterMiddleware(
       changes,
       state,
       diagnostics,
       choices.authentication?.strategy === 'session'
     )
-    planServerProofMiddleware(changes, state, diagnostics)
+    await planServerProofMiddleware(changes, state, diagnostics)
     if (choices.authentication?.strategy === 'session') {
       const shieldConfig = state.files['config/shield.ts']
-      const executableShield = shieldConfig ? stripSourceComments(shieldConfig) : ''
-      if (!shieldConfig || /csrf\s*:\s*\{[^}]*enabled\s*:\s*false/s.test(executableShield))
+      const csrf = shieldConfig ? await shieldCsrfState(shieldConfig) : 'missing'
+      if (csrf === 'missing' || csrf === 'false')
         diagnostic(
           diagnostics,
           'config/shield.ts',
           'Session managed POSTs require configured Shield CSRF protection'
         )
-      else if (!/csrf\s*:\s*\{[^}]*enabled\s*:\s*true\b/s.test(executableShield))
+      else if (csrf === 'dynamic')
         diagnostic(
           diagnostics,
           'config/shield.ts',
@@ -1602,49 +1876,36 @@ export async function planSetup(
           'Session guard requires configured cookie and session storage'
         )
       else {
-        const sessionConfig = stripSourceComments(state.files['config/session.ts'])
-        const selectedStore =
-          sessionConfig.match(/\bstore\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
-          (/\bstore\s*:\s*(?:env\.get\(['"]SESSION_DRIVER['"]\)|accountKitSelectedSessionStore)/.test(
-            sessionConfig
-          ) &&
-          /\b(?:store\s*:\s*|accountKitSelectedSessionStore\s*=\s*)env\.get\(['"]SESSION_DRIVER['"]\)/.test(
-            sessionConfig
-          )
-            ? process.env.SESSION_DRIVER
-            : sessionConfig.match(/\baccountKitSelectedSessionStore\s*=\s*['"]([^'"]+)['"]/)?.[1])
-        const configuredStore = selectedStore
-          ? sessionConfig.match(
-              new RegExp(
-                `\\b${selectedStore.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:\\s*stores\\.([A-Za-z]+)\\s*\\(`
-              )
-            )?.[1]
-          : undefined
-        if (selectedStore === 'cookie' || configuredStore === 'cookie')
+        let inspected: NativeSessionConfiguration | null = null
+        let diagnosticSelection: { name: string | null; kind: string | null } | null = null
+        try {
+          const current = state.files['config/session.ts']
+          const baseline = current.includes('account-kit:session-import:start')
+            ? await unwrapManagedSessionConfig(current, state.root)
+            : current
+          if (baseline) {
+            inspected = await nativeSessionConfiguration(baseline, state.root)
+            diagnosticSelection = inspected
+              ? { name: inspected.selectedName, kind: inspected.selected?.kind ?? null }
+              : await selectedSessionDiagnostic(baseline, state.root)
+          }
+        } catch {
+          // The integration diagnostic above already blocks an uninspectable selection.
+        }
+        if (diagnosticSelection?.kind === 'cookie' || diagnosticSelection?.name === 'cookie')
           diagnostic(
             diagnostics,
             'config/session.ts',
             'Cookie-only sessions cannot enforce logout replay protection; select a server-side session store'
           )
-        else if (
-          selectedStore &&
-          !new RegExp(`\\b${selectedStore.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:`).test(
-            sessionConfig
-          )
-        )
-          diagnostic(
-            diagnostics,
-            'config/session.ts',
-            `Selected session store ${selectedStore} is not configured in config/session.ts`
-          )
-        else if (options.production && configuredStore === 'memory')
+        else if (options.production && diagnosticSelection?.kind === 'memory')
           diagnostic(
             diagnostics,
             'config/session.ts',
             'Production requires a persistent shared session store; selected memory storage cannot satisfy persistentStore verification'
           )
         else if (
-          configuredStore === 'database' &&
+          diagnosticSelection?.kind === 'database' &&
           !state.migrationNames.some((name) => /session/i.test(name))
         )
           diagnostic(
@@ -1653,7 +1914,19 @@ export async function planSetup(
             'Database session storage requires an application session-table migration and a verified applied table',
             'action'
           )
-        else if (!selectedStore || !['database', 'memory'].includes(configuredStore ?? ''))
+        else if (diagnosticSelection?.name && !diagnosticSelection.kind)
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            'Selected session store is not configured in config/session.ts'
+          )
+        else if (options.production && !diagnosticSelection?.kind)
+          diagnostic(
+            diagnostics,
+            'config/session.ts',
+            'Production session storage must be a verified persistent server-side store'
+          )
+        else if (!inspected?.selected)
           diagnostic(
             diagnostics,
             'config/session.ts',
@@ -1677,7 +1950,8 @@ export async function planSetup(
       `Review schema change ${name}; run migrations separately`
     )
   }
-  if (choices.managed.length && choices.authentication) planRouteImport(changes, state, diagnostics)
+  if (choices.managed.length && choices.authentication)
+    await planRouteImport(changes, state, diagnostics)
   // Commit the selection only after every dependent file. This preserves the previous
   // generated-content baseline when an interrupted application is replayed.
   ownedChange(
@@ -1695,6 +1969,17 @@ export async function planSetup(
         change.path,
         'Existing file differs. Resolve it manually; setup will not overwrite it'
       )
+    if ((change.action === 'update' || change.action === 'create') && change.path.endsWith('.ts')) {
+      try {
+        await parseSetupSource(change.content)
+      } catch {
+        diagnostic(
+          diagnostics,
+          change.path,
+          'Proposed TypeScript is invalid; reconcile this application layout before setup writes files'
+        )
+      }
+    }
   }
   let endpointLocations: Array<{ name: string; method: string; path: string }> = []
   try {
@@ -1708,6 +1993,7 @@ export async function planSetup(
   }
   const endpoints = endpointLocations.map(({ name }) => name)
   const selectedPackages = [
+    'typescript',
     '@adonisjs/core',
     '@adonisjs/lucid',
     '@adonisjs/limiter',
@@ -1723,40 +2009,21 @@ export async function planSetup(
   const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
     diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
-  const limiterConfig = state.files['config/limiter.ts']
-    ? stripSourceComments(state.files['config/limiter.ts'])
-    : ''
-  const limiterDefault =
-    limiterConfig.match(/\bdefault\s*:\s*['"]([^'"]+)['"]/)?.[1] ??
-    (/\bdefault\s*:\s*env\.get\(['"]LIMITER_STORE['"]\)/.test(limiterConfig)
-      ? process.env.LIMITER_STORE
-      : undefined)
-  if (
-    !/\bdefineConfig\s*\(/.test(limiterConfig) ||
-    !/\bdefault\s*:/.test(limiterConfig) ||
-    !/\bstores\s*:\s*\{/.test(limiterConfig)
+  const limiter = await limiterConfigurationState(
+    state.files['config/limiter.ts'] ?? '',
+    state.root
   )
+  if (limiter === 'invalid')
     diagnostic(
       diagnostics,
       'config/limiter.ts',
-      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts needs defineConfig, default and stores'
+      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts needs an actual selected store in its exported defineConfig'
     )
-  else if (!limiterDefault)
+  else if (limiter === 'unresolved')
     diagnostic(
       diagnostics,
       'config/limiter.ts',
-      'Verify LIMITER_STORE resolves to a configured limiter store at runtime',
-      'action'
-    )
-  else if (
-    !new RegExp(
-      `\\b${limiterDefault.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:\\s*stores\\.[A-Za-z]+\\s*\\(`
-    ).test(limiterConfig)
-  )
-    diagnostic(
-      diagnostics,
-      'config/limiter.ts',
-      `Selected limiter store ${limiterDefault} needs a configured stores.${limiterDefault} factory`
+      'Selected limiter store is unresolved; use a direct literal or a resolvable environment assignment before activation'
     )
   const minimumVersions: Record<string, readonly [number, number, number]> = {
     '@adonisjs/core': [7, 0, 0],
@@ -1769,6 +2036,24 @@ export async function planSetup(
     '@adonisjs/mail': [10, 0, 0],
   }
   for (const name of selectedPackages) {
+    if (name === 'typescript') {
+      const version = state.installedVersions[name]
+      const parts = version
+        ?.match(/^(\d+)\.(\d+)\.(\d+)$/)
+        ?.slice(1)
+        .map(Number)
+      const supported =
+        parts &&
+        ((parts[0] === 5 && (parts[1] > 9 || (parts[1] === 9 && parts[2] >= 3))) ||
+          (parts[0] === 6 && (parts[1] > 0 || parts[2] >= 3)))
+      if (!supported)
+        diagnostic(
+          diagnostics,
+          'dependencies.typescript',
+          `Installed TypeScript version ${version ?? 'unknown'} is outside supported ^5.9.3 || ^6.0.3 range`
+        )
+      continue
+    }
     const minimum = minimumVersions[name]
     if (!minimum) continue
     const version = state.installedVersions[name]

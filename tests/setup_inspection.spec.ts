@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
-import { maskSourceLiteralBodies, stripSourceComments } from '../src/setup/source_text.js'
+import { stripSourceComments } from '../src/setup/source_text.js'
 
 async function applicationRoot() {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-inspect-'))
@@ -29,15 +29,6 @@ test('source inspection removes comments while preserving escaped and template l
   assert.match(inspected, /`\/\/ literal \$\{\s+value \}`/)
   assert.notInclude(inspected, 'web: sessionGuard')
   assert.notInclude(inspected, 'api: tokensGuard')
-  const withLiterals =
-    'const example = `web: sessionGuard({ model: () => import("#models/ghost") }) ${"api: tokensGuard()"}`\n' +
-    'const actual = { "web": sessionGuard({}) } // "api": tokensGuard()\n' +
-    'const unicode = "😀"'
-  const masked = maskSourceLiteralBodies(withLiterals)
-  assert.notInclude(masked, 'ghost')
-  assert.notInclude(masked, 'tokensGuard')
-  assert.include(masked, '"   ": sessionGuard')
-  assert.equal(masked.length, withLiterals.length)
 })
 
 test('commented guards and models do not become setup prerequisites', async ({ assert }) => {
@@ -59,10 +50,13 @@ test('commented guards and models do not become setup prerequisites', async ({ a
     await writeFile(
       authPath,
       [
-        'export default { guards: {',
+        "import { defineConfig } from '@adonisjs/auth'",
+        "import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'",
+        "import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'",
+        'export default defineConfig({ guards: {',
         '  web: sessionGuard({ provider: sessionUserProvider({ model: () => import("#models/user") }) }),',
         '  api: tokensGuard({ provider: tokensUserProvider({ model: () => import("#models/user") }) }),',
-        '} }',
+        '} })',
       ].join('\n')
     )
     const live = await inspectSetup(root)
@@ -79,14 +73,37 @@ test('quoted and template examples cannot invent guards or models', async ({ ass
     await writeFile(
       join(root, 'config/auth.ts'),
       [
+        "import { defineConfig } from '@adonisjs/auth'",
+        "import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'",
+        "import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'",
         'const example = `guards: { ghost: tokensGuard({ provider: tokensUserProvider({ model: () => import("#models/ghost") }) }) }`',
         'const quoted = "api: tokensGuard({ provider: tokensUserProvider({ model: () => import(\\\"#models/ghost\\\") }) })"',
-        'export default { guards: { "web": sessionGuard({ provider: sessionUserProvider({ model: () => import("#models/user") }) }) } }',
+        'export default defineConfig({ guards: { "web": sessionGuard({ provider: sessionUserProvider({ model: () => import("#models/user") }) }) } })',
       ].join('\n')
     )
     const state = await inspectSetup(root)
     assert.deepEqual(state.guardStrategies, { web: 'session' })
     assert.deepEqual(state.guardModels, { web: '#models/user' })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('route inventory reads actual router calls, not quoted examples', async ({ assert }) => {
+  const root = await applicationRoot()
+  try {
+    await mkdir(join(root, 'start'))
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      [
+        "import router from '@adonisjs/core/services/router'",
+        'const quoted = "router.post(\\\"/account/auth/login\\\", handler)"',
+        'const template = `router.get("/account/auth/signup", handler)`',
+        "router.patch('/application/profile', handler)",
+      ].join('\n')
+    )
+    const state = await inspectSetup(root)
+    assert.deepEqual(state.routeDefinitions, [{ method: 'PATCH', path: '/application/profile' }])
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -98,20 +115,101 @@ test('quoted database examples cannot override the executable connection', async
     await writeFile(
       join(root, 'config/database.ts'),
       [
+        "import { defineConfig } from '@adonisjs/lucid'",
         'const example = `connection: "sqlite", connections: { sqlite: { client: "better-sqlite3" } }`',
         'const quoted = "client: \\\"better-sqlite3\\\""',
-        'export default { connection: "mysql", connections: { mysql: { client: "mysql2" }, sqlite: { client: "better-sqlite3" } } }',
+        'export default defineConfig({ connection: "mysql", connections: { mysql: { client: "mysql2" }, sqlite: { client: "better-sqlite3" } } })',
       ].join('\n')
     )
     const unsupported = await inspectSetup(root)
     assert.equal(unsupported.database, 'unsupported')
     await writeFile(
       join(root, 'config/database.ts'),
-      'export default { connection: "sqlite", connections: { "sqlite": { client: "better-sqlite3" } } }'
+      'import { defineConfig } from \'@adonisjs/lucid\'\nexport default defineConfig({ connection: "sqlite", connections: { "sqlite": { client: "better-sqlite3" } } })'
     )
     const sqlite = await inspectSetup(root)
     assert.equal(sqlite.database, 'sqlite')
   } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('guard metadata must belong to the exported config and imported factories', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(
+      join(root, 'config/auth.ts'),
+      [
+        "import { defineConfig as defineAuth } from '@adonisjs/auth'",
+        "import { sessionGuard as session, sessionUserProvider as sessionProvider } from '@adonisjs/auth/session'",
+        "import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'",
+        'const decoy = { guards: { ghost: tokensGuard({ provider: tokensUserProvider({ model: () => import("#models/ghost") }) }) } }',
+        'const authConfig = defineAuth({ guards: { web: session({ provider: sessionProvider({ model: () => import("#models/user") }) }) } })',
+        'export default authConfig',
+      ].join('\n')
+    )
+    const state = await inspectSetup(root)
+    assert.deepEqual(state.guardStrategies, { web: 'session' })
+    assert.deepEqual(state.guardModels, { web: '#models/user' })
+    await writeFile(
+      join(root, 'config/auth.ts'),
+      'const fake = () => null\nexport default fake({ guards: { web: sessionGuard({}) } })'
+    )
+    const unsupported = await inspectSetup(root)
+    assert.deepEqual(unsupported.guardStrategies, {})
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('database selection uses process, dotenv, then literal default without guessing', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  const prior = process.env.DB_CONNECTION
+  try {
+    delete process.env.DB_CONNECTION
+    const database = join(root, 'config/database.ts')
+    await writeFile(
+      database,
+      [
+        "import { defineConfig } from '@adonisjs/lucid'",
+        "import env from '#start/env'",
+        'export default defineConfig({ connection: env.get("DB_CONNECTION", "sqlite"), connections: { sqlite: { client: "better-sqlite3" }, pg: { client: "pg" } } })',
+      ].join('\n')
+    )
+    const fallback = await inspectSetup(root)
+    assert.equal(fallback.database, 'sqlite')
+    await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
+    const dotenv = await inspectSetup(root)
+    assert.equal(dotenv.database, 'postgres')
+    process.env.DB_CONNECTION = 'sqlite'
+    const processSelected = await inspectSetup(root)
+    assert.equal(processSelected.database, 'sqlite')
+    delete process.env.DB_CONNECTION
+    await rm(join(root, '.env'))
+    await writeFile(
+      database,
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nexport default defineConfig({ connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3' } } })"
+    )
+    const unresolved = await inspectSetup(root)
+    assert.equal(unresolved.database, 'unknown')
+    await writeFile(join(root, '.env'), 'DB_CONNECTION=sqlite\n')
+    await rm(join(root, '.env'))
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'account-env-outside-'))
+    const outside = join(outsideRoot, '.env')
+    try {
+      await writeFile(outside, 'DB_CONNECTION=sqlite\n')
+      await symlink(outside, join(root, '.env'))
+      await assert.rejects(() => inspectSetup(root), /symlink|non-directory|regular file/)
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true })
+    }
+  } finally {
+    if (prior === undefined) delete process.env.DB_CONNECTION
+    else process.env.DB_CONNECTION = prior
     await rm(root, { recursive: true, force: true })
   }
 })

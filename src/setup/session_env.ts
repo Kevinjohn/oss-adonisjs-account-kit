@@ -18,7 +18,7 @@ function hasClosingQuote(text: string, quote: string): boolean {
 }
 
 /** Resolve one selected enum without loading an application's other environment values. */
-export async function selectedSessionEnvironment(
+export async function resolveSelectedEnvironment(
   root: string,
   variable: string
 ): Promise<string | null> {
@@ -43,7 +43,7 @@ export async function selectedSessionEnvironment(
       for await (const line of lines) {
         if (multilineQuote) {
           if (new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line))
-            throw new Error('Selected session environment assignment is inside a multiline value')
+            throw new Error('Selected environment assignment is inside a multiline value')
           if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
           continue
         }
@@ -55,17 +55,17 @@ export async function selectedSessionEnvironment(
         }
         if (!new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line)) continue
         if (found || !new RegExp(`^\\s*(?:export\\s+)?${variable}\\s*=`).test(line))
-          throw new Error('Selected session environment assignment is ambiguous')
+          throw new Error('Selected environment assignment is ambiguous')
         found = true
         if (line.includes('$') || line.includes('`'))
-          throw new Error('Selected session environment assignment must be a direct value')
+          throw new Error('Selected environment assignment must be a direct value')
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
-          throw new Error('Selected session environment assignment is malformed')
+          throw new Error('Selected environment assignment is malformed')
         }
         if (!value || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(value))
-          throw new Error('Selected session environment value must be a direct store name')
+          throw new Error('Selected environment value must be a direct name')
       }
     } finally {
       lines.close()
@@ -75,3 +75,5 @@ export async function selectedSessionEnvironment(
   }
   return null
 }
+
+export const selectedSessionEnvironment = resolveSelectedEnvironment

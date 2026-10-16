@@ -9,6 +9,7 @@ import { stripSourceComments } from '../src/setup/source_text.js'
 import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
 
 const versions: Record<string, string> = {
+  'typescript': '5.9.3',
   '@adonisjs/core': '7.0.0',
   '@adonisjs/lucid': '22.4.2',
   '@adonisjs/limiter': '3.0.0',
@@ -39,12 +40,12 @@ async function fixture() {
       'adonisrc.ts': 'export default { providers: [] }',
       'start/routes.ts': '// application routes',
       'start/kernel.ts':
-        "server.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])",
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])",
       'config/shield.ts': 'export default { csrf: { enabled: true } }',
       'config/session.ts':
         "export default { store: 'database', stores: { database: stores.database() } }",
       'config/limiter.ts':
-        "export default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })",
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nexport default defineConfig({ default: 'memory', stores: { memory: stores.memory({}) } })",
       'app/services/account_kit_policy.ts': 'export const accountKitPolicy = {}',
       'app/services/account_kit_notifications.ts': 'export const accountKitNotifications = {}',
     },
@@ -76,6 +77,33 @@ async function withFixture(
 }
 
 test.group('setup prerequisite inspection', () => {
+  test('setup requires an explicitly installed supported TypeScript parser', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      delete state.installedVersions.typescript
+      state.installedPackages = state.installedPackages.filter((name) => name !== 'typescript')
+      const missing = await planSetup(choices, state)
+      assert.isTrue(
+        missing.diagnostics.some(
+          ({ field, severity }) => field === 'dependencies.typescript' && severity === 'error'
+        )
+      )
+      state.installedPackages.push('typescript')
+      state.installedVersions.typescript = '5.8.0'
+      const old = await planSetup(choices, state)
+      assert.isTrue(
+        old.diagnostics.some(
+          ({ field, severity }) => field === 'dependencies.typescript' && severity === 'error'
+        )
+      )
+      state.installedVersions.typescript = '6.0.3'
+      const supported = await planSetup(choices, state)
+      assert.isFalse(
+        supported.diagnostics.some(
+          ({ field, severity }) => field === 'dependencies.typescript' && severity === 'error'
+        )
+      )
+    })
+  })
   test('service-only proposal does not register Vine or require its package', async ({
     assert,
   }) => {
@@ -195,7 +223,7 @@ test.group('setup prerequisite inspection', () => {
   test('middleware insertion places comma before an inline comment', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       state.files['start/kernel.ts'] =
-        "server.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware') // parse requests\n])"
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware') // parse requests\n])"
       const plan = await planSetup(choices, state)
       const content = plan.changes.find(({ path }) => path === 'start/kernel.ts')!.content
       assert.include(
@@ -240,7 +268,7 @@ test.group('setup prerequisite inspection', () => {
       const custom = await planSetup(choices, state)
       assert.isTrue(
         custom.diagnostics.some(
-          ({ field, severity }) => field === 'config/session.ts' && severity === 'action'
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
         )
       )
     })
@@ -265,7 +293,7 @@ test.group('setup prerequisite inspection', () => {
         )
       )
       state.files['config/limiter.ts'] =
-        "export default defineConfig({ default: 'database', stores: { memory: stores.memory({}) } })"
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nexport default defineConfig({ default: 'database', stores: { memory: stores.memory({}) } })"
       const wrongStore = await planSetup(choices, state)
       assert.isTrue(
         wrongStore.diagnostics.some(
@@ -273,14 +301,22 @@ test.group('setup prerequisite inspection', () => {
         )
       )
       state.files['config/limiter.ts'] =
-        "export default defineConfig({ default: env.get('LIMITER_STORE'), stores: { memory: stores.memory({}) } })"
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nconst example = `default: 'memory', stores: { memory: stores.memory({}) }`\nexport default defineConfig({})"
+      const quoted = await planSetup(choices, state)
+      assert.isTrue(
+        quoted.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+      state.files['config/limiter.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/limiter'\nexport default defineConfig({ default: env.get('LIMITER_STORE'), stores: { memory: stores.memory({}) } })"
       const prior = process.env.LIMITER_STORE
       delete process.env.LIMITER_STORE
       try {
         const unresolved = await planSetup(choices, state)
         assert.isTrue(
           unresolved.diagnostics.some(
-            ({ field, severity }) => field === 'config/limiter.ts' && severity === 'action'
+            ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
           )
         )
       } finally {
@@ -325,7 +361,7 @@ test.group('setup prerequisite inspection', () => {
   test('commented middleware is not treated as installed', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       state.files['start/kernel.ts'] =
-        "server.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  // () => import('@adonisjs/session/session_middleware'),\n  // () => import('@adonisjs/shield/shield_middleware'),\n  // () => import('@adonisjs/auth/initialize_auth_middleware'),\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])"
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  // () => import('@adonisjs/session/session_middleware'),\n  // () => import('@adonisjs/shield/shield_middleware'),\n  // () => import('@adonisjs/auth/initialize_auth_middleware'),\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])"
       const plan = await planSetup(choices, state)
       const kernel = plan.changes.find(({ path }) => path === 'start/kernel.ts')
       assert.equal(kernel?.action, 'update')
@@ -545,7 +581,11 @@ test.group('setup prerequisite inspection', () => {
         "import { defineConfig, stores } from '@adonisjs/session'",
         'unrelated: { stores: { database: stores.database() } }'
       )
-      for (const source of [customBinding, nestedOnly]) {
+      const typeOnly = config(
+        "import type { defineConfig, stores } from '@adonisjs/session'",
+        'stores: { database: stores.database() }'
+      )
+      for (const source of [customBinding, nestedOnly, typeOnly]) {
         state.files['config/session.ts'] = source
         const plan = await planSetup(choices, state)
         assert.isTrue(
@@ -740,6 +780,169 @@ test.group('setup prerequisite inspection', () => {
       } finally {
         if (prior === undefined) delete process.env.SESSION_DRIVER
         else process.env.SESSION_DRIVER = prior
+      }
+    })
+  })
+
+  test('native session attestation requires complete selected factory expressions', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      for (const config of [
+        "{ store: 'database' + suffix, stores: { database: stores.database() } }",
+        "{ store: 'database', stores: { database: stores.database() && customFactory } }",
+        "{ store: 'database', stores: { database: stores.database() }, ...override }",
+      ]) {
+        state.files['config/session.ts'] =
+          `import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig(${config})\nexport default sessionConfig\n`
+        const plan = await planSetup(choices, state)
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+          )
+        )
+        assert.isUndefined(plan.changes.find(({ path }) => path === 'config/session.ts'))
+      }
+      state.files['config/session.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: 'database', stores: { database: stores.database() } })\nObject.assign(sessionConfig, { store: 'custom' })\nexport default sessionConfig\n"
+      const mutated = await planSetup(choices, state)
+      assert.isTrue(
+        mutated.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('quoted wrapper examples cannot bypass actual managed session wiring', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/session'\nconst example = `protectManagedSessionConfig(sessionConfig, {})`\nconst sessionConfig = defineConfig({ store: 'database', stores: { database: stores.database() } })\nexport default sessionConfig\n"
+      const plan = await planSetup(choices, state)
+      const session = plan.changes.find(({ path }) => path === 'config/session.ts')
+      assert.equal(session?.action, 'update')
+      assert.include(session?.content ?? '', 'export default protectManagedSessionConfig(')
+      assert.isFalse(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('literal examples cannot register providers, routes, middleware, or Shield', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['adonisrc.ts'] =
+        "const example = `providers: [() => import('@adonisjs/auth/auth_provider')]`\nexport default { providers: [] }\n"
+      state.files['start/routes.ts'] = "const example = `import './account_kit_routes.js'`\n"
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nconst example = `() => import('@adonisjs/shield/shield_middleware'); () => import('#middleware/account_kit_proof_headers_middleware')`\nserver.use([])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])\n"
+      state.files['config/shield.ts'] =
+        "const example = `csrf: { enabled: true }`\nexport default { csrf: { enabled: process.env.CSRF === 'on' } }\n"
+      const plan = await planSetup(choices, state)
+      const providers = plan.changes.find(({ path }) => path === 'adonisrc.ts')?.content ?? ''
+      const routes = plan.changes.find(({ path }) => path === 'start/routes.ts')?.content ?? ''
+      const kernel = plan.changes.find(({ path }) => path === 'start/kernel.ts')?.content ?? ''
+      assert.equal(providers.split("import('@adonisjs/auth/auth_provider')").length - 1, 2)
+      assert.equal(kernel.split("import('@adonisjs/shield/shield_middleware')").length - 1, 2)
+      assert.equal(
+        kernel.split("import('#middleware/account_kit_proof_headers_middleware')").length - 1,
+        2
+      )
+      const routeSource = ts.createSourceFile('routes.ts', routes, ts.ScriptTarget.Latest)
+      assert.isTrue(
+        routeSource.statements.some(
+          (node) =>
+            ts.isImportDeclaration(node) &&
+            ts.isStringLiteral(node.moduleSpecifier) &&
+            node.moduleSpecifier.text === './account_kit_routes.js'
+        )
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/shield.ts' && severity === 'action'
+        )
+      )
+      for (const path of ['adonisrc.ts', 'start/routes.ts', 'start/kernel.ts']) {
+        const content = plan.changes.find((change) => change.path === path)?.content
+        if (!content) continue
+        const parsed = ts.createSourceFile(
+          path,
+          content,
+          ts.ScriptTarget.Latest
+        ) as ts.SourceFile & {
+          parseDiagnostics: readonly ts.Diagnostic[]
+        }
+        assert.isEmpty(parsed.parseDiagnostics)
+      }
+    })
+  })
+
+  test('multiline body parser is edited after its complete expression', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([])\nrouter.use([\n  () => import(\n    '@adonisjs/core/bodyparser_middleware'\n  ) // parse body\n])\n"
+      const plan = await planSetup(choices, state)
+      const content = plan.changes.find(({ path }) => path === 'start/kernel.ts')!.content
+      assert.include(content, '  ), // parse body')
+      assert.include(content, "() => import('@adonisjs/session/session_middleware')")
+      const parsed = ts.createSourceFile(
+        'kernel.ts',
+        content,
+        ts.ScriptTarget.Latest
+      ) as ts.SourceFile & {
+        parseDiagnostics: readonly ts.Diagnostic[]
+      }
+      assert.isEmpty(parsed.parseDiagnostics)
+    })
+  })
+
+  test('quoted model metadata cannot hide actual table or token provider', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        "const example = `static table = 'users'; static accessTokens = tokens`\nexport default class User extends BaseModel { static table = 'members' }\n"
+      )
+      const wrongTable = await planSetup(choices, state)
+      assert.isTrue(
+        wrongTable.diagnostics.some(
+          ({ field, severity }) => field === 'user.table' && severity === 'error'
+        )
+      )
+      choices.authentication!.strategy = 'access_tokens'
+      const missingTokens = await planSetup(choices, state)
+      assert.isTrue(
+        missingTokens.diagnostics.some(
+          ({ field, severity }) => field === 'user.model' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('dotenv-selected memory store is rejected in production', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      const prior = process.env.APP_SESSION_STORE
+      try {
+        delete process.env.APP_SESSION_STORE
+        await writeFile(join(root, '.env'), 'APP_SESSION_STORE=memory\n')
+        state.files['config/session.ts'] =
+          "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('APP_SESSION_STORE'), stores: { database: stores.database(), memory: stores.memory() } })\nexport default sessionConfig\n"
+        const plan = await planSetup(choices, state, { production: true })
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity, message }) =>
+              field === 'config/session.ts' &&
+              severity === 'error' &&
+              message.includes('persistent shared')
+          )
+        )
+      } finally {
+        if (prior === undefined) delete process.env.APP_SESSION_STORE
+        else process.env.APP_SESSION_STORE = prior
       }
     })
   })

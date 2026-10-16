@@ -39,6 +39,7 @@ async function fixture() {
     join(root, 'package.json'),
     JSON.stringify({
       dependencies: {
+        'typescript': '^5.9.3',
         '@adonisjs/core': '7',
         '@adonisjs/lucid': '22',
         '@adonisjs/limiter': '3',
@@ -51,6 +52,7 @@ async function fixture() {
     })
   )
   for (const [name, version] of Object.entries({
+    'typescript': '5.9.3',
     '@adonisjs/core': '7.0.0',
     '@adonisjs/lucid': '22.4.2',
     '@adonisjs/limiter': '3.0.0',
@@ -68,12 +70,15 @@ async function fixture() {
   }
   await writeFile(
     join(root, 'config/auth.ts'),
-    "export default { guards: { web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }), api: tokensGuard({ provider: tokensUserProvider({ model: () => import('#models/user') }) })\n} }\n"
+    "import { defineConfig } from '@adonisjs/auth'\nimport { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'\nimport { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'\nexport default defineConfig({ guards: { web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }), api: tokensGuard({ provider: tokensUserProvider({ model: () => import('#models/user') }) })\n} })\n"
   )
-  await writeFile(join(root, 'config/database.ts'), "export default { client: 'better-sqlite3' }\n")
+  await writeFile(
+    join(root, 'config/database.ts'),
+    "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3' } } })\n"
+  )
   await writeFile(
     join(root, 'config/limiter.ts'),
-    'export default defineConfig({ default: "database", stores: { database: stores.database({ tableName: "rate_limits" }) } })\n'
+    'import { defineConfig, stores } from \'@adonisjs/limiter\'\nexport default defineConfig({ default: "database", stores: { database: stores.database({ tableName: "rate_limits" }) } })\n'
   )
   await writeFile(join(root, 'config/shield.ts'), 'export default { csrf: { enabled: true } }\n')
   await writeFile(
@@ -84,7 +89,7 @@ async function fixture() {
   await writeFile(join(root, 'start/routes.ts'), '// application routes\n')
   await writeFile(
     join(root, 'start/kernel.ts'),
-    "server.use([\n  () => import('@adonisjs/cors/cors_middleware'),\n])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])\n"
+    "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([\n  () => import('@adonisjs/cors/cors_middleware'),\n])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])\n"
   )
   const choices = defaultSetupChoices()
   choices.features = ['passwordReset']
@@ -383,7 +388,7 @@ test.group('onboarding plan and apply', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, 'start/routes.ts'),
-      "router.post('/account/auth/password-reset', handler)\n"
+      "import router from '@adonisjs/core/services/router'\nrouter.post('/account/auth/password-reset', handler)\n"
     )
     const plan = await planSetup(choices, await inspectSetup(root), {
       apply: true,
@@ -601,7 +606,7 @@ test.group('onboarding plan and apply', (group) => {
     choices.authentication = null
     await writeFile(
       join(root, 'start/routes.ts'),
-      "router.post('/account/auth/password-reset', handler)\n"
+      "import router from '@adonisjs/core/services/router'\nrouter.post('/account/auth/password-reset', handler)\n"
     )
     const plan = await planSetup(choices, await inspectSetup(root))
     assert.notInclude(
@@ -618,7 +623,7 @@ test.group('onboarding plan and apply', (group) => {
     choices.managed.push('authentication')
     await writeFile(
       join(root, 'start/routes.ts'),
-      "router.post('/account/auth/:action?', handler)\n"
+      "import router from '@adonisjs/core/services/router'\nrouter.post('/account/auth/:action?', handler)\n"
     )
     const inspected = await inspectSetup(root)
     const inspectedPlan = await planSetup(choices, inspected)
@@ -678,7 +683,7 @@ test.group('onboarding plan and apply', (group) => {
     choices.managedExcept = ['auth.passwordReset.request']
     await writeFile(
       join(root, 'start/routes.ts'),
-      "router.post('/account/auth/password-reset', handler)\n"
+      "import router from '@adonisjs/core/services/router'\nrouter.post('/account/auth/password-reset', handler)\n"
     )
     const preview = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
     assert.notInclude(
@@ -713,7 +718,7 @@ test.group('onboarding plan and apply', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, 'config/database.ts'),
-      "export default { connection: 'mysql', connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } }\n"
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'mysql', connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })\n"
     )
     const plan = await planSetup(choices, await inspectSetup(root))
     const state = await inspectSetup(root)
@@ -791,7 +796,7 @@ test.group('onboarding plan and apply', (group) => {
     await writeFile(join(root, 'config/limiter.ts'), 'export default defineConfig({})\n')
     await writeFile(
       join(root, 'start/kernel.ts'),
-      "server.use([])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware')\n])\n"
+      "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware')\n])\n"
     )
     const planned = await planSetup(choices, await inspectSetup(root))
     const kernel = planned.changes.find(({ path }) => path === 'start/kernel.ts')!.content
@@ -874,7 +879,7 @@ test.group('onboarding plan and apply', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, 'config/session.ts'),
-      "export default { store: env.get('SESSION_DRIVER'), stores: { cookie: stores.cookie(), database: stores.database() } }\n"
+      "import env from '#start/env'\nexport default { store: env.get('SESSION_DRIVER'), stores: { cookie: stores.cookie(), database: stores.database() } }\n"
     )
     const previous = process.env.SESSION_DRIVER
     try {
@@ -1106,7 +1111,7 @@ test.group('onboarding plan and apply', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, 'config/database.ts'),
-      "export default { connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3' } } }\n"
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3' } } })\n"
     )
     let plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
     assert.notInclude(
@@ -1119,7 +1124,7 @@ test.group('onboarding plan and apply', (group) => {
     )
     await writeFile(
       join(root, 'config/auth.ts'),
-      'export default { guards: { web: tokensGuard({})\n} }\n'
+      "import { defineConfig } from '@adonisjs/auth'\nimport { tokensGuard } from '@adonisjs/auth/access_tokens'\nexport default defineConfig({ guards: { web: tokensGuard({})\n} })\n"
     )
     plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
     assert.includeMembers(
@@ -1138,7 +1143,10 @@ test.group('onboarding plan and apply', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, 'config/auth.ts'),
-      `export default defineConfig({
+      `import { defineConfig } from '@adonisjs/auth'
+import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
+import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'
+export default defineConfig({
   guards: {
     api: tokensGuard({ provider: tokensUserProvider({ tokens: 'accessTokens', model: () => import('#models/user') }) }),
     web: sessionGuard({ provider: sessionUserProvider({ model: () => import('#models/user') }) }),
@@ -1160,7 +1168,7 @@ test.group('onboarding plan and apply', (group) => {
     const { root } = await fixture()
     await writeFile(
       join(root, 'config/database.ts'),
-      "export default { connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3' }, pg: { client: 'pg' } } }\n"
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nexport default defineConfig({ connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3' }, pg: { client: 'pg' } } })\n"
     )
     const before = process.env.DB_CONNECTION
     try {
@@ -1190,7 +1198,7 @@ test.group('onboarding plan and apply', (group) => {
     )
     await writeFile(
       join(root, 'start/kernel.ts'),
-      "server.use([() => import('@adonisjs/auth/initialize_auth_middleware')])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])\n"
+      "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/auth/initialize_auth_middleware')])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])\n"
     )
     plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
     assert.include(
