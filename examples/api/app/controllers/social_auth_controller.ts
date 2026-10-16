@@ -7,7 +7,7 @@ import {
   AccountKit,
   InvalidInputError,
   type SocialCallbackResult,
-  type SocialIntent,
+  type SocialBeginInput,
   type SocialProviderName,
 } from 'adonisjs-account-kit'
 import { sessionGuard } from '#services/account_kit_guards'
@@ -33,7 +33,7 @@ export default class SocialAuthController {
 
   async redirect(ctx: HttpContext) {
     const provider = providerParam(ctx.params.provider)
-    const intent = ctx.request.input('intent', 'login') as SocialIntent
+    const intent = ctx.request.input('intent', 'login') as SocialBeginInput['intent']
     const current = intent === 'login' ? undefined : await currentIfAuthenticated(ctx)
     const browserVerifier = socialStrategy() === 'session' ? verifier() : undefined
     const clientChallenge = browserVerifier
