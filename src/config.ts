@@ -1,78 +1,44 @@
 import { DateTime } from 'luxon'
 import { CapabilityDisabledError } from './errors.js'
 import { budget } from './config_budget.js'
+import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
   AuthorizationCallbacks,
-  Capability,
   InvitationThrottle,
   NotificationCallbacks,
   ResolvedConfig,
   UrlCallbacks,
 } from './types.js'
 
-const capabilities: Capability[] = [
-  'passwordReset',
-  'emailVerification',
-  'invitations',
-  'emailPasswordManagement',
-  'registration',
-  'socialAuthentication',
-]
-const adapterMethods: Record<Capability, string[]> = {
-  passwordReset: [
-    'findByEmail',
-    'findById',
-    'setPassword',
-    'setUnverifiedEmail',
-    'markEmailVerified',
-  ],
-  emailVerification: ['findById', 'markEmailVerified', 'setPassword'],
-  invitations: ['findByEmail', 'findById', 'create', 'markEmailVerified'],
-  emailPasswordManagement: [
-    'findByEmail',
-    'findById',
-    'setPassword',
-    'setEmail',
-    'setUnverifiedEmail',
-    'markEmailVerified',
-    'verifyPassword',
-  ],
-  registration: ['findByEmail', 'findById', 'create'],
-  socialAuthentication: ['findByEmail', 'findById', 'create', 'verifyPassword'],
-}
-const requiredHooks: Record<Capability, string[]> = {
-  passwordReset: [
-    'urls.passwordReset',
-    'notify.passwordResetProvision',
-    'notify.passwordResetCompleted',
-  ],
-  emailVerification: ['urls.emailVerification', 'notify.accountActivationProvision'],
-  invitations: [
-    'authorize.invite',
-    'authorize.manageInvitation',
-    'authorize.listInvitations',
-    'urls.invitation',
-    'notify.invitationProvision',
-    'onInvitationAccepted',
-  ],
-  emailPasswordManagement: [
-    'urls.emailChange',
-    'urls.emailVerification',
-    'notify.emailChangeProvision',
-    'notify.accountActivationProvision',
-    'notify.emailChanged',
-    'notify.passwordChanged',
-  ],
-  registration: ['urls.emailVerification', 'notify.accountActivationProvision'],
-  socialAuthentication: ['notify.socialIdentityLinked', 'notify.socialIdentityUnlinked'],
-}
-
 function disabled(): never {
   throw new CapabilityDisabledError('This account capability is disabled')
+}
+
+const disabledAuthorize: Record<keyof AuthorizationCallbacks, typeof disabled> = {
+  invite: disabled,
+  manageInvitation: disabled,
+  listInvitations: disabled,
+}
+const disabledUrls: Record<keyof UrlCallbacks, typeof disabled> = {
+  passwordReset: disabled,
+  emailVerification: disabled,
+  invitation: disabled,
+  emailChange: disabled,
+}
+const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
+  passwordResetProvision: disabled,
+  passwordResetCompleted: disabled,
+  accountActivationProvision: disabled,
+  invitationProvision: disabled,
+  emailChangeProvision: disabled,
+  emailChanged: disabled,
+  passwordChanged: disabled,
+  socialIdentityLinked: disabled,
+  socialIdentityUnlinked: disabled,
 }
 
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
@@ -83,11 +49,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     !['best-effort', 'durable', 'capture'].includes(config.delivery)
   )
     throw new Error('account_kit: delivery must be best-effort, durable, or capture')
-  const enabled =
-    config.enabled ??
-    capabilities.filter(
-      (name) => !['registration', 'invitations', 'socialAuthentication'].includes(name)
-    )
+  const enabled = config.enabled ?? defaultCapabilities
   if (
     !Array.isArray(enabled) ||
     new Set(enabled).size !== enabled.length ||
@@ -102,11 +64,11 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       throw new Error(`account_kit: ${name} must be an object`)
   }
   for (const capability of enabled) {
-    for (const method of adapterMethods[capability]) {
-      if (typeof config.users[method as keyof typeof config.users] !== 'function')
+    for (const method of capabilityRegistry[capability].adapterMethods) {
+      if (typeof config.users[method] !== 'function')
         throw new Error(`account_kit: users.${method} must be a function`)
     }
-    for (const path of requiredHooks[capability]) {
+    for (const path of capabilityRegistry[capability].requiredHooks) {
       const parts = path.split('.')
       const parent =
         parts.length === 1 ? config : config[parts[0] as 'urls' | 'notify' | 'authorize']
@@ -235,28 +197,15 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     usersTable,
     limiterNamespace,
     authorize: {
-      invite: disabled,
-      manageInvitation: disabled,
-      listInvitations: disabled,
+      ...disabledAuthorize,
       ...config.authorize,
     } as AuthorizationCallbacks,
     urls: {
-      passwordReset: disabled,
-      emailVerification: disabled,
-      invitation: disabled,
-      emailChange: disabled,
+      ...disabledUrls,
       ...config.urls,
     } as UrlCallbacks,
     notify: {
-      passwordResetProvision: disabled,
-      passwordResetCompleted: disabled,
-      accountActivationProvision: disabled,
-      invitationProvision: disabled,
-      emailChangeProvision: disabled,
-      emailChanged: disabled,
-      passwordChanged: disabled,
-      socialIdentityLinked: disabled,
-      socialIdentityUnlinked: disabled,
+      ...disabledNotify,
       ...config.notify,
     } as NotificationCallbacks,
     onInvitationAccepted: config.onInvitationAccepted ?? disabled,
