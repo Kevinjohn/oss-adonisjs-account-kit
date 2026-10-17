@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { DeliveryError, InvalidTokenError, PostCommitError } from '../src/errors.js'
-import { postCommit } from '../src/effects.js'
+import { afterCommit, lifecycle, postCommit } from '../src/effects.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import type { CredentialChangeContext, LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -74,6 +74,63 @@ test.group('post-commit effects', () => {
         : [],
       [delivery, observer]
     )
+  })
+
+  test('lifecycle wraps the event hook as an observer effect run at follow-up time', async ({
+    assert,
+  }) => {
+    const seen: LifecycleEvent[] = []
+    const event: LifecycleEvent = { type: 'password.changed', userId: 1, operationId: 'op' }
+    const effect = lifecycle({ onLifecycleEvent: async (value) => void seen.push(value) }, event)
+    assert.equal(effect.kind, 'observer')
+    assert.deepEqual(seen, [])
+    await effect.run()
+    assert.deepEqual(seen, [event])
+    assert.isUndefined(await lifecycle({}, event).run())
+    const listener = new Error('listener')
+    let failure: unknown
+    try {
+      await postCommit('follow-up failed', [
+        lifecycle(
+          {
+            onLifecycleEvent: async () => {
+              throw listener
+            },
+          },
+          event
+        ),
+      ])
+    } catch (error) {
+      failure = error
+    }
+    assert.instanceOf(failure, PostCommitError)
+    assert.equal((failure as PostCommitError).cause, listener)
+  })
+
+  test('afterCommit reports a failing notice as PostCommitError and still runs later effects', async ({
+    assert,
+  }) => {
+    const notice = new Error('notice')
+    const ran: string[] = []
+    let failure: unknown
+    try {
+      await afterCommit(
+        'follow-up failed',
+        async () => {
+          ran.push('notice')
+          throw notice
+        },
+        async () => {
+          ran.push('event')
+        }
+      )
+    } catch (error) {
+      failure = error
+    }
+    assert.deepEqual(ran, ['notice', 'event'])
+    assert.instanceOf(failure, PostCommitError)
+    assert.notInstanceOf(failure, DeliveryError)
+    assert.equal((failure as PostCommitError).cause, notice)
   })
 })
 

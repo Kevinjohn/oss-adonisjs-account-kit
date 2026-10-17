@@ -4,7 +4,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
-import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
@@ -275,15 +275,11 @@ export async function updateProfile(
                 deps.config.urls.emailChange(token)
               ),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'email_change.requested',
-            userId: actor.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'email_change.requested',
+        userId: actor.id,
+        operationId,
+      }),
     ])
   )
   return actor

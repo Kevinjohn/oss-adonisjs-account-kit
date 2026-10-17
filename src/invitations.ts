@@ -9,7 +9,7 @@ import {
   isUniqueViolation,
   isUserEmailUniqueViolation,
 } from './db.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   AuthorizationError,
@@ -123,15 +123,11 @@ export async function resendInvitation(
       run: () =>
         deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
     },
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'invitation.resent',
-          invitationId: invitation.id,
-          operationId,
-        }),
-    },
+    lifecycle(deps.config, {
+      type: 'invitation.resent',
+      invitationId: invitation.id,
+      operationId,
+    }),
   ])
   return invitation
 }
@@ -148,15 +144,11 @@ export async function revokeInvitation(
     await trx.from('account_invitations').where('id', input.invitationId).delete()
   })
   await postCommit('Invitation follow-up failed', [
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'invitation.revoked',
-          invitationId: input.invitationId,
-          operationId,
-        }),
-    },
+    lifecycle(deps.config, {
+      type: 'invitation.revoked',
+      invitationId: input.invitationId,
+      operationId,
+    }),
   ])
 }
 
@@ -211,16 +203,12 @@ export async function acceptInvitation(
   }
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
     postCommit('Invitation follow-up failed', [
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'invitation.accepted',
-            invitationId: result.invitationId,
-            userId: result.user.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'invitation.accepted',
+        invitationId: result.invitationId,
+        userId: result.user.id,
+        operationId,
+      }),
     ])
   )
   return result.user
@@ -358,15 +346,11 @@ export async function sendInvitation(
         run: () =>
           deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'invitation.sent',
-            invitationId: invitation.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'invitation.sent',
+        invitationId: invitation.id,
+        operationId,
+      }),
     ])
   )
   return invitation
