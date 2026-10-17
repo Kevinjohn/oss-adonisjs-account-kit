@@ -9,7 +9,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { consumeUserToken, consumeUserTokenHash, lockUser, transaction } from './db.js'
-import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { throttlerOf, type Throttler } from './throttle.js'
@@ -220,15 +220,11 @@ export async function completeVerification(
             userId: outcome.id,
           }),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'verification.completed',
-            userId: outcome.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'verification.completed',
+        userId: outcome.id,
+        operationId,
+      }),
     ])
   )
   return 'verified'
