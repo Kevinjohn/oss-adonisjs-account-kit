@@ -1,6 +1,6 @@
 import type { CurrentAccount, InvitationPage } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { SocialProviderName } from '../types.js'
+import type { SensitivePurpose, SocialProviderName } from '../types.js'
 
 /** Default request bodies; `:token` and `:id` values are URL path parameters. */
 export interface ManagedRequestBodies {
@@ -46,7 +46,7 @@ export interface ManagedRequestBodies {
   'account.invitation.revoke': undefined
   'auth.oauth.redirect': {
     intent?: 'login' | 'link' | 'reauth'
-    purpose?: 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
+    purpose?: SensitivePurpose
     proof?: string
     clientChallenge?: string
   }
@@ -62,7 +62,7 @@ export interface ManagedRequestBodies {
   'auth.methods': undefined
   'account.socialProof.password': {
     password: string
-    purpose: 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
+    purpose: SensitivePurpose
   }
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': { proof: string }

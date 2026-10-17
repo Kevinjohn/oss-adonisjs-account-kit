@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../account_kit.js'
 import { InvalidInputError, SocialTransactionError } from '../errors.js'
 import { isSocialProviderName } from '../social_providers.js'
+import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.js'
 import type {
   CurrentAccountInput,
   SensitivePurpose,
@@ -267,7 +268,7 @@ const oauthCallback: SocialHandler = async ({
         intent: undefined,
       }
   if (typeof input.state !== 'string') throw new SocialTransactionError()
-  if (isPost && input.intent && !['login', 'link', 'reauth', 'confirm'].includes(input.intent))
+  if (isPost && input.intent && !isSocialIntent(input.intent))
     throw new SocialTransactionError()
   const saved = guard.strategy === 'session' ? sessionState(context, input.state) : null
   if (saved && saved.provider !== provider) throw new SocialTransactionError()
@@ -308,12 +309,9 @@ const socialHandlers = {
     const { request, response, params } = context
     const provider = providerName(params.provider, extension.providers)
     const input = await request.validateUsing(socialBeginValidator)
-    if (!['login', 'link', 'reauth'].includes(input.intent ?? 'login'))
+    if (!isSocialBeginIntent(input.intent ?? 'login'))
       throw new InvalidInputError('Invalid social intent')
-    if (
-      input.purpose &&
-      !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-    )
+    if (input.purpose && !isSensitivePurpose(input.purpose))
       throw new InvalidInputError('Invalid social proof purpose')
     const intent = (input.intent ?? 'login') as SocialBeginInput['intent']
     const current = intent === 'login' ? undefined : await guard.current(context)
@@ -382,9 +380,7 @@ const socialHandlers = {
   },
   'account.socialProof.password': async ({ context, social, guard }) => {
     const input = await context.request.validateUsing(socialPasswordProofValidator)
-    if (
-      !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-    )
+    if (!isSensitivePurpose(input.purpose))
       throw new InvalidInputError('Invalid social proof purpose')
     const proof = await social.provePassword({
       current: await guard.current(context),

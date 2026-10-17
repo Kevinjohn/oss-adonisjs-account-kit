@@ -2,6 +2,7 @@
 import { lockUser, transaction, deleteReturning } from './db.js'
 import { revision } from './authentication.js'
 import { SocialProofError } from './errors.js'
+import { isSensitivePurpose } from './social_enums.js'
 import { authenticated, expiry, now, type Dependencies } from './social_identity.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type { CurrentAccountInput, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
@@ -60,10 +61,7 @@ export async function proveSocialPassword(
     purpose: SensitivePurpose
   }
 ): Promise<string> {
-  if (
-    typeof input.password !== 'string' ||
-    !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-  )
+  if (typeof input.password !== 'string' || !isSensitivePurpose(input.purpose))
     throw new SocialProofError()
   return transaction(deps.db, async (trx) => {
     const user = await authenticated(deps, input.current, trx)

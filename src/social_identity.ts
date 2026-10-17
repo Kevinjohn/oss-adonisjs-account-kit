@@ -25,6 +25,7 @@ import {
 } from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isSocialProviderName, socialProviderNames } from './social_providers.js'
+import { isSensitivePurpose, isSocialBeginIntent } from './social_enums.js'
 import { completeActivationByHash, sendVerification } from './verification.js'
 import type {
   AccountUser,
@@ -261,16 +262,10 @@ export function socialIdentityService(deps: Dependencies) {
     async begin(input: SocialBeginInput): Promise<{ state: string; url: string }> {
       const adapter = provider(deps, input.provider)
       if (!validChallenge(input.clientChallenge)) throw new SocialTransactionError()
-      if (input.intent !== 'login' && input.intent !== 'link' && input.intent !== 'reauth')
-        throw new SocialTransactionError()
+      if (!isSocialBeginIntent(input.intent)) throw new SocialTransactionError()
       if (input.proof !== undefined && (input.intent !== 'link' || !isTokenShaped(input.proof)))
         throw new SocialProofError()
-      if (
-        input.intent === 'reauth' &&
-        !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(
-          input.purpose ?? ''
-        )
-      )
+      if (input.intent === 'reauth' && !isSensitivePurpose(input.purpose))
         throw new SocialTransactionError()
       if (input.intent === 'reauth' && !adapter.verifyFreshAuthentication)
         throw new SocialProofError()
