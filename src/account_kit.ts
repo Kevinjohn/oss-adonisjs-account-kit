@@ -62,7 +62,7 @@ export class AccountKit {
     private readonly deps: {
       config: ResolvedConfig
       db: Database
-      encryption: Encryption
+      encryption?: Encryption
       limiter: LimiterService
     }
   ) {}
