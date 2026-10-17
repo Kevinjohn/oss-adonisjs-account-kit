@@ -237,13 +237,12 @@ async function finishHandoff<Credential>(
 export async function executeManagedSocial<Credential>(
   name: string,
   context: HttpContext,
-  kit: AccountKit,
+  social: AccountKit['socialAuthentication'],
   guard: ManagedGuard<Credential>,
   extension: ManagedSocialExtension,
   methodsEnabled = true
 ): Promise<unknown> {
   const { request, response, params } = context
-  const social = kit.socialAuthentication
   switch (name) {
     case 'auth.methods': {
       const stored = optionalSession(context)?.get('accountKit.social.lastUsedMethod')

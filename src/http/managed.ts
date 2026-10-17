@@ -231,7 +231,7 @@ async function execute<Credential>(
     return executeManagedSocial(
       route.name,
       context,
-      kit,
+      kit.socialAuthentication,
       options.guard,
       options.extensions!.social!,
       methodsEnabled
