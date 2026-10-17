@@ -17,7 +17,7 @@ import {
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { consumeSocialSensitiveProof } from './social_identity.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -77,20 +77,13 @@ async function confirmActor(
 }
 
 export async function changePassword(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: ChangePasswordInput
 ): Promise<void> {
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid new password')
 
-  await consume(
-    deps.limiter,
-    'identity:user',
-    String(input.actorId),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
+  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()
   const { value: user, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
@@ -131,7 +124,7 @@ export async function changePassword(
 }
 
 export async function requestEmailChange(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: RequestEmailChangeInput
 ): Promise<void> {
   await updateProfile(deps, {
@@ -143,7 +136,7 @@ export async function requestEmailChange(
 }
 
 export async function updateProfile(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: UpdateProfileInput
 ): Promise<AccountUser> {
   const hasRegistrationData = Object.hasOwn(input, 'registrationData')
@@ -155,14 +148,7 @@ export async function updateProfile(
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)
     : undefined
-  await consume(
-    deps.limiter,
-    'identity:user',
-    String(input.actorId),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
+  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
