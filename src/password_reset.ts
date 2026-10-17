@@ -2,6 +2,7 @@ import { performance } from 'node:perf_hooks'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
+import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { consumeUserToken, lockUser, transaction } from './db.js'
@@ -62,16 +63,12 @@ export async function completePasswordReset(
 
       await deps.config.users.setPassword(row.tokenable_id, input.password, trx)
       if (deps.config.enabled.includes('socialAuthentication'))
-        await trx
-          .from('social_identities')
-          .where('user_id', row.tokenable_id)
-          .whereNull('confirmed_at')
-          .delete()
+        await clearPendingSocialIdentities(trx, row.tokenable_id)
       if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email)
         await deps.config.users.setUnverifiedEmail(row.tokenable_id, null, trx)
       if (current.unverifiedEmail === current.email)
         await deps.config.users.markEmailVerified(row.tokenable_id, DateTime.utc(), trx)
-      await trx.from('email_verification_tokens').where('tokenable_id', row.tokenable_id).delete()
+      await clearRecoveryTokens(trx, row.tokenable_id, ['email_verification_tokens'])
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await credentialsChanged(trx, deps.config, reloaded, {
