@@ -17,7 +17,7 @@ const PROTECTED_FIELDS = new Set([
 
 /** Map untrusted account-creation fields through application policy before reaching an adapter. */
 export async function mapRegistrationFields(
-  config: ResolvedConfig,
+  config: Pick<ResolvedConfig, 'registration'>,
   input: unknown
 ): Promise<Record<string, unknown> | undefined> {
   if (!config.registration?.mapFields) {

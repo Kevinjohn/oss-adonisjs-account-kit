@@ -1,5 +1,6 @@
 import { committedResult } from './db.js'
 import { DeliveryError, PostCommitError } from './errors.js'
+import type { LifecycleEvent, ResolvedConfig } from './types.js'
 
 export interface PostCommitEffect {
   kind: 'delivery' | 'observer'
@@ -33,6 +34,8 @@ export async function deliver(message: string, send: () => Promise<void>): Promi
   }
 }
 
+const observer = (run: PostCommitEffect['run']): PostCommitEffect => ({ kind: 'observer', run })
+
 /**
  * Run post-commit effects in order. Every effect runs even when an earlier one fails, and the
  * failures are reported together as one PostCommitError.
@@ -41,19 +44,15 @@ export async function afterCommit(
   message: string,
   ...effects: Array<() => Promise<void> | undefined>
 ): Promise<void> {
-  const failures: unknown[] = []
-  for (const effect of effects) {
-    try {
-      await effect()
-    } catch (cause) {
-      failures.push(cause)
-    }
-  }
-  if (failures.length > 0) {
-    throw new PostCommitError(message, {
-      cause: failures.length === 1 ? failures[0] : new AggregateError(failures),
-    })
-  }
+  return postCommit(message, effects.map(observer))
+}
+
+/** Report a lifecycle event after commit; a failing hook surfaces as PostCommitError. */
+export function lifecycle(
+  config: Pick<ResolvedConfig, 'onLifecycleEvent'>,
+  event: LifecycleEvent
+): PostCommitEffect {
+  return observer(() => config.onLifecycleEvent?.(event))
 }
 
 /** Await a package transaction; a committed fault still yields its result. */

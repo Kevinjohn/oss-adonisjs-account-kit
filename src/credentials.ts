@@ -4,7 +4,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
-import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
@@ -17,8 +17,10 @@ import {
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { consumeSocialSensitiveProof } from './social_identity.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
+import { clearRecoveryTokens } from './credential_cleanup.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountUser,
@@ -76,20 +78,13 @@ async function confirmActor(
 }
 
 export async function changePassword(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: ChangePasswordInput
 ): Promise<void> {
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid new password')
 
-  await consume(
-    deps.limiter,
-    'identity:user',
-    String(input.actorId),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
+  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()
   const { value: user, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
@@ -104,8 +99,10 @@ export async function changePassword(
       await deps.config.users.setPassword(actor.id, input.newPassword, trx)
       if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
         await deps.config.users.setUnverifiedEmail(actor.id, null, trx)
-      await trx.from('password_reset_tokens').where('tokenable_id', actor.id).delete()
-      await trx.from('email_verification_tokens').where('tokenable_id', actor.id).delete()
+      await clearRecoveryTokens(trx, actor.id, [
+        'password_reset_tokens',
+        'email_verification_tokens',
+      ])
       const reloaded = await deps.config.users.findById(actor.id, trx)
       if (!reloaded) throw new InvalidInputError('Unknown actor')
       await credentialsChanged(trx, deps.config, reloaded, {
@@ -130,7 +127,7 @@ export async function changePassword(
 }
 
 export async function requestEmailChange(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: RequestEmailChangeInput
 ): Promise<void> {
   await updateProfile(deps, {
@@ -142,7 +139,7 @@ export async function requestEmailChange(
 }
 
 export async function updateProfile(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: UpdateProfileInput
 ): Promise<AccountUser> {
   const hasRegistrationData = Object.hasOwn(input, 'registrationData')
@@ -154,14 +151,7 @@ export async function updateProfile(
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)
     : undefined
-  await consume(
-    deps.limiter,
-    'identity:user',
-    String(input.actorId),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
+  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
@@ -190,7 +180,7 @@ export async function updateProfile(
             current.unverifiedEmail !== current.email
           ) {
             await deps.config.users.setUnverifiedEmail(current.id, null, trx)
-            await trx.from('email_verification_tokens').where('tokenable_id', current.id).delete()
+            await clearRecoveryTokens(trx, current.id, ['email_verification_tokens'])
           }
           const reloaded = await deps.config.users.findById(current.id, trx)
           if (!reloaded) throw new InvalidInputError('Unknown actor')
@@ -208,12 +198,11 @@ export async function updateProfile(
             .where('tokenable_id', current.id)
             .first()
           if (
-            previous?.purpose === 'email_change' &&
-            previous.email === newEmail &&
-            previous.current_email === current.email &&
-            DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
-            DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
-              now.minus({ minutes: 1 }).toMillis()
+            isRecentIssue(
+              previous,
+              { purpose: 'email_change', email: newEmail, currentEmail: current.email },
+              now
+            )
           ) {
             const reloaded = await deps.config.users.findById(current.id, trx)
             if (!reloaded) throw new InvalidInputError('Unknown actor')
@@ -222,7 +211,7 @@ export async function updateProfile(
         }
         if (inactive) {
           await deps.config.users.setEmail(current.id, newEmail, trx)
-          await trx.from('password_reset_tokens').where('tokenable_id', current.id).delete()
+          await clearRecoveryTokens(trx, current.id, ['password_reset_tokens'])
         }
         await deps.config.users.setUnverifiedEmail(current.id, newEmail, trx)
         await trx
@@ -286,15 +275,11 @@ export async function updateProfile(
                 deps.config.urls.emailChange(token)
               ),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'email_change.requested',
-            userId: actor.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'email_change.requested',
+        userId: actor.id,
+        operationId,
+      }),
     ])
   )
   return actor
@@ -334,7 +319,7 @@ export async function completeEmailChange(
 
         await deps.config.users.setEmail(user.id, row.email, trx)
         await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-        await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
+        await clearRecoveryTokens(trx, user.id, ['password_reset_tokens'])
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
         await credentialsChanged(trx, deps.config, reloaded, {
