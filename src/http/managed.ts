@@ -5,26 +5,23 @@ import {
   DeliveryError,
   EmailAlreadyRegisteredError,
   InvalidInputError,
-  InvalidTokenError,
   PostCommitError,
 } from '../errors.js'
-import type {
-  AccountUser,
-  AuthenticationGuard,
-  CurrentAccount,
-  CurrentAccountInput,
-} from '../types.js'
-import {
-  managedErrorResponse,
-  proofHeaders,
-  type ManagedErrorResponse,
-  type ManagedMessage,
-} from './responses.js'
+import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.js'
+import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
 import {
   executeManagedSocial,
   rememberManagedMethod,
   type ManagedSocialExtension,
 } from './social.js'
+import {
+  applyMappedHeaders,
+  currentAccount,
+  invalidProof,
+  passwordPolicyError,
+  recoveryDiagnostic,
+  safeAccount,
+} from './response_helpers.js'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
@@ -122,73 +119,6 @@ function routeEntries(router: Router) {
 function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
   for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
-}
-
-function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
-  for (const [name, value] of Object.entries(mapped.headers)) {
-    if (name.toLowerCase() !== 'vary') {
-      context.response.header(name, value)
-      continue
-    }
-    const existing = context.response.getHeader('Vary')
-    const terms = existing
-      ? String(existing)
-          .split(',')
-          .map((term) => term.trim())
-      : []
-    if (terms.includes('*')) continue
-    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
-    context.response.header('Vary', terms.join(', '))
-  }
-  context.response.header('Content-Type', mapped.contentType)
-}
-
-function invalidProof(
-  context: HttpContext,
-  proof: 'password' | 'email' | 'invitation',
-  message?: ManagedMessage
-): unknown {
-  const mapped = managedErrorResponse(new InvalidTokenError(), {
-    proof,
-    accept: context.request.header('accept'),
-    message,
-  })!
-  applyMappedHeaders(context, mapped)
-  return context.response.status(mapped.status).send(mapped.body)
-}
-
-function passwordPolicyError(context: HttpContext, field: 'password' | 'newPassword'): unknown {
-  return context.response.status(422).send({
-    errors: [{ field, rule: 'passwordPolicy', message: 'Password does not meet the policy.' }],
-  })
-}
-
-function safeAccount(account: CurrentAccount): Record<string, unknown> {
-  return {
-    id: account.id,
-    email: account.email,
-    unverifiedEmail: account.unverifiedEmail,
-    hasPassword: account.hasPassword,
-    active: account.active,
-  }
-}
-
-function currentAccount(user: AccountUser): CurrentAccount {
-  return {
-    id: user.id,
-    email: user.email,
-    unverifiedEmail: user.unverifiedEmail,
-    hasPassword: user.hasPassword,
-    active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
-  }
-}
-
-function recoveryDiagnostic(
-  context: HttpContext,
-  operation: ManagedEndpointName,
-  outcome: 'delivery_failed' | 'followup_failed' | 'authentication_failed' | 'representation_failed'
-): void {
-  context.logger?.warn({ operation, outcome }, 'Managed account operation needs reconciliation')
 }
 
 async function execute<Credential>(
