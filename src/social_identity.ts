@@ -21,6 +21,7 @@ import {
   SocialTransactionError,
   SocialUserNotFoundError,
 } from './errors.js'
+import { isSensitivePurpose, isSocialBeginIntent } from './social_enums.js'
 import { isSocialProviderName, socialProviderNames } from './social_providers.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type {
@@ -347,16 +348,10 @@ export function socialIdentityService(deps: Dependencies) {
     async begin(input: SocialBeginInput): Promise<{ state: string; url: string }> {
       const adapter = provider(deps, input.provider)
       if (!validChallenge(input.clientChallenge)) throw new SocialTransactionError()
-      if (input.intent !== 'login' && input.intent !== 'link' && input.intent !== 'reauth')
-        throw new SocialTransactionError()
+      if (!isSocialBeginIntent(input.intent)) throw new SocialTransactionError()
       if (input.proof !== undefined && (input.intent !== 'link' || !isTokenShaped(input.proof)))
         throw new SocialProofError()
-      if (
-        input.intent === 'reauth' &&
-        !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(
-          input.purpose ?? ''
-        )
-      )
+      if (input.intent === 'reauth' && !isSensitivePurpose(input.purpose))
         throw new SocialTransactionError()
       if (input.intent === 'reauth' && !adapter.verifyFreshAuthentication)
         throw new SocialProofError()
@@ -819,10 +814,7 @@ export function socialIdentityService(deps: Dependencies) {
       password: string
       purpose: SensitivePurpose
     }): Promise<string> {
-      if (
-        typeof input.password !== 'string' ||
-        !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-      )
+      if (typeof input.password !== 'string' || !isSensitivePurpose(input.purpose))
         throw new SocialProofError()
       return transaction(deps.db, async (trx) => {
         const user = await authenticated(deps, input.current, trx)

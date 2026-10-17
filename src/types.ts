@@ -1,6 +1,7 @@
 import type { DateTime } from 'luxon'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type { socialProviderNames } from './social_providers.js'
+import type { sensitivePurposes, socialIntents } from './social_enums.js'
 
 export type Trx = TransactionClientContract
 export type UserId = number | string
@@ -194,8 +195,8 @@ export interface PasswordPolicy {
 }
 
 export type SocialProviderName = (typeof socialProviderNames)[number]
-export type SocialIntent = 'login' | 'link' | 'reauth' | 'confirm'
-export type SensitivePurpose = 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
+export type SocialIntent = (typeof socialIntents)[number]
+export type SensitivePurpose = (typeof sensitivePurposes)[number]
 
 /** Returned only after the configured adapter verifies provider authentication evidence. */
 export interface VerifiedSocialAuthentication {
