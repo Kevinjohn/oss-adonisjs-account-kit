@@ -194,6 +194,45 @@ function safeResult(result: SocialCallbackResult): Record<string, unknown> {
   return { status: result.status }
 }
 
+/** Session guards get a server-held verifier; token guards must supply their own challenge. */
+function newChallenge<Credential>(
+  guard: ManagedGuard<Credential>,
+  clientChallenge?: string
+): { verifier: string | null; clientChallenge: string } {
+  const verifier = guard.strategy === 'session' ? randomBytes(32).toString('base64url') : null
+  const challenge = verifier
+    ? createHash('sha256').update(verifier).digest('base64url')
+    : clientChallenge
+  if (!challenge) throw new InvalidInputError('Client challenge is required')
+  return { verifier, clientChallenge: challenge }
+}
+
+/** Session flows redeem the handoff in-request; token flows return the code for `auth.oauth.token`. */
+async function finishHandoff<Credential>(
+  context: HttpContext,
+  social: AccountKit['socialAuthentication'],
+  guard: ManagedGuard<Credential>,
+  extension: ManagedSocialExtension,
+  methodsEnabled: boolean,
+  result: SocialCallbackResult,
+  saved: SessionSocialState | null
+): Promise<unknown> {
+  const { response } = context
+  if ('handoffCode' in result && result.handoffCode) {
+    if (saved) {
+      const established = await social.redeemHandoff({
+        code: result.handoffCode,
+        verifier: saved.verifier,
+        guard: guard.forRequest(context),
+      })
+      if (methodsEnabled) await rememberManagedMethod(context, saved.provider, extension)
+      return response.ok({ status: result.status, account: established.account })
+    }
+    return response.ok({ status: result.status, code: result.handoffCode })
+  }
+  return response.ok(safeResult(result))
+}
+
 /** Dispatch only after the managed router has applied guard, CSRF, throttle and no-store policy. */
 export async function executeManagedSocial<Credential>(
   name: string,
@@ -230,11 +269,7 @@ export async function executeManagedSocial<Credential>(
         throw new InvalidInputError('Invalid social proof purpose')
       const intent = (input.intent ?? 'login') as SocialBeginInput['intent']
       const current = intent === 'login' ? undefined : await guard.current(context)
-      const verifier = guard.strategy === 'session' ? randomBytes(32).toString('base64url') : null
-      const clientChallenge = verifier
-        ? createHash('sha256').update(verifier).digest('base64url')
-        : input.clientChallenge
-      if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
+      const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
       const beginInput = {
         provider,
         intent,
@@ -251,11 +286,7 @@ export async function executeManagedSocial<Credential>(
     case 'auth.oauth.confirmation': {
       const provider = providerName(params.provider, extension.providers)
       const input = await request.validateUsing(socialConfirmationValidator)
-      const verifier = guard.strategy === 'session' ? randomBytes(32).toString('base64url') : null
-      const clientChallenge = verifier
-        ? createHash('sha256').update(verifier).digest('base64url')
-        : input.clientChallenge
-      if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
+      const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
       const confirmation = {
         provider,
         verificationToken: input.verificationToken,
@@ -302,19 +333,7 @@ export async function executeManagedSocial<Credential>(
         if ('continuation' in result && result.continuation)
           rememberSessionState(context, result.continuation, saved)
       }
-      if ('handoffCode' in result && result.handoffCode) {
-        if (guard.strategy === 'session') {
-          const established = await social.redeemHandoff({
-            code: result.handoffCode,
-            verifier: saved!.verifier,
-            guard: guard.forRequest(context),
-          })
-          if (methodsEnabled) await rememberManagedMethod(context, provider, extension)
-          return response.ok({ status: result.status, account: established.account })
-        }
-        return response.ok({ status: result.status, code: result.handoffCode })
-      }
-      return response.ok(safeResult(result))
+      return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
     }
     case 'auth.oauth.registration': {
       const input = await request.validateUsing(socialRegistrationValidator)
@@ -326,19 +345,7 @@ export async function executeManagedSocial<Credential>(
         admit: extension.admit,
       })
       if (saved) forgetSessionState(context, input.continuation)
-      if ('handoffCode' in result && result.handoffCode) {
-        if (saved) {
-          const established = await social.redeemHandoff({
-            code: result.handoffCode,
-            verifier: saved.verifier,
-            guard: guard.forRequest(context),
-          })
-          if (methodsEnabled) await rememberManagedMethod(context, saved.provider, extension)
-          return response.ok({ status: result.status, account: established.account })
-        }
-        return response.ok({ status: result.status, code: result.handoffCode })
-      }
-      return response.ok(safeResult(result))
+      return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
     }
     case 'auth.oauth.token': {
       const input = await request.validateUsing(socialTokenValidator)
