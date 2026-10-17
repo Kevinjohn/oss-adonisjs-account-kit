@@ -1,17 +1,19 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import {
-  credentialsChanged,
-  currentInTransaction,
-  revision,
-  safeAccount,
-} from './authentication.js'
+import { credentialsChanged, currentInTransaction, revision } from './authentication.js'
 import { deleteReturning, lockUser, transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import { mapRegistrationFields } from './registration_fields.js'
+import { createHandoff, redeemSocialHandoff } from './social_handoff.js'
+import {
+  consumeSocialSensitiveProof,
+  consumeSocialSensitiveProofHash,
+  issueProof,
+  proveSocialPassword,
+} from './social_proofs.js'
 import {
   InvalidInputError,
   LastLoginMethodError,
@@ -40,7 +42,7 @@ import type {
   UserId,
 } from './types.js'
 
-type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
+export type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
 interface ProviderProfile {
   subject: string
   email: string | null
@@ -69,10 +71,8 @@ interface SocialTransactionRow {
 }
 const MINUTES = 10
 const FRESH_CLOCK_TOLERANCE_MS = 30_000
-const expiry = () => DateTime.utc().plus({ minutes: MINUTES }).toISO()
-const now = () => DateTime.utc().toISO()
-const challengeFrom = (verifier: string) =>
-  createHash('sha256').update(verifier).digest('base64url')
+export const expiry = () => DateTime.utc().plus({ minutes: MINUTES }).toISO()
+export const now = () => DateTime.utc().toISO()
 const validChallenge = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value)
 
@@ -99,26 +99,6 @@ function freshAuthenticationMatches(
     verifiedAt.toMillis() >= started.toMillis() - FRESH_CLOCK_TOLERANCE_MS &&
     verifiedAt.toMillis() <= current.toMillis()
   )
-}
-
-async function createHandoff(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId,
-  socialIdentityId: number,
-  clientChallenge: string
-): Promise<string> {
-  const code = generateToken(32)
-  await trx.table('social_handoff_codes').insert({
-    hash: hashToken(code),
-    user_id: userId,
-    social_identity_id: socialIdentityId,
-    credential_revision: await revision(trx, config, userId),
-    client_challenge: clientChallenge,
-    expires_at: DateTime.utc().plus({ minutes: 2 }).toISO(),
-    created_at: now(),
-  })
-  return code
 }
 
 function provider(deps: Dependencies, name: SocialProviderName) {
@@ -166,27 +146,10 @@ function confirmedRecipient(user: AccountUser): boolean {
   return user.emailVerifiedAt !== null && user.unverifiedEmail !== user.email
 }
 
-function enabledProviders(config: ResolvedConfig): SocialProviderName[] {
+export function enabledProviders(config: ResolvedConfig): SocialProviderName[] {
   return (['google', 'github'] as const).filter(
     (name) => config.socialAuthentication?.providers[name] !== undefined
   )
-}
-
-async function usableHandoffAssociation(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId,
-  socialIdentityId: number
-): Promise<SocialProviderName | null> {
-  const row = await trx
-    .from('social_identities')
-    .where('id', socialIdentityId)
-    .where('user_id', userId)
-    .whereNotNull('confirmed_at')
-    .first()
-  return row && enabledProviders(config).includes(row.provider)
-    ? (row.provider as SocialProviderName)
-    : null
 }
 
 async function consumeState(trx: Trx, state: string): Promise<SocialTransactionRow> {
@@ -200,53 +163,7 @@ async function consumeState(trx: Trx, state: string): Promise<SocialTransactionR
   return rows[0]
 }
 
-export async function consumeSocialSensitiveProof(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId,
-  purpose: SensitivePurpose,
-  proof: string
-): Promise<void> {
-  if (!isTokenShaped(proof)) throw new SocialProofError()
-  return consumeSocialSensitiveProofHash(trx, config, userId, purpose, hashToken(proof))
-}
-
-async function consumeSocialSensitiveProofHash(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId,
-  purpose: SensitivePurpose,
-  proofHash: string
-): Promise<void> {
-  await lockUser(trx, config, userId)
-  const rows = await deleteReturning<{ credential_revision: string | null }>(
-    trx,
-    'delete from social_sensitive_proofs where hash = ? and user_id = ? and purpose = ? and expires_at > ? returning credential_revision',
-    [proofHash, userId, purpose, now()]
-  )
-  if (rows.length !== 1 || rows[0].credential_revision !== (await revision(trx, config, userId)))
-    throw new SocialProofError()
-}
-
-async function issueProof(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId,
-  purpose: SensitivePurpose
-): Promise<string> {
-  const proof = generateToken()
-  await trx.table('social_sensitive_proofs').insert({
-    hash: hashToken(proof),
-    user_id: userId,
-    purpose,
-    credential_revision: await revision(trx, config, userId),
-    expires_at: expiry(),
-    created_at: now(),
-  })
-  return proof
-}
-
-async function authenticated(
+export async function authenticated(
   deps: Dependencies,
   current: CurrentAccountInput | undefined,
   trx: Trx
@@ -334,6 +251,8 @@ async function createAccount(
   if (!latest) throw new SocialTransactionError()
   return { user: latest, relation }
 }
+
+export { consumeSocialSensitiveProof }
 
 export function socialIdentityService(deps: Dependencies) {
   return {
@@ -645,87 +564,7 @@ export function socialIdentityService(deps: Dependencies) {
       verifier: string
       guard: AuthenticationGuard<Credential>
     }): Promise<{ account: CurrentAccount; credential: Credential; provider: SocialProviderName }> {
-      const auth = deps.config.authentication!
-      if (
-        !isTokenShaped(input.code) ||
-        typeof input.verifier !== 'string' ||
-        !/^[A-Za-z0-9._~-]{43,128}$/.test(input.verifier) ||
-        input.guard.strategy !== auth.strategy ||
-        input.guard.name !== auth.guard
-      )
-        throw new SocialTransactionError()
-      const verified = await transaction(deps.db, async (trx) => {
-        const candidate = await trx
-          .from('social_handoff_codes')
-          .where('hash', hashToken(input.code))
-          .first()
-        if (!candidate) throw new SocialTransactionError()
-        await lockUser(trx, deps.config, candidate.user_id)
-        const rows = await deleteReturning<typeof candidate>(
-          trx,
-          'delete from social_handoff_codes where hash = ? and expires_at > ? returning *',
-          [hashToken(input.code), now()]
-        )
-        const row = rows[0]
-        if (
-          !row ||
-          row.user_id !== candidate.user_id ||
-          row.client_challenge !== challengeFrom(input.verifier)
-        )
-          throw new SocialTransactionError()
-        const user = await deps.config.users.findById(row.user_id, trx)
-        if (!user || !(await auth.canAccess(user, trx))) throw new SocialTransactionError()
-        const currentRevision = await revision(trx, deps.config, user.id)
-        const establishedProvider = await usableHandoffAssociation(
-          trx,
-          deps.config,
-          user.id,
-          row.social_identity_id
-        )
-        if (currentRevision !== row.credential_revision || !establishedProvider)
-          throw new SocialTransactionError()
-        return {
-          account: safeAccount(user),
-          revision: currentRevision,
-          socialIdentityId: row.social_identity_id as number,
-          provider: establishedProvider,
-        }
-      })
-      let credential: Credential | undefined
-      try {
-        credential =
-          input.guard.strategy === 'session'
-            ? await input.guard.establish(verified.account.id, verified.revision)
-            : await input.guard.establish(
-                verified.account.id,
-                auth.tokenAbilities,
-                auth.tokenExpiresIn
-              )
-        await transaction(deps.db, async (trx) => {
-          await lockUser(trx, deps.config, verified.account.id)
-          const user = await deps.config.users.findById(verified.account.id, trx)
-          if (
-            !user ||
-            (await revision(trx, deps.config, user.id)) !== verified.revision ||
-            (await usableHandoffAssociation(
-              trx,
-              deps.config,
-              user.id,
-              verified.socialIdentityId
-            )) !== verified.provider ||
-            !(await auth.canAccess(user, trx))
-          )
-            throw new SocialTransactionError()
-        })
-        return { account: verified.account, credential, provider: verified.provider }
-      } catch (error) {
-        try {
-          await input.guard.terminate(credential)
-        } catch (cleanup) {
-          throw new AggregateError([error, cleanup], 'Social credential cleanup failed')
-        }
-        throw error
-      }
+      return redeemSocialHandoff(deps, input)
     },
 
     async completeRegistration(input: {
@@ -808,20 +647,7 @@ export function socialIdentityService(deps: Dependencies) {
       password: string
       purpose: SensitivePurpose
     }): Promise<string> {
-      if (
-        typeof input.password !== 'string' ||
-        !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-      )
-        throw new SocialProofError()
-      return transaction(deps.db, async (trx) => {
-        const user = await authenticated(deps, input.current, trx)
-        if (
-          !user.hasPassword ||
-          !(await deps.config.users.verifyPassword(user.id, input.password, trx))
-        )
-          throw new SocialProofError()
-        return issueProof(trx, deps.config, user.id, input.purpose)
-      })
+      return proveSocialPassword(deps, input)
     },
 
     async list(input: { current: CurrentAccountInput }): Promise<SocialIdentity[]> {
