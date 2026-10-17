@@ -1,4 +1,3 @@
-import { Encryption } from '@adonisjs/core/encryption'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../src/account_kit.js'
@@ -10,7 +9,6 @@ export default class AccountKitProvider {
   register(): void {
     this.app.container.singleton(AccountKit, async (resolver) => {
       const db = await resolver.make('lucid.db')
-      const encryption = await resolver.make(Encryption)
       const limiter = await resolver.make('limiter.manager')
       const config = this.app.config.get<ResolvedConfig | undefined>('account_kit')
       if (!config) {
@@ -18,7 +16,7 @@ export default class AccountKitProvider {
           'Invalid "config/account_kit.ts" file. Make sure it exists and exports defineConfig(...)'
         )
       }
-      return new AccountKit({ config, db, encryption, limiter })
+      return new AccountKit({ config, db, limiter })
     })
   }
 }

@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
-import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import { errors } from '@adonisjs/limiter'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction, userMetadata } from './db.js'
 import { normaliseEmail } from './email.js'
-import { limiterKey } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
+import { clearSocialPending } from './credential_cleanup.js'
+import { waitForFloor } from './timing.js'
 import { isSocialProviderName } from './social_providers.js'
 import {
   CapabilityDisabledError,
@@ -28,7 +29,12 @@ import type {
   UserId,
 } from './types.js'
 
-type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
+type Dependencies = {
+  config: ResolvedConfig
+  db: Database
+  limiter: LimiterService
+  throttler?: Throttler
+}
 
 function configured(deps: Pick<Dependencies, 'config'>) {
   const auth = deps.config.authentication
@@ -91,10 +97,7 @@ export async function credentialsChanged(
   user: AccountUser,
   context: Parameters<NonNullable<ResolvedConfig['onCredentialsChangedTransaction']>>[1]
 ): Promise<void> {
-  if (config.enabled.includes('socialAuthentication')) {
-    await trx.from('social_sensitive_proofs').where('user_id', user.id).delete()
-    await trx.from('social_transactions').where('user_id', user.id).delete()
-  }
+  if (config.enabled.includes('socialAuthentication')) await clearSocialPending(trx, user.id)
   if (config.authentication) await advanceCredentialRevision(trx, config, user.id)
   await config.onCredentialsChangedTransaction?.(user, context, trx)
 }
@@ -243,8 +246,7 @@ export function authenticationService(deps: Dependencies) {
         throw new InvalidCredentialsError()
 
       const email = normaliseEmail(input.email)
-      const key = (operation: string, value: string) =>
-        limiterKey(operation, value, deps.config.limiterSecret, deps.config.limiterNamespace)
+      const key = throttlerOf(deps).key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
       const clientLimiter = deps.limiter.use(auth.clientLimit)
@@ -282,11 +284,7 @@ export function authenticationService(deps: Dependencies) {
           await clientLimiter.increment(clientKey)
           // Unknown and passwordless emails skip password hashing. Wait out the configured floor
           // so failure timing does not reveal which addresses have usable accounts.
-          let remaining = deps.config.minRequestMs - (performance.now() - started)
-          while (remaining > 0) {
-            await delay(Math.ceil(remaining))
-            remaining = deps.config.minRequestMs - (performance.now() - started)
-          }
+          await waitForFloor(started, deps.config.minRequestMs)
         }
         if (error instanceof errors.E_TOO_MANY_REQUESTS)
           throw new ThrottledError(error.response.availableIn, undefined, { cause: error })

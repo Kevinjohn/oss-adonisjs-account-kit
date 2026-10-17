@@ -221,7 +221,7 @@ export function createManagedGuard<User>(
 
 /** Apply the same selected guard and package revision check to application-owned routes. */
 export function managedAccountMiddleware<Credential>(options: {
-  kit(): Promise<AccountKit>
+  kit(): Promise<Pick<AccountKit, 'managedHttp' | 'authentication'>>
   guard: Pick<ManagedGuard<Credential>, 'current' | 'name' | 'strategy'>
   active: boolean
 }): (context: HttpContext, next: () => Promise<unknown>) => Promise<unknown> {

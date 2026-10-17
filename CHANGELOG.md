@@ -154,6 +154,8 @@ This project has no published releases yet. The current candidate remains versio
   notices, link deliveries, legacy credential callbacks and lifecycle events when the transaction
   commits but connection cleanup or a commit listener then fails. The operation still reports
   `PostCommitError` with `committed: true`.
+- Invitation resend and revoke now run their link delivery and lifecycle event after the same kind
+  of committed cleanup fault, matching the other invitation operations.
 
 ### Integration notes
 

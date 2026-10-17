@@ -1,14 +1,20 @@
 import { randomUUID } from 'node:crypto'
 import { credentialsChanged } from './authentication.js'
+import {
+  clearPendingSocialIdentities,
+  clearRecoveryTokens,
+  clearSocialTransactions,
+} from './credential_cleanup.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { consumeUserToken, consumeUserTokenHash, lockUser, transaction } from './db.js'
-import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
   ResolvedConfig,
@@ -48,11 +54,9 @@ async function activateClaim(
   confirmedSocialIdentityId?: number
 ): Promise<void> {
   await config.users.markEmailVerified(userId, DateTime.utc(), trx)
-  await trx.from('password_reset_tokens').where('tokenable_id', userId).delete()
+  await clearRecoveryTokens(trx, userId, ['password_reset_tokens'])
   if (config.enabled.includes('socialAuthentication')) {
-    const pending = trx.from('social_identities').where('user_id', userId).whereNull('confirmed_at')
-    if (confirmedSocialIdentityId !== undefined) pending.whereNot('id', confirmedSocialIdentityId)
-    await pending.delete()
+    await clearPendingSocialIdentities(trx, userId, confirmedSocialIdentityId)
     if (confirmedSocialIdentityId !== undefined)
       await trx
         .from('social_identities')
@@ -60,7 +64,7 @@ async function activateClaim(
         .where('id', confirmedSocialIdentityId)
         .whereNull('confirmed_at')
         .update({ confirmed_at: DateTime.utc().toISO() })
-    await trx.from('social_transactions').where('user_id', userId).delete()
+    await clearSocialTransactions(trx, userId)
   }
 }
 
@@ -92,32 +96,24 @@ export async function completeActivationByHash(
 }
 
 export async function sendVerification(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: VerificationSendInput
 ): Promise<'sent' | 'already_verified'> {
   const user = await deps.config.users.findById(input.userId)
   if (!user) throw new InvalidInputError('Unknown user')
   if (user.unverifiedEmail !== user.email) return 'already_verified'
-  await consume(
-    deps.limiter,
-    'verification:user',
-    String(user.id),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
+  await throttlerOf(deps).consume('verification:user', String(user.id), deps.config.throttle)
   const recent = await deps.db
     .from('email_verification_tokens')
     .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
     .where('tokenable_id', user.id)
     .first()
   if (
-    recent?.purpose === 'activation' &&
-    recent.email === user.email &&
-    recent.current_email === user.email &&
-    DateTime.fromJSDate(new Date(recent.expires_at)).toMillis() > DateTime.utc().toMillis() &&
-    DateTime.fromJSDate(new Date(recent.created_at)).toMillis() >
-      DateTime.utc().minus({ minutes: 1 }).toMillis()
+    isRecentIssue(
+      recent,
+      { purpose: 'activation', email: user.email, currentEmail: user.email },
+      DateTime.utc()
+    )
   )
     return 'sent'
   const token = generateToken(deps.config.tokenSecretLength)
@@ -133,12 +129,11 @@ export async function sendVerification(
         .where('tokenable_id', current.id)
         .first()
       if (
-        previous?.purpose === 'activation' &&
-        previous.email === current.email &&
-        previous.current_email === current.email &&
-        DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
-        DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
-          now.minus({ minutes: 1 }).toMillis()
+        isRecentIssue(
+          previous,
+          { purpose: 'activation', email: current.email, currentEmail: current.email },
+          now
+        )
       )
         return false
       await trx
@@ -225,15 +220,11 @@ export async function completeVerification(
             userId: outcome.id,
           }),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'verification.completed',
-            userId: outcome.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'verification.completed',
+        userId: outcome.id,
+        operationId,
+      }),
     ])
   )
   return 'verified'
