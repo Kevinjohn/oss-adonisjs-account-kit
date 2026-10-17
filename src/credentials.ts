@@ -19,6 +19,7 @@ import { mapRegistrationFields } from './registration_fields.js'
 import { consumeSocialSensitiveProof } from './social_identity.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountUser,
@@ -208,12 +209,11 @@ export async function updateProfile(
             .where('tokenable_id', current.id)
             .first()
           if (
-            previous?.purpose === 'email_change' &&
-            previous.email === newEmail &&
-            previous.current_email === current.email &&
-            DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
-            DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
-              now.minus({ minutes: 1 }).toMillis()
+            isRecentIssue(
+              previous,
+              { purpose: 'email_change', email: newEmail, currentEmail: current.email },
+              now
+            )
           ) {
             const reloaded = await deps.config.users.findById(current.id, trx)
             if (!reloaded) throw new InvalidInputError('Unknown actor')
