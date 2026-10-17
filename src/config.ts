@@ -2,6 +2,8 @@ import { DateTime } from 'luxon'
 import string from '@adonisjs/core/helpers/string'
 import { CapabilityDisabledError } from './errors.js'
 import { isSocialProviderName } from './social_providers.js'
+import { isSqlIdentifier } from './identifiers.js'
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -246,11 +248,11 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error('account_kit: passwordPolicy must be an object')
   if (
     !Number.isSafeInteger(passwordPolicy.minLength) ||
-    passwordPolicy.minLength < 8 ||
-    passwordPolicy.minLength > 256 ||
+    passwordPolicy.minLength < MIN_PASSWORD_LENGTH ||
+    passwordPolicy.minLength > MAX_PASSWORD_LENGTH ||
     (passwordPolicy.maxLength !== null &&
       (!Number.isSafeInteger(passwordPolicy.maxLength) ||
-        passwordPolicy.maxLength > 256 ||
+        passwordPolicy.maxLength > MAX_PASSWORD_LENGTH ||
         passwordPolicy.maxLength < passwordPolicy.minLength))
   )
     throw new Error(
@@ -285,7 +287,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       throw new Error('account_kit: authentication.tokenAbilities must be non-empty strings')
     if (auth.tokenExpiresIn !== undefined) expiresAt(DateTime.utc(), auth.tokenExpiresIn)
     const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
-    if (typeof tokenTable !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(tokenTable))
+    if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
       throw new Error('account_kit: authentication.tokenTable must be a plain SQL identifier')
     const clientLimit = budget(
       auth.clientLimit,
@@ -329,7 +331,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   )
     throw new Error('account_kit: emailConstraint must be a non-empty constraint name')
   const usersTable = config.usersTable ?? 'users'
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(usersTable))
+  if (!isSqlIdentifier(usersTable))
     throw new Error('account_kit: usersTable must be a plain SQL identifier')
   return {
     ...config,
