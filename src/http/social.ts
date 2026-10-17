@@ -11,7 +11,8 @@ import type {
   SocialCallbackResult,
   Trx,
 } from '../types.js'
-import type { ManagedGuard } from './managed.js'
+import type { ManagedGuard, ManagedHandler } from './managed.js'
+import type { ManagedEndpointName } from './routes.js'
 import {
   socialBeginValidator,
   socialCallbackValidator,
@@ -233,165 +234,204 @@ async function finishHandoff<Credential>(
   return response.ok(safeResult(result))
 }
 
+interface SocialRequest<Credential> {
+  name: ManagedEndpointName
+  context: HttpContext
+  social: AccountKit['socialAuthentication']
+  guard: ManagedGuard<Credential>
+  extension: ManagedSocialExtension
+  methodsEnabled: boolean
+}
+
+type SocialHandler = <Credential>(request: SocialRequest<Credential>) => Promise<unknown>
+
+const oauthCallback: SocialHandler = async ({
+  name,
+  context,
+  social,
+  guard,
+  extension,
+  methodsEnabled,
+}) => {
+  const { request, params } = context
+  const provider = providerName(params.provider, extension.providers)
+  const isPost = name === 'auth.oauth.complete'
+  const providerCode = request.input('code')
+  if (request.input('error') || typeof providerCode !== 'string' || !providerCode)
+    throw new SocialTransactionError()
+  const input = isPost
+    ? await request.validateUsing(socialCallbackValidator)
+    : {
+        state: request.input('state') as string,
+        intent: undefined,
+      }
+  if (typeof input.state !== 'string') throw new SocialTransactionError()
+  if (isPost && input.intent && !['login', 'link', 'reauth', 'confirm'].includes(input.intent))
+    throw new SocialTransactionError()
+  const saved = guard.strategy === 'session' ? sessionState(context, input.state) : null
+  if (saved && saved.provider !== provider) throw new SocialTransactionError()
+  const intent = saved?.intent ?? (input.intent as SocialIntent | undefined) ?? 'login'
+  if (guard.strategy === 'access_tokens' && !isPost && intent !== 'login')
+    throw new SocialTransactionError()
+  const current: CurrentAccountInput | undefined =
+    intent === 'login' || intent === 'confirm' ? undefined : await guard.current(context)
+  const result = await social.callback({
+    state: input.state,
+    provider,
+    intent,
+    current,
+    callback: context,
+  })
+  if (saved) {
+    forgetSessionState(context, input.state)
+    if ('continuation' in result && result.continuation)
+      rememberSessionState(context, result.continuation, saved)
+  }
+  return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
+}
+
+const socialHandlers = {
+  'auth.methods': async ({ context, extension }) => {
+    const stored = optionalSession(context)?.get('accountKit.social.lastUsedMethod')
+    const hinted = extension.lastUsedMethod ? await extension.lastUsedMethod(context) : stored
+    const lastUsedMethod =
+      hinted === 'password' || extension.providers.includes(hinted as SocialProviderName)
+        ? hinted
+        : null
+    return context.response.ok({
+      providers: extension.providers,
+      lastUsedMethod,
+    })
+  },
+  'auth.oauth.redirect': async ({ context, social, guard, extension }) => {
+    const { request, response, params } = context
+    const provider = providerName(params.provider, extension.providers)
+    const input = await request.validateUsing(socialBeginValidator)
+    if (!['login', 'link', 'reauth'].includes(input.intent ?? 'login'))
+      throw new InvalidInputError('Invalid social intent')
+    if (
+      input.purpose &&
+      !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
+    )
+      throw new InvalidInputError('Invalid social proof purpose')
+    const intent = (input.intent ?? 'login') as SocialBeginInput['intent']
+    const current = intent === 'login' ? undefined : await guard.current(context)
+    const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
+    const beginInput = {
+      provider,
+      intent,
+      current,
+      purpose: input.purpose as SensitivePurpose | undefined,
+      proof: input.proof,
+      clientChallenge,
+      context,
+    }
+    const result = await social.begin(beginInput)
+    if (verifier) rememberSessionState(context, result.state, { verifier, intent, provider })
+    return response.ok({ authorizationUrl: result.url })
+  },
+  'auth.oauth.confirmation': async ({ context, social, guard, extension }) => {
+    const { request, response, params } = context
+    const provider = providerName(params.provider, extension.providers)
+    const input = await request.validateUsing(socialConfirmationValidator)
+    const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
+    const confirmation = {
+      provider,
+      verificationToken: input.verificationToken,
+      clientChallenge,
+      context,
+    }
+    const result = await social.beginConfirmation(confirmation)
+    if (verifier)
+      rememberSessionState(context, result.state, { verifier, intent: 'confirm', provider })
+    return response.ok({ authorizationUrl: result.url })
+  },
+  'auth.oauth.callback': oauthCallback,
+  'auth.oauth.complete': oauthCallback,
+  'auth.oauth.registration': async ({ context, social, guard, extension, methodsEnabled }) => {
+    const input = await context.request.validateUsing(socialRegistrationValidator)
+    const saved = guard.strategy === 'session' ? sessionState(context, input.continuation) : null
+    const result = await social.completeRegistration({
+      continuation: input.continuation,
+      email: input.email,
+      registrationData: input.registrationData,
+      admit: extension.admit,
+    })
+    if (saved) forgetSessionState(context, input.continuation)
+    return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
+  },
+  'auth.oauth.token': async ({ context, social, guard, extension, methodsEnabled }) => {
+    const input = await context.request.validateUsing(socialTokenValidator)
+    const result = await social.redeemHandoff({
+      code: input.code,
+      verifier: input.verifier,
+      guard: guard.forRequest(context),
+    })
+    if (
+      methodsEnabled &&
+      'provider' in result &&
+      (result.provider === 'google' || result.provider === 'github') &&
+      extension.providers.includes(result.provider)
+    )
+      await rememberManagedMethod(context, result.provider, extension)
+    return context.response.ok({
+      account: result.account,
+      token: guard.publicCredential!(result.credential),
+    })
+  },
+  'account.socialProof.password': async ({ context, social, guard }) => {
+    const input = await context.request.validateUsing(socialPasswordProofValidator)
+    if (
+      !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
+    )
+      throw new InvalidInputError('Invalid social proof purpose')
+    const proof = await social.provePassword({
+      current: await guard.current(context),
+      password: input.password,
+      purpose: input.purpose as SensitivePurpose,
+    })
+    return context.response.ok({ proof })
+  },
+  'account.socialIdentities.list': async ({ context, social, guard }) => {
+    const identities = await social.list({ current: await guard.current(context) })
+    return context.response.ok({ identities: identities.map(safeIdentity) })
+  },
+  'account.socialIdentities.unlink': async ({ context, social, guard }) => {
+    const input = await context.request.validateUsing(socialUnlinkValidator)
+    await social.unlink({
+      current: await guard.current(context),
+      identityId: identityId(context.params.id),
+      proof: input.proof,
+    })
+    return context.response.noContent()
+  },
+} satisfies Partial<Record<ManagedEndpointName, SocialHandler>>
+
+export type ManagedSocialEndpointName = keyof typeof socialHandlers
+
 /** Dispatch only after the managed router has applied guard, CSRF, throttle and no-store policy. */
 export async function executeManagedSocial<Credential>(
-  name: string,
+  name: ManagedSocialEndpointName,
   context: HttpContext,
   social: AccountKit['socialAuthentication'],
   guard: ManagedGuard<Credential>,
   extension: ManagedSocialExtension,
   methodsEnabled = true
 ): Promise<unknown> {
-  const { request, response, params } = context
-  switch (name) {
-    case 'auth.methods': {
-      const stored = optionalSession(context)?.get('accountKit.social.lastUsedMethod')
-      const hinted = extension.lastUsedMethod ? await extension.lastUsedMethod(context) : stored
-      const lastUsedMethod =
-        hinted === 'password' || extension.providers.includes(hinted as SocialProviderName)
-          ? hinted
-          : null
-      return response.ok({
-        providers: extension.providers,
-        lastUsedMethod,
-      })
-    }
-    case 'auth.oauth.redirect': {
-      const provider = providerName(params.provider, extension.providers)
-      const input = await request.validateUsing(socialBeginValidator)
-      if (!['login', 'link', 'reauth'].includes(input.intent ?? 'login'))
-        throw new InvalidInputError('Invalid social intent')
-      if (
-        input.purpose &&
-        !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-      )
-        throw new InvalidInputError('Invalid social proof purpose')
-      const intent = (input.intent ?? 'login') as SocialBeginInput['intent']
-      const current = intent === 'login' ? undefined : await guard.current(context)
-      const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
-      const beginInput = {
-        provider,
-        intent,
-        current,
-        purpose: input.purpose as SensitivePurpose | undefined,
-        proof: input.proof,
-        clientChallenge,
-        context,
-      }
-      const result = await social.begin(beginInput)
-      if (verifier) rememberSessionState(context, result.state, { verifier, intent, provider })
-      return response.ok({ authorizationUrl: result.url })
-    }
-    case 'auth.oauth.confirmation': {
-      const provider = providerName(params.provider, extension.providers)
-      const input = await request.validateUsing(socialConfirmationValidator)
-      const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
-      const confirmation = {
-        provider,
-        verificationToken: input.verificationToken,
-        clientChallenge,
-        context,
-      }
-      const result = await social.beginConfirmation(confirmation)
-      if (verifier)
-        rememberSessionState(context, result.state, { verifier, intent: 'confirm', provider })
-      return response.ok({ authorizationUrl: result.url })
-    }
-    case 'auth.oauth.callback':
-    case 'auth.oauth.complete': {
-      const provider = providerName(params.provider, extension.providers)
-      const isPost = name === 'auth.oauth.complete'
-      const providerCode = request.input('code')
-      if (request.input('error') || typeof providerCode !== 'string' || !providerCode)
-        throw new SocialTransactionError()
-      const input = isPost
-        ? await request.validateUsing(socialCallbackValidator)
-        : {
-            state: request.input('state') as string,
-            intent: undefined,
-          }
-      if (typeof input.state !== 'string') throw new SocialTransactionError()
-      if (isPost && input.intent && !['login', 'link', 'reauth', 'confirm'].includes(input.intent))
-        throw new SocialTransactionError()
-      const saved = guard.strategy === 'session' ? sessionState(context, input.state) : null
-      if (saved && saved.provider !== provider) throw new SocialTransactionError()
-      const intent = saved?.intent ?? (input.intent as SocialIntent | undefined) ?? 'login'
-      if (guard.strategy === 'access_tokens' && !isPost && intent !== 'login')
-        throw new SocialTransactionError()
-      const current: CurrentAccountInput | undefined =
-        intent === 'login' || intent === 'confirm' ? undefined : await guard.current(context)
-      const result = await social.callback({
-        state: input.state,
-        provider,
-        intent,
-        current,
-        callback: context,
-      })
-      if (saved) {
-        forgetSessionState(context, input.state)
-        if ('continuation' in result && result.continuation)
-          rememberSessionState(context, result.continuation, saved)
-      }
-      return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
-    }
-    case 'auth.oauth.registration': {
-      const input = await request.validateUsing(socialRegistrationValidator)
-      const saved = guard.strategy === 'session' ? sessionState(context, input.continuation) : null
-      const result = await social.completeRegistration({
-        continuation: input.continuation,
-        email: input.email,
-        registrationData: input.registrationData,
-        admit: extension.admit,
-      })
-      if (saved) forgetSessionState(context, input.continuation)
-      return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
-    }
-    case 'auth.oauth.token': {
-      const input = await request.validateUsing(socialTokenValidator)
-      const result = await social.redeemHandoff({
-        code: input.code,
-        verifier: input.verifier,
-        guard: guard.forRequest(context),
-      })
-      if (
-        methodsEnabled &&
-        'provider' in result &&
-        (result.provider === 'google' || result.provider === 'github') &&
-        extension.providers.includes(result.provider)
-      )
-        await rememberManagedMethod(context, result.provider, extension)
-      return response.ok({
-        account: result.account,
-        token: guard.publicCredential!(result.credential),
-      })
-    }
-    case 'account.socialProof.password': {
-      const input = await request.validateUsing(socialPasswordProofValidator)
-      if (
-        !['social_link', 'social_unlink', 'password_change', 'email_change'].includes(input.purpose)
-      )
-        throw new InvalidInputError('Invalid social proof purpose')
-      const proof = await social.provePassword({
-        current: await guard.current(context),
-        password: input.password,
-        purpose: input.purpose as SensitivePurpose,
-      })
-      return response.ok({ proof })
-    }
-    case 'account.socialIdentities.list': {
-      const identities = await social.list({ current: await guard.current(context) })
-      return response.ok({ identities: identities.map(safeIdentity) })
-    }
-    case 'account.socialIdentities.unlink': {
-      const input = await request.validateUsing(socialUnlinkValidator)
-      await social.unlink({
-        current: await guard.current(context),
-        identityId: identityId(params.id),
-        proof: input.proof,
-      })
-      return response.noContent()
-    }
-    default:
-      throw new Error(`Unhandled social endpoint: ${name}`)
-  }
+  return socialHandlers[name]({ name, context, social, guard, extension, methodsEnabled })
 }
+
+const managedSocialRoute: ManagedHandler = ({ route, context, kit, options, methodsEnabled }) =>
+  executeManagedSocial(
+    route.name as ManagedSocialEndpointName,
+    context,
+    kit.socialAuthentication,
+    options.guard,
+    options.extensions!.social!,
+    methodsEnabled
+  )
+
+/** The managed router's entries for every social endpoint, keyed like `socialHandlers`. */
+export const managedSocialHandlers = Object.fromEntries(
+  Object.keys(socialHandlers).map((name) => [name, managedSocialRoute])
+) as Record<ManagedSocialEndpointName, ManagedHandler>
