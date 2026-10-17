@@ -1,6 +1,5 @@
 import { performance } from 'node:perf_hooks'
 import { randomUUID } from 'node:crypto'
-import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import type { Database } from '@adonisjs/lucid/database'
@@ -11,6 +10,7 @@ import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { consume } from './throttle.js'
+import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
@@ -175,12 +175,7 @@ export async function requestPasswordReset(
       ])
     )
   } finally {
-    // Every exit, including a throw, waits out the configured floor. Timers can wake early,
-    // so keep waiting until the floor has actually passed.
-    let remaining = deps.config.minRequestMs - (performance.now() - started)
-    while (remaining > 0) {
-      await delay(Math.ceil(remaining))
-      remaining = deps.config.minRequestMs - (performance.now() - started)
-    }
+    // Every exit, including a throw, waits out the configured floor.
+    await waitForFloor(started, deps.config.minRequestMs)
   }
 }
