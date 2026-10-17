@@ -121,6 +121,19 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
 
 type TokenTable = 'password_reset_tokens' | 'email_verification_tokens' | 'account_invitations'
 
+/**
+ * Run a `delete ... returning` statement and return the deleted rows. better-sqlite3 returns the
+ * rows directly; pg wraps them in a result object.
+ */
+export async function deleteReturning<Row>(
+  client: Trx | Database,
+  sql: string,
+  bindings: unknown[]
+): Promise<Row[]> {
+  const result: unknown = await client.rawQuery(sql, bindings).exec()
+  return (Array.isArray(result) ? result : (result as { rows: Row[] }).rows) as Row[]
+}
+
 /** Delete one unexpired token row and return it, or null when no live row matched. */
 export async function consumeToken<Row>(
   trx: Trx,
@@ -129,14 +142,11 @@ export async function consumeToken<Row>(
   now: string
 ): Promise<Row | null> {
   const hashColumn = table === 'account_invitations' ? 'token_hash' : 'hash'
-  const result: unknown = await trx
-    .rawQuery(`delete from ${table} where ${hashColumn} = ? and expires_at > ? returning *`, [
-      tokenHash,
-      now,
-    ])
-    .exec()
-  // better-sqlite3 returns the rows directly; pg wraps them in a result object.
-  const rows = (Array.isArray(result) ? result : (result as { rows: Row[] }).rows) as Row[]
+  const rows = await deleteReturning<Row>(
+    trx,
+    `delete from ${table} where ${hashColumn} = ? and expires_at > ? returning *`,
+    [tokenHash, now]
+  )
   return rows[0] ?? null
 }
 

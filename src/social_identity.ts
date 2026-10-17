@@ -8,7 +8,7 @@ import {
   revision,
   safeAccount,
 } from './authentication.js'
-import { lockUser, transaction, isUserEmailUniqueViolation } from './db.js'
+import { deleteReturning, lockUser, transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import { mapRegistrationFields } from './registration_fields.js'
@@ -191,13 +191,11 @@ async function usableHandoffAssociation(
 
 async function consumeState(trx: Trx, state: string): Promise<SocialTransactionRow> {
   if (!isTokenShaped(state)) throw new SocialTransactionError()
-  const result: unknown = await trx
-    .rawQuery('delete from social_transactions where hash = ? and expires_at > ? returning *', [
-      hashToken(state),
-      now(),
-    ])
-    .exec()
-  const rows = Array.isArray(result) ? result : (result as { rows: SocialTransactionRow[] }).rows
+  const rows = await deleteReturning<SocialTransactionRow>(
+    trx,
+    'delete from social_transactions where hash = ? and expires_at > ? returning *',
+    [hashToken(state), now()]
+  )
   if (rows.length !== 1) throw new SocialTransactionError()
   return rows[0]
 }
@@ -221,15 +219,11 @@ async function consumeSocialSensitiveProofHash(
   proofHash: string
 ): Promise<void> {
   await lockUser(trx, config, userId)
-  const result: unknown = await trx
-    .rawQuery(
-      'delete from social_sensitive_proofs where hash = ? and user_id = ? and purpose = ? and expires_at > ? returning credential_revision',
-      [proofHash, userId, purpose, now()]
-    )
-    .exec()
-  const rows = Array.isArray(result)
-    ? result
-    : (result as { rows: Array<{ credential_revision: string | null }> }).rows
+  const rows = await deleteReturning<{ credential_revision: string | null }>(
+    trx,
+    'delete from social_sensitive_proofs where hash = ? and user_id = ? and purpose = ? and expires_at > ? returning credential_revision',
+    [proofHash, userId, purpose, now()]
+  )
   if (rows.length !== 1 || rows[0].credential_revision !== (await revision(trx, config, userId)))
     throw new SocialProofError()
 }
@@ -667,15 +661,11 @@ export function socialIdentityService(deps: Dependencies) {
           .first()
         if (!candidate) throw new SocialTransactionError()
         await lockUser(trx, deps.config, candidate.user_id)
-        const result: unknown = await trx
-          .rawQuery(
-            'delete from social_handoff_codes where hash = ? and expires_at > ? returning *',
-            [hashToken(input.code), now()]
-          )
-          .exec()
-        const rows = Array.isArray(result)
-          ? result
-          : (result as { rows: (typeof candidate)[] }).rows
+        const rows = await deleteReturning<typeof candidate>(
+          trx,
+          'delete from social_handoff_codes where hash = ? and expires_at > ? returning *',
+          [hashToken(input.code), now()]
+        )
         const row = rows[0]
         if (
           !row ||
