@@ -1,0 +1,62 @@
+/** Managed handler for the registration capability: public signup followed by login. */
+import { DeliveryError, EmailAlreadyRegisteredError, PostCommitError } from '../errors.js'
+import type { CurrentAccount } from '../types.js'
+import type { ManagedEndpointName } from './routes.js'
+import type { ManagedHandler, ManagedRequest } from './managed.js'
+import { passwordPolicyError, recoveryDiagnostic } from './response_helpers.js'
+import { signupValidator } from './validators.js'
+
+async function signup<Credential>({
+  route,
+  context,
+  kit,
+  options,
+  representIssued,
+}: ManagedRequest<Credential>): Promise<unknown> {
+  const { request, response } = context
+  kit.managedHttp.assertPublicRegistration()
+  await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
+  const input = options.extensions?.registration
+    ? await options.extensions.registration.validate(context)
+    : await request.validateUsing(signupValidator)
+  if (!kit.managedHttp.passwordAllowed(input.password))
+    return passwordPolicyError(context, 'password')
+  try {
+    await kit.registration.register({
+      email: input.email,
+      password: input.password,
+      registrationData: 'registrationData' in input ? input.registrationData : undefined,
+    })
+  } catch (error) {
+    if (error instanceof EmailAlreadyRegisteredError)
+      return response.unprocessableEntity({
+        errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken.' }],
+      })
+    if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+    recoveryDiagnostic(
+      context,
+      route.name,
+      error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
+    )
+  }
+  let result: { account: CurrentAccount; credential: Credential }
+  try {
+    result = await kit.authentication.login(
+      { email: input.email, password: input.password, clientKey: request.ip() },
+      options.guard.forRequest(context)
+    )
+  } catch {
+    recoveryDiagnostic(context, route.name, 'authentication_failed')
+    return response.created({ registered: true, authenticated: false })
+  }
+  return response.created({
+    account: await representIssued(result.account),
+    ...(options.guard.strategy === 'access_tokens'
+      ? { token: options.guard.publicCredential!(result.credential) }
+      : {}),
+  })
+}
+
+export const registrationHandlers = {
+  'auth.signup': signup,
+} satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>
