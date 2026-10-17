@@ -18,7 +18,7 @@ import {
   requestEmailChange,
   updateProfile,
 } from './credentials.js'
-import { consume } from './throttle.js'
+import { makeThrottler, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { socialIdentityService } from './social_identity.js'
 import {
@@ -58,14 +58,29 @@ import type {
 export { defineConfig } from './config.js'
 
 export class AccountKit {
-  constructor(
-    private readonly deps: {
-      config: ResolvedConfig
-      db: Database
-      encryption?: Encryption
-      limiter: LimiterService
+  private readonly deps: {
+    config: ResolvedConfig
+    db: Database
+    encryption?: Encryption
+    limiter: LimiterService
+    throttler: Throttler
+  }
+
+  constructor(deps: {
+    config: ResolvedConfig
+    db: Database
+    encryption?: Encryption
+    limiter: LimiterService
+  }) {
+    this.deps = {
+      ...deps,
+      throttler: makeThrottler({
+        limiter: deps.limiter,
+        secret: deps.config.limiterSecret,
+        namespace: deps.config.limiterNamespace,
+      }),
     }
-  ) {}
+  }
 
   private enabled<T>(capability: Capability, run: () => Promise<T>): Promise<T> {
     if (!this.deps.config.enabled.includes(capability))
@@ -93,13 +108,10 @@ export class AccountKit {
     consume: (input: { endpoint: string; clientKey: string }): Promise<void> => {
       if (!input.clientKey)
         return Promise.reject(new Error('Managed request client key is required'))
-      return consume(
-        this.deps.limiter,
+      return this.deps.throttler.consume(
         `managed:${input.endpoint}`,
         input.clientKey,
-        this.deps.config.throttle,
-        this.deps.config.limiterSecret,
-        this.deps.config.limiterNamespace
+        this.deps.config.throttle
       )
     },
   }

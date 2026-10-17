@@ -9,7 +9,7 @@ import { afterCommit, finishCommitted, postCommit, settleCommitted } from './eff
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -96,7 +96,7 @@ export async function completePasswordReset(
 }
 
 export async function requestPasswordReset(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: PasswordResetRequestInput
 ): Promise<void> {
   const started = performance.now()
@@ -106,22 +106,8 @@ export async function requestPasswordReset(
       throw new InvalidInputError('Invalid client key')
     const email = normaliseEmail(input.email)
 
-    await consume(
-      deps.limiter,
-      'recovery:client',
-      input.clientKey,
-      deps.config.throttle,
-      deps.config.limiterSecret,
-      deps.config.limiterNamespace
-    )
-    await consume(
-      deps.limiter,
-      'recovery:email',
-      email,
-      deps.config.throttle,
-      deps.config.limiterSecret,
-      deps.config.limiterNamespace
-    )
+    await throttlerOf(deps).consume('recovery:client', input.clientKey, deps.config.throttle)
+    await throttlerOf(deps).consume('recovery:email', email, deps.config.throttle)
     const user = await deps.config.users.findByEmail(email)
     if (!user) return
 

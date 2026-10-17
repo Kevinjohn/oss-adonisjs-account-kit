@@ -6,7 +6,7 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction, userMetadata } from './db.js'
 import { normaliseEmail } from './email.js'
-import { limiterKey } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import {
   CapabilityDisabledError,
@@ -26,7 +26,12 @@ import type {
   UserId,
 } from './types.js'
 
-type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
+type Dependencies = {
+  config: ResolvedConfig
+  db: Database
+  limiter: LimiterService
+  throttler?: Throttler
+}
 
 function configured(deps: Pick<Dependencies, 'config'>) {
   const auth = deps.config.authentication
@@ -243,8 +248,7 @@ export function authenticationService(deps: Dependencies) {
         throw new InvalidCredentialsError()
 
       const email = normaliseEmail(input.email)
-      const key = (operation: string, value: string) =>
-        limiterKey(operation, value, deps.config.limiterSecret, deps.config.limiterNamespace)
+      const key = throttlerOf(deps).key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
       const clientLimiter = deps.limiter.use(auth.clientLimit)

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { configProvider } from '@adonisjs/core'
 import { LimiterManager, stores } from '@adonisjs/limiter'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { consume } from '../src/throttle.js'
+import { consume, limiterKey } from '../src/throttle.js'
 import { InvitationManagementDeniedError, ThrottledError } from '../src/errors.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import {
@@ -129,6 +129,34 @@ test.group('limiter privacy and invitation budgets', (group) => {
     assert.equal(keys[0], keys[1])
     assert.lengthOf(new Set(keys), 4)
     for (const key of keys) assert.notInclude(key, 'person@example.test')
+  })
+
+  test('the kit throttler keys budgets by the configured secret and namespace', async ({
+    assert,
+  }) => {
+    const keys: string[] = []
+    const limiter = {
+      use: () => ({
+        consume: async (key: string) => {
+          keys.push(key)
+        },
+      }),
+    }
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    for (const limiterNamespace of ['app-a', 'app-b']) {
+      const account = new AccountKit({
+        config: defineConfig(makeConfig({ users, limiterNamespace })),
+        db: kit.db,
+        limiter: limiter as never,
+        encryption: kit.encryption,
+      })
+      await account.managedHttp.consume({ endpoint: 'password_reset', clientKey: '192.0.2.14' })
+    }
+    const secret = 'test_only_shared_limiter_secret_32_bytes'
+    assert.deepEqual(keys, [
+      limiterKey('managed:password_reset', '192.0.2.14', secret, 'app-a'),
+      limiterKey('managed:password_reset', '192.0.2.14', secret, 'app-b'),
+    ])
   })
 
   test('resend throttle leaves existing token usable', async ({ assert }) => {
