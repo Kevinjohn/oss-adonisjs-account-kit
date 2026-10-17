@@ -9,6 +9,7 @@ import { normaliseEmail } from './email.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { clearSocialPending } from './credential_cleanup.js'
 import { waitForFloor } from './timing.js'
+import { isSocialProviderName } from './social_providers.js'
 import {
   CapabilityDisabledError,
   InvalidCredentialsError,
@@ -23,6 +24,7 @@ import type {
   CurrentAccountInput,
   PasswordLoginInput,
   ResolvedConfig,
+  SocialProviderName,
   Trx,
   UserId,
 } from './types.js'
@@ -146,12 +148,12 @@ export function authenticationService(deps: Dependencies) {
     /** Read-only impact of the login methods that remain after a proposed change. */
     async retirementImpact(input: {
       passwordLogin: boolean
-      providers?: readonly ('google' | 'github')[]
+      providers?: readonly SocialProviderName[]
     }): Promise<{
       inspectedAccounts: number
       affectedAccounts: number
       checkedAt: string
-      currentProviders: Array<'google' | 'github'>
+      currentProviders: SocialProviderName[]
       currentPasswordLogin: boolean
     }> {
       configured(deps)
@@ -160,14 +162,12 @@ export function authenticationService(deps: Dependencies) {
       if (
         input.providers &&
         (new Set(input.providers).size !== input.providers.length ||
-          input.providers.some((provider) => provider !== 'google' && provider !== 'github'))
+          input.providers.some((provider) => !isSocialProviderName(provider)))
       )
         throw new Error('Remaining provider inventory must use unique supported providers')
       const currentProviders = new Set(
         deps.config.enabled.includes('socialAuthentication')
-          ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as Array<
-              'google' | 'github'
-            >)
+          ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as SocialProviderName[])
           : []
       )
       const remainingProviders = input.providers ?? [...currentProviders]
@@ -192,7 +192,7 @@ export function authenticationService(deps: Dependencies) {
           : []
         const byUser = new Map<string, Set<string>>()
         for (const identity of identities) {
-          if (identity.provider !== 'google' && identity.provider !== 'github')
+          if (!isSocialProviderName(identity.provider))
             throw new Error('Unknown confirmed provider in login inventory')
           const key = String(identity.user_id)
           const values = byUser.get(key) ?? new Set<string>()
@@ -211,7 +211,7 @@ export function authenticationService(deps: Dependencies) {
           const confirmed = byUser.get(String(id)) ?? new Set<string>()
           const hadUsableMethod =
             user.hasPassword ||
-            [...confirmed].some((provider) => currentProviders.has(provider as 'google' | 'github'))
+            [...confirmed].some((provider) => currentProviders.has(provider as SocialProviderName))
           const retainsMethod =
             (input.passwordLogin && user.hasPassword) ||
             remainingProviders.some(

@@ -24,6 +24,7 @@ import {
   SocialUserNotFoundError,
 } from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { isSocialProviderName, socialProviderNames } from './social_providers.js'
 import { completeActivationByHash, sendVerification } from './verification.js'
 import type {
   AccountUser,
@@ -104,7 +105,7 @@ function freshAuthenticationMatches(
 
 function provider(deps: Dependencies, name: SocialProviderName) {
   const selected = deps.config.socialAuthentication?.providers[name]
-  if (!selected || (name !== 'google' && name !== 'github'))
+  if (!selected || !isSocialProviderName(name))
     throw new InvalidInputError('Unsupported social provider')
   return selected
 }
@@ -148,7 +149,7 @@ function confirmedRecipient(user: AccountUser): boolean {
 }
 
 export function enabledProviders(config: ResolvedConfig): SocialProviderName[] {
-  return (['google', 'github'] as const).filter(
+  return socialProviderNames.filter(
     (name) => config.socialAuthentication?.providers[name] !== undefined
   )
 }

@@ -1,6 +1,8 @@
 // Interactive setup questionnaire: turns prompt answers into SetupChoices.
 import { defaultSetupChoices } from './defaults.js'
 import { featureNames, type SetupChoices } from './types.js'
+import { isSocialProviderName } from '../social_providers.js'
+import type { SocialProviderName } from '../types.js'
 
 function selected<const T extends string>(
   value: string,
@@ -193,11 +195,11 @@ export async function collectSetupChoices(
   const social = socialInput.trim()
   if (social) {
     const providers = social.split(',').map((name) => name.trim())
-    if (providers.some((name) => name !== 'google' && name !== 'github'))
+    if (providers.some((name) => !isSocialProviderName(name)))
       throw new Error('social.providers: choose google and/or github')
     choices.social = {
       status: 'enabled',
-      providers: [...new Set(providers)] as Array<'google' | 'github'>,
+      providers: [...new Set(providers)] as SocialProviderName[],
       callbackOriginEnv:
         (await ask('Social callback origin environment name (ACCOUNT_SOCIAL_ORIGIN)')) ||
         'ACCOUNT_SOCIAL_ORIGIN',

@@ -2,6 +2,7 @@ import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
 import type { AccountKit } from '../account_kit.js'
 import { DeliveryError, PostCommitError } from '../errors.js'
+import { isSocialProviderName } from '../social_providers.js'
 import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.js'
 import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
 import { managedSocialHandlers, type ManagedSocialExtension } from './social.js'
@@ -192,7 +193,7 @@ export function registerManagedRoutes<Credential>(
     options.enabled.includes('socialAuthentication') &&
     (!options.extensions?.social ||
       !options.extensions.social.providers.length ||
-      options.extensions.social.providers.some((name) => name !== 'google' && name !== 'github') ||
+      options.extensions.social.providers.some((name) => !isSocialProviderName(name)) ||
       new Set(options.extensions.social.providers).size !==
         options.extensions.social.providers.length)
   )
