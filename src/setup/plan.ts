@@ -66,14 +66,12 @@ export async function planSetup(
   } = {}
 ): Promise<SetupPlan> {
   choices = parseSetupChoices(choices)
-  const diagnostics = validate(
-    choices,
-    state,
-    options.production ?? false,
-    options.retirementImpact ?? null,
-    options.retirementMaintenanceWindow ?? false,
-    options.runtimeInventoryUnavailable ?? false
-  )
+  const diagnostics = validate(choices, state, {
+    production: options.production ?? false,
+    retirementImpact: options.retirementImpact ?? null,
+    retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
+    runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
+  })
   if (
     hasEmailFlow(choices) &&
     choices.mail.integration === 'adonisjs-mail' &&
