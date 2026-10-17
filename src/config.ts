@@ -1,6 +1,8 @@
 import { DateTime } from 'luxon'
-import string from '@adonisjs/core/helpers/string'
 import { CapabilityDisabledError } from './errors.js'
+import { budget } from './config_budget.js'
+import { resolveAuthentication } from './config_authentication.js'
+import { resolvePasswordPolicy } from './config_password_policy.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -8,9 +10,7 @@ import type {
   Capability,
   InvitationThrottle,
   NotificationCallbacks,
-  ResolvedAuthenticationConfig,
   ResolvedConfig,
-  ThrottleBudget,
   UrlCallbacks,
 } from './types.js'
 
@@ -69,30 +69,6 @@ const requiredHooks: Record<Capability, string[]> = {
   ],
   registration: ['urls.emailVerification', 'notify.accountActivationProvision'],
   socialAuthentication: ['notify.socialIdentityLinked', 'notify.socialIdentityUnlinked'],
-}
-
-function budget(
-  input: Partial<ThrottleBudget> | undefined,
-  defaults: ThrottleBudget,
-  name: string
-): ThrottleBudget {
-  if (input !== undefined && (!input || typeof input !== 'object' || Array.isArray(input)))
-    throw new Error(`account_kit: ${name} must be a budget object`)
-  const requests = input?.requests ?? defaults.requests
-  const duration = input?.duration ?? defaults.duration
-  if (!Number.isSafeInteger(requests) || requests <= 0)
-    throw new Error(`account_kit: ${name}.requests must be a positive safe integer`)
-  let milliseconds: number
-  try {
-    milliseconds = string.seconds.parse(duration) * 1000
-  } catch (cause) {
-    throw new Error(`account_kit: ${name}.duration must be a supported positive duration`, {
-      cause,
-    })
-  }
-  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0 || milliseconds > 2_147_483_647)
-    throw new Error(`account_kit: ${name}.duration must be a limiter-representable duration`)
-  return { requests, duration }
 }
 
 function disabled(): never {
@@ -226,92 +202,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const tokenSecretLength = config.tokenSecretLength ?? 40
   if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)
     throw new Error('account_kit: tokenSecretLength must be an integer from 16 to 64')
-  const passwordPolicy = {
-    minLength: config.passwordPolicy?.minLength ?? 8,
-    maxLength: config.passwordPolicy?.maxLength ?? null,
-    letters: config.passwordPolicy?.letters ?? false,
-    mixedCase: config.passwordPolicy?.mixedCase ?? false,
-    numbers: config.passwordPolicy?.numbers ?? false,
-    symbols: config.passwordPolicy?.symbols ?? false,
-    minScore: config.passwordPolicy?.minScore ?? 0,
-  }
-  if (
-    config.passwordPolicy !== undefined &&
-    (!config.passwordPolicy ||
-      typeof config.passwordPolicy !== 'object' ||
-      Array.isArray(config.passwordPolicy))
-  )
-    throw new Error('account_kit: passwordPolicy must be an object')
-  if (
-    !Number.isSafeInteger(passwordPolicy.minLength) ||
-    passwordPolicy.minLength < 8 ||
-    passwordPolicy.minLength > 256 ||
-    (passwordPolicy.maxLength !== null &&
-      (!Number.isSafeInteger(passwordPolicy.maxLength) ||
-        passwordPolicy.maxLength > 256 ||
-        passwordPolicy.maxLength < passwordPolicy.minLength))
-  )
-    throw new Error(
-      'account_kit: passwordPolicy lengths must stay within 8–256 and minLength must not exceed maxLength'
-    )
-  if (
-    !Number.isSafeInteger(passwordPolicy.minScore) ||
-    passwordPolicy.minScore < 0 ||
-    passwordPolicy.minScore > 4
-  )
-    throw new Error('account_kit: passwordPolicy.minScore must be an integer from 0 to 4')
-  for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
-    if (typeof passwordPolicy[key] !== 'boolean')
-      throw new Error(`account_kit: passwordPolicy.${key} must be boolean`)
-  let authentication: ResolvedAuthenticationConfig | undefined
-  if (config.authentication !== undefined) {
-    const auth = config.authentication
-    if (!auth || typeof auth !== 'object' || Array.isArray(auth))
-      throw new Error('account_kit: authentication must be an object')
-    if (auth.strategy !== 'session' && auth.strategy !== 'access_tokens')
-      throw new Error('account_kit: authentication.strategy must be session or access_tokens')
-    if (typeof auth.guard !== 'string' || auth.guard.trim() === '')
-      throw new Error('account_kit: authentication.guard must name an existing guard')
-    if (auth.canAccess !== undefined && typeof auth.canAccess !== 'function')
-      throw new Error('account_kit: authentication.canAccess must be a function')
-    if (
-      auth.tokenAbilities !== undefined &&
-      (!Array.isArray(auth.tokenAbilities) ||
-        auth.tokenAbilities.length === 0 ||
-        auth.tokenAbilities.some((ability) => typeof ability !== 'string' || ability.trim() === ''))
-    )
-      throw new Error('account_kit: authentication.tokenAbilities must be non-empty strings')
-    if (auth.tokenExpiresIn !== undefined) expiresAt(DateTime.utc(), auth.tokenExpiresIn)
-    const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
-    if (typeof tokenTable !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(tokenTable))
-      throw new Error('account_kit: authentication.tokenTable must be a plain SQL identifier')
-    const clientLimit = budget(
-      auth.clientLimit,
-      { requests: 10, duration: '1m' },
-      'authentication.clientLimit'
-    )
-    const identityLimit = budget(
-      auth.identityLimit,
-      { requests: 5, duration: '1m' },
-      'authentication.identityLimit'
-    )
-    const blockDuration = auth.identityLimit?.blockDuration ?? '20m'
-    budget(
-      { requests: 1, duration: blockDuration },
-      { requests: 1, duration: '20m' },
-      'authentication.identityLimit.blockDuration'
-    )
-    authentication = {
-      strategy: auth.strategy,
-      guard: auth.guard,
-      canAccess: auth.canAccess ?? (async () => true),
-      clientLimit,
-      identityLimit: { ...identityLimit, blockDuration },
-      tokenAbilities: [...(auth.tokenAbilities ?? ['*'])],
-      tokenExpiresIn: auth.tokenExpiresIn ?? null,
-      tokenTable,
-    }
-  }
+  const passwordPolicy = resolvePasswordPolicy(config)
+  const authentication = resolveAuthentication(config)
   if (
     config.users.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
