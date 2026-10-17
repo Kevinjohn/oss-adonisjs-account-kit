@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { CapabilityDisabledError } from './errors.js'
 import { budget } from './config_budget.js'
+import { isSqlIdentifier } from './identifiers.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
@@ -183,7 +184,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   )
     throw new Error('account_kit: emailConstraint must be a non-empty constraint name')
   const usersTable = config.usersTable ?? 'users'
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(usersTable))
+  if (!isSqlIdentifier(usersTable))
     throw new Error('account_kit: usersTable must be a plain SQL identifier')
   return {
     ...config,

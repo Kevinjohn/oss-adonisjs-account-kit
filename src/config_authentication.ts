@@ -1,6 +1,7 @@
 // Validates and defaults the authentication option.
 import { DateTime } from 'luxon'
 import { budget } from './config_budget.js'
+import { isSqlIdentifier } from './identifiers.js'
 import { expiresAt } from './ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
 
@@ -27,7 +28,7 @@ export function resolveAuthentication(
       throw new Error('account_kit: authentication.tokenAbilities must be non-empty strings')
     if (auth.tokenExpiresIn !== undefined) expiresAt(DateTime.utc(), auth.tokenExpiresIn)
     const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
-    if (typeof tokenTable !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(tokenTable))
+    if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
       throw new Error('account_kit: authentication.tokenTable must be a plain SQL identifier')
     const clientLimit = budget(
       auth.clientLimit,

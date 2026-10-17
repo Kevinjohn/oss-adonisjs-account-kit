@@ -1,5 +1,12 @@
+export const MIN_PASSWORD_LENGTH = 8
+export const MAX_PASSWORD_LENGTH = 256
+
 export function isPasswordShaped(value: unknown): value is string {
-  return typeof value === 'string' && value.length >= 8 && value.length <= 256
+  return (
+    typeof value === 'string' &&
+    value.length >= MIN_PASSWORD_LENGTH &&
+    value.length <= MAX_PASSWORD_LENGTH
+  )
 }
 
 import type { PasswordPolicy } from './types.js'
