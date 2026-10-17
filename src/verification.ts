@@ -7,7 +7,7 @@ import { consumeUserToken, consumeUserTokenHash, lockUser, transaction } from '.
 import { deliver, finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -93,20 +93,13 @@ export async function completeActivationByHash(
 }
 
 export async function sendVerification(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: VerificationSendInput
 ): Promise<'sent' | 'already_verified'> {
   const user = await deps.config.users.findById(input.userId)
   if (!user) throw new InvalidInputError('Unknown user')
   if (user.unverifiedEmail !== user.email) return 'already_verified'
-  await consume(
-    deps.limiter,
-    'verification:user',
-    String(user.id),
-    deps.config.throttle,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
-  )
+  await throttlerOf(deps).consume('verification:user', String(user.id), deps.config.throttle)
   const recent = await deps.db
     .from('email_verification_tokens')
     .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')
