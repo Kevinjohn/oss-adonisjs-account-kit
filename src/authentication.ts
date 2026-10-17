@@ -7,6 +7,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction, userMetadata } from './db.js'
 import { normaliseEmail } from './email.js'
 import { throttlerOf, type Throttler } from './throttle.js'
+import { clearSocialPending } from './credential_cleanup.js'
 import { waitForFloor } from './timing.js'
 import {
   CapabilityDisabledError,
@@ -94,10 +95,7 @@ export async function credentialsChanged(
   user: AccountUser,
   context: Parameters<NonNullable<ResolvedConfig['onCredentialsChangedTransaction']>>[1]
 ): Promise<void> {
-  if (config.enabled.includes('socialAuthentication')) {
-    await trx.from('social_sensitive_proofs').where('user_id', user.id).delete()
-    await trx.from('social_transactions').where('user_id', user.id).delete()
-  }
+  if (config.enabled.includes('socialAuthentication')) await clearSocialPending(trx, user.id)
   if (config.authentication) await advanceCredentialRevision(trx, config, user.id)
   await config.onCredentialsChangedTransaction?.(user, context, trx)
 }

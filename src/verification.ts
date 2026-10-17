@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { credentialsChanged } from './authentication.js'
+import {
+  clearPendingSocialIdentities,
+  clearRecoveryTokens,
+  clearSocialTransactions,
+} from './credential_cleanup.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
@@ -49,11 +54,9 @@ async function activateClaim(
   confirmedSocialIdentityId?: number
 ): Promise<void> {
   await config.users.markEmailVerified(userId, DateTime.utc(), trx)
-  await trx.from('password_reset_tokens').where('tokenable_id', userId).delete()
+  await clearRecoveryTokens(trx, userId, ['password_reset_tokens'])
   if (config.enabled.includes('socialAuthentication')) {
-    const pending = trx.from('social_identities').where('user_id', userId).whereNull('confirmed_at')
-    if (confirmedSocialIdentityId !== undefined) pending.whereNot('id', confirmedSocialIdentityId)
-    await pending.delete()
+    await clearPendingSocialIdentities(trx, userId, confirmedSocialIdentityId)
     if (confirmedSocialIdentityId !== undefined)
       await trx
         .from('social_identities')
@@ -61,7 +64,7 @@ async function activateClaim(
         .where('id', confirmedSocialIdentityId)
         .whereNull('confirmed_at')
         .update({ confirmed_at: DateTime.utc().toISO() })
-    await trx.from('social_transactions').where('user_id', userId).delete()
+    await clearSocialTransactions(trx, userId)
   }
 }
 

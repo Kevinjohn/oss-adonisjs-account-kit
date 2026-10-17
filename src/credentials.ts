@@ -18,6 +18,7 @@ import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { consumeSocialSensitiveProof } from './social_identity.js'
 import { throttlerOf, type Throttler } from './throttle.js'
+import { clearRecoveryTokens } from './credential_cleanup.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -98,8 +99,10 @@ export async function changePassword(
       await deps.config.users.setPassword(actor.id, input.newPassword, trx)
       if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
         await deps.config.users.setUnverifiedEmail(actor.id, null, trx)
-      await trx.from('password_reset_tokens').where('tokenable_id', actor.id).delete()
-      await trx.from('email_verification_tokens').where('tokenable_id', actor.id).delete()
+      await clearRecoveryTokens(trx, actor.id, [
+        'password_reset_tokens',
+        'email_verification_tokens',
+      ])
       const reloaded = await deps.config.users.findById(actor.id, trx)
       if (!reloaded) throw new InvalidInputError('Unknown actor')
       await credentialsChanged(trx, deps.config, reloaded, {
@@ -177,7 +180,7 @@ export async function updateProfile(
             current.unverifiedEmail !== current.email
           ) {
             await deps.config.users.setUnverifiedEmail(current.id, null, trx)
-            await trx.from('email_verification_tokens').where('tokenable_id', current.id).delete()
+            await clearRecoveryTokens(trx, current.id, ['email_verification_tokens'])
           }
           const reloaded = await deps.config.users.findById(current.id, trx)
           if (!reloaded) throw new InvalidInputError('Unknown actor')
@@ -208,7 +211,7 @@ export async function updateProfile(
         }
         if (inactive) {
           await deps.config.users.setEmail(current.id, newEmail, trx)
-          await trx.from('password_reset_tokens').where('tokenable_id', current.id).delete()
+          await clearRecoveryTokens(trx, current.id, ['password_reset_tokens'])
         }
         await deps.config.users.setUnverifiedEmail(current.id, newEmail, trx)
         await trx
@@ -320,7 +323,7 @@ export async function completeEmailChange(
 
         await deps.config.users.setEmail(user.id, row.email, trx)
         await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
-        await trx.from('password_reset_tokens').where('tokenable_id', user.id).delete()
+        await clearRecoveryTokens(trx, user.id, ['password_reset_tokens'])
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
         await credentialsChanged(trx, deps.config, reloaded, {
