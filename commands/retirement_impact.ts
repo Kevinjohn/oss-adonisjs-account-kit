@@ -1,5 +1,6 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
+import type { SocialProviderName } from '../src/types.js'
 
 /** Booted, read-only inventory for proposed login-method retirement. */
 export default class RetirementImpact extends BaseCommand {
@@ -32,7 +33,7 @@ export default class RetirementImpact extends BaseCommand {
               : []
       this.impact = await kit.authentication.retirementImpact({
         passwordLogin: this.keepPasswordLogin === true,
-        providers: providers as ('google' | 'github')[] | undefined,
+        providers: providers as SocialProviderName[] | undefined,
       })
       if (!this.quiet) this.logger.info(JSON.stringify(this.impact))
     } catch {

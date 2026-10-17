@@ -9,6 +9,7 @@ import type {
 } from './types.js'
 import { hasEmailFlow } from './shared.js'
 import { changedFields } from './changes.js'
+import { socialProviderLabels } from '../social_providers.js'
 
 export function planSummary({
   choices,
@@ -114,7 +115,7 @@ export function planSummary({
         : 'not applicable: no email capability selected',
       social:
         choices.social.status === 'enabled'
-          ? `${choices.social.providers.map((provider) => (provider === 'google' ? 'Google' : 'GitHub')).join(', ')} selected; stable subject identities; matching email requires linking proof; missing or unverified email requires collection/verification; standard Ally has no fresh provider reauthentication proof; social-only sensitive actions require first-password reset, password login, then password re-entry; ${choices.authentication?.strategy === 'access_tokens' ? 'client POST callback and PKCE token exchange' : 'session callback and server-held PKCE verifier'}`
+          ? `${choices.social.providers.map((provider) => socialProviderLabels[provider]).join(', ')} selected; stable subject identities; matching email requires linking proof; missing or unverified email requires collection/verification; standard Ally has no fresh provider reauthentication proof; social-only sensitive actions require first-password reset, password login, then password re-entry; ${choices.authentication?.strategy === 'access_tokens' ? 'client POST callback and PKCE token exchange' : 'session callback and server-held PKCE verifier'}`
           : `not applicable: ${choices.social.reason}`,
       policy: `${choices.policy.registration} registration; verification ${choices.policy.verificationRequired ? 'required' : 'optional'}`,
     },

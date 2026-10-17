@@ -4,6 +4,7 @@ import { budget } from './config_budget.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
+import { isSocialProviderName } from './social_providers.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -11,6 +12,7 @@ import type {
   InvitationThrottle,
   NotificationCallbacks,
   ResolvedConfig,
+  SocialProviderName,
   UrlCallbacks,
 } from './types.js'
 
@@ -97,10 +99,10 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
         'account_kit: socialAuthentication requires providers, registration and authentication'
       )
     const names = Object.keys(social.providers)
-    if (names.length === 0 || names.some((name) => name !== 'google' && name !== 'github'))
+    if (names.length === 0 || names.some((name) => !isSocialProviderName(name)))
       throw new Error('account_kit: socialAuthentication supports google and github only')
     for (const name of names) {
-      const provider = social.providers[name as 'google' | 'github']
+      const provider = social.providers[name as SocialProviderName]
       if (
         typeof provider?.authorizationUrl !== 'function' ||
         typeof provider.resolve !== 'function'
