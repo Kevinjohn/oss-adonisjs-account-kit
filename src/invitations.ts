@@ -21,7 +21,7 @@ import {
   InvalidTokenError,
   type PostCommitError,
 } from './errors.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './rows.js'
@@ -72,7 +72,7 @@ async function lockManagedInvitation(
 }
 
 export async function resendInvitation(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: InvitationsResendInput
 ): Promise<Invitation> {
   requireInvitationId(input.invitationId)
@@ -87,21 +87,15 @@ export async function resendInvitation(
       throw new InvitationManagementDeniedError()
     return current
   })
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:resend:actor',
     String(actor.id),
-    deps.config.invitationThrottle.resendActor,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.resendActor
   )
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:resend:invitation',
     String(preflight.id),
-    deps.config.invitationThrottle.resendInvitation,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.resendInvitation
   )
   const { value: invitation, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
@@ -309,7 +303,7 @@ export async function inspectInvitation(
 }
 
 export async function sendInvitation(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: InvitationsSendInput
 ): Promise<Invitation> {
   if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
@@ -320,21 +314,15 @@ export async function sendInvitation(
   if ((await deps.config.authorize.invite(actor, input.role)) !== true)
     throw new AuthorizationError()
   if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:send:actor',
     String(actor.id),
-    deps.config.invitationThrottle.sendActor,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.sendActor
   )
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:send:recipient',
     email,
-    deps.config.invitationThrottle.sendRecipient,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.sendRecipient
   )
 
   const token = generateToken(deps.config.tokenSecretLength)
