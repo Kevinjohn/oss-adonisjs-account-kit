@@ -1,4 +1,5 @@
 import type { Capability, NotificationCallbacks, UrlCallbacks } from './types.js'
+import { isSocialProviderName, socialProviderLabels } from './social_providers.js'
 
 export type AccountMessageKind = keyof NotificationCallbacks
 
@@ -212,7 +213,7 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
 }
 
 function providerLabel(provider: string): string {
-  return provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : 'Social'
+  return isSocialProviderName(provider) ? socialProviderLabels[provider] : 'Social'
 }
 
 export interface ActionUrlOptions {

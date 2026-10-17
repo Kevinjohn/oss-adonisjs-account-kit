@@ -7,6 +7,8 @@ import { applySetup } from '../src/setup/apply.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { featureNames, type SetupChoices } from '../src/setup/types.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
+import { isSocialProviderName } from '../src/social_providers.js'
+import type { SocialProviderName } from '../src/types.js'
 import type RetirementImpact from './retirement_impact.js'
 
 function selected<const T extends string>(
@@ -230,11 +232,11 @@ export default class SetupAccountKit extends BaseCommand {
     const social = socialInput.trim()
     if (social) {
       const providers = social.split(',').map((name) => name.trim())
-      if (providers.some((name) => name !== 'google' && name !== 'github'))
+      if (providers.some((name) => !isSocialProviderName(name)))
         throw new Error('social.providers: choose google and/or github')
       choices.social = {
         status: 'enabled',
-        providers: [...new Set(providers)] as Array<'google' | 'github'>,
+        providers: [...new Set(providers)] as SocialProviderName[],
         callbackOriginEnv:
           (await ask('Social callback origin environment name (ACCOUNT_SOCIAL_ORIGIN)')) ||
           'ACCOUNT_SOCIAL_ORIGIN',

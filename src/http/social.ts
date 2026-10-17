@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../account_kit.js'
 import { InvalidInputError, SocialTransactionError } from '../errors.js'
+import { isSocialProviderName } from '../social_providers.js'
 import type {
   CurrentAccountInput,
   SensitivePurpose,
@@ -142,7 +143,7 @@ function forgetSessionState(context: HttpContext, state: string): void {
 }
 
 function providerName(value: string, enabled: readonly SocialProviderName[]): SocialProviderName {
-  if ((value !== 'google' && value !== 'github') || !enabled.includes(value))
+  if (!isSocialProviderName(value) || !enabled.includes(value))
     throw new InvalidInputError('Unsupported social provider')
   return value
 }
@@ -163,7 +164,7 @@ function sessionState(context: HttpContext, state: string): SessionSocialState {
     typeof stored !== 'object' ||
     typeof (stored as SessionSocialState).verifier !== 'string' ||
     typeof (stored as SessionSocialState).intent !== 'string' ||
-    !['google', 'github'].includes((stored as SessionSocialState).provider) ||
+    !isSocialProviderName((stored as SessionSocialState).provider) ||
     typeof (stored as SessionSocialState).expiresAt !== 'number' ||
     (stored as SessionSocialState).expiresAt <= Date.now()
   )
@@ -350,7 +351,7 @@ export async function executeManagedSocial<Credential>(
       if (
         methodsEnabled &&
         'provider' in result &&
-        (result.provider === 'google' || result.provider === 'github') &&
+        isSocialProviderName(result.provider) &&
         extension.providers.includes(result.provider)
       )
         await rememberManagedMethod(context, result.provider, extension)

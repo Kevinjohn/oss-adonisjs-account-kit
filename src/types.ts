@@ -1,5 +1,6 @@
 import type { DateTime } from 'luxon'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import type { socialProviderNames } from './social_providers.js'
 
 export type Trx = TransactionClientContract
 export type UserId = number | string
@@ -192,7 +193,7 @@ export interface PasswordPolicy {
   minScore: 0 | 1 | 2 | 3 | 4
 }
 
-export type SocialProviderName = 'google' | 'github'
+export type SocialProviderName = (typeof socialProviderNames)[number]
 export type SocialIntent = 'login' | 'link' | 'reauth' | 'confirm'
 export type SensitivePurpose = 'social_link' | 'social_unlink' | 'password_change' | 'email_change'
 
