@@ -1,7 +1,8 @@
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { CapabilityDisabledError } from '../src/errors.js'
-import type { AccountKitConfig } from '../src/types.js'
+import { capabilities, capabilityRegistry, defaultCapabilities } from '../src/capabilities.js'
+import type { AccountKitConfig, Capability } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 
@@ -307,5 +308,26 @@ test.group('capability configuration', (group) => {
     assert.equal(adapterCalls, 0)
     assert.equal(notificationCalls, 0)
     assert.equal(queryCount, 0)
+  })
+})
+
+test.group('capability registry', () => {
+  test('has one entry per Capability union member', ({ assert }) => {
+    // Record<Capability, true> fails to compile when the union gains or loses a member.
+    const union: Record<Capability, true> = {
+      passwordReset: true,
+      emailVerification: true,
+      invitations: true,
+      emailPasswordManagement: true,
+      registration: true,
+      socialAuthentication: true,
+    }
+    assert.sameMembers(Object.keys(capabilityRegistry), Object.keys(union))
+    assert.deepEqual(capabilities, Object.keys(union) as Capability[])
+    assert.deepEqual(defaultCapabilities, [
+      'passwordReset',
+      'emailVerification',
+      'emailPasswordManagement',
+    ])
   })
 })

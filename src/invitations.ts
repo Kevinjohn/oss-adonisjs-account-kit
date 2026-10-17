@@ -9,7 +9,7 @@ import {
   isUniqueViolation,
   isUserEmailUniqueViolation,
 } from './db.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   AuthorizationError,
@@ -21,7 +21,7 @@ import {
   InvalidTokenError,
   type PostCommitError,
 } from './errors.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './rows.js'
@@ -72,7 +72,7 @@ async function lockManagedInvitation(
 }
 
 export async function resendInvitation(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: InvitationsResendInput
 ): Promise<Invitation> {
   requireInvitationId(input.invitationId)
@@ -87,58 +87,52 @@ export async function resendInvitation(
       throw new InvitationManagementDeniedError()
     return current
   })
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:resend:actor',
     String(actor.id),
-    deps.config.invitationThrottle.resendActor,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.resendActor
   )
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:resend:invitation',
     String(preflight.id),
-    deps.config.invitationThrottle.resendInvitation,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.resendInvitation
   )
-  const invitation = await transaction(deps.db, async (trx) => {
-    const current = await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
-    if ((await deps.config.authorize.invite(actor, current.role, { trx })) !== true)
-      throw new InvitationManagementDeniedError()
+  const { value: invitation, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      const current = await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
+      if ((await deps.config.authorize.invite(actor, current.role, { trx })) !== true)
+        throw new InvitationManagementDeniedError()
 
-    const now = DateTime.utc()
-    const [updated] = await trx
-      .getWriteClient()
-      .table('account_invitations')
-      .where('id', input.invitationId)
-      .update({
-        token_hash: hashToken(token),
-        expires_at: expiresAt(now, deps.config.expiresIn.invitation).toISO(),
-        updated_at: now.toISO(),
-      })
-      .returning('*')
-    if (!updated) throw new InvitationNotFoundError()
-    return toInvitation(updated)
-  })
+      const now = DateTime.utc()
+      const [updated] = await trx
+        .getWriteClient()
+        .table('account_invitations')
+        .where('id', input.invitationId)
+        .update({
+          token_hash: hashToken(token),
+          expires_at: expiresAt(now, deps.config.expiresIn.invitation).toISO(),
+          updated_at: now.toISO(),
+        })
+        .returning('*')
+      if (!updated) throw new InvitationNotFoundError()
+      return toInvitation(updated)
+    })
+  )
 
-  await postCommit('Invitation follow-up failed', [
-    {
-      kind: 'delivery',
-      run: () =>
-        deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
-    },
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'invitation.resent',
-          invitationId: invitation.id,
-          operationId,
-        }),
-    },
-  ])
+  await finishCommitted(fault, 'Invitation rotated but follow-ups failed', () =>
+    postCommit('Invitation follow-up failed', [
+      {
+        kind: 'delivery',
+        run: () =>
+          deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
+      },
+      lifecycle(deps.config, {
+        type: 'invitation.resent',
+        invitationId: invitation.id,
+        operationId,
+      }),
+    ])
+  )
   return invitation
 }
 
@@ -149,21 +143,21 @@ export async function revokeInvitation(
   requireInvitationId(input.invitationId)
   const actor = await requireActor(deps.config, input.actorId)
   const operationId = randomUUID()
-  await transaction(deps.db, async (trx) => {
-    await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
-    await trx.from('account_invitations').where('id', input.invitationId).delete()
-  })
-  await postCommit('Invitation follow-up failed', [
-    {
-      kind: 'observer',
-      run: () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'invitation.revoked',
-          invitationId: input.invitationId,
-          operationId,
-        }),
-    },
-  ])
+  const { fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
+      await trx.from('account_invitations').where('id', input.invitationId).delete()
+    })
+  )
+  await finishCommitted(fault, 'Invitation revoked but follow-ups failed', () =>
+    postCommit('Invitation follow-up failed', [
+      lifecycle(deps.config, {
+        type: 'invitation.revoked',
+        invitationId: input.invitationId,
+        operationId,
+      }),
+    ])
+  )
 }
 
 export async function acceptInvitation(
@@ -217,16 +211,12 @@ export async function acceptInvitation(
   }
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
     postCommit('Invitation follow-up failed', [
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'invitation.accepted',
-            invitationId: result.invitationId,
-            userId: result.user.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'invitation.accepted',
+        invitationId: result.invitationId,
+        userId: result.user.id,
+        operationId,
+      }),
     ])
   )
   return result.user
@@ -301,7 +291,7 @@ export async function inspectInvitation(
 }
 
 export async function sendInvitation(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: InvitationsSendInput
 ): Promise<Invitation> {
   if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
@@ -312,21 +302,15 @@ export async function sendInvitation(
   if ((await deps.config.authorize.invite(actor, input.role)) !== true)
     throw new AuthorizationError()
   if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:send:actor',
     String(actor.id),
-    deps.config.invitationThrottle.sendActor,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.sendActor
   )
-  await consume(
-    deps.limiter,
+  await throttlerOf(deps).consume(
     'invitation:send:recipient',
     email,
-    deps.config.invitationThrottle.sendRecipient,
-    deps.config.limiterSecret,
-    deps.config.limiterNamespace
+    deps.config.invitationThrottle.sendRecipient
   )
 
   const token = generateToken(deps.config.tokenSecretLength)
@@ -370,15 +354,11 @@ export async function sendInvitation(
         run: () =>
           deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'invitation.sent',
-            invitationId: invitation.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'invitation.sent',
+        invitationId: invitation.id,
+        operationId,
+      }),
     ])
   )
   return invitation
