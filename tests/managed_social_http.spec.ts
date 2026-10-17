@@ -187,6 +187,76 @@ test.group('managed social HTTP', () => {
     assert.notInclude(JSON.stringify(result), 'never-in-JSON')
   })
 
+  test('session confirmation creates a server-held verifier and stores a confirm intent', async ({
+    assert,
+  }) => {
+    const ctx = context(
+      { verificationToken: 'verify-token', clientChallenge: 'caller-controlled' },
+      { provider: 'google' }
+    )
+    let challenge = ''
+    const kit = {
+      socialAuthentication: {
+        beginConfirmation: async (input: { clientChallenge: string }) => {
+          challenge = input.clientChallenge
+          return { state: 'confirm-state', url: 'https://provider.example/confirm' }
+        },
+      },
+    } as unknown as AccountKit
+    const result = await executeManagedSocial('auth.oauth.confirmation', ctx, kit, guard(), social)
+    const key = `accountKit.social.${createHash('sha256').update('confirm-state').digest('hex')}`
+    const saved = (
+      ctx as unknown as {
+        session: { get(key: string): { verifier: string; intent: string; provider: string } }
+      }
+    ).session.get(key)
+    assert.equal(challenge, createHash('sha256').update(saved.verifier).digest('base64url'))
+    assert.notEqual(challenge, 'caller-controlled')
+    assert.equal(saved.intent, 'confirm')
+    assert.equal(saved.provider, 'google')
+    assert.deepEqual(result, {
+      status: 200,
+      body: { authorizationUrl: 'https://provider.example/confirm' },
+    })
+  })
+
+  test('session registration redeems with the stored verifier and remembers its provider', async ({
+    assert,
+  }) => {
+    const ctx = context({ continuation: 'continuation-state', email: 'new@example.test' })
+    seedSessionState(ctx, 'continuation-state', {
+      verifier: 'server-verifier',
+      intent: 'login',
+      provider: 'google',
+    })
+    let remembered: string | null = null
+    const kit = {
+      socialAuthentication: {
+        completeRegistration: async () => ({ status: 'new', userId: 7, handoffCode: 'once' }),
+        redeemHandoff: async (input: { verifier: string; code: string }) => {
+          assert.equal(input.verifier, 'server-verifier')
+          assert.equal(input.code, 'once')
+          return { account: { id: 7, active: true }, credential: { opaque: 'never-in-JSON' } }
+        },
+      },
+    } as unknown as AccountKit
+    const result = await executeManagedSocial('auth.oauth.registration', ctx, kit, guard(), {
+      ...social,
+      rememberLastUsedMethod: async (_context, method) => {
+        remembered = method
+      },
+    })
+    assert.deepEqual(result, {
+      status: 200,
+      body: { status: 'new', account: { id: 7, active: true } },
+    })
+    assert.equal(remembered, 'google')
+    const key = `accountKit.social.${createHash('sha256').update('continuation-state').digest('hex')}`
+    assert.isUndefined(
+      (ctx as unknown as { session: { get(key: string): unknown } }).session.get(key)
+    )
+  })
+
   test('session callback rejects a provider different from the initiating transaction', async ({
     assert,
   }) => {
