@@ -9,6 +9,7 @@ import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { consume } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
   ResolvedConfig,
@@ -112,12 +113,11 @@ export async function sendVerification(
     .where('tokenable_id', user.id)
     .first()
   if (
-    recent?.purpose === 'activation' &&
-    recent.email === user.email &&
-    recent.current_email === user.email &&
-    DateTime.fromJSDate(new Date(recent.expires_at)).toMillis() > DateTime.utc().toMillis() &&
-    DateTime.fromJSDate(new Date(recent.created_at)).toMillis() >
-      DateTime.utc().minus({ minutes: 1 }).toMillis()
+    isRecentIssue(
+      recent,
+      { purpose: 'activation', email: user.email, currentEmail: user.email },
+      DateTime.utc()
+    )
   )
     return 'sent'
   const token = generateToken(deps.config.tokenSecretLength)
@@ -133,12 +133,11 @@ export async function sendVerification(
         .where('tokenable_id', current.id)
         .first()
       if (
-        previous?.purpose === 'activation' &&
-        previous.email === current.email &&
-        previous.current_email === current.email &&
-        DateTime.fromJSDate(new Date(previous.expires_at)).toMillis() > now.toMillis() &&
-        DateTime.fromJSDate(new Date(previous.created_at)).toMillis() >
-          now.minus({ minutes: 1 }).toMillis()
+        isRecentIssue(
+          previous,
+          { purpose: 'activation', email: current.email, currentEmail: current.email },
+          now
+        )
       )
         return false
       await trx
