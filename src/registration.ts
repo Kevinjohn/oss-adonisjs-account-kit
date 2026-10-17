@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import { transaction, isUserEmailUniqueViolation } from './db.js'
-import { finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import {
   CapabilityDisabledError,
@@ -77,15 +77,11 @@ export async function register(
             deps.config.urls.emailVerification(token)
           ),
       },
-      {
-        kind: 'observer',
-        run: () =>
-          deps.config.onLifecycleEvent?.({
-            type: 'registration.created',
-            userId: created.id,
-            operationId,
-          }),
-      },
+      lifecycle(deps.config, {
+        type: 'registration.created',
+        userId: created.id,
+        operationId,
+      }),
     ])
   )
   return created

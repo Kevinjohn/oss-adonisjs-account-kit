@@ -1,7 +1,11 @@
 import { test } from '@japa/runner'
 import type { AccountKit } from '../src/account_kit.js'
-import { registerManagedRoutes } from '../src/http/managed.js'
-import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
+import { managedHandlers, registerManagedRoutes, type ManagedHandler } from '../src/http/managed.js'
+import {
+  assertManagedRouteCollisions,
+  planManagedRoutes,
+  type ManagedEndpointName,
+} from '../src/http/routes.js'
 import { bootTestApp } from './helpers/app.js'
 
 test.group('managed route plan', () => {
@@ -496,5 +500,33 @@ test.group('managed route plan', () => {
     assert.throws(() =>
       planManagedRoutes({ prefix: '/api/:id', strategy: 'session', enabled: ['authentication'] })
     )
+  })
+
+  test('every planned endpoint has a handler and a missing handler does not compile', ({
+    assert,
+  }) => {
+    const withoutCsrf: Omit<
+      Record<ManagedEndpointName, ManagedHandler>,
+      'auth.csrf'
+    > = managedHandlers
+    // @ts-expect-error a handler table without an entry for a defined endpoint is rejected
+    const incomplete: Record<ManagedEndpointName, ManagedHandler> = withoutCsrf
+    assert.isFunction(incomplete['auth.login'])
+    for (const strategy of ['session', 'access_tokens'] as const) {
+      const routes = planManagedRoutes({
+        prefix: '/api/v1',
+        strategy,
+        enabled: [
+          'authentication',
+          'registration',
+          'passwordReset',
+          'emailVerification',
+          'emailPasswordManagement',
+          'invitations',
+          'socialAuthentication',
+        ],
+      })
+      for (const route of routes) assert.isFunction(managedHandlers[route.name], route.name)
+    }
   })
 })

@@ -1,16 +1,17 @@
 import { performance } from 'node:perf_hooks'
 import { randomUUID } from 'node:crypto'
-import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
+import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { consumeUserToken, lockUser, transaction } from './db.js'
-import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { consume } from './throttle.js'
+import { throttlerOf, type Throttler } from './throttle.js'
+import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
@@ -62,16 +63,12 @@ export async function completePasswordReset(
 
       await deps.config.users.setPassword(row.tokenable_id, input.password, trx)
       if (deps.config.enabled.includes('socialAuthentication'))
-        await trx
-          .from('social_identities')
-          .where('user_id', row.tokenable_id)
-          .whereNull('confirmed_at')
-          .delete()
+        await clearPendingSocialIdentities(trx, row.tokenable_id)
       if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email)
         await deps.config.users.setUnverifiedEmail(row.tokenable_id, null, trx)
       if (current.unverifiedEmail === current.email)
         await deps.config.users.markEmailVerified(row.tokenable_id, DateTime.utc(), trx)
-      await trx.from('email_verification_tokens').where('tokenable_id', row.tokenable_id).delete()
+      await clearRecoveryTokens(trx, row.tokenable_id, ['email_verification_tokens'])
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await credentialsChanged(trx, deps.config, reloaded, {
@@ -96,7 +93,7 @@ export async function completePasswordReset(
 }
 
 export async function requestPasswordReset(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService },
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: PasswordResetRequestInput
 ): Promise<void> {
   const started = performance.now()
@@ -106,22 +103,8 @@ export async function requestPasswordReset(
       throw new InvalidInputError('Invalid client key')
     const email = normaliseEmail(input.email)
 
-    await consume(
-      deps.limiter,
-      'recovery:client',
-      input.clientKey,
-      deps.config.throttle,
-      deps.config.limiterSecret,
-      deps.config.limiterNamespace
-    )
-    await consume(
-      deps.limiter,
-      'recovery:email',
-      email,
-      deps.config.throttle,
-      deps.config.limiterSecret,
-      deps.config.limiterNamespace
-    )
+    await throttlerOf(deps).consume('recovery:client', input.clientKey, deps.config.throttle)
+    await throttlerOf(deps).consume('recovery:email', email, deps.config.throttle)
     const user = await deps.config.users.findByEmail(email)
     if (!user) return
 
@@ -163,24 +146,15 @@ export async function requestPasswordReset(
               deps.config.urls.passwordReset(token)
             ),
         },
-        {
-          kind: 'observer',
-          run: () =>
-            deps.config.onLifecycleEvent?.({
-              type: 'password_reset.requested',
-              userId: issuedUser.id,
-              operationId,
-            }),
-        },
+        lifecycle(deps.config, {
+          type: 'password_reset.requested',
+          userId: issuedUser.id,
+          operationId,
+        }),
       ])
     )
   } finally {
-    // Every exit, including a throw, waits out the configured floor. Timers can wake early,
-    // so keep waiting until the floor has actually passed.
-    let remaining = deps.config.minRequestMs - (performance.now() - started)
-    while (remaining > 0) {
-      await delay(Math.ceil(remaining))
-      remaining = deps.config.minRequestMs - (performance.now() - started)
-    }
+    // Every exit, including a throw, waits out the configured floor.
+    await waitForFloor(started, deps.config.minRequestMs)
   }
 }
