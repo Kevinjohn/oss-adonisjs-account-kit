@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
+import { deleteReturning } from './db.js'
 
 type TokenTable =
   | 'password_reset_tokens'
@@ -77,13 +78,11 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
           .count('* as total')
         counts[key] += Number(total)
       } else {
-        const result: unknown = await db
-          .rawQuery(
-            `delete from ${table} where id in (${ids.map(() => '?').join(', ')}) and expires_at <= ? returning id`,
-            [...ids, cutoff]
-          )
-          .exec()
-        const rows = Array.isArray(result) ? result : (result as { rows: unknown[] }).rows
+        const rows = await deleteReturning<unknown>(
+          db,
+          `delete from ${table} where id in (${ids.map(() => '?').join(', ')}) and expires_at <= ? returning id`,
+          [...ids, cutoff]
+        )
         counts[key] += rows.length
       }
       if (selected.length < batchSize) done.add(table)

@@ -32,3 +32,37 @@ export function limiterKey(operation: string, key: string, secret: string, names
     .digest('hex')
   return `account-kit:v1:${digest}`
 }
+
+/** Limiter, secret and namespace bound once, so callers pass only what varies per call. */
+export interface Throttler {
+  consume(operation: string, key: string, budget: ResolvedConfig['throttle']): Promise<void>
+  key(operation: string, value: string): string
+}
+
+export function makeThrottler(input: {
+  limiter: LimiterService
+  secret: string
+  namespace?: string
+}): Throttler {
+  return {
+    consume: (operation, key, budget) =>
+      consume(input.limiter, operation, key, budget, input.secret, input.namespace),
+    key: (operation, value) => limiterKey(operation, value, input.secret, input.namespace),
+  }
+}
+
+/** The composition root's throttler, or one built from the same fields for direct callers. */
+export function throttlerOf(deps: {
+  throttler?: Throttler
+  limiter: LimiterService
+  config: Pick<ResolvedConfig, 'limiterSecret' | 'limiterNamespace'>
+}): Throttler {
+  return (
+    deps.throttler ??
+    makeThrottler({
+      limiter: deps.limiter,
+      secret: deps.config.limiterSecret,
+      namespace: deps.config.limiterNamespace,
+    })
+  )
+}
