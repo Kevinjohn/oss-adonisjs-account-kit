@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { lockRow, transaction } from '../src/db.js'
+import { deleteReturning, lockRow, transaction } from '../src/db.js'
 import { isUniqueViolation } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -229,5 +229,24 @@ test.group('database helpers', (group) => {
     assert.isFalse(
       isUniqueViolation({ code: '23505', constraint: 'other_users_email_unique' }, 'users', 'email')
     )
+  })
+
+  test('deleteReturning normalises both driver result shapes', async ({ assert }) => {
+    const client = (result: unknown) =>
+      ({ rawQuery: () => ({ exec: async () => result }) }) as unknown as Parameters<
+        typeof deleteReturning
+      >[0]
+    assert.deepEqual(await deleteReturning(client([{ id: 1 }]), 'sql', []), [{ id: 1 }])
+    assert.deepEqual(await deleteReturning(client({ rows: [{ id: 2 }] }), 'sql', []), [{ id: 2 }])
+  })
+
+  test('deleteReturning returns the deleted rows from the real database', async ({ assert }) => {
+    await kit.db.table('users').insert({ email: 'gone@example.test', created_at: new Date() })
+    const rows = await deleteReturning<{ email: string }>(
+      kit.db,
+      'delete from users where email = ? returning email',
+      ['gone@example.test']
+    )
+    assert.deepEqual(rows, [{ email: 'gone@example.test' }])
   })
 })
