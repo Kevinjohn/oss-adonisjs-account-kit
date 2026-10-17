@@ -268,8 +268,7 @@ const oauthCallback: SocialHandler = async ({
         intent: undefined,
       }
   if (typeof input.state !== 'string') throw new SocialTransactionError()
-  if (isPost && input.intent && !isSocialIntent(input.intent))
-    throw new SocialTransactionError()
+  if (isPost && input.intent && !isSocialIntent(input.intent)) throw new SocialTransactionError()
   const saved = guard.strategy === 'session' ? sessionState(context, input.state) : null
   if (saved && saved.provider !== provider) throw new SocialTransactionError()
   const intent = saved?.intent ?? (input.intent as SocialIntent | undefined) ?? 'login'

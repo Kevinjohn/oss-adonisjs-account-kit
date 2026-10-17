@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import { isSqlIdentifier } from './identifiers.js'
 import type { Database } from '@adonisjs/lucid/database'
 import { InvalidTokenError } from './errors.js'
 import { hashToken } from './tokens.js'
@@ -37,7 +38,7 @@ export async function userMetadata(config: UsersStorage): Promise<UsersAdapterMe
         primaryKey: 'id' as const,
         emailConstraint: config.emailConstraint,
       }
-  if (metadata.primaryKey !== 'id' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(metadata.table))
+  if (metadata.primaryKey !== 'id' || !isSqlIdentifier(metadata.table))
     throw new Error(
       'account_kit: adapter metadata must use a plain table name and physical id column'
     )

@@ -1,5 +1,6 @@
 // Validates and defaults the passwordPolicy option.
 import type { AccountKitConfig, PasswordPolicy } from './types.js'
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.js'
 
 export function resolvePasswordPolicy(
   config: Pick<AccountKitConfig, 'passwordPolicy'>
@@ -22,11 +23,11 @@ export function resolvePasswordPolicy(
     throw new Error('account_kit: passwordPolicy must be an object')
   if (
     !Number.isSafeInteger(passwordPolicy.minLength) ||
-    passwordPolicy.minLength < 8 ||
-    passwordPolicy.minLength > 256 ||
+    passwordPolicy.minLength < MIN_PASSWORD_LENGTH ||
+    passwordPolicy.minLength > MAX_PASSWORD_LENGTH ||
     (passwordPolicy.maxLength !== null &&
       (!Number.isSafeInteger(passwordPolicy.maxLength) ||
-        passwordPolicy.maxLength > 256 ||
+        passwordPolicy.maxLength > MAX_PASSWORD_LENGTH ||
         passwordPolicy.maxLength < passwordPolicy.minLength))
   )
     throw new Error(
