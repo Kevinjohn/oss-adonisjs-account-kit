@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
-import { setTimeout as delay } from 'node:timers/promises'
 import { DateTime } from 'luxon'
 import { errors } from '@adonisjs/limiter'
 import type { Database } from '@adonisjs/lucid/database'
@@ -8,6 +7,7 @@ import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction, userMetadata } from './db.js'
 import { normaliseEmail } from './email.js'
 import { limiterKey } from './throttle.js'
+import { waitForFloor } from './timing.js'
 import {
   CapabilityDisabledError,
   InvalidCredentialsError,
@@ -282,11 +282,7 @@ export function authenticationService(deps: Dependencies) {
           await clientLimiter.increment(clientKey)
           // Unknown and passwordless emails skip password hashing. Wait out the configured floor
           // so failure timing does not reveal which addresses have usable accounts.
-          let remaining = deps.config.minRequestMs - (performance.now() - started)
-          while (remaining > 0) {
-            await delay(Math.ceil(remaining))
-            remaining = deps.config.minRequestMs - (performance.now() - started)
-          }
+          await waitForFloor(started, deps.config.minRequestMs)
         }
         if (error instanceof errors.E_TOO_MANY_REQUESTS)
           throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
