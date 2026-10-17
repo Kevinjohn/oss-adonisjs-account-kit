@@ -6,7 +6,7 @@ import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { consumeUserToken, lockUser, transaction } from './db.js'
-import { afterCommit, finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
@@ -146,15 +146,11 @@ export async function requestPasswordReset(
               deps.config.urls.passwordReset(token)
             ),
         },
-        {
-          kind: 'observer',
-          run: () =>
-            deps.config.onLifecycleEvent?.({
-              type: 'password_reset.requested',
-              userId: issuedUser.id,
-              operationId,
-            }),
-        },
+        lifecycle(deps.config, {
+          type: 'password_reset.requested',
+          userId: issuedUser.id,
+          operationId,
+        }),
       ])
     )
   } finally {
