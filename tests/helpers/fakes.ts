@@ -162,7 +162,7 @@ export async function insertUser(
 }
 
 export const accountKit = (kit: TestApp, config: ReturnType<typeof defineConfig>) =>
-  new AccountKit({ config, db: kit.db, limiter: kit.limiter, encryption: kit.encryption })
+  new AccountKit({ config, db: kit.db, limiter: kit.limiter })
 
 /** A service over the database adapter with its own notification recorder. */
 export function makeService(kit: TestApp, overrides: Partial<AccountKitConfig> = {}) {
