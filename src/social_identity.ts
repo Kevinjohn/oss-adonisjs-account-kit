@@ -24,6 +24,7 @@ import {
   SocialUserNotFoundError,
 } from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
+import { completeActivationByHash, sendVerification } from './verification.js'
 import type {
   AccountUser,
   AuthenticationGuard,
@@ -470,7 +471,6 @@ export function socialIdentityService(deps: Dependencies) {
                 .whereNull('confirmed_at')
                 .first()
               if (!pending) throw new SocialTransactionError()
-              const { completeActivationByHash } = await import('./verification.js')
               const userId = await completeActivationByHash(
                 trx,
                 deps.config,
@@ -542,7 +542,6 @@ export function socialIdentityService(deps: Dependencies) {
         'Social callback committed but follow-up failed',
         async () => {
           if (unverified && deps.config.enabled.includes('emailVerification')) {
-            const { sendVerification } = await import('./verification.js')
             await sendVerification(deps, { userId: unverified })
           }
           if (linkedNotice && confirmedRecipient(linkedNotice.user)) {
@@ -634,7 +633,6 @@ export function socialIdentityService(deps: Dependencies) {
         'Social registration committed but follow-up failed',
         async () => {
           if (unverified && deps.config.enabled.includes('emailVerification')) {
-            const { sendVerification } = await import('./verification.js')
             await sendVerification(deps, { userId: unverified })
           }
         }
