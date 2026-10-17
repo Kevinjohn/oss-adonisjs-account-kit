@@ -1,6 +1,7 @@
 import type { SetupChoices } from './types.js'
 import { DateTime } from 'luxon'
 import { expiresAt } from '../ttl.js'
+import { socialProviderNames } from '../social_providers.js'
 
 function record(
   input: unknown,
@@ -204,7 +205,7 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     strings(selected.providers, 'social.providers')
     string(selected.callbackOriginEnv, 'social.callbackOriginEnv')
     string(selected.callbackPath, 'social.callbackPath')
-    const credentials = record(selected.credentials, 'social.credentials', [], ['google', 'github'])
+    const credentials = record(selected.credentials, 'social.credentials', [], socialProviderNames)
     for (const [provider, value] of Object.entries(credentials)) {
       const entry = record(value, `social.credentials.${provider}`, [
         'clientIdEnv',

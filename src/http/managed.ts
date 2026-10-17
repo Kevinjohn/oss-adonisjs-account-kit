@@ -8,6 +8,7 @@ import {
   InvalidTokenError,
   PostCommitError,
 } from '../errors.js'
+import { isSocialProviderName } from '../social_providers.js'
 import type {
   AccountUser,
   AuthenticationGuard,
@@ -463,7 +464,7 @@ export function registerManagedRoutes<Credential>(
     options.enabled.includes('socialAuthentication') &&
     (!options.extensions?.social ||
       !options.extensions.social.providers.length ||
-      options.extensions.social.providers.some((name) => name !== 'google' && name !== 'github') ||
+      options.extensions.social.providers.some((name) => !isSocialProviderName(name)) ||
       new Set(options.extensions.social.providers).size !==
         options.extensions.social.providers.length)
   )

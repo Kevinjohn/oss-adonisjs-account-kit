@@ -1,4 +1,5 @@
 import type { ExistingRoute, ManagedEndpointName } from '../http/routes.js'
+import type { SocialProviderName } from '../types.js'
 
 export const featureNames = [
   'registration',
@@ -84,12 +85,12 @@ export interface SetupChoices {
     | { status: 'not-applicable'; reason: string }
     | {
         status: 'enabled'
-        providers: Array<'google' | 'github'>
+        providers: SocialProviderName[]
         callbackOriginEnv: string
         /** Absolute path with a {provider} placeholder; token clients own this destination. */
         callbackPath: string
         credentials: Partial<
-          Record<'google' | 'github', { clientIdEnv: string; clientSecretEnv: string }>
+          Record<SocialProviderName, { clientIdEnv: string; clientSecretEnv: string }>
         >
       }
 }
@@ -138,7 +139,7 @@ export interface SetupPlan {
     affectedAccounts: number
     checkedAt: string
     /** Booted login methods observed by the inventory, independent of persisted setup choices. */
-    currentProviders?: Array<'google' | 'github'>
+    currentProviders?: SocialProviderName[]
     currentPasswordLogin?: boolean
   } | null
   prerequisites: string[]

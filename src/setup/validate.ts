@@ -8,6 +8,8 @@ import {
 } from './types.js'
 import { planManagedRoutes, type ManagedRoute } from '../http/routes.js'
 import { createActionUrls } from '../notifications.js'
+import { isSocialProviderName } from '../social_providers.js'
+import type { SocialProviderName } from '../types.js'
 import {
   emailDestinations,
   hasEmailFlow,
@@ -475,7 +477,7 @@ export function validate(
   if (choices.social.status === 'enabled') {
     if (
       !choices.social.providers.length ||
-      choices.social.providers.some((provider) => !['google', 'github'].includes(provider)) ||
+      choices.social.providers.some((provider) => !isSocialProviderName(provider)) ||
       new Set(choices.social.providers).size !== choices.social.providers.length
     )
       diagnostic(diagnostics, 'social.providers', 'Select unique Google and/or GitHub providers')
@@ -560,7 +562,7 @@ export function validate(
           )
     }
     for (const name of Object.keys(choices.social.credentials))
-      if (!choices.social.providers.includes(name as 'google' | 'github'))
+      if (!choices.social.providers.includes(name as SocialProviderName))
         diagnostic(
           diagnostics,
           `social.credentials.${name}`,

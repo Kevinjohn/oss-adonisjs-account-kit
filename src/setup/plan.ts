@@ -17,6 +17,7 @@ import {
 import type * as TypeScript from 'typescript'
 import { hasEmailFlow, selectedManagedRoutes, diagnostic } from './shared.js'
 import { validate } from './validate.js'
+import { socialProviderLabels } from '../social_providers.js'
 import { generatedEnv, migrationContent, addChange, ownedChange, changedFields } from './changes.js'
 import {
   disabledManagedRoutesSource,
@@ -1077,7 +1078,7 @@ export async function planSetup(
         : 'not applicable: no email capability selected',
       social:
         choices.social.status === 'enabled'
-          ? `${choices.social.providers.map((provider) => (provider === 'google' ? 'Google' : 'GitHub')).join(', ')} selected; stable subject identities; matching email requires linking proof; missing or unverified email requires collection/verification; standard Ally has no fresh provider reauthentication proof; social-only sensitive actions require first-password reset, password login, then password re-entry; ${choices.authentication?.strategy === 'access_tokens' ? 'client POST callback and PKCE token exchange' : 'session callback and server-held PKCE verifier'}`
+          ? `${choices.social.providers.map((provider) => socialProviderLabels[provider]).join(', ')} selected; stable subject identities; matching email requires linking proof; missing or unverified email requires collection/verification; standard Ally has no fresh provider reauthentication proof; social-only sensitive actions require first-password reset, password login, then password re-entry; ${choices.authentication?.strategy === 'access_tokens' ? 'client POST callback and PKCE token exchange' : 'session callback and server-held PKCE verifier'}`
           : `not applicable: ${choices.social.reason}`,
       policy: `${choices.policy.registration} registration; verification ${choices.policy.verificationRequired ? 'required' : 'optional'}`,
     },
