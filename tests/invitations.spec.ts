@@ -940,6 +940,107 @@ test.group('invitations.resend and revoke', (group) => {
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
   })
 
+  /** Fault the commit of the nth package transaction only, counting from zero. */
+  function faultNthCommit(db: Database, failure: Error, index: number): Database {
+    let seen = 0
+    return Object.create(db, {
+      connection: {
+        value: (...args: Parameters<Database['connection']>) => {
+          const client = db.connection(...args)
+          const begin = client.transaction.bind(client) as (...rest: unknown[]) => Promise<Trx>
+          client.transaction = (async (...rest: unknown[]) => {
+            const trx = await begin(...rest)
+            if (seen++ === index) {
+              trx.on('commit', () => {
+                throw failure
+              })
+            }
+            return trx
+          }) as typeof client.transaction
+          return client
+        },
+      },
+    })
+  }
+
+  test('resend delivers the rotated token once after a committed cleanup fault', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    const events: string[] = []
+    const { account } = service({
+      notify: recorder.notify,
+      onLifecycleEvent: async (event) => {
+        events.push(event.type)
+      },
+    })
+    const { invitation, token: oldToken } = await issue(account, recorder, actor.id)
+    events.length = 0
+    const failure = new Error('listener failed after commit')
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        notify: recorder.notify,
+        onLifecycleEvent: async (event) => {
+          events.push(event.type)
+        },
+      })
+    )
+    // Resend runs a preflight transaction first; the rotation is the second one.
+    const faulty = accountKit({ ...kit, db: faultNthCommit(kit.db, failure, 1) }, config)
+    try {
+      await faulty.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(
+      recorder.calls.map((call) => call.method),
+      ['invitationProvision', 'invitationProvision']
+    )
+    assert.deepEqual(events, ['invitation.resent'])
+    const newToken = tokenFrom(recorder.calls[1].args[1])
+    assert.isNull(await account.invitations.inspect({ token: oldToken }))
+    assert.deepEqual(await account.invitations.inspect({ token: newToken }), {
+      email: invitation.email,
+      role: invitation.role,
+    })
+  })
+
+  test('revoke emits the revoked event once after a committed cleanup fault', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    const events: string[] = []
+    const { account } = service({ notify: recorder.notify })
+    const { invitation } = await issue(account, recorder, actor.id)
+    const failure = new Error('listener failed after commit')
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        notify: recorder.notify,
+        onLifecycleEvent: async (event) => {
+          events.push(event.type)
+        },
+      })
+    )
+    const faulty = accountKit({ ...kit, db: faultNthCommit(kit.db, failure, 0) }, config)
+    try {
+      await faulty.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
+      assert.fail('expected committed failure')
+    } catch (error) {
+      assert.instanceOf(error, PostCommitError)
+      assert.isTrue((error as PostCommitError).committed)
+      assert.equal((error as PostCommitError).cause, failure)
+    }
+    assert.deepEqual(events, ['invitation.revoked'])
+    assert.isNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
+  })
+
   test('revoke checks management permission, deletes the row, and cannot repeat', async ({
     assert,
   }) => {
