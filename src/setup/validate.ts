@@ -21,14 +21,16 @@ import {
   validateOrigin,
 } from './shared.js'
 
-export function validate(
-  choices: SetupChoices,
-  state: SetupInspection,
-  production: boolean,
-  retirementImpact: SetupPlan['retirementImpact'],
-  retirementMaintenanceWindow: boolean,
+export type RetirementOptions = {
+  retirementImpact: SetupPlan['retirementImpact']
+  retirementMaintenanceWindow: boolean
   runtimeInventoryUnavailable: boolean
-) {
+}
+
+export type ValidateOptions = RetirementOptions & { production: boolean }
+
+export function validate(choices: SetupChoices, state: SetupInspection, options: ValidateOptions) {
+  const { production } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
   if (!['services', 'managed'].includes(choices.mode))
@@ -588,6 +590,24 @@ export function validate(
     choices.features.includes('socialAuthentication')
   )
     diagnostic(diagnostics, 'social', 'Enabled socialAuthentication requires selected providers')
+  retirementDiagnostics(diagnostics, choices, state, options)
+  if (state.existingPrefix && state.existingPrefix !== choices.routePrefix)
+    diagnostic(
+      diagnostics,
+      'routePrefix',
+      'Changing the managed prefix needs an explicit route transition; review clients before reconfiguration',
+      'action'
+    )
+  return diagnostics
+}
+
+/** Blocks login-method retirement unless the read-only inventory proves it is safe. */
+function retirementDiagnostics(
+  diagnostics: SetupDiagnostic[],
+  choices: SetupChoices,
+  state: SetupInspection,
+  { retirementImpact, retirementMaintenanceWindow, runtimeInventoryUnavailable }: RetirementOptions
+) {
   const beforeProviders =
     retirementImpact?.currentProviders ??
     (state.existingChoices?.social.status === 'enabled'
@@ -625,12 +645,4 @@ export function validate(
         'Zero affected accounts were found, but retirement requires --retirement-maintenance-window to prevent concurrent credential changes'
       )
   }
-  if (state.existingPrefix && state.existingPrefix !== choices.routePrefix)
-    diagnostic(
-      diagnostics,
-      'routePrefix',
-      'Changing the managed prefix needs an explicit route transition; review clients before reconfiguration',
-      'action'
-    )
-  return diagnostics
 }
