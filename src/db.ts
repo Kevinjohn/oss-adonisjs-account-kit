@@ -41,8 +41,11 @@ export function isUniqueViolation(error: unknown, table: string, column: string)
   return details.message.slice(start + prefix.length).trim() === `${table}.${column}`
 }
 
+/** The slice of resolved config that locates and describes the users table. */
+export type UsersStorage = Pick<ResolvedConfig, 'users' | 'usersTable' | 'emailConstraint'>
+
 /** Physical metadata is explicit for custom adapters and model-derived for the maintained adapter. */
-export async function userMetadata(config: ResolvedConfig): Promise<UsersAdapterMetadata> {
+export async function userMetadata(config: UsersStorage): Promise<UsersAdapterMetadata> {
   const metadata = config.users.resolveMetadata
     ? await config.users.resolveMetadata()
     : {
@@ -63,7 +66,7 @@ export async function lockRow(trx: Trx, table: string, id: UserId): Promise<void
   await trx.from(table).select('id').where('id', id).forUpdate().first()
 }
 
-export async function lockUser(trx: Trx, config: ResolvedConfig, id: UserId): Promise<void> {
+export async function lockUser(trx: Trx, config: UsersStorage, id: UserId): Promise<void> {
   const metadata = await userMetadata(config)
   await lockRow(trx, metadata.table, id)
 }
@@ -71,7 +74,7 @@ export async function lockUser(trx: Trx, config: ResolvedConfig, id: UserId): Pr
 /** Identify only the actual unique email index; unrelated unique failures retain their identity. */
 export async function isUserEmailUniqueViolation(
   error: unknown,
-  config: ResolvedConfig,
+  config: UsersStorage,
   db: Database
 ): Promise<boolean> {
   if (!error || typeof error !== 'object') return false
@@ -157,7 +160,7 @@ export async function consumeToken<Row>(
  */
 export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
   trx: Trx,
-  config: ResolvedConfig,
+  config: UsersStorage,
   table: 'password_reset_tokens' | 'email_verification_tokens',
   token: string,
   validForUser: (row: Row, user: AccountUser) => boolean
@@ -168,7 +171,7 @@ export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
 /** Consume a hash already bound to a one-use server-side social transaction. */
 export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>(
   trx: Trx,
-  config: ResolvedConfig,
+  config: UsersStorage,
   table: 'password_reset_tokens' | 'email_verification_tokens',
   tokenHash: string,
   validForUser: (row: Row, user: AccountUser) => boolean
