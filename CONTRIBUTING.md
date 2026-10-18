@@ -21,6 +21,9 @@ pnpm install
 pnpm quick:test
 ```
 
+To skip local setup, open the repository in GitHub Codespaces. The dev container installs Node 24,
+pnpm and the dependencies; run `pnpm quick:test` once it is ready.
+
 ## Checks
 
 Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
@@ -38,8 +41,8 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
 `DB_DATABASE`, then run `pnpm quick:test`.
 
-Changes to account operations should pass on both SQLite and PostgreSQL. The hosted workflows run
-on demand only, so include the local results in your pull request.
+Changes to account operations should pass on both SQLite and PostgreSQL. The `checks` workflow runs
+both on every pull request.
 
 ## Code layout
 
