@@ -205,6 +205,6 @@ that ran a candidate build.
   management; registration and invitations require explicit opt-in. When supplying a subset, configure only the
   callbacks required by those capabilities; calling a disabled operation fails explicitly.
 - Review the [upgrade guide](docs/upgrade.md) before applying these contracts to an existing
-  installation. Current evidence is tracked in [verification](docs/maintainers/verification.md).
+  installation. Current evidence is tracked in [verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md).
 
 </details>

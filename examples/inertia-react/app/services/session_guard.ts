@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 
 /**
  * Lets Account Kit sign users in and out through the existing `web` session guard. The stored
- * revision is checked on every request by the account_session middleware.
+ * revision is checked on every request by the silent auth middleware.
  */
 export function sessionGuard(ctx: HttpContext) {
   const guard = ctx.auth.use('web')
