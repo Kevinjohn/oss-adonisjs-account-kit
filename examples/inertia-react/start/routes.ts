@@ -40,4 +40,4 @@ router
     router.get('settings/password', [controllers.Passwords, 'edit'])
     router.post('settings/password', [controllers.Passwords, 'update'])
   })
-  .use([middleware.auth(), middleware.accountSession()])
+  .use(middleware.auth())

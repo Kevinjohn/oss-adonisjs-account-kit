@@ -18,7 +18,8 @@
     "!docs/api/**",
     "!docs/PRD*.md",
     "!PLAN*.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "CHANGELOG.md"
   ],
   "main": "build/index.js",
   "exports": {
