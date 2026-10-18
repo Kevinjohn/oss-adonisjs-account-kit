@@ -1,5 +1,8 @@
 # Upgrade guide
 
+This guide is for applications that installed a pre-release candidate build. New installations can
+skip it and start with [getting started](getting-started.md).
+
 This candidate changes adapter setup, configuration requirements, callback timing, invitation
 pagination, registration mapping, and generated schema. Review each item before replacing the
 installed package. Configure deliberately skips existing config and migration files; it does not
