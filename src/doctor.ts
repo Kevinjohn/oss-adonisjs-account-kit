@@ -52,6 +52,8 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
   if (db.connection().dialect.name === 'better-sqlite3') required.add('account_transaction_lock')
+  // Every credential change clears sign-in links, whether or not magic links are enabled.
+  required.add('login_link_tokens')
   const missing: string[] = []
   for (const table of required)
     if (!(await db.connection().schema.hasTable(table))) missing.push(table)
