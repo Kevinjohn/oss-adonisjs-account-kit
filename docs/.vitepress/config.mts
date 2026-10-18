@@ -55,6 +55,7 @@ export default defineConfig({
           { text: 'Social sign-in', link: '/recipes/social-login' },
           { text: 'Magic-link sign-in', link: '/magic-link' },
           { text: 'Signed-in devices', link: '/signed-in-devices' },
+          { text: 'Account export and deletion', link: '/account-data' },
           { text: 'Custom user model', link: '/recipes/custom-user-model' },
           { text: 'Custom table or ID type', link: '/custom-schema' },
           { text: 'Custom adapter', link: '/recipes/custom-adapter' },

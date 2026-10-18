@@ -54,6 +54,8 @@ export interface UsersAdapter {
   updateRegistrationData?(id: UserId, data: Record<string, unknown>, trx: Trx): Promise<void>
   markEmailVerified(id: UserId, at: DateTime, trx: Trx): Promise<void>
   verifyPassword(id: UserId, password: string, trx: Trx): Promise<boolean>
+  /** Required by `accountDeletion`. Delete the user row through trx; model hooks may run. */
+  delete?(id: UserId, trx: Trx): Promise<void>
 }
 
 export interface Invitation {
@@ -75,6 +77,8 @@ export type Capability =
   | 'socialAuthentication'
   | 'magicLinkLogin'
   | 'sessionManagement'
+  | 'dataExport'
+  | 'accountDeletion'
 export type CredentialOperation =
   | 'password_reset'
   | 'password_change'
@@ -102,6 +106,7 @@ export type LifecycleEvent =
         | 'email_change.completed'
         | 'magic_link.requested'
         | 'sessions.revoked_all'
+        | 'account.deleted'
       userId: UserId
       operationId: string
       /** Present only when an operator command, not an account holder, started the operation. */
@@ -143,6 +148,14 @@ export interface NotificationCallbacks {
   socialIdentityLinked(user: AccountUser, identity: SocialIdentity): Promise<void>
   socialIdentityUnlinked(user: AccountUser, identity: SocialIdentity): Promise<void>
   magicLinkProvision(user: AccountUser, url: string): Promise<void>
+  /** Sent after commit to the address the deleted account had. */
+  accountDeleted(account: DeletedAccount): Promise<void>
+}
+
+/** What remains of a deleted account: enough to address the confirmation email. */
+export interface DeletedAccount {
+  id: UserId
+  email: string
 }
 export interface ThrottleBudget {
   requests: number
@@ -195,6 +208,23 @@ export interface AccountKitConfig {
   passwordPolicy?: Partial<PasswordPolicy>
   socialAuthentication?: SocialAuthenticationConfig
   sessionManagement?: SessionManagementConfig
+  /**
+   * Application data for the account export. Runs inside the export transaction; return a
+   * JSON-serialisable value. Its result becomes the export's `application` section.
+   */
+  exportAccountData?: (user: AccountUser, trx: Trx) => Promise<unknown>
+  /**
+   * Delete or anonymise application rows before the user row is deleted. Use only trx and no
+   * remote side effects: it may run again when SQLite retries a busy transaction. Throwing
+   * aborts the deletion.
+   */
+  onAccountDeletingTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
+  accountDeletion?: AccountDeletionConfig
+}
+
+export interface AccountDeletionConfig {
+  /** Invitations the user sent: `revoke` (default) deletes them, `keep` leaves them acceptable. */
+  invitations?: 'keep' | 'revoke'
 }
 
 export interface SessionManagementConfig {
@@ -384,6 +414,7 @@ export interface ResolvedConfig extends Omit<
   | 'authentication'
   | 'passwordPolicy'
   | 'sessionManagement'
+  | 'accountDeletion'
 > {
   enabled: Capability[]
   authorize: AuthorizationCallbacks
@@ -401,6 +432,7 @@ export interface ResolvedConfig extends Omit<
   authentication?: ResolvedAuthenticationConfig
   passwordPolicy: PasswordPolicy
   sessionManagement: Required<SessionManagementConfig>
+  accountDeletion: Required<AccountDeletionConfig>
 }
 
 export interface RegistrationInput {
@@ -532,4 +564,49 @@ export interface CompleteEmailChangeInput {
 }
 export interface InspectEmailChangeInput {
   token: string
+}
+
+/** Fresh re-authentication for export and deletion, as for a password change. */
+export interface AccountDataInput {
+  actorId: UserId
+  currentPassword?: string
+  /** Purpose-bound proof (`account_export` or `account_delete`) for password-less accounts. */
+  recentProof?: string
+}
+
+/** Version 1 of the account export document. Timestamps are ISO 8601 UTC strings. */
+export interface AccountExport {
+  format: 'adonisjs-account-kit/export'
+  version: 1
+  generatedAt: string
+  account: {
+    id: UserId
+    email: string
+    unverifiedEmail: string | null
+    emailVerifiedAt: string | null
+    hasPassword: boolean
+    credentialsChangedAt: string | null
+  }
+  socialIdentities: Array<{
+    provider: string
+    providerUserId: string
+    email: string | null
+    emailVerified: boolean
+    name: string | null
+    nickname: string | null
+    avatarUrl: string | null
+    confirmedAt: string | null
+    createdAt: string
+  }>
+  invitationsSent: Array<{ email: string; role: string; createdAt: string; expiresAt: string }>
+  /** Present only for the access-token strategy. */
+  accessTokens?: Array<{
+    id: number | string
+    name: string | null
+    createdAt: string | null
+    lastUsedAt: string | null
+    expiresAt: string | null
+  }>
+  pending: { passwordReset: boolean; emailVerification: boolean; emailChange: string | null }
+  application: unknown
 }

@@ -37,14 +37,16 @@ The callback names distinguish a link provision from a completed-operation notic
 | Email changed             | —                        | `notify.emailChanged`               |
 | Magic sign-in link        | `urls.magicLink`         | `notify.magicLinkProvision`         |
 | Password changed          | —                        | `notify.passwordChanged`            |
+| Account deleted           | —                        | `notify.accountDeleted`             |
 
 ### Capabilities
 
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
-`emailPasswordManagement`, `registration`, `socialAuthentication`, `magicLinkLogin` and
-`sessionManagement`. `magicLinkLogin` and `sessionManagement` are off by default and require
-`authentication`; see [magic-link sign-in](magic-link.md) and
-[signed-in devices](signed-in-devices.md). When omitted, registration and invitations are
+`emailPasswordManagement`, `registration`, `socialAuthentication`, `magicLinkLogin`,
+`sessionManagement`, `dataExport` and `accountDeletion`. `magicLinkLogin` and `sessionManagement`
+are off by default and require `authentication`; see [magic-link sign-in](magic-link.md) and
+[signed-in devices](signed-in-devices.md). `dataExport` and `accountDeletion` are off by default;
+see [account export and deletion](account-data.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
@@ -88,6 +90,8 @@ const signIns = await kit.authentication.sessions.list({ current })
 await kit.authentication.sessions.revoke({ current, id })
 await kit.authentication.sessions.revokeOthers({ current })
 await kit.authentication.sessions.revokeAll({ current })
+const document = await kit.accountData.export({ actorId, currentPassword })
+await kit.accountData.delete({ actorId, currentPassword })
 ```
 
 Invitation listing returns `{ items, nextCursor }`. The default page limit is 25 and the maximum is 100. Pass `nextCursor` as `cursor` to fetch the next page; `null` means there are no more rows.

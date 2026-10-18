@@ -35,6 +35,7 @@ test.group('maintained notifications', () => {
       'socialIdentityLinked',
       'socialIdentityUnlinked',
       'magicLinkProvision',
+      'accountDeleted',
     ] as const
     const expected = {
       passwordResetProvision: [
@@ -82,6 +83,11 @@ test.group('maintained notifications', () => {
         'Sign in',
         'Open it in the browser or app where you asked for it.',
         'Sign in',
+      ],
+      accountDeleted: [
+        'Your account was deleted',
+        'Your account and its sign-in details were deleted.',
+        null,
       ],
     } as const
     for (const kind of kinds) {
@@ -198,6 +204,10 @@ test.group('maintained notifications', () => {
     assert.equal(messages[9].to, user.email)
     assert.equal(messages[9].subject, 'Example: Your sign-in link')
     assert.include(messages[9].text as string, 'https://example.test/magic-link/x')
+    await notify.accountDeleted({ id: 9, email: 'gone@example.test' })
+    assert.lengthOf(messages, 11)
+    assert.equal(messages[10].to, 'gone@example.test')
+    assert.include(messages[10].text as string, 'Your account was deleted')
     assert.equal(messages[0].from, 'Accounts <accounts@example.test>')
     assert.equal(messages[3].to, 'new@example.test')
     assert.equal(messages[4].to, 'old@example.test')

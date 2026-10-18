@@ -14,6 +14,7 @@ Authentication
 - [Google and GitHub sign-in with Ally](recipes/social-login.md)
 - [Magic-link sign-in](magic-link.md)
 - [Signed-in devices](signed-in-devices.md)
+- [Account export and deletion](account-data.md)
 
 Users and data
 

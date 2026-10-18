@@ -99,3 +99,9 @@ export const socialPasswordProofValidator = vine.compile(
 export const socialUnlinkValidator = vine.compile(
   vine.object({ proof: vine.string().minLength(1) })
 )
+export const accountProofValidator = vine.compile(
+  vine.object({
+    currentPassword: vine.string().minLength(1).optional(),
+    recentProof: vine.string().minLength(1).optional(),
+  })
+)

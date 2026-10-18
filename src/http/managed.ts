@@ -10,6 +10,7 @@ import { applyMappedHeaders, recoveryDiagnostic, safeAccount } from './response_
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'
+import { accountDataHandlers } from './handlers_account_data.js'
 import { invitationHandlers } from './handlers_invitations.js'
 import { magicLinkHandlers } from './handlers_magic_link.js'
 import { passwordResetHandlers } from './handlers_password_reset.js'
@@ -126,6 +127,7 @@ export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...invitationHandlers,
   ...managedSocialHandlers,
   ...sessionManagementHandlers,
+  ...accountDataHandlers,
 }
 
 async function execute<Credential>(

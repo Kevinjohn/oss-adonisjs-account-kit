@@ -93,6 +93,11 @@ const templates: Record<
     body: 'Use the link below to sign in. Open it in the browser or app where you asked for it. It works once and expires soon. If you did not ask to sign in, you can ignore this message.',
     action: 'Sign in',
   },
+  accountDeleted: {
+    subject: 'Your account was deleted',
+    heading: 'Your account was deleted',
+    body: 'Your account and its sign-in details were deleted. If this was unexpected, contact support immediately.',
+  },
 }
 
 function escapeHtml(value: string): string {
@@ -239,6 +244,7 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
       const message = new MagicLinkProvision(user.email, url)
       return send(message.kind, message.recipient, message.actionUrl)
     },
+    accountDeleted: (account) => send('accountDeleted', account.email),
   }
 }
 

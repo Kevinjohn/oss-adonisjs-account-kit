@@ -5,6 +5,7 @@ import { isSqlIdentifier } from './identifiers.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
+import { resolveAccountDeletion } from './config_account_data.js'
 import { isSocialProviderName } from './social_providers.js'
 import { resolveSessionManagement } from './config_session_management.js'
 import { expiresAt } from './ttl.js'
@@ -45,6 +46,7 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   socialIdentityLinked: disabled,
   socialIdentityUnlinked: disabled,
   magicLinkProvision: disabled,
+  accountDeleted: disabled,
 }
 
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
@@ -178,6 +180,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (enabled.includes('sessionManagement') && !authentication)
     throw new Error('account_kit: sessionManagement requires authentication')
   const sessionManagement = resolveSessionManagement(config)
+  const accountDeletion = resolveAccountDeletion(config)
   if (
     config.users.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
@@ -207,6 +210,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     authentication,
     passwordPolicy,
     sessionManagement,
+    accountDeletion,
     usersTable,
     limiterNamespace,
     authorize: {
