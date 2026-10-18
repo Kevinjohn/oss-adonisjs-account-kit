@@ -29,6 +29,7 @@ const capabilityTables: Record<Capability, string[]> = {
     'social_sensitive_proofs',
     'social_handoff_codes',
   ],
+  magicLinkLogin: ['login_link_tokens'],
 }
 
 const migrationFix = 'Run `node ace configure adonisjs-account-kit`, then `node ace migration:run`'

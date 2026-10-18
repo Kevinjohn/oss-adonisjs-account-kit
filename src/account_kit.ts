@@ -9,6 +9,7 @@ import {
   completePasswordReset,
 } from './password_reset.js'
 import { authenticationService } from './authentication.js'
+import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.js'
 import { register } from './registration.js'
 import { completeVerification, inspectVerification, sendVerification } from './verification.js'
 import {
@@ -31,7 +32,12 @@ import {
 } from './invitations.js'
 import type {
   AccountUser,
+  AuthenticationGuard,
   ChangePasswordInput,
+  CurrentAccount,
+  MagicLinkCompleteInput,
+  MagicLinkInspectInput,
+  MagicLinkRequestInput,
   CompleteEmailChangeInput,
   InspectEmailChangeInput,
   RequestEmailChangeInput,
@@ -129,6 +135,19 @@ export class AccountKit {
     if (!this.deps.config.enabled.includes('socialAuthentication'))
       throw new CapabilityDisabledError('Social authentication is disabled')
     return socialIdentityService(this.deps)
+  }
+
+  /** Passwordless sign-in by an email link bound to the requesting client. */
+  readonly magicLink = {
+    request: (input: MagicLinkRequestInput): Promise<void> =>
+      this.enabled('magicLinkLogin', () => requestMagicLink(this.deps, input)),
+    inspect: (input: MagicLinkInspectInput): Promise<boolean> =>
+      this.enabled('magicLinkLogin', () => inspectMagicLink(this.deps, input)),
+    complete: <Credential>(
+      input: MagicLinkCompleteInput,
+      guard: AuthenticationGuard<Credential>
+    ): Promise<{ account: CurrentAccount; credential: Credential }> =>
+      this.enabled('magicLinkLogin', () => completeMagicLink(this.deps, input, guard)),
   }
 
   readonly passwordReset = {

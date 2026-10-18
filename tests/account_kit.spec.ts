@@ -29,6 +29,7 @@ test.group('account kit configuration and service surface', (group) => {
       emailVerification: '1h',
       invitation: '7d',
       emailChange: '1h',
+      magicLink: '15m',
     })
     assert.deepEqual(resolved.throttle, { requests: 2, duration: '15m' })
     assert.equal(resolved.minRequestMs, 300)
@@ -195,6 +196,7 @@ test.group('account kit configuration and service surface', (group) => {
       emailVerification: '1h',
       invitation: '7d',
       emailChange: '1h',
+      magicLink: '15m',
     })
     assert.deepEqual(resolved.throttle, { requests: 5, duration: '15m' })
   })

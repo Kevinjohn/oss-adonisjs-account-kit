@@ -16,6 +16,7 @@ export function makeConfig(
       emailVerification: (token) => `https://example.test/verification/${token}`,
       invitation: (token) => `https://example.test/invitation/${token}`,
       emailChange: (token) => `https://example.test/email-change/${token}`,
+      magicLink: (token) => `https://example.test/magic-link/${token}`,
     },
     notify,
     onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {},

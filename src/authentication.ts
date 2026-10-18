@@ -8,6 +8,7 @@ import { lockUser, transaction, userMetadata } from './db.js'
 import { normaliseEmail } from './email.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { clearSocialPending } from './credential_cleanup.js'
+import { establishCredential } from './credential_issuance.js'
 import { waitForFloor } from './timing.js'
 import { isSocialProviderName } from './social_providers.js'
 import {
@@ -98,6 +99,8 @@ export async function credentialsChanged(
   context: Parameters<NonNullable<ResolvedConfig['onCredentialsChangedTransaction']>>[1]
 ): Promise<void> {
   if (config.enabled.includes('socialAuthentication')) await clearSocialPending(trx, user.id)
+  // The table is installed for every application, so links die even while the capability is off.
+  await trx.from('login_link_tokens').where('tokenable_id', user.id).delete()
   if (config.authentication) await advanceCredentialRevision(trx, config, user.id)
   await config.onCredentialsChangedTransaction?.(user, context, trx)
 }
@@ -291,37 +294,7 @@ export function authenticationService(deps: Dependencies) {
         throw error
       }
 
-      let credential: Credential | undefined
-      try {
-        credential =
-          guard.strategy === 'session'
-            ? await guard.establish(verified.account.id, verified.revision)
-            : await guard.establish(verified.account.id, auth.tokenAbilities, auth.tokenExpiresIn)
-        // Adonis token issuance and session writes do not share the package transaction. A
-        // post-issuance lock closes the gap before the credential is returned to the client.
-        await transaction(deps.db, async (trx) => {
-          await lockUser(trx, deps.config, verified.account.id)
-          const user = await deps.config.users.findById(verified.account.id, trx)
-          if (
-            !user ||
-            user.email !== email ||
-            (await revision(trx, deps.config, user.id)) !== verified.revision ||
-            !(await auth.canAccess(user, trx))
-          )
-            throw new InvalidCredentialsError()
-        })
-        return { account: verified.account, credential }
-      } catch (error) {
-        try {
-          await guard.terminate(credential)
-        } catch (cleanupError) {
-          throw new AggregateError(
-            [error, cleanupError],
-            'Login failed and credential cleanup failed'
-          )
-        }
-        throw error
-      }
+      return establishCredential(deps, auth, guard, { ...verified, email })
     },
 
     current(input: CurrentAccountInput): Promise<CurrentAccount> {

@@ -13,6 +13,7 @@ export const migrationNames = [
   'add_credentials_changed_at_to_users',
   'create_social_transactions',
   'add_social_identity_confirmation',
+  'create_login_link_tokens',
 ]
 
 function isMissing(error: unknown): boolean {
