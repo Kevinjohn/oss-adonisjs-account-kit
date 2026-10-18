@@ -29,6 +29,7 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     const schema = kit.db.connection().schema
     for (const table of [
       'application_roles',
+      'login_link_tokens',
       'social_handoff_codes',
       'social_sensitive_proofs',
       'social_transactions',
@@ -237,6 +238,7 @@ test('API example evolution rejects stale proofs and skips expired ones without 
   try {
     const schema = kit.db.connection().schema
     for (const table of [
+      'login_link_tokens',
       'social_handoff_codes',
       'social_sensitive_proofs',
       'social_transactions',
