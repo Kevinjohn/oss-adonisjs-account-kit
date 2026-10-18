@@ -14,6 +14,12 @@ export const signupValidator = vine.compile(
   })
 )
 export const passwordResetRequestValidator = vine.compile(vine.object({ email: email() }))
+export const magicLinkRequestValidator = vine.compile(
+  vine.object({ email: email(), clientChallenge: vine.string().optional() })
+)
+export const magicLinkCompleteValidator = vine.compile(
+  vine.object({ verifier: vine.string().optional() })
+)
 export const passwordResetCompleteValidator = vine.compile(
   vine.object({
     password: password(),
@@ -92,4 +98,10 @@ export const socialPasswordProofValidator = vine.compile(
 )
 export const socialUnlinkValidator = vine.compile(
   vine.object({ proof: vine.string().minLength(1) })
+)
+export const accountProofValidator = vine.compile(
+  vine.object({
+    currentPassword: vine.string().minLength(1).optional(),
+    recentProof: vine.string().minLength(1).optional(),
+  })
 )

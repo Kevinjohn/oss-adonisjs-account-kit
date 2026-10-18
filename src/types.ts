@@ -54,6 +54,8 @@ export interface UsersAdapter {
   updateRegistrationData?(id: UserId, data: Record<string, unknown>, trx: Trx): Promise<void>
   markEmailVerified(id: UserId, at: DateTime, trx: Trx): Promise<void>
   verifyPassword(id: UserId, password: string, trx: Trx): Promise<boolean>
+  /** Required by `accountDeletion`. Delete the user row through trx; model hooks may run. */
+  delete?(id: UserId, trx: Trx): Promise<void>
 }
 
 export interface Invitation {
@@ -73,6 +75,10 @@ export type Capability =
   | 'emailPasswordManagement'
   | 'registration'
   | 'socialAuthentication'
+  | 'magicLinkLogin'
+  | 'sessionManagement'
+  | 'dataExport'
+  | 'accountDeletion'
 export type CredentialOperation =
   | 'password_reset'
   | 'password_change'
@@ -80,6 +86,7 @@ export type CredentialOperation =
   | 'access_restriction'
   | 'registration_claim'
   | 'social_unlink'
+  | 'sign_out_everywhere'
 
 export interface CredentialChangeContext {
   operation: CredentialOperation
@@ -97,13 +104,20 @@ export type LifecycleEvent =
         | 'password.changed'
         | 'email_change.requested'
         | 'email_change.completed'
+        | 'magic_link.requested'
+        | 'sessions.revoked_all'
+        | 'account.deleted'
       userId: UserId
       operationId: string
+      /** Present only when an operator command, not an account holder, started the operation. */
+      source?: 'operator'
     }
+  | { type: 'sessions.revoked'; userId: UserId; operationId: string; count: number }
   | {
       type: 'invitation.sent' | 'invitation.resent' | 'invitation.revoked'
       invitationId: number
       operationId: string
+      source?: 'operator'
     }
   | { type: 'invitation.accepted'; invitationId: number; userId: UserId; operationId: string }
 
@@ -121,6 +135,7 @@ export interface UrlCallbacks {
   emailVerification(token: string): string
   invitation(token: string): string
   emailChange(token: string): string
+  magicLink(token: string): string
 }
 export interface NotificationCallbacks {
   passwordResetProvision(user: AccountUser, url: string): Promise<void>
@@ -132,6 +147,15 @@ export interface NotificationCallbacks {
   passwordChanged(user: AccountUser, context: CredentialChangeContext): Promise<void>
   socialIdentityLinked(user: AccountUser, identity: SocialIdentity): Promise<void>
   socialIdentityUnlinked(user: AccountUser, identity: SocialIdentity): Promise<void>
+  magicLinkProvision(user: AccountUser, url: string): Promise<void>
+  /** Sent after commit to the address the deleted account had. */
+  accountDeleted(account: DeletedAccount): Promise<void>
+}
+
+/** What remains of a deleted account: enough to address the confirmation email. */
+export interface DeletedAccount {
+  id: UserId
+  email: string
 }
 export interface ThrottleBudget {
   requests: number
@@ -170,6 +194,7 @@ export interface AccountKitConfig {
     emailVerification?: string | number
     invitation?: string | number
     emailChange?: string | number
+    magicLink?: string | number
   }
   throttle?: Partial<ThrottleBudget>
   invitationThrottle?: Partial<InvitationThrottle>
@@ -182,6 +207,29 @@ export interface AccountKitConfig {
   }
   passwordPolicy?: Partial<PasswordPolicy>
   socialAuthentication?: SocialAuthenticationConfig
+  sessionManagement?: SessionManagementConfig
+  /**
+   * Application data for the account export. Runs inside the export transaction; return a
+   * JSON-serialisable value. Its result becomes the export's `application` section.
+   */
+  exportAccountData?: (user: AccountUser, trx: Trx) => Promise<unknown>
+  /**
+   * Delete or anonymise application rows before the user row is deleted. Use only trx and no
+   * remote side effects: it may run again when SQLite retries a busy transaction. Throwing
+   * aborts the deletion.
+   */
+  onAccountDeletingTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
+  accountDeletion?: AccountDeletionConfig
+}
+
+export interface AccountDeletionConfig {
+  /** Invitations the user sent: `revoke` (default) deletes them, `keep` leaves them acceptable. */
+  invitations?: 'keep' | 'revoke'
+}
+
+export interface SessionManagementConfig {
+  /** A sign-in unused for this long is signed out. Default `30d`; must exceed five minutes. */
+  idleExpiry?: string | number
 }
 
 export interface PasswordPolicy {
@@ -297,6 +345,8 @@ export interface PasswordLoginInput {
   password: string
   /** Stable, trusted client identity derived after proxy configuration. */
   clientKey: string
+  /** Untrusted display text for the sign-in list, such as a User-Agent; at most 255 characters. */
+  sessionLabel?: string
 }
 
 export interface CurrentAccount {
@@ -313,13 +363,26 @@ export interface CurrentAccountInput {
   revision?: string | null
   /** Trusted identifier from the authenticated access-token guard. Mandatory for token guards. */
   tokenId?: UserId
+  /** Session sign-in handle the guard stored at login. Mandatory for session guards with `sessionManagement`. */
+  sessionHandle?: string
+}
+
+/** One place the user is signed in: a session registry row or an access token. */
+export interface SignIn {
+  id: number
+  label: string | null
+  createdAt: string
+  lastSeenAt: string | null
+  expiresAt: string | null
+  current: boolean
 }
 
 export type AuthenticationGuard<Credential> =
   | {
       strategy: 'session'
       name: string
-      establish(userId: UserId, revision: string | null): Promise<Credential>
+      /** `handle` is set when `sessionManagement` is enabled; store it in the session. */
+      establish(userId: UserId, revision: string | null, handle?: string): Promise<Credential>
       terminate(credential?: Credential): Promise<void>
     }
   | {
@@ -328,7 +391,8 @@ export type AuthenticationGuard<Credential> =
       establish(
         userId: UserId,
         abilities: string[],
-        expiresIn: string | number | null
+        expiresIn: string | number | null,
+        options?: { name?: string }
       ): Promise<Credential>
       terminate(credential?: Credential): Promise<void>
     }
@@ -349,6 +413,8 @@ export interface ResolvedConfig extends Omit<
   | 'minRequestMs'
   | 'authentication'
   | 'passwordPolicy'
+  | 'sessionManagement'
+  | 'accountDeletion'
 > {
   enabled: Capability[]
   authorize: AuthorizationCallbacks
@@ -365,12 +431,46 @@ export interface ResolvedConfig extends Omit<
   tokenSecretLength: number
   authentication?: ResolvedAuthenticationConfig
   passwordPolicy: PasswordPolicy
+  sessionManagement: Required<SessionManagementConfig>
+  accountDeletion: Required<AccountDeletionConfig>
 }
 
 export interface RegistrationInput {
   email: string
   password: string
   registrationData?: unknown
+}
+
+export type OperatorDelivery = 'send' | 'print'
+
+export interface OperatorInviteInput {
+  email: string
+  role: string
+  /** `send` notifies the invitee; `print` returns the acceptance URL instead. */
+  deliver: OperatorDelivery
+}
+
+export interface OperatorResetLinkInput {
+  email: string
+  deliver: OperatorDelivery
+}
+
+/** A committed follow-up failure, reduced to safe fields: no cause, stack, or URL. */
+export interface OperatorFault {
+  name: string
+  message: string
+}
+
+export interface OperatorInviteResult {
+  invitation: Invitation
+  url?: string
+  fault?: OperatorFault
+}
+
+export interface OperatorResetLinkResult {
+  user: AccountUser
+  url?: string
+  fault?: OperatorFault
 }
 
 export interface InvitationPage {
@@ -388,6 +488,20 @@ export interface PasswordResetInspectInput {
 export interface PasswordResetCompleteInput {
   token: string
   password: string
+}
+export interface MagicLinkRequestInput {
+  email: string
+  clientKey: string
+  /** Base64url SHA-256 of a verifier the requesting client keeps; 43 characters. */
+  clientChallenge: string
+}
+export interface MagicLinkInspectInput {
+  token: string
+}
+export interface MagicLinkCompleteInput {
+  token: string
+  /** The verifier whose challenge was sent with the request. */
+  verifier: string
 }
 export interface VerificationSendInput {
   userId: UserId
@@ -450,4 +564,49 @@ export interface CompleteEmailChangeInput {
 }
 export interface InspectEmailChangeInput {
   token: string
+}
+
+/** Fresh re-authentication for export and deletion, as for a password change. */
+export interface AccountDataInput {
+  actorId: UserId
+  currentPassword?: string
+  /** Purpose-bound proof (`account_export` or `account_delete`) for password-less accounts. */
+  recentProof?: string
+}
+
+/** Version 1 of the account export document. Timestamps are ISO 8601 UTC strings. */
+export interface AccountExport {
+  format: 'adonisjs-account-kit/export'
+  version: 1
+  generatedAt: string
+  account: {
+    id: UserId
+    email: string
+    unverifiedEmail: string | null
+    emailVerifiedAt: string | null
+    hasPassword: boolean
+    credentialsChangedAt: string | null
+  }
+  socialIdentities: Array<{
+    provider: string
+    providerUserId: string
+    email: string | null
+    emailVerified: boolean
+    name: string | null
+    nickname: string | null
+    avatarUrl: string | null
+    confirmedAt: string | null
+    createdAt: string
+  }>
+  invitationsSent: Array<{ email: string; role: string; createdAt: string; expiresAt: string }>
+  /** Present only for the access-token strategy. */
+  accessTokens?: Array<{
+    id: number | string
+    name: string | null
+    createdAt: string | null
+    lastUsedAt: string | null
+    expiresAt: string | null
+  }>
+  pending: { passwordReset: boolean; emailVerification: boolean; emailChange: string | null }
+  application: unknown
 }

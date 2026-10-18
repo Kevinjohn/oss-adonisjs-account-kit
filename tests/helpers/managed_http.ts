@@ -48,6 +48,9 @@ export function fixture() {
       noContent() {
         return { status: 204 }
       },
+      unprocessableEntity(body: unknown) {
+        return { status: 422, body }
+      },
     }
     return {
       params,

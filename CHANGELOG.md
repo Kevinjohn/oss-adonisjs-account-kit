@@ -17,6 +17,24 @@ Initial public release.
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
   one-time PKCE handoff.
+- Optional magic-link sign-in (`magicLinkLogin`, `kit.magicLink`): a one-use, 15-minute email link
+  bound to the requesting client by a PKCE-style verifier, for session and access-token guards,
+  with managed routes under `auth/magic-link`, the `magicLinkProvision` email, the
+  `E_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
+  deletes outstanding links, so the new `login_link_tokens` table is required in every
+  installation.
+- Optional sign-in management (`sessionManagement`, `kit.authentication.sessions`): list the
+  account's sessions or access tokens and revoke one, all others, or all, with managed routes under
+  `account/sessions`, `SessionNotFoundError`, setup support and pruning. Session sign-ins are
+  recorded in the new `account_sessions` table, which every credential change clears, so the table
+  is required whenever `authentication` is configured.
+- Optional account export and deletion (`dataExport`, `accountDeletion`, `kit.accountData`): a
+  versioned JSON export merged with `exportAccountData`, and permanent deletion of every package row
+  and the user row with `onAccountDeletingTransaction`, an `accountDeleted` email and the
+  `account.deleted` lifecycle event. Both need fresh re-authentication (current password or an
+  `account_export` / `account_delete` proof). Managed routes `POST account/export` and
+  `DELETE account`, the optional `UsersAdapter.delete` (Lucid adapter and contract suite included),
+  and setup support.
 - Built-in account emails for AdonisJS Mail, trusted action-link builders and a notification
   readiness check.
 - An optional managed JSON backend (`adonisjs-account-kit/http`) for apps that do not want to own
@@ -30,6 +48,12 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
+  services behind them) for shell-trusted invitations and reset links, with `--print` for
+  printed links and JSON output.
+- `account-kit:openapi` and `generateManagedOpenApi` produce an OpenAPI 3.1 document for the
+  mounted managed routes; the `openapi` option of `registerManagedRoutes` carries schemas for
+  replaced validators and account representations.
 - `adonisjs-account-kit/adapters/drizzle`, `/adapters/prisma` and `/adapters/sql` adapt users
   tables defined with Drizzle, Prisma or plain SQL. They read the table definition and run every
   query through the package's Lucid transaction.

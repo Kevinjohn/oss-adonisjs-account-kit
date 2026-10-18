@@ -25,7 +25,14 @@ test.group('Social intents and purposes', () => {
   test('purpose guard accepts every listed purpose and rejects anything else', ({ assert }) => {
     assert.deepEqual(
       [...sensitivePurposes],
-      ['social_link', 'social_unlink', 'password_change', 'email_change']
+      [
+        'social_link',
+        'social_unlink',
+        'password_change',
+        'email_change',
+        'account_export',
+        'account_delete',
+      ]
     )
     for (const value of sensitivePurposes) assert.isTrue(isSensitivePurpose(value))
     for (const value of [...junk, 'login']) assert.isFalse(isSensitivePurpose(value))

@@ -70,5 +70,8 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
       const row = await trx.from(usersTable).where('id', id).first()
       return typeof row?.password === 'string' && (await hash.verify(row.password, password))
     },
+    async delete(id, trx) {
+      await trx.from(usersTable).where('id', id).delete()
+    },
   }
 }
