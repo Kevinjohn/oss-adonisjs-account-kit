@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import { Router } from '@adonisjs/core/http'
+import { defineConfig as defineSessionConfig } from '@adonisjs/session'
 import ManagedOpenApi from '../commands/openapi.js'
 import * as commandLoader from '../commands/main.js'
 import type { AccountKit } from '../src/account_kit.js'
@@ -51,7 +52,10 @@ test.group('account-kit:openapi', (group) => {
       commits++
       commit()
     }
-    kit.app.config.set('session.cookieName', 'app-session')
+    kit.app.config.set(
+      'session',
+      defineSessionConfig({ cookieName: 'app-session', store: 'memory', stores: {} })
+    )
     const { kernel, logs } = kernelFor(kit, router)
     const command = await kernel.exec('account-kit:openapi', [
       '--title=Accounts',
