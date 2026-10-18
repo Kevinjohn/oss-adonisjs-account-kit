@@ -58,6 +58,16 @@ test.group('SQL users adapter', (group) => {
     )
   })
 
+  test('deletes the user row so account deletion can use it', async ({ assert }) => {
+    const users = adapter()
+    const created = await transaction(kit.db, (trx) =>
+      users.create({ email: 'gone@example.test', password: 'password', unverifiedEmail: null }, trx)
+    )
+    assert.isFunction(users.delete)
+    await transaction(kit.db, (trx) => users.delete!(created.id, trx))
+    assert.isNull(await users.findById(created.id))
+  })
+
   test('registration columns cannot set identity, credential, verification or role columns', async ({
     assert,
   }) => {

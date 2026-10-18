@@ -10,9 +10,17 @@ import { applyMappedHeaders, recoveryDiagnostic, safeAccount } from './response_
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'
+import { accountDataHandlers } from './handlers_account_data.js'
 import { invitationHandlers } from './handlers_invitations.js'
+import { magicLinkHandlers } from './handlers_magic_link.js'
 import { passwordResetHandlers } from './handlers_password_reset.js'
 import { registrationHandlers } from './handlers_registration.js'
+import { sessionManagementHandlers } from './handlers_session_management.js'
+import {
+  managedRouteRegistration,
+  recordManagedRegistration,
+  type ManagedOpenApiOptions,
+} from './route_registration.js'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
@@ -73,9 +81,9 @@ export interface ManagedRoutesOptions<Credential> {
   /** Require verified email on active routes; defaults to true. Guard and revision checks always apply. */
   verificationRequired?: boolean
   extensions?: ManagedExtensions
+  /** Schemas for application-owned bodies, used by `generateManagedOpenApi`. */
+  openapi?: ManagedOpenApiOptions
 }
-
-const mounted = new WeakSet<Router>()
 
 /** Flatten committed router definitions into one entry per method for collision checks. */
 function routeEntries(router: Router) {
@@ -102,6 +110,8 @@ export interface ManagedRequest<Credential> {
   options: ManagedRoutesOptions<Credential>
   kit: AccountKit
   csrfToken: string | undefined
+  /** The guard's trusted input for the signed-in caller; undefined on public routes. */
+  accountInput: CurrentAccountInput | undefined
   account: CurrentAccount | undefined
   actorId: CurrentAccount['id'] | undefined
   methodsEnabled: boolean
@@ -116,10 +126,13 @@ export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...authenticationHandlers,
   ...registrationHandlers,
   ...passwordResetHandlers,
+  ...magicLinkHandlers,
   ...emailVerificationHandlers,
   ...emailPasswordManagementHandlers,
   ...invitationHandlers,
   ...managedSocialHandlers,
+  ...sessionManagementHandlers,
+  ...accountDataHandlers,
 }
 
 async function execute<Credential>(
@@ -163,6 +176,7 @@ async function execute<Credential>(
     options,
     kit,
     csrfToken,
+    accountInput,
     account,
     actorId,
     methodsEnabled,
@@ -184,6 +198,7 @@ export function registerManagedRoutes<Credential>(
       (capability) =>
         capability === 'authentication' ||
         capability === 'registration' ||
+        capability === 'magicLinkLogin' ||
         capability === 'socialAuthentication'
     ) &&
     !options.guard.publicCredential
@@ -207,7 +222,7 @@ export function registerManagedRoutes<Credential>(
       except: options.except,
     },
     existing,
-    mounted.has(router)
+    managedRouteRegistration(router) !== undefined
   )
   const methodsEnabled = routes.some(({ name }) => name === 'auth.methods')
   for (const route of routes) {
@@ -236,7 +251,9 @@ export function registerManagedRoutes<Credential>(
                   ? 'password'
                   : route.name.includes('invitation')
                     ? 'invitation'
-                    : 'email'
+                    : route.capability === 'magicLinkLogin'
+                      ? 'magicLink'
+                      : 'email'
                 : undefined,
           })
           if (!mapped) throw error
@@ -255,6 +272,20 @@ export function registerManagedRoutes<Credential>(
     assertManagedRouteCollisions(routes, committed)
     return result
   }
-  mounted.add(router)
+  recordManagedRegistration(router, {
+    routes,
+    strategy: options.guard.strategy,
+    prefix: options.prefix,
+    socialProviders: options.enabled.includes('socialAuthentication')
+      ? (options.extensions?.social?.providers ?? [])
+      : [],
+    replaced: {
+      registration: Boolean(options.extensions?.registration),
+      invitationAcceptance: Boolean(options.extensions?.invitationAcceptance),
+      profile: Boolean(options.extensions?.profile),
+      representAccount: Boolean(options.extensions?.representAccount),
+    },
+    openapi: options.openapi,
+  })
   return routes
 }

@@ -9,6 +9,8 @@ import {
   completePasswordReset,
 } from './password_reset.js'
 import { authenticationService } from './authentication.js'
+import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.js'
+import { sessionManagementService } from './session_management.js'
 import { register } from './registration.js'
 import { completeVerification, inspectVerification, sendVerification } from './verification.js'
 import {
@@ -21,6 +23,9 @@ import {
 import { makeThrottler, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { socialIdentityService } from './social_identity.js'
+import { operatorInvite, operatorResetLink } from './operator.js'
+import { exportAccountData } from './account_export.js'
+import { deleteAccount } from './account_deletion.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -30,8 +35,15 @@ import {
   sendInvitation,
 } from './invitations.js'
 import type {
+  AccountDataInput,
+  AccountExport,
   AccountUser,
+  AuthenticationGuard,
   ChangePasswordInput,
+  CurrentAccount,
+  MagicLinkCompleteInput,
+  MagicLinkInspectInput,
+  MagicLinkRequestInput,
   CompleteEmailChangeInput,
   InspectEmailChangeInput,
   RequestEmailChangeInput,
@@ -45,6 +57,10 @@ import type {
   InvitationsResendInput,
   InvitationsRevokeInput,
   InvitationsSendInput,
+  OperatorInviteInput,
+  OperatorInviteResult,
+  OperatorResetLinkInput,
+  OperatorResetLinkResult,
   PasswordResetInspectInput,
   PasswordResetRequestInput,
   PasswordResetCompleteInput,
@@ -117,7 +133,11 @@ export class AccountKit {
   }
 
   get authentication() {
-    return authenticationService(this.deps)
+    return {
+      ...authenticationService(this.deps),
+      /** Where the user is signed in; requires `sessionManagement`. */
+      sessions: sessionManagementService(this.deps),
+    }
   }
 
   readonly registration = {
@@ -129,6 +149,19 @@ export class AccountKit {
     if (!this.deps.config.enabled.includes('socialAuthentication'))
       throw new CapabilityDisabledError('Social authentication is disabled')
     return socialIdentityService(this.deps)
+  }
+
+  /** Passwordless sign-in by an email link bound to the requesting client. */
+  readonly magicLink = {
+    request: (input: MagicLinkRequestInput): Promise<void> =>
+      this.enabled('magicLinkLogin', () => requestMagicLink(this.deps, input)),
+    inspect: (input: MagicLinkInspectInput): Promise<boolean> =>
+      this.enabled('magicLinkLogin', () => inspectMagicLink(this.deps, input)),
+    complete: <Credential>(
+      input: MagicLinkCompleteInput,
+      guard: AuthenticationGuard<Credential>
+    ): Promise<{ account: CurrentAccount; credential: Credential }> =>
+      this.enabled('magicLinkLogin', () => completeMagicLink(this.deps, input, guard)),
   }
 
   readonly passwordReset = {
@@ -161,6 +194,16 @@ export class AccountKit {
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
   }
+  /**
+   * Operator context only: callers with shell access (Ace commands). No actor authorisation and no
+   * throttles apply; never expose these methods to an HTTP request.
+   */
+  readonly operator = {
+    invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
+      this.enabled('invitations', () => operatorInvite(this.deps, input)),
+    resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
+      this.enabled('passwordReset', () => operatorResetLink(this.deps, input)),
+  }
   readonly emailPasswordManagement = {
     changePassword: (input: ChangePasswordInput): Promise<void> =>
       this.enabled('emailPasswordManagement', () => changePassword(this.deps, input)),
@@ -172,5 +215,11 @@ export class AccountKit {
       this.enabled('emailPasswordManagement', () => inspectEmailChange(this.deps, input)),
     completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
       this.enabled('emailPasswordManagement', () => completeEmailChange(this.deps, input)),
+  }
+  readonly accountData = {
+    export: (input: AccountDataInput): Promise<AccountExport> =>
+      this.enabled('dataExport', () => exportAccountData(this.deps, input)),
+    delete: (input: AccountDataInput): Promise<void> =>
+      this.enabled('accountDeletion', () => deleteAccount(this.deps, input)),
   }
 }

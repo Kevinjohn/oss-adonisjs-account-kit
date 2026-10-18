@@ -19,7 +19,7 @@ export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
     create(
       user: User,
       abilities: string[],
-      options?: { expiresIn: string | number }
+      options?: { expiresIn?: string | number; name?: string }
     ): Promise<{
       identifier: UserId | BigInt
       value?: { release(): string } | null
@@ -66,6 +66,7 @@ type TokenContext<User> = HttpContext & {
 }
 
 const revisionKey = 'accountKitRevision'
+const handleKey = 'accountKitSession'
 
 function managedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
@@ -134,9 +135,12 @@ export function createManagedGuard<User>(
         const user = await authenticate(ctx.auth.use(options.name))
         const stored = ctx.session.get(revisionKey)
         if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
+        const handle = ctx.session.get(handleKey)
+        if (handle !== undefined && typeof handle !== 'string') throw new InvalidSessionError()
         return {
           userId: managedUser(user).id,
           ...(stored === undefined ? {} : { revision: stored === '' ? null : stored }),
+          ...(handle ? { sessionHandle: handle } : {}),
         }
       },
       forRequest(context) {
@@ -145,11 +149,12 @@ export function createManagedGuard<User>(
         return {
           strategy: 'session',
           name: options.name,
-          async establish(userId, revision) {
+          async establish(userId, revision, handle) {
             const model = await options.loadUser()
             ctx.session.regenerate()
             await ctx.auth.use(options.name).login(await model.findOrFail(userId))
             ctx.session.put(revisionKey, revision ?? '')
+            if (handle) ctx.session.put(handleKey, handle)
             return undefined
           },
           async terminate() {
@@ -180,13 +185,17 @@ export function createManagedGuard<User>(
       return {
         strategy: 'access_tokens',
         name: options.name,
-        async establish(userId, abilities, expiresIn) {
+        async establish(userId, abilities, expiresIn, issue) {
           const model = await options.loadUser()
           const user = await model.findOrFail(userId)
+          const createOptions = {
+            ...(expiresIn === null ? {} : { expiresIn }),
+            ...(issue?.name ? { name: issue.name } : {}),
+          }
           const token = await model.accessTokens.create(
             user,
             abilities,
-            expiresIn === null ? undefined : { expiresIn }
+            Object.keys(createOptions).length ? createOptions : undefined
           )
           try {
             if (!token.value) throw new Error('Token guard did not return a bearer value')

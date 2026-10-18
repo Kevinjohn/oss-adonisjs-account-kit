@@ -129,7 +129,8 @@ All three take the same options; `createSqlUsersAdapter` also takes `table`.
 | `generateId`          | None: the database assigns the id                          |
 | `emailConstraint`     | None: the unique email constraint name, if not the default |
 
-The adapters hash passwords themselves; there is no model hook to do it.
+The adapters hash passwords themselves; there is no model hook to do it. They implement
+`delete`, so [account deletion](account-data.md) works with them.
 
 ### Registration data
 

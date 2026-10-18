@@ -81,6 +81,20 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
+  test('requires the sign-in link table even while magic links are off', async ({ assert }) => {
+    try {
+      await kit.db.connection().schema.dropTable('login_link_tokens')
+      const config = defineConfig(
+        makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['passwordReset'] })
+      )
+      assert.deepEqual(failures(await runDoctor(input({ config }))), [
+        'Package tables: missing login_link_tokens',
+      ])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
   test('requires the recovery-token table another enabled flow clears', async ({ assert }) => {
     try {
       await kit.db.connection().schema.dropTable('password_reset_tokens')

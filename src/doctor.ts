@@ -24,12 +24,16 @@ const capabilityTables: Record<Capability, string[]> = {
   registration: ['email_verification_tokens', 'password_reset_tokens'],
   emailPasswordManagement: ['email_verification_tokens', 'password_reset_tokens'],
   invitations: ['account_invitations'],
+  dataExport: [],
+  accountDeletion: [],
   socialAuthentication: [
     'social_identities',
     'social_transactions',
     'social_sensitive_proofs',
     'social_handoff_codes',
   ],
+  magicLinkLogin: ['login_link_tokens'],
+  sessionManagement: ['account_sessions'],
 }
 
 // Columns added or renamed by later migrations, which an older install may not have run.
@@ -65,6 +69,10 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
   if (db.connection().dialect.name === 'better-sqlite3') required.add('account_transaction_lock')
+  // Every credential change clears sign-in links, whether or not magic links are enabled.
+  required.add('login_link_tokens')
+  // Every credential change clears the sign-in registry, whether or not it is enabled.
+  if (config.authentication) required.add('account_sessions')
   const missing: string[] = []
   const outdated: string[] = []
   for (const table of required) {
