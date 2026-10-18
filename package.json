@@ -26,9 +26,10 @@
     "./providers/account_kit_provider": "./build/providers/account_kit_provider.js",
     "./adapters/lucid": "./build/adapters/lucid.js",
     "./testing/adapter_contract": "./build/testing/adapter_contract.js",
+    "./testing/notifications": "./build/testing/notifications.js",
     "./services/main": "./build/services/main.js",
     "./http": "./build/http/main.js",
-    "./social/ally_provider": "./build/src/ally_social_provider.js",
+    "./ally": "./build/src/ally_social_provider.js",
     "./commands": "./build/commands/main.js"
   },
   "scripts": {
@@ -135,12 +136,14 @@
       "./providers/account_kit_provider.ts",
       "./adapters/lucid.ts",
       "./testing/adapter_contract.ts",
+      "./testing/notifications.ts",
       "./services/main.ts",
       "./http/main.ts",
       "./commands/main.ts",
       "./commands/prune.ts",
       "./commands/setup.ts",
-      "./commands/retirement_impact.ts"
+      "./commands/retirement_impact.ts",
+      "./commands/doctor.ts"
     ],
     "outDir": "./build",
     "clean": true,
