@@ -175,7 +175,9 @@ app to check that the installed package was built from this repository.
 ## Contributing
 
 Bug reports, docs fixes, recipes and adapters are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
-to get the test suite running.
+to get the test suite running, or start with no local setup:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Kevinjohn/oss-adonisjs-account-kit)
 
 ## License
 
