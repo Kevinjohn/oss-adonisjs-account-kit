@@ -159,9 +159,13 @@ test.group('SQL users adapter', (group) => {
     assert.isTrue(await kit.hash.verify(row.password, 'password123'))
     const found = await defaults.findByEmail('C@example.test')
     assert.equal(found?.id, user.id)
+    const passwordless = await transaction(kit.db, (trx) =>
+      defaults.create({ email: 'e@example.test', password: null, unverifiedEmail: null }, trx)
+    )
     await transaction(kit.db, async (trx) => {
       assert.isTrue(await defaults.verifyPassword(user.id, 'password123', trx))
       assert.isFalse(await defaults.verifyPassword(user.id, 'wrong', trx))
+      assert.isFalse(await defaults.verifyPassword(passwordless.id, '', trx))
     })
   })
 
@@ -180,6 +184,10 @@ test.group('SQL users adapter', (group) => {
       await adapter().markEmailVerified(created.id, at.setZone('America/New_York'), trx)
       return created
     })
+    // SQLite compares timestamps as text, so writes must be UTC strings.
+    const raw = await kit.db.from('app_users').where('id', user.id).first()
+    if (typeof raw.email_verified_at === 'string')
+      assert.equal(raw.email_verified_at, '2026-03-04T05:06:07.000Z')
     const read = await adapter().findById(user.id)
     assert.equal(read?.emailVerifiedAt?.toISO(), '2026-03-04T05:06:07.000Z')
     assert.equal(read?.emailVerifiedAt?.zoneName, 'UTC')

@@ -19,5 +19,5 @@ export function readTimestamp(value: unknown): DateTime | null {
     if (!parsed.isValid) parsed = DateTime.fromSQL(value, { zone: 'utc' })
   } else throw new Error('account_kit: unreadable timestamp value')
   if (!parsed.isValid) throw new Error('account_kit: unreadable timestamp value')
-  return parsed.toUTC()
+  return parsed
 }
