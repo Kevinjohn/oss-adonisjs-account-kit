@@ -6,6 +6,7 @@ import {
   IdentityNotConfirmedError,
   PostCommitError,
   SocialProofError,
+  ThrottledError,
 } from '../src/errors.js'
 import type { AccountKitConfig, AccountUser, LifecycleEvent, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -149,6 +150,17 @@ test.group('account deletion', (group) => {
       () => account.accountData.delete({ actorId: user.id, currentPassword: 'wrong-password' }),
       IdentityNotConfirmedError
     )
+    assert.isNotNull(await kit.db.from('users').where('id', user.id).first())
+  })
+
+  test('every attempt counts against the identity budget', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { account } = service({ throttle: { requests: 1, duration: '1m' } })
+    await assert.rejects(
+      () => account.accountData.delete({ actorId: user.id, currentPassword: 'wrong-password' }),
+      IdentityNotConfirmedError
+    )
+    await assert.rejects(() => remove(account, user.id), ThrottledError)
     assert.isNotNull(await kit.db.from('users').where('id', user.id).first())
   })
 
