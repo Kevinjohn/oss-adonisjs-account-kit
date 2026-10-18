@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
@@ -104,16 +105,16 @@ export async function resendInvitation(
         throw new InvitationManagementDeniedError()
 
       const now = DateTime.utc()
-      const [updated] = await trx
-        .getWriteClient()
-        .table('account_invitations')
+      await trx
+        .from('account_invitations')
         .where('id', input.invitationId)
         .update({
           token_hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.expiresIn.invitation).toISO(),
-          updated_at: now.toISO(),
+          expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.invitation)),
+          updated_at: sqlTimestamp(trx, now),
         })
-        .returning('*')
+      // Re-read rather than use RETURNING, which MySQL lacks.
+      const updated = await trx.from('account_invitations').where('id', input.invitationId).first()
       if (!updated) throw new InvitationNotFoundError()
       return toInvitation(updated)
     })
@@ -180,7 +181,7 @@ export async function acceptInvitation(
           trx,
           'account_invitations',
           hashToken(input.token),
-          now.toISO()
+          sqlTimestamp(trx, now)
         )
         if (!row) throw new InvalidTokenError()
         if (await deps.config.users.findByEmail(row.email, trx))
@@ -253,7 +254,7 @@ export async function listInvitations(
   if ((await deps.config.authorize.listInvitations(actor)) !== true) throw new AuthorizationError()
   const query = deps.db
     .from('account_invitations')
-    .where('expires_at', '>', DateTime.utc().toISO())
+    .where('expires_at', '>', sqlTimestamp(deps.db))
     .orderBy('created_at', 'asc')
     .orderBy('id', 'asc')
     .limit(limit + 1)
@@ -285,7 +286,7 @@ export async function inspectInvitation(
     .from('account_invitations')
     .select('email', 'role')
     .where('token_hash', hashToken(input.token))
-    .where('expires_at', '>', DateTime.utc().toISO())
+    .where('expires_at', '>', sqlTimestamp(db))
     .first()
   return row ? { email: row.email, role: row.role } : null
 }
@@ -324,21 +325,19 @@ export async function sendInvitation(
         await trx
           .from('account_invitations')
           .where('email', email)
-          .where('expires_at', '<=', now.toISO())
+          .where('expires_at', '<=', sqlTimestamp(trx, now))
           .delete()
-        const [row] = await trx
-          .getWriteClient()
-          .table('account_invitations')
-          .insert({
-            email,
-            role: input.role,
-            inviter_id: actor.id,
-            token_hash: hashToken(token),
-            expires_at: expiresAt(now, deps.config.expiresIn.invitation).toISO(),
-            created_at: now.toISO(),
-            updated_at: now.toISO(),
-          })
-          .returning('*')
+        await trx.table('account_invitations').insert({
+          email,
+          role: input.role,
+          inviter_id: actor.id,
+          token_hash: hashToken(token),
+          expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.invitation)),
+          created_at: sqlTimestamp(trx, now),
+          updated_at: sqlTimestamp(trx, now),
+        })
+        // Email is unique; re-read rather than use RETURNING, which MySQL lacks.
+        const row = await trx.from('account_invitations').where('email', email).first()
         return toInvitation(row)
       })
     ))

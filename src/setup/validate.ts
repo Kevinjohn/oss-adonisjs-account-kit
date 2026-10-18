@@ -107,12 +107,16 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
   if (state.connection === 'unsupported')
     diagnostic(diagnostics, 'database.connection', 'Application uses a non-default connection')
   if (state.database === 'unsupported')
-    diagnostic(diagnostics, 'database.client', 'Only SQLite and PostgreSQL 16 are supported')
+    diagnostic(
+      diagnostics,
+      'database.client',
+      'Only SQLite, PostgreSQL 16 and MySQL 8.4 (mysql2) are supported'
+    )
   if (state.database === 'unknown')
     diagnostic(
       diagnostics,
       'database.client',
-      'Resolve the selected SQLite or PostgreSQL 16 client before setup'
+      'Resolve the selected SQLite, PostgreSQL 16 or MySQL 8.4 client before setup'
     )
   if (!sqlName.test(choices.user.table))
     diagnostic(diagnostics, 'user.table', 'Use a plain SQL identifier')

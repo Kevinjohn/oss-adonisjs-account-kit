@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { sqlTimestamp } from './timestamps.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
@@ -43,7 +44,7 @@ export async function inspectEmailChange(
     .from('email_verification_tokens')
     .select('tokenable_id', 'email', 'current_email', 'purpose')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', DateTime.utc().toISO())
+    .where('expires_at', '>', sqlTimestamp(deps.db))
     .first()
   if (!proof || proof.purpose !== 'email_change') return false
   const user = await deps.config.users.findById(proof.tokenable_id)
@@ -222,8 +223,8 @@ export async function updateProfile(
             current_email: inactive ? newEmail : current.email,
             purpose: inactive ? 'activation' : 'email_change',
             hash: hashToken(token),
-            expires_at: expiresAt(now, deps.config.expiresIn.emailChange).toISO(),
-            created_at: now.toISO(),
+            expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.emailChange)),
+            created_at: sqlTimestamp(trx, now),
           })
           .onConflict('tokenable_id')
           .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])

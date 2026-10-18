@@ -14,8 +14,8 @@ export default class extends BaseSchema {
       table.string('current_email', 254).notNullable()
       table.string('new_email', 254).notNullable()
       table.string('token_hash', 64).notNullable().unique()
-      table.timestamp('expires_at', { useTz: true }).notNullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
     })
   }
 }

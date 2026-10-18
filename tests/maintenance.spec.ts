@@ -6,13 +6,14 @@ import PruneAccountKit from '../commands/prune.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('expired-token pruning', (group) => {
   const kit = useTestApp(group)
 
   test('Ace command reports social cleanup in dry-run and deletion', async ({ assert }) => {
     const user = await insertUser(kit)
-    const expired = '2020-01-01T00:00:00.000Z'
+    const expired = dbTime(kit, '2020-01-01T00:00:00.000Z')
     await kit.db.table('social_transactions').insert({
       hash: 'a'.repeat(64),
       provider: 'google',
@@ -81,8 +82,8 @@ test.group('expired-token pruning', (group) => {
   }) => {
     const user = await insertUser(kit)
     const other = await insertUser(kit, { email: 'other@example.test' })
-    const expired = DateTime.utc().minus({ days: 1 }).toISO()
-    const live = DateTime.utc().plus({ days: 1 }).toISO()
+    const expired = dbTime(kit, DateTime.utc().minus({ days: 1 }))
+    const live = dbTime(kit, DateTime.utc().plus({ days: 1 }))
     for (const [index, expiresAt] of [expired, live].entries()) {
       await kit.db.table('password_reset_tokens').insert({
         tokenable_id: index === 0 ? user.id : other.id,
@@ -134,8 +135,8 @@ test.group('expired-token pruning', (group) => {
 
   test('rechecks expiry after selection so a refreshed invitation survives', async ({ assert }) => {
     const user = await insertUser(kit)
-    const expired = DateTime.utc().minus({ days: 1 }).toISO()
-    const live = DateTime.utc().plus({ days: 1 }).toISO()
+    const expired = dbTime(kit, DateTime.utc().minus({ days: 1 }))
+    const live = dbTime(kit, DateTime.utc().plus({ days: 1 }))
     const [id] = await kit.db
       .table('account_invitations')
       .insert({
@@ -150,24 +151,33 @@ test.group('expired-token pruning', (group) => {
       .returning('id')
     const invitationId = typeof id === 'object' ? id.id : id
     let refreshed = false
+    const refresh = async () => {
+      await kit.db.from('account_invitations').where('id', invitationId).update({
+        token_hash: 'new-hash',
+        expires_at: live,
+        updated_at: live,
+      })
+      refreshed = true
+    }
+    // Refresh the invitation between pruning's selection and its delete.
     const db = new Proxy(kit.db, {
       get(target, property) {
-        if (property === 'rawQuery') {
-          return (sql: string, bindings: unknown[]) => {
-            const query = target.rawQuery(sql, bindings)
-            return {
-              exec: async () => {
-                if (sql.startsWith('delete from account_invitations')) {
-                  await target.from('account_invitations').where('id', invitationId).update({
-                    token_hash: 'new-hash',
-                    expires_at: live,
-                    updated_at: live,
-                  })
-                  refreshed = true
+        if (property === 'from') {
+          return (table: string) => {
+            const builder = target.from(table)
+            if (table !== 'account_invitations') return builder
+            const remove = builder.delete.bind(builder)
+            return Object.assign(builder, {
+              delete: () => {
+                const query = remove()
+                return {
+                  then: (...args: Parameters<Promise<unknown>['then']>) =>
+                    refresh()
+                      .then(() => query)
+                      .then(...args),
                 }
-                return query.exec()
               },
-            }
+            })
           }
         }
         const value = Reflect.get(target, property, target)
@@ -183,7 +193,7 @@ test.group('expired-token pruning', (group) => {
 
   test('limits the total work of a run and allows a later run to finish', async ({ assert }) => {
     const user = await insertUser(kit)
-    const expired = DateTime.utc().minus({ days: 1 }).toISO()
+    const expired = dbTime(kit, DateTime.utc().minus({ days: 1 }))
     await kit.db.table('account_invitations').insert({
       email: 'pending@example.test',
       role: 'member',

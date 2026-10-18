@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
+import { sqlTimestamp, type DialectSource } from './timestamps.js'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { credentialsChanged, currentInTransaction, revision } from './authentication.js'
-import { deleteReturning, lockUser, transaction, isUserEmailUniqueViolation } from './db.js'
+import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
+import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import { mapRegistrationFields } from './registration_fields.js'
@@ -74,8 +76,9 @@ interface SocialTransactionRow {
 }
 const MINUTES = 10
 const FRESH_CLOCK_TOLERANCE_MS = 30_000
-export const expiry = () => DateTime.utc().plus({ minutes: MINUTES }).toISO()
-export const now = () => DateTime.utc().toISO()
+export const expiry = (client: DialectSource) =>
+  sqlTimestamp(client, DateTime.utc().plus({ minutes: MINUTES }))
+export const now = (client: DialectSource) => sqlTimestamp(client)
 const validChallenge = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value)
 
@@ -157,10 +160,11 @@ export function enabledProviders(config: ResolvedConfig): SocialProviderName[] {
 
 async function consumeState(trx: Trx, state: string): Promise<SocialTransactionRow> {
   if (!isTokenShaped(state)) throw new SocialTransactionError()
-  const rows = await deleteReturning<SocialTransactionRow>(
+  const rows = await consumeRows<SocialTransactionRow>(
     trx,
-    'delete from social_transactions where hash = ? and expires_at > ? returning *',
-    [hashToken(state), now()]
+    'social_transactions',
+    { hash: hashToken(state) },
+    now(trx)
   )
   if (rows.length !== 1) throw new SocialTransactionError()
   return rows[0]
@@ -185,7 +189,7 @@ async function createAssociation(
   profile: ProviderProfile,
   confirmed: boolean
 ): Promise<SocialIdentity> {
-  const timestamp = now()
+  const timestamp = now(trx)
   await trx.table('social_identities').insert({
     user_id: userId,
     provider: name,
@@ -211,6 +215,9 @@ async function createAssociation(
 function isIdentityConflict(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const detail = error as { code?: string; constraint?: string; message?: string }
+  const mysqlKey = mysqlDuplicateKey(error)
+  if (mysqlKey !== undefined)
+    return mysqlKey === 'social_identities.social_identities_provider_provider_user_id_unique'
   return (
     (detail.code === '23505' &&
       detail.constraint?.startsWith('social_identities_provider_provider_user_id_unique') ===
@@ -282,8 +289,8 @@ export function socialIdentityService(deps: Dependencies) {
           proof_hash: input.proof ? hashToken(input.proof) : null,
           credential_revision:
             input.intent === 'reauth' && user ? await revision(trx, deps.config, user.id) : null,
-          expires_at: expiry(),
-          created_at: now(),
+          expires_at: expiry(trx),
+          created_at: now(trx),
         })
       })
       return { state, url: await adapter.authorizationUrl(state, input.context) }
@@ -303,7 +310,7 @@ export function socialIdentityService(deps: Dependencies) {
         const token = await trx
           .from('email_verification_tokens')
           .where('hash', hashToken(input.verificationToken))
-          .where('expires_at', '>', now())
+          .where('expires_at', '>', now(trx))
           .where('purpose', 'activation')
           .first()
         if (!token) throw new SocialTransactionError()
@@ -325,8 +332,8 @@ export function socialIdentityService(deps: Dependencies) {
           user_id: user.id,
           client_challenge: input.clientChallenge,
           verification_hash: hashToken(input.verificationToken),
-          expires_at: expiry(),
-          created_at: now(),
+          expires_at: expiry(trx),
+          created_at: now(trx),
         })
       })
       return { state, url: await adapter.authorizationUrl(state, input.context) }
@@ -337,7 +344,7 @@ export function socialIdentityService(deps: Dependencies) {
       const candidate = await deps.db
         .from('social_transactions')
         .where('hash', hashToken(input.state))
-        .where('expires_at', '>', now())
+        .where('expires_at', '>', now(deps.db))
         .first()
       if (!candidate || candidate.intent === 'registration') throw new SocialTransactionError()
       const name = candidate.provider as SocialProviderName
@@ -426,8 +433,8 @@ export function socialIdentityService(deps: Dependencies) {
                   name: profile.name ?? null,
                   nickname: profile.nickname ?? null,
                   avatar_url: profile.avatarUrl ?? null,
-                  expires_at: expiry(),
-                  created_at: now(),
+                  expires_at: expiry(trx),
+                  created_at: now(trx),
                 })
                 return {
                   status: 'new',

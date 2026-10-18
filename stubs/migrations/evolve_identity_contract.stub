@@ -27,13 +27,13 @@ export default class extends BaseSchema {
       table.string('current_email', 254).notNullable().defaultTo('')
       table.string('purpose', 32).notNullable().defaultTo('activation')
       table.string('hash', 64).notNullable().unique()
-      table.timestamp('expires_at', { useTz: true }).notNullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
     })
     this.defer(async (db) => {
       const usersTable = {{{ migration.usersTable }}}
       await db.from(usersTable).whereNull('email_verified_at').update({ unverified_email: db.raw('email') })
-      const changes = await db.from('account_email_changes').where('expires_at', '>', new Date().toISOString())
+      const changes = await db.from('account_email_changes').where('expires_at', '>', db.dialect.name === 'mysql' ? new Date() : new Date().toISOString())
       for (const change of changes) {
         const user = await db.from(usersTable).where('id', change.user_id).first()
         if (!user || user.email !== change.current_email) {

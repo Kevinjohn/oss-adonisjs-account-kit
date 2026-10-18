@@ -217,6 +217,7 @@ async function databaseKind(
   if (!client || !ts.isStringLiteral(client)) return 'unknown'
   if (['better-sqlite3', 'sqlite3'].includes(client.text)) return 'sqlite'
   if (['pg', 'postgres'].includes(client.text)) return 'postgres'
+  if (client.text === 'mysql2') return 'mysql'
   return 'unsupported'
 }
 

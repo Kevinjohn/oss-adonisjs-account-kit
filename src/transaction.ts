@@ -1,4 +1,4 @@
-// Transaction engine: SQLite busy-retry and PostgreSQL commit wrapping with committed-fault reporting.
+// Transaction engine: SQLite busy-retry, and PostgreSQL and MySQL commit wrapping with committed-fault reporting.
 import { performance } from 'node:perf_hooks'
 import type { Database } from '@adonisjs/lucid/database'
 import { PostCommitError } from './errors.js'
@@ -137,6 +137,20 @@ function combineFailures(primary: unknown, cleanup: unknown[]): unknown {
     : new AggregateError(primary === undefined ? cleanup : [primary, ...cleanup])
 }
 
+/**
+ * MySQL runs at READ COMMITTED so reads after a row lock see the latest committed rows; InnoDB's
+ * default REPEATABLE READ would keep serving the snapshot taken before the lock was granted.
+ */
+function beginTransaction(connection: ReturnType<Database['connection']>): Promise<Trx> {
+  if (connection.dialect.name !== 'mysql') return connection.transaction()
+  // Lucid forwards options only from the second argument; the options-only overload drops them.
+  const begin = connection.transaction.bind(connection) as unknown as (
+    callback: undefined,
+    options: { isolationLevel: 'read committed' }
+  ) => Promise<Trx>
+  return begin(undefined, { isolationLevel: 'read committed' })
+}
+
 /** Run a database-only callback; callers perform notifications after this resolves. */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   const connection = db.connection()
@@ -147,7 +161,7 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
     let result: T | undefined
     try {
       return await runAndCommit(
-        await connection.transaction(),
+        await beginTransaction(connection),
         callback,
         () => {
           committed = true

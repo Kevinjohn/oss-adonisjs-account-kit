@@ -203,7 +203,7 @@ test('quoted database examples cannot override the executable connection', async
         "import { defineConfig } from '@adonisjs/lucid'",
         'const example = `connection: "sqlite", connections: { sqlite: { client: "better-sqlite3" } }`',
         'const quoted = "client: \\\"better-sqlite3\\\""',
-        'export default defineConfig({ connection: "mysql", connections: { mysql: { client: "mysql2" }, sqlite: { client: "better-sqlite3" } } })',
+        'export default defineConfig({ connection: "mssql", connections: { mssql: { client: "mssql" }, sqlite: { client: "better-sqlite3" } } })',
       ].join('\n')
     )
     const unsupported = await inspectSetup(root)
@@ -262,7 +262,7 @@ test('database selection uses process, dotenv, then literal default without gues
       [
         "import { defineConfig } from '@adonisjs/lucid'",
         "import env from '#start/env'",
-        'export default defineConfig({ connection: env.get("DB_CONNECTION", "sqlite"), connections: { sqlite: { client: "better-sqlite3" }, pg: { client: "pg" }, mysql: { client: "mysql2" } } })',
+        'export default defineConfig({ connection: env.get("DB_CONNECTION", "sqlite"), connections: { sqlite: { client: "better-sqlite3" }, pg: { client: "pg" }, mysql: { client: "mysql2" }, mssql: { client: "mssql" } } })',
       ].join('\n')
     )
     const fallback = await inspectSetup(root)
@@ -270,10 +270,13 @@ test('database selection uses process, dotenv, then literal default without gues
     await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
     const dotenv = await inspectSetup(root)
     assert.equal(dotenv.database, 'postgres')
-    for (const selected of ['mysql', 'unconfigured']) {
+    await writeFile(join(root, '.env'), 'DB_CONNECTION=mysql\n')
+    const mysql = await inspectSetup(root)
+    assert.equal(mysql.database, 'mysql')
+    for (const selected of ['mssql', 'unconfigured']) {
       await writeFile(join(root, '.env'), `DB_CONNECTION=${selected}\n`)
       const unsupported = await inspectSetup(root)
-      assert.equal(unsupported.database, selected === 'mysql' ? 'unsupported' : 'unknown')
+      assert.equal(unsupported.database, selected === 'mssql' ? 'unsupported' : 'unknown')
       const plan = await planSetup(defaultSetupChoices(), unsupported)
       assert.isTrue(
         plan.diagnostics.some(
