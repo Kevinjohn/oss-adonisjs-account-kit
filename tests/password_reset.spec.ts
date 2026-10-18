@@ -795,3 +795,36 @@ test.group('passwordReset.inspect', (group) => {
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 })
+
+test.group('password reset issuance and redemption boundaries', (group) => {
+  const kit = useTestApp(group)
+
+  test('exhausting request issuance does not prevent redeeming the latest valid token', async ({
+    assert,
+  }) => {
+    await insertUser(kit)
+    const recorder = makeNotify()
+    const { account } = makeService(kit, {
+      minRequestMs: 0,
+      throttle: { requests: 1, duration: '1h' },
+      notify: recorder.notify,
+    })
+
+    await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
+    const token = tokenFrom(recorder.calls[0].args[1])
+    await assert.rejects(
+      () => account.passwordReset.request({ email: 'person@example.test', clientKey: 'second' }),
+      ThrottledError
+    )
+
+    const resetUser = await account.passwordReset.reset({ token, password: 'new-password123' })
+    const stored = await kit.db.from('users').where('id', resetUser.id).first()
+    assert.equal(resetUser.email, 'person@example.test')
+    assert.isTrue(await kit.hash.verify(stored.password, 'new-password123'))
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
+    assert.deepEqual(
+      recorder.calls.map((call) => call.method),
+      ['passwordResetProvision', 'passwordResetCompleted']
+    )
+  })
+})
