@@ -1,5 +1,6 @@
 # Account Kit for AdonisJS
 
+[![checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml)
 [![npm](https://img.shields.io/npm/v/adonisjs-account-kit)](https://www.npmjs.com/package/adonisjs-account-kit)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
