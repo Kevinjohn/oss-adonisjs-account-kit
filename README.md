@@ -26,7 +26,7 @@ security details handled. You keep your user model, your routes and your policie
 - **Rate limits** on password reset, verification resend, invitations, login and account changes.
 - **Managed JSON routes** (optional), if you would rather not write the controllers.
 - **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`.
-- Tested on **SQLite and PostgreSQL 16**.
+- Tested on **SQLite, PostgreSQL 16 and MySQL 8.4**.
 
 ## Install
 

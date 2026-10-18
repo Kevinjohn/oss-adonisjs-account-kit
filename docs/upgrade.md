@@ -13,7 +13,7 @@ rewrite them to match new options or schemas.
 The supported runtime, framework, database, and schema points are listed in
 [compatibility](compatibility.md). The declared package peer ranges are wider than the versions
 tested at their boundaries; use the tested versions when planning a production upgrade. The
-supported databases are PostgreSQL and SQLite on the configured Lucid connection, with integer,
+supported databases are PostgreSQL, MySQL 8.4 and SQLite on the configured Lucid connection, with integer,
 string, or UUID user keys and the schema constraints described by
 [identity creation](identity-creation.md). Other runtimes, databases, and schema layouts are not
 claimed by this guide.
@@ -226,6 +226,12 @@ zero count still requires `--retirement-maintenance-window`. This flag records t
 assertion; it does not stop writes. Run inventory and apply in a real maintenance window that
 prevents concurrent credential changes, after independently confirming a usable alternative for
 every affected account. Do not rely on the stale scan alone.
+
+### Millisecond timestamps
+
+Newly generated migrations declare package timestamp columns with millisecond precision
+(`precision: 3`). Existing PostgreSQL and SQLite installations need no change: PostgreSQL already
+stores microseconds, and SQLite stores text. MySQL installations start on this schema.
 
 ## Identity creation and proof migration
 
