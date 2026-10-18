@@ -17,6 +17,12 @@ Initial public release.
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
   one-time PKCE handoff.
+- Optional magic-link sign-in (`magicLinkLogin`, `kit.magicLink`): a one-use, 15-minute email link
+  bound to the requesting client by a PKCE-style verifier, for session and access-token guards,
+  with managed routes under `auth/magic-link`, the `magicLinkProvision` email, the
+  `E_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
+  deletes outstanding links, so the new `login_link_tokens` table is required in every
+  installation.
 - Built-in account emails for AdonisJS Mail, trusted action-link builders and a notification
   readiness check.
 - An optional managed JSON backend (`adonisjs-account-kit/http`) for apps that do not want to own

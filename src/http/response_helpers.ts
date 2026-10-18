@@ -30,7 +30,7 @@ export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorRes
 
 export function invalidProof(
   context: HttpContext,
-  proof: 'password' | 'email' | 'invitation',
+  proof: 'password' | 'email' | 'invitation' | 'magicLink',
   message?: ManagedMessage
 ): unknown {
   const mapped = managedErrorResponse(new InvalidTokenError(), {

@@ -49,6 +49,56 @@ test.group('setup choice validation', (group) => {
     assert.deepEqual(parseSetupChoices(choices), choices)
   })
 
+  test('magic-link sign-in asks for its destination and generates its config and routes', async ({
+    assert,
+  }) => {
+    const answers: Record<string, string> = {
+      'Enabled services': 'authentication,magicLinkLogin',
+      'Managed endpoint groups': 'authentication,magicLinkLogin',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Token revocation': 'yes',
+      'Application-owned protected': 'yes',
+      'Delivery integration': 'custom',
+      'magicLink relative': 'login/link',
+    }
+    const asked = await SetupAccountKit.prototype.interactiveChoices.call(
+      { logger: { info() {} } } as unknown as SetupAccountKit,
+      async (question) =>
+        Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
+    )
+    assert.equal(asked.mail.destinations.magicLink, 'login/link')
+    assert.deepEqual(parseSetupChoices(asked), asked)
+
+    const { root, choices } = await fixture()
+    choices.features.push('magicLinkLogin')
+    choices.managed.push('magicLinkLogin')
+    choices.mail.destinations.magicLink = 'account/magic-link'
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"magicLinkLogin"')
+    assert.include(config, '"magicLink":"account/magic-link"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"magicLinkLogin"')
+
+    delete choices.mail.destinations.magicLink
+    choices.authentication = null
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.includeMembers(
+      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
+      [
+        'authentication: Magic-link sign-in requires a selected existing guard',
+        'mail.destinations.magicLink: Enabled email flow needs a relative frontend destination',
+      ]
+    )
+  })
+
   test('interactive provider selection does not duplicate an already selected social group', async ({
     assert,
   }) => {
