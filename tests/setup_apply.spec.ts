@@ -50,7 +50,7 @@ test.group('setup apply', (group) => {
     })
     assert.equal(resumed.changes[0].action, 'unchanged')
     const written = await applySetup(root, resumed)
-    assert.lengthOf(written, 21)
+    assert.lengthOf(written, 22)
     assert.include(await readFile(join(root, 'start/routes.ts'), 'utf8'), originalRoutes.trim())
     assert.include(
       await readFile(join(root, 'start/routes.ts'), 'utf8'),
