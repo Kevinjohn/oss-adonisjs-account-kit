@@ -136,5 +136,5 @@ callbacks, outbox handling, and cleanup, see [usage](docs/usage.md) and
 
 Version points and the current audit assessment are recorded in
 [compatibility](docs/compatibility.md). Current repository checks and consumer validation belong
-in the maintained [verification record](docs/verification.md); it distinguishes package tests,
+in the maintained [verification record](docs/maintainers/verification.md); it distinguishes package tests,
 packed-consumer checks, and checks that remain outstanding.

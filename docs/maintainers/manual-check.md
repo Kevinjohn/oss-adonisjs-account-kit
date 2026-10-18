@@ -68,7 +68,7 @@ That review recorded these follow-ups, addressed by the corrections below:
   This may require an expression index for efficient lookup at larger user counts; no workload
   performance claim was tested.
 
-The [dependency audit](compatibility.md#dependency-audit-assessment) still has 16 unresolved advisories.
+The [dependency audit](../compatibility.md#dependency-audit-assessment) still has 16 unresolved advisories.
 The current milestone completes package implementation and API-kit validation. Stage 7,
 fork/browser work, owner application integration, and publication remain deferred.
 

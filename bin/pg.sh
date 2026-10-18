@@ -23,7 +23,7 @@ for path in "$ROOT/tmp" "$DATA"; do
     [ "$(cd "$path" && pwd -P)" = "$path" ] || fail "ambiguous managed directory: $path"
   fi
 done
-missing() { fail 'PostgreSQL 16 not found: brew install postgresql@16, or run DB_CLIENT=pg pnpm quick:test against your own PostgreSQL 16 (see docs/verification.md)'; }
+missing() { fail 'PostgreSQL 16 not found: brew install postgresql@16, or run DB_CLIENT=pg pnpm quick:test against your own PostgreSQL 16 (see docs/maintainers/verification.md)'; }
 if prefix="$(brew --prefix --installed postgresql@16 2>/dev/null)"; then
   BIN="$prefix/bin"
 elif ctl="$(command -v pg_ctl)"; then

@@ -13,6 +13,7 @@
     "!build/bin",
     "!build/tests",
     "!docs/reviews/**",
+    "!docs/maintainers/**",
     "!docs/PRD*.md",
     "!PLAN*.md",
     "SECURITY.md"

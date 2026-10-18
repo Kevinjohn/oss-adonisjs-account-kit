@@ -420,7 +420,7 @@ cleanup is an explicit Ace command, not an automatic scheduler. See
 
 The full route and validation example is in [`examples/api`](../examples/api/README.md). Current
 tested versions and remaining verification are in [compatibility](compatibility.md) and
-[verification](verification.md).
+[verification](maintainers/verification.md).
 
 ## Files delta
 
