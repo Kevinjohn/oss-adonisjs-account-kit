@@ -17,6 +17,12 @@ Initial public release.
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
   one-time PKCE handoff.
+- Optional magic-link sign-in (`magicLinkLogin`, `kit.magicLink`): a one-use, 15-minute email link
+  bound to the requesting client by a PKCE-style verifier, for session and access-token guards,
+  with managed routes under `auth/magic-link`, the `magicLinkProvision` email, the
+  `E_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
+  deletes outstanding links, so the new `login_link_tokens` table is required in every
+  installation.
 - Optional sign-in management (`sessionManagement`, `kit.authentication.sessions`): list the
   account's sessions or access tokens and revoke one, all others, or all, with managed routes under
   `account/sessions`, `SessionNotFoundError`, setup support and pruning. Session sign-ins are
@@ -35,6 +41,9 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
+  services behind them) for shell-trusted invitations and reset links, with `--print` for
+  printed links and JSON output.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>

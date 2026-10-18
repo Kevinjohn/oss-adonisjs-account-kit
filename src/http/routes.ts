@@ -2,6 +2,7 @@ export type ManagedCapability =
   | 'authentication'
   | 'registration'
   | 'passwordReset'
+  | 'magicLinkLogin'
   | 'emailVerification'
   | 'emailPasswordManagement'
   | 'invitations'
@@ -15,6 +16,9 @@ export type ManagedEndpointName =
   | 'auth.passwordReset.request'
   | 'auth.passwordReset.inspect'
   | 'auth.passwordReset.complete'
+  | 'auth.magicLink.request'
+  | 'auth.magicLink.inspect'
+  | 'auth.magicLink.complete'
   | 'auth.emailVerification.inspect'
   | 'auth.emailVerification.complete'
   | 'auth.invitation.inspect'
@@ -121,6 +125,29 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     capability: 'passwordReset',
     method: 'POST',
     suffix: 'auth/password-reset/:token',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.magicLink.request',
+    capability: 'magicLinkLogin',
+    method: 'POST',
+    suffix: 'auth/magic-link',
+    access: 'public',
+  },
+  {
+    name: 'auth.magicLink.inspect',
+    capability: 'magicLinkLogin',
+    method: 'GET',
+    suffix: 'auth/magic-link/:token',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.magicLink.complete',
+    capability: 'magicLinkLogin',
+    method: 'POST',
+    suffix: 'auth/magic-link/:token',
     access: 'public',
     proof: true,
   },

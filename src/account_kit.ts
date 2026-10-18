@@ -9,6 +9,7 @@ import {
   completePasswordReset,
 } from './password_reset.js'
 import { authenticationService } from './authentication.js'
+import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.js'
 import { sessionManagementService } from './session_management.js'
 import { register } from './registration.js'
 import { completeVerification, inspectVerification, sendVerification } from './verification.js'
@@ -22,6 +23,7 @@ import {
 import { makeThrottler, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { socialIdentityService } from './social_identity.js'
+import { operatorInvite, operatorResetLink } from './operator.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -32,7 +34,12 @@ import {
 } from './invitations.js'
 import type {
   AccountUser,
+  AuthenticationGuard,
   ChangePasswordInput,
+  CurrentAccount,
+  MagicLinkCompleteInput,
+  MagicLinkInspectInput,
+  MagicLinkRequestInput,
   CompleteEmailChangeInput,
   InspectEmailChangeInput,
   RequestEmailChangeInput,
@@ -46,6 +53,10 @@ import type {
   InvitationsResendInput,
   InvitationsRevokeInput,
   InvitationsSendInput,
+  OperatorInviteInput,
+  OperatorInviteResult,
+  OperatorResetLinkInput,
+  OperatorResetLinkResult,
   PasswordResetInspectInput,
   PasswordResetRequestInput,
   PasswordResetCompleteInput,
@@ -136,6 +147,19 @@ export class AccountKit {
     return socialIdentityService(this.deps)
   }
 
+  /** Passwordless sign-in by an email link bound to the requesting client. */
+  readonly magicLink = {
+    request: (input: MagicLinkRequestInput): Promise<void> =>
+      this.enabled('magicLinkLogin', () => requestMagicLink(this.deps, input)),
+    inspect: (input: MagicLinkInspectInput): Promise<boolean> =>
+      this.enabled('magicLinkLogin', () => inspectMagicLink(this.deps, input)),
+    complete: <Credential>(
+      input: MagicLinkCompleteInput,
+      guard: AuthenticationGuard<Credential>
+    ): Promise<{ account: CurrentAccount; credential: Credential }> =>
+      this.enabled('magicLinkLogin', () => completeMagicLink(this.deps, input, guard)),
+  }
+
   readonly passwordReset = {
     request: (input: PasswordResetRequestInput): Promise<void> =>
       this.enabled('passwordReset', () => requestPasswordReset(this.deps, input)),
@@ -165,6 +189,16 @@ export class AccountKit {
       this.enabled('invitations', () => resendInvitation(this.deps, input)),
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
+  }
+  /**
+   * Operator context only: callers with shell access (Ace commands). No actor authorisation and no
+   * throttles apply; never expose these methods to an HTTP request.
+   */
+  readonly operator = {
+    invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
+      this.enabled('invitations', () => operatorInvite(this.deps, input)),
+    resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
+      this.enabled('passwordReset', () => operatorResetLink(this.deps, input)),
   }
   readonly emailPasswordManagement = {
     changePassword: (input: ChangePasswordInput): Promise<void> =>
