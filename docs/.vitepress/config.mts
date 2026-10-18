@@ -55,6 +55,7 @@ export default defineConfig({
           { text: 'Social sign-in', link: '/recipes/social-login' },
           { text: 'Custom user model', link: '/recipes/custom-user-model' },
           { text: 'Custom table or ID type', link: '/custom-schema' },
+          { text: 'Drizzle, Prisma and SQL users', link: '/adapters' },
           { text: 'Custom adapter', link: '/recipes/custom-adapter' },
           { text: 'Multi-tenant', link: '/recipes/multi-tenant' },
           { text: 'Email templates', link: '/recipes/email-templates' },

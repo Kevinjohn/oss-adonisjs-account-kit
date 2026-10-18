@@ -155,8 +155,8 @@ See [testing your account flows](docs/recipes/testing.md).
 
 ## Bring your own ORM
 
-Users live behind a small `UsersAdapter` interface. The Lucid adapter ships with the package. For
-anything else, `adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the
+Users live behind a small `UsersAdapter` interface. Lucid, Drizzle, Prisma and plain SQL adapters
+ship with the package; see [users adapters](docs/adapters.md). For anything else, `adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the
 Lucid adapter passes, so you can prove your adapter is correct. See
 [custom adapter](docs/recipes/custom-adapter.md).
 
