@@ -1,5 +1,4 @@
 import { test } from '@japa/runner'
-import type { HttpContext } from '@adonisjs/core/http'
 import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
 import { planManagedRoutes } from '../src/http/routes.js'
 import { clientChallengeFor } from '../src/magic_link.js'
