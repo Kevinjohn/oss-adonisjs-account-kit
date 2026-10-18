@@ -99,11 +99,14 @@ export type LifecycleEvent =
         | 'email_change.completed'
       userId: UserId
       operationId: string
+      /** Present only when an operator command, not an account holder, started the operation. */
+      source?: 'operator'
     }
   | {
       type: 'invitation.sent' | 'invitation.resent' | 'invitation.revoked'
       invitationId: number
       operationId: string
+      source?: 'operator'
     }
   | { type: 'invitation.accepted'; invitationId: number; userId: UserId; operationId: string }
 
@@ -371,6 +374,38 @@ export interface RegistrationInput {
   email: string
   password: string
   registrationData?: unknown
+}
+
+export type OperatorDelivery = 'send' | 'print'
+
+export interface OperatorInviteInput {
+  email: string
+  role: string
+  /** `send` notifies the invitee; `print` returns the acceptance URL instead. */
+  deliver: OperatorDelivery
+}
+
+export interface OperatorResetLinkInput {
+  email: string
+  deliver: OperatorDelivery
+}
+
+/** A committed follow-up failure, reduced to safe fields: no cause, stack, or URL. */
+export interface OperatorFault {
+  name: string
+  message: string
+}
+
+export interface OperatorInviteResult {
+  invitation: Invitation
+  url?: string
+  fault?: OperatorFault
+}
+
+export interface OperatorResetLinkResult {
+  user: AccountUser
+  url?: string
+  fault?: OperatorFault
 }
 
 export interface InvitationPage {

@@ -184,7 +184,8 @@ commit atomically with a password or email change. The context contains `operati
 operation.
 
 `onLifecycleEvent(event)` receives safe event identifiers after commit. Payloads contain IDs and an
-operation ID, not tokens, email addresses, passwords, or notification URLs. Treat this callback as
+operation ID, not tokens, email addresses, passwords, or notification URLs. Events started by an
+operator command also carry `source: 'operator'`; the property is absent otherwise. Treat this callback as
 best-effort post-commit delivery; use a transactional outbox if the consumer requires durable
 delivery.
 
