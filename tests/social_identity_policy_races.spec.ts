@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { clientChallenge, provider } from './helpers/social_identity.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('social policy and method races', (group) => {
   const kit = useTestApp(group)
@@ -24,9 +25,9 @@ test.group('social policy and method races', (group) => {
       provider_user_id: 'known-subject',
       email: user.email,
       email_verified: true,
-      confirmed_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      confirmed_at: dbTime(kit),
+      created_at: dbTime(kit),
+      updated_at: dbTime(kit),
     })
     const known = await account.socialAuthentication.begin({
       provider: 'google',
@@ -52,7 +53,7 @@ test.group('social policy and method races', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit, { password: null })
-    const timestamp = new Date().toISOString()
+    const timestamp = dbTime(kit)
     for (const [providerName, subject] of [
       ['google', 'g-subject'],
       ['github', 'h-subject'],

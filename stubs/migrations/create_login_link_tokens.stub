@@ -10,8 +10,8 @@ export default class extends BaseSchema {
       table.string('email', 254).notNullable()
       table.string('hash', 64).notNullable().unique()
       table.string('client_challenge', 43).notNullable()
-      table.timestamp('expires_at', { useTz: true }).notNullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
     })
   }
 

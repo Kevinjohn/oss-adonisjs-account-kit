@@ -6,6 +6,7 @@ import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { fixture } from './helpers/managed_http.js'
+import { dbTime } from './helpers/db_time.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 
@@ -281,7 +282,7 @@ test.group('managed sign-in management routes', (group) => {
           tokenable_id: user.id,
           name,
           hash: `hash-${name}`,
-          created_at: DateTime.utc().toISO(),
+          created_at: dbTime(kit, DateTime.utc()),
         })
         .returning('id')
       return typeof row === 'object' ? (row as { id: number }).id : (row as number)

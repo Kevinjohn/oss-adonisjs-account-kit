@@ -5,7 +5,7 @@ import { BaseSchema } from '@adonisjs/lucid/schema'
 export default class extends BaseSchema {
   async up() {
     this.schema.alterTable({{{ migration.usersTable }}}, (table) => {
-      table.timestamp('email_verified_at', { useTz: true }).nullable()
+      table.timestamp('email_verified_at', { useTz: true, precision: 3 }).nullable()
     })
   }
 

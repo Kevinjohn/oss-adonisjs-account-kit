@@ -153,6 +153,25 @@ and `DB_DATABASE`, then run `DB_CLIENT=pg pnpm quick:test` (or `pnpm test` for l
 The wrapper always targets its owned cluster. Packed-consumer checks provision separate databases;
 these package checks do not satisfy their distinct validation gate.
 
+### MySQL package tests
+
+`pnpm test:mysql` runs the package suite against an external MySQL 8.4 server, with the Node
+process in a non-UTC time zone (`America/New_York`) so a missed UTC conversion fails. Set
+`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_DATABASE`; the defaults are
+`127.0.0.1:33306`, `root`, no password and `account_kit_test`. The harness sets the session time
+zone to UTC on every connection. A throwaway Homebrew server:
+
+```sh
+brew install mysql@8.4
+"$(brew --prefix mysql@8.4)/bin/mysqld" --initialize-insecure --datadir=/tmp/ak-mysql
+"$(brew --prefix mysql@8.4)/bin/mysqld" --datadir=/tmp/ak-mysql --port=33306 \
+  --socket=/tmp/ak-mysql.sock --mysqlx=OFF &
+"$(brew --prefix mysql@8.4)/bin/mysql" -uroot -h127.0.0.1 -P33306 -e 'create database account_kit_test'
+pnpm test:mysql
+```
+
+The packed-consumer checks stay on SQLite and PostgreSQL; the MySQL evidence is this suite.
+
 ### Local service verification: 15 October 2026
 
 These results were produced from uncommitted service/tooling changes on branch

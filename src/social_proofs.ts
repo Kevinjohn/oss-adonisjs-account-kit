@@ -1,5 +1,6 @@
 // Social sensitive proofs: issuing and consuming short-lived reauthentication proofs.
-import { lockUser, transaction, deleteReturning } from './db.js'
+import { lockUser, transaction } from './db.js'
+import { consumeRows } from './consume_rows.js'
 import { revision } from './authentication.js'
 import { SocialProofError } from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
@@ -26,10 +27,11 @@ export async function consumeSocialSensitiveProofHash(
   proofHash: string
 ): Promise<void> {
   await lockUser(trx, config, userId)
-  const rows = await deleteReturning<{ credential_revision: string | null }>(
+  const rows = await consumeRows<{ credential_revision: string | null }>(
     trx,
-    'delete from social_sensitive_proofs where hash = ? and user_id = ? and purpose = ? and expires_at > ? returning credential_revision',
-    [proofHash, userId, purpose, now()]
+    'social_sensitive_proofs',
+    { hash: proofHash, user_id: userId, purpose },
+    now(trx)
   )
   if (rows.length !== 1 || rows[0].credential_revision !== (await revision(trx, config, userId)))
     throw new SocialProofError()
@@ -47,8 +49,8 @@ export async function issueProof(
     user_id: userId,
     purpose,
     credential_revision: await revision(trx, config, userId),
-    expires_at: expiry(),
-    created_at: now(),
+    expires_at: expiry(trx),
+    created_at: now(trx),
   })
   return proof
 }

@@ -175,7 +175,7 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     },
 
     async markEmailVerified(id, at, trx) {
-      await update(id, { unverified_email: null, email_verified_at: sqlTimestamp(at) }, trx)
+      await update(id, { unverified_email: null, email_verified_at: sqlTimestamp(trx, at) }, trx)
     },
 
     async delete(id, trx) {

@@ -1,9 +1,10 @@
 import { test } from '@japa/runner'
 import { deleteReturning, lockRow, transaction } from '../src/db.js'
-import { isUniqueViolation } from '../src/db.js'
+import { isUniqueViolation, mysqlDuplicateKey } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { locksRows, testEngine } from './helpers/dialect.js'
 test.group('database helpers', (group) => {
   const kit = useTestApp(group)
 
@@ -38,7 +39,7 @@ test.group('database helpers', (group) => {
   })
 
   test('blocks a second SQLite transaction until the locked user commits', async ({ assert }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
 
     await kit.db.table('users').insert({
       email: 'locked@example.test',
@@ -82,7 +83,7 @@ test.group('database helpers', (group) => {
   })
 
   test('a SQLite lock does not fire application update triggers', async ({ assert }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const schema = kit.db.connection().schema
     await kit.db.rawQuery('DROP TRIGGER IF EXISTS test_user_update').exec()
     await schema.dropTableIfExists('test_update_audit')
@@ -111,7 +112,7 @@ test.group('database helpers', (group) => {
   test('SQLite lifecycle no-ops and invitation management leave no phantom update audit', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const schema = kit.db.connection().schema
     await kit.db.rawQuery('DROP TRIGGER IF EXISTS test_user_audit').exec()
     await kit.db.rawQuery('DROP TRIGGER IF EXISTS test_invitation_audit').exec()
@@ -154,7 +155,7 @@ test.group('database helpers', (group) => {
   })
 
   test('locks rows in the configured users table name on SQLite', async ({ assert }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
 
     const schema = kit.db.connection().schema
     await schema.dropTableIfExists('account_email_changes')
@@ -219,6 +220,27 @@ test.group('database helpers', (group) => {
     assert.isFalse(isUniqueViolation(failure, 'users', 'email'))
   })
 
+  test('reads the key of a MySQL duplicate-entry error', ({ assert }) => {
+    const duplicate = (key: string, value = 'person@example.test') => ({
+      code: 'ER_DUP_ENTRY',
+      errno: 1062,
+      sqlMessage: `Duplicate entry '${value}' for key '${key}'`,
+    })
+    assert.equal(
+      mysqlDuplicateKey(duplicate('users.users_email_unique')),
+      'users.users_email_unique'
+    )
+    assert.equal(
+      mysqlDuplicateKey(duplicate('users.users_email_unique', "x' for key 'users.other")),
+      'users.users_email_unique'
+    )
+    assert.isUndefined(mysqlDuplicateKey({ code: '23505', constraint: 'users_email_unique' }))
+    assert.isUndefined(mysqlDuplicateKey({ code: 'ER_DUP_ENTRY', sqlMessage: 'Duplicate entry' }))
+    assert.isTrue(isUniqueViolation(duplicate('users.users_email_unique'), 'users', 'email'))
+    assert.isFalse(isUniqueViolation(duplicate('users.users_email_alias_unique'), 'users', 'email'))
+    assert.isFalse(isUniqueViolation(duplicate('accounts.users_email_unique'), 'users', 'email'))
+  })
+
   test('recognizes only the documented PostgreSQL email constraint identity', ({ assert }) => {
     assert.isTrue(
       isUniqueViolation({ code: '23505', constraint: 'users_email_unique' }, 'users', 'email')
@@ -241,6 +263,8 @@ test.group('database helpers', (group) => {
   })
 
   test('deleteReturning returns the deleted rows from the real database', async ({ assert }) => {
+    // MySQL has no RETURNING; consumeRows covers it.
+    if (testEngine === 'mysql') return
     await kit.db.table('users').insert({ email: 'gone@example.test', created_at: new Date() })
     const rows = await deleteReturning<{ email: string }>(
       kit.db,

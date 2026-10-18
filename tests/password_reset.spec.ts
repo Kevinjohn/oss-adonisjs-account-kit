@@ -23,6 +23,8 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { locksRows } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 test.group('passwordReset.request', (group) => {
   const kit = useTestApp(group)
 
@@ -441,7 +443,7 @@ test.group('passwordReset.reset', (group) => {
     const original = user.password
     await kit.db
       .from('password_reset_tokens')
-      .update({ expires_at: DateTime.utc().minus({ minute: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ minute: 1 })) })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'new-password123' }),
       InvalidTokenError
@@ -461,7 +463,7 @@ test.group('passwordReset.reset', (group) => {
     assert.equal(await storedPassword(), original)
     await kit.db
       .from('password_reset_tokens')
-      .update({ expires_at: DateTime.utc().plus({ minute: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().plus({ minute: 1 })) })
     await account.passwordReset.reset({ token, password: 'new-password123' })
     await assert.rejects(
       () => account.passwordReset.reset({ token, password: 'another-password' }),
@@ -540,8 +542,8 @@ test.group('passwordReset.reset', (group) => {
       tokenable_id: user.id,
       email: 'next@example.test',
       hash: hashToken(generateToken()),
-      expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
-      created_at: DateTime.utc().toISO(),
+      expires_at: dbTime(kit, DateTime.utc().plus({ hour: 1 })),
+      created_at: dbTime(kit, DateTime.utc()),
     }
     await kit.db.table('email_verification_tokens').insert(emailChange)
     const emailChangeRows = await kit.db.from('email_verification_tokens')
@@ -577,8 +579,8 @@ test.group('passwordReset.reset', (group) => {
       tokenable_id: user.id,
       email: 'next@example.test',
       hash: hashToken(generateToken()),
-      expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
-      created_at: DateTime.utc().toISO(),
+      expires_at: dbTime(kit, DateTime.utc().plus({ hour: 1 })),
+      created_at: dbTime(kit, DateTime.utc()),
     })
     const result = await account.passwordReset.reset({ token, password: 'new-password123' })
     assert.isTrue(result.hasPassword)
@@ -604,7 +606,7 @@ test.group('passwordReset.reset', (group) => {
   test('credential callback runs once after a contended DELETE-journal commit', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     let native: { inTransaction: boolean; exec(sql: string): void } | undefined
@@ -619,16 +621,16 @@ test.group('passwordReset.reset', (group) => {
       await customKit.db.table('users').insert({
         email,
         password: await customKit.hash.make('password123'),
-        email_verified_at: DateTime.utc().toISO(),
-        created_at: DateTime.utc().toISO(),
+        email_verified_at: dbTime(kit, DateTime.utc()),
+        created_at: dbTime(kit, DateTime.utc()),
       })
       const user = await customKit.db.from('users').first()
       await customKit.db.table('password_reset_tokens').insert({
         tokenable_id: user.id,
         email,
         hash: hashToken(token),
-        expires_at: DateTime.utc().plus({ hour: 1 }).toISO(),
-        created_at: DateTime.utc().toISO(),
+        expires_at: dbTime(kit, DateTime.utc().plus({ hour: 1 })),
+        created_at: dbTime(kit, DateTime.utc()),
       })
       reader = await customKit.db.transaction()
       await reader.from('password_reset_tokens').first()
@@ -778,7 +780,7 @@ test.group('passwordReset.inspect', (group) => {
   test('expired token is rejected', async ({ assert }) => {
     const { account, token } = await issue()
     await kit.db.from('password_reset_tokens').update({
-      expires_at: DateTime.utc().minus({ minutes: 1 }).toISO(),
+      expires_at: dbTime(kit, DateTime.utc().minus({ minutes: 1 })),
     })
     assert.isFalse(await account.passwordReset.inspect({ token }))
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)

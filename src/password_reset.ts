@@ -1,4 +1,5 @@
 import { performance } from 'node:perf_hooks'
+import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
@@ -32,7 +33,7 @@ export async function inspectPasswordReset(
     .from('password_reset_tokens')
     .select('tokenable_id', 'email')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', DateTime.utc().toISO())
+    .where('expires_at', '>', sqlTimestamp(deps.db))
     .first()
   if (!row) return false
   const user = await deps.config.users.findById(row.tokenable_id)
@@ -163,8 +164,8 @@ export function issueResetToken(
         tokenable_id: current.id,
         email: current.email,
         hash: hashToken(token),
-        expires_at: expiresAt(now, deps.config.expiresIn.passwordReset).toISO(),
-        created_at: now.toISO(),
+        expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.passwordReset)),
+        created_at: sqlTimestamp(trx, now),
       })
       .onConflict('tokenable_id')
       .merge(['email', 'hash', 'expires_at', 'created_at'])

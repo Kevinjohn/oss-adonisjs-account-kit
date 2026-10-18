@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import { transaction, isUserEmailUniqueViolation } from './db.js'
@@ -55,8 +56,8 @@ export async function register(
           current_email: email,
           purpose: 'activation',
           hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.expiresIn.emailVerification).toISO(),
-          created_at: now.toISO(),
+          expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.emailVerification)),
+          created_at: sqlTimestamp(trx, now),
         })
         return user
       })

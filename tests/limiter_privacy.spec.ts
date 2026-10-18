@@ -20,6 +20,7 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { locksRows } from './helpers/dialect.js'
 
 test.group('limiter privacy and invitation budgets', (group) => {
   const kit = useTestApp(group)
@@ -317,7 +318,7 @@ test.group('limiter privacy and invitation budgets', (group) => {
     })
   }
 
-  if (process.env.DB_CLIENT !== 'pg') {
+  if (!locksRows) {
     test('database limiter completes resend with a shared single-connection SQLite pool', async ({
       assert,
     }) => {

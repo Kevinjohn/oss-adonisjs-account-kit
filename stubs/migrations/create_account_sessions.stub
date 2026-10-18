@@ -9,9 +9,9 @@ export default class extends BaseSchema {
       {{{ migration.userIdColumn }}}.notNullable().index().references('id').inTable({{{ migration.usersTable }}}).onDelete('CASCADE')
       table.string('handle_hash', 64).notNullable().unique()
       table.string('label', 255).nullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
-      table.timestamp('last_seen_at', { useTz: true }).notNullable()
-      table.timestamp('expires_at', { useTz: true }).notNullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('last_seen_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
     })
   }
 

@@ -5,6 +5,7 @@ import { InvalidSessionError } from './errors.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type { ResolvedConfig, Trx, UserId } from './types.js'
+import { sqlTimestamp } from './timestamps.js'
 
 export const sessionTable = 'account_sessions'
 
@@ -45,9 +46,9 @@ export async function recordSession(
     user_id: userId,
     handle_hash: hashToken(handle),
     label,
-    created_at: now.toISO(),
-    last_seen_at: now.toISO(),
-    expires_at: expiresAt(now, config.sessionManagement.idleExpiry).toISO(),
+    created_at: sqlTimestamp(trx, now),
+    last_seen_at: sqlTimestamp(trx, now),
+    expires_at: sqlTimestamp(trx, expiresAt(now, config.sessionManagement.idleExpiry)),
   })
 }
 
@@ -93,7 +94,7 @@ export async function touchSession(
     .from(sessionTable)
     .where('id', session.id)
     .update({
-      last_seen_at: now.toISO(),
-      expires_at: expiresAt(now, config.sessionManagement.idleExpiry).toISO(),
+      last_seen_at: sqlTimestamp(trx, now),
+      expires_at: sqlTimestamp(trx, expiresAt(now, config.sessionManagement.idleExpiry)),
     })
 }

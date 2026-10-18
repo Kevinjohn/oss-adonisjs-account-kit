@@ -1,15 +1,31 @@
-import { DateTime } from 'luxon'
+import { sqlTimestamp } from './timestamps.js'
 import { isSqlIdentifier } from './identifiers.js'
 import type { Database } from '@adonisjs/lucid/database'
 import { InvalidTokenError } from './errors.js'
 import { hashToken } from './tokens.js'
 import { transaction, committedResult } from './transaction.js'
+import { consumeRows, deleteReturning } from './consume_rows.js'
 import type { AccountUser, ResolvedConfig, Trx, UserId, UsersAdapterMetadata } from './types.js'
 
 export { transaction, committedResult }
+export { deleteReturning }
+
+/** The `table.index` a MySQL duplicate-key error names, or undefined for any other error. */
+export function mysqlDuplicateKey(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined
+  const details = error as { code?: unknown; sqlMessage?: unknown }
+  if (details.code !== 'ER_DUP_ENTRY' || typeof details.sqlMessage !== 'string') return undefined
+  // The duplicated value comes first and may itself contain the marker, so search from the end.
+  const marker = " for key '"
+  const start = details.sqlMessage.lastIndexOf(marker)
+  if (start < 0 || !details.sqlMessage.endsWith("'")) return undefined
+  return details.sqlMessage.slice(start + marker.length, -1)
+}
 
 export function isUniqueViolation(error: unknown, table: string, column: string): boolean {
   if (typeof error !== 'object' || error === null) return false
+  const mysqlKey = mysqlDuplicateKey(error)
+  if (mysqlKey !== undefined) return mysqlKey === `${table}.${table}_${column}_unique`
 
   const details = error as { code?: unknown; constraint?: unknown; message?: unknown }
   if (details.code === '23505') {
@@ -64,6 +80,8 @@ export async function isUserEmailUniqueViolation(
 ): Promise<boolean> {
   if (!error || typeof error !== 'object') return false
   const details = error as { code?: string; constraint?: string }
+  const mysqlKey = mysqlDuplicateKey(error)
+  if (mysqlKey !== undefined) return isMysqlEmailKey(mysqlKey, config, db)
   if (details.code !== '23505' && details.code !== 'SQLITE_CONSTRAINT_UNIQUE') return false
   const metadata = await userMetadata(config)
   if (details.code !== '23505') return isUniqueViolation(error, metadata.table, 'email')
@@ -84,6 +102,25 @@ export async function isUserEmailUniqueViolation(
   return result.rows.some((row: { name: string }) => row.name === details.constraint)
 }
 
+/** MySQL names the key as `table.index`; the index must be the users table's unique email index. */
+async function isMysqlEmailKey(key: string, config: UsersStorage, db: Database): Promise<boolean> {
+  const metadata = await userMetadata(config)
+  const prefix = `${metadata.table}.`
+  if (!key.startsWith(prefix)) return false
+  const index = key.slice(prefix.length)
+  const explicit = config.emailConstraint ?? metadata.emailConstraint
+  if (explicit !== undefined) return index === explicit
+  const [rows] = (await db.rawQuery(
+    `select index_name as name
+       from information_schema.statistics
+      where table_schema = database() and table_name = ? and non_unique = 0
+      group by index_name
+     having count(*) = 1 and max(column_name) = 'email' and max(expression) is null`,
+    [metadata.table]
+  )) as [Array<{ name: string }>]
+  return rows.some((row) => row.name === index)
+}
+
 type TokenTable =
   | 'password_reset_tokens'
   | 'email_verification_tokens'
@@ -94,19 +131,6 @@ type TokenTable =
 export type UserTokenTable =
   'password_reset_tokens' | 'email_verification_tokens' | 'login_link_tokens'
 
-/**
- * Run a `delete ... returning` statement and return the deleted rows. better-sqlite3 returns the
- * rows directly; pg wraps them in a result object.
- */
-export async function deleteReturning<Row>(
-  client: Trx | Database,
-  sql: string,
-  bindings: unknown[]
-): Promise<Row[]> {
-  const result: unknown = await client.rawQuery(sql, bindings).exec()
-  return (Array.isArray(result) ? result : (result as { rows: Row[] }).rows) as Row[]
-}
-
 /** Delete one unexpired token row and return it, or null when no live row matched. */
 export async function consumeToken<Row>(
   trx: Trx,
@@ -115,11 +139,7 @@ export async function consumeToken<Row>(
   now: string
 ): Promise<Row | null> {
   const hashColumn = table === 'account_invitations' ? 'token_hash' : 'hash'
-  const rows = await deleteReturning<Row>(
-    trx,
-    `delete from ${table} where ${hashColumn} = ? and expires_at > ? returning *`,
-    [tokenHash, now]
-  )
+  const rows = await consumeRows<Row>(trx, table, { [hashColumn]: tokenHash }, now)
   return rows[0] ?? null
 }
 
@@ -150,7 +170,7 @@ export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>
   if (!candidate) throw new InvalidTokenError()
   await lockUser(trx, config, candidate.tokenable_id)
   const user = await config.users.findById(candidate.tokenable_id, trx)
-  const row = await consumeToken<Row>(trx, table, tokenHash, DateTime.utc().toISO())
+  const row = await consumeToken<Row>(trx, table, tokenHash, sqlTimestamp(trx))
   if (!row || row.tokenable_id !== candidate.tokenable_id || !user || !validForUser(row, user))
     throw new InvalidTokenError()
   return { row, user }

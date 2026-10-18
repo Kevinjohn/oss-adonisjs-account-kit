@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { resetSchema } from './helpers/schema.js'
 import { makeService, makeUsersAdapter } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('social provider retirement inventory', (group) => {
   const kit = useTestApp(group)
@@ -10,7 +11,7 @@ test.group('social provider retirement inventory', (group) => {
     assert,
   }) => {
     await resetSchema(kit, { usersTable: 'account_users', stringUserIds: true })
-    const now = new Date().toISOString()
+    const now = dbTime(kit)
     await kit.db.table('account_users').insert([
       { id: 'acct-google', email: 'google@example.test', password: null, created_at: now },
       { id: 'acct-pending', email: 'pending@example.test', password: null, created_at: now },

@@ -416,12 +416,27 @@ test.group('setup model inspection', (group) => {
     const { root, choices } = await fixture()
     await writeFile(
       join(root, 'config/database.ts'),
-      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'mysql', connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })\n"
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'mssql', connections: { sqlite: { client: 'better-sqlite3' }, mssql: { client: 'mssql' } } })\n"
     )
     const plan = await planSetup(choices, await inspectSetup(root))
     const state = await inspectSetup(root)
     assert.equal(state.database, 'unsupported')
     assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'database.client'
+    )
+  })
+
+  test('a MySQL 8.4 default connection is supported', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'mysql', connections: { mysql: { client: 'mysql2' } } })\n"
+    )
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'mysql')
+    const plan = await planSetup(choices, state)
+    assert.notInclude(
       plan.diagnostics.map(({ field }) => field),
       'database.client'
     )

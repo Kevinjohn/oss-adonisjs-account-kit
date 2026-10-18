@@ -1,7 +1,19 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
+import { dbTime } from './helpers/db_time.js'
 test.group('published account kit migrations', (group) => {
   const kit = useTestApp(group)
+
+  /** Column names in table order; Knex lists MySQL columns alphabetically. */
+  async function columnNames(table: string): Promise<string[]> {
+    if (kit.db.connection().dialect.name !== 'mysql')
+      return Object.keys(await kit.db.connection().columnsInfo(table))
+    const [rows] = await kit.db.rawQuery(
+      'select column_name as name from information_schema.columns where table_schema = database() and table_name = ? order by ordinal_position',
+      [table]
+    )
+    return rows.map((row: { name: string }) => row.name)
+  }
 
   test('creates the package tables and nullable user verification timestamp', async ({
     assert,
@@ -10,8 +22,7 @@ test.group('published account kit migrations', (group) => {
     assert.isTrue(userColumns.email_verified_at.nullable)
     assert.isTrue(userColumns.credentials_changed_at.nullable)
 
-    const recoveryColumnInfo = await kit.db.connection().columnsInfo('password_reset_tokens')
-    const recoveryColumns = Object.keys(recoveryColumnInfo)
+    const recoveryColumns = await columnNames('password_reset_tokens')
     assert.deepEqual(recoveryColumns, [
       'id',
       'tokenable_id',
@@ -20,8 +31,7 @@ test.group('published account kit migrations', (group) => {
       'expires_at',
       'created_at',
     ])
-    const invitationColumnInfo = await kit.db.connection().columnsInfo('account_invitations')
-    const invitationColumns = Object.keys(invitationColumnInfo)
+    const invitationColumns = await columnNames('account_invitations')
     assert.deepEqual(invitationColumns, [
       'id',
       'email',
@@ -43,8 +53,7 @@ test.group('published account kit migrations', (group) => {
         )
       )
     }
-    const emailChangeColumnInfo = await kit.db.connection().columnsInfo('email_verification_tokens')
-    const emailChangeColumns = Object.keys(emailChangeColumnInfo)
+    const emailChangeColumns = await columnNames('email_verification_tokens')
     assert.deepEqual(emailChangeColumns, [
       'id',
       'tokenable_id',
@@ -85,7 +94,7 @@ test.group('published account kit migrations', (group) => {
   })
 
   test('enforces unique keys and the configured user deletion rules', async ({ assert }) => {
-    const now = new Date().toISOString()
+    const now = dbTime(kit)
     const [firstUser] = await kit.db
       .table('users')
       .insert({ email: 'first@example.test', created_at: now })

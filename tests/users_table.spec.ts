@@ -4,8 +4,15 @@ import { EmailAlreadyRegisteredError } from '../src/errors.js'
 import { bootTestApp } from './helpers/app.js'
 import { makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { dbTime } from './helpers/db_time.js'
+import { testEngine } from './helpers/dialect.js'
 
-const tableNames = ['accounts', 'order', `accounts_${'a'.repeat(45)}`, `accounts_${'b'.repeat(53)}`]
+// The long names exercise PostgreSQL's 63-byte identifier truncation. MySQL refuses identifiers
+// over 64 characters instead, so a users table there must leave room for `_email_unique`.
+const tableNames =
+  testEngine === 'mysql'
+    ? ['accounts', 'order', `accounts_${'a'.repeat(42)}`]
+    : ['accounts', 'order', `accounts_${'a'.repeat(45)}`, `accounts_${'b'.repeat(53)}`]
 
 for (const usersTable of tableNames) {
   test(`account operations use the configured ${usersTable} table and its owned migrations`, async ({
@@ -87,7 +94,7 @@ for (const usersTable of tableNames) {
           async setEmail(id, email, trx) {
             await trx
               .table(usersTable)
-              .insert({ email, password: null, created_at: DateTime.utc().toISO() })
+              .insert({ email, password: null, created_at: dbTime(kit, DateTime.utc()) })
             await users.setEmail(id, email, trx)
           },
         },

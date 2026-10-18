@@ -252,7 +252,9 @@ export function createLucidAdapter<Model extends ModelRow>(
     async markEmailVerified(id, at, trx) {
       await updateUser(id, trx, (user) => {
         user.unverifiedEmail = null
-        user.emailVerifiedAt = at
+        // Lucid writes MySQL timestamps as wall time without an offset, and mysql2 with the
+        // required `timezone: 'Z'` reads them back as UTC.
+        user.emailVerifiedAt = trx.dialect.name === 'mysql' ? at.toUTC() : at
       })
     },
 

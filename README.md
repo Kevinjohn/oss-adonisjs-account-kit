@@ -33,7 +33,7 @@ security details handled. You keep your user model, your routes and your policie
 - **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`, and the
   [operator commands](docs/operations.md#operator-commands) `account-kit:invite` and
   `account-kit:reset-link` for shell-trusted invitations and reset links.
-- Tested on **SQLite and PostgreSQL 16**.
+- Tested on **SQLite, PostgreSQL 16 and MySQL 8.4**.
 
 ## Install
 
