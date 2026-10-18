@@ -28,6 +28,9 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- `account-kit:openapi` and `generateManagedOpenApi` produce an OpenAPI 3.1 document for the
+  mounted managed routes; the `openapi` option of `registerManagedRoutes` carries schemas for
+  replaced validators and account representations.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>
