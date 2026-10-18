@@ -12,7 +12,9 @@ export default class EmailVerificationsController {
   }
 
   async edit({ inertia, params, response }: HttpContext) {
-    response.header('Referrer-Policy', 'no-referrer')
+    // Keeps the token out of the Referer sent to other sites, while form errors can still
+    // redirect back to this page.
+    response.header('Referrer-Policy', 'same-origin')
     const kit = await app.container.make(AccountKit)
     const valid = await kit.emailVerification.inspect({ token: params.token })
     return inertia.render('auth/verify_email', { token: params.token, valid })

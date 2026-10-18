@@ -3,7 +3,8 @@ import vine from '@vinejs/vine'
 /**
  * Shared rules for email and password.
  */
-const email = () => vine.string().email().maxLength(254)
+// Account Kit stores addresses trimmed and lowercase, so the unique check must compare them that way.
+const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
 const password = () => vine.string().minLength(8).maxLength(32)
 
 /**
