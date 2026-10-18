@@ -25,6 +25,8 @@ security details handled. You keep your user model, your routes and your policie
 - **Magic-link sign-in** by a one-use email link that only works in the browser or app that asked
   for it (optional).
 - **Signed-in devices**: list sign-ins, sign out one, all others, or everywhere (optional).
+- **Account export and deletion**: a JSON download of the user's data and permanent deletion,
+  both behind fresh re-authentication (optional).
 - **Emails** for AdonisJS Mail out of the box, or your own templates.
 - **Rate limits** on password reset, verification resend, invitations, login and account changes.
 - **Managed JSON routes** (optional), if you would rather not write the controllers.
@@ -126,6 +128,8 @@ HTTP layer, validation, authorization and the user model.
 | Change email            | `emailPasswordManagement.requestEmailChange` | `PATCH /account/profile`                | `emailChangeProvision`, then `emailChanged` | Per user                      |
 | Invite                  | `invitations.send`                           | `POST /account/invitations`             | `invitationProvision`                       | Per inviter and per recipient |
 | Accept invitation       | `invitations.accept`                         | `POST /auth/invitations/:token`         | none                                        | Per client (managed route)    |
+| Export account data     | `accountData.export`                         | `POST /account/export`                  | none                                        | Per user                      |
+| Delete account          | `accountData.delete`                         | `DELETE /account`                       | `accountDeleted`                            | Per user                      |
 
 The full lists are in [usage](docs/usage.md) and the [endpoint reference](docs/reference/endpoints.md).
 

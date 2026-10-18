@@ -20,6 +20,7 @@ export function makeNotify() {
     socialIdentityLinked: (user, identity) => record('socialIdentityLinked', user, identity),
     socialIdentityUnlinked: (user, identity) => record('socialIdentityUnlinked', user, identity),
     magicLinkProvision: (user, url) => record('magicLinkProvision', user, url),
+    accountDeleted: (account) => record('accountDeleted', account),
   }
   return {
     notify,

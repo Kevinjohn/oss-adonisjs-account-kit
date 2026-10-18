@@ -92,6 +92,16 @@ export const capabilityRegistry: Record<Capability, CapabilityRequirements> = {
     adapterMethods: ['findById'],
     requiredHooks: [],
   },
+  dataExport: {
+    defaultOn: false,
+    adapterMethods: ['findById', 'verifyPassword'],
+    requiredHooks: [],
+  },
+  accountDeletion: {
+    defaultOn: false,
+    adapterMethods: ['findById', 'verifyPassword', 'delete'],
+    requiredHooks: ['notify.accountDeleted'],
+  },
 }
 
 export const capabilities = Object.keys(capabilityRegistry) as Capability[]

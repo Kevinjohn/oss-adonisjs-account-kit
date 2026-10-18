@@ -8,6 +8,8 @@ export type ManagedCapability =
   | 'invitations'
   | 'socialAuthentication'
   | 'sessionManagement'
+  | 'dataExport'
+  | 'accountDeletion'
 
 export type ManagedEndpointName =
   | 'auth.signup'
@@ -48,6 +50,8 @@ export type ManagedEndpointName =
   | 'account.sessions.revoke'
   | 'account.sessions.revokeOthers'
   | 'account.sessions.revokeAll'
+  | 'account.data.export'
+  | 'account.delete'
 
 export interface ManagedRoute {
   name: ManagedEndpointName
@@ -368,6 +372,20 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     capability: 'sessionManagement',
     method: 'POST',
     suffix: 'account/sessions/revoke-all',
+    access: 'limited',
+  },
+  {
+    name: 'account.data.export',
+    capability: 'dataExport',
+    method: 'POST',
+    suffix: 'account/export',
+    access: 'limited',
+  },
+  {
+    name: 'account.delete',
+    capability: 'accountDeletion',
+    method: 'DELETE',
+    suffix: 'account',
     access: 'limited',
   },
 ]

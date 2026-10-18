@@ -38,6 +38,8 @@ test('the endpoint reference lists every managed route', async ({ assert }) => {
     'invitations',
     'socialAuthentication',
     'sessionManagement',
+    'dataExport',
+    'accountDeletion',
   ]
   const routes = planManagedRoutes({ prefix: '/prefix', strategy: 'session', enabled })
   const missing = routes

@@ -1,4 +1,4 @@
-import type { CurrentAccount, InvitationPage } from '../types.js'
+import type { AccountExport, CurrentAccount, InvitationPage } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { SensitivePurpose, SignIn, SocialProviderName } from '../types.js'
 
@@ -75,6 +75,8 @@ export interface ManagedRequestBodies {
   'account.sessions.revoke': undefined
   'account.sessions.revokeOthers': undefined
   'account.sessions.revokeAll': undefined
+  'account.data.export': { currentPassword?: string; recentProof?: string }
+  'account.delete': { currentPassword?: string; recentProof?: string }
 }
 
 export type ManagedRequestBody<Name extends ManagedEndpointName> = ManagedRequestBodies[Name]
@@ -121,6 +123,8 @@ export interface ManagedQueries {
   'account.sessions.revoke': undefined
   'account.sessions.revokeOthers': undefined
   'account.sessions.revokeAll': undefined
+  'account.data.export': undefined
+  'account.delete': undefined
 }
 
 export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name]
@@ -192,6 +196,8 @@ export interface ManagedSuccessBodies {
   'account.sessions.revoke': undefined | ManagedCommittedSuccess
   'account.sessions.revokeOthers': { count: number } | ManagedCommittedSuccess
   'account.sessions.revokeAll': undefined | ManagedCommittedSuccess
+  'account.data.export': AccountExport
+  'account.delete': undefined | ManagedCommittedSuccess
 }
 
 export type ManagedSuccessBody<Name extends ManagedEndpointName> = ManagedSuccessBodies[Name]

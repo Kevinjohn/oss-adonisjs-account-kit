@@ -11,6 +11,8 @@ export const featureNames = [
   'socialAuthentication',
   'magicLinkLogin',
   'sessionManagement',
+  'dataExport',
+  'accountDeletion',
 ] as const
 
 export type SetupFeature = (typeof featureNames)[number]
