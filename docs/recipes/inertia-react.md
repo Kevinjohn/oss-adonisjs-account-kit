@@ -3,7 +3,7 @@
 With Inertia, your controllers call Account Kit and render React pages. Sign-in uses the session
 guard, so set that up first with the [sessions recipe](sessions.md).
 
-The [Inertia React example app](../../examples/inertia-react/README.md) puts this recipe together
+The [Inertia React example app](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/examples/inertia-react/README.md) puts this recipe together
 with signup, email confirmation and password change in the official starter kit.
 
 This recipe covers forgot password. Verification, invitations and email change follow the same
