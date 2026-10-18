@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   analyze:
+    # Scheduled runs start once the repository is public, where hosted minutes are free.
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

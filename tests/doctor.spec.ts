@@ -57,6 +57,10 @@ test.group('account-kit:doctor', (group) => {
       ),
       []
     )
+    assert.deepEqual(
+      failures(await runDoctor(input({ appUrl: 'localhost:3333', environment: 'development' }))),
+      ['APP_URL: must start with http:// or https://']
+    )
   })
 
   test('names each missing table for the enabled capabilities', async ({ assert }) => {
@@ -86,6 +90,35 @@ test.group('account-kit:doctor', (group) => {
       assert.deepEqual(failures(await runDoctor(input({ config }))), [
         'Package tables: missing login_link_tokens',
       ])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
+  test('requires the recovery-token table another enabled flow clears', async ({ assert }) => {
+    try {
+      await kit.db.connection().schema.dropTable('password_reset_tokens')
+      const verificationOnly = defineConfig(
+        makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['emailVerification'] })
+      )
+      assert.deepEqual(failures(await runDoctor(input({ config: verificationOnly }))), [
+        'Package tables: missing password_reset_tokens',
+      ])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
+  test('names columns that a later migration adds', async ({ assert }) => {
+    try {
+      await kit.db.connection().schema.alterTable('password_reset_tokens', (table) => {
+        table.renameColumn('hash', 'token_hash')
+      })
+      const checks = await runDoctor(input())
+      assert.deepEqual(failures(checks), [
+        'Package tables: missing columns password_reset_tokens.hash',
+      ])
+      assert.match(checks.find((check) => !check.ok)!.fix!, /migration:run/)
     } finally {
       await resetSchema(kit)
     }
