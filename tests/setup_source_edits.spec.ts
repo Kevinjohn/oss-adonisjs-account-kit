@@ -5,6 +5,8 @@ import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { fixture, registerSetupTeardown } from './helpers/setup.js'
+import ts from 'typescript'
+import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup source edits', (group) => {
   registerSetupTeardown(group)
@@ -646,5 +648,60 @@ test.group('setup source edits', (group) => {
       plan.diagnostics.map(({ field }) => field),
       'start/kernel.ts'
     )
+  })
+})
+
+test.group('setup prerequisite inspection', () => {
+  test('middleware insertion places comma before an inline comment', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  () => import('@adonisjs/core/bodyparser_middleware') // parse requests\n])"
+      const plan = await planSetup(choices, state)
+      const content = plan.changes.find(({ path }) => path === 'start/kernel.ts')!.content
+      assert.include(
+        content,
+        "() => import('@adonisjs/core/bodyparser_middleware'), // parse requests"
+      )
+      const parsed = ts.createSourceFile(
+        'kernel.ts',
+        content,
+        ts.ScriptTarget.ES2022
+      ) as ts.SourceFile & {
+        parseDiagnostics: readonly ts.Diagnostic[]
+      }
+      assert.isEmpty(parsed.parseDiagnostics)
+    })
+  })
+
+  test('multiline body parser is edited after its complete expression', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([])\nrouter.use([\n  () => import(\n    '@adonisjs/core/bodyparser_middleware'\n  ) // parse body\n])\n"
+      const plan = await planSetup(choices, state)
+      const content = plan.changes.find(({ path }) => path === 'start/kernel.ts')!.content
+      assert.include(content, '  ), // parse body')
+      assert.include(content, "() => import('@adonisjs/session/session_middleware')")
+      const parsed = ts.createSourceFile(
+        'kernel.ts',
+        content,
+        ts.ScriptTarget.Latest
+      ) as ts.SourceFile & {
+        parseDiagnostics: readonly ts.Diagnostic[]
+      }
+      assert.isEmpty(parsed.parseDiagnostics)
+    })
+  })
+
+  test('existing proof middleware must lead server middleware', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/core/bodyparser_middleware'), () => import('#middleware/account_kit_proof_headers_middleware')])\nrouter.use([])"
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'start/kernel.ts' && severity === 'error'
+        )
+      )
+    })
   })
 })
