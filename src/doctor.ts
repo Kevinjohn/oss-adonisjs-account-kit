@@ -17,11 +17,12 @@ export interface DoctorInput {
   environment: 'development' | 'test' | 'production'
 }
 
+// Each proof flow clears the other kind of recovery token, so each needs both tables.
 const capabilityTables: Record<Capability, string[]> = {
-  passwordReset: ['password_reset_tokens'],
-  emailVerification: ['email_verification_tokens'],
-  registration: ['email_verification_tokens'],
-  emailPasswordManagement: ['email_verification_tokens'],
+  passwordReset: ['password_reset_tokens', 'email_verification_tokens'],
+  emailVerification: ['email_verification_tokens', 'password_reset_tokens'],
+  registration: ['email_verification_tokens', 'password_reset_tokens'],
+  emailPasswordManagement: ['email_verification_tokens', 'password_reset_tokens'],
   invitations: ['account_invitations'],
   socialAuthentication: [
     'social_identities',
@@ -30,6 +31,12 @@ const capabilityTables: Record<Capability, string[]> = {
     'social_handoff_codes',
   ],
   magicLinkLogin: ['login_link_tokens'],
+}
+
+// Columns added or renamed by later migrations, which an older install may not have run.
+const laterColumns: Record<string, string[]> = {
+  password_reset_tokens: ['tokenable_id', 'hash'],
+  social_identities: ['confirmed_at'],
 }
 
 const migrationFix = 'Run `node ace configure adonisjs-account-kit`, then `node ace migration:run`'
@@ -44,6 +51,13 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
   } catch {
     return { name, ok: false, detail: 'is not an absolute URL', fix: 'Use https://example.com' }
   }
+  if (!['http:', 'https:'].includes(url.protocol))
+    return {
+      name,
+      ok: false,
+      detail: 'must start with http:// or https://',
+      fix: 'Use https://example.com',
+    }
   if (environment === 'production' && url.protocol !== 'https:')
     return { name, ok: false, detail: 'must use HTTPS in production', fix: 'Use an https:// URL' }
   return { name, ok: true, detail: url.origin }
@@ -55,18 +69,35 @@ async function tableChecks(db: Database, config: ResolvedConfig): Promise<Doctor
   // Every credential change clears sign-in links, whether or not magic links are enabled.
   required.add('login_link_tokens')
   const missing: string[] = []
-  for (const table of required)
-    if (!(await db.connection().schema.hasTable(table))) missing.push(table)
-  return [
-    missing.length
-      ? {
-          name: 'Package tables',
-          ok: false,
-          detail: `missing ${missing.join(', ')}`,
-          fix: migrationFix,
-        }
-      : { name: 'Package tables', ok: true, detail: `${required.size} present` },
-  ]
+  const outdated: string[] = []
+  for (const table of required) {
+    if (!(await db.connection().schema.hasTable(table))) {
+      missing.push(table)
+      continue
+    }
+    for (const column of laterColumns[table] ?? [])
+      if (!(await db.connection().schema.hasColumn(table, column)))
+        outdated.push(`${table}.${column}`)
+  }
+  if (missing.length)
+    return [
+      {
+        name: 'Package tables',
+        ok: false,
+        detail: `missing ${missing.join(', ')}`,
+        fix: migrationFix,
+      },
+    ]
+  if (outdated.length)
+    return [
+      {
+        name: 'Package tables',
+        ok: false,
+        detail: `missing columns ${outdated.join(', ')}`,
+        fix: migrationFix,
+      },
+    ]
+  return [{ name: 'Package tables', ok: true, detail: `${required.size} present` }]
 }
 
 async function usersCheck(db: Database, config: ResolvedConfig): Promise<DoctorCheck> {

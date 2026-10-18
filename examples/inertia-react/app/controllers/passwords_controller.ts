@@ -1,5 +1,5 @@
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit, ThrottledError } from 'adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { sessionGuard } from '#services/session_guard'
 import { changePasswordValidator } from '#validators/account'
@@ -22,10 +22,18 @@ export default class PasswordsController {
       currentPassword,
       newPassword: password,
     })
-    await kit.authentication.login(
-      { email: user.email, password, clientKey: ctx.request.ip() },
-      sessionGuard(ctx)
-    )
+    try {
+      await kit.authentication.login(
+        { email: user.email, password, clientKey: ctx.request.ip() },
+        sessionGuard(ctx)
+      )
+    } catch (error) {
+      // The password has changed; only signing in again was refused.
+      if (!(error instanceof ThrottledError)) throw error
+      await sessionGuard(ctx).terminate()
+      ctx.session.flash('success', 'Password changed. Sign in again with the new password.')
+      return ctx.response.redirect().toRoute('session.create')
+    }
     ctx.session.flash('success', 'Password changed. Other devices have been signed out.')
     ctx.response.redirect().back()
   }
