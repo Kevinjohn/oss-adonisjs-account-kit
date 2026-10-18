@@ -34,6 +34,8 @@ test.group('maintained notifications', () => {
       'passwordChanged',
       'socialIdentityLinked',
       'socialIdentityUnlinked',
+      'magicLinkProvision',
+      'accountDeleted',
     ] as const
     const expected = {
       passwordResetProvision: [
@@ -75,6 +77,16 @@ test.group('maintained notifications', () => {
       socialIdentityUnlinked: [
         'A social sign-in method was removed',
         'Google sign-in was removed from your account.',
+        null,
+      ],
+      magicLinkProvision: [
+        'Sign in',
+        'Open it in the browser or app where you asked for it.',
+        'Sign in',
+      ],
+      accountDeleted: [
+        'Your account was deleted',
+        'Your account and its sign-in details were deleted.',
         null,
       ],
     } as const
@@ -187,7 +199,15 @@ test.group('maintained notifications', () => {
     }
     await notify.socialIdentityLinked(user, identity)
     await notify.socialIdentityUnlinked(user, identity)
-    assert.lengthOf(messages, 9)
+    await notify.magicLinkProvision(user, 'https://example.test/magic-link/x')
+    assert.lengthOf(messages, 10)
+    assert.equal(messages[9].to, user.email)
+    assert.equal(messages[9].subject, 'Example: Your sign-in link')
+    assert.include(messages[9].text as string, 'https://example.test/magic-link/x')
+    await notify.accountDeleted({ id: 9, email: 'gone@example.test' })
+    assert.lengthOf(messages, 11)
+    assert.equal(messages[10].to, 'gone@example.test')
+    assert.include(messages[10].text as string, 'Your account was deleted')
     assert.equal(messages[0].from, 'Accounts <accounts@example.test>')
     assert.equal(messages[3].to, 'new@example.test')
     assert.equal(messages[4].to, 'old@example.test')
@@ -313,6 +333,17 @@ test.group('maintained notifications', () => {
     assert.include(unsafe.problems.join(' '), 'HTTPS')
     assert.include(unsafe.problems.join(' '), 'worker')
     assert.include(unsafe.problems.join(' '), 'passwordReset destination')
+    const magic = notificationReadiness({
+      environment: 'production',
+      delivery: 'best-effort',
+      transport: 'delivery',
+      backendOrigin: 'https://api.example.test',
+      actionOrigin: 'https://app.example.test',
+      enabled: ['magicLinkLogin'],
+      destinations: {},
+    })
+    assert.isFalse(magic.ready)
+    assert.include(magic.problems.join(' '), 'magicLink destination')
     const durable = notificationReadiness({
       environment: 'production',
       delivery: 'durable',

@@ -2,10 +2,14 @@ export type ManagedCapability =
   | 'authentication'
   | 'registration'
   | 'passwordReset'
+  | 'magicLinkLogin'
   | 'emailVerification'
   | 'emailPasswordManagement'
   | 'invitations'
   | 'socialAuthentication'
+  | 'sessionManagement'
+  | 'dataExport'
+  | 'accountDeletion'
 
 export type ManagedEndpointName =
   | 'auth.signup'
@@ -14,6 +18,9 @@ export type ManagedEndpointName =
   | 'auth.passwordReset.request'
   | 'auth.passwordReset.inspect'
   | 'auth.passwordReset.complete'
+  | 'auth.magicLink.request'
+  | 'auth.magicLink.inspect'
+  | 'auth.magicLink.complete'
   | 'auth.emailVerification.inspect'
   | 'auth.emailVerification.complete'
   | 'auth.invitation.inspect'
@@ -39,6 +46,12 @@ export type ManagedEndpointName =
   | 'account.socialProof.password'
   | 'account.socialIdentities.list'
   | 'account.socialIdentities.unlink'
+  | 'account.sessions.list'
+  | 'account.sessions.revoke'
+  | 'account.sessions.revokeOthers'
+  | 'account.sessions.revokeAll'
+  | 'account.data.export'
+  | 'account.delete'
 
 export interface ManagedRoute {
   name: ManagedEndpointName
@@ -116,6 +129,29 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     capability: 'passwordReset',
     method: 'POST',
     suffix: 'auth/password-reset/:token',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.magicLink.request',
+    capability: 'magicLinkLogin',
+    method: 'POST',
+    suffix: 'auth/magic-link',
+    access: 'public',
+  },
+  {
+    name: 'auth.magicLink.inspect',
+    capability: 'magicLinkLogin',
+    method: 'GET',
+    suffix: 'auth/magic-link/:token',
+    access: 'public',
+    proof: true,
+  },
+  {
+    name: 'auth.magicLink.complete',
+    capability: 'magicLinkLogin',
+    method: 'POST',
+    suffix: 'auth/magic-link/:token',
     access: 'public',
     proof: true,
   },
@@ -309,6 +345,48 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'account/social-identities/:id',
     access: 'limited',
     proof: true,
+  },
+  {
+    name: 'account.sessions.list',
+    capability: 'sessionManagement',
+    method: 'GET',
+    suffix: 'account/sessions',
+    access: 'limited',
+  },
+  {
+    name: 'account.sessions.revoke',
+    capability: 'sessionManagement',
+    method: 'DELETE',
+    suffix: 'account/sessions/:id',
+    access: 'limited',
+  },
+  {
+    name: 'account.sessions.revokeOthers',
+    capability: 'sessionManagement',
+    method: 'POST',
+    suffix: 'account/sessions/revoke-others',
+    access: 'limited',
+  },
+  {
+    name: 'account.sessions.revokeAll',
+    capability: 'sessionManagement',
+    method: 'POST',
+    suffix: 'account/sessions/revoke-all',
+    access: 'limited',
+  },
+  {
+    name: 'account.data.export',
+    capability: 'dataExport',
+    method: 'POST',
+    suffix: 'account/export',
+    access: 'limited',
+  },
+  {
+    name: 'account.delete',
+    capability: 'accountDeletion',
+    method: 'DELETE',
+    suffix: 'account',
+    access: 'limited',
   },
 ]
 

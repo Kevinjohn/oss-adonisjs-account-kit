@@ -12,6 +12,7 @@ type ModelRow = {
   emailVerifiedAt: DateTime | null
   useTransaction(trx: Trx): unknown
   save(): Promise<unknown>
+  delete(): Promise<unknown>
 }
 
 type Query = {
@@ -263,6 +264,13 @@ export function createLucidAdapter<Model extends ModelRow>(
       if (options.verifyPassword) return options.verifyPassword(user.password, password)
       const { default: hash } = await import('@adonisjs/core/services/hash')
       return hash.verify(user.password, password)
+    },
+
+    async delete(id, trx) {
+      const user = await find(query(await model(), trx), 'id', id)
+      if (!user) return
+      user.useTransaction(trx)
+      await user.delete()
     },
   }
 

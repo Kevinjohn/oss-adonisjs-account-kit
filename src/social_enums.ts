@@ -9,6 +9,8 @@ export const sensitivePurposes = [
   'social_unlink',
   'password_change',
   'email_change',
+  'account_export',
+  'account_delete',
 ] as const
 
 export function isSocialIntent(value: unknown): value is SocialIntent {

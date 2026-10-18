@@ -111,26 +111,8 @@ export async function requestPasswordReset(
 
     const token = generateToken(deps.config.tokenSecretLength)
     const operationId = randomUUID()
-    const now = DateTime.utc()
     const { value: issuedUser, fault } = await settleCommitted(
-      transaction(deps.db, async (trx) => {
-        await lockUser(trx, deps.config, user.id)
-        const current = await deps.config.users.findById(user.id, trx)
-        if (!current || current.email !== email) return null
-        await trx
-          .table('password_reset_tokens')
-          .insert({
-            tokenable_id: current.id,
-            email: current.email,
-            hash: hashToken(token),
-            expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.passwordReset)),
-            created_at: sqlTimestamp(trx, now),
-          })
-          .onConflict('tokenable_id')
-          .merge(['email', 'hash', 'expires_at', 'created_at'])
-        await deps.config.onPasswordResetIssuedTransaction?.(current, trx)
-        return current
-      })
+      issueResetToken(deps, user.id, email, token)
     )
     if (!issuedUser) {
       if (fault) throw fault
@@ -158,4 +140,36 @@ export async function requestPasswordReset(
     // Every exit, including a throw, waits out the configured floor.
     await waitForFloor(started, deps.config.minRequestMs)
   }
+}
+
+/**
+ * Store `token` as the user's single live reset token. Locks the user, re-reads it, and issues
+ * nothing (null) when the stored email no longer matches. Shared by the public request path and
+ * the operator command.
+ */
+export function issueResetToken(
+  deps: { config: ResolvedConfig; db: Database },
+  userId: UserId,
+  email: string,
+  token: string
+): Promise<AccountUser | null> {
+  const now = DateTime.utc()
+  return transaction(deps.db, async (trx) => {
+    await lockUser(trx, deps.config, userId)
+    const current = await deps.config.users.findById(userId, trx)
+    if (!current || current.email !== email) return null
+    await trx
+      .table('password_reset_tokens')
+      .insert({
+        tokenable_id: current.id,
+        email: current.email,
+        hash: hashToken(token),
+        expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.passwordReset)),
+        created_at: sqlTimestamp(trx, now),
+      })
+      .onConflict('tokenable_id')
+      .merge(['email', 'hash', 'expires_at', 'created_at'])
+    await deps.config.onPasswordResetIssuedTransaction?.(current, trx)
+    return current
+  })
 }

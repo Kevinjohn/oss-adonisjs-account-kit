@@ -322,4 +322,21 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     await fixture.transaction((trx) => updateRegistrationData(created.id, update.data, trx))
     assert.deepEqual(await update.read(created.id), update.expected)
   }
+  // `delete` is optional; it is required only for the accountDeletion capability.
+  if (fixture.adapter.delete) {
+    const remove = fixture.adapter.delete.bind(fixture.adapter)
+    await assert.rejects(
+      fixture.transaction(async (trx) => {
+        await remove(inactive.id, trx)
+        assert.equal(await fixture.adapter.findById(inactive.id, trx), null)
+        throw new Error('delete rollback')
+      }),
+      /delete rollback/
+    )
+    assert.ok(await fixture.adapter.findById(inactive.id), 'a rolled-back delete keeps the user')
+    await fixture.transaction((trx) => remove(inactive.id, trx))
+    assert.equal(await fixture.adapter.findById(inactive.id), null, 'delete removes the user')
+    assert.equal(await fixture.adapter.findByEmail(inactiveEmail), null)
+    assertSameUser(await fixture.adapter.findById(created.id), committedVerification)
+  }
 }

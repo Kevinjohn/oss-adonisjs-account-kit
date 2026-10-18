@@ -316,35 +316,13 @@ export async function sendInvitation(
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
-  let invitation: Invitation
-  let fault: PostCommitError | undefined
-  try {
-    ;({ value: invitation, fault } = await settleCommitted(
-      transaction(deps.db, async (trx) => {
-        const now = DateTime.utc()
-        await trx
-          .from('account_invitations')
-          .where('email', email)
-          .where('expires_at', '<=', sqlTimestamp(trx, now))
-          .delete()
-        await trx.table('account_invitations').insert({
-          email,
-          role: input.role,
-          inviter_id: actor.id,
-          token_hash: hashToken(token),
-          expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.invitation)),
-          created_at: sqlTimestamp(trx, now),
-          updated_at: sqlTimestamp(trx, now),
-        })
-        // Email is unique; re-read rather than use RETURNING, which MySQL lacks.
-        const row = await trx.from('account_invitations').where('email', email).first()
-        return toInvitation(row)
-      })
-    ))
-  } catch (error) {
-    if (isUniqueViolation(error, 'account_invitations', 'email')) throw new InvitationPendingError()
-    throw error
-  }
+  const { invitation, fault } = await storeInvitation(deps, {
+    email,
+    role: input.role,
+    inviterId: actor.id,
+    token,
+    replacePending: false,
+  })
 
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
     postCommit('Invitation follow-up failed', [
@@ -361,4 +339,46 @@ export async function sendInvitation(
     ])
   )
   return invitation
+}
+
+/**
+ * Insert an invitation row for a normalised email. Expired rows for the address are removed first;
+ * `replacePending` also removes a live one (operator reissue). Shared by the actor and operator
+ * paths; a pending invitation otherwise surfaces as InvitationPendingError.
+ */
+export async function storeInvitation(
+  deps: { config: ResolvedConfig; db: Database },
+  input: {
+    email: string
+    role: string
+    inviterId: UserId | null
+    token: string
+    replacePending: boolean
+  }
+): Promise<{ invitation: Invitation; fault?: PostCommitError }> {
+  try {
+    return await settleCommitted(
+      transaction(deps.db, async (trx) => {
+        const now = DateTime.utc()
+        const stale = trx.from('account_invitations').where('email', input.email)
+        if (!input.replacePending) stale.where('expires_at', '<=', sqlTimestamp(trx, now))
+        await stale.delete()
+        await trx.table('account_invitations').insert({
+          email: input.email,
+          role: input.role,
+          inviter_id: input.inviterId,
+          token_hash: hashToken(input.token),
+          expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.invitation)),
+          created_at: sqlTimestamp(trx, now),
+          updated_at: sqlTimestamp(trx, now),
+        })
+        // Email is unique; re-read rather than use RETURNING, which MySQL lacks.
+        const row = await trx.from('account_invitations').where('email', input.email).first()
+        return toInvitation(row)
+      })
+    ).then(({ value, fault }) => ({ invitation: value, fault }))
+  } catch (error) {
+    if (isUniqueViolation(error, 'account_invitations', 'email')) throw new InvitationPendingError()
+    throw error
+  }
 }

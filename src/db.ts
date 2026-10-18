@@ -121,7 +121,15 @@ async function isMysqlEmailKey(key: string, config: UsersStorage, db: Database):
   return rows.some((row) => row.name === index)
 }
 
-type TokenTable = 'password_reset_tokens' | 'email_verification_tokens' | 'account_invitations'
+type TokenTable =
+  | 'password_reset_tokens'
+  | 'email_verification_tokens'
+  | 'account_invitations'
+  | 'login_link_tokens'
+
+/** User-bound proof tables with `tokenable_id` and `hash` columns. */
+export type UserTokenTable =
+  'password_reset_tokens' | 'email_verification_tokens' | 'login_link_tokens'
 
 /** Delete one unexpired token row and return it, or null when no live row matched. */
 export async function consumeToken<Row>(
@@ -143,7 +151,7 @@ export async function consumeToken<Row>(
 export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
   trx: Trx,
   config: UsersStorage,
-  table: 'password_reset_tokens' | 'email_verification_tokens',
+  table: UserTokenTable,
   token: string,
   validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {
@@ -154,7 +162,7 @@ export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
 export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>(
   trx: Trx,
   config: UsersStorage,
-  table: 'password_reset_tokens' | 'email_verification_tokens',
+  table: UserTokenTable,
   tokenHash: string,
   validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {

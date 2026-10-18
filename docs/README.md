@@ -12,6 +12,9 @@ Authentication
 - [Browser login with sessions](recipes/sessions.md)
 - [Inertia and React](recipes/inertia-react.md)
 - [Google and GitHub sign-in with Ally](recipes/social-login.md)
+- [Magic-link sign-in](magic-link.md)
+- [Signed-in devices](signed-in-devices.md)
+- [Account export and deletion](account-data.md)
 
 Users and data
 
@@ -48,6 +51,7 @@ Integration modes
 - [Account operations](account-operations.md)
 - [Errors](reference/errors.md)
 - [Managed endpoints](reference/endpoints.md)
+- [OpenAPI document](openapi.md): an OpenAPI 3.1 file for the mounted managed routes.
 - [Notifications](notifications.md)
 - [Operations](operations.md): secrets, rate limits, pruning and redaction.
 - [Compatibility](compatibility.md): tested versions.
