@@ -30,6 +30,11 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- `adonisjs-account-kit/adapters/drizzle`, `/adapters/prisma` and `/adapters/sql` adapt users
+  tables defined with Drizzle, Prisma or plain SQL. They read the table definition and run every
+  query through the package's Lucid transaction.
+- The adapter contract checks that create, password, and registration-data writes roll back with
+  the transaction, and that a password-less user never verifies.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>
