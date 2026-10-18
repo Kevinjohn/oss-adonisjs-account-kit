@@ -17,7 +17,7 @@ The package minimum matrix uses Core 7.0.0, assembler 8.0.0, Lucid 22.4.2, limit
 Luxon 3.0.0. Lucid 22.0.0 fails password reset issuance on both databases because its transaction
 insert builder does not expose `onConflict`; the supported floor is therefore 22.4.2. The complete
 HTTP reference application uses the latest compatible set, including Core 7.6.0 and assembler
-8.5.2. Concrete installed-consumer outcomes are recorded in [verification](maintainers/verification.md).
+8.5.2. Concrete installed-consumer outcomes are recorded in [verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md).
 Testing these points does not verify every version within the declared ranges. The
 `pg` and `better-sqlite3` drivers are supplied by applications and depend on the selected Lucid
 dialect; the package does not declare them as runtime peers.
@@ -79,7 +79,7 @@ optional assembler and release-tool advisories above remain unresolved.
 The candidate's `pnpm audit --prod` reports no dependencies because runtime packages are peers;
 that result alone does not assess a consumer installation. Consumers should audit their complete
 installed tree, including resolved peers. No dependency was upgraded for this assessment. See
-[verification](maintainers/verification.md) for check evidence.
+[verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md) for check evidence.
 
-Earlier stage-by-stage manual-check notes remain in [manual-check.md](maintainers/manual-check.md) as historical
+Earlier stage-by-stage manual-check notes remain in [manual-check.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/manual-check.md) as historical
 provenance. Use the maintained verification record for current checks and outstanding evidence.
