@@ -138,11 +138,30 @@ function combineFailures(primary: unknown, cleanup: unknown[]): unknown {
 }
 
 /**
+ * Timestamps are written as UTC wall time; mysql2's default `timezone: 'local'` would read them
+ * back shifted by the host's offset and push credential revisions forward on every change.
+ */
+function requireUtcMysqlClient(db: Database, connectionName: string): void {
+  const connection = db.manager.get(connectionName)?.config.connection as
+    | { timezone?: string }
+    | undefined
+  const timezone = connection?.timezone
+  if (timezone === 'Z' || timezone === '+00:00') return
+  throw new Error(
+    `Account kit requires timezone: 'Z' on the MySQL connection "${connectionName}" (found ${JSON.stringify(timezone ?? 'local')})`
+  )
+}
+
+/**
  * MySQL runs at READ COMMITTED so reads after a row lock see the latest committed rows; InnoDB's
  * default REPEATABLE READ would keep serving the snapshot taken before the lock was granted.
  */
-function beginTransaction(connection: ReturnType<Database['connection']>): Promise<Trx> {
+function beginTransaction(
+  db: Database,
+  connection: ReturnType<Database['connection']>
+): Promise<Trx> {
   if (connection.dialect.name !== 'mysql') return connection.transaction()
+  requireUtcMysqlClient(db, connection.connectionName)
   // Lucid forwards options only from the second argument; the options-only overload drops them.
   const begin = connection.transaction.bind(connection) as unknown as (
     callback: undefined,
@@ -161,7 +180,7 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
     let result: T | undefined
     try {
       return await runAndCommit(
-        await beginTransaction(connection),
+        await beginTransaction(db, connection),
         callback,
         () => {
           committed = true

@@ -56,6 +56,8 @@ must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
   }
   ```
 
+  Without `timezone: 'Z'` (or `'+00:00'`), every Account Kit operation throws before it starts.
+
 - Account Kit writes and compares timestamps as UTC `yyyy-MM-dd HH:mm:ss.SSS`, because MySQL
   rejects ISO 8601 values with a `Z` offset. `credentials_changed_at` keeps milliseconds so two
   credential changes in the same second still revoke the earlier session.
