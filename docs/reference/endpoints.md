@@ -38,6 +38,16 @@ Access levels:
 | `GET`  | `/auth/password-reset/:token` | `auth.passwordReset.inspect`  | public |
 | `POST` | `/auth/password-reset/:token` | `auth.passwordReset.complete` | public |
 
+## `magicLinkLogin`
+
+| Method | Path                      | Name                      | Access |
+| ------ | ------------------------- | ------------------------- | ------ |
+| `POST` | `/auth/magic-link`        | `auth.magicLink.request`  | public |
+| `GET`  | `/auth/magic-link/:token` | `auth.magicLink.inspect`  | public |
+| `POST` | `/auth/magic-link/:token` | `auth.magicLink.complete` | public |
+
+See [magic-link sign-in](../magic-link.md) for bodies and verifier handling.
+
 ## `emailVerification`
 
 | Method | Path                               | Name                              | Access  |
