@@ -50,6 +50,7 @@ Integration modes
 - [Account operations](account-operations.md)
 - [Errors](reference/errors.md)
 - [Managed endpoints](reference/endpoints.md)
+- [OpenAPI document](openapi.md): an OpenAPI 3.1 file for the mounted managed routes.
 - [Notifications](notifications.md)
 - [Operations](operations.md): secrets, rate limits, pruning and redaction.
 - [Compatibility](compatibility.md): tested versions.

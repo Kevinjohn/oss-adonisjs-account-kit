@@ -59,6 +59,12 @@ The enabled names are `authentication`, `registration`, `passwordReset`, `magicL
 
 `extensions.registration.validate`, `extensions.invitationAcceptance.validate`, and `extensions.profile.validate` receive an `HttpContext` and return typed, validated input including optional `registrationData`. They run before a service call and outside its transaction. Service configuration owns the shared field allowlist, trusted mapping and password policy for both managed and service callers. `extensions.representAccount` receives a safe `CurrentAccount` after a service read and returns application-owned public JSON. It runs after the read; it must never add password hashes or private adapter data. A representation error after credential issuance or an account mutation is logged and the response uses the package's safe account allowlist, preserving the committed result. A representation error on a read-only route propagates. `extensions.message(code, defaultMessage)` may change public error wording without changing the status or machine code; it receives no exception or database details and runs during response mapping. Notifications, access policy hooks, and link destinations remain typed callbacks in `defineConfig`; their transaction and delivery semantics are documented with those public services. Replacing a route means adding its named endpoint to `except` and calling the public service from the application's controller. For setup-generated mounts, record exclusions in the setup input's `managedExcept` list so regeneration preserves them; direct callers pass `except` to `registerManagedRoutes`. There is no middleware-stack replacement hook.
 
+### OpenAPI document
+
+`node ace account-kit:openapi` prints an OpenAPI 3.1 document for the mounted routes, and
+`generateManagedOpenApi` builds it from code. Applications that replace a validator or set
+`representAccount` pass the matching schemas in the `openapi` option. See [OpenAPI document](openapi.md).
+
 ## How it works
 
 ### A route is available only when selected

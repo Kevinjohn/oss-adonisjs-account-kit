@@ -85,6 +85,7 @@ export default defineConfig({
           { text: 'Account operations', link: '/account-operations' },
           { text: 'Errors', link: '/reference/errors' },
           { text: 'Managed endpoints', link: '/reference/endpoints' },
+          { text: 'OpenAPI document', link: '/openapi' },
           { text: 'Notifications', link: '/notifications' },
           { text: 'Operations', link: '/operations' },
           { text: 'Compatibility', link: '/compatibility' },

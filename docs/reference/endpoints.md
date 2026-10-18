@@ -15,6 +15,9 @@ Access levels:
 
 `auth/csrf` is mounted for the `session` strategy whenever any capability is enabled.
 
+Request and response schemas for the routes you mounted are in the generated
+[OpenAPI document](../openapi.md).
+
 ## `registration`
 
 | Method | Path           | Name          | Access |
