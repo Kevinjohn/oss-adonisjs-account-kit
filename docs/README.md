@@ -20,6 +20,7 @@ Users and data
 
 - [Custom user model](recipes/custom-user-model.md)
 - [Custom user table or ID type](custom-schema.md)
+- [Drizzle, Prisma and plain SQL users](adapters.md)
 - [Custom users adapter](recipes/custom-adapter.md)
 - [Multi-tenant applications](recipes/multi-tenant.md)
 

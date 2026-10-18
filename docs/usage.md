@@ -156,7 +156,8 @@ validate and assign known fields; never spread request data onto the model. The 
 `id`, `email`, `unverifiedEmail`, `password`, `emailVerifiedAt`, and `role`. Passwords are set through normal model
 save hooks so the application's hashing hook runs once.
 
-If using a custom adapter, implement normalized email equality, a unique email constraint, password
+Users tables defined with Drizzle or Prisma, or with no ORM, use the shipped
+[Drizzle, Prisma and SQL adapters](adapters.md). If using a custom adapter, implement normalized email equality, a unique email constraint, password
 hashing, and transaction-aware reads/writes. Provide `resolveMetadata()` with the physical table
 and `primaryKey: 'id'`, or configure `usersTable` as the metadata fallback. The package acquires
 the PostgreSQL user-row lock centrally from that metadata; SQLite uses its package-owned singleton

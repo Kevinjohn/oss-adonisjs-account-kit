@@ -18,6 +18,14 @@ export interface AdapterContractFixture {
   acquireAccountLock(id: number | string, trx: Trx): Promise<void>
   emailPrefix?: string
   registrationData?: unknown
+  /** Set when the adapter stores string ids; the contract then checks they round-trip as strings. */
+  stringIds?: boolean
+  /** Exercise updateRegistrationData: the data to send and a reader for the stored result. */
+  registrationUpdate?: {
+    data: Record<string, unknown>
+    read(id: number | string): Promise<unknown>
+    expected: unknown
+  }
 }
 
 function assertSameUser(
@@ -75,6 +83,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     return (await fixture.adapter.findById(user.id, trx))!
   })
 
+  if (fixture.stringIds) assert.equal(typeof created.id, 'string', 'string ids should round-trip')
   assert.equal(created.email, email, 'created addresses should be normalized')
   assert.equal(created.hasPassword, true)
   assert.equal(created.emailVerifiedAt?.toMillis(), verifiedAt.toMillis())
@@ -104,6 +113,27 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     ),
     'normalized duplicate addresses should violate the unique constraint'
   )
+
+  const rolledBackEmail = `${prefix}-create-rollback@example.test`
+  await assert.rejects(
+    fixture.transaction(async (trx) => {
+      await fixture.adapter.create(
+        {
+          email: rolledBackEmail,
+          password,
+          unverifiedEmail: null,
+          ...(fixture.registrationData !== undefined
+            ? { registrationData: fixture.registrationData }
+            : {}),
+        },
+        trx
+      )
+      assert.ok(await fixture.adapter.findByEmail(rolledBackEmail, trx))
+      throw new Error('create rollback')
+    }),
+    /create rollback/
+  )
+  assert.equal(await fixture.adapter.findByEmail(rolledBackEmail), null, 'create must use trx')
 
   const changedEmail = `${prefix}-rollback@example.test`
   await assert.rejects(
@@ -178,6 +208,20 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   )
 
   const nextPassword = 'contract-password-two'
+  await assert.rejects(
+    fixture.transaction(async (trx) => {
+      await fixture.adapter.setPassword(afterVerification.id, nextPassword, trx)
+      throw new Error('password rollback')
+    }),
+    /password rollback/
+  )
+  await fixture.transaction(async (trx) =>
+    assert.equal(
+      await fixture.adapter.verifyPassword(afterVerification.id, password, trx),
+      true,
+      'a rolled-back setPassword keeps the old password'
+    )
+  )
   await fixture.transaction((trx) =>
     fixture.adapter.setPassword(afterVerification.id, nextPassword, trx)
   )
@@ -213,6 +257,13 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   assert.equal(inactive.hasPassword, false)
   assert.equal(inactive.emailVerifiedAt, null)
   assert.equal(await fixture.storedPassword(inactive.id), null)
+  await fixture.transaction(async (trx) =>
+    assert.equal(
+      await fixture.adapter.verifyPassword(inactive.id, '', trx),
+      false,
+      'a password-less user never verifies'
+    )
+  )
   assertSameUser(await fixture.adapter.findById(inactive.id), inactive)
 
   const pendingEmail = `${prefix}-pending@example.test`
@@ -255,6 +306,22 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   assert.equal(activated?.unverifiedEmail, null, 'markEmailVerified must clear pending email')
   assert.equal(activated?.emailVerifiedAt?.toMillis(), verifiedAt.toMillis())
 
+  if (fixture.registrationUpdate) {
+    const update = fixture.registrationUpdate
+    const updateRegistrationData = fixture.adapter.updateRegistrationData?.bind(fixture.adapter)
+    assert.ok(updateRegistrationData, 'registrationUpdate needs updateRegistrationData')
+    const before = await update.read(created.id)
+    await assert.rejects(
+      fixture.transaction(async (trx) => {
+        await updateRegistrationData(created.id, update.data, trx)
+        throw new Error('registration rollback')
+      }),
+      /registration rollback/
+    )
+    assert.deepEqual(await update.read(created.id), before)
+    await fixture.transaction((trx) => updateRegistrationData(created.id, update.data, trx))
+    assert.deepEqual(await update.read(created.id), update.expected)
+  }
   // `delete` is optional; it is required only for the accountDeletion capability.
   if (fixture.adapter.delete) {
     const remove = fixture.adapter.delete.bind(fixture.adapter)
