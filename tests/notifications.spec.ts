@@ -436,6 +436,62 @@ test.group('maintained mail operation', (group) => {
     }
   })
 
+  test('resolves a mail function when a message is sent', async ({ assert }) => {
+    let resolved: AccountMailService | undefined
+    const recipients: string[] = []
+    const notify = createMailNotifications({
+      mail: () => resolved!,
+      from: 'accounts@example.test',
+      brandName: 'Example',
+    })
+    resolved = {
+      async sendLater(callback) {
+        const message = {
+          to: (address: string) => (recipients.push(address), message),
+          from: () => message,
+          subject: () => message,
+          html: () => message,
+          text: () => message,
+        }
+        callback(message as never)
+      },
+    }
+    await notify.passwordChanged(user, {
+      operation: 'password_change',
+      operationId: '1',
+      userId: 1,
+    })
+    assert.deepEqual(recipients, ['person@example.test'])
+  })
+
+  test('defaults to the AdonisJS Mail service resolved at send time', async ({ assert }) => {
+    const messages: Parameters<JSONTransport['send']>[0][] = []
+    class CapturingJSONTransport extends JSONTransport {
+      async send(message: Parameters<JSONTransport['send']>[0]) {
+        messages.push(message)
+        return super.send(message)
+      }
+    }
+    const notify = createMailNotifications({ from: 'accounts@example.test', brandName: 'Example' })
+    const manager = new MailManager({ emit: async () => {} } as never, {
+      default: 'json',
+      mailers: { json: () => new CapturingJSONTransport() },
+    })
+    kit.app.container.singleton('mail.manager' as never, () => manager as never)
+    try {
+      await notify.passwordChanged(user, {
+        operation: 'password_change',
+        operationId: '1',
+        userId: 1,
+      })
+      for (let attempt = 0; attempt < 100 && messages.length < 1; attempt++)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      assert.deepEqual(messages[0]?.to, ['person@example.test'])
+    } finally {
+      await manager.closeAll()
+    }
+  })
+
   test('real Mail reports a transport failure after queue acceptance without undoing the proof', async ({
     assert,
   }) => {
