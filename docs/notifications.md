@@ -7,7 +7,6 @@ verified sender address. Import Mail only in the application configuration; serv
 of Account Kit do not load it.
 
 ```ts
-import mail from '@adonisjs/mail/services/main'
 import { createActionUrls, createMailNotifications, defineConfig } from 'adonisjs-account-kit'
 
 const urls = createActionUrls({
@@ -23,7 +22,6 @@ const urls = createActionUrls({
 })
 
 const notify = createMailNotifications({
-  mail,
   from: 'Accounts <accounts@example.com>',
   brandName: 'Example',
   // emailLayout: (body) => `<div class="mail-shell">${body}</div>`,
@@ -39,7 +37,10 @@ export default defineConfig({
 })
 ```
 
-The code sample's `users` and `limiterSecret` are application values, not package exports. A
+The code sample's `users` and `limiterSecret` are application values, not package exports.
+`createMailNotifications` uses the AdonisJS Mail service, resolved when each message is sent.
+Config files load before AdonisJS services exist, so do not pass the imported `mail` service
+object; to use a different mailer, pass `mail: () => myMailer`. A
 custom callback object remains supported in place of `createMailNotifications`; individual
 callbacks can be overridden by spreading the maintained set first. The mail integration owns
 message content and transport calls, while the application owns the sender identity and Mail
