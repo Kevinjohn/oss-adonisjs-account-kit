@@ -3,22 +3,20 @@ import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
-import { consumeUserToken, isUserEmailUniqueViolation, lockUser, transaction } from './db.js'
+import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
 import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
-  IdentityNotConfirmedError,
   InvalidInputError,
   InvalidTokenError,
-  NoPasswordError,
   type PostCommitError,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
-import { consumeSocialSensitiveProof } from './social_identity.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
+import { confirmActor } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -29,7 +27,6 @@ import type {
   InspectEmailChangeInput,
   RequestEmailChangeInput,
   ResolvedConfig,
-  Trx,
   UpdateProfileInput,
   UserId,
 } from './types.js'
@@ -48,33 +45,6 @@ export async function inspectEmailChange(
   if (!proof || proof.purpose !== 'email_change') return false
   const user = await deps.config.users.findById(proof.tokenable_id)
   return user !== null && user.email === proof.current_email && user.unverifiedEmail === proof.email
-}
-
-/** Lock the actor and consume the credential proof inside the same write transaction. */
-async function confirmActor(
-  config: ResolvedConfig,
-  trx: Trx,
-  actorId: UserId,
-  currentPassword: unknown,
-  recentProof: unknown,
-  purpose: 'email_change' | 'password_change'
-): Promise<AccountUser> {
-  await lockUser(trx, config, actorId)
-  const actor = await config.users.findById(actorId, trx)
-  if (!actor) throw new InvalidInputError('Unknown actor')
-  if (!actor.hasPassword) {
-    if (!config.enabled.includes('socialAuthentication')) throw new NoPasswordError()
-    if (typeof recentProof !== 'string') throw new IdentityNotConfirmedError()
-    await consumeSocialSensitiveProof(trx, config, actor.id, purpose, recentProof)
-    return actor
-  }
-  if (
-    typeof currentPassword !== 'string' ||
-    currentPassword.length === 0 ||
-    !(await config.users.verifyPassword(actor.id, currentPassword, trx))
-  )
-    throw new IdentityNotConfirmedError()
-  return actor
 }
 
 export async function changePassword(
