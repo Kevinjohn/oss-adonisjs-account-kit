@@ -7,6 +7,7 @@ import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
 import { resolveAccountDeletion } from './config_account_data.js'
 import { isSocialProviderName } from './social_providers.js'
+import { resolveSessionManagement } from './config_session_management.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -32,6 +33,7 @@ const disabledUrls: Record<keyof UrlCallbacks, typeof disabled> = {
   emailVerification: disabled,
   invitation: disabled,
   emailChange: disabled,
+  magicLink: disabled,
 }
 const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   passwordResetProvision: disabled,
@@ -43,6 +45,7 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   passwordChanged: disabled,
   socialIdentityLinked: disabled,
   socialIdentityUnlinked: disabled,
+  magicLinkProvision: disabled,
   accountDeleted: disabled,
 }
 
@@ -91,6 +94,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     typeof config.registration.mapFields !== 'function'
   )
     throw new Error('account_kit: registration.mapFields must be a function')
+  if (enabled.includes('magicLinkLogin') && !config.authentication)
+    throw new Error('account_kit: magicLinkLogin requires authentication')
   if (enabled.includes('socialAuthentication')) {
     if (!enabled.includes('emailVerification'))
       throw new Error(
@@ -150,6 +155,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     emailVerification: config.expiresIn?.emailVerification ?? '1h',
     invitation: config.expiresIn?.invitation ?? '7d',
     emailChange: config.expiresIn?.emailChange ?? '1h',
+    magicLink: config.expiresIn?.magicLink ?? '15m',
   }
   for (const value of Object.values(expiresIn)) expiresAt(DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
@@ -171,6 +177,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error('account_kit: tokenSecretLength must be an integer from 16 to 64')
   const passwordPolicy = resolvePasswordPolicy(config)
   const authentication = resolveAuthentication(config)
+  if (enabled.includes('sessionManagement') && !authentication)
+    throw new Error('account_kit: sessionManagement requires authentication')
+  const sessionManagement = resolveSessionManagement(config)
   const accountDeletion = resolveAccountDeletion(config)
   if (
     config.users.resolveMetadata !== undefined &&
@@ -200,6 +209,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     tokenSecretLength,
     authentication,
     passwordPolicy,
+    sessionManagement,
     accountDeletion,
     usersTable,
     limiterNamespace,

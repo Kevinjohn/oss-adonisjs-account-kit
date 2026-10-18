@@ -9,6 +9,7 @@ export const emailDestinations: Partial<
   passwordReset: 'passwordReset',
   invitations: 'invitation',
   emailPasswordManagement: 'emailChange',
+  magicLinkLogin: 'magicLink',
 }
 
 export function hasEmailFlow(choices: SetupChoices): boolean {

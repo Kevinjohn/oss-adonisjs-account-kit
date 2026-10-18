@@ -9,6 +9,8 @@ export const featureNames = [
   'emailPasswordManagement',
   'invitations',
   'socialAuthentication',
+  'magicLinkLogin',
+  'sessionManagement',
   'dataExport',
   'accountDeletion',
 ] as const
@@ -57,7 +59,10 @@ export interface SetupChoices {
     backendOriginEnv: string
     frontendOriginEnv: string
     destinations: Partial<
-      Record<'emailVerification' | 'passwordReset' | 'invitation' | 'emailChange', string>
+      Record<
+        'emailVerification' | 'passwordReset' | 'invitation' | 'emailChange' | 'magicLink',
+        string
+      >
     >
     durableWorkerVerified: boolean
   }

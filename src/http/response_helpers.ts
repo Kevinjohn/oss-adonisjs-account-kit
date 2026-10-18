@@ -30,7 +30,7 @@ export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorRes
 
 export function invalidProof(
   context: HttpContext,
-  proof: 'password' | 'email' | 'invitation',
+  proof: 'password' | 'email' | 'invitation' | 'magicLink',
   message?: ManagedMessage
 ): unknown {
   const mapped = managedErrorResponse(new InvalidTokenError(), {
@@ -69,6 +69,11 @@ export function currentAccount(user: AccountUser): CurrentAccount {
     hasPassword: user.hasPassword,
     active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
   }
+}
+
+/** Untrusted display text for the sign-in list: the client's User-Agent. The service truncates it. */
+export function signInLabel(context: HttpContext): string | undefined {
+  return context.request.header('user-agent') || undefined
 }
 
 export function recoveryDiagnostic(

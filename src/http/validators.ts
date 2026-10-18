@@ -14,6 +14,12 @@ export const signupValidator = vine.compile(
   })
 )
 export const passwordResetRequestValidator = vine.compile(vine.object({ email: email() }))
+export const magicLinkRequestValidator = vine.compile(
+  vine.object({ email: email(), clientChallenge: vine.string().optional() })
+)
+export const magicLinkCompleteValidator = vine.compile(
+  vine.object({ verifier: vine.string().optional() })
+)
 export const passwordResetCompleteValidator = vine.compile(
   vine.object({
     password: password(),

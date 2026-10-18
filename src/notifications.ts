@@ -87,6 +87,12 @@ const templates: Record<
     heading: 'A social sign-in method was removed',
     body: '{provider} sign-in was removed from your account. If this was unexpected, contact support immediately.',
   },
+  magicLinkProvision: {
+    subject: 'Your sign-in link',
+    heading: 'Sign in',
+    body: 'Use the link below to sign in. Open it in the browser or app where you asked for it. It works once and expires soon. If you did not ask to sign in, you can ignore this message.',
+    action: 'Sign in',
+  },
   accountDeleted: {
     subject: 'Your account was deleted',
     heading: 'Your account was deleted',
@@ -166,6 +172,14 @@ export class EmailChangeProvision {
   ) {}
 }
 
+export class MagicLinkProvision {
+  readonly kind = 'magicLinkProvision' as const
+  constructor(
+    readonly recipient: string,
+    readonly actionUrl: string
+  ) {}
+}
+
 async function resolveMail(option: MailNotificationOptions['mail']): Promise<AccountMailService> {
   if (typeof option === 'function') return option()
   if (option) return option
@@ -226,6 +240,10 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
       send('socialIdentityLinked', user.email, undefined, providerLabel(identity.provider)),
     socialIdentityUnlinked: (user, identity) =>
       send('socialIdentityUnlinked', user.email, undefined, providerLabel(identity.provider)),
+    magicLinkProvision: (user, url) => {
+      const message = new MagicLinkProvision(user.email, url)
+      return send(message.kind, message.recipient, message.actionUrl)
+    },
     accountDeleted: (account) => send('accountDeleted', account.email),
   }
 }
@@ -315,6 +333,7 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
     emailVerification: (token) => link('emailVerification', token),
     invitation: (token) => link('invitation', token),
     emailChange: (token) => link('emailChange', token),
+    magicLink: (token) => link('magicLink', token),
   }
 }
 
@@ -376,6 +395,7 @@ export function notificationReadiness(input: NotificationReadinessInput) {
     required.push('emailVerification')
   if (input.enabled.includes('invitations')) required.push('invitation')
   if (input.enabled.includes('emailPasswordManagement')) required.push('emailChange')
+  if (input.enabled.includes('magicLinkLogin')) required.push('magicLink')
   for (const name of required)
     if (!input.destinations[name]) problems.push(`${name} destination is required`)
   try {

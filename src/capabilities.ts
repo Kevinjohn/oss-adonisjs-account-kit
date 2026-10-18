@@ -82,6 +82,16 @@ export const capabilityRegistry: Record<Capability, CapabilityRequirements> = {
     adapterMethods: ['findByEmail', 'findById', 'create', 'verifyPassword'],
     requiredHooks: ['notify.socialIdentityLinked', 'notify.socialIdentityUnlinked'],
   },
+  magicLinkLogin: {
+    defaultOn: false,
+    adapterMethods: ['findByEmail', 'findById'],
+    requiredHooks: ['urls.magicLink', 'notify.magicLinkProvision'],
+  },
+  sessionManagement: {
+    defaultOn: false,
+    adapterMethods: ['findById'],
+    requiredHooks: [],
+  },
   dataExport: {
     defaultOn: false,
     adapterMethods: ['findById', 'verifyPassword'],
