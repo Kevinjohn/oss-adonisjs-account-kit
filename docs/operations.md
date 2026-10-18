@@ -198,7 +198,7 @@ do not trust arbitrary forwarded-IP headers. See [password reset and invitation 
 
 The explicit `account-kit:prune` Ace command removes expired password reset, invitation,
 email-verification (activation and email change), social transaction, sensitive-action proof,
-and social handoff-code rows in bounded batches. It is not scheduled automatically. Defaults are
+social handoff-code, sign-in link and session sign-in rows in bounded batches. It is not scheduled automatically. Defaults are
 100 rows per batch and at most 100 batches; each setting accepts a value from 1 through 1000. Use
 the command's dry-run option to estimate eligible rows before deletion. A daily run is a
 reasonable starting schedule if expired proofs should be removed; tune frequency and batch limits
@@ -211,13 +211,47 @@ pnpm exec node ace account-kit:prune
 ```
 
 The command captures one expiry cutoff for the run, selects IDs in bounded batches, and rechecks
-that each row is still expired at deletion time. Output reports all six row counts, showing rows
+that each row is still expired at deletion time. Output reports all seven row counts, showing rows
 actually deleted (or rows eligible in dry-run mode). It does not delete users, social identities,
 access tokens, web sessions, team memberships, or application-owned records. If a run reaches its
 batch cap, schedule another run rather than raising the cap without considering database load.
 
 Run `pnpm exec node ace account-kit:prune --help` in the configured application to see the
 installed command options.
+
+### Operator commands
+
+Two booted Ace commands let someone with shell access act without the HTTP surface, for example to
+bootstrap the first administrator or help a locked-out user. They run in operator context: no actor
+authorization callback and no rate limit applies, so never expose the underlying
+`kit.operator` services to an HTTP request. Each command still requires its capability
+(`invitations` or `passwordReset`) and the configured URL and notification callbacks.
+
+```sh
+pnpm exec node ace account-kit:invite admin@example.com --role=admin
+pnpm exec node ace account-kit:invite admin@example.com --role=admin --print
+pnpm exec node ace account-kit:reset-link person@example.com
+pnpm exec node ace account-kit:reset-link person@example.com --print
+```
+
+By default the link is emailed through the configured `notify` callback. `--print` prints it
+instead and sends nothing; the link is never both sent and printed. Each command writes one JSON
+line to stdout (`result`, identifiers, `expiresAt` for invitations, and `url` with `--print`) and
+writes warnings and errors to stderr, so the output can be piped. A printed link is a bearer
+secret: share it only over a trusted channel.
+
+- `account-kit:invite` replaces any invitation already issued for the address, so rerunning it
+  after a lost link works. The invitation has no inviter (`inviterId` is `null`). It refuses an
+  address that already has an account. The role becomes the invitation role; assign application
+  roles in `onInvitationAccepted`, as for any invitation.
+- `account-kit:reset-link` reports an unknown address (`E_ACCOUNT_KIT_USER_NOT_FOUND`) instead of
+  answering generically, and skips the timing floor. It replaces the account's live reset link and
+  runs `onPasswordResetIssuedTransaction`. Completing a reset activates an account that has not
+  verified its email; the command warns when that applies.
+
+If the row commits but a follow-up (delivery or `onLifecycleEvent`) fails, the command still prints
+the committed result, including the link with `--print`, adds a `fault` with the error name and
+message, and exits with status 1. Lifecycle events from these commands carry `source: 'operator'`.
 
 ### Durable notifications
 

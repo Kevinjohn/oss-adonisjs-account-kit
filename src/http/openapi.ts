@@ -32,6 +32,10 @@ const tagDescriptions: Record<ManagedCapability, string> = {
   emailPasswordManagement: 'Profile, email change and password change.',
   invitations: 'Invitations sent by signed-in users.',
   socialAuthentication: 'Social sign-in, linking and identities.',
+  magicLinkLogin: 'Sign-in by a one-use email link.',
+  sessionManagement: 'Signed-in devices: list and revoke sign-ins.',
+  dataExport: 'Account data export.',
+  accountDeletion: 'Permanent account deletion.',
 }
 
 const replaceable: Record<ReplaceableRequestEndpoint, keyof ManagedRouteRegistration['replaced']> =

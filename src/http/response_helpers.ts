@@ -30,7 +30,7 @@ export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorRes
 
 export function invalidProof(
   context: HttpContext,
-  proof: 'password' | 'email' | 'invitation',
+  proof: 'password' | 'email' | 'invitation' | 'magicLink',
   message?: ManagedMessage
 ): unknown {
   const mapped = managedErrorResponse(new InvalidTokenError(), {
@@ -71,10 +71,20 @@ export function currentAccount(user: AccountUser): CurrentAccount {
   }
 }
 
+/** Untrusted display text for the sign-in list: the client's User-Agent. The service truncates it. */
+export function signInLabel(context: HttpContext): string | undefined {
+  return context.request.header('user-agent') || undefined
+}
+
 export function recoveryDiagnostic(
   context: HttpContext,
   operation: ManagedEndpointName,
-  outcome: 'delivery_failed' | 'followup_failed' | 'authentication_failed' | 'representation_failed'
+  outcome:
+    | 'delivery_failed'
+    | 'followup_failed'
+    | 'authentication_failed'
+    | 'representation_failed'
+    | 'session_end_failed'
 ): void {
   context.logger?.warn({ operation, outcome }, 'Managed account operation needs reconciliation')
 }

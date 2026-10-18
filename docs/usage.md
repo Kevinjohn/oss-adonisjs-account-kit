@@ -35,12 +35,18 @@ The callback names distinguish a link provision from a completed-operation notic
 | Invitation link           | `urls.invitation`        | `notify.invitationProvision`        |
 | Email-change confirmation | `urls.emailChange`       | `notify.emailChangeProvision`       |
 | Email changed             | —                        | `notify.emailChanged`               |
+| Magic sign-in link        | `urls.magicLink`         | `notify.magicLinkProvision`         |
 | Password changed          | —                        | `notify.passwordChanged`            |
+| Account deleted           | —                        | `notify.accountDeleted`             |
 
 ### Capabilities
 
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
-`emailPasswordManagement`, and `registration`. When omitted, registration and invitations are
+`emailPasswordManagement`, `registration`, `socialAuthentication`, `magicLinkLogin`,
+`sessionManagement`, `dataExport` and `accountDeletion`. `magicLinkLogin` and `sessionManagement`
+are off by default and require `authentication`; see [magic-link sign-in](magic-link.md) and
+[signed-in devices](signed-in-devices.md). `dataExport` and `accountDeletion` are off by default;
+see [account export and deletion](account-data.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
@@ -76,6 +82,16 @@ const profile = await kit.emailPasswordManagement.updateProfile({
 await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail })
 const emailChangeValid = await kit.emailPasswordManagement.inspectEmailChange({ token })
 await kit.emailPasswordManagement.completeEmailChange({ token })
+
+await kit.magicLink.request({ email, clientKey, clientChallenge })
+const linkValid = await kit.magicLink.inspect({ token })
+const { account, credential } = await kit.magicLink.complete({ token, verifier }, guard)
+const signIns = await kit.authentication.sessions.list({ current })
+await kit.authentication.sessions.revoke({ current, id })
+await kit.authentication.sessions.revokeOthers({ current })
+await kit.authentication.sessions.revokeAll({ current })
+const document = await kit.accountData.export({ actorId, currentPassword })
+await kit.accountData.delete({ actorId, currentPassword })
 ```
 
 Invitation listing returns `{ items, nextCursor }`. The default page limit is 25 and the maximum is 100. Pass `nextCursor` as `cursor` to fetch the next page; `null` means there are no more rows.
@@ -184,7 +200,8 @@ commit atomically with a password or email change. The context contains `operati
 operation.
 
 `onLifecycleEvent(event)` receives safe event identifiers after commit. Payloads contain IDs and an
-operation ID, not tokens, email addresses, passwords, or notification URLs. Treat this callback as
+operation ID, not tokens, email addresses, passwords, or notification URLs. Events started by an
+operator command also carry `source: 'operator'`; the property is absent otherwise. Treat this callback as
 best-effort post-commit delivery; use a transactional outbox if the consumer requires durable
 delivery.
 

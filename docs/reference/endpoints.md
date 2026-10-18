@@ -33,6 +33,17 @@ Request and response schemas for the routes you mounted are in the generated
 | `POST` | `/account/logout`  | `account.logout`       | limited |
 | `GET`  | `/account/profile` | `account.profile.show` | limited |
 
+## `sessionManagement`
+
+| Method   | Path                              | Name                            | Access  |
+| -------- | --------------------------------- | ------------------------------- | ------- |
+| `GET`    | `/account/sessions`               | `account.sessions.list`         | limited |
+| `DELETE` | `/account/sessions/:id`           | `account.sessions.revoke`       | limited |
+| `POST`   | `/account/sessions/revoke-others` | `account.sessions.revokeOthers` | limited |
+| `POST`   | `/account/sessions/revoke-all`    | `account.sessions.revokeAll`    | limited |
+
+See [signed-in devices](../signed-in-devices.md) for responses.
+
 ## `passwordReset`
 
 | Method | Path                          | Name                          | Access |
@@ -40,6 +51,16 @@ Request and response schemas for the routes you mounted are in the generated
 | `POST` | `/auth/password-reset`        | `auth.passwordReset.request`  | public |
 | `GET`  | `/auth/password-reset/:token` | `auth.passwordReset.inspect`  | public |
 | `POST` | `/auth/password-reset/:token` | `auth.passwordReset.complete` | public |
+
+## `magicLinkLogin`
+
+| Method | Path                      | Name                      | Access |
+| ------ | ------------------------- | ------------------------- | ------ |
+| `POST` | `/auth/magic-link`        | `auth.magicLink.request`  | public |
+| `GET`  | `/auth/magic-link/:token` | `auth.magicLink.inspect`  | public |
+| `POST` | `/auth/magic-link/:token` | `auth.magicLink.complete` | public |
+
+See [magic-link sign-in](../magic-link.md) for bodies and verifier handling.
 
 ## `emailVerification`
 
@@ -68,6 +89,15 @@ Request and response schemas for the routes you mounted are in the generated
 | `POST`  | `/auth/email-change/:token` | `auth.emailChange.complete` | public  |
 | `PATCH` | `/account/profile`          | `account.profile.update`    | limited |
 | `POST`  | `/account/password`         | `account.password.change`   | active  |
+
+## `dataExport` and `accountDeletion`
+
+| Method   | Path              | Name                  | Access  |
+| -------- | ----------------- | --------------------- | ------- |
+| `POST`   | `/account/export` | `account.data.export` | limited |
+| `DELETE` | `/account`        | `account.delete`      | limited |
+
+See [account export and deletion](../account-data.md) for bodies and responses.
 
 ## `socialAuthentication`
 
