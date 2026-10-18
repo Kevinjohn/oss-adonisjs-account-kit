@@ -6,18 +6,11 @@ The candidate is prepared through local package checks, an independent review, a
 
 Choose the published package name/scope and first version before publication. Confirm the supported peer floors against the measured compatibility matrix, assess unresolved dependency advisories in the full consumer install, and finish any application integration required for the release. Universal session revocation, tenant membership, the external starter integration and UI scaffolding remain separate work.
 
-The existing check workflow deliberately uses `workflow_dispatch` and `workflow_call`. When automatic hosted checks are authorized, replace that trigger with:
+The check workflow runs on pushes to `main`, on pull requests, by hand and from the release
+workflow. Push and pull request runs are skipped while the repository is private, so they only use
+hosted minutes once it is public.
 
-```yaml
-on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
-  workflow_call:
-```
-
-Keep both database matrix jobs, Node 24, pnpm, lint, typecheck, tests, build and built-export checks. Add the installed-consumer/adapter gates once their local commands are accepted for hosted use, and make both database results required in branch protection. The conditional empty service image for SQLite is supported and does not need replacement. This document prepares the change; it does not enable or run hosted jobs.
+Keep both database matrix jobs, Node 24, pnpm, lint, typecheck, tests, build and built-export checks. Add the installed-consumer/adapter gates once their local commands are accepted for hosted use, and make both database results required in branch protection. The conditional empty service image for SQLite is supported and does not need replacement.
 
 ## Upgrade and rollback
 
