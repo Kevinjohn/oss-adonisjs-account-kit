@@ -36,11 +36,14 @@ The callback names distinguish a link provision from a completed-operation notic
 | Email-change confirmation | `urls.emailChange`       | `notify.emailChangeProvision`       |
 | Email changed             | —                        | `notify.emailChanged`               |
 | Password changed          | —                        | `notify.passwordChanged`            |
+| Account deleted           | —                        | `notify.accountDeleted`             |
 
 ### Capabilities
 
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
-`emailPasswordManagement`, and `registration`. When omitted, registration and invitations are
+`emailPasswordManagement`, `registration`, `socialAuthentication`, `dataExport` and
+`accountDeletion`. `dataExport` and `accountDeletion` are off by default; see
+[account export and deletion](account-data.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
@@ -76,6 +79,9 @@ const profile = await kit.emailPasswordManagement.updateProfile({
 await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail })
 const emailChangeValid = await kit.emailPasswordManagement.inspectEmailChange({ token })
 await kit.emailPasswordManagement.completeEmailChange({ token })
+
+const document = await kit.accountData.export({ actorId, currentPassword })
+await kit.accountData.delete({ actorId, currentPassword })
 ```
 
 Invitation listing returns `{ items, nextCursor }`. The default page limit is 25 and the maximum is 100. Pass `nextCursor` as `cursor` to fetch the next page; `null` means there are no more rows.

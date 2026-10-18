@@ -12,6 +12,7 @@ Authentication
 - [Browser login with sessions](recipes/sessions.md)
 - [Inertia and React](recipes/inertia-react.md)
 - [Google and GitHub sign-in with Ally](recipes/social-login.md)
+- [Account export and deletion](account-data.md)
 
 Users and data
 

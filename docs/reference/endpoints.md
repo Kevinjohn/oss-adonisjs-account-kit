@@ -66,6 +66,15 @@ Access levels:
 | `PATCH` | `/account/profile`          | `account.profile.update`    | limited |
 | `POST`  | `/account/password`         | `account.password.change`   | active  |
 
+## `dataExport` and `accountDeletion`
+
+| Method   | Path              | Name                  | Access  |
+| -------- | ----------------- | --------------------- | ------- |
+| `POST`   | `/account/export` | `account.data.export` | limited |
+| `DELETE` | `/account`        | `account.delete`      | limited |
+
+See [account export and deletion](../account-data.md) for bodies and responses.
+
 ## `socialAuthentication`
 
 | Method   | Path                                 | Name                              | Access  |

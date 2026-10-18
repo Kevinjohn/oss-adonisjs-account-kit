@@ -17,6 +17,13 @@ Initial public release.
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
   one-time PKCE handoff.
+- Optional account export and deletion (`dataExport`, `accountDeletion`, `kit.accountData`): a
+  versioned JSON export merged with `exportAccountData`, and permanent deletion of every package row
+  and the user row with `onAccountDeletingTransaction`, an `accountDeleted` email and the
+  `account.deleted` lifecycle event. Both need fresh re-authentication (current password or an
+  `account_export` / `account_delete` proof). Managed routes `POST account/export` and
+  `DELETE account`, the optional `UsersAdapter.delete` (Lucid adapter and contract suite included),
+  and setup support.
 - Built-in account emails for AdonisJS Mail, trusted action-link builders and a notification
   readiness check.
 - An optional managed JSON backend (`adonisjs-account-kit/http`) for apps that do not want to own
