@@ -116,7 +116,7 @@ the example maps a validated name and never spreads request fields onto the mode
 
 For a custom user table or string/UUID user IDs, pass `--users-table` and `--user-id-type` when
 running configure, then inspect all generated migrations. See the
-[custom schema instructions](docs/upgrade.md#custom-user-table-or-id-type).
+[custom schema instructions](docs/custom-schema.md).
 
 ## Operations and security
 
