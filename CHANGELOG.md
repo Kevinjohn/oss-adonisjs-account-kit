@@ -25,6 +25,8 @@ Initial public release.
 - Ace commands: `account-kit:setup`, `account-kit:prune`, `account-kit:retirement-impact` and
   `account-kit:doctor`, which checks config, limiter, `APP_URL` and database tables.
 - `createLogNotifications` prints account emails and their links to the logger during development.
+- `createMailNotifications` and `createLogNotifications` resolve the AdonisJS Mail and logger
+  services when a message is sent; both `mail` and `logger` are optional.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
