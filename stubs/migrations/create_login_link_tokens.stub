@@ -1,0 +1,21 @@
+{{{ exports({ to: migration.destination }) }}}
+
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  async up() {
+    this.schema.createTable('login_link_tokens', (table) => {
+      table.increments('id')
+      {{{ migration.tokenableIdColumn }}}.notNullable().unique().references('id').inTable({{{ migration.usersTable }}}).onDelete('CASCADE')
+      table.string('email', 254).notNullable()
+      table.string('hash', 64).notNullable().unique()
+      table.string('client_challenge', 43).notNullable()
+      table.timestamp('expires_at', { useTz: true }).notNullable()
+      table.timestamp('created_at', { useTz: true }).notNullable()
+    })
+  }
+
+  async down() {
+    this.schema.dropTable('login_link_tokens')
+  }
+}

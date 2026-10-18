@@ -28,6 +28,10 @@ export const allCapabilities: ManagedCapability[] = [
   'emailPasswordManagement',
   'invitations',
   'socialAuthentication',
+  'magicLinkLogin',
+  'sessionManagement',
+  'dataExport',
+  'accountDeletion',
 ]
 
 function ajv() {

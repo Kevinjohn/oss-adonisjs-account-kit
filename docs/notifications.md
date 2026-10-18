@@ -17,6 +17,7 @@ const urls = createActionUrls({
     emailVerification: 'confirm',
     invitation: 'invitation',
     emailChange: 'confirm-email-change',
+    // magicLink: 'sign-in/link', when magicLinkLogin is enabled
   },
   environment: 'production',
 })

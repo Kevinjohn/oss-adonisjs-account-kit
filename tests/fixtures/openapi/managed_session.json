@@ -19,6 +19,10 @@
       "description": "Password reset by email link."
     },
     {
+      "name": "magicLinkLogin",
+      "description": "Sign-in by a one-use email link."
+    },
+    {
       "name": "emailVerification",
       "description": "Email verification links."
     },
@@ -33,6 +37,18 @@
     {
       "name": "socialAuthentication",
       "description": "Social sign-in, linking and identities."
+    },
+    {
+      "name": "sessionManagement",
+      "description": "Signed-in devices: list and revoke sign-ins."
+    },
+    {
+      "name": "dataExport",
+      "description": "Account data export."
+    },
+    {
+      "name": "accountDeletion",
+      "description": "Permanent account deletion."
     }
   ],
   "paths": {
@@ -857,6 +873,513 @@
                   },
                   "required": [
                     "reset"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The link, proof or social flow state is invalid or expired.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request was rejected.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ManagedErrorBody"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorBody"
+                    }
+                  ]
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/magic-link": {
+      "post": {
+        "operationId": "auth.magicLink.request",
+        "tags": [
+          "magicLinkLogin"
+        ],
+        "summary": "Request a magic sign-in link",
+        "description": "The response is the same whether or not an account uses the address. Session guards bind the link to this session; access-token clients send `clientChallenge`.",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 254
+                  },
+                  "clientChallenge": {
+                    "type": "string",
+                    "description": "Ignored for session guards; the server holds the verifier."
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted. A link is sent if the account exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request was rejected.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ManagedErrorBody"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorBody"
+                    }
+                  ]
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/magic-link/{token}": {
+      "get": {
+        "operationId": "auth.magicLink.inspect",
+        "tags": [
+          "magicLinkLogin"
+        ],
+        "summary": "Check a magic sign-in link without using it",
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Link token from the email. Treat as a secret."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The link is valid.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "valid"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The link, proof or social flow state is invalid or expired.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request was rejected.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ManagedErrorBody"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorBody"
+                    }
+                  ]
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "auth.magicLink.complete",
+        "tags": [
+          "magicLinkLogin"
+        ],
+        "summary": "Sign in with a magic link",
+        "description": "Consumes the link, also when a check fails. Session guards use the verifier held in the session.",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Link token from the email. Treat as a secret."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verifier": {
+                    "type": "string",
+                    "description": "Ignored for session guards."
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "$ref": "#/components/schemas/IssuedAccount"
+                    }
+                  },
+                  "required": [
+                    "account"
                   ],
                   "additionalProperties": false
                 }
@@ -3681,7 +4204,9 @@
                       "social_link",
                       "social_unlink",
                       "password_change",
-                      "email_change"
+                      "email_change",
+                      "account_export",
+                      "account_delete"
                     ]
                   },
                   "proof": {
@@ -4848,7 +5373,9 @@
                       "social_link",
                       "social_unlink",
                       "password_change",
-                      "email_change"
+                      "email_change",
+                      "account_export",
+                      "account_delete"
                     ]
                   }
                 },
@@ -5540,6 +6067,874 @@
           }
         }
       }
+    },
+    "/api/v1/account/sessions": {
+      "get": {
+        "operationId": "account.sessions.list",
+        "tags": [
+          "sessionManagement"
+        ],
+        "summary": "List the account's sign-ins",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sign-ins, newest first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SignIn"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/sessions/{id}": {
+      "delete": {
+        "operationId": "account.sessions.revoke",
+        "tags": [
+          "sessionManagement"
+        ],
+        "summary": "Sign out one sign-in",
+        "description": "Revoking the current sign-in also ends this session or token.",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            },
+            "description": "Positive integer identifier."
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Done. No body."
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request was rejected.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ManagedErrorBody"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorBody"
+                    }
+                  ]
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/sessions/revoke-others": {
+      "post": {
+        "operationId": "account.sessions.revokeOthers",
+        "tags": [
+          "sessionManagement"
+        ],
+        "summary": "Sign out every other sign-in",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signed out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/sessions/revoke-all": {
+      "post": {
+        "operationId": "account.sessions.revokeAll",
+        "tags": [
+          "sessionManagement"
+        ],
+        "summary": "Sign out everywhere, including this sign-in",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Done. No body."
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account/export": {
+      "post": {
+        "operationId": "account.data.export",
+        "tags": [
+          "dataExport"
+        ],
+        "summary": "Download the account's data",
+        "description": "Requires `currentPassword` or a `recentProof` for `account_export`. Sent as an attachment.",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "recentProof": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The export document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountExport"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request was rejected.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ManagedErrorBody"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorBody"
+                    }
+                  ]
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account": {
+      "delete": {
+        "operationId": "account.delete",
+        "tags": [
+          "accountDeletion"
+        ],
+        "summary": "Delete the account permanently",
+        "description": "Requires `currentPassword` or a `recentProof` for `account_delete`. A session is ended; an access token is deleted with the account.",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "recentProof": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedCommittedSuccess"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Done. No body."
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The request was rejected.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ManagedErrorBody"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorBody"
+                    }
+                  ]
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The operation failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5587,6 +6982,147 @@
         },
         "required": [
           "committed"
+        ],
+        "additionalProperties": false
+      },
+      "SignIn": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "createdAt",
+          "lastSeenAt",
+          "expiresAt",
+          "current"
+        ],
+        "additionalProperties": false
+      },
+      "AccountExport": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "adonisjs-account-kit/export"
+          },
+          "version": {
+            "const": 1
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "email": {
+                "type": "string"
+              },
+              "unverifiedEmail": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "emailVerifiedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              },
+              "hasPassword": {
+                "type": "boolean"
+              },
+              "credentialsChangedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "unverifiedEmail",
+              "emailVerifiedAt",
+              "hasPassword",
+              "credentialsChangedAt"
+            ],
+            "additionalProperties": false
+          },
+          "socialIdentities": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "invitationsSent": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "accessTokens": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Present only for the access-token strategy."
+          },
+          "pending": {
+            "type": "object"
+          },
+          "application": {
+            "description": "What the application's `exportAccountData` returned, or null."
+          }
+        },
+        "required": [
+          "format",
+          "version",
+          "generatedAt",
+          "account",
+          "socialIdentities",
+          "invitationsSent",
+          "pending",
+          "application"
         ],
         "additionalProperties": false
       },

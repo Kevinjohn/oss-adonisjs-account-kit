@@ -10,9 +10,12 @@ import { applyMappedHeaders, recoveryDiagnostic, safeAccount } from './response_
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'
+import { accountDataHandlers } from './handlers_account_data.js'
 import { invitationHandlers } from './handlers_invitations.js'
+import { magicLinkHandlers } from './handlers_magic_link.js'
 import { passwordResetHandlers } from './handlers_password_reset.js'
 import { registrationHandlers } from './handlers_registration.js'
+import { sessionManagementHandlers } from './handlers_session_management.js'
 import {
   managedRouteRegistration,
   recordManagedRegistration,
@@ -107,6 +110,8 @@ export interface ManagedRequest<Credential> {
   options: ManagedRoutesOptions<Credential>
   kit: AccountKit
   csrfToken: string | undefined
+  /** The guard's trusted input for the signed-in caller; undefined on public routes. */
+  accountInput: CurrentAccountInput | undefined
   account: CurrentAccount | undefined
   actorId: CurrentAccount['id'] | undefined
   methodsEnabled: boolean
@@ -121,10 +126,13 @@ export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...authenticationHandlers,
   ...registrationHandlers,
   ...passwordResetHandlers,
+  ...magicLinkHandlers,
   ...emailVerificationHandlers,
   ...emailPasswordManagementHandlers,
   ...invitationHandlers,
   ...managedSocialHandlers,
+  ...sessionManagementHandlers,
+  ...accountDataHandlers,
 }
 
 async function execute<Credential>(
@@ -168,6 +176,7 @@ async function execute<Credential>(
     options,
     kit,
     csrfToken,
+    accountInput,
     account,
     actorId,
     methodsEnabled,
@@ -189,6 +198,7 @@ export function registerManagedRoutes<Credential>(
       (capability) =>
         capability === 'authentication' ||
         capability === 'registration' ||
+        capability === 'magicLinkLogin' ||
         capability === 'socialAuthentication'
     ) &&
     !options.guard.publicCredential
@@ -241,7 +251,9 @@ export function registerManagedRoutes<Credential>(
                   ? 'password'
                   : route.name.includes('invitation')
                     ? 'invitation'
-                    : 'email'
+                    : route.capability === 'magicLinkLogin'
+                      ? 'magicLink'
+                      : 'email'
                 : undefined,
           })
           if (!mapped) throw error

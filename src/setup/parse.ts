@@ -139,7 +139,11 @@ export function parseSetupChoices(input: unknown): SetupChoices {
   if (!destinations || typeof destinations !== 'object' || Array.isArray(destinations))
     throw new Error('mail.destinations: expected an object')
   for (const [key, value] of Object.entries(destinations)) {
-    if (!['emailVerification', 'passwordReset', 'invitation', 'emailChange'].includes(key))
+    if (
+      !['emailVerification', 'passwordReset', 'invitation', 'emailChange', 'magicLink'].includes(
+        key
+      )
+    )
       throw new Error(`mail.destinations.${key}: unsupported field`)
     string(value, `mail.destinations.${key}`)
   }

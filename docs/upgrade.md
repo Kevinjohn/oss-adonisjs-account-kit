@@ -315,6 +315,18 @@ and secret length as described above; default lifetimes remain unchanged.
 6. Typecheck and run package-specific consumer tests before deployment. Verify that the limiter
    secret and namespace are consistent across application instances.
 
+Every credential change deletes rows from `login_link_tokens`, whether or not `magicLinkLogin` is
+enabled. Run configure to generate `create_login_link_tokens` and apply it before deploying this
+version; until then, password resets and other credential changes fail. `account-kit:doctor`
+reports the table as missing.
+Every credential change deletes rows from `account_sessions` when `authentication` is configured,
+whether or not `sessionManagement` is enabled. Run configure to generate `create_account_sessions`
+and apply it before deploying this version; until then, credential changes fail.
+`account-kit:doctor` reports the table as missing. Enabling `sessionManagement` with the session
+strategy signs every user out once. Custom guard adapters receive an extra `establish` argument
+(see [signed-in devices](signed-in-devices.md)), and exhaustive switches over `Capability`,
+`CredentialOperation` or `LifecycleEvent` need the new members.
+
 SQLite package writes require the new `account_transaction_lock` table. Apply its migration before
 deploying code that uses the new transaction path. The table is package-owned and independent of
 application user rows.
@@ -386,6 +398,12 @@ number of database entries examined.
 - **Post-commit failure means committed state.** `PostCommitError.committed` is `true`; do not treat
   it as a rollback or blindly repeat the mutation. Password reset request handlers must suppress both
   `DeliveryError` and `PostCommitError` and return the generic acknowledgement.
+- **Account export and deletion.** `dataExport` and `accountDeletion` are new and off by default.
+  `accountDeletion` needs the new optional `UsersAdapter.delete(id, trx)`; custom adapters add it
+  before enabling the capability, and the Lucid adapter has it. `NotificationCallbacks` gains
+  `accountDeleted`, so a complete custom `notify` object needs it to type-check; the built-in mail
+  and log notifications include it. Exhaustive switches over `Capability`, `LifecycleEvent` or
+  `SensitivePurpose` need the new members. See [account export and deletion](account-data.md).
 - **HTTP error contracts use package metadata.** Map `E_ACCOUNT_KIT_*` codes and status centrally.
   Missing and denied invitation-management requests use the same not-found code/body. Do not expose
   internal causes or callback errors.

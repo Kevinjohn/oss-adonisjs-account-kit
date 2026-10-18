@@ -1,4 +1,5 @@
 // Social handoff codes: issuing a one-time code after a social callback and redeeming it for a credential.
+import { establishCredential } from './credential_issuance.js'
 import { createHash } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { revision, safeAccount } from './authentication.js'
@@ -109,31 +110,12 @@ export async function redeemSocialHandoff<Credential>(
       provider: establishedProvider,
     }
   })
-  let credential: Credential | undefined
-  try {
-    credential =
-      input.guard.strategy === 'session'
-        ? await input.guard.establish(verified.account.id, verified.revision)
-        : await input.guard.establish(verified.account.id, auth.tokenAbilities, auth.tokenExpiresIn)
-    await transaction(deps.db, async (trx) => {
-      await lockUser(trx, deps.config, verified.account.id)
-      const user = await deps.config.users.findById(verified.account.id, trx)
-      if (
-        !user ||
-        (await revision(trx, deps.config, user.id)) !== verified.revision ||
-        (await usableHandoffAssociation(trx, deps.config, user.id, verified.socialIdentityId)) !==
-          verified.provider ||
-        !(await auth.canAccess(user, trx))
-      )
-        throw new SocialTransactionError()
-    })
-    return { account: verified.account, credential, provider: verified.provider }
-  } catch (error) {
-    try {
-      await input.guard.terminate(credential)
-    } catch (cleanup) {
-      throw new AggregateError([error, cleanup], 'Social credential cleanup failed')
-    }
-    throw error
-  }
+  const credential = await establishCredential(deps, auth, input.guard, verified, {
+    stillValid: async (trx, user) =>
+      (await usableHandoffAssociation(trx, deps.config, user.id, verified.socialIdentityId)) ===
+      verified.provider,
+    rejected: () => new SocialTransactionError(),
+    cleanupFailed: 'Social credential cleanup failed',
+  })
+  return { account: verified.account, credential, provider: verified.provider }
 }

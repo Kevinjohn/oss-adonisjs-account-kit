@@ -408,6 +408,77 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     success: noContent,
     conflict: true,
   },
+  'auth.magicLink.request': {
+    summary: 'Request a magic sign-in link',
+    description:
+      'The response is the same whether or not an account uses the address. Session guards bind the link to this session; access-token clients send `clientChallenge`.',
+    body: (strategy) =>
+      body({ email: email(), clientChallenge: clientChallenge(strategy) }, ['email']),
+    success: () => ({
+      202: {
+        description: 'Accepted. A link is sent if the account exists.',
+        schema: closed({ message: string() }),
+      },
+    }),
+  },
+  'auth.magicLink.inspect': {
+    summary: 'Check a magic sign-in link without using it',
+    success: valid,
+  },
+  'auth.magicLink.complete': {
+    summary: 'Sign in with a magic link',
+    description:
+      'Consumes the link, also when a check fails. Session guards use the verifier held in the session.',
+    body: (strategy) =>
+      body(
+        {
+          verifier: string({
+            description:
+              strategy === 'access_tokens'
+                ? 'The verifier whose S256 challenge was sent with the request. Required for access tokens.'
+                : 'Ignored for session guards.',
+          }),
+        },
+        []
+      ),
+    success: (strategy) => ({
+      200: { description: 'Signed in.', schema: accountBody(strategy, 'required') },
+    }),
+  },
+  'account.sessions.list': {
+    summary: "List the account's sign-ins",
+    success: ok(
+      'Sign-ins, newest first.',
+      closed({ sessions: { type: 'array', items: ref('SignIn') } })
+    ),
+  },
+  'account.sessions.revoke': {
+    summary: 'Sign out one sign-in',
+    description: 'Revoking the current sign-in also ends this session or token.',
+    success: noContent,
+  },
+  'account.sessions.revokeOthers': {
+    summary: 'Sign out every other sign-in',
+    success: ok('Signed out.', closed({ count: { type: 'integer', minimum: 0 } })),
+  },
+  'account.sessions.revokeAll': {
+    summary: 'Sign out everywhere, including this sign-in',
+    success: noContent,
+  },
+  'account.data.export': {
+    summary: "Download the account's data",
+    description:
+      'Requires `currentPassword` or a `recentProof` for `account_export`. Sent as an attachment.',
+    body: () => body({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
+    success: ok('The export document.', ref('AccountExport')),
+  },
+  'account.delete': {
+    summary: 'Delete the account permanently',
+    description:
+      'Requires `currentPassword` or a `recentProof` for `account_delete`. A session is ended; an access token is deleted with the account.',
+    body: () => body({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
+    success: noContent,
+  },
 }
 
 /** Shared component schemas; `IssuedAccount`, `Account` and `SocialProvider` are added per document. */
@@ -424,6 +495,50 @@ export function sharedSchemas(): Record<string, JsonSchema> {
       active: { type: 'boolean' },
     }),
     ManagedCommittedSuccess: closed({ committed: constant(true) }),
+    SignIn: closed({
+      id: { type: 'integer' },
+      label: { type: ['string', 'null'] },
+      createdAt: timestamp,
+      lastSeenAt: { type: ['string', 'null'], format: 'date-time' },
+      expiresAt: { type: ['string', 'null'], format: 'date-time' },
+      current: { type: 'boolean' },
+    }),
+    AccountExport: closed(
+      {
+        format: constant('adonisjs-account-kit/export'),
+        version: constant(1),
+        generatedAt: timestamp,
+        account: closed({
+          id: userId,
+          email: string(),
+          unverifiedEmail: { type: ['string', 'null'] },
+          emailVerifiedAt: { type: ['string', 'null'], format: 'date-time' },
+          hasPassword: { type: 'boolean' },
+          credentialsChangedAt: { type: ['string', 'null'], format: 'date-time' },
+        }),
+        socialIdentities: { type: 'array', items: { type: 'object' } },
+        invitationsSent: { type: 'array', items: { type: 'object' } },
+        accessTokens: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Present only for the access-token strategy.',
+        },
+        pending: { type: 'object' },
+        application: {
+          description: "What the application's `exportAccountData` returned, or null.",
+        },
+      },
+      [
+        'format',
+        'version',
+        'generatedAt',
+        'account',
+        'socialIdentities',
+        'invitationsSent',
+        'pending',
+        'application',
+      ]
+    ),
     ManagedErrorBody: closed({
       errors: {
         type: 'array',
