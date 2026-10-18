@@ -96,25 +96,33 @@ Create a controller:
 // app/controllers/password_resets_controller.ts
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit, InvalidTokenError } from 'adonisjs-account-kit'
+import { AccountKit, DeliveryError, InvalidTokenError, PostCommitError } from 'adonisjs-account-kit'
 
 export default class PasswordResetsController {
-  async request({ request, response }: HttpContext) {
+  async request({ request, response, logger }: HttpContext) {
     const kit = await app.container.make(AccountKit)
-    await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
+    try {
+      await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
+    } catch (error) {
+      // Only known addresses get an email, so a failed send must not change the response.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset email failed')
+    }
     return response.accepted({ message: 'If the account exists, instructions will be sent.' })
   }
 
-  async complete({ request, response, params }: HttpContext) {
+  async complete({ request, response, params, logger }: HttpContext) {
     const kit = await app.container.make(AccountKit)
     try {
       await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
-      return response.ok({ message: 'Password reset.' })
     } catch (error) {
       if (error instanceof InvalidTokenError)
         return response.unprocessableEntity({ message: 'This link is invalid or has expired.' })
-      throw error
+      // The password has already changed; only the follow-up email failed.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset notice failed')
     }
+    return response.ok({ message: 'Password reset.' })
   }
 }
 ```
