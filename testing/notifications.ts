@@ -54,6 +54,7 @@ export function captureNotifications() {
       record('socialIdentityLinked', user.email, [user, identity]),
     socialIdentityUnlinked: (user, identity) =>
       record('socialIdentityUnlinked', user.email, [user, identity]),
+    accountDeleted: (account) => record('accountDeleted', account.email, [account]),
   }
   function last(kind: NotificationKind, to?: string): CapturedNotification | undefined {
     return messages.findLast(

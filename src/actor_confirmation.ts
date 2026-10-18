@@ -1,7 +1,7 @@
 import { lockUser } from './db.js'
 import { IdentityNotConfirmedError, InvalidInputError, NoPasswordError } from './errors.js'
 import { consumeSocialSensitiveProof } from './social_identity.js'
-import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
+import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
 
 /** Lock the actor and consume the credential proof inside the same write transaction. */
 export async function confirmActor(
@@ -10,7 +10,7 @@ export async function confirmActor(
   actorId: UserId,
   currentPassword: unknown,
   recentProof: unknown,
-  purpose: 'email_change' | 'password_change'
+  purpose: SensitivePurpose
 ): Promise<AccountUser> {
   await lockUser(trx, config, actorId)
   const actor = await config.users.findById(actorId, trx)
