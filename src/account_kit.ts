@@ -21,6 +21,7 @@ import {
 import { makeThrottler, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { socialIdentityService } from './social_identity.js'
+import { operatorInvite, operatorResetLink } from './operator.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -45,6 +46,10 @@ import type {
   InvitationsResendInput,
   InvitationsRevokeInput,
   InvitationsSendInput,
+  OperatorInviteInput,
+  OperatorInviteResult,
+  OperatorResetLinkInput,
+  OperatorResetLinkResult,
   PasswordResetInspectInput,
   PasswordResetRequestInput,
   PasswordResetCompleteInput,
@@ -160,6 +165,16 @@ export class AccountKit {
       this.enabled('invitations', () => resendInvitation(this.deps, input)),
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
+  }
+  /**
+   * Operator context only: callers with shell access (Ace commands). No actor authorisation and no
+   * throttles apply; never expose these methods to an HTTP request.
+   */
+  readonly operator = {
+    invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
+      this.enabled('invitations', () => operatorInvite(this.deps, input)),
+    resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
+      this.enabled('passwordReset', () => operatorResetLink(this.deps, input)),
   }
   readonly emailPasswordManagement = {
     changePassword: (input: ChangePasswordInput): Promise<void> =>
