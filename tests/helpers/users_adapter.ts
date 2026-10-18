@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import type { Hash } from '@adonisjs/core/hash'
 import type { Database } from '@adonisjs/lucid/database'
+import { sqlTimestamp } from '../../src/timestamps.js'
 import type { AccountUser, Trx, UserId, UsersAdapter } from '../../src/types.js'
 
 /** `returning('id')` yields a bare id on SQLite and `{ id }` on PostgreSQL. */
@@ -40,7 +41,7 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
           unverified_email: attrs.unverifiedEmail,
           password: attrs.password === null ? null : await hash.make(attrs.password),
           email_verified_at: null,
-          created_at: DateTime.utc().toISO(),
+          created_at: sqlTimestamp(trx),
         })
         .returning('id')
       return (await this.findById(unwrapId(id), trx))!
@@ -64,7 +65,7 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
       await trx
         .from(usersTable)
         .where('id', id)
-        .update({ unverified_email: null, email_verified_at: at.toISO() })
+        .update({ unverified_email: null, email_verified_at: sqlTimestamp(trx, at) })
     },
     async verifyPassword(id, password, trx) {
       const row = await trx.from(usersTable).where('id', id).first()

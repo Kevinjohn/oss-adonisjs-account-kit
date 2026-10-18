@@ -30,13 +30,13 @@ Use database defaults instead (`DEFAULT CURRENT_TIMESTAMP`, `gen_random_uuid()`)
 
 The users table must have these physical columns:
 
-| Column              | Type                               |
-| ------------------- | ---------------------------------- |
-| `id`                | Primary key: integer or string     |
-| `email`             | Unique, stored lower-case          |
-| `unverified_email`  | Nullable text                      |
-| `password`          | Nullable text: the password hash   |
-| `email_verified_at` | Nullable timestamp; text on SQLite |
+| Column              | Type                                                        |
+| ------------------- | ----------------------------------------------------------- |
+| `id`                | Primary key: integer or string                              |
+| `email`             | Unique, stored lower-case                                   |
+| `unverified_email`  | Nullable text                                               |
+| `password`          | Nullable text: the password hash                            |
+| `email_verified_at` | Nullable timestamp; text on SQLite, `TIMESTAMP(3)` on MySQL |
 
 Drizzle and Prisma must map the properties `id`, `email`, `unverifiedEmail`, `password` and
 `emailVerifiedAt` to those columns. The adapters check this on first use and throw a message that

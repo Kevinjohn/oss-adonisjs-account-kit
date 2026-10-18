@@ -16,8 +16,9 @@ import type {
 } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
-const later = (days: number) => DateTime.utc().plus({ days }).toISO()
+const later = (days: number) => DateTime.utc().plus({ days })
 
 test.group('sign-in management with sessions', (group) => {
   const kit = useTestApp(group)
@@ -67,7 +68,7 @@ test.group('sign-in management with sessions', (group) => {
       .from('account_sessions')
       .where('label', 'Expired')
       .update({
-        expires_at: DateTime.utc().minus({ minutes: 1 }).toISO(),
+        expires_at: dbTime(kit, DateTime.utc().minus({ minutes: 1 })),
       })
     const list = await account.authentication.sessions.list({ current: first })
     assert.deepEqual(
@@ -258,16 +259,16 @@ test.group('sign-in management with access tokens', (group) => {
       minRequestMs: 0,
     })
 
-  async function token(userId: UserId, name: string | null, expiresAt: string | null = null) {
+  async function token(userId: UserId, name: string | null, expiresAt: DateTime | null = null) {
     const [row] = await kit.db
       .table('auth_access_tokens')
       .insert({
         tokenable_id: userId,
         name,
         hash: `hash-${name}`,
-        created_at: DateTime.utc().toISO(),
+        created_at: dbTime(kit, DateTime.utc()),
         last_used_at: null,
-        expires_at: expiresAt,
+        expires_at: expiresAt && dbTime(kit, expiresAt),
       })
       .returning('id')
     const id = typeof row === 'object' ? (row as { id: number }).id : (row as number)
@@ -280,7 +281,7 @@ test.group('sign-in management with access tokens', (group) => {
     const { account } = service()
     const mine = await token(user.id, 'Phone', later(1))
     const laptop = await token(user.id, 'Laptop')
-    await token(user.id, 'Old', DateTime.utc().minus({ days: 1 }).toISO())
+    await token(user.id, 'Old', DateTime.utc().minus({ days: 1 }))
     const theirs = await token(other.id, 'Theirs')
     const list = await account.authentication.sessions.list({ current: mine })
     assert.deepEqual(

@@ -63,6 +63,7 @@
     "pg:start": "bash bin/pg.sh start",
     "pg:stop": "bash bin/pg.sh stop",
     "test:pg": "bash bin/pg.sh test",
+    "test:mysql": "cross-env DB_CLIENT=mysql2 TZ=America/New_York pnpm quick:test",
     "test:pg-service": "node --test scripts/test_pg_service.mjs"
   },
   "keywords": [
@@ -100,6 +101,7 @@
     "drizzle-orm": "0.45.3",
     "eslint": "^10.0.3",
     "luxon": "^3.0.0",
+    "mysql2": "^3.24.6",
     "pg": "^8.0.0",
     "prettier": "^3.8.1",
     "release-it": "^19.2.4",

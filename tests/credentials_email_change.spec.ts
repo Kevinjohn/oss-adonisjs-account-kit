@@ -21,6 +21,8 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { credentialsFixtures } from './helpers/credentials.js'
+import { locksRows, lockNotAvailableCode } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service, seedTokens, issueEmailChange } = credentialsFixtures(kit)
@@ -65,7 +67,7 @@ test.group('emailPasswordManagement', (group) => {
       .from('email_verification_tokens')
       .where('tokenable_id', user.id)
       .update({
-        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+        created_at: dbTime(kit, DateTime.utc().minus({ minutes: 2 })),
       })
     await request()
     assert.lengthOf(recorder.calls, 2)
@@ -93,7 +95,7 @@ test.group('emailPasswordManagement', (group) => {
       .from('email_verification_tokens')
       .where('tokenable_id', user.id)
       .update({
-        expires_at: DateTime.utc().minus({ seconds: 1 }).toISO(),
+        expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })),
       })
     await request()
     assert.lengthOf(recorder.calls, 2)
@@ -240,7 +242,7 @@ test.group('emailPasswordManagement', (group) => {
     )
     await kit.db
       .table('users')
-      .insert({ email: 'new@example.test', created_at: DateTime.utc().toISO() })
+      .insert({ email: 'new@example.test', created_at: dbTime(kit, DateTime.utc()) })
     const users = makeUsersAdapter(kit.db, kit.hash)
     await kit.db
       .from('users')
@@ -366,8 +368,7 @@ test.group('emailPasswordManagement', (group) => {
         },
       },
     })
-    const sqliteClient =
-      process.env.DB_CLIENT === 'pg' ? null : kit.db.connection().getWriteClient()
+    const sqliteClient = locksRows ? null : kit.db.connection().getWriteClient()
     const native = sqliteClient
       ? ((await sqliteClient.client.acquireConnection()) as {
           pragma: (statement: string, options: { simple: true }) => number | string
@@ -384,7 +385,7 @@ test.group('emailPasswordManagement', (group) => {
       await ready
       let conflict: unknown
       try {
-        if (process.env.DB_CLIENT === 'pg') {
+        if (locksRows) {
           await kit.db.transaction((trx) =>
             trx.rawQuery('SELECT id FROM users WHERE id = ? FOR UPDATE NOWAIT', [user.id]).exec()
           )
@@ -400,10 +401,7 @@ test.group('emailPasswordManagement', (group) => {
       } catch (error) {
         conflict = error
       }
-      assert.equal(
-        (conflict as { code?: string } | undefined)?.code,
-        process.env.DB_CLIENT === 'pg' ? '55P03' : 'SQLITE_BUSY'
-      )
+      assert.equal((conflict as { code?: string } | undefined)?.code, lockNotAvailableCode)
     } finally {
       releaseProof()
       await requesting.catch(() => {})
@@ -419,7 +417,7 @@ test.group('emailPasswordManagement', (group) => {
     const account = service({ notify: recorder.notify })
     const first = await issueEmailChange(account, user, recorder)
     const before = await kit.db.from('email_verification_tokens').first()
-    const stale = DateTime.utc().minus({ days: 2 }).toISO()
+    const stale = dbTime(kit, DateTime.utc().minus({ days: 2 }))
     await kit.db.from('email_verification_tokens').where('tokenable_id', user.id).update({
       email: 'stale@example.test',
       expires_at: stale,
@@ -543,7 +541,7 @@ test.group('emailPasswordManagement', (group) => {
     await kit.db
       .from('email_verification_tokens')
       .where('tokenable_id', user.id)
-      .update({ expires_at: DateTime.utc().minus({ second: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ second: 1 })) })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
       InvalidTokenError
@@ -588,7 +586,7 @@ test.group('emailPasswordManagement', (group) => {
     const token = await issueEmailChange(account, user, recorder)
     await kit.db
       .table('users')
-      .insert({ email: 'new@example.test', created_at: DateTime.utc().toISO() })
+      .insert({ email: 'new@example.test', created_at: dbTime(kit, DateTime.utc()) })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
       EmailAlreadyRegisteredError
@@ -610,7 +608,7 @@ test.group('emailPasswordManagement', (group) => {
       users: {
         ...users,
         async setEmail(id, email, trx) {
-          await trx.table('users').insert({ email, created_at: DateTime.utc().toISO() })
+          await trx.table('users').insert({ email, created_at: dbTime(kit, DateTime.utc()) })
           await users.setEmail(id, email, trx)
         },
       },

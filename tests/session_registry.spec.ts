@@ -14,8 +14,9 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { clientChallenge, provider, verifier } from './helpers/social_identity.js'
+import { dbTime } from './helpers/db_time.js'
 
-const minutesAgo = (minutes: number) => DateTime.utc().minus({ minutes }).toISO()
+const minutesAgo = (minutes: number) => DateTime.utc().minus({ minutes })
 
 /** A session guard adapter that remembers what the real guard would store in the session. */
 function sessionGuard() {
@@ -134,7 +135,7 @@ test.group('session registry', (group) => {
     await kit.db
       .from('account_sessions')
       .where('user_id', user.id)
-      .update({ expires_at: minutesAgo(1) })
+      .update({ expires_at: dbTime(kit, minutesAgo(1)) })
     await assert.rejects(
       () => account.authentication.current(mine.input(user.id)),
       InvalidSessionError
@@ -158,9 +159,10 @@ test.group('session registry', (group) => {
     await account.authentication.current(session.input(user.id))
     assert.deepEqual(await row(), issued)
 
+    const staleSeen = minutesAgo(6)
     const stale = {
-      last_seen_at: minutesAgo(6),
-      expires_at: DateTime.utc().plus({ days: 1 }).toISO(),
+      last_seen_at: dbTime(kit, staleSeen),
+      expires_at: dbTime(kit, DateTime.utc().plus({ days: 1 })),
     }
     await kit.db.from('account_sessions').update(stale)
     allowed = false
@@ -169,7 +171,7 @@ test.group('session registry', (group) => {
       InvalidSessionError
     )
     const untouched = await row()
-    assert.equal(new Date(untouched.last_seen_at).getTime(), Date.parse(stale.last_seen_at))
+    assert.equal(new Date(untouched.last_seen_at).getTime(), staleSeen.toMillis())
 
     allowed = true
     await account.authentication.current(session.input(user.id))
@@ -298,7 +300,7 @@ test.group('session registry', (group) => {
     await kit.db
       .from('account_sessions')
       .where('id', expired.id)
-      .update({ expires_at: minutesAgo(1) })
+      .update({ expires_at: dbTime(kit, minutesAgo(1)) })
     const dryRun = await pruneExpired(kit.db, { dryRun: true })
     assert.equal(dryRun.sessions, 1)
     const pruned = await pruneExpired(kit.db)

@@ -10,8 +10,9 @@ import {
 } from '../src/errors.js'
 import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { dbTime } from './helpers/db_time.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { issueRecentProof, past, seedAccountRows } from './helpers/account_rows.js'
+import { issueRecentProof, past, seedAccountRows, soon } from './helpers/account_rows.js'
 import { provider } from './helpers/social_identity.js'
 
 const socialConfig: Partial<AccountKitConfig> = {
@@ -134,15 +135,15 @@ test.group('account data export', (group) => {
       current_email: user.email,
       purpose: 'activation',
       hash: 'h'.repeat(64),
-      expires_at: '2999-01-01T00:00:00.000Z',
-      created_at: '2026-01-01T00:00:00.000Z',
+      expires_at: soon(kit),
+      created_at: dbTime(kit, '2026-01-01T00:00:00.000Z'),
     })
     await kit.db.table('password_reset_tokens').insert({
       tokenable_id: user.id,
       email: user.email,
       hash: 'r'.repeat(64),
-      expires_at: past(),
-      created_at: '2026-01-01T00:00:00.000Z',
+      expires_at: past(kit),
+      created_at: dbTime(kit, '2026-01-01T00:00:00.000Z'),
     })
     const document = await account.accountData.export(input)
     assert.deepEqual(document.pending, {
@@ -246,7 +247,7 @@ test.group('account data export', (group) => {
     const theirs = await issueRecentProof(kit, config, other.id, 'account_export')
     await assert.rejects(() => exportOf(theirs), SocialProofError)
     const expired = await issueRecentProof(kit, config, user.id, 'account_export')
-    await kit.db.from('social_sensitive_proofs').update({ expires_at: past() })
+    await kit.db.from('social_sensitive_proofs').update({ expires_at: past(kit) })
     await assert.rejects(() => exportOf(expired), SocialProofError)
 
     const proof = await issueRecentProof(kit, config, user.id, 'account_export')

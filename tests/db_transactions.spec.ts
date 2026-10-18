@@ -7,6 +7,8 @@ import { DateTime } from 'luxon'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import { accountKit, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { locksRows, testEngine } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 test.group('managed transaction wrapper', (group) => {
   const kit = useTestApp(group)
 
@@ -14,16 +16,11 @@ test.group('managed transaction wrapper', (group) => {
     assert,
   }) => {
     const outer = await kit.db.beginGlobalTransaction()
-    const native =
-      process.env.DB_CLIENT === 'pg'
-        ? null
-        : await outer.getWriteClient().client.acquireConnection()
+    const native = locksRows ? null : await outer.getWriteClient().client.acquireConnection()
     const timeout = native?.pragma('busy_timeout', { simple: true })
     let callbackCalls = 0
     try {
-      await outer
-        .table('users')
-        .insert({ email: 'outer@example.test', created_at: new Date().toISOString() })
+      await outer.table('users').insert({ email: 'outer@example.test', created_at: dbTime(kit) })
       let failure: Error | undefined
       try {
         await transaction(kit.db, async () => {
@@ -51,7 +48,7 @@ test.group('managed transaction wrapper', (group) => {
   test('rejects a credential write inside a PostgreSQL global transaction before callbacks or mutation', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT !== 'pg') return
+    if (!locksRows) return
     const users = makeUsersAdapter(kit.db, kit.hash)
     const user = await kit.db.transaction((trx) =>
       users.create(
@@ -104,7 +101,7 @@ test.group('managed transaction wrapper', (group) => {
   test('rejects a PostgreSQL deferred-constraint COMMIT without commit events or durable writes', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT !== 'pg') return
+    if (testEngine !== 'pg') return
     await kit.db
       .rawQuery(
         'CREATE TABLE test_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
@@ -146,7 +143,7 @@ test.group('managed transaction wrapper', (group) => {
       await transaction(kit.db, async (trx) => {
         await trx
           .table('users')
-          .insert({ email: 'reused@example.test', created_at: DateTime.utc().toISO() })
+          .insert({ email: 'reused@example.test', created_at: dbTime(kit, DateTime.utc()) })
       })
       assert.isNotNull(await kit.db.from('users').where('email', 'reused@example.test').first())
     } finally {
@@ -157,7 +154,7 @@ test.group('managed transaction wrapper', (group) => {
   test('a PostgreSQL commit failure rejects password change and suppresses its post-commit callback', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT !== 'pg') return
+    if (testEngine !== 'pg') return
     await kit.db
       .rawQuery(
         'CREATE TABLE test_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
@@ -219,9 +216,7 @@ test.group('managed transaction wrapper', (group) => {
     try {
       await transaction(kit.db, async (trx) => {
         attempts++
-        await trx
-          .table('users')
-          .insert({ email: 'error@example.test', created_at: new Date().toISOString() })
+        await trx.table('users').insert({ email: 'error@example.test', created_at: dbTime(kit) })
         throw new Error('terminal')
       })
       assert.fail('expected rejection')
@@ -235,7 +230,7 @@ test.group('managed transaction wrapper', (group) => {
   test('waits asynchronously for the SQLite writer before entering the callback', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     let releaseFirst!: () => void
     let firstWrote!: () => void
     const firstReady = new Promise<void>((resolve) => {
@@ -245,9 +240,7 @@ test.group('managed transaction wrapper', (group) => {
       releaseFirst = resolve
     })
     const first = transaction(kit.db, async (trx) => {
-      await trx
-        .table('users')
-        .insert({ email: 'first@example.test', created_at: new Date().toISOString() })
+      await trx.table('users').insert({ email: 'first@example.test', created_at: dbTime(kit) })
       firstWrote()
       await firstHold
     })
@@ -257,9 +250,7 @@ test.group('managed transaction wrapper', (group) => {
     const second = transaction(kit.db, async (trx) => {
       attempts++
       assert.isTrue(firstReleased)
-      await trx
-        .table('users')
-        .insert({ email: 'second@example.test', created_at: new Date().toISOString() })
+      await trx.table('users').insert({ email: 'second@example.test', created_at: dbTime(kit) })
     })
     setTimeout(() => {
       firstReleased = true
@@ -273,15 +264,13 @@ test.group('managed transaction wrapper', (group) => {
   test('rolls back partial writes before retry and restores each connection timeout', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     let attempts = 0
     await transaction(kit.db, async (trx) => {
       attempts++
       const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
       assert.equal(current[0].timeout, 0)
-      await trx
-        .table('users')
-        .insert({ email: 'retry@example.test', created_at: new Date().toISOString() })
+      await trx.table('users').insert({ email: 'retry@example.test', created_at: dbTime(kit) })
       if (attempts === 1) throw Object.assign(new Error('synthetic busy'), { code: 'SQLITE_BUSY' })
     })
     assert.equal(attempts, 2)
@@ -293,7 +282,7 @@ test.group('managed transaction wrapper', (group) => {
   })
 
   test('stops SQLite busy retries at a bounded deadline', async ({ assert }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     let attempts = 0
     const started = performance.now()
     try {
@@ -317,7 +306,7 @@ test.group('managed transaction wrapper', (group) => {
   test('restores a custom SQLite busy timeout after success and ordinary errors', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 321, sqlitePoolMax: 1 })
     try {
       await resetSchema(customKit)
@@ -352,7 +341,7 @@ test.group('managed transaction wrapper', (group) => {
   test('requires the installed SQLite lock singleton before entering a one-connection callback', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
     try {
       await resetSchema(customKit)
@@ -384,7 +373,7 @@ test.group('managed transaction wrapper', (group) => {
   test('DELETE-journal commit contention yields to a reader and commits before returning', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 5000, sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     let native:
@@ -402,7 +391,7 @@ test.group('managed transaction wrapper', (group) => {
       await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
       await customKit.db.table('users').insert({
         email: 'commit@example.test',
-        created_at: new Date().toISOString(),
+        created_at: dbTime(kit),
       })
       reader = await customKit.db.transaction()
       await reader.from('users').first()
@@ -457,7 +446,7 @@ test.group('managed transaction wrapper', (group) => {
   test('DELETE-journal commit exhaustion rolls back and releases its pooled connection', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 5000, sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     const natives: Array<{
@@ -474,7 +463,7 @@ test.group('managed transaction wrapper', (group) => {
       await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
       await customKit.db
         .table('users')
-        .insert({ email: 'before@example.test', created_at: new Date().toISOString() })
+        .insert({ email: 'before@example.test', created_at: dbTime(kit) })
       reader = await customKit.db.transaction()
       await reader.from('users').first()
       const started = performance.now()
@@ -522,9 +511,7 @@ test.group('managed transaction wrapper', (group) => {
       await customKit.db.transaction(async (trx) => {
         const timeout = await trx.rawQuery('PRAGMA busy_timeout').exec()
         assert.equal(timeout[0].timeout, 5000)
-        await trx
-          .table('users')
-          .insert({ email: 'reused@example.test', created_at: new Date().toISOString() })
+        await trx.table('users').insert({ email: 'reused@example.test', created_at: dbTime(kit) })
       })
     } finally {
       for (const native of natives) if (native.inTransaction) native.exec('ROLLBACK')
@@ -536,7 +523,7 @@ test.group('managed transaction wrapper', (group) => {
   test('pool-one failed native rollback releases the reservation before a queued read and next write', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
     const client = customKit.db.connection().getWriteClient().client
     const native = (await client.acquireConnection()) as {
@@ -572,7 +559,7 @@ test.group('managed transaction wrapper', (group) => {
       assert.isNull(await reading)
       await customKit.db
         .table('users')
-        .insert({ email: 'bruce@example.test', created_at: new Date().toISOString() })
+        .insert({ email: 'bruce@example.test', created_at: dbTime(kit) })
       assert.isNotNull(
         await customKit.db.from('users').where('email', 'bruce@example.test').first()
       )
@@ -585,7 +572,7 @@ test.group('managed transaction wrapper', (group) => {
   test('pool-one committed timeout restoration fault keeps outcome known and drains queued work', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
     const client = customKit.db.connection().getWriteClient().client
     await resetSchema(customKit)
@@ -611,9 +598,7 @@ test.group('managed transaction wrapper', (group) => {
     try {
       const writing = transaction(customKit.db, async (trx) => {
         attempts++
-        await trx
-          .table('users')
-          .insert({ email: 'diana@example.test', created_at: new Date().toISOString() })
+        await trx.table('users').insert({ email: 'diana@example.test', created_at: dbTime(kit) })
         entered()
         await held
       })
@@ -631,7 +616,7 @@ test.group('managed transaction wrapper', (group) => {
       assert.isNotNull(await reading)
       await customKit.db
         .table('users')
-        .insert({ email: 'clark@example.test', created_at: new Date().toISOString() })
+        .insert({ email: 'clark@example.test', created_at: dbTime(kit) })
       assert.isNotNull(
         await customKit.db.from('users').where('email', 'clark@example.test').first()
       )
@@ -644,7 +629,7 @@ test.group('managed transaction wrapper', (group) => {
   test('a busy-coded commit listener error does not replay committed writes', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const failure = Object.assign(new Error('after commit failed'), { code: 'SQLITE_BUSY' })
     let attempts = 0
     try {
@@ -652,7 +637,7 @@ test.group('managed transaction wrapper', (group) => {
         attempts++
         await trx.table('users').insert({
           email: 'once@example.test',
-          created_at: new Date().toISOString(),
+          created_at: dbTime(kit),
         })
         trx.on('commit', () => {
           throw failure

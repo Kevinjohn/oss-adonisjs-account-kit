@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { clientChallenge } from './helpers/social_identity.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('social expiry cleanup', (group) => {
   const kit = useTestApp(group)
@@ -9,7 +10,7 @@ test.group('social expiry cleanup', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    const past = '2020-01-01T00:00:00.000Z'
+    const past = dbTime(kit, '2020-01-01T00:00:00.000Z')
     await kit.db.table('social_transactions').insert({
       hash: 'a'.repeat(64),
       provider: 'google',

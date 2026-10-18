@@ -4,6 +4,7 @@ import { isUserEmailUniqueViolation, lockUser, transaction, userMetadata } from 
 import type { UsersAdapterMetadata } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
+import { lockNotAvailableCode, locksRows } from './helpers/dialect.js'
 
 test.group('custom user metadata', (group) => {
   const kit = useTestApp(group)
@@ -123,7 +124,7 @@ test.group('custom user metadata', (group) => {
   test('locks the resolved PostgreSQL row even when the adapter ignores forUpdate', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT !== 'pg') return
+    if (!locksRows) return
 
     const table = 'metadata_accounts'
     const schema = kit.db.connection().schema
@@ -178,7 +179,7 @@ test.group('custom user metadata', (group) => {
         release()
       }
       await lockTransaction
-      assert.equal((lockFailure as { code?: string } | undefined)?.code, '55P03')
+      assert.equal((lockFailure as { code?: string } | undefined)?.code, lockNotAvailableCode)
     } finally {
       await schema.dropTableIfExists(table)
     }

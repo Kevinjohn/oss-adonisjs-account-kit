@@ -92,7 +92,17 @@ const dataTables = [
 
 /** Empty every table and restart id sequences without touching the schema. */
 export async function clearRows(kit: TestApp): Promise<void> {
-  if (kit.db.connection().dialect.name !== 'better-sqlite3') {
+  const dialect = kit.db.connection().dialect.name
+  if (dialect === 'mysql') {
+    // One pooled connection, so the session setting applies to every truncate.
+    await kit.db.transaction(async (trx) => {
+      await trx.rawQuery('set foreign_key_checks = 0')
+      for (const table of dataTables) await trx.rawQuery(`truncate table ${table}`)
+      await trx.rawQuery('set foreign_key_checks = 1')
+    })
+    return
+  }
+  if (dialect !== 'better-sqlite3') {
     await kit.db.rawQuery(`truncate ${dataTables.join(', ')} restart identity cascade`)
     return
   }

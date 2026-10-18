@@ -3,6 +3,7 @@ import { registerManagedRoutes } from '../src/http/managed.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { fixture } from './helpers/managed_http.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('managed HTTP verification policy with live account state', (group) => {
   const app = useTestApp(group)
@@ -44,7 +45,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
     await app.db
       .from('users')
       .where('id', user.id)
-      .update({ disabled_at: new Date().toISOString() })
+      .update({ disabled_at: dbTime(app) })
     assert.equal(((await run()) as { status: number }).status, 401)
 
     await app.db.from('users').where('id', user.id).update({ disabled_at: null })

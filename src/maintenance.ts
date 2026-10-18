@@ -1,6 +1,6 @@
-import { DateTime } from 'luxon'
+import { sqlTimestamp } from './timestamps.js'
 import type { Database } from '@adonisjs/lucid/database'
-import { deleteReturning } from './db.js'
+import { deletedCount } from './consume_rows.js'
 
 type TokenTable =
   | 'password_reset_tokens'
@@ -48,7 +48,7 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
   const maxBatches = input.maxBatches ?? 100
   if (!Number.isSafeInteger(maxBatches) || maxBatches < 1 || maxBatches > 1000)
     throw new RangeError('maxBatches must be an integer from 1 to 1000')
-  const cutoff = DateTime.utc().toISO()
+  const cutoff = sqlTimestamp(db)
   const counts: PruneCounts = {
     recovery: 0,
     invitations: 0,
@@ -86,12 +86,9 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
           .count('* as total')
         counts[key] += Number(total)
       } else {
-        const rows = await deleteReturning<unknown>(
-          db,
-          `delete from ${table} where id in (${ids.map(() => '?').join(', ')}) and expires_at <= ? returning id`,
-          [...ids, cutoff]
+        counts[key] += deletedCount(
+          await db.from(table).whereIn('id', ids).where('expires_at', '<=', cutoff).delete()
         )
-        counts[key] += rows.length
       }
       if (selected.length < batchSize) done.add(table)
     }

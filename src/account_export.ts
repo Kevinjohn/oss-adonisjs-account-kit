@@ -9,6 +9,7 @@ import { settleCommitted } from './effects.js'
 import type { PostCommitError } from './errors.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
+import { sqlTimestamp } from './timestamps.js'
 
 type Stored = Date | string | null | undefined
 
@@ -45,7 +46,7 @@ function applicationSection(value: unknown): unknown {
 }
 
 async function pending(trx: Trx, userId: UserId): Promise<AccountExport['pending']> {
-  const now = DateTime.utc().toISO()
+  const now = sqlTimestamp(trx)
   const reset = await trx
     .from('password_reset_tokens')
     .where('tokenable_id', userId)

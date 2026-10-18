@@ -4,6 +4,7 @@ import { generateToken, hashToken } from '../../src/tokens.js'
 import type { AccountKitConfig, AccountUser } from '../../src/types.js'
 import type { TestApp } from './app.js'
 import { insertUser, type makeNotify, makeService, tokenFrom } from './fakes.js'
+import { dbTime } from './db_time.js'
 
 /** Fixtures shared by the email, password and profile management specs. */
 export function credentialsFixtures(kit: TestApp) {
@@ -21,15 +22,15 @@ export function credentialsFixtures(kit: TestApp) {
       tokenable_id: user.id,
       email: user.email,
       hash: hashToken(recoveryToken),
-      expires_at: now.plus({ hours: 1 }).toISO(),
-      created_at: now.toISO(),
+      expires_at: dbTime(kit, now.plus({ hours: 1 })),
+      created_at: dbTime(kit, now),
     })
     await kit.db.table('email_verification_tokens').insert({
       tokenable_id: user.id,
       email: 'next@example.test',
       hash: hashToken(emailToken),
-      expires_at: now.plus({ hours: 1 }).toISO(),
-      created_at: now.toISO(),
+      expires_at: dbTime(kit, now.plus({ hours: 1 })),
+      created_at: dbTime(kit, now),
     })
     return recoveryToken
   }

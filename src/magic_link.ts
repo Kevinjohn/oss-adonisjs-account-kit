@@ -29,6 +29,7 @@ import type {
   ResolvedConfig,
   UserId,
 } from './types.js'
+import { sqlTimestamp } from './timestamps.js'
 
 type Dependencies = {
   config: ResolvedConfig
@@ -109,8 +110,8 @@ export async function requestMagicLink(
             email: current.email,
             hash: hashToken(token),
             client_challenge: input.clientChallenge,
-            expires_at: expiresAt(now, deps.config.expiresIn.magicLink).toISO(),
-            created_at: now.toISO(),
+            expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.magicLink)),
+            created_at: sqlTimestamp(trx, now),
           })
           .onConflict('tokenable_id')
           .merge(['email', 'hash', 'client_challenge', 'expires_at', 'created_at'])
@@ -152,7 +153,7 @@ export async function inspectMagicLink(
     .from('login_link_tokens')
     .select('tokenable_id', 'email')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', DateTime.utc().toISO())
+    .where('expires_at', '>', sqlTimestamp(deps.db))
     .first()
   if (!row) return false
   const user = await deps.config.users.findById(row.tokenable_id)

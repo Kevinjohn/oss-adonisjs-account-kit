@@ -23,6 +23,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as ts from 'typescript'
+import { locksRows } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('invitations.accept', (group) => {
   const kit = useTestApp(group)
@@ -83,7 +85,7 @@ test.group('invitations.accept', (group) => {
         await trx
           .from('users')
           .where('id', user.id)
-          .update({ email_verified_at: DateTime.utc().plus({ days: 1 }).toISO() })
+          .update({ email_verified_at: dbTime(kit, DateTime.utc().plus({ days: 1 })) })
       },
     })
     const { invitation, token } = await issue(account, recorder, actor.id)
@@ -163,7 +165,7 @@ test.group('invitations.accept', (group) => {
     await kit.db
       .from('account_invitations')
       .where('id', invitation.id)
-      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'newPassword123' }),
       InvalidTokenError
@@ -322,7 +324,7 @@ test.group('invitations.accept', (group) => {
     )
   })
 
-  if (process.env.DB_CLIENT === 'pg') {
+  if (locksRows) {
     test('maps a real unique-email race after the transactional precheck', async ({ assert }) => {
       const actor = await createActor()
       const users = makeUsersAdapter(kit.db, kit.hash)

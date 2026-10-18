@@ -4,7 +4,7 @@
 
 Production support is limited to the tested points and declared peer ranges in
 [compatibility](compatibility.md). Account Kit requires Node.js 24 or later, AdonisJS Core 7,
-Lucid 22.4.2 or later in the 22.x line, Limiter 3, and Luxon 3. PostgreSQL and SQLite are
+Lucid 22.4.2 or later in the 22.x line, Limiter 3, and Luxon 3. PostgreSQL, MySQL 8.4 and SQLite are
 supported with the schema and connection requirements listed there. Use the same database and
 schema across application instances.
 
@@ -107,7 +107,7 @@ environment and application environment files. It cannot prove which settings a 
 will use, that migrations ran, or that external services and callbacks work. Unsupported dynamic
 expressions, interpolation, linked or ambiguous environment files, and unresolved selections need
 manual reconciliation. An unknown or unsupported selected database is a blocking setup diagnostic;
-resolve the actual default SQLite or PostgreSQL 16 client before applying setup. Confirm the actual
+resolve the actual default SQLite, PostgreSQL 16 or MySQL 8.4 client before applying setup. Confirm the actual
 deployed database and session store, applied migrations,
 runtime route graph, callbacks, and selected workflows independently before production readiness.
 

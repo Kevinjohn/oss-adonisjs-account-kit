@@ -19,10 +19,10 @@ importers:
         version: 3.1.0(eslint@10.12.0(jiti@2.7.0)(supports-color@10.2.2))(prettier@3.9.10)(supports-color@10.2.2)(typescript@5.9.3)
       '@adonisjs/limiter':
         specifier: ^3.0.0
-        version: 3.0.1(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))
+        version: 3.0.1(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2))
       '@adonisjs/lucid':
         specifier: ^22.4.2
-        version: 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
+        version: 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
       '@adonisjs/mail':
         specifier: ^10.4.0
         version: 10.4.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@types/luxon@3.7.6)(@types/node@25.9.9)(dayjs@1.11.23)(luxon@3.7.2)
@@ -31,7 +31,7 @@ importers:
         version: 1.5.0(prettier@3.9.10)
       '@adonisjs/session':
         specifier: ^8.1.0
-        version: 8.1.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))
+        version: 8.1.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2))
       '@adonisjs/tsconfig':
         specifier: ^2.0.0
         version: 2.0.0
@@ -76,13 +76,16 @@ importers:
         version: 10.1.0
       drizzle-orm:
         specifier: 0.45.3
-        version: 0.45.3(better-sqlite3@12.11.1)(knex@3.3.0(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))(pg@8.23.1)
+        version: 0.45.3(better-sqlite3@12.11.1)(knex@3.3.0(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2))(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)
       eslint:
         specifier: ^10.0.3
         version: 10.12.0(jiti@2.7.0)(supports-color@10.2.2)
       luxon:
         specifier: ^3.0.0
         version: 3.7.2
+      mysql2:
+        specifier: ^3.24.6
+        version: 3.24.6(@types/node@25.9.9)
       pg:
         specifier: ^8.0.0
         version: 8.23.1
@@ -1940,6 +1943,10 @@ packages:
     resolution: {integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==}
     engines: {node: '>=8.0.0'}
 
+  aws-ssl-profiles@1.1.2:
+    resolution: {integrity: sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g==}
+    engines: {node: '>= 6.0.0'}
+
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
@@ -2766,6 +2773,9 @@ packages:
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
+  generate-function@2.3.1:
+    resolution: {integrity: sha512-eeB5GfMNeevm/GRYq20ShmsaGcmI81kIX2K9XQx5miC8KdHaC6Jm0qQ8ZNeGOi7wYB8OsdxKs+Y2oVuTFuVwKQ==}
+
   get-caller-file@2.0.5:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
@@ -3066,6 +3076,9 @@ packages:
     resolution: {integrity: sha512-+Pgi+vMuUNkJyExiMBt5IlFoMyKnr5zhJ4Uspz58WOhBF5QoIZkFyNHIbBAtHwzVAgk5RtndVNsDRN61/mmDqg==}
     engines: {node: '>=12'}
 
+  is-property@1.0.2:
+    resolution: {integrity: sha512-Ks/IoX00TtClbGQr4TWXemAnktAQvYB7HzcCxDGqEZU6oCmb2INHuOoKxbtR+HFkmYWBKv/dOZtGRiAjDhj92g==}
+
   is-ssh@1.4.1:
     resolution: {integrity: sha512-JNeu1wQsHjyHgn9NcWTaXq6zWSR6hqE0++zhfZlkFBbScNkyvxCdeV8sRkSBaeLKxmbpR21brail63ACNxJ0Tg==}
 
@@ -3234,6 +3247,9 @@ packages:
     resolution: {integrity: sha512-iLs7dGSyjZiUgvrUvuD3FndAxVJk+TywBkkkwUSm9HdYoskJalWg5qVsEiXeufPvRVPbCUmNQewg798rx+sPXg==}
     engines: {node: '>=20'}
 
+  long@5.3.2:
+    resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==}
+
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
@@ -3244,6 +3260,10 @@ packages:
   lru-cache@7.18.3:
     resolution: {integrity: sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==}
     engines: {node: '>=12'}
+
+  lru.min@1.1.5:
+    resolution: {integrity: sha512-5J9ysMYUpYIg9RF2vJpy9SinEmSviFSe0GyPpCQ4L5QSkLAgeLXlTAOu2ZwWUU5m+0SBl6gUU1R1ZQB3aKypfA==}
+    engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
@@ -3367,6 +3387,16 @@ packages:
   mute-stream@2.0.0:
     resolution: {integrity: sha512-WWdIxpyjEn+FhQJQQv9aQAYlHoNVdzIzUySNV1gHUPDSdZJ3yZn7pAAbQcV7B56Mvu881q9FZV+0Vx2xC44VWA==}
     engines: {node: ^18.17.0 || >=20.5.0}
+
+  mysql2@3.24.6:
+    resolution: {integrity: sha512-enu73KhbAua2L3dIxjc6qg6ZJ7H3pt1BImZASWNWY5xSsmJ1ZuUPULTDGXgmJbI61vb+nJAG19IZclIq19UidQ==}
+    engines: {node: '>= 8.0'}
+    peerDependencies:
+      '@types/node': '>= 8'
+
+  named-placeholders@1.1.6:
+    resolution: {integrity: sha512-Tz09sEL2EEuv5fFowm419c1+a/jSMiBjI9gHxVLrVdbUkkNUUfjsVYs9pVZu5oCon/kmRh9TfLEObFtkVxmY0w==}
+    engines: {node: '>=8.0.0'}
 
   nanoid@3.3.20:
     resolution: {integrity: sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==}
@@ -4003,6 +4033,10 @@ packages:
   split2@4.2.0:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
+
+  sql-escaper@1.5.2:
+    resolution: {integrity: sha512-6CKD38c31SENivxOADeMNLdukOnUxUcflKtzVWzace7Riv1v7cAEym5Cx9Q7gYZ3ezIJI7ZpqecQq8cqNeSSFg==}
+    engines: {bun: '>=1.0.0', deno: '>=2.0.0', node: '>=12.0.0'}
 
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
@@ -4700,13 +4734,13 @@ snapshots:
       '@poppinss/exception': 1.2.3
       '@poppinss/types': 1.2.1
 
-  '@adonisjs/limiter@3.0.1(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))':
+  '@adonisjs/limiter@3.0.1(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2))':
     dependencies:
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1)
       rate-limiter-flexible: 9.1.1
     optionalDependencies:
       '@adonisjs/assembler': 8.5.2(typescript@5.9.3)
-      '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
+      '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
 
   '@adonisjs/logger@7.1.1':
     dependencies:
@@ -4714,7 +4748,7 @@ snapshots:
       abstract-logging: 2.0.1
       pino: 10.4.0
 
-  '@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)':
+  '@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)':
     dependencies:
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/presets': 3.0.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))
@@ -4727,8 +4761,8 @@ snapshots:
       fast-deep-equal: 3.1.3
       igniculus: 1.5.0
       kleur: 4.1.5
-      knex: 3.3.0(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
-      knex-dynamic-connection: 5.1.1(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
+      knex: 3.3.0(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
+      knex-dynamic-connection: 5.1.1(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
       pretty-hrtime: 1.0.3
       slash: 5.1.0
       tarn: 3.1.2
@@ -4788,14 +4822,14 @@ snapshots:
       '@poppinss/colors': 4.1.6
       string-width: 8.3.0
 
-  '@adonisjs/session@8.1.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2))':
+  '@adonisjs/session@8.1.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2))':
     dependencies:
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1)
       '@poppinss/macroable': 1.1.2
       '@poppinss/utils': 7.1.2
     optionalDependencies:
       '@adonisjs/assembler': 8.5.2(typescript@5.9.3)
-      '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(pg@8.23.1)(supports-color@10.2.2)
+      '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.5.2(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@12.11.1)(luxon@3.7.2)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
 
   '@adonisjs/tsconfig@2.0.0': {}
 
@@ -6270,6 +6304,8 @@ snapshots:
 
   atomic-sleep@1.0.0: {}
 
+  aws-ssl-profiles@1.1.2: {}
+
   balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
@@ -6645,10 +6681,11 @@ snapshots:
 
   dotenv@17.4.2: {}
 
-  drizzle-orm@0.45.3(better-sqlite3@12.11.1)(knex@3.3.0(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2))(pg@8.23.1):
+  drizzle-orm@0.45.3(better-sqlite3@12.11.1)(knex@3.3.0(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2))(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1):
     optionalDependencies:
       better-sqlite3: 12.11.1
-      knex: 3.3.0(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
+      knex: 3.3.0(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
+      mysql2: 3.24.6(@types/node@25.9.9)
       pg: 8.23.1
 
   dts-resolver@2.1.3: {}
@@ -6987,6 +7024,10 @@ snapshots:
 
   function-bind@1.1.2: {}
 
+  generate-function@2.3.1:
+    dependencies:
+      is-property: 1.0.2
+
   get-caller-file@2.0.5: {}
 
   get-east-asian-width@1.7.0: {}
@@ -7240,6 +7281,8 @@ snapshots:
 
   is-plain-obj@4.1.0: {}
 
+  is-property@1.0.2: {}
+
   is-ssh@1.4.1:
     dependencies:
       protocols: 2.0.2
@@ -7312,10 +7355,10 @@ snapshots:
 
   kleur@4.1.5: {}
 
-  knex-dynamic-connection@5.1.1(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2):
+  knex-dynamic-connection@5.1.1(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2):
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
-      knex: 3.3.0(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2)
+      knex: 3.3.0(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2)
     transitivePeerDependencies:
       - better-sqlite3
       - mariadb
@@ -7328,7 +7371,7 @@ snapshots:
       - supports-color
       - tedious
 
-  knex@3.3.0(better-sqlite3@12.11.1)(pg@8.23.1)(supports-color@10.2.2):
+  knex@3.3.0(better-sqlite3@12.11.1)(mysql2@3.24.6(@types/node@25.9.9))(pg@8.23.1)(supports-color@10.2.2):
     dependencies:
       colorette: 2.0.19
       commander: 10.0.1
@@ -7346,6 +7389,7 @@ snapshots:
       tildify: 2.0.0
     optionalDependencies:
       better-sqlite3: 12.11.1
+      mysql2: 3.24.6(@types/node@25.9.9)
       pg: 8.23.1
     transitivePeerDependencies:
       - supports-color
@@ -7392,11 +7436,15 @@ snapshots:
       strip-ansi: 7.2.0
       wrap-ansi: 10.0.2
 
+  long@5.3.2: {}
+
   lru-cache@10.4.3: {}
 
   lru-cache@11.5.3: {}
 
   lru-cache@7.18.3: {}
+
+  lru.min@1.1.5: {}
 
   lunr@2.3.9: {}
 
@@ -7504,6 +7552,21 @@ snapshots:
   ms@2.1.3: {}
 
   mute-stream@2.0.0: {}
+
+  mysql2@3.24.6(@types/node@25.9.9):
+    dependencies:
+      '@types/node': 25.9.9
+      aws-ssl-profiles: 1.1.2
+      generate-function: 2.3.1
+      iconv-lite: 0.7.3
+      long: 5.3.2
+      lru.min: 1.1.5
+      named-placeholders: 1.1.6
+      sql-escaper: 1.5.2
+
+  named-placeholders@1.1.6:
+    dependencies:
+      lru.min: 1.1.5
 
   nanoid@3.3.20: {}
 
@@ -8213,6 +8276,8 @@ snapshots:
   split-lines@3.0.0: {}
 
   split2@4.2.0: {}
+
+  sql-escaper@1.5.2: {}
 
   statuses@2.0.2: {}
 

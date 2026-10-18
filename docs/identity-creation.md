@@ -3,7 +3,7 @@
 ## Configuration
 
 The application owns its user model and chooses the conventional Lucid adapter or a custom
-`UsersAdapter`. The conventional mapping requires PostgreSQL 16 or bundled SQLite on the default
+`UsersAdapter`. The conventional mapping requires PostgreSQL 16, MySQL 8.4 or bundled SQLite on the default
 connection, a physical `id` key (`integer`, `string`, or `uuid`), and an application-owned users
 table with unique, normalized `email`, nullable `password`, nullable `unverified_email`, and
 nullable `email_verified_at`. Pass a custom users table and ID type to configure with

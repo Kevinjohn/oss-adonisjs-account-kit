@@ -1,13 +1,13 @@
 import { DateTime } from 'luxon'
+import { dbTime } from './db_time.js'
 import { issueProof } from '../../src/social_proofs.js'
 import { transaction } from '../../src/transaction.js'
 import type { ResolvedConfig, SensitivePurpose, UserId } from '../../src/types.js'
 import type { TestApp } from './app.js'
 import { unwrapId } from './users_adapter.js'
 
-const iso = (value: DateTime) => value.toUTC().toISO()
-export const soon = () => iso(DateTime.utc().plus({ hours: 1 }))
-export const past = () => iso(DateTime.utc().minus({ hours: 1 }))
+export const soon = (kit: Pick<TestApp, 'db'>) => dbTime(kit, DateTime.utc().plus({ hours: 1 }))
+export const past = (kit: Pick<TestApp, 'db'>) => dbTime(kit, DateTime.utc().minus({ hours: 1 }))
 
 /**
  * One row in every package table that can hold a user's data, each with a distinct secret, so
@@ -26,7 +26,7 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     loginLink: `link-${tag}-${'l'.repeat(52)}`,
     session: `session-${tag}-${'s'.repeat(49)}`,
   }
-  const now = iso(DateTime.utc())
+  const now = dbTime(kit)
   const [identity] = await kit.db
     .table('social_identities')
     .insert({
@@ -39,8 +39,8 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
       nickname: `nick-${tag}`,
       avatar_url: `https://avatars.test/${tag}.png`,
       meta: JSON.stringify({ secret: secrets.identityMeta }),
-      confirmed_at: '2026-01-02T03:04:05.000Z',
-      created_at: '2026-01-01T00:00:00.000Z',
+      confirmed_at: dbTime(kit, '2026-01-02T03:04:05.000Z'),
+      created_at: dbTime(kit, '2026-01-01T00:00:00.000Z'),
       updated_at: now,
     })
     .returning('id')
@@ -50,14 +50,14 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     intent: 'link',
     client_challenge: 'c'.repeat(43),
     user_id: userId,
-    expires_at: soon(),
+    expires_at: soon(kit),
     created_at: now,
   })
   await kit.db.table('social_sensitive_proofs').insert({
     hash: secrets.proof,
     user_id: userId,
     purpose: 'social_link',
-    expires_at: soon(),
+    expires_at: soon(kit),
     created_at: now,
   })
   await kit.db.table('social_handoff_codes').insert({
@@ -65,14 +65,14 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     user_id: userId,
     social_identity_id: unwrapId(identity),
     client_challenge: 'c'.repeat(43),
-    expires_at: soon(),
+    expires_at: soon(kit),
     created_at: now,
   })
   await kit.db.table('password_reset_tokens').insert({
     tokenable_id: userId,
     email: `${tag}@example.test`,
     hash: secrets.reset,
-    expires_at: soon(),
+    expires_at: soon(kit),
     created_at: now,
   })
   await kit.db.table('email_verification_tokens').insert({
@@ -81,7 +81,7 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     current_email: `${tag}@example.test`,
     purpose: 'email_change',
     hash: secrets.verification,
-    expires_at: soon(),
+    expires_at: soon(kit),
     created_at: now,
   })
   await kit.db.table('account_invitations').insert({
@@ -89,15 +89,15 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     role: 'member',
     inviter_id: userId,
     token_hash: secrets.invitation,
-    expires_at: '2026-12-01T00:00:00.000Z',
-    created_at: '2026-11-01T00:00:00.000Z',
+    expires_at: dbTime(kit, '2026-12-01T00:00:00.000Z'),
+    created_at: dbTime(kit, '2026-11-01T00:00:00.000Z'),
     updated_at: now,
   })
   await kit.db.table('auth_access_tokens').insert({
     tokenable_id: userId,
     name: `Laptop ${tag}`,
     hash: secrets.accessToken,
-    created_at: '2026-10-01T00:00:00.000Z',
+    created_at: dbTime(kit, '2026-10-01T00:00:00.000Z'),
     last_used_at: null,
     expires_at: null,
   })
@@ -106,7 +106,7 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     email: `${tag}@example.test`,
     hash: secrets.loginLink,
     client_challenge: 'c'.repeat(43),
-    expires_at: soon(),
+    expires_at: soon(kit),
     created_at: now,
   })
   await kit.db.table('account_sessions').insert({
@@ -115,7 +115,7 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     label: `Browser ${tag}`,
     created_at: now,
     last_seen_at: now,
-    expires_at: soon(),
+    expires_at: soon(kit),
   })
   return secrets
 }

@@ -11,6 +11,7 @@ import type { AccountUser } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { makeNotify, makeUsersAdapter } from './helpers/fakes.js'
 import { credentialsFixtures } from './helpers/credentials.js'
+import { locksRows, lockNotAvailableCode } from './helpers/dialect.js'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service, seedTokens } = credentialsFixtures(kit)
@@ -345,8 +346,7 @@ test.group('emailPasswordManagement', (group) => {
         },
       },
     })
-    const sqliteClient =
-      process.env.DB_CLIENT === 'pg' ? null : kit.db.connection().getWriteClient()
+    const sqliteClient = locksRows ? null : kit.db.connection().getWriteClient()
     const native = sqliteClient
       ? ((await sqliteClient.client.acquireConnection()) as {
           pragma: (statement: string, options: { simple: true }) => number | string
@@ -363,7 +363,7 @@ test.group('emailPasswordManagement', (group) => {
       await ready
       let conflict: unknown
       try {
-        if (process.env.DB_CLIENT === 'pg') {
+        if (locksRows) {
           await kit.db.transaction(async (trx) => {
             await trx
               .rawQuery('SELECT id FROM users WHERE id = ? FOR UPDATE NOWAIT', [user.id])
@@ -381,10 +381,7 @@ test.group('emailPasswordManagement', (group) => {
       } catch (error) {
         conflict = error
       }
-      assert.equal(
-        (conflict as { code?: string } | undefined)?.code,
-        process.env.DB_CLIENT === 'pg' ? '55P03' : 'SQLITE_BUSY'
-      )
+      assert.equal((conflict as { code?: string } | undefined)?.code, lockNotAvailableCode)
     } finally {
       releaseProof()
       await changing.catch(() => {})

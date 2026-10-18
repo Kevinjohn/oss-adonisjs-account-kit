@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +8,12 @@ import { migrationSchema } from '../configure.js'
 import { bootTestApp } from './helpers/app.js'
 import { makeService } from './helpers/fakes.js'
 import { generateToken, hashToken } from '../src/tokens.js'
+import { dbTime } from './helpers/db_time.js'
+import { testEngine } from './helpers/dialect.js'
+
+// These upgrade a pre-release schema and retry a failed migration. MySQL DDL is not transactional,
+// so a failed migration cannot be retried there, and no MySQL installation has that schema.
+const MYSQL_LEGACY = 'MySQL support starts on the current schema'
 
 const legacy = [
   'create_password_reset_tokens',
@@ -55,7 +62,13 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     })
     await kit.db.connection().schema.createTable('application_roles', (table) => {
       table.increments('id')
-      table.integer('user_id').notNullable().references('id').inTable('users').onDelete('CASCADE')
+      table
+        .integer('user_id')
+        .unsigned()
+        .notNullable()
+        .references('id')
+        .inTable('users')
+        .onDelete('CASCADE')
       table.string('role').notNullable()
     })
     await symlink(
@@ -85,7 +98,7 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       if (runner.error) throw runner.error
     }
     await writeMigrations(legacy, 0)
-    const now = new Date().toISOString()
+    const now = dbTime(kit)
     const [inactiveId] = await kit.db
       .table('users')
       .insert({ email: 'inactive@example.test', password: 'hash', created_at: now })
@@ -117,7 +130,7 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     const resetToken = generateToken(32)
     const emailToken = generateToken(32)
     const inactiveEmailToken = generateToken(32)
-    const future = new Date(Date.now() + 3600_000).toISOString()
+    const future = dbTime(kit, DateTime.utc().plus({ milliseconds: 3600_000 }))
     await kit.db.table('password_reset_tokens').insert({
       user_id: id(inactiveId),
       email: 'inactive@example.test',
@@ -151,7 +164,7 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
       current_email: 'expired-change@example.test',
       new_email: 'expired-next@example.test',
       token_hash: hashToken(generateToken(32)),
-      expires_at: new Date(Date.now() - 3600_000).toISOString(),
+      expires_at: dbTime(kit, DateTime.utc().minus({ milliseconds: 3600_000 })),
       created_at: now,
     })
     const [staleId] = await kit.db
@@ -231,7 +244,9 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     await kit.db.connection().schema.dropTableIfExists('application_roles')
     await kit.close()
   }
-}).timeout(30_000)
+})
+  .timeout(30_000)
+  .skip(testEngine === 'mysql', MYSQL_LEGACY)
 
 test('API example evolution rejects stale proofs and skips expired ones without deleting source rows', async ({
   assert,
@@ -286,8 +301,8 @@ test('API example evolution rejects stale proofs and skips expired ones without 
       current_email: 'prior@example.test',
       new_email: 'next@example.test',
       token_hash: hashToken(generateToken(32)),
-      expires_at: new Date(Date.now() + 3600_000).toISOString(),
-      created_at: new Date().toISOString(),
+      expires_at: dbTime(kit, DateTime.utc().plus({ milliseconds: 3600_000 })),
+      created_at: dbTime(kit),
     }
     await kit.db.table('account_email_changes').insert(proof)
     await symlink(
@@ -320,7 +335,7 @@ test('API example evolution rejects stale proofs and skips expired ones without 
     await kit.db.table('account_email_changes').insert({
       ...proof,
       current_email: 'current@example.test',
-      expires_at: new Date(Date.now() - 3600_000).toISOString(),
+      expires_at: dbTime(kit, DateTime.utc().minus({ milliseconds: 3600_000 })),
     })
     const retry = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
     await retry.run()
@@ -332,4 +347,6 @@ test('API example evolution rejects stale proofs and skips expired ones without 
   } finally {
     await kit.close()
   }
-}).timeout(30_000)
+})
+  .timeout(30_000)
+  .skip(testEngine === 'mysql', MYSQL_LEGACY)

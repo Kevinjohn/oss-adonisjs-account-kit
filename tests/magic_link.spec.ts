@@ -22,6 +22,7 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
 const verifier = 'v'.repeat(43)
 const challenge = clientChallengeFor(verifier)
@@ -329,7 +330,7 @@ test.group('magicLink.complete', (group) => {
     const { user, account, token } = await issue()
     await kit.db
       .from('login_link_tokens')
-      .update({ expires_at: DateTime.utc().minus({ minutes: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ minutes: 1 })) })
     assert.isFalse(await account.magicLink.inspect({ token }))
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
