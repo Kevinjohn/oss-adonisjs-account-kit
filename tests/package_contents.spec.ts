@@ -27,6 +27,7 @@ test('packs public documentation and examples without private planning documents
       'docs/PRD-private.md',
       'docs/reviews/private-review.md',
       'docs/reviews/nested/private-notes.md',
+      'docs/maintainers/release-assessment.md',
     ]
     for (const file of [...publicFiles, ...privateFiles]) {
       await mkdir(dirname(join(root, file)), { recursive: true })

@@ -198,7 +198,7 @@ including all HTTP flows, required profile data, string/UUID IDs and a custom ta
 non-disclosing password reset responses, permission failures, scanner-safe inspection, token revocation,
 and retryable outbox delivery. The exact-floor consumer independently typechecks the public
 package API and exercises rollback, deferred commit failure, post-commit failure and concurrent
-acceptance on both databases. See [compatibility](compatibility.md) for the distinct dependency sets.
+acceptance on both databases. See [compatibility](../compatibility.md) for the distinct dependency sets.
 
 For upgrade checks, supply `--mode=upgrade --baseline-tarball=PATH --baseline-revision=REV`. For a
 prebuilt immutable candidate, also supply `--candidate-tarball=PATH --candidate-revision=REV`.
