@@ -142,10 +142,8 @@ function combineFailures(primary: unknown, cleanup: unknown[]): unknown {
  * back shifted by the host's offset and push credential revisions forward on every change.
  */
 function requireUtcMysqlClient(db: Database, connectionName: string): void {
-  const connection = db.manager.get(connectionName)?.config.connection as
-    | { timezone?: string }
-    | undefined
-  const timezone = connection?.timezone
+  const config = db.manager.get(connectionName)?.config
+  const timezone = (config?.connection as { timezone?: string } | undefined)?.timezone
   if (timezone === 'Z' || timezone === '+00:00') return
   throw new Error(
     `Account kit requires timezone: 'Z' on the MySQL connection "${connectionName}" (found ${JSON.stringify(timezone ?? 'local')})`
