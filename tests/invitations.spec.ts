@@ -27,26 +27,7 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
-
-/** A database whose package transactions fail in a commit listener after committing. */
-function faultAfterCommit(db: Database, failure: Error): Database {
-  return Object.create(db, {
-    connection: {
-      value: (...args: Parameters<Database['connection']>) => {
-        const client = db.connection(...args)
-        const begin = client.transaction.bind(client) as (...rest: unknown[]) => Promise<Trx>
-        client.transaction = (async (...rest: unknown[]) => {
-          const trx = await begin(...rest)
-          trx.on('commit', () => {
-            throw failure
-          })
-          return trx
-        }) as typeof client.transaction
-        return client
-      },
-    },
-  })
-}
+import { faultAfterCommit } from './helpers/fault_after_commit.js'
 test.group('invitations.send', (group) => {
   const kit = useTestApp(group)
 
