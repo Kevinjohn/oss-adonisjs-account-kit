@@ -153,6 +153,12 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     )
   if (choices.features.includes('authentication') && !choices.authentication)
     diagnostic(diagnostics, 'authentication', 'Authentication requires a selected existing guard')
+  if (choices.features.includes('accountDeletion') && !hasEmailFlow(choices))
+    diagnostic(
+      diagnostics,
+      'features',
+      'Account deletion sends a confirmation email; also select an email service such as passwordReset'
+    )
   if (choices.authentication) {
     if (!['session', 'access_tokens'].includes(choices.authentication.strategy))
       diagnostic(diagnostics, 'authentication.strategy', 'Choose session or access_tokens')

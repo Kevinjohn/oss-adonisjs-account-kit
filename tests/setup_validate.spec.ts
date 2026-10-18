@@ -49,6 +49,35 @@ test.group('setup choice validation', (group) => {
     assert.deepEqual(parseSetupChoices(choices), choices)
   })
 
+  test('account export and deletion generate their config and routes; deletion needs email', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('dataExport', 'accountDeletion')
+    choices.managed.push('dataExport', 'accountDeletion')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const messages = (diagnostics: typeof plan.diagnostics) =>
+      diagnostics.map(({ field, message }) => `${field}: ${message}`)
+    const emailNeeded =
+      'features: Account deletion sends a confirmation email; also select an email service such as passwordReset'
+    assert.notInclude(messages(plan.diagnostics), emailNeeded)
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"dataExport"')
+    assert.include(config, '"accountDeletion"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"accountDeletion"')
+
+    choices.features = ['authentication', 'accountDeletion']
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.include(messages(blocked.diagnostics), emailNeeded)
+  })
+
   test('interactive provider selection does not duplicate an already selected social group', async ({
     assert,
   }) => {
