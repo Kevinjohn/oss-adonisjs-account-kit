@@ -1,0 +1,19 @@
+{
+  "prefix": "/api/v1",
+  "enabled": [
+    "authentication",
+    "registration",
+    "passwordReset",
+    "emailVerification",
+    "emailPasswordManagement",
+    "invitations",
+    "socialAuthentication",
+    "magicLinkLogin",
+    "sessionManagement",
+    "dataExport",
+    "accountDeletion"
+  ],
+  "socialProviders": ["google", "github"],
+  "info": { "title": "Account Kit managed API", "version": "1.0.0" },
+  "strategies": ["session", "access_tokens"]
+}

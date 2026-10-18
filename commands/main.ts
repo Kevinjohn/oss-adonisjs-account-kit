@@ -5,6 +5,7 @@ import RetirementImpact from './retirement_impact.js'
 import AccountKitDoctor from './doctor.js'
 import InviteAccount from './invite.js'
 import ResetLink from './reset_link.js'
+import ManagedOpenApi from './openapi.js'
 
 const loader = new ListLoader([
   PruneAccountKit,
@@ -13,6 +14,7 @@ const loader = new ListLoader([
   AccountKitDoctor,
   InviteAccount,
   ResetLink,
+  ManagedOpenApi,
 ])
 export const getMetaData = loader.getMetaData.bind(loader)
 export const getCommand = loader.getCommand.bind(loader)

@@ -51,6 +51,9 @@ Initial public release.
 - Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
   services behind them) for shell-trusted invitations and reset links, with `--print` for
   printed links and JSON output.
+- `account-kit:openapi` and `generateManagedOpenApi` produce an OpenAPI 3.1 document for the
+  mounted managed routes; the `openapi` option of `registerManagedRoutes` carries schemas for
+  replaced validators and account representations.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>

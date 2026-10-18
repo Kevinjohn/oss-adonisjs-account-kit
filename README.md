@@ -132,6 +132,8 @@ HTTP layer, validation, authorization and the user model.
 | Delete account          | `accountData.delete`                         | `DELETE /account`                       | `accountDeleted`                            | Per user                      |
 
 The full lists are in [usage](docs/usage.md) and the [endpoint reference](docs/reference/endpoints.md).
+`node ace account-kit:openapi` prints an [OpenAPI 3.1 document](docs/openapi.md) for the managed
+routes you mounted.
 
 ## Security
 
