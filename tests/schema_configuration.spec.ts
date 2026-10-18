@@ -12,6 +12,7 @@ import { configure, migrationNames, migrationSchema, type UserIdType } from '../
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { transaction } from '../src/db.js'
 import { bootTestApp } from './helpers/app.js'
+import { locksRows, testEngine } from './helpers/dialect.js'
 
 const idTypes: UserIdType[] = ['integer', 'string', 'uuid']
 const reservedUsersTable: Record<UserIdType, string> = {
@@ -21,11 +22,11 @@ const reservedUsersTable: Record<UserIdType, string> = {
 }
 
 async function tableExists(kit: Awaited<ReturnType<typeof bootTestApp>>, table: string) {
-  if (process.env.DB_CLIENT === 'pg') {
+  if (locksRows) {
     return !!(await kit.db
       .from('information_schema.tables')
       .select('table_name')
-      .where('table_schema', 'public')
+      .where('table_schema', testEngine === 'pg' ? 'public' : kit.db.raw('database()'))
       .where('table_name', table)
       .first())
   }

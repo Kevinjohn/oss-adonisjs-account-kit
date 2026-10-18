@@ -7,6 +7,7 @@ import {
 import type { UsersAdapter } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { allowAll, insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('invitation management contracts', (group) => {
   const kit = useTestApp(group)
@@ -24,7 +25,9 @@ test.group('invitation management contracts', (group) => {
         })
       )
     }
-    await kit.db.from('account_invitations').update({ created_at: '2026-01-01T00:00:00.000Z' })
+    await kit.db
+      .from('account_invitations')
+      .update({ created_at: dbTime(kit, '2026-01-01T00:00:00.000Z') })
     const found: number[] = []
     let cursor: string | null = null
     do {
@@ -57,11 +60,13 @@ test.group('invitation management contracts', (group) => {
         })
       )
     }
-    await kit.db.from('account_invitations').update({ created_at: '2026-01-01T00:00:00.000Z' })
+    await kit.db
+      .from('account_invitations')
+      .update({ created_at: dbTime(kit, '2026-01-01T00:00:00.000Z') })
     await kit.db
       .from('account_invitations')
       .whereIn('id', [sent[1].id, sent[3].id])
-      .update({ expires_at: '2020-01-01T00:00:00.000Z' })
+      .update({ expires_at: dbTime(kit, '2020-01-01T00:00:00.000Z') })
 
     const found: number[] = []
     let cursor: string | null = null

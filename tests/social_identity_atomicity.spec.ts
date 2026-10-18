@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
 import { advanceCredentialRevision } from '../src/authentication.js'
@@ -8,6 +9,7 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import type { SocialProvider, VerifiedSocialAuthentication } from '../src/types.js'
 import { clientChallenge, provider } from './helpers/social_identity.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('social proof and relationship atomicity', (group) => {
   const kit = useTestApp(group)
@@ -66,9 +68,9 @@ test.group('social proof and relationship atomicity', (group) => {
     })
     const cases: Array<VerifiedSocialAuthentication | null> = [
       null,
-      { ...valid(), authenticatedAt: new Date(Date.now() - 60_000).toISOString() },
+      { ...valid(), authenticatedAt: dbTime(kit, DateTime.utc().minus({ milliseconds: 60_000 })) },
       { ...valid(), authenticatedAt: 'yesterday' },
-      { ...valid(), authenticatedAt: new Date(Date.now() + 1_000).toISOString() },
+      { ...valid(), authenticatedAt: dbTime(kit, DateTime.utc().plus({ milliseconds: 1_000 })) },
       { ...valid(), subject: 'other-subject' },
       { ...valid(), verified: false } as unknown as VerifiedSocialAuthentication,
       {
@@ -434,7 +436,7 @@ test.group('social proof and relationship atomicity', (group) => {
 
   test('unlink invalidates proof issued through the removed provider', async ({ assert }) => {
     const user = await insertUser(kit, { email: 'unlink-proof@example.test', password: null })
-    const timestamp = new Date().toISOString()
+    const timestamp = dbTime(kit)
     await kit.db.table('social_identities').insert([
       {
         user_id: user.id,
@@ -506,7 +508,7 @@ test.group('social proof and relationship atomicity', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit, { email: 'reauth-race@example.test', password: null })
-    const timestamp = new Date().toISOString()
+    const timestamp = dbTime(kit)
     const googleSubject = 'reauth-race-google'
     const githubSubject = 'reauth-race-github'
     const association = (name: 'google' | 'github', subject: string) => ({

@@ -22,6 +22,8 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { faultAfterCommit } from './helpers/fault_after_commit.js'
+import { locksRows } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 test.group('emailVerification.send', (group) => {
   const kit = useTestApp(group)
 
@@ -53,7 +55,7 @@ test.group('emailVerification.send', (group) => {
     await kit.db
       .from('users')
       .where('id', inactiveId)
-      .update({ email_verified_at: new Date().toISOString() })
+      .update({ email_verified_at: dbTime(kit) })
     await kit.db.from('users').where('id', activeId).update({ email_verified_at: null })
 
     const { account, recorder } = service()
@@ -132,7 +134,7 @@ test.group('emailVerification.send', (group) => {
       .from('email_verification_tokens')
       .where('tokenable_id', id)
       .update({
-        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+        created_at: dbTime(kit, DateTime.utc().minus({ minutes: 2 })),
       })
     await account.emailVerification.send({ userId: id })
     assert.lengthOf(recorder.calls, 2)
@@ -153,7 +155,7 @@ test.group('emailVerification.send', (group) => {
       .from('email_verification_tokens')
       .where('tokenable_id', id)
       .update({
-        expires_at: DateTime.utc().minus({ seconds: 1 }).toISO(),
+        expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })),
       })
     assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
     assert.lengthOf(recorder.calls, 2)
@@ -211,7 +213,7 @@ test.group('emailVerification.send', (group) => {
         .from('email_verification_tokens')
         .where('tokenable_id', id)
         .update({
-          created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+          created_at: dbTime(kit, DateTime.utc().minus({ minutes: 2 })),
         })
     }
     try {
@@ -240,7 +242,7 @@ test.group('emailVerification.send', (group) => {
       .from('email_verification_tokens')
       .where('tokenable_id', id)
       .update({
-        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+        created_at: dbTime(kit, DateTime.utc().minus({ minutes: 2 })),
       })
     const failure = new Error('URL failed')
     const defaults = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
@@ -472,7 +474,7 @@ test.group('emailVerification.complete', (group) => {
       await ready
       await assert.rejects(async () => {
         await kit.db.transaction(async (trx) => {
-          if (process.env.DB_CLIENT === 'pg') {
+          if (locksRows) {
             await trx.rawQuery('SELECT id FROM users WHERE id = ? FOR UPDATE NOWAIT', [id]).exec()
           } else {
             const prior = await trx.rawQuery('PRAGMA busy_timeout').exec()

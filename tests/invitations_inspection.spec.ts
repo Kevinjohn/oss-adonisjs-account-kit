@@ -5,6 +5,7 @@ import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { allowAll, insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('invitations.list and inspect', (group) => {
   const kit = useTestApp(group)
@@ -36,15 +37,15 @@ test.group('invitations.list and inspect', (group) => {
     await kit.db
       .from('account_invitations')
       .where('id', first.id)
-      .update({ created_at: DateTime.utc().minus({ days: 2 }).toISO() })
+      .update({ created_at: dbTime(kit, DateTime.utc().minus({ days: 2 })) })
     await kit.db
       .from('account_invitations')
       .where('id', second.id)
-      .update({ created_at: DateTime.utc().minus({ days: 1 }).toISO() })
+      .update({ created_at: dbTime(kit, DateTime.utc().minus({ days: 1 })) })
     await kit.db
       .from('account_invitations')
       .where('id', expired.id)
-      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     const listed = await account.invitations.list({ actorId: actor.id })
     assert.deepEqual(
       listed.items.map((item) => item.id),
@@ -96,7 +97,7 @@ test.group('invitations.list and inspect', (group) => {
     await kit.db
       .from('account_invitations')
       .where('token_hash', hashToken(raw))
-      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     assert.isNull(await account.invitations.inspect({ token: raw }))
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })

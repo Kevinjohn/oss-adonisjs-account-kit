@@ -6,6 +6,8 @@ import { generateToken, hashToken } from '../src/tokens.js'
 import type { CredentialChangeContext, LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.js'
+import { locksRows } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('post-commit effects', () => {
   test('attempts every delivery and reports delivery-only failure', async ({ assert }) => {
@@ -208,8 +210,8 @@ test.group('credential and lifecycle effects', (group) => {
       tokenable_id: user.id,
       email: user.email,
       hash: hashToken(token),
-      expires_at: DateTime.utc().plus({ hours: 1 }).toISO(),
-      created_at: DateTime.utc().toISO(),
+      expires_at: dbTime(kit, DateTime.utc().plus({ hours: 1 })),
+      created_at: dbTime(kit, DateTime.utc()),
     })
     let fail = true
     const events: LifecycleEvent[] = []
@@ -424,8 +426,8 @@ test.group('credential and lifecycle effects', (group) => {
       tokenable_id: user.id,
       email: user.email,
       hash: hashToken(token),
-      expires_at: DateTime.utc().plus({ hours: 1 }).toISO(),
-      created_at: DateTime.utc().toISO(),
+      expires_at: dbTime(kit, DateTime.utc().plus({ hours: 1 })),
+      created_at: dbTime(kit, DateTime.utc()),
     })
     const first = new Error('legacy')
     const last = new Error('listener')
@@ -509,7 +511,7 @@ test.group('credential and lifecycle effects', (group) => {
   test('SQLite retry rolls back the first revocation and emits one committed event and notice', async ({
     assert,
   }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const user = await insertUser(kit)
     const schema = kit.db.connection().schema
     await schema.dropTableIfExists('test_retry_revocations')

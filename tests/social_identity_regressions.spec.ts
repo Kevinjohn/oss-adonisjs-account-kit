@@ -4,6 +4,7 @@ import { transaction } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { verifier, clientChallenge, provider } from './helpers/social_identity.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('social association and continuation regressions', (group) => {
   const kit = useTestApp(group)
@@ -187,8 +188,8 @@ test.group('social association and continuation regressions', (group) => {
       provider: 'google',
       provider_user_id: 'quarantined-inventory',
       email_verified: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: dbTime(kit),
+      updated_at: dbTime(kit),
     })
     const { account } = makeService(kit, {
       enabled: ['socialAuthentication', 'emailVerification'],
@@ -307,9 +308,9 @@ test.group('social association and continuation regressions', (group) => {
       provider: 'google',
       provider_user_id: 'disabled-subject',
       email_verified: true,
-      confirmed_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      confirmed_at: dbTime(kit),
+      created_at: dbTime(kit),
+      updated_at: dbTime(kit),
     })
     const reauth = await account.socialAuthentication.begin({
       provider: 'github',
@@ -413,7 +414,9 @@ test.group('social association and continuation regressions', (group) => {
       'Invalid social transaction'
     )
     unavailable = false
-    await kit.db.from('social_transactions').update({ expires_at: '2020-01-01T00:00:00.000Z' })
+    await kit.db
+      .from('social_transactions')
+      .update({ expires_at: dbTime(kit, '2020-01-01T00:00:00.000Z') })
     await assert.rejects(
       () => account.socialAuthentication.callback({ state: started.state, callback: {} }),
       'Invalid social transaction'

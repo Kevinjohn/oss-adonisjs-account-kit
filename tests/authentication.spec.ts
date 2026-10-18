@@ -5,6 +5,7 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
+import { dbTime } from './helpers/db_time.js'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -311,7 +312,7 @@ test.group('authentication contract', (group) => {
         await trx
           .from('users')
           .where('id', user.id)
-          .update({ disabled_at: new Date().toISOString() })
+          .update({ disabled_at: dbTime(kit) })
       },
     })
     const rejectedEvents: string[] = []
@@ -374,7 +375,7 @@ test.group('authentication contract', (group) => {
         await trx
           .from('users')
           .where('id', user.id)
-          .update({ disabled_at: new Date().toISOString() })
+          .update({ disabled_at: dbTime(kit) })
       },
     })
     await account.authentication.changeRestriction({
@@ -696,7 +697,7 @@ test.group('authentication contract', (group) => {
             await trx
               .from('users')
               .where('id', user.id)
-              .update({ disabled_at: new Date().toISOString() })
+              .update({ disabled_at: dbTime(kit) })
           },
         }),
       'abort'
