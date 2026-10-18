@@ -1,0 +1,72 @@
+# Contributing
+
+Thanks for helping. Bug reports, documentation fixes, recipes and adapters are all welcome.
+
+## Before you start
+
+- For a bug, open an issue with a reproduction first, unless the fix is a one-line change.
+- For a new feature or a behaviour change, open an issue to agree the shape before writing code.
+  Account Kit keeps a small public surface on purpose.
+- Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
+  public issue.
+
+## Local setup
+
+You need Node.js 24 and pnpm. The repository pins Node 24 in `.nvmrc`; `better-sqlite3` is compiled
+against it and the tests fail under other versions.
+
+```sh
+nvm use
+pnpm install
+pnpm quick:test
+```
+
+## Checks
+
+Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
+
+| Script               | What it does                                                    |
+| -------------------- | --------------------------------------------------------------- |
+| `pnpm lint`          | ESLint with the AdonisJS config                                 |
+| `pnpm typecheck`     | TypeScript without emitting                                     |
+| `pnpm quick:test`    | Japa test suite against SQLite                                  |
+| `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster  |
+| `pnpm build`         | Compiles to `build/`                                            |
+| `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api` |
+
+`pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
+own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
+`DB_DATABASE`, then run `pnpm quick:test`.
+
+Changes to account operations should pass on both SQLite and PostgreSQL. The hosted workflows run
+on demand only, so include the local results in your pull request.
+
+## Code layout
+
+- `src/` holds the account operations, one responsibility per file.
+- `src/http/` holds the optional managed JSON routes.
+- `src/setup/` holds the `account-kit:setup` planner.
+- `commands/` holds the Ace commands, `providers/` the AdonisJS provider and `stubs/` the generated
+  config and migrations.
+- `tests/` mirrors the source: one spec per module. Shared fixtures live in `tests/helpers/`.
+
+[AGENTS.md](AGENTS.md) describes the file-size and file-splitting rules the codebase follows.
+
+## Pull requests
+
+- Keep each pull request to one change.
+- Add or update tests. A bug fix should include a test that fails without the fix.
+- Update the relevant page in `docs/` and add a line under `## Unreleased` in
+  [CHANGELOG.md](CHANGELOG.md) when behaviour visible to users changes.
+- Write commit messages in the imperative mood, describing the change ("Reject expired invitation
+  tokens on resend").
+
+## Adapters
+
+A users adapter for another ORM is a good first contribution. The adapter contract suite in
+`adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behaviour the
+Lucid adapter passes.
+
+## Code of conduct
+
+Everyone taking part in this project follows the [code of conduct](CODE_OF_CONDUCT.md).
