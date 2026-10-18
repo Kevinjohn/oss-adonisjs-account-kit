@@ -19,12 +19,12 @@ insert builder does not expose `onConflict`; the supported floor is therefore 22
 HTTP reference application uses the latest compatible set, including Core 7.6.0 and assembler
 8.5.2. Concrete installed-consumer outcomes are recorded in [verification](maintainers/verification.md).
 Testing these points does not verify every version within the declared ranges. The
-`pg` and `better-sqlite3` drivers are supplied by applications and depend on the selected Lucid
+`pg`, `mysql2` and `better-sqlite3` drivers are supplied by applications and depend on the selected Lucid
 dialect; the package does not declare them as runtime peers.
 
 ## Database expectations
 
-PostgreSQL and SQLite are supported. The generated schema uses integer user IDs by default; run
+SQLite, PostgreSQL 16 and MySQL 8.4 (through `mysql2`) are supported. The generated schema uses integer user IDs by default; run
 configure with `--user-id-type=string` or `--user-id-type=uuid` when appropriate. Match the generated
 foreign-key column types to the application schema and inspect all migrations before running them.
 The package requires a unique email constraint and normalized lowercase storage. PostgreSQL
@@ -35,9 +35,40 @@ model's table and requires the physical primary-key column to be `id` on the def
 SQLite applications must enable foreign keys on every connection. Package writes acquire a
 package-owned transaction lock using `account_transaction_lock`; the fifth configure migration
 creates this table. SQLite write-contention retries can rerun transaction callbacks, so callbacks
-must be safe to repeat. PostgreSQL does not retry transactions. See
+must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
 [transaction guidance](usage.md#transactions-and-callbacks) and the
 [upgrade guide](upgrade.md#existing-installations).
+
+### MySQL 8.4
+
+- Use the `mysql2` client with `timezone: 'Z'`, and run every connection at the UTC session time
+  zone, either with `default-time-zone = '+00:00'` on the server or in the pool's `afterCreate`:
+
+  ```ts
+  mysql: {
+    client: 'mysql2',
+    connection: { host, port, user, password, database, timezone: 'Z' },
+    pool: {
+      afterCreate(connection, done) {
+        connection.query("set time_zone = '+00:00'", (error) => done(error, connection))
+      },
+    },
+  }
+  ```
+
+- Account Kit writes and compares timestamps as UTC `yyyy-MM-dd HH:mm:ss.SSS`, because MySQL
+  rejects ISO 8601 values with a `Z` offset. `credentials_changed_at` keeps milliseconds so two
+  credential changes in the same second still revoke the earlier session.
+- Package transactions run at `READ COMMITTED`, so reads after the user row lock see the latest
+  committed rows.
+- Integer user IDs must be `unsigned`, as Lucid's `increments` creates them; the generated foreign
+  keys are unsigned. Otherwise use `--user-id-type=string` or `uuid`.
+- Social provider subjects are stored with the `utf8mb4_0900_bin` collation, so subjects that
+  differ only by case, accent or trailing space stay distinct. A string `users.id` should use the
+  same binary collation; the foreign-key columns follow the table's default collation and must
+  match it.
+- The generated `timestamp` columns are MySQL `TIMESTAMP`, which ends in January 2038.
+- MariaDB is not supported.
 
 ## Dependency audit assessment
 
