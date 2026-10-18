@@ -137,9 +137,11 @@ In one transaction under the user lock:
    SQLite retries a busy transaction, so it must not call remote services. Throwing aborts the
    deletion and rolls everything back.
 3. Delete the package rows explicitly, without relying on foreign-key cascades: social handoff
-   codes, sensitive-action proofs, social sign-in state, social identities, password reset and
-   email verification tokens. Social rows are deleted even when social sign-in is disabled.
-4. With the `access_tokens` strategy, delete the user's access tokens.
+   codes, sensitive-action proofs, social sign-in state, social identities, password reset,
+   email verification and sign-in link tokens. These rows are deleted even when their capability
+   is disabled.
+4. Delete the user's recorded sign-ins (`account_sessions`). With the `access_tokens` strategy,
+   also delete the user's access tokens.
 5. Handle invitations the user sent: `revoke` (default) deletes them; `keep` leaves them acceptable
    with no inviter.
 6. Delete the user row through `users.delete`.
