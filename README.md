@@ -50,6 +50,9 @@ commands: [
 ],
 ```
 
+The same loader provides `account-kit:invite` and `account-kit:reset-link` for operators with shell
+access; see [operator commands](docs/operations.md#operator-commands).
+
 Setup previews all six pillars, required files, dependencies, and endpoint groups; `--apply`
 creates a conflict-free proposal. An existing `config/account_kit.ts` with different application
 policy remains owned by the application and must be reconciled before setup applies.

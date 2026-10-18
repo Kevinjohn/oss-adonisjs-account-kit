@@ -6,7 +6,7 @@ import { BEARER_WARNING, writeFailure, writeResult, writeWarning } from './opera
 /** Operator password-reset link: no throttles; replaces the account's live reset link. */
 export default class ResetLink extends BaseCommand {
   static commandName = 'account-kit:reset-link'
-  static description = "Issue a password-reset link for an account, replacing its live reset link"
+  static description = 'Issue a password-reset link for an account, replacing its live reset link'
   static options = { startApp: true }
 
   @args.string({ description: 'Email address of the account' })

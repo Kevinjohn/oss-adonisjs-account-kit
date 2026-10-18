@@ -19,7 +19,9 @@ export function writeWarning(command: BaseCommand, message: string): void {
 export function writeFailure(command: BaseCommand, error: unknown): string {
   const code = error instanceof AccountKitError ? error.code : 'E_ACCOUNT_KIT_OPERATOR'
   const message =
-    error instanceof AccountKitError ? error.message : 'Operator command failed; check configuration'
+    error instanceof AccountKitError
+      ? error.message
+      : 'Operator command failed; check configuration'
   command.logger.error(`${code}: ${message}`)
   command.exitCode = 1
   return code

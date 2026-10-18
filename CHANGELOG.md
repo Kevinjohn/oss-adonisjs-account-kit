@@ -23,6 +23,9 @@ Initial public release.
   the routes.
 - A Lucid users adapter and a reusable adapter contract suite for custom adapters.
 - Ace commands: `account-kit:setup`, `account-kit:prune` and `account-kit:retirement-impact`.
+- Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
+  services behind them) for shell-trusted invitations and reset links, with `--print` for
+  printed links and JSON output.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>
