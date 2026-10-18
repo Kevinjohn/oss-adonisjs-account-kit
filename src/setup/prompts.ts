@@ -149,6 +149,8 @@ export async function collectSetupChoices(
   choices.mail.frontendOriginEnv = frontendOriginEnv.trim() || choices.mail.frontendOriginEnv
   if (choices.features.includes('invitations'))
     choices.mail.destinations.invitation = 'account/invitation'
+  if (choices.features.includes('magicLinkLogin'))
+    choices.mail.destinations.magicLink = 'account/magic-link'
   for (const [name, value] of Object.entries(choices.mail.destinations)) {
     choices.mail.destinations[name as keyof typeof choices.mail.destinations] =
       (await ask(`${name} relative frontend path (${value})`)) || value

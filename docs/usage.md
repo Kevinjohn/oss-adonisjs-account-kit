@@ -35,12 +35,15 @@ The callback names distinguish a link provision from a completed-operation notic
 | Invitation link           | `urls.invitation`        | `notify.invitationProvision`        |
 | Email-change confirmation | `urls.emailChange`       | `notify.emailChangeProvision`       |
 | Email changed             | —                        | `notify.emailChanged`               |
+| Magic sign-in link        | `urls.magicLink`         | `notify.magicLinkProvision`         |
 | Password changed          | —                        | `notify.passwordChanged`            |
 
 ### Capabilities
 
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
-`emailPasswordManagement`, and `registration`. When omitted, registration and invitations are
+`emailPasswordManagement`, `registration`, `socialAuthentication` and `magicLinkLogin`.
+`magicLinkLogin` is off by default and requires `authentication`; see
+[magic-link sign-in](magic-link.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
@@ -76,6 +79,10 @@ const profile = await kit.emailPasswordManagement.updateProfile({
 await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail })
 const emailChangeValid = await kit.emailPasswordManagement.inspectEmailChange({ token })
 await kit.emailPasswordManagement.completeEmailChange({ token })
+
+await kit.magicLink.request({ email, clientKey, clientChallenge })
+const linkValid = await kit.magicLink.inspect({ token })
+const { account, credential } = await kit.magicLink.complete({ token, verifier }, guard)
 ```
 
 Invitation listing returns `{ items, nextCursor }`. The default page limit is 25 and the maximum is 100. Pass `nextCursor` as `cursor` to fetch the next page; `null` means there are no more rows.

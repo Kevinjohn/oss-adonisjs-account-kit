@@ -9,6 +9,7 @@ export const featureNames = [
   'emailPasswordManagement',
   'invitations',
   'socialAuthentication',
+  'magicLinkLogin',
 ] as const
 
 export type SetupFeature = (typeof featureNames)[number]
@@ -55,7 +56,10 @@ export interface SetupChoices {
     backendOriginEnv: string
     frontendOriginEnv: string
     destinations: Partial<
-      Record<'emailVerification' | 'passwordReset' | 'invitation' | 'emailChange', string>
+      Record<
+        'emailVerification' | 'passwordReset' | 'invitation' | 'emailChange' | 'magicLink',
+        string
+      >
     >
     durableWorkerVerified: boolean
   }

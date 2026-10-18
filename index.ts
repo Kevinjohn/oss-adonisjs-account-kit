@@ -19,6 +19,7 @@ export {
   AccountActivationProvision,
   InvitationProvision,
   EmailChangeProvision,
+  MagicLinkProvision,
   createActionUrls,
   createMailNotifications,
   notificationReadiness,

@@ -73,6 +73,7 @@ export type Capability =
   | 'emailPasswordManagement'
   | 'registration'
   | 'socialAuthentication'
+  | 'magicLinkLogin'
 export type CredentialOperation =
   | 'password_reset'
   | 'password_change'
@@ -97,6 +98,7 @@ export type LifecycleEvent =
         | 'password.changed'
         | 'email_change.requested'
         | 'email_change.completed'
+        | 'magic_link.requested'
       userId: UserId
       operationId: string
       /** Present only when an operator command, not an account holder, started the operation. */
@@ -124,6 +126,7 @@ export interface UrlCallbacks {
   emailVerification(token: string): string
   invitation(token: string): string
   emailChange(token: string): string
+  magicLink(token: string): string
 }
 export interface NotificationCallbacks {
   passwordResetProvision(user: AccountUser, url: string): Promise<void>
@@ -135,6 +138,7 @@ export interface NotificationCallbacks {
   passwordChanged(user: AccountUser, context: CredentialChangeContext): Promise<void>
   socialIdentityLinked(user: AccountUser, identity: SocialIdentity): Promise<void>
   socialIdentityUnlinked(user: AccountUser, identity: SocialIdentity): Promise<void>
+  magicLinkProvision(user: AccountUser, url: string): Promise<void>
 }
 export interface ThrottleBudget {
   requests: number
@@ -173,6 +177,7 @@ export interface AccountKitConfig {
     emailVerification?: string | number
     invitation?: string | number
     emailChange?: string | number
+    magicLink?: string | number
   }
   throttle?: Partial<ThrottleBudget>
   invitationThrottle?: Partial<InvitationThrottle>
@@ -423,6 +428,20 @@ export interface PasswordResetInspectInput {
 export interface PasswordResetCompleteInput {
   token: string
   password: string
+}
+export interface MagicLinkRequestInput {
+  email: string
+  clientKey: string
+  /** Base64url SHA-256 of a verifier the requesting client keeps; 43 characters. */
+  clientChallenge: string
+}
+export interface MagicLinkInspectInput {
+  token: string
+}
+export interface MagicLinkCompleteInput {
+  token: string
+  /** The verifier whose challenge was sent with the request. */
+  verifier: string
 }
 export interface VerificationSendInput {
   userId: UserId
