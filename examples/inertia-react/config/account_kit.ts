@@ -1,15 +1,17 @@
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
-import { createLogNotifications, createLucidAdapter, defineConfig } from 'adonisjs-account-kit'
+import {
+  createActionUrls,
+  createLogNotifications,
+  createLucidAdapter,
+  defineConfig,
+} from 'adonisjs-account-kit'
 
 if (env.get('SESSION_DRIVER') === 'cookie') {
   throw new Error('account_kit: session login needs a server-side session store')
 }
 
-// A trailing slash keeps any APP_URL path, for example https://example.com/portal.
-const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
-const pageUrl = (path: string, token: string) =>
-  new URL(`${path}/${encodeURIComponent(token)}`, appUrl).toString()
+const environment = app.inProduction ? 'production' : app.inTest ? 'test' : 'development'
 
 const loadUser = async () => {
   const { default: User } = await import('#models/user')
@@ -40,18 +42,21 @@ export default defineConfig({
     manageInvitation: async () => false,
     listInvitations: async () => false,
   },
-  urls: {
-    passwordReset: (token) => pageUrl('reset-password', token),
-    emailVerification: (token) => pageUrl('verify-email', token),
-    invitation: (token) => pageUrl('invitation', token),
-    emailChange: (token) => pageUrl('confirm-email', token),
-  },
+  // Links are built from APP_URL only, and must use HTTPS outside localhost.
+  urls: createActionUrls({
+    backendOrigin: env.get('APP_URL'),
+    appFrontendUrl: env.get('APP_URL'),
+    environment,
+    destinations: {
+      passwordReset: 'reset-password',
+      emailVerification: 'verify-email',
+      invitation: 'invitation',
+      emailChange: 'confirm-email',
+    },
+  }),
   // Prints each email, link included, to the server log, and refuses to boot in production.
   // Before deploying, add @adonisjs/mail and switch to createMailNotifications.
-  notify: createLogNotifications({
-    brandName: 'My App',
-    environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',
-  }),
+  notify: createLogNotifications({ brandName: 'My App', environment }),
   // Session login checks the credential revision on every request, so older sessions end on
   // their own. Nothing else holds credentials in this app.
   onCredentialsChangedTransaction: async () => {},

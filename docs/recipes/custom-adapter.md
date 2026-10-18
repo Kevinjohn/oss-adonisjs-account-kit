@@ -68,6 +68,6 @@ test('users adapter meets the Account Kit contract', async () => {
 })
 ```
 
-See [`testing/adapter_contract.ts`](../../testing/adapter_contract.ts) for what each fixture
-method must do, and [`tests/lucid_adapter.spec.ts`](../../tests/lucid_adapter.spec.ts) for a
+See [`testing/adapter_contract.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/testing/adapter_contract.ts) for what each fixture
+method must do, and [`tests/lucid_adapter.spec.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/tests/lucid_adapter.spec.ts) for a
 complete fixture.
