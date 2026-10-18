@@ -1,11 +1,24 @@
 import { createMailNotifications } from './notifications.js'
 import type { NotificationCallbacks } from './types.js'
 
+type MessageLogger = { info(message: string): void }
+
 export interface LogNotificationOptions {
-  logger: { info(message: string): void }
+  /**
+   * Defaults to the AdonisJS logger service, resolved when a message is sent. Config files load
+   * before that service exists, so pass a function rather than the service itself.
+   */
+  logger?: MessageLogger | (() => MessageLogger)
   brandName: string
   /** Refuses production: logged messages contain live action links. */
   environment: 'development' | 'test' | 'production'
+}
+
+async function resolveLogger(option: LogNotificationOptions['logger']): Promise<MessageLogger> {
+  if (typeof option === 'function') return option()
+  if (option) return option
+  const { default: logger } = await import('@adonisjs/core/services/logger')
+  return logger
 }
 
 /**
@@ -29,7 +42,8 @@ export function createLogNotifications(options: LogNotificationOptions): Notific
           text: (value: string) => ((fields.text = value), message),
         }
         callback(message)
-        options.logger.info(
+        const logger = await resolveLogger(options.logger)
+        logger.info(
           `[account-kit] mail to ${fields.to}: ${fields.subject}\n${fields.text.trimEnd()}`
         )
       },
