@@ -71,9 +71,9 @@ export function currentAccount(user: AccountUser): CurrentAccount {
   }
 }
 
-/** Untrusted display text for the sign-in list: the client's User-Agent, truncated. */
+/** Untrusted display text for the sign-in list: the client's User-Agent. The service truncates it. */
 export function signInLabel(context: HttpContext): string | undefined {
-  return context.request.header('user-agent')?.slice(0, 255) || undefined
+  return context.request.header('user-agent') || undefined
 }
 
 export function recoveryDiagnostic(
