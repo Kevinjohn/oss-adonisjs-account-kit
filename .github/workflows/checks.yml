@@ -1,12 +1,20 @@
 name: checks
 
-on: [workflow_dispatch, workflow_call]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
   checks:
+    # Push and pull request runs start once the repository is public, where hosted minutes are
+    # free. Manual and release runs always start.
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
