@@ -40,9 +40,7 @@ test.group('operator commands', (group) => {
     assert.equal(service.recorder.calls[0].method, 'invitationProvision')
   })
 
-  test('invite --print prints the link, warns on stderr, and sends nothing', async ({
-    assert,
-  }) => {
+  test('invite --print prints the link, warns on stderr, and sends nothing', async ({ assert }) => {
     const { kernel, service, stdout, stderr } = kernelFor(kit)
     await kernel.exec('account-kit:invite', ['boss@example.test', '--role=admin', '--print'])
     const output = JSON.parse(stdout()[0].message)

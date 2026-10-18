@@ -34,7 +34,10 @@ test.group('operator services', (group) => {
     // A second issue for the same address is not blocked by the recipient budget.
     await account.operator.invite({ email: 'new@example.test', role: 'admin', deliver: 'send' })
     assert.deepEqual(
-      events.map((event) => ({ type: event.type, source: 'source' in event ? event.source : undefined })),
+      events.map((event) => ({
+        type: event.type,
+        source: 'source' in event ? event.source : undefined,
+      })),
       [
         { type: 'invitation.sent', source: 'operator' },
         { type: 'invitation.sent', source: 'operator' },

@@ -89,7 +89,11 @@ export async function operatorInvite(
       kind: 'delivery',
       run: () => deps.config.notify.invitationProvision(invitation, url),
     })
-  const followUpFault = await followUps(fault, 'Invitation committed but follow-ups failed', effects)
+  const followUpFault = await followUps(
+    fault,
+    'Invitation committed but follow-ups failed',
+    effects
+  )
   return {
     invitation,
     ...(input.deliver === 'print' ? { url } : {}),
