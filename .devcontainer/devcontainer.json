@@ -1,0 +1,11 @@
+{
+  "name": "Account Kit",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "postCreateCommand": "npm install --global pnpm@11.23.0 && pnpm install --frozen-lockfile",
+  "postAttachCommand": "echo 'Run pnpm quick:test to run the suite against SQLite.'",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
+}
