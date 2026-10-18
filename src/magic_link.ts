@@ -9,7 +9,12 @@ import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
-import { CapabilityDisabledError, InvalidInputError, InvalidTokenError } from './errors.js'
+import {
+  CapabilityDisabledError,
+  InvalidCredentialsError,
+  InvalidInputError,
+  InvalidTokenError,
+} from './errors.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -190,5 +195,10 @@ export async function completeMagicLink<Credential>(
     }
   })
   if (!verified) throw new InvalidTokenError()
-  return establishCredential(deps, auth, guard, verified)
+  const credential = await establishCredential(deps, auth, guard, verified, {
+    stillValid: async (_trx, user) => user.email === verified.email,
+    rejected: () => new InvalidCredentialsError(),
+    cleanupFailed: 'Magic-link sign-in failed and credential cleanup failed',
+  })
+  return { account: verified.account, credential }
 }

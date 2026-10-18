@@ -9,7 +9,15 @@ import { normaliseEmail } from './email.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { clearSocialPending } from './credential_cleanup.js'
 import { establishCredential } from './credential_issuance.js'
+import {
+  requireLiveSession,
+  sessionRegistryEnabled,
+  sessionTable,
+  touchSession,
+  type LiveSession,
+} from './session_registry.js'
 import { waitForFloor } from './timing.js'
+import { hashToken } from './tokens.js'
 import { isSocialProviderName } from './social_providers.js'
 import {
   CapabilityDisabledError,
@@ -90,6 +98,9 @@ export async function advanceCredentialRevision(
   if (config.authentication?.strategy === 'access_tokens') {
     await trx.from(config.authentication.tokenTable).where('tokenable_id', userId).delete()
   }
+  // The registry table is installed for every application, so sessions end even while
+  // sessionManagement is off.
+  if (config.authentication) await trx.from(sessionTable).where('user_id', userId).delete()
 }
 
 export async function credentialsChanged(
@@ -124,6 +135,7 @@ export async function currentInTransaction(
   await lockUser(trx, deps.config, input.userId)
   const user = await deps.config.users.findById(input.userId, trx)
   if (!user) throw new InvalidSessionError()
+  let session: LiveSession | undefined
   if (auth.strategy === 'session') {
     // Absence is different from the valid pre-first-change null stamp.
     if (
@@ -131,6 +143,8 @@ export async function currentInTransaction(
       input.revision !== (await revision(trx, deps.config, input.userId))
     )
       throw new InvalidSessionError()
+    if (sessionRegistryEnabled(deps.config))
+      session = await requireLiveSession(trx, input.userId, input.sessionHandle)
   } else {
     if (
       input.tokenId === undefined ||
@@ -143,6 +157,7 @@ export async function currentInTransaction(
       throw new InvalidSessionError()
   }
   if (!(await auth.canAccess(user, trx))) throw new InvalidSessionError()
+  if (session) await touchSession(trx, deps.config, session)
   return safeAccount(user)
 }
 
@@ -294,7 +309,13 @@ export function authenticationService(deps: Dependencies) {
         throw error
       }
 
-      return establishCredential(deps, auth, guard, { ...verified, email })
+      const credential = await establishCredential(deps, auth, guard, verified, {
+        label: typeof input.sessionLabel === 'string' ? input.sessionLabel : undefined,
+        stillValid: async (_trx, user) => user.email === email,
+        rejected: () => new InvalidCredentialsError(),
+        cleanupFailed: 'Login failed and credential cleanup failed',
+      })
+      return { account: verified.account, credential }
     },
 
     current(input: CurrentAccountInput): Promise<CurrentAccount> {
@@ -307,11 +328,19 @@ export function authenticationService(deps: Dependencies) {
       return account
     },
 
+    /** Pass `current` to also remove this session from the sign-in list. */
     async logout<Credential>(
       guard: Pick<AuthenticationGuard<Credential>, 'terminate'>,
-      credential?: Credential
+      credential?: Credential,
+      current?: CurrentAccountInput
     ): Promise<void> {
       configured(deps)
+      if (current?.sessionHandle && sessionRegistryEnabled(deps.config))
+        await deps.db
+          .from(sessionTable)
+          .where('handle_hash', hashToken(current.sessionHandle))
+          .where('user_id', current.userId)
+          .delete()
       await guard.terminate(credential)
     },
 

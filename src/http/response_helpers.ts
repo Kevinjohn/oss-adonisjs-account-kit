@@ -71,6 +71,11 @@ export function currentAccount(user: AccountUser): CurrentAccount {
   }
 }
 
+/** Untrusted display text for the sign-in list: the client's User-Agent. The service truncates it. */
+export function signInLabel(context: HttpContext): string | undefined {
+  return context.request.header('user-agent') || undefined
+}
+
 export function recoveryDiagnostic(
   context: HttpContext,
   operation: ManagedEndpointName,

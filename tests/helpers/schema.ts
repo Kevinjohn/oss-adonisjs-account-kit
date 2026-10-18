@@ -13,6 +13,7 @@ export async function resetSchema(
   const schema = kit.db.connection().schema
   await schema.dropTableIfExists('auth_access_tokens')
   await schema.dropTableIfExists('login_link_tokens')
+  await schema.dropTableIfExists('account_sessions')
   await schema.dropTableIfExists('account_transaction_lock')
   await schema.dropTableIfExists('email_verification_tokens')
   await schema.dropTableIfExists('social_handoff_codes')
@@ -34,10 +35,18 @@ export async function resetSchema(
     table.timestamp('disabled_at').nullable()
     table.timestamp('created_at').notNullable()
   })
+  // The columns AdonisJS Auth creates for access tokens.
   await schema.createTable('auth_access_tokens', (table) => {
     table.increments('id')
     table.integer('tokenable_id').notNullable()
+    table.string('type').nullable()
+    table.string('name').nullable()
     table.string('hash').notNullable()
+    table.text('abilities').nullable()
+    table.timestamp('created_at').nullable()
+    table.timestamp('updated_at').nullable()
+    table.timestamp('last_used_at').nullable()
+    table.timestamp('expires_at').nullable()
   })
 
   await rm(kit.migrationDirectory, { recursive: true, force: true })
@@ -70,6 +79,7 @@ export async function resetSchema(
 const dataTables = [
   'auth_access_tokens',
   'login_link_tokens',
+  'account_sessions',
   'account_invitations',
   'password_reset_tokens',
   'email_verification_tokens',

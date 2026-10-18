@@ -99,6 +99,32 @@ test.group('setup choice validation', (group) => {
     )
   })
 
+  test('session management generates its config and routes and requires a guard', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('sessionManagement')
+    choices.managed.push('sessionManagement')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"sessionManagement"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"sessionManagement"')
+
+    choices.authentication = null
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.include(
+      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
+      'authentication: Session management requires a selected existing guard'
+    )
+  })
+
   test('interactive provider selection does not duplicate an already selected social group', async ({
     assert,
   }) => {

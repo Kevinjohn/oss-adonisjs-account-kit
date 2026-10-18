@@ -14,6 +14,7 @@ export const migrationNames = [
   'create_social_transactions',
   'add_social_identity_confirmation',
   'create_login_link_tokens',
+  'create_account_sessions',
 ]
 
 function isMissing(error: unknown): boolean {

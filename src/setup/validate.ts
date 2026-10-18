@@ -159,6 +159,12 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
       'authentication',
       'Magic-link sign-in requires a selected existing guard'
     )
+  if (choices.features.includes('sessionManagement') && !choices.authentication)
+    diagnostic(
+      diagnostics,
+      'authentication',
+      'Session management requires a selected existing guard'
+    )
   if (choices.authentication) {
     if (!['session', 'access_tokens'].includes(choices.authentication.strategy))
       diagnostic(diagnostics, 'authentication.strategy', 'Choose session or access_tokens')

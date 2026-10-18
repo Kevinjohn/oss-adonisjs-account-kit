@@ -13,6 +13,7 @@ Authentication
 - [Inertia and React](recipes/inertia-react.md)
 - [Google and GitHub sign-in with Ally](recipes/social-login.md)
 - [Magic-link sign-in](magic-link.md)
+- [Signed-in devices](signed-in-devices.md)
 
 Users and data
 

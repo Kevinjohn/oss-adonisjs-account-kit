@@ -7,6 +7,7 @@ export type ManagedCapability =
   | 'emailPasswordManagement'
   | 'invitations'
   | 'socialAuthentication'
+  | 'sessionManagement'
 
 export type ManagedEndpointName =
   | 'auth.signup'
@@ -43,6 +44,10 @@ export type ManagedEndpointName =
   | 'account.socialProof.password'
   | 'account.socialIdentities.list'
   | 'account.socialIdentities.unlink'
+  | 'account.sessions.list'
+  | 'account.sessions.revoke'
+  | 'account.sessions.revokeOthers'
+  | 'account.sessions.revokeAll'
 
 export interface ManagedRoute {
   name: ManagedEndpointName
@@ -336,6 +341,34 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'account/social-identities/:id',
     access: 'limited',
     proof: true,
+  },
+  {
+    name: 'account.sessions.list',
+    capability: 'sessionManagement',
+    method: 'GET',
+    suffix: 'account/sessions',
+    access: 'limited',
+  },
+  {
+    name: 'account.sessions.revoke',
+    capability: 'sessionManagement',
+    method: 'DELETE',
+    suffix: 'account/sessions/:id',
+    access: 'limited',
+  },
+  {
+    name: 'account.sessions.revokeOthers',
+    capability: 'sessionManagement',
+    method: 'POST',
+    suffix: 'account/sessions/revoke-others',
+    access: 'limited',
+  },
+  {
+    name: 'account.sessions.revokeAll',
+    capability: 'sessionManagement',
+    method: 'POST',
+    suffix: 'account/sessions/revoke-all',
+    access: 'limited',
   },
 ]
 

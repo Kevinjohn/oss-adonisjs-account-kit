@@ -198,7 +198,7 @@ do not trust arbitrary forwarded-IP headers. See [password reset and invitation 
 
 The explicit `account-kit:prune` Ace command removes expired password reset, invitation,
 email-verification (activation and email change), social transaction, sensitive-action proof,
-social handoff-code and sign-in link rows in bounded batches. It is not scheduled automatically. Defaults are
+social handoff-code, sign-in link and session sign-in rows in bounded batches. It is not scheduled automatically. Defaults are
 100 rows per batch and at most 100 batches; each setting accepts a value from 1 through 1000. Use
 the command's dry-run option to estimate eligible rows before deletion. A daily run is a
 reasonable starting schedule if expired proofs should be removed; tune frequency and batch limits
