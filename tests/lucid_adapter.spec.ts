@@ -108,8 +108,8 @@ test.group('maintained Lucid adapter', (group) => {
 
     assert.equal(
       LucidUser.hashCalls,
-      3,
-      'successful create, duplicate create attempt, and setPassword each run the model hook once'
+      5,
+      'each create, duplicate create, rolled-back create, and both setPassword calls hash once'
     )
 
     const brokenAdapter = (overrides: Partial<UsersAdapter>): UsersAdapter => ({
