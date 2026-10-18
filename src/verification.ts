@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { sqlTimestamp } from './timestamps.js'
 import { credentialsChanged } from './authentication.js'
 import {
   clearPendingSocialIdentities,
@@ -34,7 +35,7 @@ export async function inspectVerification(
     .from('email_verification_tokens')
     .select('tokenable_id', 'email', 'current_email', 'purpose')
     .where('hash', hashToken(input.token))
-    .where('expires_at', '>', DateTime.utc().toISO())
+    .where('expires_at', '>', sqlTimestamp(deps.db))
     .first()
   if (!proof || proof.purpose !== 'activation') return false
   const user = await deps.config.users.findById(proof.tokenable_id)
@@ -63,7 +64,7 @@ async function activateClaim(
         .where('user_id', userId)
         .where('id', confirmedSocialIdentityId)
         .whereNull('confirmed_at')
-        .update({ confirmed_at: DateTime.utc().toISO() })
+        .update({ confirmed_at: sqlTimestamp(trx) })
     await clearSocialTransactions(trx, userId)
   }
 }
@@ -144,8 +145,8 @@ export async function sendVerification(
           current_email: current.email,
           purpose: 'activation',
           hash: hashToken(token),
-          expires_at: expiresAt(now, deps.config.expiresIn.emailVerification).toISO(),
-          created_at: now.toISO(),
+          expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.emailVerification)),
+          created_at: sqlTimestamp(trx, now),
         })
         .onConflict('tokenable_id')
         .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])

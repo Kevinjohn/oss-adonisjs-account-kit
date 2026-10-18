@@ -5,7 +5,7 @@ import { BaseSchema } from '@adonisjs/lucid/schema'
 export default class extends BaseSchema {
   async up() {
     this.schema.alterTable('social_identities', (table) => {
-      table.timestamp('confirmed_at', { useTz: true }).nullable()
+      table.timestamp('confirmed_at', { useTz: true, precision: 3 }).nullable()
     })
   }
 

@@ -81,8 +81,9 @@ export async function advanceCredentialRevision(
   const next = DateTime.fromMillis(Math.max(Date.now(), previous ? Date.parse(previous) + 1 : 0), {
     zone: 'utc',
   })
+  // MySQL's dialect format drops milliseconds, which the revision needs.
   const value =
-    trx.dialect.name === 'better-sqlite3'
+    trx.dialect.name === 'better-sqlite3' || trx.dialect.name === 'mysql'
       ? next.toFormat('yyyy-MM-dd HH:mm:ss.SSS')
       : next.toFormat(trx.dialect.dateTimeFormat)
   await trx.from(table).where('id', userId).update({ credentials_changed_at: value })

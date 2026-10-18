@@ -1,8 +1,10 @@
 // Social handoff codes: issuing a one-time code after a social callback and redeeming it for a credential.
+import { sqlTimestamp } from './timestamps.js'
 import { createHash } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { revision, safeAccount } from './authentication.js'
-import { deleteReturning, lockUser, transaction } from './db.js'
+import { lockUser, transaction } from './db.js'
+import { consumeRows } from './consume_rows.js'
 import { SocialTransactionError } from './errors.js'
 import { enabledProviders, now, type Dependencies } from './social_identity.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -32,8 +34,8 @@ export async function createHandoff(
     social_identity_id: socialIdentityId,
     credential_revision: await revision(trx, config, userId),
     client_challenge: clientChallenge,
-    expires_at: DateTime.utc().plus({ minutes: 2 }).toISO(),
-    created_at: now(),
+    expires_at: sqlTimestamp(trx, DateTime.utc().plus({ minutes: 2 })),
+    created_at: now(trx),
   })
   return code
 }
@@ -79,10 +81,11 @@ export async function redeemSocialHandoff<Credential>(
       .first()
     if (!candidate) throw new SocialTransactionError()
     await lockUser(trx, deps.config, candidate.user_id)
-    const rows = await deleteReturning<typeof candidate>(
+    const rows = await consumeRows<typeof candidate>(
       trx,
-      'delete from social_handoff_codes where hash = ? and expires_at > ? returning *',
-      [hashToken(input.code), now()]
+      'social_handoff_codes',
+      { hash: hashToken(input.code) },
+      now(trx)
     )
     const row = rows[0]
     if (
