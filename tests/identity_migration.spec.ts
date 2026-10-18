@@ -15,7 +15,11 @@ const legacy = [
   'add_email_verified_at_to_users',
   'create_account_transaction_lock',
 ]
-const evolution = ['evolve_identity_contract', 'retire_account_email_changes']
+const evolution = [
+  'evolve_identity_contract',
+  'retire_account_email_changes',
+  'create_login_link_tokens',
+]
 
 test('upgrade preserves outstanding reset and email-change proofs and backfills state', async ({
   assert,
