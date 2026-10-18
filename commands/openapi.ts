@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
+import { configProvider } from '@adonisjs/core/config'
 import { generateManagedOpenApi } from '../src/http/openapi.js'
 import { managedRouteRegistration } from '../src/http/route_registration.js'
 
@@ -36,6 +37,7 @@ export default class ManagedOpenApi extends BaseCommand {
     const host = await readFile(this.app.makePath('package.json'), 'utf8')
       .then((text) => JSON.parse(text) as { name?: string; version?: string })
       .catch(() => ({}) as { name?: string; version?: string })
+    const sessionCookieName = await this.sessionCookieName()
     let document
     try {
       document = generateManagedOpenApi({
@@ -44,7 +46,7 @@ export default class ManagedOpenApi extends BaseCommand {
           title: this.title ?? host.name ?? 'Account API',
           version: this.apiVersion ?? host.version ?? '0.0.0',
         },
-        sessionCookieName: this.app.config.get<string | undefined>('session.cookieName', undefined),
+        sessionCookieName,
       })
     } catch (error) {
       this.logger.error((error as Error).message)
@@ -59,5 +61,12 @@ export default class ManagedOpenApi extends BaseCommand {
     const target = resolve(this.app.makePath(), this.output)
     await writeFile(target, json)
     this.logger.success(`Wrote ${target}`)
+  }
+
+  /** `config/session.ts` exports a lazy config provider, so it must be resolved for the name. */
+  private async sessionCookieName(): Promise<string | undefined> {
+    const session = this.app.config.get<unknown>('session', undefined)
+    const resolved = (await configProvider.resolve(this.app, session)) ?? session
+    return (resolved as { cookieName?: string } | undefined)?.cookieName
   }
 }
