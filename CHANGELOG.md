@@ -54,6 +54,11 @@ Initial public release.
 - `account-kit:openapi` and `generateManagedOpenApi` produce an OpenAPI 3.1 document for the
   mounted managed routes; the `openapi` option of `registerManagedRoutes` carries schemas for
   replaced validators and account representations.
+- `adonisjs-account-kit/adapters/drizzle`, `/adapters/prisma` and `/adapters/sql` adapt users
+  tables defined with Drizzle, Prisma or plain SQL. They read the table definition and run every
+  query through the package's Lucid transaction.
+- The adapter contract checks that create, password, and registration-data writes roll back with
+  the transaction, and that a password-less user never verifies.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>

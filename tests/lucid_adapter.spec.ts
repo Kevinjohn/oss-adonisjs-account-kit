@@ -2,13 +2,13 @@ import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
 import { type DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
-import { defineConfig } from '../src/config.js'
-import { lockUser, transaction } from '../src/db.js'
+import { transaction } from '../src/db.js'
 import type { Trx, UsersAdapter } from '../src/types.js'
 import type { AdapterContractFixture } from '../testing/adapter_contract.js'
 import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
 import LucidUser from './fixtures/lucid_user.js'
 import { useTestApp } from './helpers/app.js'
+import { contractFixture as sharedContractFixture } from './helpers/adapter_contract_fixture.js'
 
 test.group('maintained Lucid adapter', (group) => {
   const kit = useTestApp(group)
@@ -44,72 +44,19 @@ test.group('maintained Lucid adapter', (group) => {
         return lucidAdapter.findById(id, trx)
       },
     }
-    const packageConfig = defineConfig({
-      users: adapter,
-      enabled: [],
-      registration: { availability: 'open' },
-      urls: {},
-      notify: {},
-      limiterSecret: 'contract-limiter-secret-with-more-than-32-bytes',
-    })
     const metadata = await lucidAdapter.resolveMetadata()
     assert.deepEqual(metadata, { table: 'users', primaryKey: 'id' })
 
-    const contractFixture: AdapterContractFixture = {
-      adapter,
+    const contractFixture: AdapterContractFixture = sharedContractFixture(kit, adapter, {
       registrationData: { fullName: 'Contract User' },
-      transaction: (callback) => transaction(kit.db, callback),
-      acquireAccountLock: (id, trx) => lockUser(trx, packageConfig, id),
-      async storedPassword(id) {
-        const row = await kit.db.from('users').select('password').where('id', id).first()
-        return row?.password ?? null
-      },
-      verifyPassword: async (stored, password) => stored === `hashed:${password}`,
-      async assertLockBlocksWriter(id, acquireLock) {
-        let locked!: () => void
-        let release!: () => void
-        const lockReady = new Promise<void>((resolve) => (locked = resolve))
-        const holdLock = new Promise<void>((resolve) => (release = resolve))
-        const lockTransaction = transaction(kit.db, async (trx) => {
-          await acquireLock(trx)
-          locked()
-          await holdLock
-        })
-        await lockReady
-
-        let writerSettled = false
-        let writerError: unknown
-        const writerTransaction = transaction(kit.db, async (trx) => {
-          await trx.from('users').where('id', id).update({ email: 'lock-probe@example.test' })
-          throw new Error('rollback lock probe')
-        }).then(
-          () => {
-            writerSettled = true
-          },
-          (error: unknown) => {
-            writerError = error
-            writerSettled = true
-          }
-        )
-
-        try {
-          await new Promise((resolve) => setTimeout(resolve, 75))
-          assert.isFalse(writerSettled, 'an independent writer must wait for the user lock')
-        } finally {
-          release()
-        }
-        await lockTransaction
-        await writerTransaction
-        assert.match(String(writerError), /rollback lock probe/)
-      },
-    }
+    })
 
     await assertUsersAdapterContract(contractFixture)
 
     assert.equal(
       LucidUser.hashCalls,
-      3,
-      'successful create, duplicate create attempt, and setPassword each run the model hook once'
+      5,
+      'each create, duplicate create, rolled-back create, and both setPassword calls hash once'
     )
 
     const brokenAdapter = (overrides: Partial<UsersAdapter>): UsersAdapter => ({
