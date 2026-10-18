@@ -53,6 +53,7 @@ export default defineConfig({
           { text: 'Sessions', link: '/recipes/sessions' },
           { text: 'Inertia and React', link: '/recipes/inertia-react' },
           { text: 'Social sign-in', link: '/recipes/social-login' },
+          { text: 'Magic-link sign-in', link: '/magic-link' },
           { text: 'Custom user model', link: '/recipes/custom-user-model' },
           { text: 'Custom table or ID type', link: '/custom-schema' },
           { text: 'Custom adapter', link: '/recipes/custom-adapter' },
