@@ -321,6 +321,7 @@ test.group('capability registry', () => {
       emailPasswordManagement: true,
       registration: true,
       socialAuthentication: true,
+      magicLinkLogin: true,
       sessionManagement: true,
     }
     assert.sameMembers(Object.keys(capabilityRegistry), Object.keys(union))

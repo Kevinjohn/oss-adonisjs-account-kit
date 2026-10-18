@@ -110,6 +110,8 @@ export async function credentialsChanged(
   context: Parameters<NonNullable<ResolvedConfig['onCredentialsChangedTransaction']>>[1]
 ): Promise<void> {
   if (config.enabled.includes('socialAuthentication')) await clearSocialPending(trx, user.id)
+  // The table is installed for every application, so links die even while the capability is off.
+  await trx.from('login_link_tokens').where('tokenable_id', user.id).delete()
   if (config.authentication) await advanceCredentialRevision(trx, config, user.id)
   await config.onCredentialsChangedTransaction?.(user, context, trx)
 }

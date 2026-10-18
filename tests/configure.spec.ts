@@ -78,7 +78,7 @@ test('configures the package idempotently without replacing application-owned fi
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
     let migrationFiles = firstMigrationFiles.sort()
-    assert.lengthOf(migrationFiles, 12)
+    assert.lengthOf(migrationFiles, 13)
     assert.deepEqual(
       migrationFiles
         .map((filename) => filename.replace(/^.*_account_kit_/, '').replace(/\.ts$/, ''))
@@ -91,6 +91,7 @@ test('configures the package idempotently without replacing application-owned fi
         'create_account_invitations',
         'create_account_sessions',
         'create_account_transaction_lock',
+        'create_login_link_tokens',
         'create_password_reset_tokens',
         'create_social_identities',
         'create_social_transactions',

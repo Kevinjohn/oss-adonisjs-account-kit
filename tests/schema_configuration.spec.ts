@@ -48,6 +48,7 @@ for (const userIdType of idTypes) {
       for (const table of [
         'account_email_changes',
         'email_verification_tokens',
+        'login_link_tokens',
         'account_sessions',
         'social_handoff_codes',
         'social_sensitive_proofs',
@@ -177,6 +178,7 @@ for (const userIdType of idTypes) {
         'account_transaction_lock',
         'account_email_changes',
         'email_verification_tokens',
+        'login_link_tokens',
         'account_sessions',
         'social_handoff_codes',
         'social_sensitive_proofs',
@@ -192,6 +194,7 @@ for (const userIdType of idTypes) {
       for (const table of [
         'account_email_changes',
         'email_verification_tokens',
+        'login_link_tokens',
         'account_sessions',
         'social_handoff_codes',
         'social_sensitive_proofs',

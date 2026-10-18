@@ -18,6 +18,7 @@ const legacy = [
 const evolution = [
   'evolve_identity_contract',
   'retire_account_email_changes',
+  'create_login_link_tokens',
   'create_account_sessions',
 ]
 
@@ -29,6 +30,7 @@ test('upgrade preserves outstanding reset and email-change proofs and backfills 
     const schema = kit.db.connection().schema
     for (const table of [
       'application_roles',
+      'login_link_tokens',
       'account_sessions',
       'social_handoff_codes',
       'social_sensitive_proofs',
@@ -238,6 +240,7 @@ test('API example evolution rejects stale proofs and skips expired ones without 
   try {
     const schema = kit.db.connection().schema
     for (const table of [
+      'login_link_tokens',
       'account_sessions',
       'social_handoff_codes',
       'social_sensitive_proofs',

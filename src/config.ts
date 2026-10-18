@@ -32,6 +32,7 @@ const disabledUrls: Record<keyof UrlCallbacks, typeof disabled> = {
   emailVerification: disabled,
   invitation: disabled,
   emailChange: disabled,
+  magicLink: disabled,
 }
 const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   passwordResetProvision: disabled,
@@ -43,6 +44,7 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   passwordChanged: disabled,
   socialIdentityLinked: disabled,
   socialIdentityUnlinked: disabled,
+  magicLinkProvision: disabled,
 }
 
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
@@ -90,6 +92,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     typeof config.registration.mapFields !== 'function'
   )
     throw new Error('account_kit: registration.mapFields must be a function')
+  if (enabled.includes('magicLinkLogin') && !config.authentication)
+    throw new Error('account_kit: magicLinkLogin requires authentication')
   if (enabled.includes('socialAuthentication')) {
     if (!enabled.includes('emailVerification'))
       throw new Error(
@@ -149,6 +153,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     emailVerification: config.expiresIn?.emailVerification ?? '1h',
     invitation: config.expiresIn?.invitation ?? '7d',
     emailChange: config.expiresIn?.emailChange ?? '1h',
+    magicLink: config.expiresIn?.magicLink ?? '15m',
   }
   for (const value of Object.values(expiresIn)) expiresAt(DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')

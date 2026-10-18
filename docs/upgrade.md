@@ -315,6 +315,10 @@ and secret length as described above; default lifetimes remain unchanged.
 6. Typecheck and run package-specific consumer tests before deployment. Verify that the limiter
    secret and namespace are consistent across application instances.
 
+Every credential change deletes rows from `login_link_tokens`, whether or not `magicLinkLogin` is
+enabled. Run configure to generate `create_login_link_tokens` and apply it before deploying this
+version; until then, password resets and other credential changes fail. `account-kit:doctor`
+reports the table as missing.
 Every credential change deletes rows from `account_sessions` when `authentication` is configured,
 whether or not `sessionManagement` is enabled. Run configure to generate `create_account_sessions`
 and apply it before deploying this version; until then, credential changes fail.

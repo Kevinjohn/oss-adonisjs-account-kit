@@ -22,11 +22,15 @@ security details handled. You keep your user model, your routes and your policie
 - **Login** with sessions or access tokens through your existing Auth guard. Every credential
   change signs out older sessions and tokens.
 - **Google and GitHub sign-in** through Ally (optional).
+- **Magic-link sign-in** by a one-use email link that only works in the browser or app that asked
+  for it (optional).
 - **Signed-in devices**: list sign-ins, sign out one, all others, or everywhere (optional).
 - **Emails** for AdonisJS Mail out of the box, or your own templates.
 - **Rate limits** on password reset, verification resend, invitations, login and account changes.
 - **Managed JSON routes** (optional), if you would rather not write the controllers.
-- **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`.
+- **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`, and the
+  [operator commands](docs/operations.md#operator-commands) `account-kit:invite` and
+  `account-kit:reset-link` for shell-trusted invitations and reset links.
 - Tested on **SQLite and PostgreSQL 16**.
 
 ## Install
@@ -116,6 +120,8 @@ HTTP layer, validation, authorization and the user model.
 | Resend verification     | `emailVerification.send`                     | `POST /account/email-verification/send` | `accountActivationProvision`                | Per user                      |
 | Confirm email           | `emailVerification.complete`                 | `POST /auth/email-verification/:token`  | none                                        | Per client (managed route)    |
 | Log in                  | `authentication.login`                       | `POST /auth/login`                      | none                                        | Per client and per identity   |
+| Request sign-in link    | `magicLink.request`                          | `POST /auth/magic-link`                 | `magicLinkProvision`                        | Per client and per address    |
+| Sign in by link         | `magicLink.complete`                         | `POST /auth/magic-link/:token`          | none                                        | Per client (managed route)    |
 | Change password         | `emailPasswordManagement.changePassword`     | `POST /account/password`                | `passwordChanged`                           | Per user                      |
 | Change email            | `emailPasswordManagement.requestEmailChange` | `PATCH /account/profile`                | `emailChangeProvision`, then `emailChanged` | Per user                      |
 | Invite                  | `invitations.send`                           | `POST /account/invitations`             | `invitationProvision`                       | Per inviter and per recipient |

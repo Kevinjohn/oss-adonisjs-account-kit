@@ -84,7 +84,15 @@ export async function isUserEmailUniqueViolation(
   return result.rows.some((row: { name: string }) => row.name === details.constraint)
 }
 
-type TokenTable = 'password_reset_tokens' | 'email_verification_tokens' | 'account_invitations'
+type TokenTable =
+  | 'password_reset_tokens'
+  | 'email_verification_tokens'
+  | 'account_invitations'
+  | 'login_link_tokens'
+
+/** User-bound proof tables with `tokenable_id` and `hash` columns. */
+export type UserTokenTable =
+  'password_reset_tokens' | 'email_verification_tokens' | 'login_link_tokens'
 
 /**
  * Run a `delete ... returning` statement and return the deleted rows. better-sqlite3 returns the
@@ -123,7 +131,7 @@ export async function consumeToken<Row>(
 export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
   trx: Trx,
   config: UsersStorage,
-  table: 'password_reset_tokens' | 'email_verification_tokens',
+  table: UserTokenTable,
   token: string,
   validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {
@@ -134,7 +142,7 @@ export async function consumeUserToken<Row extends { tokenable_id: UserId }>(
 export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>(
   trx: Trx,
   config: UsersStorage,
-  table: 'password_reset_tokens' | 'email_verification_tokens',
+  table: UserTokenTable,
   tokenHash: string,
   validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {

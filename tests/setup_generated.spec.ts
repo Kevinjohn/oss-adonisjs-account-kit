@@ -40,6 +40,7 @@ test.group('setup generated sources', (group) => {
       try {
         const schema = kit.db.connection().schema
         for (const table of [
+          'login_link_tokens',
           'account_sessions',
           'social_handoff_codes',
           'social_sensitive_proofs',
@@ -89,6 +90,7 @@ test.group('setup generated sources', (group) => {
           socialTransactions: 0,
           socialSensitiveProofs: 0,
           socialHandoffCodes: 0,
+          loginLinks: 0,
           sessions: 0,
         })
       } finally {
@@ -112,7 +114,7 @@ test.group('setup generated sources', (group) => {
     ])
     assert.lengthOf(
       plan.changes.filter(({ action }) => action === 'create'),
-      19
+      20
     )
     assert.isFalse(plan.readiness.productionReady)
     assert.isFalse(plan.readiness.migrationsApplied)

@@ -153,6 +153,12 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     )
   if (choices.features.includes('authentication') && !choices.authentication)
     diagnostic(diagnostics, 'authentication', 'Authentication requires a selected existing guard')
+  if (choices.features.includes('magicLinkLogin') && !choices.authentication)
+    diagnostic(
+      diagnostics,
+      'authentication',
+      'Magic-link sign-in requires a selected existing guard'
+    )
   if (choices.features.includes('sessionManagement') && !choices.authentication)
     diagnostic(
       diagnostics,

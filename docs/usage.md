@@ -35,13 +35,15 @@ The callback names distinguish a link provision from a completed-operation notic
 | Invitation link           | `urls.invitation`        | `notify.invitationProvision`        |
 | Email-change confirmation | `urls.emailChange`       | `notify.emailChangeProvision`       |
 | Email changed             | —                        | `notify.emailChanged`               |
+| Magic sign-in link        | `urls.magicLink`         | `notify.magicLinkProvision`         |
 | Password changed          | —                        | `notify.passwordChanged`            |
 
 ### Capabilities
 
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
-`emailPasswordManagement`, `registration`, `socialAuthentication` and `sessionManagement`.
-`sessionManagement` is off by default and requires `authentication`; see
+`emailPasswordManagement`, `registration`, `socialAuthentication`, `magicLinkLogin` and
+`sessionManagement`. `magicLinkLogin` and `sessionManagement` are off by default and require
+`authentication`; see [magic-link sign-in](magic-link.md) and
 [signed-in devices](signed-in-devices.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
@@ -79,6 +81,9 @@ await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword,
 const emailChangeValid = await kit.emailPasswordManagement.inspectEmailChange({ token })
 await kit.emailPasswordManagement.completeEmailChange({ token })
 
+await kit.magicLink.request({ email, clientKey, clientChallenge })
+const linkValid = await kit.magicLink.inspect({ token })
+const { account, credential } = await kit.magicLink.complete({ token, verifier }, guard)
 const signIns = await kit.authentication.sessions.list({ current })
 await kit.authentication.sessions.revoke({ current, id })
 await kit.authentication.sessions.revokeOthers({ current })
@@ -191,7 +196,8 @@ commit atomically with a password or email change. The context contains `operati
 operation.
 
 `onLifecycleEvent(event)` receives safe event identifiers after commit. Payloads contain IDs and an
-operation ID, not tokens, email addresses, passwords, or notification URLs. Treat this callback as
+operation ID, not tokens, email addresses, passwords, or notification URLs. Events started by an
+operator command also carry `source: 'operator'`; the property is absent otherwise. Treat this callback as
 best-effort post-commit delivery; use a transactional outbox if the consumer requires durable
 delivery.
 
