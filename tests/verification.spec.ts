@@ -1,6 +1,5 @@
 import { test, timeTravel } from '@japa/runner'
 import { DateTime } from 'luxon'
-import type { Database } from '@adonisjs/lucid/database'
 import { defineConfig } from '../src/account_kit.js'
 import {
   DeliveryError,
@@ -11,7 +10,7 @@ import {
 } from '../src/errors.js'
 import { lockRow, transaction } from '../src/db.js'
 import { generateToken, hashToken } from '../src/tokens.js'
-import type { AccountKitConfig, Trx } from '../src/types.js'
+import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import {
   accountKit,
@@ -22,25 +21,7 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
-
-function faultAfterCommit(db: Database, failure: Error): Database {
-  return Object.create(db, {
-    connection: {
-      value: (...args: Parameters<Database['connection']>) => {
-        const client = db.connection(...args)
-        const begin = client.transaction.bind(client) as (...rest: unknown[]) => Promise<Trx>
-        client.transaction = (async (...rest: unknown[]) => {
-          const trx = await begin(...rest)
-          trx.on('commit', () => {
-            throw failure
-          })
-          return trx
-        }) as typeof client.transaction
-        return client
-      },
-    },
-  })
-}
+import { faultAfterCommit } from './helpers/fault_after_commit.js'
 test.group('emailVerification.send', (group) => {
   const kit = useTestApp(group)
 
