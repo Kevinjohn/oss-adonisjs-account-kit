@@ -1,0 +1,59 @@
+name: Bug report
+description: Something in Account Kit does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report security problems privately through the security policy, not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: The smallest code, config or request sequence that shows the problem. A repository link is ideal.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: package-version
+    attributes:
+      label: Account Kit version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - PostgreSQL
+        - SQLite
+        - MySQL or other
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Integration mode
+      options:
+        - Application-owned routes (service API)
+        - Managed HTTP routes (adonisjs-account-kit/http)
+        - Not sure
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node.js version and the versions of @adonisjs/core, @adonisjs/lucid and @adonisjs/limiter.
+      placeholder: |
+        Node.js 24.x
+        @adonisjs/core 7.x
+        @adonisjs/lucid 22.x
+        @adonisjs/limiter 3.x
+    validations:
+      required: true
