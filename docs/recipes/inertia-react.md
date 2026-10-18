@@ -38,7 +38,13 @@ urls: {
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import vine from '@vinejs/vine'
-import { AccountKit, InvalidTokenError, ThrottledError } from 'adonisjs-account-kit'
+import {
+  AccountKit,
+  DeliveryError,
+  InvalidTokenError,
+  PostCommitError,
+  ThrottledError,
+} from 'adonisjs-account-kit'
 
 const emailValidator = vine.compile(vine.object({ email: vine.string().email() }))
 const passwordValidator = vine.compile(
@@ -50,7 +56,7 @@ export default class PasswordResetsController {
     return inertia.render('auth/forgot_password')
   }
 
-  async store({ request, response, session }: HttpContext) {
+  async store({ request, response, session, logger }: HttpContext) {
     const { email } = await request.validateUsing(emailValidator)
     const kit = await app.container.make(AccountKit)
     try {
@@ -60,19 +66,24 @@ export default class PasswordResetsController {
         session.flash('error', 'Too many attempts. Try again later.')
         return response.redirect().back()
       }
-      throw error
+      // Only known addresses get an email, so a failed send must not change the response.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset email failed')
     }
     session.flash('success', 'If the account exists, we have sent a reset link.')
     return response.redirect().back()
   }
 
-  async edit({ inertia, params }: HttpContext) {
+  async edit({ inertia, params, response }: HttpContext) {
+    // Keeps the token out of the Referer sent to other sites; same-origin still lets form errors
+    // redirect back to this page.
+    response.header('Referrer-Policy', 'same-origin')
     const kit = await app.container.make(AccountKit)
     const valid = await kit.passwordReset.inspect({ token: params.token })
     return inertia.render('auth/reset_password', { token: params.token, valid })
   }
 
-  async update({ request, response, session, params }: HttpContext) {
+  async update({ request, response, session, params, logger }: HttpContext) {
     const { password } = await request.validateUsing(passwordValidator)
     const kit = await app.container.make(AccountKit)
     try {
@@ -82,7 +93,9 @@ export default class PasswordResetsController {
         session.flash('error', 'This link is invalid or has expired.')
         return response.redirect('/forgot-password')
       }
-      throw error
+      // The password has already changed; only the follow-up email failed.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset notice failed')
     }
     session.flash('success', 'Your password has been reset. Please sign in.')
     return response.redirect('/login')
