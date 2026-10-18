@@ -83,7 +83,7 @@ export default class PasswordResetsController {
     return inertia.render('auth/reset_password', { token: params.token, valid })
   }
 
-  async update({ request, response, session, params }: HttpContext) {
+  async update({ request, response, session, params, logger }: HttpContext) {
     const { password } = await request.validateUsing(passwordValidator)
     const kit = await app.container.make(AccountKit)
     try {
@@ -93,7 +93,9 @@ export default class PasswordResetsController {
         session.flash('error', 'This link is invalid or has expired.')
         return response.redirect('/forgot-password')
       }
-      throw error
+      // The password has already changed; only the follow-up email failed.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset notice failed')
     }
     session.flash('success', 'Your password has been reset. Please sign in.')
     return response.redirect('/login')
