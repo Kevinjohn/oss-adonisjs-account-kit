@@ -163,6 +163,8 @@ Lucid adapter passes, so you can prove your adapter is correct. See
 ## Documentation
 
 - [Getting started](docs/getting-started.md)
+- [Inertia React example app](examples/inertia-react/README.md): the starter kit with signup,
+  email confirmation, forgot password and change password
 - [Recipes](docs/README.md#how-to-guides): tokens, sessions, Inertia, social sign-in, email
   templates, multi-tenant and more
 - [Reference](docs/README.md#reference): configuration, errors, endpoints, glossary

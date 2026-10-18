@@ -21,9 +21,9 @@ You need Node.js 24 and pnpm (for packing the package from this repository).
 cd examples/inertia-react
 npm run kit:pack
 npm install
-node ace codegen
 cp .env.example .env
 node ace generate:key
+node ace codegen
 node ace migration:run
 npm run dev
 ```
