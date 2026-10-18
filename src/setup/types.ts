@@ -9,6 +9,7 @@ export const featureNames = [
   'emailPasswordManagement',
   'invitations',
   'socialAuthentication',
+  'sessionManagement',
 ] as const
 
 export type SetupFeature = (typeof featureNames)[number]
