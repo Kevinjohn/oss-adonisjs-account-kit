@@ -28,10 +28,12 @@ export const magicLinkHandlers = {
     const { request, response } = context
     const input = await request.validateUsing(magicLinkRequestValidator)
     let clientChallenge = input.clientChallenge
+    let verifier: string | undefined
     if (options.guard.strategy === 'session') {
-      const verifier = randomBytes(32).toString('base64url')
+      // Checked before the request so a missing session refuses the call without issuing a link.
+      session(context)
+      verifier = randomBytes(32).toString('base64url')
       clientChallenge = createHash('sha256').update(verifier).digest('base64url')
-      session(context).put(verifierKey, verifier)
     }
     if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
     try {
@@ -45,6 +47,8 @@ export const magicLinkHandlers = {
         error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
       )
     }
+    // Stored only once the link is issued: a refused request must not orphan the live link.
+    if (verifier) session(context).put(verifierKey, verifier)
     return response.accepted({ message: 'If the account exists, a sign-in link will be sent.' })
   },
   'auth.magicLink.inspect': async ({ context, kit, options }) =>

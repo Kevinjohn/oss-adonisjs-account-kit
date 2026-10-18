@@ -133,6 +133,21 @@ test.group('managed magic-link routes', (group) => {
     assert.equal(done.status, 200)
   })
 
+  test('a refused request keeps the session verifier for the live link', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { call, linkToken, store } = mount('session', {
+      throttle: { requests: 1, duration: '1m' },
+    })
+    await call('POST /api/v1/auth/magic-link', { email: user.email })
+    const verifier = store.values.get('accountKit.magicLink.verifier')
+    const token = linkToken()
+    const refused = await call('POST /api/v1/auth/magic-link', { email: user.email })
+    assert.equal(refused.status, 429)
+    assert.equal(store.values.get('accountKit.magicLink.verifier'), verifier)
+    const done = await call('POST /api/v1/auth/magic-link/:token', {}, { token })
+    assert.equal(done.status, 200)
+  })
+
   test('session guards ignore a client-supplied challenge', async ({ assert }) => {
     const user = await insertUser(kit)
     const { call, store } = mount('session')
