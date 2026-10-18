@@ -10,6 +10,8 @@
 Password reset, email verification, invitations and account settings for AdonisJS 7, with the
 security details handled. You keep your user model, your routes and your policies.
 
+![A password reset in a new AdonisJS app: the doctor passes, a reset request returns the generic response, the dev server log prints the email, the link resets the password once and is rejected the second time](docs/assets/demo.svg)
+
 ## What you get
 
 - **Forgot password** with single-use, hashed, expiring links and the same response for known and
@@ -165,6 +167,8 @@ Lucid adapter passes, so you can prove your adapter is correct. See
 ## Documentation
 
 - [Getting started](docs/getting-started.md)
+- [Inertia React example app](examples/inertia-react/README.md): the starter kit with signup,
+  email confirmation, forgot password and change password
 - [Recipes](docs/README.md#how-to-guides): tokens, sessions, Inertia, social sign-in, email
   templates, multi-tenant and more
 - [Reference](docs/README.md#reference): configuration, errors, endpoints, glossary
