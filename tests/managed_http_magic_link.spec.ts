@@ -133,6 +133,20 @@ test.group('managed magic-link routes', (group) => {
     assert.equal(done.status, 200)
   })
 
+  test('session guards ignore a client-supplied challenge', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { call, store } = mount('session')
+    await call('POST /api/v1/auth/magic-link', {
+      email: user.email,
+      clientChallenge: clientChallengeFor('c'.repeat(64)),
+    })
+    const row = await kit.db.from('login_link_tokens').first()
+    assert.equal(
+      row.client_challenge,
+      clientChallengeFor(store.values.get('accountKit.magicLink.verifier') as string)
+    )
+  })
+
   test('session writes require Shield CSRF middleware', async ({ assert }) => {
     const { call } = mount('session')
     await assert.rejects(
