@@ -315,6 +315,14 @@ and secret length as described above; default lifetimes remain unchanged.
 6. Typecheck and run package-specific consumer tests before deployment. Verify that the limiter
    secret and namespace are consistent across application instances.
 
+Every credential change deletes rows from `account_sessions` when `authentication` is configured,
+whether or not `sessionManagement` is enabled. Run configure to generate `create_account_sessions`
+and apply it before deploying this version; until then, credential changes fail.
+`account-kit:doctor` reports the table as missing. Enabling `sessionManagement` with the session
+strategy signs every user out once. Custom guard adapters receive an extra `establish` argument
+(see [signed-in devices](signed-in-devices.md)), and exhaustive switches over `Capability`,
+`CredentialOperation` or `LifecycleEvent` need the new members.
+
 SQLite package writes require the new `account_transaction_lock` table. Apply its migration before
 deploying code that uses the new transaction path. The table is package-owned and independent of
 application user rows.

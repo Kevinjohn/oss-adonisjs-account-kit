@@ -22,6 +22,7 @@ security details handled. You keep your user model, your routes and your policie
 - **Login** with sessions or access tokens through your existing Auth guard. Every credential
   change signs out older sessions and tokens.
 - **Google and GitHub sign-in** through Ally (optional).
+- **Signed-in devices**: list sign-ins, sign out one, all others, or everywhere (optional).
 - **Emails** for AdonisJS Mail out of the box, or your own templates.
 - **Rate limits** on password reset, verification resend, invitations, login and account changes.
 - **Managed JSON routes** (optional), if you would rather not write the controllers.

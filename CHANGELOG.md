@@ -17,6 +17,11 @@ Initial public release.
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
   one-time PKCE handoff.
+- Optional sign-in management (`sessionManagement`, `kit.authentication.sessions`): list the
+  account's sessions or access tokens and revoke one, all others, or all, with managed routes under
+  `account/sessions`, `SessionNotFoundError`, setup support and pruning. Session sign-ins are
+  recorded in the new `account_sessions` table, which every credential change clears, so the table
+  is required whenever `authentication` is configured.
 - Built-in account emails for AdonisJS Mail, trusted action-link builders and a notification
   readiness check.
 - An optional managed JSON backend (`adonisjs-account-kit/http`) for apps that do not want to own
