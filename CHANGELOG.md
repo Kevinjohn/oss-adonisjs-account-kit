@@ -30,6 +30,9 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
+  services behind them) for shell-trusted invitations and reset links, with `--print` for
+  printed links and JSON output.
 - Tested on SQLite and PostgreSQL 16.
 
 <details>

@@ -26,7 +26,9 @@ describes the package defaults; each value in the tables can be changed in `conf
 - **Configure trusted proxies before deriving `clientKey` from the request IP.** Never accept a
   client key supplied by the caller or an unverified `X-Forwarded-For` value.
 - **Redact proof URLs.** Links carry bearer tokens in their path. Keep them out of access logs,
-  analytics, error reporting and logged `mail:queueing` payloads.
+  analytics, error reporting and logged `mail:queueing` payloads. Links printed by
+  `account-kit:invite --print` and `account-kit:reset-link --print` are equally sensitive; keep
+  them out of shell history files and shared terminals.
 - **Authorize at the HTTP boundary.** Invitation authorization callbacks are the package's only
   business authorization. Route protection, roles and tenancy belong to the application.
 - **Validate request shape and confirmations.** Account Kit enforces its password policy on new

@@ -25,7 +25,9 @@ security details handled. You keep your user model, your routes and your policie
 - **Emails** for AdonisJS Mail out of the box, or your own templates.
 - **Rate limits** on password reset, verification resend, invitations, login and account changes.
 - **Managed JSON routes** (optional), if you would rather not write the controllers.
-- **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`.
+- **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`, and the
+  [operator commands](docs/operations.md#operator-commands) `account-kit:invite` and
+  `account-kit:reset-link` for shell-trusted invitations and reset links.
 - Tested on **SQLite and PostgreSQL 16**.
 
 ## Install
