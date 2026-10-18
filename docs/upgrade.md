@@ -386,6 +386,12 @@ number of database entries examined.
 - **Post-commit failure means committed state.** `PostCommitError.committed` is `true`; do not treat
   it as a rollback or blindly repeat the mutation. Password reset request handlers must suppress both
   `DeliveryError` and `PostCommitError` and return the generic acknowledgement.
+- **Account export and deletion.** `dataExport` and `accountDeletion` are new and off by default.
+  `accountDeletion` needs the new optional `UsersAdapter.delete(id, trx)`; custom adapters add it
+  before enabling the capability, and the Lucid adapter has it. `NotificationCallbacks` gains
+  `accountDeleted`, so a complete custom `notify` object needs it to type-check; the built-in mail
+  and log notifications include it. Exhaustive switches over `Capability`, `LifecycleEvent` or
+  `SensitivePurpose` need the new members. See [account export and deletion](account-data.md).
 - **HTTP error contracts use package metadata.** Map `E_ACCOUNT_KIT_*` codes and status centrally.
   Missing and denied invitation-management requests use the same not-found code/body. Do not expose
   internal causes or callback errors.
