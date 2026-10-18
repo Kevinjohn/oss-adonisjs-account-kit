@@ -22,22 +22,35 @@ async function controllerSnippets(): Promise<{ document: string; code: string }[
   return snippets
 }
 
-test('reset request snippets give the generic response when delivery fails', async ({ assert }) => {
+// The shared idiom: return the normal response and log, because the change already committed.
+const committed =
+  /if \(!\(error instanceof DeliveryError \|\| error instanceof PostCommitError\)\) throw error/g
+
+test('password reset snippets give the normal response when a notification fails', async ({
+  assert,
+}) => {
   const all = await controllerSnippets()
-  const snippets = all.filter(({ code }) => code.includes('passwordReset.request('))
+  const snippets = all.filter(({ code }) => /passwordReset\.(request|reset)\(/.test(code))
   assert.isAbove(snippets.length, 0)
-  // Only known addresses get an email, so an unhandled DeliveryError reveals the account.
+  // A request emails known addresses only, so an escaping DeliveryError reveals the account. A
+  // reset has already changed the password, so an error would tell the user it failed.
   const leaking = snippets
-    .filter(({ code }) => !code.includes('DeliveryError') || !code.includes('PostCommitError'))
+    .filter(({ code }) => {
+      const calls = code.match(/passwordReset\.(request|reset)\(/g) ?? []
+      return (code.match(committed) ?? []).length < calls.length
+    })
     .map(({ document }) => document)
   assert.deepEqual(leaking, [])
 })
 
 test('proof page snippets keep the token out of the Referer', async ({ assert }) => {
   const all = await controllerSnippets()
-  const snippets = all.filter(({ code }) => code.includes('.render('))
-  const leaking = snippets
-    .filter(({ code }) => /\.inspect\(\{ token/.test(code) && !code.includes('Referrer-Policy'))
+  const pages = all.filter(
+    ({ code }) => code.includes('.render(') && /\.inspect\(\{ token/.test(code)
+  )
+  assert.isAbove(pages.length, 0)
+  const leaking = pages
+    .filter(({ code }) => !code.includes('Referrer-Policy'))
     .map(({ document }) => document)
   assert.deepEqual(leaking, [])
 })

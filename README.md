@@ -70,9 +70,15 @@ export default class PasswordResetsController {
     return response.accepted({ message: 'If the account exists, instructions will be sent.' })
   }
 
-  async complete({ request, params }: HttpContext) {
+  async complete({ request, params, logger }: HttpContext) {
     const kit = await app.container.make(AccountKit)
-    await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
+    try {
+      await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
+    } catch (error) {
+      // The password has already changed; only the follow-up email failed.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset notice failed')
+    }
     return { message: 'Password reset.' }
   }
 }
