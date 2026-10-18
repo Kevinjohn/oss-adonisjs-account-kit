@@ -87,6 +87,11 @@ export const capabilityRegistry: Record<Capability, CapabilityRequirements> = {
     adapterMethods: ['findByEmail', 'findById'],
     requiredHooks: ['urls.magicLink', 'notify.magicLinkProvision'],
   },
+  sessionManagement: {
+    defaultOn: false,
+    adapterMethods: ['findById'],
+    requiredHooks: [],
+  },
 }
 
 export const capabilities = Object.keys(capabilityRegistry) as Capability[]

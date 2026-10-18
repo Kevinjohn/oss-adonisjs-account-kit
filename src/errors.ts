@@ -40,6 +40,10 @@ export class InvitationNotFoundError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND'
   static status = 404
 }
+export class SessionNotFoundError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_SESSION_NOT_FOUND'
+  static status = 404
+}
 export class IdentityNotConfirmedError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
   static status = 403

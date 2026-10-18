@@ -53,7 +53,7 @@ test.group('expired-token pruning', (group) => {
       messages.push(message)
     }
     const suffix =
-      'recovery=0, invitations=0, emailVerifications=0, socialTransactions=1, socialSensitiveProofs=1, socialHandoffCodes=1, loginLinks=0'
+      'recovery=0, invitations=0, emailVerifications=0, socialTransactions=1, socialSensitiveProofs=1, socialHandoffCodes=1, loginLinks=0, sessions=0'
     await kernel.exec('account-kit:prune', ['--dry-run'])
     assert.include(messages, `Expired: ${suffix}`)
     for (const table of [
@@ -124,6 +124,7 @@ test.group('expired-token pruning', (group) => {
       socialSensitiveProofs: 0,
       socialHandoffCodes: 0,
       loginLinks: 1,
+      sessions: 0,
     }
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, dryRun: true }), expected)
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 2)
@@ -136,6 +137,7 @@ test.group('expired-token pruning', (group) => {
       socialSensitiveProofs: 0,
       socialHandoffCodes: 0,
       loginLinks: 0,
+      sessions: 0,
     })
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
@@ -219,6 +221,7 @@ test.group('expired-token pruning', (group) => {
       socialSensitiveProofs: 0,
       socialHandoffCodes: 0,
       loginLinks: 0,
+      sessions: 0,
     })
     assert.deepEqual(await pruneExpired(kit.db, { batchSize: 1, maxBatches: 1 }), {
       recovery: 0,
@@ -228,6 +231,7 @@ test.group('expired-token pruning', (group) => {
       socialSensitiveProofs: 0,
       socialHandoffCodes: 0,
       loginLinks: 0,
+      sessions: 0,
     })
   })
 

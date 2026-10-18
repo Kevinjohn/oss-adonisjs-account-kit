@@ -10,6 +10,7 @@ type TokenTable =
   | 'social_sensitive_proofs'
   | 'social_handoff_codes'
   | 'login_link_tokens'
+  | 'account_sessions'
 
 export interface PruneInput {
   batchSize?: number
@@ -25,6 +26,7 @@ export interface PruneCounts {
   socialSensitiveProofs: number
   socialHandoffCodes: number
   loginLinks: number
+  sessions: number
 }
 
 const TABLES: Array<[keyof PruneCounts, TokenTable]> = [
@@ -35,6 +37,7 @@ const TABLES: Array<[keyof PruneCounts, TokenTable]> = [
   ['socialSensitiveProofs', 'social_sensitive_proofs'],
   ['socialHandoffCodes', 'social_handoff_codes'],
   ['loginLinks', 'login_link_tokens'],
+  ['sessions', 'account_sessions'],
 ]
 
 /** Remove expired rows in small batches, rechecking expiry when each selected batch is deleted. */
@@ -54,6 +57,7 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
     socialSensitiveProofs: 0,
     socialHandoffCodes: 0,
     loginLinks: 0,
+    sessions: 0,
   }
   const cursors = new Map<TokenTable, number>()
   const done = new Set<TokenTable>()

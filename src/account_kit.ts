@@ -10,6 +10,7 @@ import {
 } from './password_reset.js'
 import { authenticationService } from './authentication.js'
 import { completeMagicLink, inspectMagicLink, requestMagicLink } from './magic_link.js'
+import { sessionManagementService } from './session_management.js'
 import { register } from './registration.js'
 import { completeVerification, inspectVerification, sendVerification } from './verification.js'
 import {
@@ -128,7 +129,11 @@ export class AccountKit {
   }
 
   get authentication() {
-    return authenticationService(this.deps)
+    return {
+      ...authenticationService(this.deps),
+      /** Where the user is signed in; requires `sessionManagement`. */
+      sessions: sessionManagementService(this.deps),
+    }
   }
 
   readonly registration = {

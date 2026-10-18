@@ -6,6 +6,7 @@ import { capabilities, capabilityRegistry, defaultCapabilities } from './capabil
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
 import { isSocialProviderName } from './social_providers.js'
+import { resolveSessionManagement } from './config_session_management.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -174,6 +175,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error('account_kit: tokenSecretLength must be an integer from 16 to 64')
   const passwordPolicy = resolvePasswordPolicy(config)
   const authentication = resolveAuthentication(config)
+  if (enabled.includes('sessionManagement') && !authentication)
+    throw new Error('account_kit: sessionManagement requires authentication')
+  const sessionManagement = resolveSessionManagement(config)
   if (
     config.users.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
@@ -202,6 +206,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     tokenSecretLength,
     authentication,
     passwordPolicy,
+    sessionManagement,
     usersTable,
     limiterNamespace,
     authorize: {

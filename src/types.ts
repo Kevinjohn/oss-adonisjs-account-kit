@@ -74,6 +74,7 @@ export type Capability =
   | 'registration'
   | 'socialAuthentication'
   | 'magicLinkLogin'
+  | 'sessionManagement'
 export type CredentialOperation =
   | 'password_reset'
   | 'password_change'
@@ -81,6 +82,7 @@ export type CredentialOperation =
   | 'access_restriction'
   | 'registration_claim'
   | 'social_unlink'
+  | 'sign_out_everywhere'
 
 export interface CredentialChangeContext {
   operation: CredentialOperation
@@ -99,11 +101,13 @@ export type LifecycleEvent =
         | 'email_change.requested'
         | 'email_change.completed'
         | 'magic_link.requested'
+        | 'sessions.revoked_all'
       userId: UserId
       operationId: string
       /** Present only when an operator command, not an account holder, started the operation. */
       source?: 'operator'
     }
+  | { type: 'sessions.revoked'; userId: UserId; operationId: string; count: number }
   | {
       type: 'invitation.sent' | 'invitation.resent' | 'invitation.revoked'
       invitationId: number
@@ -190,6 +194,12 @@ export interface AccountKitConfig {
   }
   passwordPolicy?: Partial<PasswordPolicy>
   socialAuthentication?: SocialAuthenticationConfig
+  sessionManagement?: SessionManagementConfig
+}
+
+export interface SessionManagementConfig {
+  /** A sign-in unused for this long is signed out. Default `30d`; must exceed five minutes. */
+  idleExpiry?: string | number
 }
 
 export interface PasswordPolicy {
@@ -305,6 +315,8 @@ export interface PasswordLoginInput {
   password: string
   /** Stable, trusted client identity derived after proxy configuration. */
   clientKey: string
+  /** Untrusted display text for the sign-in list, such as a User-Agent; at most 255 characters. */
+  sessionLabel?: string
 }
 
 export interface CurrentAccount {
@@ -321,13 +333,26 @@ export interface CurrentAccountInput {
   revision?: string | null
   /** Trusted identifier from the authenticated access-token guard. Mandatory for token guards. */
   tokenId?: UserId
+  /** Session sign-in handle the guard stored at login. Mandatory for session guards with `sessionManagement`. */
+  sessionHandle?: string
+}
+
+/** One place the user is signed in: a session registry row or an access token. */
+export interface SignIn {
+  id: number
+  label: string | null
+  createdAt: string
+  lastSeenAt: string | null
+  expiresAt: string | null
+  current: boolean
 }
 
 export type AuthenticationGuard<Credential> =
   | {
       strategy: 'session'
       name: string
-      establish(userId: UserId, revision: string | null): Promise<Credential>
+      /** `handle` is set when `sessionManagement` is enabled; store it in the session. */
+      establish(userId: UserId, revision: string | null, handle?: string): Promise<Credential>
       terminate(credential?: Credential): Promise<void>
     }
   | {
@@ -336,7 +361,8 @@ export type AuthenticationGuard<Credential> =
       establish(
         userId: UserId,
         abilities: string[],
-        expiresIn: string | number | null
+        expiresIn: string | number | null,
+        options?: { name?: string }
       ): Promise<Credential>
       terminate(credential?: Credential): Promise<void>
     }
@@ -357,6 +383,7 @@ export interface ResolvedConfig extends Omit<
   | 'minRequestMs'
   | 'authentication'
   | 'passwordPolicy'
+  | 'sessionManagement'
 > {
   enabled: Capability[]
   authorize: AuthorizationCallbacks
@@ -373,6 +400,7 @@ export interface ResolvedConfig extends Omit<
   tokenSecretLength: number
   authentication?: ResolvedAuthenticationConfig
   passwordPolicy: PasswordPolicy
+  sessionManagement: Required<SessionManagementConfig>
 }
 
 export interface RegistrationInput {
