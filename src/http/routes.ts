@@ -6,6 +6,8 @@ export type ManagedCapability =
   | 'emailPasswordManagement'
   | 'invitations'
   | 'socialAuthentication'
+  | 'dataExport'
+  | 'accountDeletion'
 
 export type ManagedEndpointName =
   | 'auth.signup'
@@ -39,6 +41,8 @@ export type ManagedEndpointName =
   | 'account.socialProof.password'
   | 'account.socialIdentities.list'
   | 'account.socialIdentities.unlink'
+  | 'account.data.export'
+  | 'account.delete'
 
 export interface ManagedRoute {
   name: ManagedEndpointName
@@ -309,6 +313,20 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'account/social-identities/:id',
     access: 'limited',
     proof: true,
+  },
+  {
+    name: 'account.data.export',
+    capability: 'dataExport',
+    method: 'POST',
+    suffix: 'account/export',
+    access: 'limited',
+  },
+  {
+    name: 'account.delete',
+    capability: 'accountDeletion',
+    method: 'DELETE',
+    suffix: 'account',
+    access: 'limited',
   },
 ]
 

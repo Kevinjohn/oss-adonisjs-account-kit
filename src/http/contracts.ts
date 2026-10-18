@@ -1,4 +1,4 @@
-import type { CurrentAccount, InvitationPage } from '../types.js'
+import type { AccountExport, CurrentAccount, InvitationPage } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { SensitivePurpose, SocialProviderName } from '../types.js'
 
@@ -66,6 +66,8 @@ export interface ManagedRequestBodies {
   }
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': { proof: string }
+  'account.data.export': { currentPassword?: string; recentProof?: string }
+  'account.delete': { currentPassword?: string; recentProof?: string }
 }
 
 export type ManagedRequestBody<Name extends ManagedEndpointName> = ManagedRequestBodies[Name]
@@ -105,6 +107,8 @@ export interface ManagedQueries {
   'account.socialProof.password': undefined
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': undefined
+  'account.data.export': undefined
+  'account.delete': undefined
 }
 
 export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name]
@@ -169,6 +173,8 @@ export interface ManagedSuccessBodies {
     }>
   }
   'account.socialIdentities.unlink': undefined | ManagedCommittedSuccess
+  'account.data.export': AccountExport
+  'account.delete': undefined | ManagedCommittedSuccess
 }
 
 export type ManagedSuccessBody<Name extends ManagedEndpointName> = ManagedSuccessBodies[Name]

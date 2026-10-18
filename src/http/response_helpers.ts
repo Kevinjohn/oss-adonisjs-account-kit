@@ -74,7 +74,12 @@ export function currentAccount(user: AccountUser): CurrentAccount {
 export function recoveryDiagnostic(
   context: HttpContext,
   operation: ManagedEndpointName,
-  outcome: 'delivery_failed' | 'followup_failed' | 'authentication_failed' | 'representation_failed'
+  outcome:
+    | 'delivery_failed'
+    | 'followup_failed'
+    | 'authentication_failed'
+    | 'representation_failed'
+    | 'session_end_failed'
 ): void {
   context.logger?.warn({ operation, outcome }, 'Managed account operation needs reconciliation')
 }
