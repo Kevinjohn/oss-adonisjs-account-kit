@@ -38,9 +38,13 @@ node ace account-kit:doctor
 ```
 
 `node ace add` writes `config/account_kit.ts`, generates the migrations and registers the provider
-and commands. The doctor checks the result:
+and commands. The doctor checks the config, limiter, `APP_URL` and database:
 
 ![account-kit:doctor output with every check passing](docs/assets/doctor.svg)
+
+The generated `notify` callbacks throw until you choose how to send email, and the doctor cannot
+run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
+sets them up.
 
 Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.
@@ -51,18 +55,30 @@ least 32 characters and an `APP_URL`.
 // app/controllers/password_resets_controller.ts
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
 
 export default class PasswordResetsController {
-  async request({ request, response }: HttpContext) {
+  async request({ request, response, logger }: HttpContext) {
     const kit = await app.container.make(AccountKit)
-    await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
+    try {
+      await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
+    } catch (error) {
+      // Only known addresses get an email, so a failed send must not change the response.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset email failed')
+    }
     return response.accepted({ message: 'If the account exists, instructions will be sent.' })
   }
 
-  async complete({ request, params }: HttpContext) {
+  async complete({ request, params, logger }: HttpContext) {
     const kit = await app.container.make(AccountKit)
-    await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
+    try {
+      await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
+    } catch (error) {
+      // The password has already changed; only the follow-up email failed.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset notice failed')
+    }
     return { message: 'Password reset.' }
   }
 }
