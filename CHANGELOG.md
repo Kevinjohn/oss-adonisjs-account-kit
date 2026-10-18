@@ -22,7 +22,12 @@ Initial public release.
 - An optional managed JSON backend (`adonisjs-account-kit/http`) for apps that do not want to own
   the routes.
 - A Lucid users adapter and a reusable adapter contract suite for custom adapters.
-- Ace commands: `account-kit:setup`, `account-kit:prune` and `account-kit:retirement-impact`.
+- Ace commands: `account-kit:setup`, `account-kit:prune`, `account-kit:retirement-impact` and
+  `account-kit:doctor`, which checks config, limiter, `APP_URL` and database tables.
+- `createLogNotifications` prints account emails and their links to the logger during development.
+- `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
+  returns the proof token from the latest link.
+- `adonisjs-account-kit/ally` exports the Ally social provider adapter.
 - Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
   services behind them) for shell-trusted invitations and reset links, with `--print` for
   printed links and JSON output.
