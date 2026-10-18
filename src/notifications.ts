@@ -23,7 +23,11 @@ export interface AccountMailMessage {
 }
 
 export interface MailNotificationOptions {
-  mail: AccountMailService
+  /**
+   * Defaults to the AdonisJS Mail service, resolved when a message is sent. Config files load
+   * before that service exists, so pass a function rather than the service itself.
+   */
+  mail?: AccountMailService | (() => AccountMailService)
   from: string
   brandName: string
   /** Receives escaped body markup; return a complete HTML document or wrapper. */
@@ -157,6 +161,13 @@ export class EmailChangeProvision {
   ) {}
 }
 
+async function resolveMail(option: MailNotificationOptions['mail']): Promise<AccountMailService> {
+  if (typeof option === 'function') return option()
+  if (option) return option
+  const { default: mail } = await import('@adonisjs/mail/services/main')
+  return mail
+}
+
 export function createMailNotifications(options: MailNotificationOptions): NotificationCallbacks {
   if (
     !options.from?.trim() ||
@@ -176,7 +187,8 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
       { brandName: options.brandName, actionUrl, providerName },
       options.emailLayout
     )
-    await options.mail.sendLater((message) => {
+    const mail = await resolveMail(options.mail)
+    await mail.sendLater((message) => {
       message
         .to(recipient)
         .from(options.from)
