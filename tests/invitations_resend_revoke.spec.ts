@@ -25,6 +25,8 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { lockNotAvailableCode, locksRows } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('invitations.resend and revoke', (group) => {
   const kit = useTestApp(group)
@@ -106,7 +108,7 @@ test.group('invitations.resend and revoke', (group) => {
     await kit.db
       .from('account_invitations')
       .where('id', invitation.id)
-      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     const renewed = await account.invitations.resend({
       actorId: actor.id,
       invitationId: invitation.id,
@@ -125,6 +127,23 @@ test.group('invitations.resend and revoke', (group) => {
       () => account.invitations.resend({ actorId: actor.id, invitationId: 99999 }),
       InvitationNotFoundError
     )
+  })
+
+  test('send and resend return the row they wrote when other invitations exist', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    await issue(account, recorder, actor.id, 'earlier@example.test', 'member')
+    const { invitation } = await issue(account, recorder, actor.id, 'later@example.test')
+    assert.equal(invitation.email, 'later@example.test')
+    assert.equal(invitation.role, 'admin')
+    const renewed = await account.invitations.resend({
+      actorId: actor.id,
+      invitationId: invitation.id,
+    })
+    assert.equal(renewed.id, invitation.id)
+    assert.equal(renewed.email, 'later@example.test')
   })
 
   test('resend requires exact manage and current stored-role grant before any rotation', async ({
@@ -360,7 +379,7 @@ test.group('invitations.resend and revoke', (group) => {
     )
   })
 
-  if (process.env.DB_CLIENT !== 'pg') {
+  if (!locksRows) {
     test('database-backed management policy reads use another pooled SQLite connection', async ({
       assert,
     }) => {
@@ -502,9 +521,12 @@ test.group('invitations.resend and revoke', (group) => {
     })
     const onQuery = (query: { sql: string }) => {
       if (
-        (process.env.DB_CLIENT === 'pg' && /delete from account_invitations/i.test(query.sql)) ||
-        (process.env.DB_CLIENT !== 'pg' &&
-          /update account_transaction_lock set version = version/i.test(query.sql))
+        // PostgreSQL consumes with DELETE ... RETURNING; MySQL first locks the row to consume.
+        (locksRows &&
+          /delete from account_invitations|from `account_invitations` .* for update/i.test(
+            query.sql
+          )) ||
+        (!locksRows && /update account_transaction_lock set version = version/i.test(query.sql))
       )
         attempted()
     }
@@ -527,7 +549,7 @@ test.group('invitations.resend and revoke', (group) => {
     }
   }).timeout(6000)
 
-  if (process.env.DB_CLIENT === 'pg') {
+  if (locksRows) {
     test('holds a PostgreSQL row lock through the permission callback', async ({ assert }) => {
       const actor = await createActor()
       let manageReady!: () => void
@@ -570,7 +592,7 @@ test.group('invitations.resend and revoke', (group) => {
         } catch (error) {
           conflict = error
         }
-        assert.equal((conflict as { code?: string } | undefined)?.code, '55P03')
+        assert.equal((conflict as { code?: string } | undefined)?.code, lockNotAvailableCode)
       } finally {
         releaseManage()
         await resending

@@ -6,6 +6,7 @@ import type { UsersAdapter } from '../src/types.js'
 import { bootTestApp } from './helpers/app.js'
 import { accountKit, makeConfig, makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
+import { dbTime } from './helpers/db_time.js'
 test('account workflows support string user IDs with matching application-owned foreign keys', async ({
   assert,
 }) => {
@@ -23,7 +24,7 @@ test('account workflows support string user IDs with matching application-owned 
           password: attrs.password === null ? null : await kit.hash.make(attrs.password),
           unverified_email: attrs.unverifiedEmail,
           email_verified_at: null,
-          created_at: DateTime.utc().toISO(),
+          created_at: dbTime(kit, DateTime.utc()),
         })
         return (await base.findById(id, trx))!
       },

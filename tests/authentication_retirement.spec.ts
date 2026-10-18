@@ -4,6 +4,7 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { AccountKit } from '../src/account_kit.js'
 import RetirementImpact from '../commands/retirement_impact.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('authentication contract', (group) => {
   const kit = useTestApp(group)
@@ -49,7 +50,7 @@ test.group('authentication contract', (group) => {
     const google = await insertUser(kit, { email: 'google@example.test', password: null })
     const both = await insertUser(kit, { email: 'both@example.test', password: null })
     const pending = await insertUser(kit, { email: 'pending@example.test', password: null })
-    const now = new Date().toISOString()
+    const now = dbTime(kit)
     await kit.db.table('social_identities').insert([
       {
         user_id: google.id,

@@ -1,5 +1,7 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
+import { locksRows } from './helpers/dialect.js'
+import { dbTime } from './helpers/db_time.js'
 test.group('test application', (group) => {
   const testApp = useTestApp(group)
 
@@ -7,7 +9,7 @@ test.group('test application', (group) => {
     await testApp.db.table('users').insert({
       email: 'person@example.test',
       password: null,
-      created_at: new Date().toISOString(),
+      created_at: dbTime(testApp),
     })
 
     const user = await testApp.db.from('users').where('email', 'person@example.test').first()
@@ -20,7 +22,7 @@ test.group('test application', (group) => {
   })
 
   test('starts independent pooled SQLite connections in WAL mode', async ({ assert }) => {
-    if (process.env.DB_CLIENT === 'pg') return
+    if (locksRows) return
     const client = testApp.db.connection().getWriteClient().client
     const first = (await client.acquireConnection()) as {
       pragma: (statement: string, options: { simple: true }) => string

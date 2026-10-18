@@ -6,6 +6,7 @@ import LucidUser from './fixtures/lucid_user.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { EmailAlreadyRegisteredError, InvalidTokenError, PostCommitError } from '../src/errors.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('identity creation contract', (group) => {
   const kit = useTestApp(group)
@@ -308,7 +309,7 @@ test.group('identity creation contract', (group) => {
       .from('email_verification_tokens')
       .where('tokenable_id', user.id)
       .update({
-        created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
+        created_at: dbTime(kit, DateTime.utc().minus({ minutes: 2 })),
       })
     assert.equal(await account.emailVerification.send({ userId: user.id }), 'sent')
     const activationProof = tokenFrom(recorder.calls.at(-1)!.args[1])

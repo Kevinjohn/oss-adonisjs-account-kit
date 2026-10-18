@@ -23,6 +23,7 @@ import {
   tokenFrom,
 } from './helpers/fakes.js'
 import { faultAfterCommit } from './helpers/fault_after_commit.js'
+import { dbTime } from './helpers/db_time.js'
 
 test.group('invitations.send', (group) => {
   const kit = useTestApp(group)
@@ -185,7 +186,7 @@ test.group('invitations.send', (group) => {
     await kit.db
       .from('account_invitations')
       .where('id', first.id)
-      .update({ expires_at: DateTime.utc().minus({ seconds: 1 }).toISO() })
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     const replacement = await account.invitations.send({
       actorId: actor.id,
       email: 'new@example.test',
