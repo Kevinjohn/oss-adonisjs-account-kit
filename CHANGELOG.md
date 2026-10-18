@@ -1,8 +1,35 @@
 # Changelog
 
-This project has no published releases yet. The current candidate remains version `0.0.0`.
-
 ## Unreleased
+
+Initial public release.
+
+### Added
+
+- Password reset with single-use, expiring, hashed proof tokens and a generic response for unknown
+  addresses.
+- Email verification and self-service registration with open, closed or application-controlled
+  admission and trusted mapping of extra profile fields.
+- Invitations with role, authorization callbacks, resend, revoke, cursor-paged listing and
+  separate actor and recipient rate limits.
+- Password change, verified email change and profile updates behind the current password.
+- Session and opaque-token login through an existing AdonisJS Auth guard, with failed-attempt
+  limits and credential revocation on every credential change.
+- Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
+  one-time PKCE handoff.
+- Built-in account emails for AdonisJS Mail, trusted action-link builders and a notification
+  readiness check.
+- An optional managed JSON backend (`adonisjs-account-kit/http`) for apps that do not want to own
+  the routes.
+- A Lucid users adapter and a reusable adapter contract suite for custom adapters.
+- Ace commands: `account-kit:setup`, `account-kit:prune` and `account-kit:retirement-impact`.
+- Tested on SQLite and PostgreSQL 16.
+
+<details>
+<summary>Pre-release candidate history</summary>
+
+These entries record changes between unpublished candidates. They matter only to installations
+that ran a candidate build.
 
 ### Added
 
@@ -166,4 +193,6 @@ This project has no published releases yet. The current candidate remains versio
   management; registration and invitations require explicit opt-in. When supplying a subset, configure only the
   callbacks required by those capabilities; calling a disabled operation fails explicitly.
 - Review the [upgrade guide](docs/upgrade.md) before applying these contracts to an existing
-  installation. Current evidence is tracked in [verification](docs/verification.md).
+  installation. Current evidence is tracked in [verification](docs/maintainers/verification.md).
+
+</details>
