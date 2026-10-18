@@ -10,7 +10,7 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 /** Tracked root and docs/ Markdown files, without the changelog. */
 function trackedDocuments(): string[] {
   // Only tracked documents: ignored local notes (for example PLAN*.md) are not published.
-  const listed = spawnSync('git', ['ls-files', '-z', '--', ':(glob)*.md', ':(glob)docs/*.md'], {
+  const listed = spawnSync('git', ['ls-files', '-z', '--', ':(glob)*.md', ':(glob)docs/**/*.md'], {
     cwd: repoRoot,
     encoding: 'utf8',
   })
@@ -21,7 +21,7 @@ function trackedDocuments(): string[] {
 
 test('every spec file cited by the documentation exists', async ({ assert }) => {
   const documents = trackedDocuments()
-  assert.include(documents, 'docs/release-assessment.md')
+  assert.include(documents, 'docs/maintainers/release-assessment.md')
   const missing: string[] = []
   for (const document of documents) {
     const text = await readFile(join(repoRoot, document), 'utf8')
