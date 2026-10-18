@@ -1,5 +1,5 @@
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { forgotPasswordValidator, resetPasswordValidator } from '#validators/account'
 
@@ -8,10 +8,16 @@ export default class PasswordResetsController {
     return inertia.render('auth/forgot_password', {})
   }
 
-  async store({ request, response, session }: HttpContext) {
+  async store({ request, response, session, logger }: HttpContext) {
     const { email } = await request.validateUsing(forgotPasswordValidator)
     const kit = await app.container.make(AccountKit)
-    await kit.passwordReset.request({ email, clientKey: request.ip() })
+    try {
+      await kit.passwordReset.request({ email, clientKey: request.ip() })
+    } catch (error) {
+      // Only known addresses get an email, so a delivery failure must not change the response.
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ err: error }, 'password reset email failed')
+    }
     // The same message for known and unknown addresses.
     session.flash('success', 'If an account exists for that address, we have sent a reset link.')
     response.redirect().back()
@@ -22,7 +28,9 @@ export default class PasswordResetsController {
    * a new password.
    */
   async edit({ inertia, params, response }: HttpContext) {
-    response.header('Referrer-Policy', 'no-referrer')
+    // Keeps the token out of the Referer sent to other sites, while form errors can still
+    // redirect back to this page.
+    response.header('Referrer-Policy', 'same-origin')
     const kit = await app.container.make(AccountKit)
     const valid = await kit.passwordReset.inspect({ token: params.token })
     return inertia.render('auth/reset_password', { token: params.token, valid })
