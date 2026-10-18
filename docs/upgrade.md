@@ -412,7 +412,7 @@ cleanup is an explicit Ace command, not an automatic scheduler. See
 
 The full route and validation example is in [`examples/api`](../examples/api/README.md). Current
 tested versions and remaining verification are in [compatibility](compatibility.md) and
-[verification](maintainers/verification.md).
+[verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md).
 
 ## Files delta
 

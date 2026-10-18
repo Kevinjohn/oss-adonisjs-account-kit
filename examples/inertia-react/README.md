@@ -40,12 +40,12 @@ the `adonisjs-account-kit` dependency with the published version and skip that s
 - A database session store (`node ace make:session-table`, `SESSION_DRIVER=database`). Session
   login needs a server-side store so that signing out cannot be undone by replaying an old cookie.
 - `config/account_kit.ts`: session authentication through the existing `web` guard, open
-  registration that keeps the starter's full name field, links that point at the pages above, and
-  `createLogNotifications` for email.
+  registration that keeps the starter's full name field, `createActionUrls` for links to the pages
+  above, and `createLogNotifications` for email.
 - `app/services/session_guard.ts`: lets Account Kit sign users in through the `web` guard and
   stores the credential revision in the session.
-- `app/middleware/account_session_middleware.ts`: rejects sessions that started before the latest
-  password change, so changing a password signs out every other device.
+- `app/middleware/silent_auth_middleware.ts`: signs out sessions that started before the latest
+  password change, on every request, so changing a password signs out every other device.
 - `app/exceptions/handler.ts`: turns Account Kit errors into flash messages and sends signed-out
   sessions to the login page.
 - New pages under `inertia/pages/auth` and `inertia/pages/settings`, and a verification banner on
@@ -57,7 +57,7 @@ the `adonisjs-account-kit` dependency with the published version and skip that s
   notifications refuse to start in production.
 - Configure trusted proxies so `request.ip()` is the client address.
 - Keep the reset and verification page URLs out of access logs and analytics. The pages already
-  send `Referrer-Policy: no-referrer`.
+  send `Referrer-Policy: same-origin`, so the token never reaches another site in a Referer.
 
 See [Inertia and React](../../docs/recipes/inertia-react.md) and
 [browser login with sessions](../../docs/recipes/sessions.md) for the reasoning behind each step.
