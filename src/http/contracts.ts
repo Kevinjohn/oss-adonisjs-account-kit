@@ -1,6 +1,6 @@
 import type { CurrentAccount, InvitationPage } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { SensitivePurpose, SocialProviderName } from '../types.js'
+import type { SensitivePurpose, SignIn, SocialProviderName } from '../types.js'
 
 /** Default request bodies; `:token` and `:id` values are URL path parameters. */
 export interface ManagedRequestBodies {
@@ -66,6 +66,10 @@ export interface ManagedRequestBodies {
   }
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': { proof: string }
+  'account.sessions.list': undefined
+  'account.sessions.revoke': undefined
+  'account.sessions.revokeOthers': undefined
+  'account.sessions.revokeAll': undefined
 }
 
 export type ManagedRequestBody<Name extends ManagedEndpointName> = ManagedRequestBodies[Name]
@@ -105,6 +109,10 @@ export interface ManagedQueries {
   'account.socialProof.password': undefined
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': undefined
+  'account.sessions.list': undefined
+  'account.sessions.revoke': undefined
+  'account.sessions.revokeOthers': undefined
+  'account.sessions.revokeAll': undefined
 }
 
 export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name]
@@ -169,6 +177,10 @@ export interface ManagedSuccessBodies {
     }>
   }
   'account.socialIdentities.unlink': undefined | ManagedCommittedSuccess
+  'account.sessions.list': { sessions: SignIn[] }
+  'account.sessions.revoke': undefined | ManagedCommittedSuccess
+  'account.sessions.revokeOthers': { count: number } | ManagedCommittedSuccess
+  'account.sessions.revokeAll': undefined | ManagedCommittedSuccess
 }
 
 export type ManagedSuccessBody<Name extends ManagedEndpointName> = ManagedSuccessBodies[Name]
