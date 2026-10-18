@@ -140,7 +140,10 @@
       "./commands/main.ts",
       "./commands/prune.ts",
       "./commands/setup.ts",
-      "./commands/retirement_impact.ts"
+      "./commands/retirement_impact.ts",
+      "./commands/invite.ts",
+      "./commands/reset_link.ts",
+      "./commands/operator_output.ts"
     ],
     "outDir": "./build",
     "clean": true,
