@@ -21,6 +21,8 @@ import {
 import { makeThrottler, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { socialIdentityService } from './social_identity.js'
+import { exportAccountData } from './account_export.js'
+import { deleteAccount } from './account_deletion.js'
 import {
   acceptInvitation,
   inspectInvitation,
@@ -30,6 +32,8 @@ import {
   sendInvitation,
 } from './invitations.js'
 import type {
+  AccountDataInput,
+  AccountExport,
   AccountUser,
   ChangePasswordInput,
   CompleteEmailChangeInput,
@@ -172,5 +176,11 @@ export class AccountKit {
       this.enabled('emailPasswordManagement', () => inspectEmailChange(this.deps, input)),
     completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
       this.enabled('emailPasswordManagement', () => completeEmailChange(this.deps, input)),
+  }
+  readonly accountData = {
+    export: (input: AccountDataInput): Promise<AccountExport> =>
+      this.enabled('dataExport', () => exportAccountData(this.deps, input)),
+    delete: (input: AccountDataInput): Promise<void> =>
+      this.enabled('accountDeletion', () => deleteAccount(this.deps, input)),
   }
 }

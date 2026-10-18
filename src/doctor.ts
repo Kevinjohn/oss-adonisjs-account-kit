@@ -23,6 +23,8 @@ const capabilityTables: Record<Capability, string[]> = {
   registration: ['email_verification_tokens'],
   emailPasswordManagement: ['email_verification_tokens'],
   invitations: ['account_invitations'],
+  dataExport: [],
+  accountDeletion: [],
   socialAuthentication: [
     'social_identities',
     'social_transactions',

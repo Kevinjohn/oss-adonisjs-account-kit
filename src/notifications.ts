@@ -87,6 +87,11 @@ const templates: Record<
     heading: 'A social sign-in method was removed',
     body: '{provider} sign-in was removed from your account. If this was unexpected, contact support immediately.',
   },
+  accountDeleted: {
+    subject: 'Your account was deleted',
+    heading: 'Your account was deleted',
+    body: 'Your account and its sign-in details were deleted. If this was unexpected, contact support immediately.',
+  },
 }
 
 function escapeHtml(value: string): string {
@@ -221,6 +226,7 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
       send('socialIdentityLinked', user.email, undefined, providerLabel(identity.provider)),
     socialIdentityUnlinked: (user, identity) =>
       send('socialIdentityUnlinked', user.email, undefined, providerLabel(identity.provider)),
+    accountDeleted: (account) => send('accountDeleted', account.email),
   }
 }
 

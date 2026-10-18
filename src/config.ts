@@ -5,6 +5,7 @@ import { isSqlIdentifier } from './identifiers.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
+import { resolveAccountDeletion } from './config_account_data.js'
 import { isSocialProviderName } from './social_providers.js'
 import { expiresAt } from './ttl.js'
 import type {
@@ -42,6 +43,7 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   passwordChanged: disabled,
   socialIdentityLinked: disabled,
   socialIdentityUnlinked: disabled,
+  accountDeleted: disabled,
 }
 
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
@@ -169,6 +171,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error('account_kit: tokenSecretLength must be an integer from 16 to 64')
   const passwordPolicy = resolvePasswordPolicy(config)
   const authentication = resolveAuthentication(config)
+  const accountDeletion = resolveAccountDeletion(config)
   if (
     config.users.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
@@ -197,6 +200,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     tokenSecretLength,
     authentication,
     passwordPolicy,
+    accountDeletion,
     usersTable,
     limiterNamespace,
     authorize: {

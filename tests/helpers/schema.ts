@@ -36,7 +36,14 @@ export async function resetSchema(
   await schema.createTable('auth_access_tokens', (table) => {
     table.increments('id')
     table.integer('tokenable_id').notNullable()
+    table.string('type').nullable()
+    table.string('name').nullable()
     table.string('hash').notNullable()
+    table.text('abilities').nullable()
+    table.timestamp('created_at').nullable()
+    table.timestamp('updated_at').nullable()
+    table.timestamp('last_used_at').nullable()
+    table.timestamp('expires_at').nullable()
   })
 
   await rm(kit.migrationDirectory, { recursive: true, force: true })
