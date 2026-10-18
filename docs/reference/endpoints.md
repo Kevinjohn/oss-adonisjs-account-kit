@@ -30,6 +30,17 @@ Access levels:
 | `POST` | `/account/logout`  | `account.logout`       | limited |
 | `GET`  | `/account/profile` | `account.profile.show` | limited |
 
+## `sessionManagement`
+
+| Method   | Path                              | Name                            | Access  |
+| -------- | --------------------------------- | ------------------------------- | ------- |
+| `GET`    | `/account/sessions`               | `account.sessions.list`         | limited |
+| `DELETE` | `/account/sessions/:id`           | `account.sessions.revoke`       | limited |
+| `POST`   | `/account/sessions/revoke-others` | `account.sessions.revokeOthers` | limited |
+| `POST`   | `/account/sessions/revoke-all`    | `account.sessions.revokeAll`    | limited |
+
+See [signed-in devices](../signed-in-devices.md) for responses.
+
 ## `passwordReset`
 
 | Method | Path                          | Name                          | Access |

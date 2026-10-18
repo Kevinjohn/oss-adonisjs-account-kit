@@ -40,7 +40,9 @@ The callback names distinguish a link provision from a completed-operation notic
 ### Capabilities
 
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
-`emailPasswordManagement`, and `registration`. When omitted, registration and invitations are
+`emailPasswordManagement`, `registration`, `socialAuthentication` and `sessionManagement`.
+`sessionManagement` is off by default and requires `authentication`; see
+[signed-in devices](signed-in-devices.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
@@ -76,6 +78,11 @@ const profile = await kit.emailPasswordManagement.updateProfile({
 await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail })
 const emailChangeValid = await kit.emailPasswordManagement.inspectEmailChange({ token })
 await kit.emailPasswordManagement.completeEmailChange({ token })
+
+const signIns = await kit.authentication.sessions.list({ current })
+await kit.authentication.sessions.revoke({ current, id })
+await kit.authentication.sessions.revokeOthers({ current })
+await kit.authentication.sessions.revokeAll({ current })
 ```
 
 Invitation listing returns `{ items, nextCursor }`. The default page limit is 25 and the maximum is 100. Pass `nextCursor` as `cursor` to fetch the next page; `null` means there are no more rows.
