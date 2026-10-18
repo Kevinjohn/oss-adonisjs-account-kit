@@ -10,6 +10,15 @@ export type {
 } from '../src/http/guard.js'
 export type { ManagedExtensions, ManagedGuard, ManagedRoutesOptions } from '../src/http/managed.js'
 export { planManagedRoutes } from '../src/http/routes.js'
+export { generateManagedOpenApi } from '../src/http/openapi.js'
+export type { ManagedOpenApiInput, OpenApiDocument } from '../src/http/openapi.js'
+export { managedRouteRegistration } from '../src/http/route_registration.js'
+export type {
+  JsonSchema,
+  ManagedOpenApiOptions,
+  ManagedRouteRegistration,
+  ReplaceableRequestEndpoint,
+} from '../src/http/route_registration.js'
 export type { ManagedMessage } from '../src/http/responses.js'
 export type {
   ManagedErrorBody,

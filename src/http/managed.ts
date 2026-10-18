@@ -14,6 +14,11 @@ import { invitationHandlers } from './handlers_invitations.js'
 import { passwordResetHandlers } from './handlers_password_reset.js'
 import { registrationHandlers } from './handlers_registration.js'
 import {
+  managedRouteRegistration,
+  recordManagedRegistration,
+  type ManagedOpenApiOptions,
+} from './route_registration.js'
+import {
   assertManagedRouteCollisions,
   planManagedRoutes,
   type ManagedCapability,
@@ -73,9 +78,9 @@ export interface ManagedRoutesOptions<Credential> {
   /** Require verified email on active routes; defaults to true. Guard and revision checks always apply. */
   verificationRequired?: boolean
   extensions?: ManagedExtensions
+  /** Schemas for application-owned bodies, used by `generateManagedOpenApi`. */
+  openapi?: ManagedOpenApiOptions
 }
-
-const mounted = new WeakSet<Router>()
 
 /** Flatten committed router definitions into one entry per method for collision checks. */
 function routeEntries(router: Router) {
@@ -207,7 +212,7 @@ export function registerManagedRoutes<Credential>(
       except: options.except,
     },
     existing,
-    mounted.has(router)
+    managedRouteRegistration(router) !== undefined
   )
   const methodsEnabled = routes.some(({ name }) => name === 'auth.methods')
   for (const route of routes) {
@@ -255,6 +260,20 @@ export function registerManagedRoutes<Credential>(
     assertManagedRouteCollisions(routes, committed)
     return result
   }
-  mounted.add(router)
+  recordManagedRegistration(router, {
+    routes,
+    strategy: options.guard.strategy,
+    prefix: options.prefix,
+    socialProviders: options.enabled.includes('socialAuthentication')
+      ? (options.extensions?.social?.providers ?? [])
+      : [],
+    replaced: {
+      registration: Boolean(options.extensions?.registration),
+      invitationAcceptance: Boolean(options.extensions?.invitationAcceptance),
+      profile: Boolean(options.extensions?.profile),
+      representAccount: Boolean(options.extensions?.representAccount),
+    },
+    openapi: options.openapi,
+  })
   return routes
 }

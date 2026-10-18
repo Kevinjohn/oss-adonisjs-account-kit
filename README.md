@@ -4,6 +4,8 @@ Forgot password, email verification, invitations, and email and password managem
 The package provides transactional account operations. Applications may own their HTTP routes or
 explicitly register the optional [managed JSON backend](docs/managed-http.md). The application
 owns its user model, password policy, additional fields, and business authorization.
+Applications that use the managed backend can generate an [OpenAPI 3.1 document](docs/openapi.md)
+for the routes they mounted with `node ace account-kit:openapi`.
 
 Account Kit covers the account basics and uses the same vocabulary as AdonisJS Plus and the
 AdonisJS starter kits. For two-factor authentication and passkeys, we recommend
