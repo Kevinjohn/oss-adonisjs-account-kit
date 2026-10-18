@@ -5,7 +5,7 @@ controllers and calls Account Kit's public account operations. Account Kit also 
 managed-backend mode, explicitly enabled during onboarding, where the package maintains selected
 HTTP endpoints while the application owns its frontend and application-specific policies. This
 guide describes service integration; the [setup guide](setup.md), [managed HTTP contract](managed-http.md),
-and [developer evaluation record](maintainers/developer-evaluation.md) cover the managed mode. Choosing the
+and [developer evaluation record](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/developer-evaluation.md) cover the managed mode. Choosing the
 existing `web` session or `api` access-token guard below is an authentication choice within the
 application-owned mode, not a choice between consumption modes. Account Kit does not register these
 application-owned routes, choose the application's response format, or replace its authentication

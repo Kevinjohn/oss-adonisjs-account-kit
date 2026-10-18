@@ -38,9 +38,13 @@ node ace account-kit:doctor
 ```
 
 `node ace add` writes `config/account_kit.ts`, generates the migrations and registers the provider
-and commands. The doctor checks the result:
+and commands. The doctor checks the config, limiter, `APP_URL` and database:
 
 ![account-kit:doctor output with every check passing](docs/assets/doctor.svg)
+
+The generated `notify` callbacks throw until you choose how to send email, and the doctor cannot
+run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
+sets them up.
 
 Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.

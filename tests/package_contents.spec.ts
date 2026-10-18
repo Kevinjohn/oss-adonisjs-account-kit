@@ -21,7 +21,12 @@ test('packs public documentation and examples without private planning documents
       })
     )
     await writeFile(join(root, '.gitignore'), await readFile(join(repoRoot, '.gitignore')))
-    const publicFiles = ['build/index.js', 'docs/usage.md', 'examples/api/README.md']
+    const publicFiles = [
+      'build/index.js',
+      'docs/usage.md',
+      'examples/api/README.md',
+      'CHANGELOG.md',
+    ]
     const privateFiles = [
       'PLAN-private.md',
       'docs/PRD-private.md',
