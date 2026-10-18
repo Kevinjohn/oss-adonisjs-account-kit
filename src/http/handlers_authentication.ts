@@ -2,6 +2,7 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed.js'
 import { rememberManagedMethod } from './social.js'
+import { signInLabel } from './response_helpers.js'
 import { loginValidator } from './validators.js'
 
 export const authenticationHandlers = {
@@ -14,7 +15,7 @@ export const authenticationHandlers = {
     const { request, response } = context
     const { email, password } = await request.validateUsing(loginValidator)
     const result = await kit.authentication.login(
-      { email, password, clientKey: request.ip() },
+      { email, password, clientKey: request.ip(), sessionLabel: signInLabel(context) },
       options.guard.forRequest(context)
     )
     if (methodsEnabled) await rememberManagedMethod(context, 'password', options.extensions?.social)
@@ -25,10 +26,11 @@ export const authenticationHandlers = {
         : {}),
     })
   },
-  'account.logout': async ({ context, kit, options }) => {
+  'account.logout': async ({ context, kit, options, accountInput }) => {
     await kit.authentication.logout(
       options.guard.forRequest(context),
-      await options.guard.logoutCredential?.(context)
+      await options.guard.logoutCredential?.(context),
+      accountInput
     )
     return context.response.noContent()
   },

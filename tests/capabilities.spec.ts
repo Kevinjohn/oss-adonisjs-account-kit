@@ -321,6 +321,10 @@ test.group('capability registry', () => {
       emailPasswordManagement: true,
       registration: true,
       socialAuthentication: true,
+      magicLinkLogin: true,
+      sessionManagement: true,
+      dataExport: true,
+      accountDeletion: true,
     }
     assert.sameMembers(Object.keys(capabilityRegistry), Object.keys(union))
     assert.deepEqual(capabilities, Object.keys(union) as Capability[])

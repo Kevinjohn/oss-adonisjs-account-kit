@@ -380,6 +380,69 @@ test.group('managed existing-guard adapters', () => {
     assert.deepEqual(deleted, ['token-1'])
   })
 
+  test('session login stores the sign-in handle and current returns it', async ({ assert }) => {
+    const values = new Map<string, unknown>()
+    const user = { id: 42 }
+    const { context, config } = await protectedContext()
+    const ctx = Object.assign(context, {
+      auth: {
+        use: () => ({ authenticate: async () => user, login: async () => {} }),
+      },
+      session: {
+        config,
+        regenerate: () => {},
+        put: (key: string, value: unknown) => void values.set(key, value),
+        get: (key: string) => values.get(key),
+      },
+    }) as never
+    const adapter = createManagedGuard({
+      strategy: 'session',
+      name: 'web',
+      loadUser: async () => ({ findOrFail: async () => user }),
+    })
+    await adapter.forRequest(ctx).establish(42, null)
+    assert.deepEqual(await adapter.current(ctx), { userId: 42, revision: null })
+    await adapter.forRequest(ctx).establish(42, null, 'handle-1')
+    assert.equal(values.get('accountKitSession'), 'handle-1')
+    assert.deepEqual(await adapter.current(ctx), {
+      userId: 42,
+      revision: null,
+      sessionHandle: 'handle-1',
+    })
+    values.set('accountKitSession', 7)
+    await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
+  })
+
+  test('token login names the token only when a label is given', async ({ assert }) => {
+    const created: unknown[] = []
+    const user = { id: 'user-1' }
+    const adapter = createManagedGuard({
+      strategy: 'access_tokens',
+      name: 'api',
+      loadUser: async () => ({
+        findOrFail: async () => user,
+        accessTokens: {
+          create: async (_user: unknown, _abilities: string[], options?: unknown) => {
+            created.push(options)
+            return { identifier: 1, value: { release: () => 'token' } }
+          },
+          delete: async () => {},
+        },
+      }),
+    })
+    const request = adapter.forRequest({} as never)
+    await request.establish('user-1', ['*'], null)
+    await request.establish('user-1', ['*'], null, { name: 'Phone' })
+    await request.establish('user-1', ['*'], '1d', { name: 'Phone' })
+    await request.establish('user-1', ['*'], '1d', {})
+    assert.deepEqual(created, [
+      undefined,
+      { name: 'Phone' },
+      { expiresIn: '1d', name: 'Phone' },
+      { expiresIn: '1d' },
+    ])
+  })
+
   test('missing current token fails before protected account work', async ({ assert }) => {
     const user = { id: 42 }
     const adapter = createManagedGuard({

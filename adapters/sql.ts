@@ -178,6 +178,10 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
       await update(id, { unverified_email: null, email_verified_at: sqlTimestamp(at) }, trx)
     },
 
+    async delete(id, trx) {
+      await trx.from(table).where('id', id).delete()
+    },
+
     async verifyPassword(id, password, trx) {
       const row = await trx.from(table).select('password').where('id', id).first()
       if (typeof row?.password !== 'string') return false

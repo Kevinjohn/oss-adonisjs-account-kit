@@ -3,7 +3,7 @@ import { DeliveryError, EmailAlreadyRegisteredError, PostCommitError } from '../
 import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler, ManagedRequest } from './managed.js'
-import { passwordPolicyError, recoveryDiagnostic } from './response_helpers.js'
+import { passwordPolicyError, recoveryDiagnostic, signInLabel } from './response_helpers.js'
 import { signupValidator } from './validators.js'
 
 async function signup<Credential>({
@@ -42,7 +42,12 @@ async function signup<Credential>({
   let result: { account: CurrentAccount; credential: Credential }
   try {
     result = await kit.authentication.login(
-      { email: input.email, password: input.password, clientKey: request.ip() },
+      {
+        email: input.email,
+        password: input.password,
+        clientKey: request.ip(),
+        sessionLabel: signInLabel(context),
+      },
       options.guard.forRequest(context)
     )
   } catch {
