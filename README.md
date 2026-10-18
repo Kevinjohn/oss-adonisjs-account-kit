@@ -1,143 +1,186 @@
-# adonisjs-account-kit
+# Account Kit for AdonisJS
 
-Forgot password, email verification, invitations, and email and password management for AdonisJS 7.
-The package provides transactional account operations. Applications may own their HTTP routes or
-explicitly register the optional [managed JSON backend](docs/managed-http.md). The application
-owns its user model, password policy, additional fields, and business authorization.
+[![checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml)
+[![npm](https://img.shields.io/npm/v/adonisjs-account-kit)](https://www.npmjs.com/package/adonisjs-account-kit)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
+[![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
+[![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
+[![Coverage 92%](https://img.shields.io/badge/coverage-92%25-brightgreen)](CONTRIBUTING.md#checks)
 
-Account Kit covers the account basics and uses the same vocabulary as AdonisJS Plus and the
-AdonisJS starter kits. For two-factor authentication and passkeys, we recommend
-[AdonisJS Plus](https://plus.adonisjs.com).
+Password reset, email verification, invitations and account settings for AdonisJS 7, with the
+security details handled. You keep your user model, your routes and your policies.
 
-## Requirements and installation
+## What you get
 
-Use Node.js 24 or newer and pnpm. The package is currently an unpublished `0.0.0` candidate; install
-the tarball produced by the repository build:
+- **Forgot password** with single-use, hashed, expiring links and the same response for known and
+  unknown addresses.
+- **Email verification and signup**, open, closed, or behind your own admission rule.
+- **Invitations** with roles, resend, revoke and paged listing.
+- **Account settings**: change password, change email with confirmation, update profile.
+- **Login** with sessions or access tokens through your existing Auth guard. Every credential
+  change signs out older sessions and tokens.
+- **Google and GitHub sign-in** through Ally (optional).
+- **Emails** for AdonisJS Mail out of the box, or your own templates.
+- **Rate limits** on password reset, verification resend, invitations, login and account changes.
+- **Managed JSON routes** (optional), if you would rather not write the controllers.
+- **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`, and the
+  [operator commands](docs/operations.md#operator-commands) `account-kit:invite` and
+  `account-kit:reset-link` for shell-trusted invitations and reset links.
+- Tested on **SQLite and PostgreSQL 16**.
 
-```sh
-# In this repository
-pnpm build
-pnpm pack --pack-destination /tmp
-
-# In the AdonisJS API application
-pnpm exec node ace add @adonisjs/limiter
-pnpm add /tmp/adonisjs-account-kit-0.0.0.tgz
-```
-
-The application must provide compatible AdonisJS core, Lucid, limiter, Luxon, and the database
-driver for its selected Lucid dialect. PostgreSQL applications install `pg`; the Adonis API kit's
-SQLite setup uses `better-sqlite3`. See [compatibility](docs/compatibility.md) for tested version
-points and declared peer ranges.
-
-For the basic service configuration path, run `pnpm exec node ace configure adonisjs-account-kit`.
-Configure creates `config/account_kit.ts` when absent, registers the provider, and generates eleven
-package migrations for a fresh install when matching files do not already exist. It preserves
-existing configuration and migrations. Review generated files, set a stable `APP_KEY` and
-`APP_URL`, then apply migrations and typecheck:
+## Install
 
 ```sh
-pnpm exec node ace migration:run
-pnpm typecheck
+node ace add @adonisjs/limiter
+node ace add adonisjs-account-kit
+node ace migration:run
+node ace account-kit:doctor
 ```
 
-For a new managed installation, register the package command loader in `adonisrc.ts` and use
-[`account-kit:setup`](docs/setup.md) instead of the basic configure step:
+`node ace add` writes `config/account_kit.ts`, generates the migrations and registers the provider
+and commands. The doctor checks the result:
+
+![account-kit:doctor output with every check passing](docs/assets/doctor.svg)
+
+Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
+least 32 characters and an `APP_URL`.
+
+## A forgot-password flow in two routes
 
 ```ts
-commands: [
-  // Keep the application's existing command loaders.
-  () => import('adonisjs-account-kit/commands'),
-],
+// app/controllers/password_resets_controller.ts
+import app from '@adonisjs/core/services/app'
+import type { HttpContext } from '@adonisjs/core/http'
+import { AccountKit } from 'adonisjs-account-kit'
+
+export default class PasswordResetsController {
+  async request({ request, response }: HttpContext) {
+    const kit = await app.container.make(AccountKit)
+    await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
+    return response.accepted({ message: 'If the account exists, instructions will be sent.' })
+  }
+
+  async complete({ request, params }: HttpContext) {
+    const kit = await app.container.make(AccountKit)
+    await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
+    return { message: 'Password reset.' }
+  }
+}
 ```
 
-The same loader provides `account-kit:invite` and `account-kit:reset-link` for operators with shell
-access; see [operator commands](docs/operations.md#operator-commands).
+The [getting started tutorial](docs/getting-started.md) takes you from a new API starter app to a
+working reset, with the email printed to your terminal, in about ten minutes.
 
-Setup previews all six pillars, required files, dependencies, and endpoint groups; `--apply`
-creates a conflict-free proposal. An existing `config/account_kit.ts` with different application
-policy remains owned by the application and must be reconciled before setup applies.
+## How it fits together
 
-## Quick start
-
-The maintained API consumer fixture is the runnable setup and operation example. Run its packed
-consumer gate from this repository to build the candidate tarball, install it into a copy of the
-fixture, run configure, and exercise the installed package:
-
-```sh
-pnpm test:consumer
+```mermaid
+flowchart LR
+  client[Your frontend or API client] --> routes
+  subgraph app[Your AdonisJS app]
+    routes[Your controllers<br/>or managed routes] --> kit[AccountKit service]
+    kit --> adapter[Users adapter<br/>Lucid model]
+    kit --> notify[notify callbacks<br/>AdonisJS Mail]
+    kit --> guard[Your Auth guard<br/>session or tokens]
+    kit --> limiter["@adonisjs/limiter"]
+  end
+  adapter --> db[(Your database<br/>users + package tables)]
 ```
 
-The fixture's invitation-list action shows an operation in its application context, after
-authentication and request validation:
+Account Kit owns the account transaction: tokens, locking, revocation and events. Your app owns the
+HTTP layer, validation, authorization and the user model.
+
+## Features at a glance
+
+| Operation               | Service API                                  | Managed route                           | Email sent                                  | Rate limit                    |
+| ----------------------- | -------------------------------------------- | --------------------------------------- | ------------------------------------------- | ----------------------------- |
+| Request password reset  | `passwordReset.request`                      | `POST /auth/password-reset`             | `passwordResetProvision`                    | Per client and per address    |
+| Complete password reset | `passwordReset.reset`                        | `POST /auth/password-reset/:token`      | `passwordResetCompleted`                    | Per client (managed route)    |
+| Sign up                 | `registration.register`                      | `POST /auth/signup`                     | `accountActivationProvision`                | Per client (managed route)    |
+| Resend verification     | `emailVerification.send`                     | `POST /account/email-verification/send` | `accountActivationProvision`                | Per user                      |
+| Confirm email           | `emailVerification.complete`                 | `POST /auth/email-verification/:token`  | none                                        | Per client (managed route)    |
+| Log in                  | `authentication.login`                       | `POST /auth/login`                      | none                                        | Per client and per identity   |
+| Change password         | `emailPasswordManagement.changePassword`     | `POST /account/password`                | `passwordChanged`                           | Per user                      |
+| Change email            | `emailPasswordManagement.requestEmailChange` | `PATCH /account/profile`                | `emailChangeProvision`, then `emailChanged` | Per user                      |
+| Invite                  | `invitations.send`                           | `POST /account/invitations`             | `invitationProvision`                       | Per inviter and per recipient |
+| Accept invitation       | `invitations.accept`                         | `POST /auth/invitations/:token`         | none                                        | Per client (managed route)    |
+
+The full lists are in [usage](docs/usage.md) and the [endpoint reference](docs/reference/endpoints.md).
+
+## Security
+
+- Tokens are 40 random bytes by default. Only their SHA-256 hash is stored, and each works once.
+- Reset requests return the same response and take at least 300 ms whether or not the address
+  exists. Failed logins return one generic error.
+- Links are built only from configured origins, never from the request `Host` header.
+- Rate-limit keys are HMAC digests, so the limiter store never holds an email address or IP.
+- Every account change runs in one transaction with the user row locked.
+
+The [security model](docs/security.md) lists every defence and its default, what your app must still
+do, and what is out of scope. Report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
+
+## Before production
+
+- Configure trusted proxies before passing `request.ip()` as `clientKey`.
+- Store email addresses trimmed and lowercase, with a single-column unique index.
+- Keep `APP_KEY` identical on every instance that shares a limiter store.
+- Do not wrap Account Kit calls in your own transaction; each operation owns its transaction and
+  passes `trx` to your callbacks.
+- On SQLite, enable foreign keys on every connection.
+- Schedule `node ace account-kit:prune` to delete expired tokens.
+- Keep proof links out of access logs and analytics.
+
+Details: [operations](docs/operations.md), [custom user model](docs/recipes/custom-user-model.md)
+and [usage](docs/usage.md#transactions-and-callbacks).
+
+## When to use it
+
+- **Use Account Kit** when you want the standard account flows in an AdonisJS app that already has
+  its own user model, and you want to keep your own routes and frontend.
+- **Use [AdonisJS Plus](https://plus.adonisjs.com)** for two-factor authentication and passkeys.
+  Account Kit uses the same vocabulary as Plus and the AdonisJS starter kits.
+- **Write it yourself** when your flows differ from email-and-password accounts. The
+  [security model](docs/security.md) is a useful checklist either way.
+
+## Testing your app
 
 ```ts
-const result = await (
-  await this.kit()
-).invitations.list({
-  actorId: actor.id,
-  limit,
-  cursor,
-})
-return response.ok(result)
+import { captureNotifications } from 'adonisjs-account-kit/testing/notifications'
+
+const mail = captureNotifications() // pass mail.notify as Account Kit's notify config in tests
+// ...request a reset, then:
+const token = mail.tokenFor('passwordResetProvision', 'someone@example.com')
 ```
 
-For application setup, including the lazy Lucid adapter, trusted registration mapping, required
-callbacks, and HTTP error handling, follow the [consumer API example](examples/api/README.md) and
-its [Account Kit config](examples/api/config/account_kit.ts). The [application-owned integration
-guide](docs/application-owned-integration.md) explains the controller, route, validation, response,
-notification, and authentication boundaries. Treat `registrationData` as untrusted request data;
-the example maps a validated name and never spreads request fields onto the model.
+See [testing your account flows](docs/recipes/testing.md).
 
-## Application prerequisites
+## Bring your own ORM
 
-- The user model exposes `id` → `id`, `email` → `email`, nullable `unverifiedEmail` →
-  `unverified_email`, nullable `password` → `password`, and nullable `emailVerifiedAt` →
-  `email_verified_at`. A null password represents an account without local credentials; a new
-  inactive account writes the same normalized address to `email` and `unverified_email`. `id` is
-  the physical primary-key column. Models that assign string/UUID keys must enable Lucid’s
-  `selfAssignPrimaryKey` policy; see the custom schema guide.
-- Email is stored trimmed and lowercase, and has a single-column unique constraint. The Lucid
-  adapter compares normalized email values with indexed equality. PostgreSQL duplicate-email
-  classification discovers the table's single-column email unique index through the catalog;
-  optionally set `emailConstraint` to select a particular index. Existing mixed-case or padded
-  addresses must be normalized before enabling the adapter.
-- The adapter derives the Lucid table and primary key and requires the default connection. For a
-  hand-written adapter, expose `resolveMetadata()` with the physical table and `primaryKey: 'id'`,
-  or set `usersTable` as the metadata fallback. The package locks that physical user row on
-  PostgreSQL and serializes package writes through its singleton lock row on SQLite. Duplicate
-  email races are classified using the PostgreSQL catalog unless `emailConstraint` is supplied.
-- `APP_KEY` must be stable across restarts and at least 32 bytes. Account Kit derives namespaced
-  HMAC limiter keys from this secret. Changing it resets those limiter buckets; use the same secret
-  and `limiterNamespace` across application instances that share a limiter store.
-- `APP_URL` must be the application's public HTTPS base URL. Generated URLs preserve a configured
-  path; do not construct account links from an untrusted `Host` header.
-- Derive password reset `clientKey` from the request IP only after configuring Adonis trusted proxies.
-  Never trust a caller-supplied key or an unverified `X-Forwarded-For` value.
-- SQLite applications must enable foreign keys on every connection and size the pool for their
-  concurrency. Transaction callbacks must use the supplied `trx`; details are in
-  [usage and transaction guidance](docs/usage.md#transactions-and-callbacks).
+Users live behind a small `UsersAdapter` interface. The Lucid adapter ships with the package. For
+anything else, `adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the
+Lucid adapter passes, so you can prove your adapter is correct. See
+[custom adapter](docs/recipes/custom-adapter.md).
 
-For a custom user table or string/UUID user IDs, pass `--users-table` and `--user-id-type` when
-running configure, then inspect all generated migrations. See the
-[custom schema instructions](docs/upgrade.md#custom-user-table-or-id-type).
+## Documentation
 
-## Operations and security
+- [Getting started](docs/getting-started.md)
+- [Recipes](docs/README.md#how-to-guides): tokens, sessions, Inertia, social sign-in, email
+  templates, multi-tenant and more
+- [Reference](docs/README.md#reference): configuration, errors, endpoints, glossary
+- [Security model](docs/security.md)
+- [Changelog](CHANGELOG.md)
 
-Account Kit owns its root write transactions. Do not wrap package write operations in an active
-global transaction. Application validators remain responsible for request shape, password policy,
-confirmation fields, and authorization at the HTTP boundary. Password reset requests must return a
-generic acknowledgement even when post-commit notification delivery fails. The package's minimum
-request duration mitigates timing differences; it is not a timing guarantee.
+## Verifying a release
 
-For capability configuration, operation signatures, pagination, error mapping, transaction
-callbacks, outbox handling, and cleanup, see [usage](docs/usage.md) and
-[operations](docs/operations.md). Breaking changes and migration steps are in the
-[upgrade guide](docs/upgrade.md). Report suspected vulnerabilities using the process in
-[SECURITY.md](SECURITY.md).
+Releases are published from GitHub Actions with npm provenance. Run `npm audit signatures` in your
+app to check that the installed package was built from this repository.
 
-## Validation status
+## Contributing
 
-Version points and the current audit assessment are recorded in
-[compatibility](docs/compatibility.md). Current repository checks and consumer validation belong
-in the maintained [verification record](docs/maintainers/verification.md); it distinguishes package tests,
-packed-consumer checks, and checks that remain outstanding.
+Bug reports, docs fixes, recipes and adapters are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+to get the test suite running, or start with no local setup:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Kevinjohn/oss-adonisjs-account-kit)
+
+## License
+
+[MIT](LICENSE.md)
