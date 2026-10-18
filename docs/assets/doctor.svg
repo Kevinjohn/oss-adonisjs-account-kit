@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="224" viewBox="0 0 900 224" role="img" aria-label="Terminal output of node ace account-kit:doctor with every check passing">
+<rect width="100%" height="100%" rx="10" fill="#0f1117"/>
+<circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="42" cy="20" r="6" fill="#febc2e"/><circle cx="62" cy="20" r="6" fill="#28c840"/>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">
+<text x="20" y="56" fill="#e6e6e6">$ node ace account-kit:doctor</text>
+<text x="20" y="80"><tspan fill="#3fb950">[ success ]</tspan><tspan fill="#c9d1d9"> Config: enabled: passwordReset, emailVerification, emailPasswordManagement, registration</tspan></text>
+<text x="20" y="104"><tspan fill="#3fb950">[ success ]</tspan><tspan fill="#c9d1d9"> Limiter: @adonisjs/limiter is registered</tspan></text>
+<text x="20" y="128"><tspan fill="#3fb950">[ success ]</tspan><tspan fill="#c9d1d9"> APP_URL: http://localhost:3333</tspan></text>
+<text x="20" y="152"><tspan fill="#3fb950">[ success ]</tspan><tspan fill="#c9d1d9"> Package tables: 3 present</tspan></text>
+<text x="20" y="176"><tspan fill="#3fb950">[ success ]</tspan><tspan fill="#c9d1d9"> Users table: users has the required columns</tspan></text>
+</g></svg>
