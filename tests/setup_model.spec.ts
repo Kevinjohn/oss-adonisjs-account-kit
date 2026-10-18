@@ -15,6 +15,7 @@ import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup.js'
+import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup model inspection', (group) => {
   registerSetupTeardown(group)
@@ -469,5 +470,108 @@ test.group('setup model inspection', (group) => {
       if (before === undefined) delete process.env.DB_CONNECTION
       else process.env.DB_CONNECTION = before
     }
+  })
+})
+
+test.group('setup prerequisite inspection', () => {
+  test('model metadata ignores comments and rejects every explicit connection', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state, root) => {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        "export default class User extends BaseModel {\n // static table = 'users'\n static table = 'members'\n // static connection = 'other'\n static connection = 'default'\n }"
+      )
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'user.table'
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'user.connection' &&
+            severity === 'error' &&
+            message.includes('explicit connection')
+        )
+      )
+    })
+  })
+
+  test('quoted model metadata cannot hide actual table or token provider', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        "const example = `static table = 'users'; static accessTokens = tokens`\nexport default class User extends BaseModel { static table = 'members' }\n"
+      )
+      const wrongTable = await planSetup(choices, state)
+      assert.isTrue(
+        wrongTable.diagnostics.some(
+          ({ field, severity }) => field === 'user.table' && severity === 'error'
+        )
+      )
+      choices.authentication!.strategy = 'access_tokens'
+      const missingTokens = await planSetup(choices, state)
+      assert.isTrue(
+        missingTokens.diagnostics.some(
+          ({ field, severity }) => field === 'user.model' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('computed or later-mutated model metadata cannot certify migrations', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      const model = join(root, 'app/models/user.ts')
+      for (const source of [
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users'; static ['table'] = 'members' }",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static ['connection'] = 'other' }",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users' }\nUser.table = 'members'",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static table = 'users'; static { this.table = 'members' } }",
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static get connection() { return 'other' } }",
+        String.raw`import { BaseModel } from '@adonisjs/lucid/orm'
+export default class User extends BaseModel { static table = 'users'; static '\u0074able' = 'members' }`,
+      ]) {
+        await writeFile(model, source)
+        const plan = await planSetup(choices, state)
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity }) => field === 'user.model' && severity === 'error'
+          )
+        )
+      }
+      choices.authentication!.strategy = 'access_tokens'
+      await writeFile(
+        model,
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nexport default class User extends BaseModel { static accessTokens = tokens; static { this.accessTokens = otherTokens } }"
+      )
+      const mutatedTokens = await planSetup(choices, state)
+      assert.isTrue(
+        mutatedTokens.diagnostics.some(
+          ({ field, severity }) => field === 'user.model' && severity === 'error'
+        )
+      )
+      choices.authentication!.strategy = 'session'
+      await writeFile(
+        model,
+        "export default class User extends BaseModel { static table = 'users' }"
+      )
+      const unresolved = await planSetup(choices, state)
+      assert.isTrue(
+        unresolved.diagnostics.some(
+          ({ field, severity }) => field === 'user.connection' && severity === 'error'
+        )
+      )
+      await writeFile(
+        model,
+        "import { BaseModel } from '@adonisjs/lucid/orm'\nimport { compose } from '@adonisjs/core/helpers'\nexport default class User extends compose(BaseModel, withTokens) { static table = 'users' }"
+      )
+      const composed = await planSetup(choices, state)
+      assert.isTrue(
+        composed.diagnostics.some(
+          ({ field, severity }) => field === 'user.connection' && severity === 'error'
+        )
+      )
+    })
   })
 })
