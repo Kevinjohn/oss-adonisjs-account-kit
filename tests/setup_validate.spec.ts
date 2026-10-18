@@ -81,8 +81,7 @@ test.group('setup choice validation', (group) => {
     const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
     assert.include(config, '"magicLinkLogin"')
     assert.include(config, '"magicLink":"account/magic-link"')
-    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!
-      .content!
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
     assert.include(routes, '"magicLinkLogin"')
 
     delete choices.mail.destinations.magicLink
