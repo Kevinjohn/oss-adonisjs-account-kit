@@ -1,6 +1,6 @@
 import type { AccountExport, CurrentAccount, InvitationPage } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { SensitivePurpose, SocialProviderName } from '../types.js'
+import type { SensitivePurpose, SignIn, SocialProviderName } from '../types.js'
 
 /** Default request bodies; `:token` and `:id` values are URL path parameters. */
 export interface ManagedRequestBodies {
@@ -15,6 +15,11 @@ export interface ManagedRequestBodies {
   'auth.passwordReset.request': { email: string }
   'auth.passwordReset.inspect': undefined
   'auth.passwordReset.complete': { password: string; passwordConfirmation: string }
+  /** `clientChallenge` is required for access-token guards; session guards keep the verifier. */
+  'auth.magicLink.request': { email: string; clientChallenge?: string }
+  'auth.magicLink.inspect': undefined
+  /** `verifier` is required for access-token guards; session guards read it from the session. */
+  'auth.magicLink.complete': { verifier?: string }
   'auth.emailVerification.inspect': undefined
   'auth.emailVerification.complete': { password: string; passwordConfirmation: string }
   'auth.invitation.inspect': undefined
@@ -66,6 +71,10 @@ export interface ManagedRequestBodies {
   }
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': { proof: string }
+  'account.sessions.list': undefined
+  'account.sessions.revoke': undefined
+  'account.sessions.revokeOthers': undefined
+  'account.sessions.revokeAll': undefined
   'account.data.export': { currentPassword?: string; recentProof?: string }
   'account.delete': { currentPassword?: string; recentProof?: string }
 }
@@ -80,6 +89,9 @@ export interface ManagedQueries {
   'auth.passwordReset.request': undefined
   'auth.passwordReset.inspect': undefined
   'auth.passwordReset.complete': undefined
+  'auth.magicLink.request': undefined
+  'auth.magicLink.inspect': undefined
+  'auth.magicLink.complete': undefined
   'auth.emailVerification.inspect': undefined
   'auth.emailVerification.complete': undefined
   'auth.invitation.inspect': undefined
@@ -107,6 +119,10 @@ export interface ManagedQueries {
   'account.socialProof.password': undefined
   'account.socialIdentities.list': undefined
   'account.socialIdentities.unlink': undefined
+  'account.sessions.list': undefined
+  'account.sessions.revoke': undefined
+  'account.sessions.revokeOthers': undefined
+  'account.sessions.revokeAll': undefined
   'account.data.export': undefined
   'account.delete': undefined
 }
@@ -137,6 +153,9 @@ export interface ManagedSuccessBodies {
   'auth.passwordReset.request': { message: string }
   'auth.passwordReset.inspect': { valid: true }
   'auth.passwordReset.complete': { reset: true } | ManagedCommittedSuccess
+  'auth.magicLink.request': { message: string }
+  'auth.magicLink.inspect': { valid: true }
+  'auth.magicLink.complete': { account: CurrentAccount; token?: string }
   'auth.emailVerification.inspect': { valid: true }
   'auth.emailVerification.complete': { verified: true } | ManagedCommittedSuccess
   'auth.invitation.inspect': { email: string; role: string }
@@ -173,6 +192,10 @@ export interface ManagedSuccessBodies {
     }>
   }
   'account.socialIdentities.unlink': undefined | ManagedCommittedSuccess
+  'account.sessions.list': { sessions: SignIn[] }
+  'account.sessions.revoke': undefined | ManagedCommittedSuccess
+  'account.sessions.revokeOthers': { count: number } | ManagedCommittedSuccess
+  'account.sessions.revokeAll': undefined | ManagedCommittedSuccess
   'account.data.export': AccountExport
   'account.delete': undefined | ManagedCommittedSuccess
 }

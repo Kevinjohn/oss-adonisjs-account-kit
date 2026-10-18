@@ -19,6 +19,7 @@ export function makeNotify() {
     passwordChanged: (user, context) => record('passwordChanged', user, context),
     socialIdentityLinked: (user, identity) => record('socialIdentityLinked', user, identity),
     socialIdentityUnlinked: (user, identity) => record('socialIdentityUnlinked', user, identity),
+    magicLinkProvision: (user, url) => record('magicLinkProvision', user, url),
     accountDeleted: (account) => record('accountDeleted', account),
   }
   return {

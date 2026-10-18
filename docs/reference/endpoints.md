@@ -30,6 +30,17 @@ Access levels:
 | `POST` | `/account/logout`  | `account.logout`       | limited |
 | `GET`  | `/account/profile` | `account.profile.show` | limited |
 
+## `sessionManagement`
+
+| Method   | Path                              | Name                            | Access  |
+| -------- | --------------------------------- | ------------------------------- | ------- |
+| `GET`    | `/account/sessions`               | `account.sessions.list`         | limited |
+| `DELETE` | `/account/sessions/:id`           | `account.sessions.revoke`       | limited |
+| `POST`   | `/account/sessions/revoke-others` | `account.sessions.revokeOthers` | limited |
+| `POST`   | `/account/sessions/revoke-all`    | `account.sessions.revokeAll`    | limited |
+
+See [signed-in devices](../signed-in-devices.md) for responses.
+
 ## `passwordReset`
 
 | Method | Path                          | Name                          | Access |
@@ -37,6 +48,16 @@ Access levels:
 | `POST` | `/auth/password-reset`        | `auth.passwordReset.request`  | public |
 | `GET`  | `/auth/password-reset/:token` | `auth.passwordReset.inspect`  | public |
 | `POST` | `/auth/password-reset/:token` | `auth.passwordReset.complete` | public |
+
+## `magicLinkLogin`
+
+| Method | Path                      | Name                      | Access |
+| ------ | ------------------------- | ------------------------- | ------ |
+| `POST` | `/auth/magic-link`        | `auth.magicLink.request`  | public |
+| `GET`  | `/auth/magic-link/:token` | `auth.magicLink.inspect`  | public |
+| `POST` | `/auth/magic-link/:token` | `auth.magicLink.complete` | public |
+
+See [magic-link sign-in](../magic-link.md) for bodies and verifier handling.
 
 ## `emailVerification`
 

@@ -40,6 +40,10 @@ export class InvitationNotFoundError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND'
   static status = 404
 }
+export class SessionNotFoundError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_SESSION_NOT_FOUND'
+  static status = 404
+}
 export class IdentityNotConfirmedError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
   static status = 403
@@ -55,6 +59,13 @@ export class EmailAlreadyRegisteredError extends AccountKitError {
 export class RegistrationEmailAlreadyRegisteredError extends EmailAlreadyRegisteredError {
   static status = 422
   readonly field = 'email'
+}
+export class UserNotFoundError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_USER_NOT_FOUND'
+  static status = 404
+  constructor() {
+    super('No account uses that email address')
+  }
 }
 export class InvitationPendingError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_INVITATION_PENDING'

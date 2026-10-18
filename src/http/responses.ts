@@ -58,7 +58,7 @@ export function managedErrorResponse(
   error: unknown,
   options: {
     accept?: string
-    proof?: 'password' | 'email' | 'invitation'
+    proof?: 'password' | 'email' | 'invitation' | 'magicLink'
     message?: ManagedMessage
   } = {}
 ): ManagedErrorResponse | null {
@@ -75,7 +75,9 @@ export function managedErrorResponse(
         ? 'E_INVALID_EMAIL_TOKEN'
         : options.proof === 'invitation'
           ? 'E_INVALID_INVITATION_TOKEN'
-          : 'E_INVALID_PASSWORD_TOKEN'
+          : options.proof === 'magicLink'
+            ? 'E_INVALID_MAGIC_LINK'
+            : 'E_INVALID_PASSWORD_TOKEN'
     message = 'This link is invalid or expired.'
   } else if (error instanceof InvalidCredentialsError || error instanceof InvalidSessionError) {
     status = 401

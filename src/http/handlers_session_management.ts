@@ -1,0 +1,53 @@
+/** Managed handlers for session management: list sign-ins, revoke one, others, or all. */
+import type { HttpContext } from '@adonisjs/core/http'
+import { DeliveryError, PostCommitError } from '../errors.js'
+import { revocationOutcome } from '../session_revocation.js'
+import type { ManagedEndpointName } from './routes.js'
+import type { ManagedGuard, ManagedHandler } from './managed.js'
+
+/**
+ * End the caller's own credential after it was revoked. A token is already deleted by the
+ * revocation; a session also needs its AdonisJS session destroyed.
+ */
+async function endOwnSession<Credential>(
+  guard: ManagedGuard<Credential>,
+  context: HttpContext
+): Promise<void> {
+  if (guard.strategy === 'session') await guard.forRequest(context).terminate()
+}
+
+export const sessionManagementHandlers = {
+  'account.sessions.list': async ({ context, kit, accountInput }) =>
+    context.response.ok({
+      sessions: await kit.authentication.sessions.list({ current: accountInput! }),
+    }),
+  'account.sessions.revoke': async ({ context, kit, options, accountInput }) => {
+    let result: { current: boolean }
+    try {
+      result = await kit.authentication.sessions.revoke({
+        current: accountInput!,
+        id: context.params.id,
+      })
+    } catch (error) {
+      // The revocation committed; end this session before reporting the follow-up failure.
+      if (revocationOutcome(error)?.current) await endOwnSession(options.guard, context)
+      throw error
+    }
+    if (result.current) await endOwnSession(options.guard, context)
+    return context.response.noContent()
+  },
+  'account.sessions.revokeOthers': async ({ context, kit, accountInput }) =>
+    context.response.ok(await kit.authentication.sessions.revokeOthers({ current: accountInput! })),
+  'account.sessions.revokeAll': async ({ context, kit, options, accountInput }) => {
+    try {
+      await kit.authentication.sessions.revokeAll({ current: accountInput! })
+    } catch (error) {
+      // Everything was signed out even though a follow-up failed; end this session too.
+      if (error instanceof PostCommitError || error instanceof DeliveryError)
+        await endOwnSession(options.guard, context)
+      throw error
+    }
+    await endOwnSession(options.guard, context)
+    return context.response.noContent()
+  },
+} satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

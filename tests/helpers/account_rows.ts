@@ -23,6 +23,8 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     verification: `verify-${tag}-${'v'.repeat(50)}`,
     invitation: `invite-${tag}-${'i'.repeat(50)}`,
     accessToken: `token-${tag}-${'a'.repeat(51)}`,
+    loginLink: `link-${tag}-${'l'.repeat(52)}`,
+    session: `session-${tag}-${'s'.repeat(49)}`,
   }
   const now = iso(DateTime.utc())
   const [identity] = await kit.db
@@ -99,6 +101,22 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
     last_used_at: null,
     expires_at: null,
   })
+  await kit.db.table('login_link_tokens').insert({
+    tokenable_id: userId,
+    email: `${tag}@example.test`,
+    hash: secrets.loginLink,
+    client_challenge: 'c'.repeat(43),
+    expires_at: soon(),
+    created_at: now,
+  })
+  await kit.db.table('account_sessions').insert({
+    user_id: userId,
+    handle_hash: secrets.session,
+    label: `Browser ${tag}`,
+    created_at: now,
+    last_seen_at: now,
+    expires_at: soon(),
+  })
   return secrets
 }
 
@@ -110,6 +128,8 @@ export const userTables = [
   ['social_identities', 'user_id'],
   ['password_reset_tokens', 'tokenable_id'],
   ['email_verification_tokens', 'tokenable_id'],
+  ['login_link_tokens', 'tokenable_id'],
+  ['account_sessions', 'user_id'],
   ['account_invitations', 'inviter_id'],
   ['auth_access_tokens', 'tokenable_id'],
 ] as const
