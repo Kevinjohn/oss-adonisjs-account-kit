@@ -82,6 +82,11 @@ export const capabilityRegistry: Record<Capability, CapabilityRequirements> = {
     adapterMethods: ['findByEmail', 'findById', 'create', 'verifyPassword'],
     requiredHooks: ['notify.socialIdentityLinked', 'notify.socialIdentityUnlinked'],
   },
+  sessionManagement: {
+    defaultOn: false,
+    adapterMethods: ['findById'],
+    requiredHooks: [],
+  },
 }
 
 export const capabilities = Object.keys(capabilityRegistry) as Capability[]

@@ -29,6 +29,7 @@ const capabilityTables: Record<Capability, string[]> = {
     'social_sensitive_proofs',
     'social_handoff_codes',
   ],
+  sessionManagement: ['account_sessions'],
 }
 
 const migrationFix = 'Run `node ace configure adonisjs-account-kit`, then `node ace migration:run`'
@@ -51,6 +52,8 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
   if (db.connection().dialect.name === 'better-sqlite3') required.add('account_transaction_lock')
+  // Every credential change clears the sign-in registry, whether or not it is enabled.
+  if (config.authentication) required.add('account_sessions')
   const missing: string[] = []
   for (const table of required)
     if (!(await db.connection().schema.hasTable(table))) missing.push(table)
