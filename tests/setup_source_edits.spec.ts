@@ -11,12 +11,12 @@ import { withFixture } from './helpers/setup_prerequisites.js'
 test.group('setup source edits', (group) => {
   registerSetupTeardown(group)
 
-  test('stock type augmentations stay safe while runtime config and schema mutations block setup', async ({
-    assert,
-  }) => {
+  const stock = (path: string) =>
+    readFile(new URL(`./fixtures/native_starter/${path}.fixture`, import.meta.url), 'utf8')
+
+  /** A setup fixture with the native starter's stock auth, mail, limiter, model and schema. */
+  async function stockFixture() {
     const { root, choices } = await fixture()
-    const stock = (path: string) =>
-      readFile(new URL(`./fixtures/native_starter/${path}.fixture`, import.meta.url), 'utf8')
     for (const path of [
       'config/auth.ts',
       'config/mail.ts',
@@ -35,6 +35,17 @@ test.group('setup source edits', (group) => {
     choices.mail.transportEnv = 'MAIL_MAILER'
     await writeFile(join(root, '.env'), 'MAIL_MAILER=smtp\nLIMITER_STORE=database\n')
     choices.authentication!.applicationRouteRevocation = true
+    return {
+      root,
+      choices,
+      manifest,
+      schema: await stock('database/schema.ts'),
+      user: await stock('app/models/user.ts'),
+    }
+  }
+
+  test('runtime config, schema and model mutations block setup', async ({ assert }) => {
+    const { root, choices } = await stockFixture()
     for (const [path, mutation, field] of [
       ['config/auth.ts', 'authConfig.guards.web = null', 'authentication.guard'],
       ['config/mail.ts', 'mailConfig.mailers.smtp = null', 'config/mail.ts'],
@@ -71,7 +82,10 @@ test.group('setup source edits', (group) => {
       assert.isFalse(configFiles.includes('account_kit_setup.json'))
       await writeFile(join(root, path), await stock(path))
     }
-    const schema = await stock('database/schema.ts')
+  }).timeout(10_000)
+
+  test('schema primary key changes block setup', async ({ assert }) => {
+    const { root, choices, schema } = await stockFixture()
     await writeFile(
       join(root, 'database/schema.ts'),
       schema.replaceAll(
@@ -150,8 +164,10 @@ test.group('setup source edits', (group) => {
       )
       await assert.rejects(() => applySetup(root, secondPrimary), /blocking diagnostics/)
     }
-    const user = await stock('app/models/user.ts')
-    await writeFile(join(root, 'database/schema.ts'), schema)
+  }).timeout(10_000)
+
+  test('model primary key overrides block setup', async ({ assert }) => {
+    const { root, choices, user } = await stockFixture()
     await writeFile(
       join(root, 'app/models/user.ts'),
       user.replace('static accessTokens =', "static primaryKey = 'email'\n  static accessTokens =")
@@ -231,7 +247,10 @@ test.group('setup source edits', (group) => {
       )
     )
     await assert.rejects(() => applySetup(root, changedFactory), /blocking diagnostics/)
-    await writeFile(join(root, 'app/models/user.ts'), user)
+  }).timeout(10_000)
+
+  test('string and uuid user ids must match the schema id column', async ({ assert }) => {
+    const { root, choices, schema } = await stockFixture()
     for (const idType of ['string', 'uuid'] as const) {
       await writeFile(
         join(root, 'database/schema.ts'),
@@ -275,6 +294,10 @@ test.group('setup source edits', (group) => {
         ({ field, severity }) => field === 'user.idType' && severity === 'error'
       )
     )
+  }).timeout(10_000)
+
+  test('schema table, connection and naming strategy must be proven', async ({ assert }) => {
+    const { root, choices, schema, user } = await stockFixture()
     await writeFile(
       join(root, 'database/schema.ts'),
       schema.replace(
@@ -371,9 +394,10 @@ test.group('setup source edits', (group) => {
         ({ field, severity }) => field === 'user.table' && severity === 'error'
       )
     )
-    await writeFile(join(root, 'app/models/user.ts'), user)
-    choices.user.table = 'users'
-    await writeFile(join(root, 'database/schema.ts'), schema)
+  }).timeout(10_000)
+
+  test('database import-map redirects block setup', async ({ assert }) => {
+    const { root, choices, manifest } = await stockFixture()
     manifest.imports = { '#database/*': './elsewhere/*.js' }
     await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
     const remapped = await planSetup(choices, await inspectSetup(root), {
@@ -651,7 +675,7 @@ test.group('setup source edits', (group) => {
   })
 })
 
-test.group('setup prerequisite inspection', () => {
+test.group('setup middleware edits', () => {
   test('middleware insertion places comma before an inline comment', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       state.files['start/kernel.ts'] =
