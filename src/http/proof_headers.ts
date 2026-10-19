@@ -1,8 +1,11 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { proofHeaders } from './responses.js'
 import { planManagedRoutes, type ManagedRouteSelection } from './routes.js'
 
 type ProofSelection = ManagedRouteSelection
+
+export function proofHeaders(): Record<string, string> {
+  return { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
+}
 
 function matchesPath(pattern: string, path: string): boolean {
   const parts = (value: string) => value.replace(/\/+$/, '').split('/').filter(Boolean)

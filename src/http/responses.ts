@@ -14,6 +14,8 @@ import {
   UnverifiedEmailError,
 } from '../errors.js'
 
+export { proofHeaders } from './proof_headers.js'
+
 export interface ManagedErrorResponse {
   status: number
   headers: Record<string, string>
@@ -59,10 +61,6 @@ function prefersJsonApi(accept?: string): boolean {
     jsonApi > 0 &&
     jsonApi >= quality('application/json')
   )
-}
-
-export function proofHeaders(): Record<string, string> {
-  return { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
 }
 
 /** Package errors are deliberately translated without exposing internal messages or causes. */
