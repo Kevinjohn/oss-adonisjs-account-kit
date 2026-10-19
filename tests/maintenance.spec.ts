@@ -1,9 +1,9 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import type { Database } from '@adonisjs/lucid/database'
 import PruneAccountKit from '../commands/prune.js'
 import { pruneExpired } from '../src/maintenance.js'
+import { aceKernel } from './helpers/ace_kernel.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
@@ -47,9 +47,7 @@ test.group('expired-token pruning', (group) => {
       created_at: expired,
     })
 
-    const kernel = new Kernel(kit.app)
-    kernel.addLoader(new ListLoader([PruneAccountKit]))
-    kernel.ui.switchMode('raw')
+    const { kernel } = aceKernel(kit, [PruneAccountKit])
     const output = () => {
       const lines = kernel.ui.logger.getLogs().map((log) => log.message)
       kernel.ui.logger.flushLogs()
