@@ -1,22 +1,13 @@
-import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-
-const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
 
 /** Tracked root and docs/ Markdown files, without the changelog. */
 function trackedDocuments(): string[] {
-  // Only tracked documents: ignored local notes (for example PLAN*.md) are not published.
-  const listed = spawnSync('git', ['ls-files', '-z', '--', ':(glob)*.md', ':(glob)docs/**/*.md'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
-  if (listed.status !== 0) throw new Error(listed.stderr)
   // The changelog records renamed files, so its old paths are history, not citations.
-  return listed.stdout.split('\0').filter((name) => name !== '' && name !== 'CHANGELOG.md')
+  return trackedMarkdown(['*.md', 'docs/**/*.md']).filter((name) => name !== 'CHANGELOG.md')
 }
 
 test('every spec file cited by the documentation exists', async ({ assert }) => {
