@@ -104,8 +104,6 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
   }
   if (choices.user.connection !== 'default')
     diagnostic(diagnostics, 'user.connection', 'Only the default Lucid connection is supported')
-  if (state.connection === 'unsupported')
-    diagnostic(diagnostics, 'database.connection', 'Application uses a non-default connection')
   if (state.database === 'unsupported')
     diagnostic(
       diagnostics,
