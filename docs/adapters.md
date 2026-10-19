@@ -11,6 +11,29 @@ Account Kit reads and writes users through a `UsersAdapter`. Four ship with the 
 
 For anything else, write your own: see [custom adapter](recipes/custom-adapter.md).
 
+## Which one to use
+
+Most AdonisJS apps define users as a Lucid model, and the Lucid adapter is the default. Use another
+adapter when your users table is already described somewhere else and you do not want a second
+description of it to keep in step.
+
+- **[Drizzle](https://orm.drizzle.team)** is a TypeScript ORM where you write tables as code
+  (`pgTable('users', { ... })`) and query them with a typed, SQL-like API. Use the Drizzle adapter
+  when your app, or another service sharing the database, already uses Drizzle and its schema file
+  is the source of truth for the users table. Account Kit reads the column names from that file.
+- **[Prisma](https://www.prisma.io)** is an ORM where you describe models in a `schema.prisma` file
+  and Prisma generates a typed client and migrations from it. Use the Prisma adapter when the users
+  table is managed by Prisma, for example because the app moved to AdonisJS from another Node
+  framework, or because a separate service owns the schema. Account Kit reads the model, including
+  `@map` and `@@map` renames, from the generated client.
+- **Plain SQL** needs no model at all: you give it the table name. Use it when the users table
+  belongs to a legacy database or another system, when you want account queries without model
+  hooks, or when you would rather not add a model class just for Account Kit.
+
+Whichever you pick, Account Kit still runs its queries through Lucid, so Lucid must be installed
+and connected to the same database. Drizzle and Prisma only supply the table description; their
+clients are never called. The section below explains why.
+
 ## The transaction constraint
 
 Account Kit runs every operation in its own Lucid transaction and locks the user row through it.
