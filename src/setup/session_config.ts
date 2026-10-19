@@ -1,5 +1,5 @@
 import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
-import { selectedSessionEnvironment } from './session_env.js'
+import { resolveSelectedEnvironment } from './selected_environment.js'
 import {
   defaultExpression,
   defaultImportName,
@@ -90,7 +90,7 @@ export async function nativeSessionConfiguration(
     )
       return null
     selectedName =
-      (await selectedSessionEnvironment(root, args[0].text)) ??
+      (await resolveSelectedEnvironment(root, args[0].text)) ??
       (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
   }
   let unsafe = false
@@ -161,7 +161,7 @@ export async function selectedSessionDiagnostic(
     store.initializer.arguments.length >= 1 &&
     source.ts.isStringLiteral(store.initializer.arguments[0])
   )
-    name = await selectedSessionEnvironment(root, store.initializer.arguments[0].text)
+    name = await resolveSelectedEnvironment(root, store.initializer.arguments[0].text)
   if (!name) return { name: null, kind: null }
   const selected = directProperty(source, stores.initializer, name)
   const initializer = selected?.initializer
