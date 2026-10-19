@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { planSetup } from '../src/setup/plan.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
-test.group('setup prerequisite inspection', () => {
+test.group('setup shield prerequisites', () => {
   test('comments do not certify Shield and empty Limiter configuration fails', async ({
     assert,
   }) => {
