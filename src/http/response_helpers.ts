@@ -6,8 +6,14 @@ import {
   managedErrorResponse,
   type ManagedErrorResponse,
   type ManagedMessage,
+  type ManagedTranslator,
 } from './responses.js'
 import type { ManagedEndpointName } from './routes.js'
+
+/** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
+export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
+  return 'i18n' in context ? (context.i18n as ManagedTranslator) : undefined
+}
 
 export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
   for (const [name, value] of Object.entries(mapped.headers)) {
@@ -37,18 +43,39 @@ export function invalidProof(
     proof,
     accept: context.request.header('accept'),
     message,
+    i18n: requestTranslator(context),
   })!
   applyMappedHeaders(context, mapped)
   return context.response.status(mapped.status).send(mapped.body)
+}
+
+/**
+ * A 422 for a rule the package checks itself, worded through the keys the `@adonisjs/i18n` VineJS
+ * messages provider reads: `validator.shared.messages.<rule>`, with the field name from
+ * `validator.shared.fields.<field>`.
+ */
+export function ruleError(
+  context: HttpContext,
+  field: string,
+  rule: string,
+  fallbackMessage: string
+): unknown {
+  const i18n = requestTranslator(context)
+  const message = i18n
+    ? i18n.t(
+        `validator.shared.messages.${rule}`,
+        { field: i18n.t(`validator.shared.fields.${field}`, {}, field) },
+        fallbackMessage
+      )
+    : fallbackMessage
+  return context.response.status(422).send({ errors: [{ field, rule, message }] })
 }
 
 export function passwordPolicyError(
   context: HttpContext,
   field: 'password' | 'newPassword'
 ): unknown {
-  return context.response.status(422).send({
-    errors: [{ field, rule: 'passwordPolicy', message: 'Password does not meet the policy.' }],
-  })
+  return ruleError(context, field, 'passwordPolicy', 'Password does not meet the policy.')
 }
 
 export function safeAccount(account: CurrentAccount): Record<string, unknown> {

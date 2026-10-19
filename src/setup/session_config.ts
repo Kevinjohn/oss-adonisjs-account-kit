@@ -1,7 +1,5 @@
-import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
-import { selectedSessionEnvironment } from './session_env.js'
+import { resolveSelectedEnvironment } from './selected_environment.js'
 import {
-  defaultExpression,
   defaultImportName,
   directProperty,
   exactCall,
@@ -12,20 +10,20 @@ import {
   safeEnvGetter,
   topLevelConfig,
   walk,
+  type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
-import { diagnostic } from './shared.js'
 
-export const sessionImport =
+const sessionImport =
   "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from 'adonisjs-account-kit/http'\n// account-kit:session-import:end\n"
 
-export const selectionStart = '// account-kit:session-selection:start\n'
+const selectionStart = '// account-kit:session-selection:start\n'
 
-export const selectionEnd = '\n// account-kit:session-selection:end\n'
+const selectionEnd = '\n// account-kit:session-selection:end\n'
 
-export const exportStart = '// account-kit:session-export:start\n'
+const exportStart = '// account-kit:session-export:start\n'
 
-export const exportEnd = '// account-kit:session-export:end\n'
+const exportEnd = '// account-kit:session-export:end\n'
 
 export interface NativeSessionConfiguration {
   configStart: number
@@ -36,6 +34,40 @@ export interface NativeSessionConfiguration {
   allowedStores: Array<{ name: string; kind: 'database' | 'memory' }>
   selectedName: string | null
   selected: { name: string; kind: 'database' | 'memory' } | null
+}
+
+/** The variable name in `env.get('NAME', ...)`, whatever the remaining arguments are. */
+function envVariable(source: SetupSource, expression: TypeScript.Expression): string | null {
+  const envBinding = defaultImportName(source, '#start/env')
+  if (
+    !envBinding ||
+    !exactCall(source, expression, envBinding, 'get') ||
+    !safeEnvGetter(source, envBinding) ||
+    expression.arguments.length < 1 ||
+    !source.ts.isStringLiteral(expression.arguments[0])
+  )
+    return null
+  return expression.arguments[0].text
+}
+
+/** Read a store selected through `env.get('NAME')` or `env.get('NAME', 'fallback')`. */
+function envSelector(
+  source: SetupSource,
+  expression: TypeScript.Expression
+): { variable: string; fallback: string | null } | null {
+  const variable = envVariable(source, expression)
+  if (!variable || !source.ts.isCallExpression(expression)) return null
+  const args = expression.arguments
+  if (
+    args.length > 2 ||
+    !/^[A-Z][A-Z0-9_]*$/.test(variable) ||
+    (args.length === 2 && !source.ts.isStringLiteral(args[1]))
+  )
+    return null
+  return {
+    variable,
+    fallback: args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null,
+  }
 }
 
 export async function nativeSessionConfiguration(
@@ -73,25 +105,9 @@ export async function nativeSessionConfiguration(
   let selectedName: string | null = null
   if (ts.isStringLiteral(store.initializer)) selectedName = store.initializer.text
   else {
-    const envBinding = defaultImportName(source, '#start/env')
-    if (
-      !envBinding ||
-      !exactCall(source, store.initializer, envBinding, 'get') ||
-      !safeEnvGetter(source, envBinding)
-    )
-      return null
-    const args = store.initializer.arguments
-    if (
-      args.length < 1 ||
-      args.length > 2 ||
-      !ts.isStringLiteral(args[0]) ||
-      !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
-      (args.length === 2 && !ts.isStringLiteral(args[1]))
-    )
-      return null
-    selectedName =
-      (await selectedSessionEnvironment(root, args[0].text)) ??
-      (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+    const selector = envSelector(source, store.initializer)
+    if (!selector) return null
+    selectedName = (await resolveSelectedEnvironment(root, selector.variable)) ?? selector.fallback
   }
   let unsafe = false
   walk(source, (node) => {
@@ -154,14 +170,10 @@ export async function selectedSessionDiagnostic(
   if (!store || !stores || !source.ts.isObjectLiteralExpression(stores.initializer)) return null
   let name: string | null = null
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
-  else if (
-    defaultImportName(source, '#start/env') &&
-    safeEnvGetter(source, defaultImportName(source, '#start/env')!) &&
-    exactCall(source, store.initializer, defaultImportName(source, '#start/env')!, 'get') &&
-    store.initializer.arguments.length >= 1 &&
-    source.ts.isStringLiteral(store.initializer.arguments[0])
-  )
-    name = await selectedSessionEnvironment(root, store.initializer.arguments[0].text)
+  else {
+    const variable = envVariable(source, store.initializer)
+    if (variable) name = await resolveSelectedEnvironment(root, variable)
+  }
   if (!name) return { name: null, kind: null }
   const selected = directProperty(source, stores.initializer, name)
   const initializer = selected?.initializer
@@ -238,91 +250,4 @@ export async function unwrapManagedSessionConfig(
     .replace(exportMatch[0], 'export default sessionConfig')
   const inspected = await nativeSessionConfiguration(base, root)
   return inspected && renderManagedSessionConfig(base, inspected) === source ? base : null
-}
-
-export async function planSessionConfigIntegration(
-  changes: SetupFileChange[],
-  state: SetupInspection,
-  choices: SetupChoices,
-  diagnostics: SetupDiagnostic[]
-): Promise<void> {
-  const path = 'config/session.ts'
-  const previous = state.files[path]
-  if (!previous) return
-  const wantsManagedSession =
-    choices.managed.length > 0 && choices.authentication?.strategy === 'session'
-  const wasManaged = previous.includes('account-kit:session-import:start')
-  const base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root) : previous
-  if (base === null) {
-    diagnostic(
-      diagnostics,
-      path,
-      'The managed session integration was edited; restore its marked block or reconcile it manually before setup'
-    )
-    return
-  }
-  if (!wantsManagedSession && !wasManaged) return
-  const parsed = await parseSetupSource(previous)
-  const existingWrapper = defaultExpression(parsed)
-  const wrapperBinding = importedName(
-    parsed,
-    'adonisjs-account-kit/http',
-    'protectManagedSessionConfig'
-  )
-  if (
-    !wasManaged &&
-    wrapperBinding &&
-    existingWrapper &&
-    parsed.ts.isCallExpression(existingWrapper.expression) &&
-    parsed.ts.isIdentifier(existingWrapper.expression.expression) &&
-    existingWrapper.expression.expression.text === wrapperBinding
-  ) {
-    diagnostic(
-      diagnostics,
-      path,
-      'Verify the existing application-owned session protection wrapper before enabling managed session routes',
-      'action'
-    )
-    return
-  }
-  let inspected: NativeSessionConfiguration | null = null
-  if (wantsManagedSession) {
-    try {
-      inspected = await nativeSessionConfiguration(base, state.root)
-    } catch {
-      diagnostic(
-        diagnostics,
-        path,
-        'Inspect the selected session environment assignment and file path; only a direct native store name is supported'
-      )
-      return
-    }
-  }
-  if (wantsManagedSession && !inspected?.selected) {
-    diagnostic(
-      diagnostics,
-      path,
-      'The selected session factory must be an inspected native database or development memory store; custom or unresolved selections need a truthful application-owned protectManagedSessionConfig wrapper'
-    )
-    return
-  }
-  const content =
-    wantsManagedSession && inspected ? renderManagedSessionConfig(base, inspected) : base
-  if (content === null) {
-    diagnostic(
-      diagnostics,
-      path,
-      'Use a conventional const sessionConfig = defineConfig(...) and export default sessionConfig, or wire protectManagedSessionConfig manually before managed session activation'
-    )
-    return
-  }
-  changes.push({
-    path,
-    action: previous === content ? 'unchanged' : 'update',
-    expected: previous,
-    content,
-    reason: wantsManagedSession
-      ? 'Verify the selected server-side session store before issuing managed credentials'
-      : 'Retire the setup-owned managed session verification wrapper',
-  })
 }

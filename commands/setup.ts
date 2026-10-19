@@ -4,7 +4,7 @@ import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import type { SetupChoices } from '../src/setup/types.js'
+import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
 import { collectSetupChoices } from '../src/setup/prompts.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import type RetirementImpact from './retirement_impact.js'
@@ -41,45 +41,55 @@ export default class SetupAccountKit extends BaseCommand {
     return collectSetupChoices(ask, (message) => this.logger.info(message))
   }
 
-  async run(): Promise<void> {
-    const root = this.app.makePath('')
-    const state = await inspectSetup(root)
-    let choices: SetupChoices
+  /** Choices from the saved file (--check), the --input file, or the prompts. */
+  private async loadChoices(root: string, state: SetupInspection): Promise<SetupChoices> {
     if (this.check) {
       if (!state.existingChoices)
         throw new Error('No config/account_kit_setup.json exists; run setup first')
-      choices = state.existingChoices
-    } else if (this.input) {
-      const content = await readFile(resolve(root, this.input), 'utf8')
-      choices = parseSetupChoices(JSON.parse(content))
-    } else choices = await this.interactiveChoices()
-    let retirementImpact: RetirementImpact['impact'] | null = null
-    let runtimeInventoryUnavailable = false
-    const remainingProviders = choices.social.status === 'enabled' ? choices.social.providers : []
-    if (state.existingChoices) {
-      try {
-        const inventory = await this.kernel.exec<typeof RetirementImpact>(
-          'account-kit:retirement-impact',
-          [
-            '--quiet',
-            ...(choices.authentication ? ['--keep-password-login'] : []),
-            `--providers=${remainingProviders.length ? remainingProviders.join(',') : 'none'}`,
-          ]
-        )
-        retirementImpact = inventory.impact
-        if (inventory.failure || !inventory.impact) {
-          runtimeInventoryUnavailable = true
-          this.logger.warning(
-            'Read-only account inventory could not query the application database'
-          )
-        }
-      } catch {
-        runtimeInventoryUnavailable = true
-        this.logger.warning(
-          'Read-only account inventory could not start; login retirement remains blocked'
-        )
-      }
+      return state.existingChoices
     }
+    if (this.input) {
+      const content = await readFile(resolve(root, this.input), 'utf8')
+      return parseSetupChoices(JSON.parse(content))
+    }
+    return this.interactiveChoices()
+  }
+
+  /** Count accounts the choices would retire, through the booted read-only inventory command. */
+  private async runtimeInventory(choices: SetupChoices): Promise<{
+    retirementImpact: RetirementImpact['impact'] | null
+    runtimeInventoryUnavailable: boolean
+  }> {
+    const remainingProviders = choices.social.status === 'enabled' ? choices.social.providers : []
+    try {
+      const inventory = await this.kernel.exec<typeof RetirementImpact>(
+        'account-kit:retirement-impact',
+        [
+          '--quiet',
+          ...(choices.authentication ? ['--keep-password-login'] : []),
+          `--providers=${remainingProviders.length ? remainingProviders.join(',') : 'none'}`,
+        ]
+      )
+      if (inventory.failure || !inventory.impact) {
+        this.logger.warning('Read-only account inventory could not query the application database')
+        return { retirementImpact: inventory.impact, runtimeInventoryUnavailable: true }
+      }
+      return { retirementImpact: inventory.impact, runtimeInventoryUnavailable: false }
+    } catch {
+      this.logger.warning(
+        'Read-only account inventory could not start; login retirement remains blocked'
+      )
+      return { retirementImpact: null, runtimeInventoryUnavailable: true }
+    }
+  }
+
+  async run(): Promise<void> {
+    const root = this.app.makePath('')
+    const state = await inspectSetup(root)
+    const choices = await this.loadChoices(root, state)
+    const { retirementImpact, runtimeInventoryUnavailable } = state.existingChoices
+      ? await this.runtimeInventory(choices)
+      : { retirementImpact: null, runtimeInventoryUnavailable: false }
     const plan = await planSetup(choices, state, {
       apply: this.apply && !this.check,
       production: this.production,

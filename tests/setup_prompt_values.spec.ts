@@ -1,15 +1,7 @@
 import { test } from '@japa/runner'
-import SetupAccountKit from '../commands/setup.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
-
-async function interactive(answers: Record<string, string> = {}) {
-  return SetupAccountKit.prototype.interactiveChoices.call(
-    { logger: { info() {} } } as unknown as SetupAccountKit,
-    async (question) =>
-      Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
-  )
-}
+import { interactive } from './helpers/interactive_choices.js'
 
 test.group('setup prompt values', () => {
   for (const [field, question] of [
@@ -68,5 +60,51 @@ test.group('setup prompt values', () => {
     const invalidRegistration = defaultSetupChoices()
     Object.assign(invalidRegistration.policy, { registration: 'unknown' })
     assert.throws(() => parseSetupChoices(invalidRegistration), /policy.registration/)
+  })
+
+  test('interactive token answers produce complete parseable choices including invitation destination', async ({
+    assert,
+  }) => {
+    const answers: Record<string, string> = {
+      'Enabled services': 'authentication,invitations',
+      'Managed endpoint groups': 'authentication,invitations',
+      'Managed endpoint exclusions': 'auth.invitation.inspect',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Token revocation': 'yes',
+      'Application-owned protected': 'yes',
+      'Delivery integration': 'custom',
+      'invitation relative': 'invites/accept',
+      'Additional registration fields': '[{"name":"fullName","type":"string","required":true}]',
+      'Application invitation permission': 'yes',
+    }
+    const choices = await interactive(answers)
+    assert.equal(choices.authentication?.strategy, 'access_tokens')
+    assert.deepEqual(choices.managedExcept, ['auth.invitation.inspect'])
+    assert.isFalse(Object.hasOwn(choices.authentication!, 'session'))
+    assert.equal(choices.mail.destinations.invitation, 'invites/accept')
+    assert.lengthOf(choices.policy.registrationFields, 1)
+    assert.deepEqual(parseSetupChoices(choices), choices)
+  })
+
+  test('interactive provider selection does not duplicate an already selected social group', async ({
+    assert,
+  }) => {
+    const answers: Record<string, string> = {
+      'Enabled services':
+        'authentication,registration,emailVerification,passwordReset,socialAuthentication',
+      'Managed endpoint groups': 'authentication,socialAuthentication',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Token revocation': 'yes',
+      'Application-owned protected': 'yes',
+      'Delivery integration': 'custom',
+      'Application restricted-account': 'yes',
+      'Social providers to prepare': 'google',
+    }
+    const choices = await interactive(answers)
+    assert.equal(choices.features.filter((name) => name === 'socialAuthentication').length, 1)
+    assert.equal(choices.managed.filter((name) => name === 'socialAuthentication').length, 1)
+    assert.doesNotThrow(() => parseSetupChoices(choices))
   })
 })

@@ -3,12 +3,11 @@ import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { verifier, clientChallenge, provider } from './helpers/social_identity.js'
+import { verifier, clientChallenge, provider, current } from './helpers/social_identity.js'
 import { dbTime } from './helpers/db_time.js'
 
 test.group('social association and continuation regressions', (group) => {
   const kit = useTestApp(group)
-  const current = (userId: number | string) => ({ userId, revision: null })
   const sessionGuard = {
     strategy: 'session' as const,
     name: 'web',

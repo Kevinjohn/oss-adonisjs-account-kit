@@ -8,6 +8,7 @@ import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
+import { ACCESS_TOKENS_ONLY, SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
 const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
 
@@ -52,7 +53,6 @@ test('bearer logout revokes only the current token and repeat is unauthenticated
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Token Logout User',
     email: `token-logout-${randomUUID()}@example.test`,
@@ -98,10 +98,9 @@ test('bearer logout revokes only the current token and repeat is unauthenticated
     ['active', 'email', 'hasPassword', 'id', 'unverifiedEmail']
   )
   assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('password change revokes every bearer token for the account', async ({ client, assert }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Multi Token User',
     email: `multi-token-${randomUUID()}@example.test`,
@@ -125,20 +124,19 @@ test('password change revokes every bearer token for the account', async ({ clie
     assert.equal((await client.get('/api/v1/account/profile').bearerToken(token)).status(), 401)
   }
   assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('account errors use stable JSON and JSON:API envelopes while Vine errors retain 422', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const email = `unknown-token-${randomUUID()}@example.test`
   const rejected = await client
     .post('/api/v1/auth/login')
     .json({ email, password: 'WrongPass123!' })
   assert.equal(rejected.status(), 401)
   assert.deepEqual(rejected.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const jsonApi = await client
     .post('/api/v1/auth/login')
@@ -147,7 +145,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.equal(jsonApi.status(), 401)
   assert.include(jsonApi.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(jsonApi.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', title: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', title: 'Account request rejected' }],
   })
   const excluded = await client
     .post('/api/v1/auth/login')
@@ -156,7 +154,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.equal(excluded.status(), 401)
   assert.notInclude(excluded.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(excluded.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const wildcard = await client
     .post('/api/v1/auth/login')
@@ -165,7 +163,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.equal(wildcard.status(), 401)
   assert.notInclude(wildcard.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(wildcard.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const validation = await client
     .post('/api/v1/auth/login')
@@ -175,13 +173,12 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
     (validation.body() as unknown as { errors: Array<Record<string, unknown>> }).errors[0],
     'rule'
   )
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('bad login reveals one response for absent, wrong, restricted, and passwordless accounts', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const wrong = await User.create({
     fullName: 'Wrong Password User',
     email: `wrong-login-${randomUUID()}@example.test`,
@@ -211,10 +208,9 @@ test('bad login reveals one response for absent, wrong, restricted, and password
     responses.push(response.body())
   }
   for (const response of responses.slice(1)) assert.deepEqual(response, responses[0])
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('the existing token guard rejects an expired bearer token', async ({ client, assert }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Expired Token User',
     email: `expired-token-${randomUUID()}@example.test`,
@@ -228,13 +224,12 @@ test('the existing token guard rejects an expired bearer token', async ({ client
     .where('tokenable_id', user.id)
     .update({ expires_at: new Date(0) })
   assert.equal((await client.get('/api/v1/account/profile').bearerToken(value)).status(), 401)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('a limited inactive token cannot reach a verified account route', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Inactive Token User',
     email: `inactive-token-${randomUUID()}@example.test`,
@@ -250,15 +245,14 @@ test('a limited inactive token cannot reach a verified account route', async ({
   assert.equal(restricted.status(), 403)
   assert.equal(
     (restricted.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('profile writes accept only configured fields and preserve pending-email rules', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Original Name',
     email: `profile-write-${randomUUID()}@example.test`,
@@ -290,13 +284,12 @@ test('profile writes accept only configured fields and preserve pending-email ru
   assert.equal(cancel.status(), 200)
   await user.refresh()
   assert.isNull(user.unverifiedEmail)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('an inactive email correction succeeds while revoking the old bearer credential', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const email = `inactive-correction-${randomUUID()}@example.test`
   const user = await User.create({
     fullName: 'Inactive Correction',
@@ -316,13 +309,12 @@ test('an inactive email correction succeeds while revoking the old bearer creden
   assert.equal(user.email, correction)
   assert.equal(user.unverifiedEmail, correction)
   assert.equal((await client.get('/api/v1/account/profile').bearerToken(token)).status(), 401)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('verification GET inspects without consuming and POST completes once', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Verification Link User',
     email: `verification-link-${randomUUID()}@example.test`,
@@ -376,7 +368,9 @@ test('verification GET inspects without consuming and POST completes once', asyn
   })
   assert.equal(replay.status(), 400)
   assert.deepEqual(replay.body(), {
-    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' }],
+    errors: [
+      { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' },
+    ],
   })
   const spentInspect = await client.get(path)
   assert.equal(spentInspect.status(), 400)
@@ -384,9 +378,11 @@ test('verification GET inspects without consuming and POST completes once', asyn
   const jsonApiProof = await client.get(path).header('accept', 'application/vnd.api+json')
   assert.equal(jsonApiProof.status(), 400)
   assert.deepEqual(jsonApiProof.body(), {
-    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' }],
+    errors: [
+      { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' },
+    ],
   })
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('malformed proof submission still receives private-cache and referrer headers', async ({
   client,
@@ -404,7 +400,6 @@ test('session CSRF rejection on a proof POST retains private response headers', 
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const rejected = await client
     .post('/api/v1/auth/password-reset/invalid-proof')
     .header('x-csrf-token', 'invalid')
@@ -412,4 +407,4 @@ test('session CSRF rejection on a proof POST retains private response headers', 
   assert.equal(rejected.status(), 403)
   assert.equal(rejected.header('cache-control'), 'no-store')
   assert.equal(rejected.header('referrer-policy'), 'no-referrer')
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)

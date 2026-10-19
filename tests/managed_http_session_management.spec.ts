@@ -5,7 +5,7 @@ import { planManagedRoutes } from '../src/http/routes.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
@@ -29,6 +29,8 @@ test.group('managed sign-in management routes', (group) => {
     const terminated: unknown[] = []
     const issued: CurrentAccountInput[] = []
     const established: unknown[][] = []
+    const warnings: unknown[] = []
+    let failTerminate = false
     let caller: CurrentAccountInput | undefined
     const guard = {
       strategy,
@@ -46,12 +48,15 @@ test.group('managed sign-in management routes', (group) => {
             })
             return `credential:${userId}`
           },
-          terminate: async (credential?: unknown) => void terminated.push(credential ?? 'session'),
+          terminate: async (credential?: unknown) => {
+            if (failTerminate) throw new Error('session store down')
+            terminated.push(credential ?? 'session')
+          },
         }) as never,
       current: async () => caller!,
       publicCredential: (credential: string) => `public:${credential}`,
     } as ManagedGuard<string>
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
@@ -70,6 +75,7 @@ test.group('managed sign-in management routes', (group) => {
     ) => {
       caller = options.as
       const ctx = context(options.params ?? {})
+      Object.assign(ctx, { logger: { warn: (...args: unknown[]) => void warnings.push(args) } })
       Object.assign(ctx.request, {
         validateUsing: (validator: Validator) => validator.validate(options.body ?? {}),
         header: (name: string) => (name === 'user-agent' ? options.userAgent : undefined),
@@ -82,7 +88,10 @@ test.group('managed sign-in management routes', (group) => {
       if (output.status !== 200) throw new Error(`login failed: ${output.status}`)
       return issued.at(-1)!
     }
-    return { service, call, signIn, terminated, established }
+    const failTerminateNext = () => {
+      failTerminate = true
+    }
+    return { service, call, signIn, terminated, established, warnings, failTerminateNext }
   }
 
   test('session login labels the sign-in with the User-Agent and lists it', async ({ assert }) => {
@@ -173,6 +182,31 @@ test.group('managed sign-in management routes', (group) => {
     assert.deepEqual(terminated, [])
     const listed = await call('GET /api/v1/account/sessions', { as: mine })
     assert.equal(listed.status, 200)
+  })
+
+  test('a session that cannot be ended after revocation is logged; the revocation stands', async ({
+    assert,
+  }) => {
+    await insertUser(kit)
+    const { call, signIn, warnings, failTerminateNext } = mount('session')
+    const mine = await signIn()
+    const own = await call('GET /api/v1/account/sessions', { as: mine })
+    const ownId = own.body.sessions.find(({ current }: any) => current).id
+    failTerminateNext()
+    const revoked = await call('DELETE /api/v1/account/sessions/:id', {
+      as: mine,
+      params: { id: String(ownId) },
+    })
+    assert.deepEqual(revoked, { status: 204 })
+    const second = await signIn()
+    const everywhere = await call('POST /api/v1/account/sessions/revoke-all', { as: second })
+    assert.deepEqual(everywhere, { status: 204 })
+    assert.lengthOf(await kit.db.from('account_sessions'), 0)
+    const warning = 'Managed account operation needs reconciliation'
+    assert.deepEqual(warnings, [
+      [{ operation: 'account.sessions.revoke', outcome: 'session_end_failed' }, warning],
+      [{ operation: 'account.sessions.revokeAll', outcome: 'session_end_failed' }, warning],
+    ])
   })
 
   test('sign out everywhere ends every sign-in and the caller’s session', async ({ assert }) => {

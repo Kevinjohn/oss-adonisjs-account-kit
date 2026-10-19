@@ -20,7 +20,7 @@ Initial public release.
 - Optional magic-link sign-in (`magicLinkLogin`, `kit.magicLink`): a one-use, 15-minute email link
   bound to the requesting client by a PKCE-style verifier, for session and access-token guards,
   with managed routes under `auth/magic-link`, the `magicLinkProvision` email, the
-  `E_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
+  `E_ACCOUNT_KIT_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
   deletes outstanding links, so the `login_link_tokens` table is required in every
   installation.
 - Optional sign-in management (`sessionManagement`, `kit.authentication.sessions`): list the
@@ -48,6 +48,8 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- The provider registers an `account_kit` container alias, typed through `ContainerBindings`, so
+  `app.container.make('account_kit')` resolves the same `AccountKit` singleton.
 - Doc comments on every public export, so the generated API reference describes each type,
   option and service method. Types the reference named but could not link are now exported as
   types only: `LucidModelRow`, `LucidUsersAdapter`, `LucidCreateAttributes`, `MessageLogger` and the
@@ -70,6 +72,12 @@ Initial public release.
   `timezone: 'Z'` and a UTC session time zone; see [compatibility](docs/compatibility.md).
 - Generated timestamp columns have millisecond precision, so MySQL does not round expiries and
   credential revisions to the second. Existing installations keep their columns.
+- Managed route errors are translated through `@adonisjs/i18n` when the application uses it,
+  as the official AdonisJS packages do: the message for code `X` is looked up as `errors.X` in
+  the request's locale, with the English message as the fallback. `extensions.message` now
+  receives the translated message as its default. The duplicate-email and password-policy 422
+  messages are looked up as `validator.shared.messages.unique` and
+  `validator.shared.messages.passwordPolicy`, the keys the VineJS messages provider reads.
 
 <details>
 <summary>Pre-release candidate history</summary>
@@ -229,6 +237,8 @@ that ran a candidate build.
   `PostCommitError` with `committed: true`.
 - Invitation resend and revoke now run their link delivery and lifecycle event after the same kind
   of committed cleanup fault, matching the other invitation operations.
+- The Drizzle and Prisma users adapters now forward `delete`, so account deletion no longer fails
+  with `users.delete must be a function`.
 
 ### Integration notes
 

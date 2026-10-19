@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { setSocialFixture } from '#services/social_provider_fixture'
+import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
 function rawCookies(response: { header(name: string): string | string[] | undefined }): string {
   const values = response.header('set-cookie')
@@ -16,7 +17,6 @@ test('password signup records the visitor method after the web guard is establis
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const bootstrap = await client.get('/api/v1/auth/csrf')
   const signup = await client
     .post('/api/v1/auth/signup')
@@ -32,13 +32,12 @@ test('password signup records the visitor method after the web guard is establis
   const methods = await client.get('/api/v1/account/methods').header('cookie', rawCookies(signup))
   assert.equal(methods.status(), 200)
   assert.equal((methods.body() as { lastUsedMethod: string }).lastUsedMethod, 'password')
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('browser session keeps PKCE verifier server-side and establishes the existing web guard', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const bootstrap = await client.get('/api/v1/auth/csrf')
   assert.equal(bootstrap.status(), 200)
   const csrf = (bootstrap.body() as { csrfToken: string }).csrfToken
@@ -105,13 +104,12 @@ test('browser session keeps PKCE verifier server-side and establishes the existi
   assert.equal((methods.body() as { lastUsedMethod: string }).lastUsedMethod, 'google')
   const created = await User.findByOrFail('email', email)
   assert.isNull(created.password)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('browser session links and unlinks with a bound recent password proof', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Session Link User',
     email: `session-link-${randomUUID()}@example.test`,
@@ -168,13 +166,12 @@ test('browser session links and unlinks with a bound recent password proof', asy
     .header('x-csrf-token', (csrf.body() as { csrfToken: string }).csrfToken)
     .json({ proof: (unlinkProof.body() as { proof: string }).proof })
   assert.equal(unlinked.status(), 204, JSON.stringify(unlinked.body()))
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('browser social link rejects a session invalidated after initiation', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Stale Session User',
     email: `stale-social-${randomUUID()}@example.test`,
@@ -216,4 +213,4 @@ test('browser social link rejects a session invalidated after initiation', async
     .header('cookie', rawCookies(started) || cookie)
   assert.isAtLeast(callback.status(), 400)
   assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)

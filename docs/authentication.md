@@ -28,7 +28,7 @@ authentication: {
   changes. Its callback writes through the supplied transaction; the package then advances the
   credential revision and applies the selected revocation policy in that transaction.
 - Account activation is a separate state: an inactive account may hold a limited credential, but
-  `requireActive` denies protected actions with HTTP 403 and code `unverified_email`.
+  `requireActive` denies protected actions with HTTP 403 and code `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`.
 
 ### Session guard requirements
 
@@ -55,7 +55,7 @@ authentication: {
 - Store bearer credentials only in a client location appropriate to the threat model, send them in
   the `Authorization: Bearer` header, and never put them in URLs or logs.
 
-The maintained [token API reference](../examples/api/TOKENS.md) shows the complete bearer request sequence, proof-link handling, error envelopes, and application-owned route gate.
+The maintained [token API reference](token-reference.md) shows the complete bearer request sequence, proof-link handling, error envelopes, and application-owned route gate.
 
 ## How it works
 

@@ -5,6 +5,7 @@ import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
+import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
 const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
 
@@ -20,7 +21,6 @@ test('session reference gives the same public login failure for missing, wrong, 
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const suffix = randomUUID()
   const allowed = await User.create({
     fullName: 'Allowed Session User',
@@ -64,7 +64,7 @@ test('session reference gives the same public login failure for missing, wrong, 
   assert.deepEqual(failures[2], failures[3])
   assert.equal(
     (failures[0] as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'E_ACCOUNT_KIT_INVALID_CREDENTIALS'
+    'E_INVALID_CREDENTIALS'
   )
   const success = await client
     .post('/api/v1/auth/login')
@@ -74,13 +74,12 @@ test('session reference gives the same public login failure for missing, wrong, 
   assert.equal(success.status(), 200)
   const profile = await client.get('/api/v1/account/profile').header('cookie', cookies(success))
   assert.equal(profile.status(), 200)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('session signup, activation and a new login complete through application-owned HTTP', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   notifications.reset()
   const email = `session-journey-${randomUUID()}@example.test`
   const csrf = await client.get('/api/v1/auth/csrf')
@@ -162,13 +161,12 @@ test('session signup, activation and a new login complete through application-ow
   const profile = await client.get('/api/v1/account/profile').header('cookie', cookies(newLogin))
   assert.equal(profile.status(), 200)
   assert.isTrue((profile.body() as unknown as { data: { active: boolean } }).data.active)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('confirmed email change inspects without consuming and revokes the old browser session', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   notifications.reset()
   const originalEmail = `session-email-${randomUUID()}@example.test`
   const nextEmail = `session-next-${randomUUID()}@example.test`
@@ -234,13 +232,12 @@ test('confirmed email change inspects without consuming and revokes the old brow
     .header('x-csrf-token', (nextCsrf.body() as { csrfToken: string }).csrfToken)
     .json({ email: nextEmail, password: 'OriginalPass123!' })
   assert.equal(nextLogin.status(), 200)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('session owner can send, inspect, resend, accept and revoke invitations', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   notifications.reset()
   const owner = await User.create({
     fullName: 'Invitation Owner',
@@ -336,4 +333,4 @@ test('session owner can send, inspect, resend, accept and revoke invitations', a
     .header('x-csrf-token', ownerToken)
   assert.equal(revoke.status(), 204)
   assert.equal((await client.get(revokedPath)).status(), 400)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)

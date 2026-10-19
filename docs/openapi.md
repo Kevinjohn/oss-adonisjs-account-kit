@@ -136,8 +136,8 @@ configured policy, and enumerated values such as `purpose` are checked by the ha
   schema and compiles every embedded schema.
 - `tests/managed_openapi_conformance.spec.ts` runs the managed handlers and validates their
   bodies against the generated responses.
-- `tests/managed_validators.spec.ts` checks that VineJS and the request schemas accept and reject
-  the same inputs.
+- `tests/managed_openapi_validator_agreement.spec.ts` checks that VineJS and the request schemas
+  accept and reject the same inputs.
 - `tests/managed_openapi_snapshot.spec.ts` compares the generator with the committed documents in
   `tests/fixtures/openapi/`. After a deliberate change, run `pnpm build` and
   `node scripts/openapi_snapshot.mjs`, then review the diff.

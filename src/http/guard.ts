@@ -1,9 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidSessionError } from '../errors.js'
-import type { AccountKit } from '../account_kit.js'
 import type { AuthenticationGuard, UserId } from '../types.js'
-import type { ManagedGuard } from './managed.js'
-import { assertManagedSessionStore } from './session_store.js'
+import type { ManagedGuard } from './managed_types.js'
+import { assertManagedSessionStore } from './session_store_protection.js'
+
+export { managedAccountMiddleware } from './managed_account_middleware.js'
 
 /** The user fields the managed guard reads. */
 export interface ManagedUser {
@@ -247,21 +248,5 @@ export function createManagedGuard<User>(
         },
       }
     },
-  }
-}
-
-/** Apply the same selected guard and package revision check to application-owned routes. */
-export function managedAccountMiddleware<Credential>(options: {
-  kit(): Promise<Pick<AccountKit, 'managedHttp' | 'authentication'>>
-  guard: Pick<ManagedGuard<Credential>, 'current' | 'name' | 'strategy'>
-  active: boolean
-}): (context: HttpContext, next: () => Promise<unknown>) => Promise<unknown> {
-  return async (context, next) => {
-    const kit = await options.kit()
-    kit.managedHttp.assertGuard(options.guard)
-    const input = await options.guard.current(context)
-    if (options.active) await kit.authentication.requireActive(input)
-    else await kit.authentication.current(input)
-    return next()
   }
 }

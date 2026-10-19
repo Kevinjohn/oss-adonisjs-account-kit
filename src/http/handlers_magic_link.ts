@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, InvalidInputError, InvalidTokenError, PostCommitError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed.js'
+import type { ManagedHandler } from './managed_types.js'
 import { invalidProof, recoveryDiagnostic } from './response_helpers.js'
 import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
 

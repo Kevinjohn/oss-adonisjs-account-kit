@@ -49,14 +49,25 @@ test.group('expired-token pruning', (group) => {
 
     const kernel = new Kernel(kit.app)
     kernel.addLoader(new ListLoader([PruneAccountKit]))
-    const messages: string[] = []
-    kernel.ui.logger.info = (message) => {
-      messages.push(message)
+    kernel.ui.switchMode('raw')
+    const output = () => {
+      const lines = kernel.ui.logger.getLogs().map((log) => log.message)
+      kernel.ui.logger.flushLogs()
+      return lines
     }
-    const suffix =
-      'recovery=0, invitations=0, emailVerifications=0, socialTransactions=1, socialSensitiveProofs=1, socialHandoffCodes=1, loginLinks=0, sessions=0'
+    const rows = [
+      'Table|Rows',
+      'recovery|0',
+      'invitations|0',
+      'emailVerifications|0',
+      'socialTransactions|1',
+      'socialSensitiveProofs|1',
+      'socialHandoffCodes|1',
+      'loginLinks|0',
+      'sessions|0',
+    ]
     await kernel.exec('account-kit:prune', ['--dry-run'])
-    assert.include(messages, `Expired: ${suffix}`)
+    assert.deepEqual(output(), ['[ blue(info) ] Expired rows (dry run, nothing deleted)', ...rows])
     for (const table of [
       'social_transactions',
       'social_sensitive_proofs',
@@ -66,7 +77,7 @@ test.group('expired-token pruning', (group) => {
     }
 
     await kernel.exec('account-kit:prune', [])
-    assert.include(messages, `Pruned: ${suffix}`)
+    assert.deepEqual(output(), ['[ blue(info) ] Pruned rows', ...rows])
     for (const table of [
       'social_transactions',
       'social_sensitive_proofs',

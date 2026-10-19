@@ -4,7 +4,7 @@ import { planManagedRoutes } from '../src/http/routes.js'
 import type { AccountKitConfig, AccountUser, CurrentAccountInput, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 import { seedAccountRows } from './helpers/account_rows.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
@@ -38,7 +38,7 @@ test.group('managed account data routes', (group) => {
       current: async () => caller!,
       publicCredential: (credential: string) => credential,
     } as ManagedGuard<string>
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => service.account,

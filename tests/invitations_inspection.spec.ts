@@ -2,17 +2,15 @@ import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { AuthorizationError, InvalidInputError } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
-import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
-import { allowAll, insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+import { invitationHelpers } from './helpers/invitations.js'
+import { allowAll, tokenFrom } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 test.group('invitations.list and inspect', (group) => {
   const kit = useTestApp(group)
 
-  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
-
-  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
+  const { createActor, service } = invitationHelpers(kit)
 
   test('lists only live invitations in creation order without token material', async ({
     assert,

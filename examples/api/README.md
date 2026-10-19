@@ -18,7 +18,7 @@ full picture.
 | Signing out old credentials      | [`app/middleware/account_access_middleware.ts`](app/middleware/account_access_middleware.ts)                                                                         |
 | HTTP tests for every flow        | [`tests/functional/`](tests/functional)                                                                                                                              |
 
-The [token reference](TOKENS.md) and [session reference](SESSION.md) walk through bearer and
+The [token reference](../../docs/token-reference.md) and [session reference](../../docs/session-reference.md) walk through bearer and
 browser clients.
 
 ## How the example works
@@ -32,11 +32,11 @@ client key. Keep `APP_URL` on HTTPS in production so generated links are secure.
 CSRF bootstrap, and HTTP-only browser cookies; the default uses the existing `api` bearer-token
 guard. The cookie session store is rejected because it cannot invalidate a replayed cookie on
 logout. See [authentication integration](../../docs/authentication.md) for setup, route protection,
-revocation, and client handling, and [token API reference](TOKENS.md) for bearer requests, proof
+revocation, and client handling, and [token API reference](../../docs/token-reference.md) for bearer requests, proof
 confirmation, error formats, and log redaction. The example permits a limited inactive credential to correct an
 unconfirmed email, while `VerifiedAccountMiddleware` rejects it on verified routes. Bearer tokens
 must have the `invitations:create` ability before the invitation-send controller acts.
-The [session reference](SESSION.md) gives the browser bootstrap, cookie, logout, and application-route
+The [session reference](../../docs/session-reference.md) gives the browser bootstrap, cookie, logout, and application-route
 revocation walkthrough.
 
 The credential-notice outbox stores password-reset and password-change operation IDs, kinds, and
@@ -73,6 +73,9 @@ or reuses this checkout's `node_modules`.
 Use the repository's `test:consumer` script to run it. A separate baseline tarball is required to
 run the upgrade scenario. PostgreSQL runs require the dedicated `account_kit_consumer` database;
 the harness resets its `public` schema before each independent scenario.
+The `compatibility/` and `upgrade/` folders are inputs for this harness, not part of the
+application: `compatibility/` is a separate minimum-version consumer, and `upgrade/` holds the
+baseline files for the upgrade scenario.
 The historical baseline config is kept in `upgrade/baseline_account_kit.stub` so current-app
 typechecking does not compile old package contracts. The upgrade harness copies that stub into
 the temporary application config only for its baseline phase.

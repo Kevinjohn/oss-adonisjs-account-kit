@@ -1,0 +1,62 @@
+// Password change: confirms the actor, sets the new password and ends older credentials.
+import { randomUUID } from 'node:crypto'
+import type { Database } from '@adonisjs/lucid/database'
+import type { LimiterService } from '@adonisjs/limiter/types'
+import { credentialsChanged } from './authentication.js'
+import { transaction } from './db.js'
+import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
+import { InvalidInputError } from './errors.js'
+import { isPasswordAllowed } from './password.js'
+import { throttlerOf, type Throttler } from './throttle.js'
+import { clearRecoveryTokens } from './credential_cleanup.js'
+import { confirmActor } from './actor_confirmation.js'
+import type { ChangePasswordInput, ResolvedConfig } from './types.js'
+
+export async function changePassword(
+  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  input: ChangePasswordInput
+): Promise<void> {
+  if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
+    throw new InvalidInputError('Invalid new password')
+
+  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
+  const operationId = randomUUID()
+  const { value: user, fault } = await settleCommitted(
+    transaction(deps.db, async (trx) => {
+      const actor = await confirmActor(
+        deps.config,
+        trx,
+        input.actorId,
+        input.currentPassword,
+        input.recentProof,
+        'password_change'
+      )
+      await deps.config.users.setPassword(actor.id, input.newPassword, trx)
+      if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
+        await deps.config.users.setUnverifiedEmail(actor.id, null, trx)
+      await clearRecoveryTokens(trx, actor.id, [
+        'password_reset_tokens',
+        'email_verification_tokens',
+      ])
+      const reloaded = await deps.config.users.findById(actor.id, trx)
+      if (!reloaded) throw new InvalidInputError('Unknown actor')
+      await credentialsChanged(trx, deps.config, reloaded, {
+        operation: 'password_change',
+        operationId,
+        userId: reloaded.id,
+      })
+      return reloaded
+    })
+  )
+
+  const context = { operation: 'password_change' as const, operationId, userId: user.id }
+  await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
+    afterCommit(
+      'Credentials changed but a follow-up failed',
+      () => deps.config.onCredentialsChanged?.(user, context),
+      () => deps.config.notify.passwordChanged(user, context),
+      () =>
+        deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
+    )
+  )
+}

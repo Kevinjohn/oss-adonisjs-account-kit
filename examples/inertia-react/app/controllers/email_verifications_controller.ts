@@ -1,21 +1,17 @@
-import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import kit from 'adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
+import { sendTokenPageHeaders } from '#services/token_page_headers'
 import { verifyEmailValidator } from '#validators/account'
 
 export default class EmailVerificationsController {
   async store({ auth, response, session }: HttpContext) {
-    const kit = await app.container.make(AccountKit)
     await kit.emailVerification.send({ userId: auth.getUserOrFail().id })
     session.flash('success', 'We have sent a new verification link.')
     response.redirect().back()
   }
 
   async edit({ inertia, params, response }: HttpContext) {
-    // Keeps the token out of the Referer sent to other sites, while form errors can still
-    // redirect back to this page.
-    response.header('Referrer-Policy', 'same-origin')
-    const kit = await app.container.make(AccountKit)
+    sendTokenPageHeaders(response)
     const valid = await kit.emailVerification.inspect({ token: params.token })
     return inertia.render('auth/verify_email', { token: params.token, valid })
   }
@@ -26,7 +22,6 @@ export default class EmailVerificationsController {
    */
   async update({ request, response, session, params }: HttpContext) {
     const { password } = await request.validateUsing(verifyEmailValidator)
-    const kit = await app.container.make(AccountKit)
     await kit.emailVerification.complete({ token: params.token, password })
     session.flash('success', 'Email confirmed. Sign in with your new password.')
     response.redirect().toRoute('session.create')

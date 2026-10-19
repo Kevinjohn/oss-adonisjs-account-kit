@@ -2,6 +2,14 @@ import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { hasEmailFlow, managedExclusions } from './shared.js'
 
+const requiredEnvHelperLines = [
+  'const requiredEnv = (name: string): string => {',
+  '  const value = process.env[name]',
+  '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
+  '  return value',
+  '}',
+]
+
 export function managedRoutesSource(choices: SetupChoices): string {
   const social =
     choices.social.status === 'enabled' && choices.managed.includes('socialAuthentication')
@@ -65,11 +73,7 @@ export function allyConfigSource(choices: SetupChoices): string {
     "import { defineConfig, services } from '@adonisjs/ally'",
     "import type { InferSocialProviders } from '@adonisjs/ally/types'",
     '',
-    'const requiredEnv = (name: string): string => {',
-    '  const value = process.env[name]',
-    '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
-    '  return value',
-    '}',
+    ...requiredEnvHelperLines,
     '',
     'const allyConfig = defineConfig({',
     ...social.providers.map((provider) => {
@@ -182,15 +186,7 @@ export function accountConfigSource(choices: SetupChoices): string {
       : []),
     ...(social ? ["import type { HttpContext } from '@adonisjs/core/http'"] : []),
     '',
-    ...(emailEnabled
-      ? [
-          'const requiredEnv = (name: string): string => {',
-          '  const value = process.env[name]',
-          '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
-          '  return value',
-          '}',
-        ]
-      : []),
+    ...(emailEnabled ? requiredEnvHelperLines : []),
     ...(choices.policy.registrationFields.length
       ? [
           '',
@@ -305,4 +301,29 @@ export function accountConfigSource(choices: SetupChoices): string {
     '',
   ]
   return imports.join('\n')
+}
+
+export function generatedEnv(choices: SetupChoices): string {
+  const names = new Set<string>()
+  if (hasEmailFlow(choices)) {
+    names.add(choices.mail.backendOriginEnv)
+    names.add(choices.mail.frontendOriginEnv)
+    if (choices.mail.senderEnv) names.add(choices.mail.senderEnv)
+    if (choices.mail.transportEnv) names.add(choices.mail.transportEnv)
+  }
+  if (choices.social.status === 'enabled') {
+    names.add(choices.social.callbackOriginEnv)
+    for (const provider of choices.social.providers) {
+      const refs = choices.social.credentials[provider]
+      if (refs) {
+        names.add(refs.clientIdEnv)
+        names.add(refs.clientSecretEnv)
+      }
+    }
+  }
+  return [
+    '# Account Kit deployment values; supply real values through your deployment environment',
+    ...[...names].sort().map((name) => `${name}=`),
+    '',
+  ].join('\n')
 }

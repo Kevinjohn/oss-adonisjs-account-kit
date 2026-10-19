@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit } from '../src/account_kit.js'
 import { InvalidSessionError } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
 test.group('managed HTTP dispatch', () => {
   test('verification policy can allow inactive accounts while retaining current-account checks', async ({
@@ -31,16 +31,14 @@ test.group('managed HTTP dispatch', () => {
       invitations: { send: async () => ({ id: 5 }) },
     } as unknown as AccountKit
     for (const verificationRequired of [undefined, false]) {
-      const { router, routes, context } = fixture()
+      const { router, routes, context } = fakeManagedHttp()
       registerManagedRoutes(router, {
         prefix: '/api/v1',
         kit: async () => kit,
-        guard: {
+        guard: stubGuard({
           strategy: 'access_tokens',
-          name: 'api',
-          forRequest: () => ({}) as never,
           current: async () => ({ userId: 7, tokenId: 11 }),
-        },
+        }),
         enabled: ['invitations'],
         verificationRequired,
       })
@@ -70,7 +68,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('the session CSRF bootstrap response is never cacheable', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const kit = new AccountKit({
       config: {
         registration: { availability: 'open' },
@@ -80,12 +78,7 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
-        current: async () => ({ userId: 1, revision: null }),
-      },
+      guard: stubGuard(),
       enabled: ['passwordReset'],
     })
     const ctx = context()
@@ -98,7 +91,7 @@ test.group('managed HTTP dispatch', () => {
   test('a protected route validates the selected guard evidence before revealing account data', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     let currentCalled = false
     const kit = {
       managedHttp: { assertGuard: () => {} },
@@ -118,15 +111,12 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         async current() {
           currentCalled = true
           return { userId: 7, revision: 'trusted' }
         },
-      },
+      }),
       enabled: ['authentication'],
     } satisfies ManagedRoutesOptions<never>)
     const output = await routes.get('GET /api/v1/account/profile')!(context())
@@ -146,7 +136,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('missing guard evidence gives 401 without calling account services', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     let serviceCalled = false
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -159,15 +149,13 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
         publicCredential: () => 'token',
-        forRequest: () => ({}) as never,
         current: async () => {
           throw new InvalidSessionError()
         },
-      },
+      }),
       enabled: ['authentication'],
     })
     const output = await routes.get('GET /api/v1/account/profile')!(context())
@@ -176,7 +164,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('token login returns only the opaque bearer value', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () =>
@@ -195,13 +183,11 @@ test.group('managed HTTP dispatch', () => {
             }),
           },
         }) as unknown as AccountKit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
         publicCredential: (credential: { value: string }) => credential.value,
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 42 }),
-      },
+      }),
       enabled: ['authentication'],
     })
     const output = await routes.get('POST /api/v1/auth/login')!(context())
@@ -223,7 +209,7 @@ test.group('managed HTTP dispatch', () => {
   test('session password login updates the visitor-local methods hint after credential establishment', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const kit = {
       managedHttp: { assertGuard: () => {} },
       authentication: {
@@ -243,12 +229,9 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         current: async () => ({ userId: 7, revision: null }),
-      },
+      }),
       enabled: ['authentication', 'socialAuthentication'],
       extensions: { social: { providers: ['google'] } },
     })
@@ -271,7 +254,7 @@ test.group('managed HTTP dispatch', () => {
     assert,
   }) => {
     for (const selection of ['password-only', 'methods-excluded', 'methods-enabled'] as const) {
-      const { router, routes, context } = fixture()
+      const { router, routes, context } = fakeManagedHttp()
       let hintWrites = 0
       const account = {
         id: 7,
@@ -287,12 +270,9 @@ test.group('managed HTTP dispatch', () => {
       registerManagedRoutes(router, {
         prefix: '/api/v1',
         kit: async () => kit,
-        guard: {
-          strategy: 'session',
-          name: 'web',
-          forRequest: () => ({}) as never,
+        guard: stubGuard({
           current: async () => ({ userId: 7, revision: null }),
-        },
+        }),
         enabled:
           selection === 'password-only'
             ? ['authentication']
@@ -325,7 +305,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('session login fails closed without Shield CSRF state', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     let loggedIn = false
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -337,12 +317,7 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
-        current: async () => ({ userId: 1, revision: null }),
-      },
+      guard: stubGuard(),
       enabled: ['authentication'],
     })
     await assert.rejects(

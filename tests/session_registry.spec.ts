@@ -1,18 +1,11 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { defineConfig } from '../src/config.js'
 import { InvalidCredentialsError, InvalidSessionError } from '../src/errors.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
-import {
-  insertUser,
-  makeConfig,
-  makeService,
-  makeUsersAdapter,
-  tokenFrom,
-} from './helpers/fakes.js'
+import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
 import { clientChallenge, provider, verifier } from './helpers/social_identity.js'
 import { dbTime } from './helpers/db_time.js'
 
@@ -310,44 +303,5 @@ test.group('session registry', (group) => {
       left.map((row) => row.id),
       [live.id]
     )
-  })
-})
-
-test.group('session management config', (group) => {
-  const kit = useTestApp(group)
-  const base = (overrides: Partial<AccountKitConfig> = {}) =>
-    makeConfig({
-      users: makeUsersAdapter(kit.db, kit.hash),
-      enabled: ['sessionManagement'],
-      authentication: { strategy: 'session', guard: 'web' },
-      ...overrides,
-    })
-
-  test('idle expiry defaults to 30 days and must exceed the five-minute touch interval', ({
-    assert,
-  }) => {
-    assert.deepEqual(defineConfig(base()).sessionManagement, { idleExpiry: '30d' })
-    for (const idleExpiry of ['6m', 301, '1h'])
-      assert.deepEqual(
-        defineConfig(base({ sessionManagement: { idleExpiry } })).sessionManagement,
-        {
-          idleExpiry,
-        }
-      )
-    for (const idleExpiry of ['5m', 300, '1m'])
-      assert.throws(
-        () => defineConfig(base({ sessionManagement: { idleExpiry } })),
-        /idleExpiry must be longer than five minutes/
-      )
-    assert.throws(() => defineConfig(base({ sessionManagement: { idleExpiry: 'soon' } })))
-    assert.throws(
-      () => defineConfig(base({ sessionManagement: [] as never })),
-      /sessionManagement must be an object/
-    )
-    assert.throws(
-      () => defineConfig(base({ authentication: undefined })),
-      /sessionManagement requires authentication/
-    )
-    assert.notInclude(defineConfig(base({ enabled: undefined })).enabled, 'sessionManagement')
   })
 })

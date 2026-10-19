@@ -1,4 +1,4 @@
-import { resolveSelectedEnvironment, selectedSessionEnvironment } from './session_env.js'
+import { resolveSelectedEnvironment } from './selected_environment.js'
 import {
   defaultExpression,
   defaultImportName,
@@ -216,7 +216,7 @@ export async function limiterConfigurationState(
       return 'unresolved'
     try {
       name =
-        (await selectedSessionEnvironment(root, args[0].text)) ??
+        (await resolveSelectedEnvironment(root, args[0].text)) ??
         (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
     } catch {
       return 'unresolved'

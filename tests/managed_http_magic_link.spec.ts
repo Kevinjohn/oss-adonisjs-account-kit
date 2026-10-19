@@ -6,7 +6,7 @@ import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 
@@ -49,7 +49,7 @@ test.group('managed magic-link routes', (group) => {
       },
       publicCredential: (credential: string) => `public:${credential}`,
     } as ManagedGuard<string>
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
@@ -116,7 +116,9 @@ test.group('managed magic-link routes', (group) => {
       })
       assert.equal(other.status, 400)
       assert.deepEqual(other.body, {
-        errors: [{ code: 'E_INVALID_MAGIC_LINK', message: 'This link is invalid or expired.' }],
+        errors: [
+          { code: 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK', message: 'This link is invalid or expired.' },
+        ],
       })
     }
     assert.isTrue(await service.account.magicLink.inspect({ token }))
@@ -204,7 +206,7 @@ test.group('managed magic-link routes', (group) => {
 
     const token = linkToken()
     const noVerifier = await call('POST /api/v1/auth/magic-link/:token', {}, { token })
-    assert.equal(noVerifier.body.errors[0].code, 'E_INVALID_MAGIC_LINK')
+    assert.equal(noVerifier.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK')
     const done = await call('POST /api/v1/auth/magic-link/:token', { verifier }, { token })
     assert.equal(done.status, 200)
     assert.equal(done.body.token, `public:credential:${user.id}`)
@@ -247,12 +249,12 @@ test.group('managed magic-link routes', (group) => {
     assert.isTrue(await service.account.magicLink.inspect({ token }))
     const invalid = await call('GET /api/v1/auth/magic-link/:token', {}, { token: 'y'.repeat(43) })
     assert.equal(invalid.status, 400)
-    assert.equal(invalid.body.errors[0].code, 'E_INVALID_MAGIC_LINK')
+    assert.equal(invalid.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK')
     assert.equal(invalid.headers.Vary, 'Accept')
   })
 
   test('access-token mounts require publicCredential', ({ assert }) => {
-    const { router } = fixture()
+    const { router } = fakeManagedHttp()
     assert.throws(
       () =>
         registerManagedRoutes(router, {

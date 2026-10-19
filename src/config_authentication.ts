@@ -1,7 +1,7 @@
 // Validates and defaults the authentication option.
 import { DateTime } from 'luxon'
 import { budget } from './config_budget.js'
-import { isSqlIdentifier } from './identifiers.js'
+import { isSqlIdentifier } from './sql_identifier.js'
 import { expiresAt } from './ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
 

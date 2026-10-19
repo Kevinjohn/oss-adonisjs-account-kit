@@ -2,15 +2,10 @@
 
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
-import {
-  createLucidAdapter,
-  defineConfig,
-  type AccountUser,
-  type Invitation,
-  type Trx,
-} from 'adonisjs-account-kit'
-import db from '@adonisjs/lucid/services/db'
+import { createLucidAdapter, defineConfig } from 'adonisjs-account-kit'
 import { notifications } from '#services/account_kit_notifications'
+import { authorize, canAccess, onInvitationAccepted } from '#services/account_kit_authorization'
+import { registrationFullName } from '#services/registration_fields'
 import { referencePasswordLimits } from '#validators/password'
 import { socialProvider } from '#services/social_provider'
 
@@ -27,18 +22,11 @@ if (env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' && env.get('SESSION_DRIVE
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
-    const fullName = (data as { fullName?: unknown } | null)?.fullName
-    if (typeof fullName !== 'string' || fullName.trim() === '') {
-      throw new Error('A full name is required to create an account')
-    }
-    user.fullName = fullName.trim()
+    const fullName = registrationFullName(data)
+    if (!fullName) throw new Error('A full name is required to create an account')
+    user.fullName = fullName
   },
 })
-
-async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
-  const query = trx ? trx.from('role_assignments') : db.from('role_assignments')
-  return Boolean(await query.where('user_id', userId).where('role', 'owner').first())
-}
 
 export default defineConfig({
   passwordPolicy: referencePasswordLimits,
@@ -54,14 +42,10 @@ export default defineConfig({
   registration: {
     availability: 'open',
     mapFields(data) {
-      const fullName = (data as { fullName?: unknown } | null)?.fullName
-      if (
-        typeof fullName !== 'string' ||
-        fullName.trim().length === 0 ||
-        fullName.trim().length > 100
-      )
+      const fullName = registrationFullName(data)
+      if (!fullName || fullName.length > 100)
         throw new Error('A full name of at most 100 characters is required')
-      return { fullName: fullName.trim() }
+      return { fullName }
     },
   },
   socialAuthentication: {
@@ -71,22 +55,13 @@ export default defineConfig({
     strategy: authStrategy,
     guard: authStrategy === 'session' ? 'web' : 'api',
     ...(authStrategy === 'access_tokens' ? { tokenExpiresIn: '1d', tokenAbilities: ['*'] } : {}),
-    canAccess: async (user, trx) =>
-      !(await trx
-        .from('role_assignments')
-        .where('user_id', user.id)
-        .where('role', 'disabled')
-        .first()),
+    canAccess,
   },
   limiterSecret: env.get('APP_KEY').release(),
   // The functional suite sends many requests from one client; production keeps the package
   // default of five requests per 15 minutes.
   ...(app.inTest ? { throttle: { requests: 100, duration: '15m' } } : {}),
-  authorize: {
-    invite: async (actor, role, context) => role !== 'owner' && isOwner(actor.id, context?.trx),
-    manageInvitation: async (actor, _invitation, context) => isOwner(actor.id, context?.trx),
-    listInvitations: async (actor) => isOwner(actor.id),
-  },
+  authorize,
   urls: {
     passwordReset: (token) => accountUrl('password-reset', token),
     emailVerification: (token) => accountUrl('email-verification', token),
@@ -120,9 +95,7 @@ export default defineConfig({
     passwordChanged: (user, context) =>
       notifications.deliverCredentialNotice(context.operationId, context.operation, user.email),
   },
-  onInvitationAccepted: async (user: AccountUser, invitation: Invitation, trx: Trx) => {
-    await trx.table('role_assignments').insert({ user_id: user.id, role: invitation.role })
-  },
+  onInvitationAccepted,
   onCredentialsChangedTransaction: async (user, context, trx) => {
     if (context.operation !== 'password_reset' && context.operation !== 'password_change') return
 

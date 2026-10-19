@@ -1,5 +1,4 @@
-import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import kit from 'adonisjs-account-kit/services/main'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import { sessionGuard } from '#services/session_guard'
@@ -15,7 +14,6 @@ export default class NewAccountController {
    */
   async store(ctx: HttpContext) {
     const { fullName, email, password } = await ctx.request.validateUsing(signupValidator)
-    const kit = await app.container.make(AccountKit)
     await kit.registration.register({ email, password, registrationData: { fullName } })
     await kit.authentication.login(
       { email, password, clientKey: ctx.request.ip() },
