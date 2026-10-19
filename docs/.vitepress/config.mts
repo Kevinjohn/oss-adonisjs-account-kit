@@ -67,6 +67,7 @@ export default defineConfig({
           { text: 'Audit log', link: '/recipes/audit-log' },
           { text: 'Guided setup', link: '/setup' },
           { text: 'Upgrading a candidate', link: '/upgrade' },
+          { text: 'Operations', link: '/operations' },
         ],
       },
       {
@@ -89,7 +90,7 @@ export default defineConfig({
           { text: 'Setup choices', link: '/reference/setup-choices' },
           { text: 'OpenAPI document', link: '/openapi' },
           { text: 'Notifications', link: '/notifications' },
-          { text: 'Operations', link: '/operations' },
+          { text: 'Production requirements', link: '/reference/production-requirements' },
           { text: 'Compatibility', link: '/compatibility' },
           { text: 'Glossary', link: '/glossary' },
         ],
@@ -99,6 +100,7 @@ export default defineConfig({
         items: [
           { text: 'Security model', link: '/security' },
           { text: 'How setup works', link: '/how-setup-works' },
+          { text: 'Production boundaries', link: '/production-boundaries' },
           { text: 'Authentication', link: '/authentication' },
           { text: 'Identity creation', link: '/identity-creation' },
           { text: 'Registration', link: '/registration' },

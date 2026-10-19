@@ -35,6 +35,7 @@ Operations and quality
 - [Audit log](recipes/audit-log.md)
 - [Guided setup with `account-kit:setup`](setup.md)
 - [Upgrading from a pre-release candidate](upgrade.md)
+- [Operations](operations.md): deploy, prune, operator commands, secret rotation and redaction.
 
 Integration modes
 
@@ -54,7 +55,8 @@ Integration modes
 - [Setup choices](reference/setup-choices.md): the six pillars and the files setup writes.
 - [OpenAPI document](openapi.md): an OpenAPI 3.1 file for the mounted managed routes.
 - [Notifications](notifications.md)
-- [Operations](operations.md): secrets, rate limits, pruning and redaction.
+- [Production requirements](reference/production-requirements.md): versions, stores and limiter
+  budgets.
 - [Compatibility](compatibility.md): tested versions.
 - [Glossary](glossary.md)
 
@@ -62,6 +64,7 @@ Integration modes
 
 - [Security model](security.md)
 - [How setup works](how-setup-works.md): preview, recovery and readiness.
+- [Production boundaries](production-boundaries.md): readiness, delivery and credential lifecycle.
 - [Authentication integration](authentication.md)
 - [Identity creation](identity-creation.md)
 - [Registration](registration.md)
