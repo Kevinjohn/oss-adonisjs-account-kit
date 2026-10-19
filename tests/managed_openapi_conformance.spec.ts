@@ -21,7 +21,7 @@ import { signupValidator } from '../src/http/validators.js'
 import type { CurrentAccount } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 import { allCapabilities, conformance } from './helpers/openapi.js'
 
 type Strategy = 'session' | 'access_tokens'
@@ -33,7 +33,7 @@ function mount(
   account: CurrentAccount | undefined,
   options: Partial<ManagedRoutesOptions<unknown>> = {}
 ) {
-  const { router, routes, context } = fixture()
+  const { router, routes, context } = fakeManagedHttp()
   const guardName = strategy === 'session' ? 'web' : 'api'
   registerManagedRoutes(router, {
     prefix: '/api/v1',

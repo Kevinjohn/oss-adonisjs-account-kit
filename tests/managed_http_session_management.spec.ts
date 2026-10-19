@@ -5,7 +5,7 @@ import { planManagedRoutes } from '../src/http/routes.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
@@ -51,7 +51,7 @@ test.group('managed sign-in management routes', (group) => {
       current: async () => caller!,
       publicCredential: (credential: string) => `public:${credential}`,
     } as ManagedGuard<string>
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
