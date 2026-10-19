@@ -6,7 +6,7 @@ import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { lockNotAvailableCode, locksRows } from './helpers/dialect.js'
 
-test.group('custom user metadata', (group) => {
+test.group('database user helpers', (group) => {
   const kit = useTestApp(group)
 
   test('uses valid adapter metadata and rejects unsafe metadata', async ({ assert }) => {
