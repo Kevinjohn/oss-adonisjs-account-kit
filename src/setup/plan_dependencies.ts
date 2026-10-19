@@ -1,7 +1,6 @@
-// Setup planning phase: selected package presence, limiter store and version range diagnostics.
+// Setup planning phase: selected package presence and version range diagnostics.
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
 import { hasEmailFlow, diagnostic } from './shared.js'
-import { limiterConfigurationState } from './config_inspection.js'
 
 export async function planDependencies(
   choices: SetupChoices,
@@ -26,22 +25,6 @@ export async function planDependencies(
   const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
     diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
-  const limiter = await limiterConfigurationState(
-    state.files['config/limiter.ts'] ?? '',
-    state.root
-  )
-  if (limiter === 'invalid')
-    diagnostic(
-      diagnostics,
-      'config/limiter.ts',
-      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts needs an actual selected store in its exported defineConfig'
-    )
-  else if (limiter === 'unresolved')
-    diagnostic(
-      diagnostics,
-      'config/limiter.ts',
-      'Selected limiter store is unresolved; use a direct literal or a resolvable environment assignment before activation'
-    )
   const minimumVersions: Record<string, readonly [number, number, number]> = {
     '@adonisjs/core': [7, 0, 0],
     '@adonisjs/lucid': [22, 4, 2],
