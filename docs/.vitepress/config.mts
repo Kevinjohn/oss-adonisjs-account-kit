@@ -88,6 +88,7 @@ export default defineConfig({
           { text: 'Account operations', link: '/account-operations' },
           { text: 'Errors', link: '/reference/errors' },
           { text: 'Managed endpoints', link: '/reference/endpoints' },
+          { text: 'Setup choices', link: '/reference/setup-choices' },
           { text: 'OpenAPI document', link: '/openapi' },
           { text: 'Notifications', link: '/notifications' },
           { text: 'Operations', link: '/operations' },
@@ -99,6 +100,7 @@ export default defineConfig({
         text: 'Explanation',
         items: [
           { text: 'Security model', link: '/security' },
+          { text: 'How setup works', link: '/how-setup-works' },
           { text: 'Authentication', link: '/authentication' },
           { text: 'Identity creation', link: '/identity-creation' },
           { text: 'Registration', link: '/registration' },

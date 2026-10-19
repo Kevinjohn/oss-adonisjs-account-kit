@@ -163,7 +163,7 @@ steps. Apply uses an exclusive `.account-kit-setup.lock` to coordinate setup run
 arbitrary editors or make filesystem changes atomic. Stop other editors and setup processes in that
 workspace while applying. Setup checks planned files before and during writes, skips identical
 files, and records choices last. An interruption can leave some files in place; inspect the lock
-and current files, then rerun with the same choices to recover. See [setup](setup.md) for the full
+and current files, then rerun with the same choices to recover. See [how setup works](how-setup-works.md#a-repeated-run-can-recover-from-interruption) for the full
 recovery contract.
 
 The setup source check inspects TypeScript without executing application configuration. It resolves
