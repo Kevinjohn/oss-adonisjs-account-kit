@@ -193,7 +193,7 @@ export async function planSetup(
       'Protect proof responses before parser and CSRF failures'
     )
   }
-  await planArrayImports(changes, state, diagnostics, 'adonisrc.ts', 'providers: [', [
+  await planArrayImports(changes, state, diagnostics, 'adonisrc.ts', [
     ...(choices.managed.length ? ['@adonisjs/core/providers/vinejs_provider'] : []),
     '@adonisjs/lucid/database_provider',
     '@adonisjs/limiter/limiter_provider',
