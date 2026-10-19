@@ -191,7 +191,7 @@ validation, proof redaction, and response disclosure checks; other routes can ke
 controllers. The [service usage guide](usage.md) lists public operations and the
 [compatibility guide](compatibility.md) states the supported adapter and database boundary.
 
-## Files delta
+## Files and migrations
 
 The application owns its routes, controllers, validators, exception handler, authentication
 middleware, user model, and notification delivery. Configure adds the package provider,
@@ -199,7 +199,7 @@ middleware, user model, and notification delivery. Configure adds the package pr
 [API consumer fixture](../examples/api) shows these files together. Package setup does not register
 the fixture's HTTP routes; resolving `AccountKit` only provides its services.
 
-## Manual steps
+## Before deployment
 
 1. Configure capabilities and `registration.availability`, align the application password
    validator with `passwordPolicy` and the shared service bounds, then review generated config and
@@ -263,8 +263,3 @@ do not claim human usability results, participant task-success measurements, or 
 from the walkthrough. No telemetry or
 remote reporting is required. Retain only the local walkthrough record needed to support the
 release decision.
-
-## Changelog
-
-This guide records the application-owned integration boundary and links to the managed setup and
-developer-evaluation evidence. It does not change the package's runtime contract.

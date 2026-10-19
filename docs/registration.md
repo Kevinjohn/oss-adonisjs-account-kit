@@ -50,7 +50,7 @@ password under the account lock. The same transaction invalidates prior bearer c
 advances the browser-session revision. In-flight login cannot issue a usable credential from the
 old password after that claim. Active-account email changes retain their separate proof behavior.
 
-## Files delta
+## Files and migrations
 
 The service and policy live in `src/registration.ts` and `src/password.ts`, with configuration and
 types in `src/config.ts` and `src/types.ts`. Inactive activation is in `src/verification.ts`. The
@@ -59,7 +59,7 @@ and the password-bearing verification completion route. This capability adds no 
 it uses the users and verification-proof schema described in
 [identity creation](identity-creation.md).
 
-## Manual steps
+## Before deployment
 
 Set registration availability explicitly, review the trusted field mapping and user adapter, and
 confirm the users table has a unique normalized email key. Wire the application-owned signup
@@ -68,8 +68,3 @@ credentials access only to verification resend, logout, and other intentionally 
 Completion is a POST with a fresh password and confirmation; a token alone does not claim an
 inactive account. Exercise both
 guard modes and both databases before deployment.
-
-## Changelog
-
-See [Unreleased](../CHANGELOG.md#unreleased) for the added registration contract and the
-activation/password-policy changes.

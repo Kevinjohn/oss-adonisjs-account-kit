@@ -109,16 +109,12 @@ For any non-empty selected session capability set, managed routes include `auth.
 
 Managed account routes validate the existing guard and the package's current account state on every request. The application must apply the same revision/token check to its own protected routes for revocation to cover them. Session login must regenerate the session, logout must destroy the current server-side session, and the application must use a shared server-side session store across instances. Access-token login issues an opaque token; logout deletes only the current token. See [authentication](authentication.md) for the exact revocation boundary.
 
-## Files delta
+## Files and migrations
 
 Managed activation adds one call in the application's routes file and uses existing authentication, session, Shield, VineJS, database, and Account Kit configuration. The package maintains handlers and validators. No application controller is generated for selected standard routes. Custom fields or policy may require application-owned configuration and adapter mapping. The optional import lives at `adonisjs-account-kit/http`; the root service import stays separate.
 
-## Manual steps
+## Before deployment
 
 For session clients, enable Shield CSRF middleware on authentication-establishing and other state-changing routes, use the managed CSRF bootstrap endpoint (or supply an application-owned replacement when `auth.csrf` is excluded), send its token in `x-csrf-token`, use secure HTTP-only cookies, configure trusted proxies before deriving client IP, and set a deliberate origin/CORS policy. JSON and CORS alone do not provide CSRF protection. The managed session handlers fail closed when Shield CSRF state is absent. Configure HTTPS public origins in production.
 
 Redact the proof-bearing path segment from access logs for `auth/password-reset/:token`, `auth/email-verification/:token`, `auth/invitations/:token`, and `auth/email-change/:token`; do not log full bearer credentials, passwords, or proofs. Supply a shared limiter store and the applicable service budgets. Choose mail delivery and, if durable delivery is required by the application, route notification callbacks through its own transactional outbox and worker. Configure explicit invitation authorisation before enabling invitation routes. Send/resend permission is checked when the invitation is issued; acceptance validates the live invitation and recipient proof, but does not automatically re-check whether the inviter still has permission. Revoke outstanding invitations when an inviter loses that authority if your application requires it. Apply the selected guard's revision check to application-owned protected routes. If an endpoint is excluded, the application owns its request validation, response mapping, authentication and CSRF boundary; it may reuse the public account service.
-
-## Changelog
-
-See [Unreleased](../CHANGELOG.md#unreleased) for the optional managed HTTP entry and its public route contract.
