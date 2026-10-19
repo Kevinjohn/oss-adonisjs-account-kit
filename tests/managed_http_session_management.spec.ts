@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
+import { registerManagedRoutes } from '../src/http/managed.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
@@ -31,9 +31,8 @@ test.group('managed sign-in management routes', (group) => {
     const warnings: unknown[] = []
     let failTerminate = false
     let caller: CurrentAccountInput | undefined
-    const guard = {
+    const guard = stubGuard<string>({
       strategy,
-      name: strategy === 'session' ? 'web' : 'api',
       forRequest: () =>
         ({
           strategy,
@@ -54,7 +53,7 @@ test.group('managed sign-in management routes', (group) => {
         }) as never,
       current: async () => caller!,
       publicCredential: (credential: string) => `public:${credential}`,
-    } as ManagedGuard<string>
+    })
     const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
