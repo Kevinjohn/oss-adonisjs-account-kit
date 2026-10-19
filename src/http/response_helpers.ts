@@ -6,13 +6,13 @@ import {
   managedErrorResponse,
   type ManagedErrorResponse,
   type ManagedMessage,
-  type ManagedTranslator,
 } from './responses.js'
+import type { AccountKitTranslator } from '../translator.js'
 import type { ManagedEndpointName } from './routes.js'
 
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
-export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
-  return 'i18n' in context ? (context.i18n as ManagedTranslator) : undefined
+export function requestTranslator(context: HttpContext): AccountKitTranslator | undefined {
+  return 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined
 }
 
 export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
