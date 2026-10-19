@@ -14,7 +14,7 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup.js'
+import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup model inspection', (group) => {
