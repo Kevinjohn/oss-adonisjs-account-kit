@@ -1,3 +1,10 @@
+# Update policy: follow AdonisJS.
+# - Patch updates: always.
+# - Minor updates: only for AdonisJS-owned packages. Everything else (TypeScript included) moves
+#   to a new minor by hand, when AdonisJS moves.
+# - Major updates: never. Raise them by hand alongside an AdonisJS major.
+# Dependabot `ignore` rules cannot exclude a pattern, so the minor rule lists the non-AdonisJS
+# packages. Add new third-party dependencies to that list.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -6,9 +13,48 @@ updates:
       interval: weekly
     groups:
       adonisjs:
-        patterns: ['@adonisjs/*', '@vinejs/*', '@japa/*']
+        patterns: ['@adonisjs/*', '@vinejs/*', '@japa/*', '@poppinss/*']
       development:
         dependency-type: development
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@release-it/*'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: '@types/*'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'ajv*'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'better-sqlite3'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'c8'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'copyfiles'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'cross-env'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'drizzle-orm'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'luxon'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'mysql2'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'pg'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'prettier'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'release-it'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'tsdown'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'typedoc*'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-minor']
+      - dependency-name: 'vitepress'
+        update-types: ['version-update:semver-minor']
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
