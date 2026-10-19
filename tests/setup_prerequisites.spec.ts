@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { test } from '@japa/runner'
 import ts from 'typescript'
 import { planSetup } from '../src/setup/plan.js'
-import { stripSourceComments } from '../src/setup/source_text.js'
+import { stripSourceComments } from '../src/setup/strip_source_comments.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup prerequisite inspection', () => {

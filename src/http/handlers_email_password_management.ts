@@ -1,6 +1,6 @@
 /** Managed handlers for the email and password management capability: email change, profile, password. */
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed.js'
+import type { ManagedHandler } from './managed_types.js'
 import { currentAccount, invalidProof, passwordPolicyError } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
 

@@ -4,6 +4,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
 import type { ManagedGuard } from '../src/http/managed.js'
 import { executeManagedSocial, rememberManagedMethod } from '../src/http/social.js'
+import { stubGuard } from './helpers/managed_http_fakes.js'
 
 type SocialAuthentication = AccountKit['socialAuthentication']
 
@@ -32,13 +33,11 @@ function context(body: Record<string, unknown> = {}, params: Record<string, stri
 function guard(
   strategy: 'session' | 'access_tokens' = 'session'
 ): ManagedGuard<{ opaque: string }> {
-  return {
+  return stubGuard({
     strategy,
-    name: strategy === 'session' ? 'web' : 'api',
-    forRequest: () => ({}) as never,
     current: async () => ({ userId: 7, revision: 'trusted' }),
     publicCredential: (credential) => credential.opaque,
-  }
+  })
 }
 
 function seedSessionState(

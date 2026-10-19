@@ -3,13 +3,13 @@ import { type AccountKit } from '../src/account_kit.js'
 import { DeliveryError, InvalidSessionError } from '../src/errors.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import type { ManagedQuery, ManagedSuccessBody } from '../src/http/contracts.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
 test.group('managed HTTP dispatch', () => {
   test('a committed social GET callback returns accepted when notification delivery fails', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const kit = {
       managedHttp: { assertGuard: () => {}, consume: async () => {} },
       socialAuthentication: {
@@ -21,13 +21,11 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 11 }),
         publicCredential: () => 'opaque',
-      },
+      }),
       enabled: ['socialAuthentication'],
       extensions: { social: { providers: ['google'] } },
     })
@@ -43,7 +41,7 @@ test.group('managed HTTP dispatch', () => {
   test('a committed social unlink returns typed accepted when notification delivery fails', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const account = {
       id: 7,
       email: 'a@example.test',
@@ -63,13 +61,11 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 11 }),
         publicCredential: () => 'opaque',
-      },
+      }),
       enabled: ['socialAuthentication'],
       extensions: { social: { providers: ['google'] } },
     })
@@ -81,7 +77,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('account writes return only their documented response bodies', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const account = {
       id: 7,
       email: 'a@example.test',
@@ -112,14 +108,12 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
         publicCredential: () => 'opaque',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 11 }),
         logoutCredential: async () => ({ userId: 7, identifier: 11 }),
-      },
+      }),
       enabled: ['authentication', 'emailPasswordManagement', 'emailVerification', 'invitations'],
     })
     const expected: Array<[string, number, unknown]> = [
@@ -142,7 +136,7 @@ test.group('managed HTTP dispatch', () => {
   test('representation failures preserve committed invitation, email, and profile responses', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const user = {
       id: 7,
       email: 'a@example.test',
@@ -170,12 +164,10 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 11 }),
-      },
+      }),
       enabled: ['invitations', 'emailPasswordManagement'],
       extensions: {
         representAccount: async () => {
@@ -211,7 +203,7 @@ test.group('managed HTTP dispatch', () => {
   test('post-commit notification failure remains a successful write response', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const kit = {
       managedHttp: { assertGuard: () => {} },
       authentication: {
@@ -232,12 +224,10 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 1, tokenId: 2 }),
-      },
+      }),
       enabled: ['emailVerification'],
     })
     const ctx = context()
@@ -254,7 +244,7 @@ test.group('managed HTTP dispatch', () => {
   test('password-reset delivery failure retains its public acknowledgement and sanitized diagnostic', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () =>
@@ -266,12 +256,10 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 1, tokenId: 2 }),
-      },
+      }),
       enabled: ['passwordReset'],
     })
     const diagnostics: unknown[] = []
@@ -307,18 +295,16 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('negotiated errors preserve an existing Vary value', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => ({ managedHttp: { assertGuard: () => {} } }) as unknown as AccountKit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => {
           throw new InvalidSessionError()
         },
-      },
+      }),
       enabled: ['invitations'],
     })
     const ctx = context()

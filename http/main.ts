@@ -1,6 +1,6 @@
 export { registerManagedRoutes } from '../src/http/managed.js'
 export { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
-export { protectManagedSessionConfig } from '../src/http/session_store.js'
+export { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
 export { managedProofHeadersMiddleware } from '../src/http/proof_headers.js'
 export type {
   ManagedTokenCredential,
@@ -13,7 +13,7 @@ export type {
 export type {
   ManagedSessionConfiguration,
   ManagedSessionStoreFactory,
-} from '../src/http/session_store.js'
+} from '../src/http/session_store_protection.js'
 export type { ManagedSocialExtension } from '../src/http/social.js'
 export type { ManagedExtensions, ManagedGuard, ManagedRoutesOptions } from '../src/http/managed.js'
 export { planManagedRoutes } from '../src/http/routes.js'

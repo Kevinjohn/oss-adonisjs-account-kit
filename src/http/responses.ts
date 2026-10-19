@@ -27,6 +27,14 @@ export interface ManagedErrorResponse {
  */
 export type ManagedMessage = (code: string, defaultMessage: string) => string
 
+/**
+ * The part of an `@adonisjs/i18n` `I18n` instance the managed routes use. Error wording is looked
+ * up as `errors.<code>`, with the English message as the fallback.
+ */
+export interface ManagedTranslator {
+  t(identifier: string, data: Record<string, unknown>, fallbackMessage: string): string
+}
+
 function prefersJsonApi(accept?: string): boolean {
   if (!accept) return false
   const ranges = accept.split(',').map((part) => {
@@ -64,6 +72,7 @@ export function managedErrorResponse(
     accept?: string
     proof?: 'password' | 'email' | 'invitation' | 'magicLink'
     message?: ManagedMessage
+    i18n?: ManagedTranslator
   } = {}
 ): ManagedErrorResponse | null {
   if (error instanceof PostCommitError) return null
@@ -76,12 +85,12 @@ export function managedErrorResponse(
     status = 400
     code =
       options.proof === 'email'
-        ? 'E_INVALID_EMAIL_TOKEN'
+        ? 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN'
         : options.proof === 'invitation'
-          ? 'E_INVALID_INVITATION_TOKEN'
+          ? 'E_ACCOUNT_KIT_INVALID_INVITATION_TOKEN'
           : options.proof === 'magicLink'
-            ? 'E_INVALID_MAGIC_LINK'
-            : 'E_INVALID_PASSWORD_TOKEN'
+            ? 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK'
+            : 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN'
     message = 'This link is invalid or expired.'
   } else if (error instanceof InvalidCredentialsError || error instanceof InvalidSessionError) {
     status = 401
@@ -89,7 +98,7 @@ export function managedErrorResponse(
     message = 'Authentication failed.'
   } else if (error instanceof UnverifiedEmailError) {
     status = 403
-    code = 'unverified_email'
+    code = 'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
     message = 'Email verification is required.'
   } else if (error instanceof IdentityNotConfirmedError) {
     status = 403
@@ -100,7 +109,7 @@ export function managedErrorResponse(
     error instanceof InvitationManagementDeniedError
   ) {
     status = 404
-    code = 'E_INVITATION_NOT_FOUND'
+    code = 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND'
     message = 'Invitation not found.'
   } else if (error instanceof AuthorizationError) {
     status = 403
@@ -108,7 +117,7 @@ export function managedErrorResponse(
     message = 'Access denied.'
   } else if (error instanceof EmailAlreadyRegisteredError) {
     status = 409
-    code = 'E_EMAIL_ALREADY_REGISTERED'
+    code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'
     message = 'The account request conflicts with an existing account.'
   } else if (error instanceof ThrottledError) {
     status = 429
@@ -125,7 +134,8 @@ export function managedErrorResponse(
   }
 
   const jsonApi = prefersJsonApi(options.accept)
-  const publicMessage = options.message?.(code, message) ?? message
+  const translated = options.i18n?.t(`errors.${code}`, {}, message) ?? message
+  const publicMessage = options.message?.(code, translated) ?? translated
   return {
     status,
     contentType: jsonApi ? 'application/vnd.api+json' : 'application/json',

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { type AccountKit, defineConfig } from '../src/account_kit.js'
+import { defineConfig } from '../src/account_kit.js'
 import {
   AuthorizationError,
   DeliveryError,
@@ -11,41 +11,24 @@ import {
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { transaction } from '../src/db.js'
-import type { Database } from '@adonisjs/lucid/database'
-import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
+import { useTestApp } from './helpers/app.js'
+import { invitationHelpers } from './helpers/invitations.js'
 import {
   accountKit,
   allowAll,
-  insertUser,
   makeConfig,
   makeNotify,
-  makeService,
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
-import { resetSchema } from './helpers/schema.js'
+import { faultNthCommit } from './helpers/fault_after_commit.js'
 import { lockNotAvailableCode, locksRows } from './helpers/dialect.js'
 import { dbTime } from './helpers/db_time.js'
 
-test.group('invitations.resend and revoke', (group) => {
+test.group('invitations.resend', (group) => {
   const kit = useTestApp(group)
 
-  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
-
-  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
-
-  async function issue(
-    account: AccountKit,
-    recorder: ReturnType<typeof makeNotify>,
-    actorId: AccountUser['id'],
-    email = 'person@example.test',
-    role = 'admin'
-  ) {
-    const invitation = await account.invitations.send({ actorId, email, role })
-    const token = tokenFrom(recorder.calls.at(-1)!.args[1])
-    return { invitation, token }
-  }
+  const { createActor, service, issue } = invitationHelpers(kit)
 
   test('resend rotates the token after commit, preserves invitation identity, and the new link works', async ({
     assert,
@@ -234,29 +217,6 @@ test.group('invitations.resend and revoke', (group) => {
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
   })
 
-  /** Fault the commit of the nth package transaction only, counting from zero. */
-  function faultNthCommit(db: Database, failure: Error, index: number): Database {
-    let seen = 0
-    return Object.create(db, {
-      connection: {
-        value: (...args: Parameters<Database['connection']>) => {
-          const client = db.connection(...args)
-          const begin = client.transaction.bind(client) as (...rest: unknown[]) => Promise<Trx>
-          client.transaction = (async (...rest: unknown[]) => {
-            const trx = await begin(...rest)
-            if (seen++ === index) {
-              trx.on('commit', () => {
-                throw failure
-              })
-            }
-            return trx
-          }) as typeof client.transaction
-          return client
-        },
-      },
-    })
-  }
-
   test('resend delivers the rotated token once after a committed cleanup fault', async ({
     assert,
   }) => {
@@ -303,189 +263,6 @@ test.group('invitations.resend and revoke', (group) => {
       role: invitation.role,
     })
   })
-
-  test('revoke emits the revoked event once after a committed cleanup fault', async ({
-    assert,
-  }) => {
-    const actor = await createActor()
-    const recorder = makeNotify()
-    const events: string[] = []
-    const { account } = service({ notify: recorder.notify })
-    const { invitation } = await issue(account, recorder, actor.id)
-    const failure = new Error('listener failed after commit')
-    const config = defineConfig(
-      makeConfig({
-        users: makeUsersAdapter(kit.db, kit.hash),
-        notify: recorder.notify,
-        onLifecycleEvent: async (event) => {
-          events.push(event.type)
-        },
-      })
-    )
-    const faulty = accountKit({ ...kit, db: faultNthCommit(kit.db, failure, 0) }, config)
-    try {
-      await faulty.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
-      assert.fail('expected committed failure')
-    } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
-    }
-    assert.deepEqual(events, ['invitation.revoked'])
-    assert.isNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
-  })
-
-  test('revoke checks management permission, deletes the row, and cannot repeat', async ({
-    assert,
-  }) => {
-    const actor = await createActor()
-    const { account, recorder } = service()
-    const { invitation, token } = await issue(account, recorder, actor.id)
-    const denied = service({
-      authorize: { ...allowAll, manageInvitation: async () => false },
-    }).account
-    await assert.rejects(
-      () => denied.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
-    )
-    const missingPermission = service({
-      authorize: { ...allowAll, manageInvitation: async () => undefined as never },
-    }).account
-    await assert.rejects(
-      () =>
-        missingPermission.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
-    )
-    assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
-    assert.isUndefined(
-      await account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
-    )
-    assert.lengthOf(await kit.db.from('account_invitations').where('id', invitation.id), 0)
-    await assert.rejects(
-      () => account.invitations.accept({ token, password: 'password123' }),
-      InvalidTokenError
-    )
-    await assert.rejects(
-      () => account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      InvitationNotFoundError
-    )
-    await assert.rejects(
-      () => account.invitations.revoke({ actorId: actor.id, invitationId: 99999 }),
-      InvitationNotFoundError
-    )
-    await assert.rejects(
-      () => account.invitations.revoke({ actorId: 99999, invitationId: invitation.id }),
-      InvalidInputError
-    )
-  })
-
-  if (!locksRows) {
-    test('database-backed management policy reads use another pooled SQLite connection', async ({
-      assert,
-    }) => {
-      const customKit = await bootTestApp({ sqlitePoolMax: 2 })
-      try {
-        await resetSchema(customKit)
-        const users = makeUsersAdapter(customKit.db, customKit.hash)
-        const actor = await customKit.db.transaction((trx) =>
-          users.create(
-            {
-              email: 'actor@example.test',
-              password: 'password123',
-              unverifiedEmail: null,
-            },
-            trx
-          )
-        )
-        const recorder = makeNotify()
-        const knex = customKit.db.connection().getWriteClient()
-        assert.equal(knex.client.pool.max, 2)
-        let policy: 'manage' | 'invite' | null = null
-        const policyReads: Array<{ policy: 'manage' | 'invite'; connection: string }> = []
-        const invitationReads: string[] = []
-        const onQuery = (query: { sql: string; __knexUid?: string }) => {
-          if (policy && /select .* from [`"]?users/i.test(query.sql))
-            policyReads.push({ policy, connection: query.__knexUid! })
-          else if (/select .* from [`"]?account_invitations/i.test(query.sql))
-            invitationReads.push(query.__knexUid!)
-        }
-        knex.on('query', onQuery)
-        try {
-          const readActor = async (id: AccountUser['id']) => {
-            const row = await customKit.db.from('users').where('id', id).first()
-            return row?.email === actor.email
-          }
-          const config = defineConfig(
-            makeConfig({
-              users,
-              notify: recorder.notify,
-              authorize: {
-                ...allowAll,
-                async manageInvitation(current, invitation) {
-                  policy = 'manage'
-                  try {
-                    return invitation.inviterId === current.id && (await readActor(current.id))
-                  } finally {
-                    policy = null
-                  }
-                },
-                async invite(current, role) {
-                  policy = 'invite'
-                  try {
-                    return role === 'user' && (await readActor(current.id))
-                  } finally {
-                    policy = null
-                  }
-                },
-              },
-            })
-          )
-          const account = accountKit(customKit, config)
-          const invitation = await account.invitations.send({
-            actorId: actor.id,
-            email: 'first@example.test',
-            role: 'user',
-          })
-          policyReads.length = 0
-          invitationReads.length = 0
-          const resent = await account.invitations.resend({
-            actorId: actor.id,
-            invitationId: invitation.id,
-          })
-          assert.equal(resent.id, invitation.id)
-          assert.deepEqual(
-            policyReads.map((read) => read.policy),
-            ['manage', 'invite', 'manage', 'invite']
-          )
-          assert.isNotEmpty(invitationReads)
-          for (const read of policyReads) assert.notEqual(read.connection, invitationReads[0])
-          const rotated = await customKit.db
-            .from('account_invitations')
-            .where('id', invitation.id)
-            .first()
-          assert.notEqual(rotated.token_hash, hashToken(tokenFrom(recorder.calls[0].args[1])))
-
-          policyReads.length = 0
-          invitationReads.length = 0
-          await account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
-          assert.deepEqual(
-            policyReads.map((read) => read.policy),
-            ['manage']
-          )
-          assert.isNotEmpty(invitationReads)
-          assert.notEqual(policyReads[0].connection, invitationReads[0])
-          assert.lengthOf(
-            await customKit.db.from('account_invitations').where('id', invitation.id),
-            0
-          )
-        } finally {
-          knex.off('query', onQuery)
-        }
-      } finally {
-        await customKit.close()
-      }
-    })
-  }
 
   test('a held resend lock makes an independent acceptance lose the old token', async ({
     assert,

@@ -7,15 +7,16 @@ import { type AccessToken, DbAccessTokensProvider } from '@adonisjs/auth/access_
 import { beforeCreate, beforeSave } from '@adonisjs/lucid/orm'
 import env from '#start/env'
 
+const idType = env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer'
+
 export default class User extends compose(UserSchema, withAuthFinder(hash)) {
   static table = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
-  static selfAssignPrimaryKey = (env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer') !== 'integer'
+  static selfAssignPrimaryKey = idType !== 'integer'
   static accessTokens = DbAccessTokensProvider.forModel(User)
   declare currentAccessToken?: AccessToken
 
   @beforeCreate()
   static assignStringId(user: User) {
-    const idType = env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer'
     if (idType !== 'integer' && !user.id) {
       Object.assign(user, { id: randomUUID() })
     }

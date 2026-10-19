@@ -1,20 +1,12 @@
-import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-
-const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
 
 /** TypeScript controller snippets in tracked Markdown, which readers copy into their apps. */
 async function controllerSnippets(): Promise<{ document: string; code: string }[]> {
-  const listed = spawnSync('git', ['ls-files', '-z', '--', ':(glob)**/*.md'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
-  if (listed.status !== 0) throw new Error(listed.stderr)
   const snippets: { document: string; code: string }[] = []
-  for (const document of listed.stdout.split('\0').filter(Boolean)) {
+  for (const document of trackedMarkdown(['**/*.md'])) {
     const source = await readFile(join(repoRoot, document), 'utf8')
     for (const [, code] of source.matchAll(/```ts\n([\s\S]*?)```/g))
       if (code.includes('HttpContext')) snippets.push({ document, code })

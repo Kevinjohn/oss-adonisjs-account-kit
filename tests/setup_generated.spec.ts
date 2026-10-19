@@ -1,21 +1,32 @@
 import { readdir, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import { createMailNotifications } from '../src/notifications.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { bootTestApp } from './helpers/app.js'
+import { bootTestApp, useTestApp } from './helpers/app.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { migrationNames } from '../configure.js'
 import { socialRegistrationValidator } from '../src/http/validators.js'
 import { InvalidInputError } from '../src/errors.js'
 import { managedErrorResponse } from '../src/http/responses.js'
-import { fixture, registerSetupTeardown } from './helpers/setup.js'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import { defineConfig } from '../src/account_kit.js'
+import {
+  insertUser,
+  makeConfig,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
+import { interactive } from './helpers/interactive_choices.js'
+import { parseSetupChoices } from '../src/setup/parse.js'
 
 test.group('setup generated sources', (group) => {
   registerSetupTeardown(group)
@@ -346,5 +357,189 @@ test.group('setup generated sources', (group) => {
       })
     }
     assert.deepEqual(await validate({ fullName: '  Ada  ' }), { fullName: 'Ada' })
+  })
+
+  test('magic-link sign-in asks for its destination and generates its config and routes', async ({
+    assert,
+  }) => {
+    const answers: Record<string, string> = {
+      'Enabled services': 'authentication,magicLinkLogin',
+      'Managed endpoint groups': 'authentication,magicLinkLogin',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Token revocation': 'yes',
+      'Application-owned protected': 'yes',
+      'Delivery integration': 'custom',
+      'magicLink relative': 'login/link',
+    }
+    const asked = await interactive(answers)
+    assert.equal(asked.mail.destinations.magicLink, 'login/link')
+    assert.deepEqual(parseSetupChoices(asked), asked)
+
+    const { root, choices } = await fixture()
+    choices.features.push('magicLinkLogin')
+    choices.managed.push('magicLinkLogin')
+    choices.mail.destinations.magicLink = 'account/magic-link'
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"magicLinkLogin"')
+    assert.include(config, '"magicLink":"account/magic-link"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"magicLinkLogin"')
+
+    delete choices.mail.destinations.magicLink
+    choices.authentication = null
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.includeMembers(
+      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
+      [
+        'authentication: Magic-link sign-in requires a selected existing guard',
+        'mail.destinations.magicLink: Enabled email flow needs a relative frontend destination',
+      ]
+    )
+  })
+
+  test('session management generates its config and routes and requires a guard', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('sessionManagement')
+    choices.managed.push('sessionManagement')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"sessionManagement"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"sessionManagement"')
+
+    choices.authentication = null
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.include(
+      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
+      'authentication: Session management requires a selected existing guard'
+    )
+  })
+
+  test('account export and deletion generate their config and routes; deletion needs email', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('dataExport', 'accountDeletion')
+    choices.managed.push('dataExport', 'accountDeletion')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const messages = (diagnostics: typeof plan.diagnostics) =>
+      diagnostics.map(({ field, message }) => `${field}: ${message}`)
+    const emailNeeded =
+      'features: Account deletion sends a confirmation email; also select an email service such as passwordReset'
+    assert.notInclude(messages(plan.diagnostics), emailNeeded)
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"dataExport"')
+    assert.include(config, '"accountDeletion"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"accountDeletion"')
+
+    choices.features = ['authentication', 'accountDeletion']
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.include(messages(blocked.diagnostics), emailNeeded)
+  })
+})
+
+async function generatedInvitationAcceptanceHook(kit: ReturnType<typeof useTestApp>) {
+  const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))
+  const stubs = await kit.app.stubs.create()
+  const stub = await stubs.build('config/account_kit.stub', { source: stubsRoot })
+  const rendered = await stub.prepare({
+    config: { destination: join(tmpdir(), 'account_kit_generated_config.ts') },
+  })
+  const sourceFile = ts.createSourceFile(
+    'account_kit_generated_config.ts',
+    rendered.contents,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  )
+  let initializer: ts.Expression | undefined
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isPropertyAssignment(node) &&
+      ts.isIdentifier(node.name) &&
+      node.name.text === 'onInvitationAccepted'
+    ) {
+      initializer = node.initializer
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  if (!initializer) throw new Error('Rendered config is missing onInvitationAccepted')
+
+  const javascript = ts.transpileModule(
+    `const hook = ${initializer.getText(sourceFile)}; export default hook`,
+    {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+    }
+  ).outputText
+  const imported = await import(
+    `data:text/javascript;base64,${Buffer.from(javascript).toString('base64')}`
+  )
+  return imported.default as (...args: never[]) => Promise<void>
+}
+
+test.group('generated invitation acceptance setup hook', (group) => {
+  const kit = useTestApp(group)
+
+  test('requires the acceptance hook to be present and callable when invitations are enabled', ({
+    assert,
+  }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['invitations'] })
+    assert.throws(
+      () => defineConfig({ ...base, onInvitationAccepted: undefined }),
+      /onInvitationAccepted must be a function/
+    )
+    assert.throws(
+      () => defineConfig({ ...base, onInvitationAccepted: 'not callable' } as never),
+      /onInvitationAccepted must be a function/
+    )
+  })
+
+  test('the rendered placeholder throws inside acceptance and rolls back user and token consumption', async ({
+    assert,
+  }) => {
+    const actor = await insertUser(kit, { email: 'inviter@example.test' })
+    const hook = await generatedInvitationAcceptanceHook(kit)
+    const { account, recorder } = makeService(kit, {
+      minRequestMs: 0,
+      onInvitationAccepted: hook as never,
+    })
+    const invitation = await account.invitations.send({
+      actorId: actor.id,
+      email: 'invitee@example.test',
+      role: 'member',
+    })
+    const token = tokenFrom(recorder.calls[0].args[1])
+
+    await assert.rejects(
+      () => account.invitations.accept({ token, password: 'new-password123' }),
+      'account_kit: implement onInvitationAccepted in config/account_kit.ts'
+    )
+    assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
+    assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
+    assert.lengthOf(recorder.calls, 1)
   })
 })

@@ -1,14 +1,13 @@
-import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import User from '#models/user'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
-  AccountKit,
   DeliveryError,
   PostCommitError,
   RegistrationEmailAlreadyRegisteredError,
 } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard, sessionGuard } from '#services/account_kit_guards'
 import {
@@ -21,9 +20,8 @@ export default class NewAccountController {
   async store(ctx: HttpContext) {
     const { request, response, serialize } = ctx
     const { fullName, email, password } = await request.validateUsing(signupValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      await kit.registration.register({ email, password, registrationData: { fullName } })
+      await accountKit.registration.register({ email, password, registrationData: { fullName } })
     } catch (error) {
       if (error instanceof RegistrationEmailAlreadyRegisteredError) {
         return response.unprocessableEntity({
@@ -46,8 +44,8 @@ export default class NewAccountController {
     try {
       result =
         strategy === 'session'
-          ? await kit.authentication.login(input, sessionGuard(ctx))
-          : await kit.authentication.login(input, accessTokenGuard())
+          ? await accountKit.authentication.login(input, sessionGuard(ctx))
+          : await accountKit.authentication.login(input, accessTokenGuard())
     } catch {
       reportCredentialEstablishmentFailure(ctx.logger, 'registration.credential_establish')
       return response.accepted({

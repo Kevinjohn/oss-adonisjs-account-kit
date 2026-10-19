@@ -1,13 +1,12 @@
 import { readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import SetupAccountKit from '../commands/setup.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
-import { fixture, registerSetupTeardown } from './helpers/setup.js'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 test.group('setup choice validation', (group) => {
   registerSetupTeardown(group)
@@ -18,165 +17,6 @@ test.group('setup choice validation', (group) => {
     assert.notInclude(choices.managed, 'invitations')
     assert.equal(choices.social.status, 'not-applicable')
     assert.equal(choices.mail.integration, 'adonisjs-mail')
-  })
-
-  test('interactive token answers produce complete parseable choices including invitation destination', async ({
-    assert,
-  }) => {
-    const answers: Record<string, string> = {
-      'Enabled services': 'authentication,invitations',
-      'Managed endpoint groups': 'authentication,invitations',
-      'Managed endpoint exclusions': 'auth.invitation.inspect',
-      'Existing guard strategy': 'access_tokens',
-      'Existing guard name': 'api',
-      'Token revocation': 'yes',
-      'Application-owned protected': 'yes',
-      'Delivery integration': 'custom',
-      'invitation relative': 'invites/accept',
-      'Additional registration fields': '[{"name":"fullName","type":"string","required":true}]',
-      'Application invitation permission': 'yes',
-    }
-    const choices = await SetupAccountKit.prototype.interactiveChoices.call(
-      { logger: { info() {} } } as unknown as SetupAccountKit,
-      async (question) =>
-        Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
-    )
-    assert.equal(choices.authentication?.strategy, 'access_tokens')
-    assert.deepEqual(choices.managedExcept, ['auth.invitation.inspect'])
-    assert.isFalse(Object.hasOwn(choices.authentication!, 'session'))
-    assert.equal(choices.mail.destinations.invitation, 'invites/accept')
-    assert.lengthOf(choices.policy.registrationFields, 1)
-    assert.deepEqual(parseSetupChoices(choices), choices)
-  })
-
-  test('magic-link sign-in asks for its destination and generates its config and routes', async ({
-    assert,
-  }) => {
-    const answers: Record<string, string> = {
-      'Enabled services': 'authentication,magicLinkLogin',
-      'Managed endpoint groups': 'authentication,magicLinkLogin',
-      'Existing guard strategy': 'access_tokens',
-      'Existing guard name': 'api',
-      'Token revocation': 'yes',
-      'Application-owned protected': 'yes',
-      'Delivery integration': 'custom',
-      'magicLink relative': 'login/link',
-    }
-    const asked = await SetupAccountKit.prototype.interactiveChoices.call(
-      { logger: { info() {} } } as unknown as SetupAccountKit,
-      async (question) =>
-        Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
-    )
-    assert.equal(asked.mail.destinations.magicLink, 'login/link')
-    assert.deepEqual(parseSetupChoices(asked), asked)
-
-    const { root, choices } = await fixture()
-    choices.features.push('magicLinkLogin')
-    choices.managed.push('magicLinkLogin')
-    choices.mail.destinations.magicLink = 'account/magic-link'
-    const plan = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
-    assert.include(config, '"magicLinkLogin"')
-    assert.include(config, '"magicLink":"account/magic-link"')
-    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
-    assert.include(routes, '"magicLinkLogin"')
-
-    delete choices.mail.destinations.magicLink
-    choices.authentication = null
-    const blocked = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    assert.includeMembers(
-      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
-      [
-        'authentication: Magic-link sign-in requires a selected existing guard',
-        'mail.destinations.magicLink: Enabled email flow needs a relative frontend destination',
-      ]
-    )
-  })
-
-  test('session management generates its config and routes and requires a guard', async ({
-    assert,
-  }) => {
-    const { root, choices } = await fixture()
-    choices.features.push('sessionManagement')
-    choices.managed.push('sessionManagement')
-    const plan = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
-    assert.include(config, '"sessionManagement"')
-    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
-    assert.include(routes, '"sessionManagement"')
-
-    choices.authentication = null
-    const blocked = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    assert.include(
-      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
-      'authentication: Session management requires a selected existing guard'
-    )
-  })
-
-  test('account export and deletion generate their config and routes; deletion needs email', async ({
-    assert,
-  }) => {
-    const { root, choices } = await fixture()
-    choices.features.push('dataExport', 'accountDeletion')
-    choices.managed.push('dataExport', 'accountDeletion')
-    const plan = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    const messages = (diagnostics: typeof plan.diagnostics) =>
-      diagnostics.map(({ field, message }) => `${field}: ${message}`)
-    const emailNeeded =
-      'features: Account deletion sends a confirmation email; also select an email service such as passwordReset'
-    assert.notInclude(messages(plan.diagnostics), emailNeeded)
-    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
-    assert.include(config, '"dataExport"')
-    assert.include(config, '"accountDeletion"')
-    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
-    assert.include(routes, '"accountDeletion"')
-
-    choices.features = ['authentication', 'accountDeletion']
-    const blocked = await planSetup(choices, await inspectSetup(root), {
-      apply: true,
-      timestamp: 1234,
-    })
-    assert.include(messages(blocked.diagnostics), emailNeeded)
-  })
-
-  test('interactive provider selection does not duplicate an already selected social group', async ({
-    assert,
-  }) => {
-    const answers: Record<string, string> = {
-      'Enabled services':
-        'authentication,registration,emailVerification,passwordReset,socialAuthentication',
-      'Managed endpoint groups': 'authentication,socialAuthentication',
-      'Existing guard strategy': 'access_tokens',
-      'Existing guard name': 'api',
-      'Token revocation': 'yes',
-      'Application-owned protected': 'yes',
-      'Delivery integration': 'custom',
-      'Application restricted-account': 'yes',
-      'Social providers to prepare': 'google',
-    }
-    const choices = await SetupAccountKit.prototype.interactiveChoices.call(
-      { logger: { info() {} } } as unknown as SetupAccountKit,
-      async (question) =>
-        Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
-    )
-    assert.equal(choices.features.filter((name) => name === 'socialAuthentication').length, 1)
-    assert.equal(choices.managed.filter((name) => name === 'socialAuthentication').length, 1)
-    assert.doesNotThrow(() => parseSetupChoices(choices))
   })
 
   test('application-admitted registration cannot expose the managed public signup route', async ({

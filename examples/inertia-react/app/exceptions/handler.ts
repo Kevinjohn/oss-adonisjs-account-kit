@@ -3,14 +3,13 @@ import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import {
   AccountKitError,
-  DeliveryError,
   IdentityNotConfirmedError,
   InvalidCredentialsError,
   InvalidSessionError,
   InvalidTokenError,
-  PostCommitError,
   ThrottledError,
 } from 'adonisjs-account-kit'
+import { isDeliveryFailure } from '#services/delivery_failure'
 
 /**
  * Messages for Account Kit errors shown as a flash toast. Anything else gets a generic message,
@@ -22,7 +21,7 @@ function accountMessage(error: AccountKitError) {
     return `Too many attempts. Try again in ${error.retryAfterSeconds} seconds.`
   if (error instanceof InvalidTokenError) return 'This link is invalid or has expired.'
   if (error instanceof IdentityNotConfirmedError) return 'The password is incorrect.'
-  if (error instanceof DeliveryError || error instanceof PostCommitError)
+  if (isDeliveryFailure(error))
     return 'Your change was saved, but we could not send the email. Try again later.'
   return 'Something went wrong. Please try again.'
 }

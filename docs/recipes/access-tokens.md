@@ -120,4 +120,4 @@ Check abilities on privileged routes with `user.currentAccessToken.allows('invit
 ## Further reading
 
 - [Authentication integration](../authentication.md): limits, revision checks and logout details.
-- [Token API reference](../../examples/api/TOKENS.md): the full request sequence of the example app.
+- [Token API reference](../token-reference.md): the full request sequence of the example app.

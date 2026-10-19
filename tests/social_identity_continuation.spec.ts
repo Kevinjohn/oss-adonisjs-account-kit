@@ -1,11 +1,10 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { makeService } from './helpers/fakes.js'
-import { verifier, clientChallenge, provider } from './helpers/social_identity.js'
+import { verifier, clientChallenge, provider, current } from './helpers/social_identity.js'
 
 test.group('social continuation and handoff', (group) => {
   const kit = useTestApp(group)
-  const current = (userId: number | string) => ({ userId, revision: null })
 
   test('joint email proof and fresh provider callback confirms a passwordless account', async ({
     assert,

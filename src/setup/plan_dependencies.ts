@@ -1,7 +1,67 @@
-// Setup planning phase: selected package presence, limiter store and version range diagnostics.
+// Setup planning phase: selected package presence and version range diagnostics.
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
 import { hasEmailFlow, diagnostic } from './shared.js'
-import { limiterConfigurationState } from './config_inspection.js'
+
+type SupportedRange = {
+  /** Without a readable installed version the package is skipped unless this says otherwise. */
+  unknownVersion?: 'report' | 'reportIfInstalled'
+  supports: (version: string) => boolean
+  message: (version: string | undefined) => string
+}
+
+function caretRange(name: string, minimum: readonly [number, number, number]): SupportedRange {
+  return {
+    supports: (version) => {
+      const parts = version
+        .match(/^(\d+)\.(\d+)\.(\d+)(?:\+[^\s]+)?$/)
+        ?.slice(1)
+        .map(Number)
+      return Boolean(
+        parts &&
+        parts[0] === minimum[0] &&
+        (parts[1] > minimum[1] || (parts[1] === minimum[1] && parts[2] >= minimum[2]))
+      )
+    },
+    message: (version) =>
+      `Installed ${name}@${version} is outside supported ^${minimum.join('.')} range`,
+  }
+}
+
+const supportedRanges: Record<string, SupportedRange> = {
+  'typescript': {
+    unknownVersion: 'report',
+    supports: (version) => {
+      const parts = version
+        .match(/^(\d+)\.(\d+)\.(\d+)$/)
+        ?.slice(1)
+        .map(Number)
+      return Boolean(
+        parts &&
+        ((parts[0] === 5 && (parts[1] > 9 || (parts[1] === 9 && parts[2] >= 3))) ||
+          (parts[0] === 6 && (parts[1] > 0 || parts[2] >= 3)))
+      )
+    },
+    message: (version) =>
+      `Installed TypeScript version ${version ?? 'unknown'} is outside supported ^5.9.3 || ^6.0.3 range`,
+  },
+  '@adonisjs/core': caretRange('@adonisjs/core', [7, 0, 0]),
+  '@adonisjs/lucid': caretRange('@adonisjs/lucid', [22, 4, 2]),
+  '@adonisjs/limiter': caretRange('@adonisjs/limiter', [3, 0, 0]),
+  '@adonisjs/auth': caretRange('@adonisjs/auth', [10, 1, 0]),
+  '@adonisjs/session': caretRange('@adonisjs/session', [8, 1, 0]),
+  '@adonisjs/shield': caretRange('@adonisjs/shield', [9, 0, 0]),
+  '@vinejs/vine': caretRange('@vinejs/vine', [4, 4, 0]),
+  '@adonisjs/mail': caretRange('@adonisjs/mail', [10, 0, 0]),
+  '@adonisjs/ally': {
+    unknownVersion: 'reportIfInstalled',
+    supports: (version) => {
+      const patch = version.match(/^6\.3\.(\d+)$/)?.[1]
+      return patch !== undefined && Number(patch) >= 2
+    },
+    message: (version) =>
+      `Installed @adonisjs/ally@${version || 'unknown'} is outside the verified range >=6.3.2 <6.4.0`,
+  },
+}
 
 export async function planDependencies(
   choices: SetupChoices,
@@ -26,81 +86,15 @@ export async function planDependencies(
   const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
     diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
-  const limiter = await limiterConfigurationState(
-    state.files['config/limiter.ts'] ?? '',
-    state.root
-  )
-  if (limiter === 'invalid')
-    diagnostic(
-      diagnostics,
-      'config/limiter.ts',
-      'Configure @adonisjs/limiter with pnpm exec node ace configure @adonisjs/limiter; config/limiter.ts needs an actual selected store in its exported defineConfig'
-    )
-  else if (limiter === 'unresolved')
-    diagnostic(
-      diagnostics,
-      'config/limiter.ts',
-      'Selected limiter store is unresolved; use a direct literal or a resolvable environment assignment before activation'
-    )
-  const minimumVersions: Record<string, readonly [number, number, number]> = {
-    '@adonisjs/core': [7, 0, 0],
-    '@adonisjs/lucid': [22, 4, 2],
-    '@adonisjs/limiter': [3, 0, 0],
-    '@adonisjs/auth': [10, 1, 0],
-    '@adonisjs/session': [8, 1, 0],
-    '@adonisjs/shield': [9, 0, 0],
-    '@vinejs/vine': [4, 4, 0],
-    '@adonisjs/mail': [10, 0, 0],
-  }
   for (const name of selectedPackages) {
-    if (name === 'typescript') {
-      const version = state.installedVersions[name]
-      const parts = version
-        ?.match(/^(\d+)\.(\d+)\.(\d+)$/)
-        ?.slice(1)
-        .map(Number)
-      const supported =
-        parts &&
-        ((parts[0] === 5 && (parts[1] > 9 || (parts[1] === 9 && parts[2] >= 3))) ||
-          (parts[0] === 6 && (parts[1] > 0 || parts[2] >= 3)))
-      if (!supported)
-        diagnostic(
-          diagnostics,
-          'dependencies.typescript',
-          `Installed TypeScript version ${version ?? 'unknown'} is outside supported ^5.9.3 || ^6.0.3 range`
-        )
-      continue
-    }
-    const minimum = minimumVersions[name]
-    if (!minimum) continue
+    const range = supportedRanges[name]
+    if (!range) continue
     const version = state.installedVersions[name]
-    if (!version) continue
-    const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:\+[^\s]+)?$/)
-    const parts = match?.slice(1).map(Number)
-    if (
-      !parts ||
-      parts[0] !== minimum[0] ||
-      parts[1] < minimum[1] ||
-      (parts[1] === minimum[1] && parts[2] < minimum[2])
-    )
-      diagnostic(
-        diagnostics,
-        `dependencies.${name}`,
-        `Installed ${name}@${version} is outside supported ^${minimum.join('.')} range`
-      )
-  }
-  if (choices.social.status === 'enabled') {
-    const allyVersion = state.installedVersions['@adonisjs/ally']
-    const patch = allyVersion?.match(/^6\.3\.(\d+)$/)?.[1]
-    if (
-      state.installedPackages.includes('@adonisjs/ally') &&
-      (patch === undefined || Number(patch) < 2)
-    )
-      diagnostic(
-        diagnostics,
-        'dependencies.@adonisjs/ally',
-        `Installed @adonisjs/ally@${allyVersion || 'unknown'} is outside the verified range >=6.3.2 <6.4.0`
-      )
+    const reportUnknown =
+      range.unknownVersion === 'report' ||
+      (range.unknownVersion === 'reportIfInstalled' && state.installedPackages.includes(name))
+    if (version ? range.supports(version) : !reportUnknown) continue
+    diagnostic(diagnostics, `dependencies.${name}`, range.message(version))
   }
   return missingPackages
 }

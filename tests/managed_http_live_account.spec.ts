@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 test.group('managed HTTP verification policy with live account state', (group) => {
@@ -26,16 +26,13 @@ test.group('managed HTTP verification policy with live account state', (group) =
         },
       },
     })
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => account,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         current: async () => ({ userId: user.id, revision: null }),
-      },
+      }),
       enabled: ['invitations'],
       verificationRequired: false,
     })
@@ -68,16 +65,13 @@ test.group('managed HTTP verification policy with live account state', (group) =
         },
       },
     })
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => account,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         current: async () => ({ userId: user.id, revision: null }),
-      },
+      }),
       enabled: ['emailPasswordManagement'],
     })
     const profile = routes.get('PATCH /api/v1/account/profile')!
@@ -105,16 +99,13 @@ test.group('managed HTTP verification policy with live account state', (group) =
     const { account } = makeService(app, {
       authentication: { strategy: 'session', guard: 'web' },
     })
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => account,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         current: async () => ({ userId: user.id, revision: null }),
-      },
+      }),
       enabled: ['emailPasswordManagement'],
     })
     for (const [path, input] of [

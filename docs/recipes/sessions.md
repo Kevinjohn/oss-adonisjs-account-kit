@@ -84,4 +84,4 @@ this; copy it, or let `account-kit:setup` generate one for you.
 ## Further reading
 
 - [Authentication integration](../authentication.md)
-- [Session reference](../../examples/api/SESSION.md): CSRF bootstrap and the full browser sequence.
+- [Session reference](../session-reference.md): CSRF bootstrap and the full browser sequence.

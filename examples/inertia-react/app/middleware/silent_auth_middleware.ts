@@ -1,7 +1,7 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { AccountKit, InvalidSessionError } from 'adonisjs-account-kit'
+import kit from 'adonisjs-account-kit/services/main'
+import { InvalidSessionError } from 'adonisjs-account-kit'
 
 /**
  * Checks on every request whether the user is signed in, and signs out a session that started
@@ -11,7 +11,6 @@ import { AccountKit, InvalidSessionError } from 'adonisjs-account-kit'
 export default class SilentAuthMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
     if (await ctx.auth.check()) {
-      const kit = await app.container.make(AccountKit)
       const revision = ctx.session.get('accountKitRevision')
       try {
         await kit.authentication.current({

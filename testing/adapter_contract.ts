@@ -66,17 +66,21 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   const email = `${prefix}@example.test`
   const password = 'contract-password-one'
   const verifiedAt = DateTime.local().startOf('second')
+  /** Padded and upper-cased, so the adapter has to normalize it. */
+  const messy = (address: string) => ` ${address.toUpperCase()} `
+  /** Create attributes with the fixture's registration data, when it has any. */
+  const createAttrs = (
+    attributes: Omit<Parameters<UsersAdapter['create']>[0], 'registrationData'>
+  ): Parameters<UsersAdapter['create']>[0] => ({
+    ...attributes,
+    ...(fixture.registrationData !== undefined
+      ? { registrationData: fixture.registrationData }
+      : {}),
+  })
 
   const created = await fixture.transaction(async (trx) => {
     const user = await fixture.adapter.create(
-      {
-        email: ` ${email.toUpperCase()} `,
-        password,
-        unverifiedEmail: null,
-        ...(fixture.registrationData !== undefined
-          ? { registrationData: fixture.registrationData }
-          : {}),
-      },
+      createAttrs({ email: messy(email), password, unverifiedEmail: null }),
       trx
     )
     const read = await fixture.adapter.findByEmail(email.toUpperCase(), trx)
@@ -99,19 +103,12 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
 
   const byId = await fixture.adapter.findById(created.id)
   assertSameUser(byId, created)
-  assertSameUser(await fixture.adapter.findByEmail(` ${email.toUpperCase()} `), created)
+  assertSameUser(await fixture.adapter.findByEmail(messy(email)), created)
 
   await assert.rejects(
     fixture.transaction((trx) =>
       fixture.adapter.create(
-        {
-          email: email.toUpperCase(),
-          password,
-          unverifiedEmail: null,
-          ...(fixture.registrationData !== undefined
-            ? { registrationData: fixture.registrationData }
-            : {}),
-        },
+        createAttrs({ email: email.toUpperCase(), password, unverifiedEmail: null }),
         trx
       )
     ),
@@ -122,14 +119,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   await assert.rejects(
     fixture.transaction(async (trx) => {
       await fixture.adapter.create(
-        {
-          email: rolledBackEmail,
-          password,
-          unverifiedEmail: null,
-          ...(fixture.registrationData !== undefined
-            ? { registrationData: fixture.registrationData }
-            : {}),
-        },
+        createAttrs({ email: rolledBackEmail, password, unverifiedEmail: null }),
         trx
       )
       assert.ok(await fixture.adapter.findByEmail(rolledBackEmail, trx))
@@ -151,7 +141,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   assert.equal(await fixture.adapter.findByEmail(changedEmail), null)
 
   const normalizedChangedEmail = `${prefix}-committed@example.test`
-  const changedEmailInput = ` ${normalizedChangedEmail.toUpperCase()} `
+  const changedEmailInput = messy(normalizedChangedEmail)
   const afterEmailChange = await fixture.transaction(async (trx) => {
     await fixture.adapter.setEmail(created.id, changedEmailInput, trx)
     const read = await fixture.adapter.findById(created.id, trx)
@@ -245,14 +235,11 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   const inactiveEmail = `${prefix}-inactive@example.test`
   const inactive = await fixture.transaction((trx) =>
     fixture.adapter.create(
-      {
-        email: ` ${inactiveEmail.toUpperCase()} `,
-        unverifiedEmail: ` ${inactiveEmail.toUpperCase()} `,
+      createAttrs({
+        email: messy(inactiveEmail),
+        unverifiedEmail: messy(inactiveEmail),
         password: null,
-        ...(fixture.registrationData !== undefined
-          ? { registrationData: fixture.registrationData }
-          : {}),
-      },
+      }),
       trx
     )
   )
@@ -273,7 +260,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   const pendingEmail = `${prefix}-pending@example.test`
   await assert.rejects(
     fixture.transaction(async (trx) => {
-      await fixture.adapter.setUnverifiedEmail(inactive.id, ` ${pendingEmail.toUpperCase()} `, trx)
+      await fixture.adapter.setUnverifiedEmail(inactive.id, messy(pendingEmail), trx)
       const pending = await fixture.adapter.findById(inactive.id, trx)
       assert.equal(pending?.unverifiedEmail, pendingEmail)
       throw new Error('pending address rollback')
@@ -282,7 +269,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   )
   assertSameUser(await fixture.adapter.findById(inactive.id), inactive)
   await fixture.transaction((trx) =>
-    fixture.adapter.setUnverifiedEmail(inactive.id, ` ${pendingEmail.toUpperCase()} `, trx)
+    fixture.adapter.setUnverifiedEmail(inactive.id, messy(pendingEmail), trx)
   )
   const persistedPending = await fixture.adapter.findById(inactive.id)
   assert.equal(persistedPending?.unverifiedEmail, pendingEmail)

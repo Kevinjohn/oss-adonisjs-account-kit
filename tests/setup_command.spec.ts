@@ -6,7 +6,8 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
 import SetupAccountKit from '../commands/setup.js'
 import { inspectSetup } from '../src/setup/inspect.js'
-import { fixture, registerSetupTeardown, retirementIgnitor } from './helpers/setup.js'
+import { retirementIgnitor } from './helpers/retirement_ignitor.js'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 test.group('setup Ace command', (group) => {
   registerSetupTeardown(group)

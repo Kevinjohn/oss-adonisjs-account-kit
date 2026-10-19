@@ -2,8 +2,13 @@
 import { DeliveryError, EmailAlreadyRegisteredError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler, ManagedRequest } from './managed.js'
-import { passwordPolicyError, recoveryDiagnostic, signInLabel } from './response_helpers.js'
+import type { ManagedHandler, ManagedRequest } from './managed_types.js'
+import {
+  passwordPolicyError,
+  recoveryDiagnostic,
+  ruleError,
+  signInLabel,
+} from './response_helpers.js'
 import { signupValidator } from './validators.js'
 
 async function signup<Credential>({
@@ -29,9 +34,7 @@ async function signup<Credential>({
     })
   } catch (error) {
     if (error instanceof EmailAlreadyRegisteredError)
-      return response.unprocessableEntity({
-        errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken.' }],
-      })
+      return ruleError(context, 'email', 'unique', 'The email has already been taken.')
     if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
     recoveryDiagnostic(
       context,

@@ -1,7 +1,6 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { AccountKit } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import env from '#start/env'
 
 export function accountInput(ctx: HttpContext) {
@@ -19,8 +18,7 @@ export function accountInput(ctx: HttpContext) {
 /** Credential and restriction gate for routes an inactive account may use. */
 export default class AccountAccessMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
-    const kit = await app.container.make(AccountKit)
-    await kit.authentication.current(accountInput(ctx))
+    await accountKit.authentication.current(accountInput(ctx))
     return next()
   }
 }

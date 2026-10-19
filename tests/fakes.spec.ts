@@ -2,7 +2,7 @@ import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { allowAll, denyAll, makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
-test.group('database users adapter', (group) => {
+test.group('test fakes', (group) => {
   const kit = useTestApp(group)
 
   test('creates normalized verified users with a hashed password and reads under a lock', async ({

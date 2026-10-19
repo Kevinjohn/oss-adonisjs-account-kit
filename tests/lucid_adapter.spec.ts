@@ -268,3 +268,30 @@ test.group('maintained Lucid adapter', (group) => {
     )
   })
 })
+
+test.group('identity creation contract', (group) => {
+  const kit = useTestApp(group)
+
+  test('creates an inactive account with a pending email and no local password', async ({
+    assert,
+  }) => {
+    const adapter = createLucidAdapter(async () => LucidUser)
+    const user = await transaction(kit.db, (trx) =>
+      adapter.create(
+        {
+          email: '  Pending@Example.Test ',
+          unverifiedEmail: ' Pending@Example.Test ',
+          password: null,
+        },
+        trx
+      )
+    )
+    assert.equal(user.email, 'pending@example.test')
+    assert.equal(user.unverifiedEmail, 'pending@example.test')
+    assert.isFalse(user.hasPassword)
+    assert.isNull(user.emailVerifiedAt)
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.unverified_email, 'pending@example.test')
+    assert.isNull(row.password)
+  })
+})

@@ -11,6 +11,7 @@ import env from '#start/env'
 import accountKitConfig from '#config/account_kit'
 import { referencePasswordLimits } from '#validators/password'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
+import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
 const responseBody = <T>(response: { body(): unknown }) => response.body() as T
 
@@ -28,7 +29,6 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   notifications.reset()
   const email = `claim-${randomUUID()}@example.test`
   const signup = await client.post('/api/v1/auth/signup').json({
@@ -43,7 +43,7 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   assert.equal(blocked.status(), 403)
   assert.equal(
     (blocked.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
   const provision = notifications.events.find((event) => event.kind === 'verification')
   assert.isDefined(provision)
@@ -62,13 +62,12 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
     .post('/api/v1/auth/login')
     .json({ email, password: 'ClaimantPass123!' })
   assert.equal(claimantPassword.status(), 200)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('committed signup delivery and observer failures return recovery guidance', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   for (const failure of ['delivery', 'observer'] as const) {
     notifications.reset()
     notifications.failVerification = failure === 'delivery'
@@ -117,13 +116,12 @@ test('committed signup delivery and observer failures return recovery guidance',
     assert.isTrue(notifications.events.some((event) => event.kind === 'verification'))
   }
   notifications.reset()
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('committed signup survives credential throttling and guard failure', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const kit = await app.container.make(AccountKit)
   const original = Object.getOwnPropertyDescriptor(kit, 'authentication')
   for (const [kind, failure] of [
@@ -165,13 +163,12 @@ test('committed signup survives credential throttling and guard failure', async 
       else Reflect.deleteProperty(kit, 'authentication')
     }
   }
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('signup maps an application-restricted duplicate to the uniform email error', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const email = `restricted-duplicate-${randomUUID()}@example.test`
   const user = await User.create({
     fullName: 'Restricted Existing User',
@@ -189,7 +186,7 @@ test('signup maps an application-restricted duplicate to the uniform email error
   assert.deepEqual(duplicate.body(), {
     errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
   })
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('login limits known and unknown identities independently after normalization', async ({
   client,
@@ -279,7 +276,6 @@ test('signup accepts a password within the shared 256 character limit', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   assert.equal(accountKitConfig.passwordPolicy.minLength, referencePasswordLimits.minLength)
   assert.equal(accountKitConfig.passwordPolicy.maxLength, referencePasswordLimits.maxLength)
   assert.isFalse(accountKitConfig.passwordPolicy.letters)
@@ -316,7 +312,7 @@ test('signup accepts a password within the shared 256 character limit', async ({
     passwordConfirmation: tooLongPassword,
   })
   assert.equal(rejectedRegistration.status(), 422)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('login limits each client across rotating identities', async ({ client, assert }) => {
   await limiter.clear(['memory'])
@@ -341,7 +337,6 @@ test('a bearer token without the invitation ability cannot send an invitation', 
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const user = await User.create({
     fullName: 'Limited Token User',
     email: `limited-token-${randomUUID()}@example.test`,
@@ -357,13 +352,12 @@ test('a bearer token without the invitation ability cannot send an invitation', 
     responseBody<{ errors: [{ code: string }] }>(response).errors[0].code,
     'missing_ability'
   )
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('bearer login uses the real token guard and password changes revoke issued tokens', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   await limiter.clear(['memory'])
   const user = await User.create({
     fullName: 'Token Lifecycle User',
@@ -408,13 +402,12 @@ test('bearer login uses the real token guard and password changes revoke issued 
   assert.equal(logout.status(), 200)
   const repeatedLogout = await client.post('/api/v1/account/logout').bearerToken(nextToken)
   assert.equal(repeatedLogout.status(), 401)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('an in-flight bearer request is denied when its token is revoked after guard authentication', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   await limiter.clear(['memory'])
   const user = await User.create({
     fullName: 'In-flight Token User',
@@ -464,13 +457,12 @@ test('an in-flight bearer request is denied when its token is revoked after guar
     resume()
     AuthMiddleware.prototype.handle = original
   }
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('real token issuance cannot survive a reset committed on either side of creation', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session') return
   const kit = await app.container.make(AccountKit)
   for (const order of ['token-first', 'reset-first'] as const) {
     const user = await User.create({
@@ -529,4 +521,4 @@ test('real token issuance cannot survive a reset committed on either side of cre
     const replay = await client.get('/api/v1/account/profile').bearerToken(tokenValue!)
     assert.equal(replay.status(), 401)
   }
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)

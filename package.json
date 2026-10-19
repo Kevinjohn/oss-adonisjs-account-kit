@@ -51,7 +51,7 @@
     "demos": "node scripts/demos/create_app.mjs tmp/demo-app && node scripts/demos/record.mjs tmp/demo-app tmp/demo-casts && node scripts/demos/render.mjs tmp/demo-casts docs/assets/demos",
     "demos:setup": "node scripts/demos/create_setup_app.mjs tmp/setup-demo-app && node scripts/demos/record_setup.mjs tmp/setup-demo-app tmp/setup-demo-casts && node scripts/demos/render.mjs tmp/setup-demo-casts docs/assets/demos",
     "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
-    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=provider.spec.ts",
+    "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
     "test:built-setup": "cross-env TEST_BUILT_SETUP=1 pnpm quick:test --files=setup_command.spec.ts",
     "pretest": "pnpm lint",
     "test": "c8 pnpm quick:test",

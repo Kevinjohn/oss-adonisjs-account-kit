@@ -12,7 +12,6 @@
     "start": "node bin/server.js",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
-    "configure": "node ace configure adonisjs-account-kit",
     "migrate": "node ace migration:run --force",
     "test": "node ace test",
     "test:session": "node ace test --files=tests/functional/authentication_session.spec.ts --files=tests/functional/reference_session.spec.ts --files=tests/functional/social_session.spec.ts",
@@ -81,12 +80,6 @@
       "./app/controllers/**/*.ts",
       "./app/middleware/*.ts"
     ]
-  },
-  "allowScripts": {
-    "@swc/core": true,
-    "better-sqlite3": true,
-    "esbuild": true,
-    "fsevents": true
   },
   "prettier": "@adonisjs/prettier-config"
 }
