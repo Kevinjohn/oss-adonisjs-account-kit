@@ -9,7 +9,7 @@ import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
-import { confirmActor } from './actor_confirmation.js'
+import { confirmActor, requireUser } from './actor_confirmation.js'
 import type { ChangePasswordInput, ResolvedConfig } from './types.js'
 
 export async function changePassword(
@@ -38,8 +38,7 @@ export async function changePassword(
         'password_reset_tokens',
         'email_verification_tokens',
       ])
-      const reloaded = await deps.config.users.findById(actor.id, trx)
-      if (!reloaded) throw new InvalidInputError('Unknown actor')
+      const reloaded = await requireUser(deps.config, actor.id, trx)
       await credentialsChanged(trx, deps.config, reloaded, {
         operation: 'password_change',
         operationId,

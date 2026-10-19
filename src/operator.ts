@@ -8,7 +8,7 @@ import {
   settleCommitted,
   type PostCommitEffect,
 } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
   InvalidInputError,
@@ -35,7 +35,7 @@ function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
 
 function requireEmail(value: unknown): string {
   if (!isEmailShaped(value)) throw new InvalidInputError('Invalid email')
-  return normaliseEmail(value)
+  return normalizeEmail(value)
 }
 
 /** Run committed follow-ups and report any failure as safe data instead of throwing. */
