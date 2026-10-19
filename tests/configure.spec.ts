@@ -110,6 +110,13 @@ test('configures the package idempotently without replacing application-owned fi
         await readFile(join(migrationsDirectory, filename), 'utf8'),
       ])
     )
+    for (const [filename, contents] of generatedFiles) {
+      const tableName = filename.match(/^\d+_account_kit_create_(.+)\.ts$/)?.[1]
+      if (!tableName) continue
+      assert.include(contents, `protected tableName = '${tableName}'`)
+      assert.include(contents, 'createTable(this.tableName,')
+      assert.include(contents, 'dropTable(this.tableName)')
+    }
     await writeFile(configPath, existingConfig)
     await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
 
