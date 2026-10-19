@@ -3,7 +3,7 @@ import { DeliveryError, PostCommitError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { invalidProof, passwordPolicyError, recoveryDiagnostic } from './response_helpers.js'
-import { passwordResetCompleteValidator, passwordResetRequestValidator } from './validators.js'
+import { newPasswordValidator, passwordResetRequestValidator } from './validators.js'
 
 export const passwordResetHandlers = {
   'auth.passwordReset.request': async ({ route, context, kit }) => {
@@ -27,7 +27,7 @@ export const passwordResetHandlers = {
       : invalidProof(context, 'password', options.extensions?.message),
   'auth.passwordReset.complete': async ({ context, kit }) => {
     const { request, response, params } = context
-    const { password } = await request.validateUsing(passwordResetCompleteValidator)
+    const { password } = await request.validateUsing(newPasswordValidator)
     if (!kit.managedHttp.passwordAllowed(password)) return passwordPolicyError(context, 'password')
     await kit.passwordReset.reset({ token: params.token, password })
     return response.ok({ reset: true })
