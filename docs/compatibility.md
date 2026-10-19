@@ -36,8 +36,7 @@ SQLite applications must enable foreign keys on every connection. Package writes
 package-owned transaction lock using `account_transaction_lock`; the fifth configure migration
 creates this table. SQLite write-contention retries can rerun transaction callbacks, so callbacks
 must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
-[transaction guidance](usage.md#transactions-and-callbacks) and the
-[upgrade guide](upgrade.md#existing-installations).
+[transaction guidance](usage.md#transactions-and-callbacks).
 
 ### MySQL 8.4
 

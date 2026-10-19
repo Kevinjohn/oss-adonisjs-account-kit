@@ -9,9 +9,7 @@ import { settleCommitted } from './effects.js'
 import type { PostCommitError } from './errors.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
-import { sqlTimestamp } from './timestamps.js'
-
-type Stored = Date | string | null | undefined
+import { readTimestamp, sqlTimestamp } from './timestamps.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
 
@@ -20,16 +18,9 @@ export function exportFault(document: AccountExport): PostCommitError | undefine
   return faults.get(document)
 }
 
-function timestamp(value: Stored): string | null {
-  if (value === null || value === undefined) return null
-  const parsed =
-    value instanceof Date
-      ? DateTime.fromJSDate(value, { zone: 'utc' })
-      : DateTime.fromISO(value, { zone: 'utc' }).isValid
-        ? DateTime.fromISO(value, { zone: 'utc' })
-        : DateTime.fromSQL(value, { zone: 'utc' })
-  if (!parsed.isValid) throw new Error('account_kit: unreadable stored timestamp')
-  return parsed.toUTC().toISO()
+/** Drivers return a Date, a string or epoch milliseconds (AdonisJS tokens on SQLite). */
+function timestamp(value: unknown): string | null {
+  return readTimestamp(value)?.toUTC().toISO() ?? null
 }
 
 /** Round-trip through JSON so the document holds exactly what a download would contain. */

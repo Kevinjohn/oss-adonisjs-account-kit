@@ -1,5 +1,7 @@
 # Account Kit documentation
 
+- [Features](features.md): the core account flows and the opt-in extras.
+
 ## Tutorial
 
 - [Getting started](getting-started.md): install, migrate, and send your first password reset.
@@ -35,7 +37,7 @@ Operations and quality
 - [Testing your account flows](recipes/testing.md)
 - [Audit log](recipes/audit-log.md)
 - [Guided setup with `account-kit:setup`](setup.md)
-- [Upgrading from a pre-release candidate](upgrade.md)
+- [Operations](operations.md): deploy, prune, operator commands, secret rotation and redaction.
 
 Integration modes
 
@@ -52,15 +54,19 @@ Integration modes
 - [Account operations](account-operations.md)
 - [Errors](reference/errors.md)
 - [Managed endpoints](reference/endpoints.md)
+- [Setup choices](reference/setup-choices.md): the six pillars and the files setup writes.
 - [OpenAPI document](openapi.md): an OpenAPI 3.1 file for the mounted managed routes.
 - [Notifications](notifications.md)
-- [Operations](operations.md): secrets, rate limits, pruning and redaction.
+- [Production requirements](reference/production-requirements.md): versions, stores and limiter
+  budgets.
 - [Compatibility](compatibility.md): tested versions.
 - [Glossary](glossary.md)
 
 ## Explanation
 
 - [Security model](security.md)
+- [How setup works](how-setup-works.md): preview, recovery and readiness.
+- [Production boundaries](production-boundaries.md): readiness, delivery and credential lifecycle.
 - [Authentication integration](authentication.md)
 - [Identity creation](identity-creation.md)
 - [Registration](registration.md)
