@@ -10,6 +10,18 @@ Thanks for helping. Bug reports, documentation fixes, recipes and adapters are a
 - Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
   public issue.
 
+## Project principles
+
+Every change follows these.
+
+- **Built for everyone who uses AdonisJS.** Follow the open-source AdonisJS packages and starter
+  kits for names, shapes and behaviour. Match AdonisJS Plus only where that costs nothing; Plus
+  compatibility is not a goal and never outweighs consistency for open-source users.
+- **The application owns its language.** Do what the official AdonisJS packages do: look up
+  user-facing text through `@adonisjs/i18n` when the application uses it, with English as the
+  fallback. No locale detection, no package language setting, and no translations or loader
+  shipped in the package.
+
 ## Local setup
 
 You need Node.js 24 and pnpm. The repository pins Node 24 in `.nvmrc`; `better-sqlite3` is compiled
