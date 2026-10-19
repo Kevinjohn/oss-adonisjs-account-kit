@@ -24,6 +24,11 @@ test.group('account kit provider', (group) => {
     assert.notProperty(first, 'credentials')
   })
 
+  test('resolves the account_kit alias to the class-bound singleton', async ({ assert }) => {
+    const aliased = await kit.app.container.make('account_kit')
+    assert.equal(aliased, await kit.app.container.make(AccountKit))
+  })
+
   // A fresh app: the shared one has already cached the singleton.
   test('exports the container singleton from the service entry point', async ({ assert }) => {
     const service = await import('../services/main.js')
