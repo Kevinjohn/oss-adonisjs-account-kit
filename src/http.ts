@@ -6,9 +6,16 @@ import {
   ThrottledError,
 } from './errors.js'
 
+/**
+ * A safe HTTP response for an Account Kit error: status, headers such as `Retry-After`, and a
+ * generic body.
+ */
 export interface AccountErrorResponse {
+  /** The HTTP status. */
   status: number
+  /** Headers to set, such as `Retry-After`. */
   headers: Record<string, string>
+  /** A generic body. `committed` is true when the change was saved before a later step failed. */
   body: { code: string; message: string; committed?: true }
 }
 

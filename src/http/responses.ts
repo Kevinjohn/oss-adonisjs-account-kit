@@ -21,6 +21,10 @@ export interface ManagedErrorResponse {
   body: { errors: Array<{ code: string; message: string } | { code: string; title: string }> }
 }
 
+/**
+ * Replaces the public wording of a managed response. Receives the stable code and the default
+ * message; the status and code cannot change.
+ */
 export type ManagedMessage = (code: string, defaultMessage: string) => string
 
 function prefersJsonApi(accept?: string): boolean {

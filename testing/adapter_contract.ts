@@ -2,6 +2,10 @@ import assert from 'node:assert/strict'
 import { DateTime } from 'luxon'
 import type { Trx, UsersAdapter } from '../src/types.js'
 
+/**
+ * What the adapter contract suite needs to test your users adapter: the adapter, a way to run
+ * transactions, and probes for stored passwords and row locks.
+ */
 export interface AdapterContractFixture {
   adapter: UsersAdapter
   /** Run the callback in a transaction and commit it when it returns. */

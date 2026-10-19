@@ -249,6 +249,10 @@ export function authenticationService(deps: Dependencies) {
       }
     },
 
+    /**
+     * Checks the password and `canAccess`, then signs the user in through `guard`. Every failure is
+     * `InvalidCredentialsError` after `minRequestMs`, and counts against the failed-login limits.
+     */
     async login<Credential>(
       input: PasswordLoginInput,
       guard: AuthenticationGuard<Credential>
@@ -319,10 +323,15 @@ export function authenticationService(deps: Dependencies) {
       return { account: verified.account, credential }
     },
 
+    /**
+     * Safe account data for the signed-in credential. Throws `InvalidSessionError` if it was
+     * revoked or is older than the latest credential change.
+     */
     current(input: CurrentAccountInput): Promise<CurrentAccount> {
       return transaction(deps.db, (trx) => currentInTransaction(deps, input, trx))
     },
 
+    /** Like `current`, and also throws `UnverifiedEmailError` until the address is confirmed. */
     async requireActive(input: CurrentAccountInput): Promise<CurrentAccount> {
       const account = await transaction(deps.db, (trx) => currentInTransaction(deps, input, trx))
       if (!account.active) throw new UnverifiedEmailError()
@@ -345,6 +354,10 @@ export function authenticationService(deps: Dependencies) {
       await guard.terminate(credential)
     },
 
+    /**
+     * Runs `change` to update your restriction state under the account lock, then ends the user's
+     * sessions and tokens in the same transaction.
+     */
     async changeRestriction(input: {
       userId: UserId
       change: (user: AccountUser, trx: Trx) => Promise<void>

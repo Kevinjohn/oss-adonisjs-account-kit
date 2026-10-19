@@ -79,6 +79,7 @@ export interface ManagedRequestBodies {
   'account.delete': { currentPassword?: string; recentProof?: string }
 }
 
+/** The JSON request body of one managed endpoint. */
 export type ManagedRequestBody<Name extends ManagedEndpointName> = ManagedRequestBodies[Name]
 
 /** Query parameters are separate from JSON request bodies. */
@@ -127,6 +128,7 @@ export interface ManagedQueries {
   'account.delete': undefined
 }
 
+/** The query parameters of one managed endpoint. */
 export type ManagedQuery<Name extends ManagedEndpointName> = ManagedQueries[Name]
 
 /** A write committed, but a post-commit callback or delivery failed. */
@@ -134,6 +136,7 @@ export interface ManagedCommittedSuccess {
   committed: true
 }
 
+/** The response body of a social sign-in step. */
 export type ManagedSocialFlowBody =
   | ManagedCommittedSuccess
   | { status: 'linked' | 'new'; account: CurrentAccount }
@@ -200,6 +203,7 @@ export interface ManagedSuccessBodies {
   'account.delete': undefined | ManagedCommittedSuccess
 }
 
+/** The success response body of one managed endpoint. */
 export type ManagedSuccessBody<Name extends ManagedEndpointName> = ManagedSuccessBodies[Name]
 
 type CompleteInventory =
@@ -219,6 +223,10 @@ type CompleteInventory =
 
 export const managedSuccessContractComplete: CompleteInventory = true
 
+/**
+ * The error body of a managed endpoint: `{ errors: [{ code, message }] }`, or JSON:API `{ errors:
+ * [{ code, title }] }` when requested.
+ */
 export interface ManagedErrorBody {
   errors: Array<{ code: string; message: string; field?: string } | { code: string; title: string }>
 }
