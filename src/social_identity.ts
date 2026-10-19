@@ -4,7 +4,7 @@ import { credentialsChanged, revision } from './authentication.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { createHandoff, redeemSocialHandoff } from './social_handoff.js'
 import {
@@ -121,7 +121,7 @@ function checkedProfile(value: ProviderProfile): ProviderProfile {
   }
   return {
     subject: value.subject,
-    email: value.email === null ? null : normaliseEmail(value.email),
+    email: value.email === null ? null : normalizeEmail(value.email),
     emailVerified: value.emailVerified === true,
     name: value.name?.slice(0, 255) ?? null,
     nickname: value.nickname?.slice(0, 255) ?? null,

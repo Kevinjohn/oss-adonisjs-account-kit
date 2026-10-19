@@ -4,7 +4,7 @@ import { errors } from '@adonisjs/limiter'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction } from './db.js'
-import { normaliseEmail } from './email.js'
+import { normalizeEmail } from './email.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { credentialsChanged, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
@@ -133,7 +133,7 @@ export function authenticationService(deps: Dependencies) {
       )
         throw new InvalidCredentialsError()
 
-      const email = normaliseEmail(input.email)
+      const email = normalizeEmail(input.email)
       const key = throttlerOf(deps).key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
