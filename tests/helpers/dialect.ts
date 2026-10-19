@@ -1,6 +1,9 @@
+import { testClient } from './test_connection.js'
+
 /** The database engine under test, from `DB_CLIENT`. */
-export const testEngine: 'sqlite' | 'pg' | 'mysql' =
-  process.env.DB_CLIENT === 'pg' ? 'pg' : process.env.DB_CLIENT === 'mysql2' ? 'mysql' : 'sqlite'
+export const testEngine = ({ 'pg': 'pg', 'mysql2': 'mysql', 'better-sqlite3': 'sqlite' } as const)[
+  testClient()
+]
 
 /** SQLite serialises writers with one database lock; PostgreSQL and MySQL lock rows. */
 export const locksRows = testEngine !== 'sqlite'
