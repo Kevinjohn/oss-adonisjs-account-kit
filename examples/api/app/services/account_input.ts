@@ -1,11 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import env from '#start/env'
+import { authStrategy, selectedGuardName } from '#services/auth_strategy'
 
 export function accountInput(ctx: HttpContext) {
-  const strategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
-  const user = ctx.auth.use(strategy === 'session' ? 'web' : 'api').getUserOrFail()
+  const user = ctx.auth.use(selectedGuardName()).getUserOrFail()
   const revision = ctx.session.get('accountKitRevision')
-  return strategy === 'session'
+  return authStrategy() === 'session'
     ? {
         userId: user.id,
         ...(revision === undefined ? {} : { revision: revision === '' ? null : revision }),
