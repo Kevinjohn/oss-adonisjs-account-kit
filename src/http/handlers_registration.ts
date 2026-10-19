@@ -2,7 +2,7 @@
 import { DeliveryError, EmailAlreadyRegisteredError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler, ManagedRequest } from './managed.js'
+import type { ManagedHandler, ManagedRequest } from './managed_types.js'
 import { passwordPolicyError, recoveryDiagnostic, signInLabel } from './response_helpers.js'
 import { signupValidator } from './validators.js'
 

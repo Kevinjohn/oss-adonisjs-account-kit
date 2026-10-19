@@ -1,7 +1,7 @@
 /** Managed handlers for the invitations capability: public inspect/accept and actor send/list/resend/revoke. */
 import { InvalidInputError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed.js'
+import type { ManagedHandler } from './managed_types.js'
 import { currentAccount, invalidProof, passwordPolicyError } from './response_helpers.js'
 import {
   invitationAcceptValidator,

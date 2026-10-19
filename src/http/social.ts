@@ -13,7 +13,7 @@ import type {
   SocialCallbackResult,
   Trx,
 } from '../types.js'
-import type { ManagedGuard, ManagedHandler } from './managed.js'
+import type { ManagedGuard, ManagedHandler } from './managed_types.js'
 import type { ManagedEndpointName } from './routes.js'
 import {
   socialBeginValidator,
