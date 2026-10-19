@@ -3,9 +3,9 @@ import { managedEndpointSchemas, ref, sharedSchemas } from './openapi_schemas.js
 import type {
   JsonSchema,
   ManagedOpenApiOptions,
-  ManagedRouteRegistration,
   ReplaceableRequestEndpoint,
-} from './route_registration.js'
+} from './openapi_types.js'
+import type { ManagedRouteRegistration } from './route_registration.js'
 import type { ManagedCapability, ManagedEndpointName, ManagedRoute } from './routes.js'
 
 export interface ManagedOpenApiInput extends ManagedOpenApiOptions {
