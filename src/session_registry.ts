@@ -4,7 +4,7 @@ import { InvalidSessionError } from './errors.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type { ResolvedConfig, Trx, UserId } from './types.js'
-import { sqlTimestamp } from './timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
 
 export const sessionTable = 'account_sessions'
 
@@ -20,20 +20,6 @@ export function sessionRegistryEnabled(config: ResolvedConfig): boolean {
 
 export function newSessionHandle(): string {
   return generateToken(32)
-}
-
-/** Read a timestamp column as ISO 8601 UTC, whatever the driver returns. */
-export function isoTimestamp(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  let at: DateTime
-  if (value instanceof Date) at = DateTime.fromJSDate(value, { zone: 'utc' })
-  else if (typeof value === 'number') at = DateTime.fromMillis(value, { zone: 'utc' })
-  else {
-    at = DateTime.fromISO(String(value), { zone: 'utc' })
-    if (!at.isValid) at = DateTime.fromSQL(String(value), { zone: 'utc' })
-  }
-  if (!at.isValid) throw new Error('Invalid timestamp value')
-  return at.toUTC().toISO()
 }
 
 export async function recordSession(
@@ -75,10 +61,10 @@ export async function requireLiveSession(
   if (
     !row ||
     String(row.user_id) !== String(userId) ||
-    Date.parse(isoTimestamp(row.expires_at)!) <= now.toMillis()
+    Date.parse(readIsoTimestamp(row.expires_at)!) <= now.toMillis()
   )
     throw new InvalidSessionError()
-  return { id: row.id as number, lastSeenAt: isoTimestamp(row.last_seen_at)! }
+  return { id: row.id as number, lastSeenAt: readIsoTimestamp(row.last_seen_at)! }
 }
 
 /**

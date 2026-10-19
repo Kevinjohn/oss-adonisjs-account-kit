@@ -6,7 +6,7 @@ import { credentialsChanged } from './authentication.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { normaliseEmail, isEmailShaped } from './email.js'
+import { normalizeEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { throttlerOf } from './throttle.js'
@@ -100,7 +100,7 @@ export async function requestPasswordReset(
     if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
       throw new InvalidInputError('Invalid client key')
-    const email = normaliseEmail(input.email)
+    const email = normalizeEmail(input.email)
 
     await throttlerOf(deps).consume('recovery:client', input.clientKey, deps.config.throttle)
     await throttlerOf(deps).consume('recovery:email', email, deps.config.throttle)

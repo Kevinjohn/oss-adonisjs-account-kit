@@ -3,7 +3,7 @@ import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
 import { transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { normaliseEmail, isEmailShaped } from './email.js'
+import { normalizeEmail, isEmailShaped } from './email.js'
 import {
   CapabilityDisabledError,
   RegistrationEmailAlreadyRegisteredError,
@@ -25,7 +25,7 @@ export async function register(
   if (deps.config.registration?.availability === 'closed')
     throw new CapabilityDisabledError('Registration is closed')
   if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
-  const email = normaliseEmail(input.email)
+  const email = normalizeEmail(input.email)
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid password')
 
