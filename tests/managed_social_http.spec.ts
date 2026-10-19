@@ -4,17 +4,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
 import type { ManagedGuard } from '../src/http/managed.js'
 import { executeManagedSocial, rememberManagedMethod } from '../src/http/social.js'
-import { stubGuard } from './helpers/managed_http_fakes.js'
+import { sessionStore, stubGuard } from './helpers/managed_http_fakes.js'
 
 type SocialAuthentication = AccountKit['socialAuthentication']
 
 function context(body: Record<string, unknown> = {}, params: Record<string, string> = {}) {
-  const values = new Map<string, unknown>()
-  const session = {
-    get: (key: string) => values.get(key),
-    put: (key: string, value: unknown) => values.set(key, value),
-    forget: (key: string) => values.delete(key),
-  }
+  const session = sessionStore()
   const response = {
     ok: (value: unknown) => ({ status: 200, body: value }),
     noContent: () => ({ status: 204 }),
