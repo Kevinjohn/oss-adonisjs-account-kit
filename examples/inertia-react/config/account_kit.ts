@@ -40,7 +40,7 @@ export default defineConfig({
      */
     canAccess: async () => true,
   },
-  limiterSecret: env.get('APP_KEY').release(),
+  limiterSecret: env.get('APP_KEY'),
   /**
    * This app sends no invitations, so every invitation action is refused.
    */

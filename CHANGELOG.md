@@ -218,6 +218,8 @@ that ran a candidate build.
 - Configuration requires a stable limiter secret of at least 32 bytes. Applications should use a
   stable `APP_KEY` shared by instances using the same limiter store. Secret rotation resets limiter
   buckets.
+- `limiterSecret` accepts an AdonisJS `Secret` as well as a string, so the config passes
+  `env.get('APP_KEY')` without `.release()`. The stub and examples do this.
 - `onCredentialsChangedTransaction(user, context, trx)` is the transaction-aware credential
   revocation hook. It is mutually exclusive with the legacy post-commit
   `onCredentialsChanged(user, context)` hook.
