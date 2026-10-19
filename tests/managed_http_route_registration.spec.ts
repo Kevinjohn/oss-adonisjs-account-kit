@@ -2,13 +2,13 @@ import { test } from '@japa/runner'
 import type { Router } from '@adonisjs/core/http'
 import { type AccountKit } from '../src/account_kit.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 test.group('managed HTTP dispatch', () => {
   test('excludes a named route and rejects a second registration before mutating router', ({
     assert,
   }) => {
-    const { router, routes } = fixture()
+    const { router, routes } = fakeManagedHttp()
     const options = {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
@@ -31,7 +31,7 @@ test.group('managed HTTP dispatch', () => {
   test('a queued application collision aborts router commit before serving requests', ({
     assert,
   }) => {
-    const { router, pending } = fixture()
+    const { router, pending } = fakeManagedHttp()
     pending.push({ methods: ['POST'], pattern: '/api/v1/auth/login', name: 'application.login' })
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -48,7 +48,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('late application routes are checked and repeated commit stays stable', ({ assert }) => {
-    const { router, pending, routes } = fixture()
+    const { router, pending, routes } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
@@ -68,7 +68,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('collision check preserves router commit receiver, arguments, and result', ({ assert }) => {
-    const { router } = fixture()
+    const { router } = fakeManagedHttp()
     const original = router.commit
     const sentinel = { committed: true }
     let called = false

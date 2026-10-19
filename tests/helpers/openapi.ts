@@ -6,7 +6,7 @@ import { generateManagedOpenApi, type OpenApiDocument } from '../../src/http/ope
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../../src/http/managed.js'
 import { managedRouteRegistration } from '../../src/http/route_registration.js'
 import type { ManagedCapability } from '../../src/http/routes.js'
-import { fixture } from './managed_http.js'
+import { fakeManagedHttp } from './managed_http_fakes.js'
 
 /**
  * The official OpenAPI 3.1 schema (https://spec.openapis.org/oas/3.1/schema/2022-10-07). Ajv
@@ -46,7 +46,7 @@ export function registered(
   strategy: 'session' | 'access_tokens',
   options: Partial<ManagedRoutesOptions<unknown>> = {}
 ) {
-  const { router } = fixture()
+  const { router } = fakeManagedHttp()
   registerManagedRoutes(router, {
     prefix: '/api/v1',
     kit: async () => ({}) as AccountKit,
