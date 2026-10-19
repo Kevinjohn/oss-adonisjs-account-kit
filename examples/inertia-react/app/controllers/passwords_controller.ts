@@ -1,5 +1,5 @@
-import app from '@adonisjs/core/services/app'
-import { AccountKit, ThrottledError } from 'adonisjs-account-kit'
+import kit from 'adonisjs-account-kit/services/main'
+import { ThrottledError } from 'adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { sessionGuard } from '#services/session_guard'
 import { changePasswordValidator } from '#validators/account'
@@ -16,7 +16,6 @@ export default class PasswordsController {
   async update(ctx: HttpContext) {
     const { currentPassword, password } = await ctx.request.validateUsing(changePasswordValidator)
     const user = ctx.auth.getUserOrFail()
-    const kit = await app.container.make(AccountKit)
     await kit.emailPasswordManagement.changePassword({
       actorId: user.id,
       currentPassword,
