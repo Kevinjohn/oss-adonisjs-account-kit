@@ -32,3 +32,8 @@ export function readTimestamp(value: unknown): DateTime | null {
   if (!parsed.isValid) throw new Error('account_kit: unreadable timestamp value')
   return parsed
 }
+
+/** Read a timestamp column as ISO 8601 UTC, whatever the driver returns. */
+export function readIsoTimestamp(value: unknown): string | null {
+  return readTimestamp(value)?.toUTC().toISO() ?? null
+}

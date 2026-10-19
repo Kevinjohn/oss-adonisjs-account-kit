@@ -9,18 +9,13 @@ import { settleCommitted } from './effects.js'
 import type { PostCommitError } from './errors.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
-import { readTimestamp, sqlTimestamp } from './timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
 
 /** The fault raised after an export committed, if any. The document is still complete. */
 export function exportFault(document: AccountExport): PostCommitError | undefined {
   return faults.get(document)
-}
-
-/** Drivers return a Date, a string or epoch milliseconds (AdonisJS tokens on SQLite). */
-function timestamp(value: unknown): string | null {
-  return readTimestamp(value)?.toUTC().toISO() ?? null
 }
 
 /** Round-trip through JSON so the document holds exactly what a download would contain. */
@@ -65,9 +60,9 @@ async function accessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
   return rows.map((row) => ({
     id: row.id,
     name: row.name ?? null,
-    createdAt: timestamp(row.created_at),
-    lastUsedAt: timestamp(row.last_used_at),
-    expiresAt: timestamp(row.expires_at),
+    createdAt: readIsoTimestamp(row.created_at),
+    lastUsedAt: readIsoTimestamp(row.last_used_at),
+    expiresAt: readIsoTimestamp(row.expires_at),
   }))
 }
 
@@ -113,14 +108,14 @@ export async function exportAccountData(
           name: row.name,
           nickname: row.nickname,
           avatarUrl: row.avatar_url,
-          confirmedAt: timestamp(row.confirmed_at),
-          createdAt: timestamp(row.created_at)!,
+          confirmedAt: readIsoTimestamp(row.confirmed_at),
+          createdAt: readIsoTimestamp(row.created_at)!,
         })),
         invitationsSent: invitations.map((row) => ({
           email: row.email,
           role: row.role,
-          createdAt: timestamp(row.created_at)!,
-          expiresAt: timestamp(row.expires_at)!,
+          createdAt: readIsoTimestamp(row.created_at)!,
+          expiresAt: readIsoTimestamp(row.expires_at)!,
         })),
         ...(config.authentication?.strategy === 'access_tokens'
           ? { accessTokens: await accessTokens(trx, config, user.id) }
