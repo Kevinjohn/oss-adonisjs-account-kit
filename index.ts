@@ -20,6 +20,7 @@ export type {
 } from './adapters/lucid.js'
 export { accountErrorResponse } from './src/error_response.js'
 export type { AccountErrorResponse } from './src/error_response.js'
+export type { AccountKitTranslator } from './src/translator.js'
 export type { PruneInput, PruneCounts } from './src/maintenance.js'
 export { createLogNotifications } from './src/log_notifications.js'
 export type { LogNotificationOptions, MessageLogger } from './src/log_notifications.js'
