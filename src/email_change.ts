@@ -7,7 +7,7 @@ import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
 import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
   InvalidInputError,
@@ -68,7 +68,7 @@ export async function updateProfile(
     throw new InvalidInputError('Profile update is empty')
   if (input.email !== undefined && !isEmailShaped(input.email))
     throw new InvalidInputError('Invalid email')
-  const newEmail = input.email === undefined ? undefined : normaliseEmail(input.email)
+  const newEmail = input.email === undefined ? undefined : normalizeEmail(input.email)
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)
     : undefined
