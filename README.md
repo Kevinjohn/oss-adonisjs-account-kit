@@ -64,44 +64,6 @@ sets them up.
 Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite, PostgreSQL or MySQL, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.
 
-## A forgot-password flow in two routes
-
-```ts
-// app/controllers/password_resets_controller.ts
-import app from '@adonisjs/core/services/app'
-import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
-
-export default class PasswordResetsController {
-  async request({ request, response, logger }: HttpContext) {
-    const kit = await app.container.make(AccountKit)
-    try {
-      await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
-    } catch (error) {
-      // Only known addresses get an email, so a failed send must not change the response.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ err: error }, 'password reset email failed')
-    }
-    return response.accepted({ message: 'If the account exists, instructions will be sent.' })
-  }
-
-  async complete({ request, params, logger }: HttpContext) {
-    const kit = await app.container.make(AccountKit)
-    try {
-      await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
-    } catch (error) {
-      // The password has already changed; only the follow-up email failed.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ err: error }, 'password reset notice failed')
-    }
-    return { message: 'Password reset.' }
-  }
-}
-```
-
-The [getting started tutorial](docs/getting-started.md) takes you from a new API starter app to a
-working reset, with the email printed to your terminal, in about ten minutes.
-
 ## How it fits together
 
 ```mermaid
@@ -169,10 +131,12 @@ See [testing your account flows](docs/recipes/testing.md).
 
 ## Bring your own ORM
 
-Users live behind a small `UsersAdapter` interface. Lucid, Drizzle, Prisma and plain SQL adapters
-ship with the package; see [users adapters](docs/adapters.md). For anything else, `adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the
-Lucid adapter passes, so you can prove your adapter is correct. See
-[custom adapter](docs/recipes/custom-adapter.md).
+- **Lucid** model: the default.
+- **Drizzle** or **Prisma** schema: Account Kit reads your existing table definition.
+- **Plain SQL**: just a table name, no model.
+- **Anything else**: write a small adapter and prove it with the bundled contract tests.
+
+See [users adapters](docs/adapters.md) and [custom adapter](docs/recipes/custom-adapter.md).
 
 ## Documentation
 
