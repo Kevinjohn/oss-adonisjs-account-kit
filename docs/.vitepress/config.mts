@@ -39,12 +39,14 @@ export default defineConfig({
     socialLinks: [{ icon: 'github', link: repository }],
     editLink: { pattern: `${repository}/edit/main/docs/:path` },
     nav: [
+      { text: 'Features', link: '/features' },
       { text: 'Get started', link: '/getting-started' },
       { text: 'Recipes', link: '/recipes/access-tokens' },
       { text: 'Reference', link: '/reference/errors' },
       { text: 'API', link: '/api/' },
     ],
     sidebar: [
+      { text: 'Overview', items: [{ text: 'Features', link: '/features' }] },
       { text: 'Tutorial', items: [{ text: 'Getting started', link: '/getting-started' }] },
       {
         text: 'How-to guides',
