@@ -26,6 +26,7 @@ import { planUserModel } from './plan_user_model.js'
 import { planSession } from './plan_session.js'
 import { planMail } from './plan_mail.js'
 import { planDependencies } from './plan_dependencies.js'
+import { planLimiter } from './plan_limiter.js'
 import { planSummary } from './plan_summary.js'
 
 export async function planSetup(
@@ -240,6 +241,7 @@ export async function planSetup(
     : []
   const endpoints = endpointLocations.map(({ name }) => name)
   const missingPackages = await planDependencies(choices, state, diagnostics)
+  await planLimiter(state, diagnostics)
   return planSummary({
     choices,
     state,
