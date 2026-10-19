@@ -42,7 +42,7 @@ token.
 
 Magic links add a client check: the browser or app that asked for the link keeps a PKCE-style
 verifier, and the link only completes with it. A wrong verifier burns the link, because it may have
-been forwarded. The verifier's challenge is compared with `timingSafeEqual` ([`magic_link.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/magic_link.ts)). Pinned
+been forwarded. The verifier's challenge is compared with `timingSafeEqual` ([`client_challenge.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/client_challenge.ts)). Pinned
 by `magic_link.spec.ts`: "a wrong verifier fails and burns the link; a malformed one consumes
 nothing". See [magic-link sign-in](magic-link.md).
 
