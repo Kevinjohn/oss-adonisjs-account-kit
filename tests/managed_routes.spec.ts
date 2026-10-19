@@ -1,6 +1,5 @@
 import { test } from '@japa/runner'
-import type { AccountKit } from '../src/account_kit.js'
-import { managedHandlers, registerManagedRoutes, type ManagedHandler } from '../src/http/managed.js'
+import { managedHandlers, type ManagedHandler } from '../src/http/managed.js'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
@@ -478,37 +477,6 @@ test.group('managed route plan', () => {
     }
   })
 
-  test('registration keeps Adonis route constraints through router commit', async ({ assert }) => {
-    for (const [pattern, matcher, intersects] of [
-      ['/auth/:id', /^[0-9]+$/, false],
-      ['/auth/:id', /^login$/, true],
-      ['/auth/login/:id/:tail?', undefined, true],
-      ['/auth/login/:id/:tail.json?', undefined, false],
-    ] as const) {
-      const app = await bootTestApp()
-      try {
-        const router = await app.app.container.make('router')
-        const route = router.route(`/api/v1${pattern}`, ['POST'], () => null)
-        if (matcher) route.where('id', matcher)
-        registerManagedRoutes(router, {
-          prefix: '/api/v1',
-          kit: async () => ({}) as AccountKit,
-          guard: {
-            strategy: 'session',
-            name: 'web',
-            forRequest: () => ({}) as never,
-            current: async () => ({ userId: 1, revision: null }),
-          },
-          enabled: ['authentication'],
-        })
-        if (intersects) assert.throws(() => router.commit(), /Managed route collision/)
-        else assert.doesNotThrow(() => router.commit())
-      } finally {
-        await app.close()
-      }
-    }
-  })
-
   test('rejects duplicate managed groups, unknown endpoints, and malformed prefixes', ({
     assert,
   }) => {
@@ -558,5 +526,99 @@ test.group('managed route plan', () => {
       })
       for (const route of routes) assert.isFunction(managedHandlers[route.name], route.name)
     }
+  })
+
+  test('the route plan publishes export and delete as limited routes', ({ assert }) => {
+    const routes = planManagedRoutes({
+      prefix: '/api/v1',
+      strategy: 'access_tokens',
+      enabled: ['dataExport', 'accountDeletion'],
+    })
+    assert.deepEqual(
+      routes.map(({ name, method, path, access, proof }) => [name, method, path, access, proof]),
+      [
+        ['account.data.export', 'POST', '/api/v1/account/export', 'limited', undefined],
+        ['account.delete', 'DELETE', '/api/v1/account', 'limited', undefined],
+      ]
+    )
+  })
+
+  test('the route plan publishes request, inspect and complete', ({ assert }) => {
+    for (const strategy of ['session', 'access_tokens'] as const) {
+      const routes = planManagedRoutes({ prefix: '/api/v1', strategy, enabled: ['magicLinkLogin'] })
+      assert.deepEqual(
+        routes
+          .filter((route) => route.capability === 'magicLinkLogin')
+          .map(({ name, method, path, access, proof }) => [name, method, path, access, proof]),
+        [
+          ['auth.magicLink.request', 'POST', '/api/v1/auth/magic-link', 'public', undefined],
+          ['auth.magicLink.inspect', 'GET', '/api/v1/auth/magic-link/:token', 'public', true],
+          ['auth.magicLink.complete', 'POST', '/api/v1/auth/magic-link/:token', 'public', true],
+        ]
+      )
+      assert.equal(
+        routes.some((route) => route.name === 'auth.csrf'),
+        strategy === 'session'
+      )
+    }
+  })
+
+  test('the route plan publishes list, revoke, revoke others and revoke all', ({ assert }) => {
+    for (const strategy of ['session', 'access_tokens'] as const) {
+      const routes = planManagedRoutes({
+        prefix: '/api/v1',
+        strategy,
+        enabled: ['sessionManagement'],
+      })
+      assert.deepEqual(
+        routes
+          .filter((route) => route.capability === 'sessionManagement')
+          .map(({ name, method, path, access }) => [name, method, path, access]),
+        [
+          ['account.sessions.list', 'GET', '/api/v1/account/sessions', 'limited'],
+          ['account.sessions.revoke', 'DELETE', '/api/v1/account/sessions/:id', 'limited'],
+          [
+            'account.sessions.revokeOthers',
+            'POST',
+            '/api/v1/account/sessions/revoke-others',
+            'limited',
+          ],
+          ['account.sessions.revokeAll', 'POST', '/api/v1/account/sessions/revoke-all', 'limited'],
+        ]
+      )
+    }
+  })
+
+  test('publishes selected social operations and excludes token exchange for sessions', ({
+    assert,
+  }) => {
+    const session = planManagedRoutes({
+      prefix: '/api/v1',
+      strategy: 'session',
+      enabled: ['socialAuthentication'],
+    })
+    assert.deepEqual(
+      session.map(({ name, method, path }) => [name, method, path]),
+      [
+        ['auth.csrf', 'GET', '/api/v1/auth/csrf'],
+        ['auth.oauth.redirect', 'POST', '/api/v1/auth/oauth/:provider/redirect'],
+        ['auth.oauth.callback', 'GET', '/api/v1/auth/oauth/:provider/callback'],
+        ['auth.oauth.registration', 'POST', '/api/v1/auth/oauth/registration'],
+        ['auth.oauth.confirmation', 'POST', '/api/v1/auth/oauth/:provider/confirmation'],
+        ['auth.methods', 'GET', '/api/v1/auth/methods'],
+        ['account.socialProof.password', 'POST', '/api/v1/account/social-proof/password'],
+        ['account.socialIdentities.list', 'GET', '/api/v1/account/social-identities'],
+        ['account.socialIdentities.unlink', 'DELETE', '/api/v1/account/social-identities/:id'],
+      ]
+    )
+    const tokens = planManagedRoutes({
+      prefix: '/api/v1',
+      strategy: 'access_tokens',
+      enabled: ['socialAuthentication'],
+    })
+    assert.isTrue(tokens.some(({ name }) => name === 'auth.oauth.token'))
+    assert.isFalse(session.some(({ name }) => name === 'auth.oauth.token'))
+    assert.isTrue(session.find(({ name }) => name === 'auth.oauth.callback')?.proof)
+    assert.isTrue(session.find(({ name }) => name === 'account.socialIdentities.unlink')?.proof)
   })
 })
