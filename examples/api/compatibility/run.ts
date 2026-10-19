@@ -63,13 +63,17 @@ const [{ default: User }, { default: hash }] = await Promise.all([
   import('./user.js'),
   import('@adonisjs/core/services/hash'),
 ])
+function requiredFullName(data: unknown): string {
+  const fullName = (data as { fullName?: unknown } | null)?.fullName
+  if (typeof fullName !== 'string' || fullName.trim() === '') {
+    throw new Error('A full name is required')
+  }
+  return fullName.trim()
+}
+
 const modelAdapter = createLucidAdapter(async () => User, {
   mapRegistrationData(data, user) {
-    const fullName = (data as { fullName?: unknown } | null)?.fullName
-    if (typeof fullName !== 'string' || fullName.trim() === '') {
-      throw new Error('A full name is required')
-    }
-    user.fullName = fullName.trim()
+    user.fullName = requiredFullName(data)
   },
 })
 
@@ -88,13 +92,7 @@ const account = new AccountKit({
     enabled: ['passwordReset', 'emailVerification', 'invitations', 'emailPasswordManagement'],
     registration: {
       availability: 'closed',
-      mapFields: (input) => {
-        const fullName = (input as { fullName?: unknown } | null)?.fullName
-        if (typeof fullName !== 'string' || fullName.trim() === '') {
-          throw new Error('A full name is required')
-        }
-        return { fullName: fullName.trim() }
-      },
+      mapFields: (input) => ({ fullName: requiredFullName(input) }),
     },
     minRequestMs: 0,
     throttle: { requests: 100, duration: '15m' },
