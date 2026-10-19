@@ -44,7 +44,7 @@ The callback names distinguish a link provision from a completed-operation notic
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
 `emailPasswordManagement`, `registration`, `socialAuthentication`, `magicLinkLogin`,
 `sessionManagement`, `dataExport` and `accountDeletion`. `magicLinkLogin` and `sessionManagement`
-are off by default and require `authentication`; see [magic-link sign-in](magic-link.md) and
+are off by default and require the `authentication` config; see [magic-link sign-in](magic-link.md) and
 [signed-in devices](signed-in-devices.md). `dataExport` and `accountDeletion` are off by default;
 see [account export and deletion](account-data.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
