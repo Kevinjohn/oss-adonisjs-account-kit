@@ -1,5 +1,5 @@
 import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
-import { stripSourceComments } from './source_text.js'
+import { stripSourceComments } from './strip_source_comments.js'
 import {
   defaultImportName,
   hasUnsafeObjectEntries,

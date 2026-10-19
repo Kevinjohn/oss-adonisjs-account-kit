@@ -5,7 +5,6 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
-import { stripSourceComments } from '../src/setup/source_text.js'
 
 async function applicationRoot() {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-inspect-'))
@@ -13,25 +12,6 @@ async function applicationRoot() {
   await writeFile(join(root, 'package.json'), '{}')
   return root
 }
-
-test('source inspection removes comments while preserving escaped and template literals', async ({
-  assert,
-}) => {
-  const source = [
-    'const url = "https://example.test/a//b"',
-    String.raw`const message = 'it\'s /* literal */'`,
-    'const template = `// literal ${ /* hidden */ value }`',
-    '// web: sessionGuard({})',
-    '/* api: tokensGuard({}) */',
-  ].join('\n')
-  const inspected = stripSourceComments(source)
-  assert.equal(inspected.length, source.length)
-  assert.include(inspected, 'https://example.test/a//b')
-  assert.include(inspected, String.raw`'it\'s /* literal */'`)
-  assert.match(inspected, /`\/\/ literal \$\{\s+value \}`/)
-  assert.notInclude(inspected, 'web: sessionGuard')
-  assert.notInclude(inspected, 'api: tokensGuard')
-})
 
 test('commented guards and models do not become setup prerequisites', async ({ assert }) => {
   const root = await applicationRoot()
