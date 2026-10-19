@@ -12,8 +12,7 @@ import accountKitConfig from '#config/account_kit'
 import { referencePasswordLimits } from '#validators/password'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const responseBody = <T>(response: { body(): unknown }) => response.body() as T
+import { responseBody } from '#tests/helpers/response_body'
 
 function storedLoginKey(operation: string, value: string) {
   const secret = env.get('APP_KEY').release()

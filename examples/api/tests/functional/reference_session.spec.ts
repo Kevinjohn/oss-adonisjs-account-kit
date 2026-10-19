@@ -6,16 +6,8 @@ import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
-
-function cookies(response: { header(name: string): string | string[] | undefined }): string {
-  const values = response.header('set-cookie')
-  return (Array.isArray(values) ? values : [values])
-    .filter(Boolean)
-    .map((value) => String(value).split(';', 1)[0])
-    .join('; ')
-}
+import { cookies } from '#tests/helpers/cookies'
+import { tokenFrom as proofFrom } from '#tests/helpers/link_tokens'
 
 test('session reference gives the same public login failure for missing, wrong, and restricted accounts', async ({
   client,
