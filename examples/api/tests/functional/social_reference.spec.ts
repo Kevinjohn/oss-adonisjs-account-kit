@@ -79,25 +79,27 @@ test('token client completes a verified social registration through one PKCE exc
     verifier: heldVerifier,
   })
   assert.equal(redeemed.status(), 200, JSON.stringify(redeemed.body()))
-  assert.isString(body(redeemed).token)
+  const redeemedData = body(redeemed).data as { user: object; token: string }
+  assert.isString(redeemedData.token)
+  assert.deepEqual(Object.keys(redeemedData.user).sort(), ['createdAt', 'email', 'fullName', 'id', 'initials', 'updatedAt'])
   const methodsAfterSocial = await client
     .get('/api/v1/account/methods')
-    .bearerToken(body(redeemed).token as string)
+    .bearerToken(redeemedData.token)
     .cookie('account_kit_last_method', redeemed.cookie('account_kit_last_method')!.value)
   assert.equal(body(methodsAfterSocial).lastUsedMethod, 'google')
   const unsupportedHint = await client
     .get('/api/v1/account/methods')
-    .bearerToken(body(redeemed).token as string)
+    .bearerToken(redeemedData.token)
     .cookie('account_kit_last_method', 'unsupported-method')
   assert.equal(body(unsupportedHint).lastUsedMethod, null)
   const unavailablePasswordHint = await client
     .get('/api/v1/account/methods')
-    .bearerToken(body(redeemed).token as string)
+    .bearerToken(redeemedData.token)
     .cookie('account_kit_last_method', 'password')
   assert.equal(body(unavailablePasswordHint).lastUsedMethod, null)
   const profile = await client
     .get('/api/v1/account/profile')
-    .bearerToken(body(redeemed).token as string)
+    .bearerToken(redeemedData.token)
   assert.equal(profile.status(), 200)
   const replay = await client.post('/api/v1/auth/oauth/token').json({
     code: handoffCode,
@@ -110,7 +112,7 @@ test('token client completes a verified social registration through one PKCE exc
 
   const reauth = await client
     .post('/api/v1/auth/oauth/google/redirect')
-    .bearerToken(body(redeemed).token as string)
+    .bearerToken(redeemedData.token)
     .json({
       intent: 'reauth',
       purpose: 'social_unlink',
@@ -124,7 +126,7 @@ test('token client completes a verified social registration through one PKCE exc
   const relation = await db.from('social_identities').where('user_id', created.id).first()
   const withoutProof = await client
     .delete(`/api/v1/account/social/${relation.id}`)
-    .bearerToken(body(redeemed).token as string)
+    .bearerToken(redeemedData.token)
     .json({ proof: verifier() })
   assert.equal(withoutProof.status(), 403)
   assert.lengthOf(await db.from('social_identities').where('user_id', created.id), 1)
