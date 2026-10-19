@@ -18,6 +18,7 @@ import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
+  AccountUser,
   ResolvedConfig,
   UserId,
   VerificationCompleteInput,
@@ -25,6 +26,26 @@ import type {
   VerificationSendInput,
   Trx,
 } from './types.js'
+
+type ActivationRow = {
+  tokenable_id: UserId
+  email: string
+  current_email: string
+  purpose: string
+}
+
+/** An activation proof still matches when the user is unverified at the address it was sent to. */
+function activationMatches(
+  proof: Pick<ActivationRow, 'purpose' | 'email' | 'current_email'>,
+  user: Pick<AccountUser, 'email' | 'unverifiedEmail'>
+): boolean {
+  return (
+    proof.purpose === 'activation' &&
+    user.unverifiedEmail === user.email &&
+    user.unverifiedEmail === proof.email &&
+    user.email === proof.current_email
+  )
+}
 
 export async function inspectVerification(
   deps: { config: ResolvedConfig; db: Database },
@@ -39,12 +60,7 @@ export async function inspectVerification(
     .first()
   if (!proof || proof.purpose !== 'activation') return false
   const user = await deps.config.users.findById(proof.tokenable_id)
-  return (
-    user !== null &&
-    user.email === proof.current_email &&
-    user.unverifiedEmail === user.email &&
-    user.unverifiedEmail === proof.email
-  )
+  return user !== null && activationMatches(proof, user)
 }
 
 /** Shared activation effects; caller must hold the account lock and have consumed email proof. */
@@ -76,21 +92,12 @@ export async function completeActivationByHash(
   tokenHash: string,
   confirmedSocialIdentityId?: number
 ): Promise<UserId> {
-  const { user } = await consumeUserTokenHash<{
-    tokenable_id: UserId
-    email: string
-    current_email: string
-    purpose: string
-  }>(
+  const { user } = await consumeUserTokenHash<ActivationRow>(
     trx,
     config,
     'email_verification_tokens',
     tokenHash,
-    (proof, current) =>
-      proof.purpose === 'activation' &&
-      current.unverifiedEmail === current.email &&
-      current.unverifiedEmail === proof.email &&
-      current.email === proof.current_email
+    activationMatches
   )
   await activateClaim(trx, config, user.id, confirmedSocialIdentityId)
   return user.id
@@ -182,21 +189,12 @@ export async function completeVerification(
   const operationId = randomUUID()
   const { value: outcome, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      const { user } = await consumeUserToken<{
-        tokenable_id: UserId
-        email: string
-        current_email: string
-        purpose: string
-      }>(
+      const { user } = await consumeUserToken<ActivationRow>(
         trx,
         deps.config,
         'email_verification_tokens',
         input.token,
-        (proof, current) =>
-          proof.purpose === 'activation' &&
-          current.unverifiedEmail === current.email &&
-          current.unverifiedEmail === proof.email &&
-          current.email === proof.current_email
+        activationMatches
       )
       await deps.config.users.setPassword(user.id, input.password, trx)
       await activateClaim(trx, deps.config, user.id)
