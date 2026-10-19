@@ -1,25 +1,20 @@
 /** Managed handlers for the magic-link capability: request, link inspection and completion. */
-import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidInputError, InvalidTokenError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { invalidProof, reportCommittedFailure } from './response_helpers.js'
 import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
+import { newVerifier } from './pkce_verifier.js'
+import { requireSession } from './session_access.js'
 
 const verifierKey = 'accountKit.magicLink.verifier'
 
-interface SessionStore {
-  get(key: string): unknown
-  put(key: string, value: unknown): void
-  forget(key: string): void
-}
-
-function session(context: HttpContext): SessionStore {
-  const value = (context as HttpContext & { session?: SessionStore }).session
-  if (!value?.get || !value.put || !value.forget)
-    throw new Error('Managed magic links require persistent AdonisJS session middleware')
-  return value
+function session(context: HttpContext) {
+  return requireSession(
+    context,
+    'Managed magic links require persistent AdonisJS session middleware'
+  )
 }
 
 export const magicLinkHandlers = {
@@ -32,8 +27,9 @@ export const magicLinkHandlers = {
     if (options.guard.strategy === 'session') {
       // Checked before the request so a missing session refuses the call without issuing a link.
       session(context)
-      verifier = randomBytes(32).toString('base64url')
-      clientChallenge = createHash('sha256').update(verifier).digest('base64url')
+      const issued = newVerifier()
+      verifier = issued.verifier
+      clientChallenge = issued.challenge
     }
     if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
     try {
