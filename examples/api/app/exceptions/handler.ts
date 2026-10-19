@@ -9,7 +9,10 @@ import { isSocialPath } from '#services/social_path'
 
 function providerFailure(error: unknown) {
   if (error instanceof SocialProviderExchangeError) return error
-  if (error instanceof errors.AccountKitError && error.cause instanceof SocialProviderExchangeError) {
+  if (
+    error instanceof errors.AccountKitError &&
+    error.cause instanceof SocialProviderExchangeError
+  ) {
     return error.cause
   }
   return undefined
