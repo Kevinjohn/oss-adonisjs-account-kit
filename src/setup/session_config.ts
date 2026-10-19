@@ -10,6 +10,7 @@ import {
   safeEnvGetter,
   topLevelConfig,
   walk,
+  type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 
@@ -33,6 +34,34 @@ export interface NativeSessionConfiguration {
   allowedStores: Array<{ name: string; kind: 'database' | 'memory' }>
   selectedName: string | null
   selected: { name: string; kind: 'database' | 'memory' } | null
+}
+
+/** Read a store selected through `env.get('NAME')` or `env.get('NAME', 'fallback')`. */
+function envSelector(
+  source: SetupSource,
+  expression: TypeScript.Expression
+): { variable: string; fallback: string | null } | null {
+  const { ts } = source
+  const envBinding = defaultImportName(source, '#start/env')
+  if (
+    !envBinding ||
+    !exactCall(source, expression, envBinding, 'get') ||
+    !safeEnvGetter(source, envBinding)
+  )
+    return null
+  const args = expression.arguments
+  if (
+    args.length < 1 ||
+    args.length > 2 ||
+    !ts.isStringLiteral(args[0]) ||
+    !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
+    (args.length === 2 && !ts.isStringLiteral(args[1]))
+  )
+    return null
+  return {
+    variable: args[0].text,
+    fallback: args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null,
+  }
 }
 
 export async function nativeSessionConfiguration(
@@ -70,25 +99,9 @@ export async function nativeSessionConfiguration(
   let selectedName: string | null = null
   if (ts.isStringLiteral(store.initializer)) selectedName = store.initializer.text
   else {
-    const envBinding = defaultImportName(source, '#start/env')
-    if (
-      !envBinding ||
-      !exactCall(source, store.initializer, envBinding, 'get') ||
-      !safeEnvGetter(source, envBinding)
-    )
-      return null
-    const args = store.initializer.arguments
-    if (
-      args.length < 1 ||
-      args.length > 2 ||
-      !ts.isStringLiteral(args[0]) ||
-      !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
-      (args.length === 2 && !ts.isStringLiteral(args[1]))
-    )
-      return null
-    selectedName =
-      (await selectedSessionEnvironment(root, args[0].text)) ??
-      (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+    const selector = envSelector(source, store.initializer)
+    if (!selector) return null
+    selectedName = (await selectedSessionEnvironment(root, selector.variable)) ?? selector.fallback
   }
   let unsafe = false
   walk(source, (node) => {
@@ -151,14 +164,10 @@ export async function selectedSessionDiagnostic(
   if (!store || !stores || !source.ts.isObjectLiteralExpression(stores.initializer)) return null
   let name: string | null = null
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
-  else if (
-    defaultImportName(source, '#start/env') &&
-    safeEnvGetter(source, defaultImportName(source, '#start/env')!) &&
-    exactCall(source, store.initializer, defaultImportName(source, '#start/env')!, 'get') &&
-    store.initializer.arguments.length >= 1 &&
-    source.ts.isStringLiteral(store.initializer.arguments[0])
-  )
-    name = await selectedSessionEnvironment(root, store.initializer.arguments[0].text)
+  else {
+    const selector = envSelector(source, store.initializer)
+    if (selector) name = await selectedSessionEnvironment(root, selector.variable)
+  }
   if (!name) return { name: null, kind: null }
   const selected = directProperty(source, stores.initializer, name)
   const initializer = selected?.initializer
