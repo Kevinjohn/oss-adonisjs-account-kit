@@ -137,15 +137,26 @@ routes you mounted.
 
 ## Security
 
-- Tokens are 40 random bytes by default. Only their SHA-256 hash is stored, and each works once.
-- Reset requests return the same response and take at least 300 ms whether or not the address
-  exists. Failed logins return one generic error.
-- Links are built only from configured origins, never from the request `Host` header.
-- Rate-limit keys are HMAC digests, so the limiter store never holds an email address or IP.
-- Every account change runs in one transaction with the user row locked.
+Account flows are where attackers look first. What Account Kit does by default:
 
-The [security model](docs/security.md) lists every defence and its default, what your app must still
-do, and what is out of scope. Report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
+- **Links can't be rebuilt from your database.** Only a SHA-256 hash of each token is stored, and
+  each link works once and expires. [Proof tokens](docs/security.md#proof-tokens)
+- **No account lookup by side channel.** Reset and magic-link requests answer the same way, in at
+  least 300 ms, whether or not the address exists. [Enumeration](docs/security.md#account-enumeration)
+- **Rate limits** on every request that sends mail or checks a password, keyed by HMAC digests so
+  the limiter never stores an email or IP. [Rate limits](docs/security.md#rate-limits)
+- **Changing a password signs out everywhere else.** Older sessions and tokens stop working on
+  their next request. [Sessions and tokens](docs/security.md#sessions-and-tokens)
+- **Links come from your config,** never from request headers, and must be HTTPS in production.
+  [Links in emails](docs/security.md#links-in-emails)
+- **No half-finished changes.** Each operation runs in one transaction with the user row locked.
+  [Transactions](docs/security.md#transactions-and-races)
+- **Verifiable releases.** Published with npm provenance; run `npm audit signatures`.
+  [Supply chain](docs/security.md#supply-chain)
+
+The [security model](docs/security.md) names the code and the test behind each defence, what your
+app must still do, and what is out of scope. Report vulnerabilities privately: see
+[SECURITY.md](SECURITY.md).
 
 ## Before production
 
@@ -169,6 +180,9 @@ and [usage](docs/usage.md#transactions-and-callbacks).
   Account Kit uses the same vocabulary as Plus and the AdonisJS starter kits.
 - **Write it yourself** when your flows differ from email-and-password accounts. The
   [security model](docs/security.md) is a useful checklist either way.
+
+Deciding with an AI coding agent? [README-AGENTS.md](README-AGENTS.md) gives it the requirements,
+invariants and file map in one place.
 
 ## Testing your app
 
@@ -199,11 +213,6 @@ Lucid adapter passes, so you can prove your adapter is correct. See
 - [Reference](docs/README.md#reference): configuration, errors, endpoints, glossary
 - [Security model](docs/security.md)
 - [Changelog](CHANGELOG.md)
-
-## Verifying a release
-
-Releases are published from GitHub Actions with npm provenance. Run `npm audit signatures` in your
-app to check that the installed package was built from this repository.
 
 ## Contributing
 
