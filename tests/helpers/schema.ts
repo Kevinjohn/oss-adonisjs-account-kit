@@ -75,6 +75,20 @@ export async function resetSchema(
   if (runner.error) throw runner.error
 }
 
+/** Package tables keyed by the user, with the column that holds the user id. */
+export const userTables = [
+  ['social_handoff_codes', 'user_id'],
+  ['social_sensitive_proofs', 'user_id'],
+  ['social_transactions', 'user_id'],
+  ['social_identities', 'user_id'],
+  ['password_reset_tokens', 'tokenable_id'],
+  ['email_verification_tokens', 'tokenable_id'],
+  ['login_link_tokens', 'tokenable_id'],
+  ['account_sessions', 'user_id'],
+  ['account_invitations', 'inviter_id'],
+  ['auth_access_tokens', 'tokenable_id'],
+] as const
+
 const dataTables = [
   'auth_access_tokens',
   'login_link_tokens',
