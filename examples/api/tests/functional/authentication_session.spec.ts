@@ -341,7 +341,7 @@ test('inactive session may request activation but cannot use verified routes', a
   assert.equal(protectedResponse.status(), 403)
   assert.equal(
     (protectedResponse.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
 })
 
@@ -412,7 +412,7 @@ test('signup establishes a limited session for an inactive account', async ({ cl
   assert.equal(protectedResponse.status(), 403)
   assert.equal(
     (protectedResponse.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
 })
 

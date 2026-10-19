@@ -17,7 +17,12 @@ test.group('managed HTTP responses', () => {
       headers: { Vary: 'Accept' },
       contentType: 'application/json',
       body: {
-        errors: [{ code: 'E_INVALID_PASSWORD_TOKEN', message: 'This link is invalid or expired.' }],
+        errors: [
+          {
+            code: 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN',
+            message: 'This link is invalid or expired.',
+          },
+        ],
       },
     })
     assert.deepEqual(
@@ -71,7 +76,12 @@ test.group('managed HTTP responses', () => {
         headers: { Vary: 'Accept' },
         contentType: 'application/json',
         body: {
-          errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'Public E_INVALID_EMAIL_TOKEN' }],
+          errors: [
+            {
+              code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN',
+              message: 'Public E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN',
+            },
+          ],
         },
       }
     )

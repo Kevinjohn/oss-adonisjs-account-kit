@@ -118,7 +118,10 @@ test('token client completes a verified social registration through one PKCE exc
       clientChallenge: challenge(verifier()),
     })
   assert.equal(reauth.status(), 403)
-  assert.equal((body(reauth).errors as { code: string }[])[0].code, 'E_SOCIAL_PROOF_INVALID')
+  assert.equal(
+    (body(reauth).errors as { code: string }[])[0].code,
+    'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID'
+  )
   const relation = await db.from('social_identities').where('user_id', created.id).first()
   const withoutProof = await client
     .delete(`/api/v1/account/social/${relation.id}`)
@@ -347,7 +350,7 @@ test('token link and unlink use the authenticated actor and purpose-bound proof'
   assert.equal(wrongActor.status(), 400)
   assert.equal(
     (body(wrongActor).errors as { code: string }[])[0].code,
-    'E_SOCIAL_TRANSACTION_INVALID'
+    'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID'
   )
   assert.lengthOf(await db.from('social_identities').where('user_id', otherUser.id), 0)
   assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
@@ -455,8 +458,8 @@ test('social persistence failure has a generic public response and correlation I
       assert.deepEqual(response.body(), {
         errors: [
           accept === 'application/json'
-            ? { code: 'E_SOCIAL_UNAVAILABLE', message: 'Account operation unavailable' }
-            : { code: 'E_SOCIAL_UNAVAILABLE', title: 'Account operation unavailable' },
+            ? { code: 'E_ACCOUNT_KIT_SOCIAL_UNAVAILABLE', message: 'Account operation unavailable' }
+            : { code: 'E_ACCOUNT_KIT_SOCIAL_UNAVAILABLE', title: 'Account operation unavailable' },
         ],
       })
       assert.notInclude(JSON.stringify(response.body()), 'social_transactions')

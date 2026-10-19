@@ -75,7 +75,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       return accountError(
         ctx,
         provider ? 503 : 500,
-        'E_SOCIAL_UNAVAILABLE',
+        'E_ACCOUNT_KIT_SOCIAL_UNAVAILABLE',
         'Account operation unavailable'
       )
     }

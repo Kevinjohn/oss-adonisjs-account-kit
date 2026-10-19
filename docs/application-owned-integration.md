@@ -133,7 +133,7 @@ diagnosis.
 
 For example, an invalid login is a 401 with code `E_ACCOUNT_KIT_INVALID_CREDENTIALS`; the same
 safe response covers a missing account, wrong password, passwordless account, or denied access.
-Proof failures use `E_INVALID_PASSWORD_TOKEN` for reset links, `E_INVALID_EMAIL_TOKEN` for activation
+Proof failures use `E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN` for reset links, `E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN` for activation
 and email-change links, and `E_ACCOUNT_KIT_INVALID_TOKEN` for invitation inspect/accept. The request
 validator remains the source of field-level 422 errors.
 
