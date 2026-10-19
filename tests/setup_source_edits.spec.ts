@@ -7,12 +7,10 @@ import { applySetup } from '../src/setup/apply.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import ts from 'typescript'
 import { withFixture } from './helpers/setup_prerequisites.js'
+import { stock } from './helpers/native_starter_fixture.js'
 
 test.group('setup source edits', (group) => {
   registerSetupTeardown(group)
-
-  const stock = (path: string) =>
-    readFile(new URL(`./fixtures/native_starter/${path}.fixture`, import.meta.url), 'utf8')
 
   /** A setup fixture with the native starter's stock auth, mail, limiter, model and schema. */
   async function stockFixture() {
