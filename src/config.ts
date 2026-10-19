@@ -49,6 +49,10 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   accountDeleted: disabled,
 }
 
+/**
+ * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
+ * a missing callback an enabled capability needs or an out-of-range value.
+ */
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!config || typeof config !== 'object' || !config.users || typeof config.users !== 'object')
     throw new Error('account_kit: users adapter must be configured')

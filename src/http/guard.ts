@@ -5,15 +5,18 @@ import type { AuthenticationGuard, UserId } from '../types.js'
 import type { ManagedGuard } from './managed.js'
 import { assertManagedSessionStore } from './session_store.js'
 
+/** The user fields the managed guard reads. */
 export interface ManagedUser {
   id: UserId
   currentAccessToken?: { identifier: UserId | BigInt }
 }
 
+/** A user model the managed guard can load users from. */
 export interface ManagedUserModel<User> {
   findOrFail(id: UserId): Promise<User>
 }
 
+/** A user model with an AdonisJS access-token provider, for a token guard. */
 export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
   accessTokens: {
     create(
@@ -28,20 +31,35 @@ export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
   }
 }
 
+/**
+ * An access token issued by the managed token guard. `value` is the bearer secret, present only
+ * right after issuance.
+ */
 export interface ManagedTokenCredential {
+  /** The user the token belongs to. */
   userId: UserId
+  /** The token row id. */
   identifier: UserId
+  /** The bearer secret. Present only right after issuance; return it once and never log it. */
   value?: string
 }
 
-type SessionOptions<User> = {
+/** Options for `createManagedGuard` with an existing session guard. */
+export type ManagedSessionGuardOptions<User> = {
+  /** Always `session`. */
   strategy: 'session'
+  /** The existing session guard's name in `config/auth.ts`. */
   name: string
+  /** Loads the user model lazily. */
   loadUser(): Promise<ManagedUserModel<User>>
 }
-type TokenOptions<User> = {
+/** Options for `createManagedGuard` with an existing access-token guard. */
+export type ManagedTokenGuardOptions<User> = {
+  /** Always `access_tokens`. */
   strategy: 'access_tokens'
+  /** The existing access-token guard's name in `config/auth.ts`. */
   name: string
+  /** Loads the user model, which must have an `accessTokens` provider. */
   loadUser(): Promise<ManagedTokenModel<User>>
 }
 
@@ -104,14 +122,18 @@ async function authenticate<User>(guard: { authenticate(): Promise<User> }): Pro
   }
 }
 
-export function createManagedGuard<User>(options: SessionOptions<User>): Omit<
+/**
+ * Adapts an existing session guard for the managed routes. The session store must be server-side.
+ */
+export function createManagedGuard<User>(options: ManagedSessionGuardOptions<User>): Omit<
   ManagedGuard<undefined>,
   'strategy' | 'forRequest'
 > & {
   strategy: 'session'
   forRequest(context: HttpContext): Extract<AuthenticationGuard<undefined>, { strategy: 'session' }>
 }
-export function createManagedGuard<User>(options: TokenOptions<User>): Omit<
+/** Adapts an existing access-token guard for the managed routes. */
+export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>): Omit<
   ManagedGuard<ManagedTokenCredential>,
   'strategy' | 'forRequest' | 'logoutCredential'
 > & {
@@ -123,7 +145,7 @@ export function createManagedGuard<User>(options: TokenOptions<User>): Omit<
   publicCredential(credential: ManagedTokenCredential): string
 }
 export function createManagedGuard<User>(
-  options: SessionOptions<User> | TokenOptions<User>
+  options: ManagedSessionGuardOptions<User> | ManagedTokenGuardOptions<User>
 ): ManagedGuard<undefined | ManagedTokenCredential> {
   if (options.strategy === 'session') {
     return {

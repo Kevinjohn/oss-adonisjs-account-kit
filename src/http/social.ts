@@ -25,6 +25,7 @@ import {
   socialUnlinkValidator,
 } from './validators.js'
 
+/** Social sign-in options for `registerManagedRoutes`, passed as `extensions.social`. */
 export interface ManagedSocialExtension {
   /** Public provider inventory, without client credentials or account data. */
   providers: readonly SocialProviderName[]

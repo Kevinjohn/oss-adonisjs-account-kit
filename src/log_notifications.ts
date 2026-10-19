@@ -1,8 +1,13 @@
 import { createMailNotifications } from './notifications.js'
 import type { NotificationCallbacks } from './types.js'
 
-type MessageLogger = { info(message: string): void }
+/** Anything with an `info` method, such as the AdonisJS logger. */
+export type MessageLogger = { info(message: string): void }
 
+/**
+ * Options for `createLogNotifications`, which prints account emails to the log in development and
+ * test.
+ */
 export interface LogNotificationOptions {
   /**
    * Defaults to the AdonisJS logger service, resolved when a message is sent. Config files load

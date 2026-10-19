@@ -7,7 +7,14 @@ export type {
   ManagedTokenModel,
   ManagedUser,
   ManagedUserModel,
+  ManagedSessionGuardOptions,
+  ManagedTokenGuardOptions,
 } from '../src/http/guard.js'
+export type {
+  ManagedSessionConfiguration,
+  ManagedSessionStoreFactory,
+} from '../src/http/session_store.js'
+export type { ManagedSocialExtension } from '../src/http/social.js'
 export type { ManagedExtensions, ManagedGuard, ManagedRoutesOptions } from '../src/http/managed.js'
 export { planManagedRoutes } from '../src/http/routes.js'
 export { generateManagedOpenApi } from '../src/http/openapi.js'
@@ -32,8 +39,10 @@ export type {
   ManagedSuccessBody,
 } from '../src/http/contracts.js'
 export type {
+  ExistingRoute,
   ManagedCapability,
   ManagedEndpointName,
   ManagedRoute,
   ManagedRouteSelection,
+  RoutePatternToken,
 } from '../src/http/routes.js'
