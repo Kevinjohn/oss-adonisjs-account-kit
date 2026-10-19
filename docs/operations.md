@@ -90,7 +90,7 @@ Review the final physical user table shown in setup's preview, whether explicitl
 selected default, against the effective model and generated migration target before migration.
 Setup's automatic Lucid model inspection is static and conservative; custom class metadata or other
 dynamic initialization needs manual reconciliation because inspection cannot certify model metadata
-produced at application boot. See [setup](setup.md) for the supported model shapes.
+produced at application boot. See [how setup works](how-setup-works.md) for the supported model shapes.
 
 Treat setup readiness fields as separate evidence. `configurationValid` can be true while
 `migrationsApplied`, `workflowVerified`, and `productionReady` are false; an `externalConfigured`

@@ -51,6 +51,7 @@ Integration modes
 - [Account operations](account-operations.md)
 - [Errors](reference/errors.md)
 - [Managed endpoints](reference/endpoints.md)
+- [Setup choices](reference/setup-choices.md): the six pillars and the files setup writes.
 - [OpenAPI document](openapi.md): an OpenAPI 3.1 file for the mounted managed routes.
 - [Notifications](notifications.md)
 - [Operations](operations.md): secrets, rate limits, pruning and redaction.
@@ -60,6 +61,7 @@ Integration modes
 ## Explanation
 
 - [Security model](security.md)
+- [How setup works](how-setup-works.md): preview, recovery and readiness.
 - [Authentication integration](authentication.md)
 - [Identity creation](identity-creation.md)
 - [Registration](registration.md)
