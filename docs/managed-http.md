@@ -36,7 +36,10 @@ import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/
 const selectedExistingGuard = createManagedGuard({
   strategy: 'session',
   name: 'web',
-  loadUser: async () => (await import('#models/user')).default,
+  loadUser: async () => {
+    const { default: User } = await import('#models/user')
+    return User
+  },
 })
 
 registerManagedRoutes(router, {
