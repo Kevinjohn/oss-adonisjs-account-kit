@@ -1,4 +1,3 @@
-import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../account_kit.js'
 import { InvalidInputError, SocialTransactionError } from '../errors.js'
@@ -27,11 +26,12 @@ import {
 import { rememberManagedMethod } from './last_used_method.js'
 import {
   forgetSessionState,
-  optionalSession,
   rememberSessionState,
   sessionState,
   type SessionSocialState,
 } from './social_session_state.js'
+import { newVerifier } from './pkce_verifier.js'
+import { optionalSession } from './session_access.js'
 
 export { rememberManagedMethod } from './last_used_method.js'
 
@@ -93,12 +93,12 @@ function newChallenge<Credential>(
   guard: ManagedGuard<Credential>,
   clientChallenge?: string
 ): { verifier: string | null; clientChallenge: string } {
-  const verifier = guard.strategy === 'session' ? randomBytes(32).toString('base64url') : null
-  const challenge = verifier
-    ? createHash('sha256').update(verifier).digest('base64url')
-    : clientChallenge
-  if (!challenge) throw new InvalidInputError('Client challenge is required')
-  return { verifier, clientChallenge: challenge }
+  if (guard.strategy === 'session') {
+    const { verifier, challenge } = newVerifier()
+    return { verifier, clientChallenge: challenge }
+  }
+  if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
+  return { verifier: null, clientChallenge }
 }
 
 /** Session flows redeem the handoff in-request; token flows return the code for `auth.oauth.token`. */
