@@ -2,13 +2,13 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import { Router } from '@adonisjs/core/http'
 import { defineConfig as defineSessionConfig } from '@adonisjs/session'
 import ManagedOpenApi from '../commands/openapi.js'
 import * as commandLoader from '../commands/main.js'
 import type { AccountKit } from '../src/account_kit.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
+import { aceKernel } from './helpers/ace_kernel.js'
 import { useTestApp, type TestApp } from './helpers/app.js'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 import { documentErrors } from './helpers/openapi.js'
@@ -16,11 +16,7 @@ import { documentErrors } from './helpers/openapi.js'
 function kernelFor(kit: TestApp, router: Router) {
   // `router` is an alias of the Router class, so the class binding is swapped.
   kit.app.container.swap(Router, () => router)
-  const kernel = new Kernel(kit.app)
-  kernel.addLoader(new ListLoader([ManagedOpenApi]))
-  kernel.ui.switchMode('raw')
-  const logs = () => kernel.ui.logger.getLogs() as Array<{ message: string; stream: string }>
-  return { kernel, logs }
+  return aceKernel(kit, [ManagedOpenApi])
 }
 
 function mounted(options: { representAccount?: boolean } = {}) {
@@ -126,13 +122,10 @@ test.group('account-kit:openapi', (group) => {
       },
       enabled: ['passwordReset'],
     })
-    const kernel = new Kernel(kit.app)
-    kernel.addLoader(new ListLoader([ManagedOpenApi]))
-    kernel.ui.switchMode('raw')
+    const { kernel, logs } = aceKernel(kit, [ManagedOpenApi])
     await kernel.exec('account-kit:openapi', [])
     assert.isTrue(router.commited)
-    const logs = kernel.ui.logger.getLogs() as Array<{ message: string }>
-    const document = JSON.parse(logs[0].message)
+    const document = JSON.parse(logs()[0].message)
     assert.deepEqual(Object.keys(document.paths), [
       '/accounts/auth/password-reset',
       '/accounts/auth/password-reset/{token}',

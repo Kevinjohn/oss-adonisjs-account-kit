@@ -1,9 +1,8 @@
-import { resolveSelectedEnvironment } from './selected_environment.js'
+import { selectedEnvName } from './selected_environment.js'
 import {
   defaultExpression,
   defaultImportName,
   directProperty,
-  exactCall,
   hasAmbiguousRuntimeModuleImports,
   hasUnsafeObjectEntries,
   hasUnsafeBindingReferences,
@@ -14,7 +13,6 @@ import {
   unwrapStaticExpression,
   type SetupSource,
 } from './ts_source.js'
-import type * as TypeScript from 'typescript'
 import { nativeMailTransports } from './shared.js'
 
 export async function shieldCsrfState(
@@ -107,20 +105,8 @@ export async function mailerSelectionState(
   let selected: string | null = null
   if (selector && ts.isStringLiteral(selector)) selected = selector.text
   else if (selector && transportEnv) {
-    if (!envBinding || !exactCall(source, selector, envBinding, 'get')) return 'unsafe'
-    const args = selector.arguments
-    if (
-      args.length < 1 ||
-      args.length > 2 ||
-      !ts.isStringLiteral(args[0]) ||
-      args[0].text !== transportEnv ||
-      (args.length === 2 && !ts.isStringLiteral(args[1]))
-    )
-      return 'unsafe'
     try {
-      selected =
-        (await resolveSelectedEnvironment(root, transportEnv)) ??
-        (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+      selected = (await selectedEnvName(source, root, envBinding, selector, transportEnv)) ?? null
     } catch {
       return 'unsafe'
     }
@@ -202,22 +188,10 @@ export async function limiterConfigurationState(
   let name: string | null = null
   if (source.ts.isStringLiteral(selected)) name = selected.text
   else {
-    const env = defaultImportName(source, '#start/env')
-    if (!env || !exactCall(source, selected, env, 'get') || !safeEnvGetter(source, env))
-      return 'unresolved'
-    const args = selected.arguments
-    if (
-      args.length < 1 ||
-      args.length > 2 ||
-      !source.ts.isStringLiteral(args[0]) ||
-      !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
-      (args.length === 2 && !source.ts.isStringLiteral(args[1]))
-    )
-      return 'unresolved'
     try {
       name =
-        (await resolveSelectedEnvironment(root, args[0].text)) ??
-        (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
+        (await selectedEnvName(source, root, defaultImportName(source, '#start/env'), selected)) ??
+        null
     } catch {
       return 'unresolved'
     }

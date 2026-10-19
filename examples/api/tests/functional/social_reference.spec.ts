@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { setSocialFixture } from '#services/social_provider_fixture'
+import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
 import { notifications } from '#services/account_kit_notifications'
 import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 

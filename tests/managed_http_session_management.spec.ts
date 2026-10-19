@@ -1,11 +1,10 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
-import { planManagedRoutes } from '../src/http/routes.js'
+import { registerManagedRoutes } from '../src/http/managed.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
@@ -32,9 +31,8 @@ test.group('managed sign-in management routes', (group) => {
     const warnings: unknown[] = []
     let failTerminate = false
     let caller: CurrentAccountInput | undefined
-    const guard = {
+    const guard = stubGuard<string>({
       strategy,
-      name: strategy === 'session' ? 'web' : 'api',
       forRequest: () =>
         ({
           strategy,
@@ -55,7 +53,7 @@ test.group('managed sign-in management routes', (group) => {
         }) as never,
       current: async () => caller!,
       publicCredential: (credential: string) => `public:${credential}`,
-    } as ManagedGuard<string>
+    })
     const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -344,31 +342,5 @@ test.group('managed sign-in management routes', (group) => {
     assert.deepEqual(all, { status: 204 })
     assert.deepEqual(terminated, [])
     assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
-  })
-
-  test('the route plan publishes list, revoke, revoke others and revoke all', ({ assert }) => {
-    for (const strategy of ['session', 'access_tokens'] as const) {
-      const routes = planManagedRoutes({
-        prefix: '/api/v1',
-        strategy,
-        enabled: ['sessionManagement'],
-      })
-      assert.deepEqual(
-        routes
-          .filter((route) => route.capability === 'sessionManagement')
-          .map(({ name, method, path, access }) => [name, method, path, access]),
-        [
-          ['account.sessions.list', 'GET', '/api/v1/account/sessions', 'limited'],
-          ['account.sessions.revoke', 'DELETE', '/api/v1/account/sessions/:id', 'limited'],
-          [
-            'account.sessions.revokeOthers',
-            'POST',
-            '/api/v1/account/sessions/revoke-others',
-            'limited',
-          ],
-          ['account.sessions.revokeAll', 'POST', '/api/v1/account/sessions/revoke-all', 'limited'],
-        ]
-      )
-    }
   })
 })

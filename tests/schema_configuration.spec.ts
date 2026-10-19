@@ -11,6 +11,7 @@ import { createLucidAdapter } from '../adapters/lucid.js'
 import { transaction } from '../src/db.js'
 import { bootTestApp } from './helpers/app.js'
 import { locksRows, testEngine } from './helpers/dialect.js'
+import { dropPackageTables, packageTables } from './helpers/schema.js'
 
 const idTypes: UserIdType[] = ['integer', 'string', 'uuid']
 const reservedUsersTable: Record<UserIdType, string> = {
@@ -44,21 +45,9 @@ for (const userIdType of idTypes) {
     const kit = await bootTestApp()
     try {
       const schema = kit.db.connection().schema
-      for (const table of [
-        'email_verification_tokens',
-        'login_link_tokens',
-        'account_sessions',
-        'social_handoff_codes',
-        'social_sensitive_proofs',
-        'social_transactions',
-        'social_identities',
-        'account_invitations',
-        'password_reset_tokens',
-        'account_transaction_lock',
-        'adonis_schema_versions',
-        'adonis_schema',
-      ])
-        await schema.dropTableIfExists(table)
+      await dropPackageTables(schema)
+      await schema.dropTableIfExists('adonis_schema_versions')
+      await schema.dropTableIfExists('adonis_schema')
       await schema.dropTableIfExists(usersTable)
       await schema.createTable(usersTable, (table) => {
         if (userIdType === 'integer') table.increments('id')
@@ -172,38 +161,13 @@ for (const userIdType of idTypes) {
       await down.run()
       if (down.error) throw down.error
 
-      for (const table of [
-        'account_transaction_lock',
-        'account_email_changes',
-        'email_verification_tokens',
-        'login_link_tokens',
-        'account_sessions',
-        'social_handoff_codes',
-        'social_sensitive_proofs',
-        'social_transactions',
-        'social_identities',
-        'account_invitations',
-        'password_reset_tokens',
-      ]) {
+      for (const table of [...packageTables, 'account_email_changes']) {
         assert.isFalse(await tableExists(kit, table))
       }
       assert.isTrue(await tableExists(kit, usersTable))
     } finally {
-      for (const table of [
-        'email_verification_tokens',
-        'login_link_tokens',
-        'account_sessions',
-        'social_handoff_codes',
-        'social_sensitive_proofs',
-        'social_transactions',
-        'social_identities',
-        'account_invitations',
-        'password_reset_tokens',
-        'account_transaction_lock',
-        usersTable,
-      ]) {
-        await kit.db.connection().schema.dropTableIfExists(table)
-      }
+      await dropPackageTables(kit.db.connection().schema)
+      await kit.db.connection().schema.dropTableIfExists(usersTable)
       await kit.close()
     }
   }).timeout(30_000)

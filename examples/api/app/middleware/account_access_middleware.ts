@@ -1,19 +1,9 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import accountKit from 'adonisjs-account-kit/services/main'
-import env from '#start/env'
+import { accountInput } from '#services/account_input'
 
-export function accountInput(ctx: HttpContext) {
-  const strategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
-  const user = ctx.auth.use(strategy === 'session' ? 'web' : 'api').getUserOrFail()
-  const revision = ctx.session.get('accountKitRevision')
-  return strategy === 'session'
-    ? {
-        userId: user.id,
-        ...(revision === undefined ? {} : { revision: revision === '' ? null : revision }),
-      }
-    : { userId: user.id, tokenId: user.currentAccessToken?.identifier?.toString() }
-}
+export { accountInput }
 
 /** Credential and restriction gate for routes an inactive account may use. */
 export default class AccountAccessMiddleware {
