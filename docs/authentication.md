@@ -55,7 +55,7 @@ authentication: {
 - Store bearer credentials only in a client location appropriate to the threat model, send them in
   the `Authorization: Bearer` header, and never put them in URLs or logs.
 
-The maintained [token API reference](../examples/api/TOKENS.md) shows the complete bearer request sequence, proof-link handling, error envelopes, and application-owned route gate.
+The maintained [token API reference](token-reference.md) shows the complete bearer request sequence, proof-link handling, error envelopes, and application-owned route gate.
 
 ## How it works
 
