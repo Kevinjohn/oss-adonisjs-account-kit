@@ -63,6 +63,36 @@ test.group('managed route plan', () => {
     )
   })
 
+  test('names the token kind on each proof route that reports invalid tokens', ({ assert }) => {
+    const routes = planManagedRoutes({
+      prefix: '/api',
+      strategy: 'access_tokens',
+      enabled: [
+        'passwordReset',
+        'magicLinkLogin',
+        'emailVerification',
+        'emailPasswordManagement',
+        'invitations',
+        'socialAuthentication',
+      ],
+    })
+    assert.deepEqual(
+      routes.filter((route) => route.proofKind).map((route) => [route.name, route.proofKind]),
+      [
+        ['auth.passwordReset.inspect', 'password'],
+        ['auth.passwordReset.complete', 'password'],
+        ['auth.magicLink.inspect', 'magicLink'],
+        ['auth.magicLink.complete', 'magicLink'],
+        ['auth.emailVerification.inspect', 'email'],
+        ['auth.emailVerification.complete', 'email'],
+        ['auth.invitation.inspect', 'invitation'],
+        ['auth.invitation.accept', 'invitation'],
+        ['auth.emailChange.inspect', 'email'],
+        ['auth.emailChange.complete', 'email'],
+      ]
+    )
+  })
+
   test('is opt-in, keeps named exclusions out, and limits routes to enabled capabilities', ({
     assert,
   }) => {
