@@ -27,7 +27,12 @@ Account Kit never copies request fields onto your model. Two callbacks handle ex
 
 ```ts
 // config/account_kit.ts
-const users = createLucidAdapter(async () => (await import('#models/user')).default, {
+const loadUser = async () => {
+  const { default: User } = await import('#models/user')
+  return User
+}
+
+const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
     user.fullName = (data as { fullName: string }).fullName
   },

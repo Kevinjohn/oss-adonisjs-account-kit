@@ -1,14 +1,22 @@
 {{{ exports({ to: config.destination }) }}}
-
 import env from '#start/env'
-import { createLucidAdapter, defineConfig, type AccountUser, type Invitation, type Trx } from 'adonisjs-account-kit'
+import {
+  createLucidAdapter,
+  defineConfig,
+  type AccountUser,
+  type Invitation,
+  type Trx,
+} from 'adonisjs-account-kit'
 
 // A trailing slash keeps any APP_URL path, for example https://example.com/portal.
 const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
 const accountUrl = (path: string, token: string) =>
   new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
 
-const users = createLucidAdapter(async () => (await import('#models/user')).default)
+const users = createLucidAdapter(async () => {
+  const { default: User } = await import('#models/user')
+  return User
+})
 
 const notConfigured = (method: string) => async () => {
   throw new Error('account_kit: configure notify.' + method)
