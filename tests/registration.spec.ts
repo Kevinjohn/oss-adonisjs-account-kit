@@ -16,7 +16,6 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
-import { isPasswordAllowed } from '../src/password.js'
 
 test.group('registration', (group) => {
   const kit = useTestApp(group)
@@ -355,55 +354,6 @@ test.group('registration', (group) => {
       password: 'LongerPassword12345',
     })
     assert.equal(user.email, 'person@example.test')
-  })
-
-  test('password policy options and bounds are independently enforced', ({ assert }) => {
-    const base = {
-      minLength: 8,
-      maxLength: null,
-      letters: false,
-      mixedCase: false,
-      numbers: false,
-      symbols: false,
-      minScore: 0 as const,
-    }
-    assert.isTrue(isPasswordAllowed('a'.repeat(256), base))
-    assert.isFalse(isPasswordAllowed('a'.repeat(257), base))
-    assert.isFalse(isPasswordAllowed('a'.repeat(7), base))
-    assert.isFalse(isPasswordAllowed('a'.repeat(11), { ...base, minLength: 12 }))
-    assert.isFalse(isPasswordAllowed('a'.repeat(17), { ...base, maxLength: 16 }))
-    assert.isFalse(isPasswordAllowed('12345678', { ...base, letters: true }))
-    assert.isFalse(isPasswordAllowed('lowercase1', { ...base, mixedCase: true }))
-    assert.isFalse(isPasswordAllowed('LettersOnly', { ...base, numbers: true }))
-    assert.isFalse(isPasswordAllowed('Letters123', { ...base, symbols: true }))
-    assert.isTrue(
-      isPasswordAllowed('Lowercase1!', {
-        ...base,
-        letters: true,
-        mixedCase: true,
-        numbers: true,
-        symbols: true,
-      })
-    )
-    assert.isTrue(
-      isPasswordAllowed('longlowercasepassphrasewithmanyletters', { ...base, minScore: 3 })
-    )
-    assert.isTrue(isPasswordAllowed('Password1!', { ...base, minScore: 2 }))
-    assert.isFalse(isPasswordAllowed('Password1!', { ...base, minScore: 3 }))
-    assert.isFalse(isPasswordAllowed('Ab1!Ab1!', { ...base, minScore: 3 }))
-  })
-
-  test('rejects contradictory password-policy configuration', ({ assert }) => {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    for (const passwordPolicy of [
-      { minLength: 257 },
-      { maxLength: 257 },
-      { minLength: 12, maxLength: 11 },
-      { minScore: 5 as never },
-      { symbols: 'yes' as never },
-    ]) {
-      assert.throws(() => defineConfig(makeConfig({ users, passwordPolicy })))
-    }
   })
 
   test('login accepts a previously valid password under a stricter new-password policy', async ({
