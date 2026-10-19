@@ -81,6 +81,8 @@ export default defineConfig({
         text: 'Integration modes',
         items: [
           { text: 'Application-owned routes', link: '/application-owned-integration' },
+          { text: 'Application-owned sessions', link: '/session-reference' },
+          { text: 'Application-owned tokens', link: '/token-reference' },
           { text: 'Managed JSON routes', link: '/managed-http' },
           { text: 'Managed social routes', link: '/managed-social' },
           { text: 'Application-owned social', link: '/social-reference' },
