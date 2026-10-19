@@ -46,6 +46,6 @@ export default defineConfig({
     throw new Error('account_kit: implement the application credential-revocation policy')
   },
   onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
-    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.stub')
+    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
   },
 })

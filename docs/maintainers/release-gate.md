@@ -6,6 +6,10 @@ The candidate is prepared through local package checks, an independent review, a
 
 Choose the published package name/scope and first version before publication. Confirm the supported peer floors against the measured compatibility matrix, assess unresolved dependency advisories in the full consumer install, and finish any application integration required for the release. Universal session revocation, tenant membership, the external starter integration and UI scaffolding remain separate work.
 
+After publishing, run the README install commands in a fresh API starter app against the registry,
+and check that the npm badge and `npm audit signatures` resolve. Until the first publish,
+`node ace add adonisjs-account-kit` returns 404.
+
 The check workflow runs on pushes to `main`, on pull requests, by hand and from the release
 workflow. Push and pull request runs are skipped while the repository is private, so they only use
 hosted minutes once it is public.
