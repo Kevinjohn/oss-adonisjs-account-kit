@@ -19,13 +19,13 @@ username-only accounts, or as an identity provider for other applications.
 
 ## Requirements
 
-| Need              | Detail                                                                                                                                              |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Peer dependencies | `@adonisjs/core` 7, `@adonisjs/lucid` 22.4+, `@adonisjs/limiter` 3, `luxon` 3                                                                       |
-| Optional peers    | `@adonisjs/mail` 10 (built-in emails), `@adonisjs/session` 8 (session login), `@vinejs/vine` 4 (managed routes)                                     |
-| Environment       | `APP_KEY` of at least 32 bytes, identical on every instance; `APP_URL`, HTTPS in production                                                         |
-| Users table       | `email` (unique, stored trimmed and lowercase), `password`, `unverified_email`, `email_verified_at`; `credentials_changed_at` when login is enabled |
-| Session login     | A server-side session store (database or Redis). The cookie store is rejected.                                                                      |
+| Need              | Detail                                                                                                                                                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Peer dependencies | `@adonisjs/core` 7, `@adonisjs/lucid` 22.4+, `@adonisjs/limiter` 3, `luxon` 3                                                                                                                                                     |
+| Optional peers    | `@adonisjs/mail` 10 (built-in emails), `@adonisjs/session` 8 (session login), `@vinejs/vine` 4 (managed routes)                                                                                                                   |
+| Environment       | `APP_KEY` of at least 32 bytes, identical on every instance; `APP_URL`, HTTPS in production                                                                                                                                       |
+| Users table       | `email` (unique, stored trimmed and lowercase), `password`, `unverified_email`, `email_verified_at`; `credentials_changed_at` when login is enabled                                                                               |
+| Session login     | A server-side session store (database or Redis). The cookie store is not supported: a copied cookie keeps working after logout. Managed routes reject it; application-owned routes must configure a server-side store themselves. |
 
 ## Install
 
