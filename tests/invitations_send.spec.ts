@@ -10,15 +10,13 @@ import {
   PostCommitError,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
-import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { invitationHelpers } from './helpers/invitations.js'
 import {
   accountKit,
   allowAll,
-  insertUser,
   makeConfig,
   makeNotify,
-  makeService,
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
@@ -28,9 +26,7 @@ import { dbTime } from './helpers/db_time.js'
 test.group('invitations.send', (group) => {
   const kit = useTestApp(group)
 
-  const createActor = (email = 'actor@example.test') => insertUser(kit, { email })
-
-  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
+  const { createActor, service } = invitationHelpers(kit)
 
   test('stores normalized email, opaque role, inviter, hash, and timestamps; notifies after commit', async ({
     assert,
