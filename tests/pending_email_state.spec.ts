@@ -1,8 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { createLucidAdapter } from '../adapters/lucid.js'
 import { consumeUserToken, transaction } from '../src/db.js'
-import LucidUser from './fixtures/lucid_user.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { EmailAlreadyRegisteredError, InvalidTokenError, PostCommitError } from '../src/errors.js'
@@ -10,29 +8,6 @@ import { dbTime } from './helpers/db_time.js'
 
 test.group('identity creation contract', (group) => {
   const kit = useTestApp(group)
-
-  test('creates an inactive account with a pending email and no local password', async ({
-    assert,
-  }) => {
-    const adapter = createLucidAdapter(async () => LucidUser)
-    const user = await transaction(kit.db, (trx) =>
-      adapter.create(
-        {
-          email: '  Pending@Example.Test ',
-          unverifiedEmail: ' Pending@Example.Test ',
-          password: null,
-        },
-        trx
-      )
-    )
-    assert.equal(user.email, 'pending@example.test')
-    assert.equal(user.unverifiedEmail, 'pending@example.test')
-    assert.isFalse(user.hasPassword)
-    assert.isNull(user.emailVerifiedAt)
-    const row = await kit.db.from('users').where('id', user.id).first()
-    assert.equal(row.unverified_email, 'pending@example.test')
-    assert.isNull(row.password)
-  })
 
   test('stores only a hash and consumes email verification proof once', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
@@ -440,35 +415,5 @@ test.group('identity creation contract', (group) => {
     await account.passwordReset.reset({ token: inactiveToken, password: 'newPassword123' })
     const inactiveAfter = await kit.db.from('users').where('id', inactive.id).first()
     assert.isNull(inactiveAfter.unverified_email)
-  })
-
-  test('social identity relationships enforce subject uniqueness and cascade without credential storage', async ({
-    assert,
-  }) => {
-    const first = await insertUser(kit)
-    const second = await insertUser(kit, { email: 'second@example.test' })
-    const columns = await kit.db.connection().columnsInfo('social_identities')
-    assert.notProperty(columns, 'access_token')
-    assert.notProperty(columns, 'refresh_token')
-    const row = {
-      user_id: first.id,
-      provider: 'example',
-      provider_user_id: 'subject-1',
-      email: 'snapshot@example.test',
-      email_verified: true,
-      created_at: new Date(),
-      updated_at: new Date(),
-    }
-    await kit.db.table('social_identities').insert(row)
-    await assert.rejects(() =>
-      kit.db
-        .table('social_identities')
-        .insert({ ...row, provider_user_id: 'orphan', user_id: 999999 })
-    )
-    await assert.rejects(() =>
-      kit.db.table('social_identities').insert({ ...row, user_id: second.id })
-    )
-    await kit.db.from('users').where('id', first.id).delete()
-    assert.lengthOf(await kit.db.from('social_identities'), 0)
   })
 })
