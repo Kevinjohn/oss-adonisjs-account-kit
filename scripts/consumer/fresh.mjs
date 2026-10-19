@@ -50,7 +50,7 @@ export async function runFresh(candidate, runName) {
   for (const migration of await packageMigrations(appRoot)) await rm(migration)
   const originalRc = await readFile(adonisrcPath, 'utf8')
   const withoutProvider = originalRc.replace(
-    /^\s*\(\) => import\(['"]adonisjs-account-kit\/providers\/account_kit_provider['"]\),?\r?\n/m,
+    /^\s*\(\) => import\(['"]adonisjs-account-kit\/account_kit_provider['"]\),?\r?\n/m,
     ''
   )
   if (withoutProvider === originalRc)
@@ -67,7 +67,7 @@ export async function runFresh(candidate, runName) {
   const generatedConfigSha256 = await digest(configPath)
   const configuredRc = await readFile(adonisrcPath, 'utf8')
   if (
-    (configuredRc.match(/adonisjs-account-kit\/providers\/account_kit_provider/g) ?? []).length !==
+    (configuredRc.match(/adonisjs-account-kit\/account_kit_provider/g) ?? []).length !==
     1
   ) {
     throw new Error('Configure did not register exactly one account-kit provider')
