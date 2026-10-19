@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, PostCommitError } from '../errors.js'
 import { revocationOutcome } from '../session_revocation.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedGuard, ManagedHandler } from './managed.js'
+import type { ManagedGuard, ManagedHandler } from './managed_types.js'
 
 /**
  * End the caller's own credential after it was revoked. A token is already deleted by the

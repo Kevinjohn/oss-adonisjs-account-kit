@@ -1,7 +1,7 @@
 /** Managed handlers for the password reset capability: request, link inspection and completion. */
 import { DeliveryError, PostCommitError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed.js'
+import type { ManagedHandler } from './managed_types.js'
 import { invalidProof, passwordPolicyError, recoveryDiagnostic } from './response_helpers.js'
 import { passwordResetCompleteValidator, passwordResetRequestValidator } from './validators.js'
 

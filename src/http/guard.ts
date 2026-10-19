@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidSessionError } from '../errors.js'
 import type { AuthenticationGuard, UserId } from '../types.js'
-import type { ManagedGuard } from './managed.js'
+import type { ManagedGuard } from './managed_types.js'
 import { assertManagedSessionStore } from './session_store.js'
 
 export { managedAccountMiddleware } from './managed_account_middleware.js'
