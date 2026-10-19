@@ -3,6 +3,10 @@ import vine from '@vinejs/vine'
 const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
 const password = () => vine.string().minLength(8).maxLength(256)
 const registrationData = () => vine.record(vine.any()).optional()
+const proofFields = () => ({
+  currentPassword: vine.string().minLength(1).optional(),
+  recentProof: vine.string().minLength(1).optional(),
+})
 
 export const loginValidator = vine.compile(vine.object({ email: email(), password: vine.string() }))
 export const signupValidator = vine.compile(
@@ -20,7 +24,7 @@ export const magicLinkRequestValidator = vine.compile(
 export const magicLinkCompleteValidator = vine.compile(
   vine.object({ verifier: vine.string().optional() })
 )
-export const passwordResetCompleteValidator = vine.compile(
+export const newPasswordValidator = vine.compile(
   vine.object({
     password: password(),
     passwordConfirmation: vine.string().sameAs('password'),
@@ -28,16 +32,14 @@ export const passwordResetCompleteValidator = vine.compile(
 )
 export const passwordChangeValidator = vine.compile(
   vine.object({
-    currentPassword: vine.string().minLength(1).optional(),
-    recentProof: vine.string().minLength(1).optional(),
+    ...proofFields(),
     newPassword: password(),
     newPasswordConfirmation: vine.string().sameAs('newPassword'),
   })
 )
 export const profileUpdateValidator = vine.compile(
   vine.object({
-    currentPassword: vine.string().minLength(1).optional(),
-    recentProof: vine.string().minLength(1).optional(),
+    ...proofFields(),
     email: email().optional(),
     registrationData: registrationData(),
   })
@@ -99,9 +101,4 @@ export const socialPasswordProofValidator = vine.compile(
 export const socialUnlinkValidator = vine.compile(
   vine.object({ proof: vine.string().minLength(1) })
 )
-export const accountProofValidator = vine.compile(
-  vine.object({
-    currentPassword: vine.string().minLength(1).optional(),
-    recentProof: vine.string().minLength(1).optional(),
-  })
-)
+export const accountProofValidator = vine.compile(vine.object(proofFields()))

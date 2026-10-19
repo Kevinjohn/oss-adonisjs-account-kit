@@ -6,7 +6,7 @@ import { AccountKit } from '../src/account_kit.js'
 import RetirementImpact from '../commands/retirement_impact.js'
 import { dbTime } from './helpers/db_time.js'
 
-test.group('authentication contract', (group) => {
+test.group('authentication retirement impact', (group) => {
   const kit = useTestApp(group)
 
   test('counts accounts that would lose password login from adapter truth without mutation', async ({

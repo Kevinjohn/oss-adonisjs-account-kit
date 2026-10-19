@@ -5,7 +5,7 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
-import { stripSourceComments } from '../src/setup/source_text.js'
+import { fixture, registerSetupTeardown } from './helpers/setup.js'
 
 async function applicationRoot() {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-inspect-'))
@@ -13,25 +13,6 @@ async function applicationRoot() {
   await writeFile(join(root, 'package.json'), '{}')
   return root
 }
-
-test('source inspection removes comments while preserving escaped and template literals', async ({
-  assert,
-}) => {
-  const source = [
-    'const url = "https://example.test/a//b"',
-    String.raw`const message = 'it\'s /* literal */'`,
-    'const template = `// literal ${ /* hidden */ value }`',
-    '// web: sessionGuard({})',
-    '/* api: tokensGuard({}) */',
-  ].join('\n')
-  const inspected = stripSourceComments(source)
-  assert.equal(inspected.length, source.length)
-  assert.include(inspected, 'https://example.test/a//b')
-  assert.include(inspected, String.raw`'it\'s /* literal */'`)
-  assert.match(inspected, /`\/\/ literal \$\{\s+value \}`/)
-  assert.notInclude(inspected, 'web: sessionGuard')
-  assert.notInclude(inspected, 'api: tokensGuard')
-})
 
 test('commented guards and models do not become setup prerequisites', async ({ assert }) => {
   const root = await applicationRoot()
@@ -338,4 +319,60 @@ test('resolved package metadata must be a regular in-application file', async ({
     await rm(root, { recursive: true, force: true })
     await rm(external, { recursive: true, force: true })
   }
+})
+
+test.group('setup database selection', (group) => {
+  registerSetupTeardown(group)
+
+  test('selected database client wins over unused connections', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'mssql', connections: { sqlite: { client: 'better-sqlite3' }, mssql: { client: 'mssql' } } })\n"
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'unsupported')
+    assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'database.client'
+    )
+  })
+
+  test('a MySQL 8.4 default connection is supported', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'mysql', connections: { mysql: { client: 'mysql2' } } })\n"
+    )
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'mysql')
+    const plan = await planSetup(choices, state)
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'database.client'
+    )
+  })
+
+  test('resolves a selected named database from conventional multi-connection config', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nexport default defineConfig({ connection: env.get('DB_CONNECTION'), connections: { sqlite: { client: 'better-sqlite3' }, pg: { client: 'pg' } } })\n"
+    )
+    const before = process.env.DB_CONNECTION
+    try {
+      process.env.DB_CONNECTION = 'sqlite'
+      const sqlite = await inspectSetup(root)
+      assert.equal(sqlite.database, 'sqlite')
+      process.env.DB_CONNECTION = 'pg'
+      const postgres = await inspectSetup(root)
+      assert.equal(postgres.database, 'postgres')
+    } finally {
+      if (before === undefined) delete process.env.DB_CONNECTION
+      else process.env.DB_CONNECTION = before
+    }
+  })
 })

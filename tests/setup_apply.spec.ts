@@ -16,7 +16,7 @@ import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
-import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup.js'
+import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 test.group('setup apply', (group) => {
   registerSetupTeardown(group)

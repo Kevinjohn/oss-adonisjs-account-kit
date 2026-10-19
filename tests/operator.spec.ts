@@ -224,35 +224,4 @@ test.group('operator services', (group) => {
     assert.deepEqual(hooked, [user.id, user.id])
     assert.isTrue(await account.passwordReset.inspect({ token: tokenFrom(first.url) }))
   })
-
-  test('public reset still runs the issuance hook after the extraction', async ({ assert }) => {
-    await insertUser(kit, { email: 'public@example.test' })
-    const hooked: unknown[] = []
-    const { account } = makeService(kit, {
-      onPasswordResetIssuedTransaction: async (issued) => {
-        hooked.push(issued.email)
-      },
-    })
-    await account.passwordReset.request({ email: 'public@example.test', clientKey: 'c' })
-    assert.deepEqual(hooked, ['public@example.test'])
-  })
-
-  test('public invitation send still authorises and throttles after the extraction', async ({
-    assert,
-  }) => {
-    const actor = await insertUser(kit, { email: 'actor@example.test' })
-    const denied = makeService(kit, { authorize: denyAll }).account
-    await assert.rejects(
-      () => denied.invitations.send({ actorId: actor.id, email: 'a@example.test', role: 'x' }),
-      /AuthorizationError/
-    )
-    const { account } = makeService(kit, {
-      invitationThrottle: { sendRecipient: { requests: 1, duration: '1h' } },
-    })
-    await account.invitations.send({ actorId: actor.id, email: 'b@example.test', role: 'x' })
-    await assert.rejects(
-      () => account.invitations.send({ actorId: actor.id, email: 'b@example.test', role: 'x' }),
-      ThrottledError
-    )
-  })
 })

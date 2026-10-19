@@ -1,11 +1,10 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
+import { clientChallenge, provider, current } from './helpers/social_identity.js'
 
 test.group('social races and post-commit effects', (group) => {
   const kit = useTestApp(group)
-  const current = (userId: number | string) => ({ userId, revision: null })
   const configuration = (subject: string) => ({
     enabled: ['socialAuthentication', 'emailVerification'] as Array<
       'socialAuthentication' | 'emailVerification'

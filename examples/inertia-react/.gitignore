@@ -25,6 +25,8 @@ yarn-error.log
 # Platform specific
 .DS_Store
 
-# Packed Account Kit build, see README
+# Packed Account Kit build, see README. Its checksum changes on every pack, so the lockfile is
+# not kept either.
 vendor
+pnpm-lock.yaml
 .adonisjs

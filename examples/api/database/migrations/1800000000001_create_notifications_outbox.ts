@@ -11,11 +11,11 @@ export default class extends BaseSchema {
       const usersTable = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
       const userId =
         idType === 'integer'
-          ? table.integer('user_id')
+          ? table.integer('user_id').unsigned()
           : idType === 'uuid'
             ? table.uuid('user_id')
             : table.string('user_id')
-      userId.notNullable().references(`${usersTable}.id`).onDelete('CASCADE')
+      userId.notNullable().references('id').inTable(usersTable).onDelete('CASCADE')
       table.string('operation').notNullable()
       table.string('operation_id', 64).notNullable().unique()
       table.string('recipient_email', 254).notNullable()

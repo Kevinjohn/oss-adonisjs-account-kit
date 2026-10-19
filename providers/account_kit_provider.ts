@@ -3,6 +3,12 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../src/account_kit.js'
 import type { ResolvedConfig } from '../src/types.js'
 
+declare module '@adonisjs/core/types' {
+  interface ContainerBindings {
+    account_kit: AccountKit
+  }
+}
+
 export default class AccountKitProvider {
   constructor(protected app: ApplicationService) {}
 
@@ -18,5 +24,6 @@ export default class AccountKitProvider {
       }
       return new AccountKit({ config, db, limiter })
     })
+    this.app.container.alias('account_kit', AccountKit)
   }
 }

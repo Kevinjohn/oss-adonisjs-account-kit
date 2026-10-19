@@ -73,7 +73,8 @@ With `registerManagedRoutes`, add `sessionManagement` to `enabled`:
 - An unknown or foreign id returns `404` with code `E_ACCOUNT_KIT_SESSION_NOT_FOUND`.
 - Revoking the caller's own sign-in, and signing out everywhere, also destroy the caller's
   AdonisJS session. This happens even when a lifecycle observer fails and the route answers
-  `202 { committed: true }`.
+  `202 { committed: true }`. A session that cannot be destroyed is logged as
+  `session_end_failed`; the revocation stands and the route answers as usual.
 - `createManagedGuard` stores the sign-in handle in the session under `accountKitSession` and
   passes the label to `accessTokens.create` as the token `name`.
 

@@ -23,7 +23,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
 
   // Session
-  SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
+  // Session login needs a server-side store, so the cookie store is not allowed.
+  SESSION_DRIVER: Env.schema.enum(['memory', 'database'] as const),
 
   /*
   |----------------------------------------------------------

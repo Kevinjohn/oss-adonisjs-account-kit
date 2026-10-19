@@ -1,13 +1,13 @@
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
 test.group('managed HTTP dispatch', () => {
   test('GET proof inspection stays read-only and sets both protective headers', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     let inspected = 0
     let limited = 0
     const kit = {
@@ -30,12 +30,10 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 1, tokenId: 1 }),
-      },
+      }),
       enabled: ['passwordReset'],
     })
     const ctx = context({ token: 'proof' })
@@ -49,7 +47,7 @@ test.group('managed HTTP dispatch', () => {
   test('all proof GET and POST routes consume the real managed budget and set protective headers', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const keys: string[] = []
     const real = new AccountKit({
       config: {
@@ -98,12 +96,10 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 1 }),
-      },
+      }),
       enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'invitations'],
     })
     for (const path of [
@@ -127,7 +123,7 @@ test.group('managed HTTP dispatch', () => {
   test('sensitive account routes forward a purpose-bound proof to shared services', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const account = {
       id: 7,
       email: 'a@example.test',
@@ -153,12 +149,10 @@ test.group('managed HTTP dispatch', () => {
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => kit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 11 }),
-      },
+      }),
       enabled: ['emailPasswordManagement'],
     })
     const password = context()

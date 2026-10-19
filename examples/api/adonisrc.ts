@@ -28,6 +28,7 @@ export default defineConfig({
     () => import('@adonisjs/core/commands'),
     () => import('@adonisjs/lucid/commands'),
     () => import('@adonisjs/session/commands'),
+    () => import('adonisjs-account-kit/commands'),
   ],
 
   /*
@@ -54,8 +55,8 @@ export default defineConfig({
     () => import('@adonisjs/auth/auth_provider'),
     () => import('@adonisjs/ally/ally_provider'),
     () => import('#providers/api_provider'),
-    () => import('adonisjs-account-kit/providers/account_kit_provider'),
     () => import('@adonisjs/limiter/limiter_provider'),
+    () => import('adonisjs-account-kit/providers/account_kit_provider'),
   ],
 
   /*

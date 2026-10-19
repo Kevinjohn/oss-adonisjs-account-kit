@@ -1,12 +1,11 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
-import { clientChallenge, provider } from './helpers/social_identity.js'
+import { clientChallenge, provider, current } from './helpers/social_identity.js'
 import { dbTime } from './helpers/db_time.js'
 
 test.group('social policy and method races', (group) => {
   const kit = useTestApp(group)
-  const current = (userId: number | string) => ({ userId, revision: null })
 
   test('closed registration rejects a new subject but keeps a confirmed linked subject usable', async ({
     assert,

@@ -10,8 +10,8 @@ import {
 } from '../src/errors.js'
 import { lockRow, transaction } from '../src/db.js'
 import { generateToken, hashToken } from '../src/tokens.js'
-import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { verificationHelpers } from './helpers/verification.js'
 import {
   accountKit,
   insertUser,
@@ -27,12 +27,7 @@ import { dbTime } from './helpers/db_time.js'
 test.group('emailVerification.send', (group) => {
   const kit = useTestApp(group)
 
-  const createUser = async (verified = false) => {
-    const user = await insertUser(kit, { verified })
-    return user.id
-  }
-
-  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
+  const { createUser, service } = verificationHelpers(kit)
 
   test('notifies an unverified user with a stored hashed proof', async ({ assert }) => {
     const id = await createUser()
@@ -267,12 +262,7 @@ test.group('emailVerification.send', (group) => {
 test.group('emailVerification.complete', (group) => {
   const kit = useTestApp(group)
 
-  const createUser = async (verified = false) => {
-    const user = await insertUser(kit, { verified })
-    return user.id
-  }
-
-  const service = (overrides: Partial<AccountKitConfig> = {}) => makeService(kit, overrides)
+  const { createUser, service } = verificationHelpers(kit)
 
   async function issue() {
     const id = await createUser()

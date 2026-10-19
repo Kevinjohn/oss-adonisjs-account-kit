@@ -1,23 +1,23 @@
 import vine from '@vinejs/vine'
+import { email, password } from '#validators/user'
 
-const password = () => vine.string().minLength(8).maxLength(32)
+/**
+ * A new password, typed twice.
+ */
+const newPassword = () => ({
+  password: password(),
+  passwordConfirmation: password().sameAs('password'),
+})
 
 export const forgotPasswordValidator = vine.create({
-  email: vine.string().trim().toLowerCase().email().maxLength(254),
+  email: email(),
 })
 
-export const resetPasswordValidator = vine.create({
-  password: password(),
-  passwordConfirmation: password().sameAs('password'),
-})
+export const resetPasswordValidator = vine.create(newPassword())
 
-export const verifyEmailValidator = vine.create({
-  password: password(),
-  passwordConfirmation: password().sameAs('password'),
-})
+export const verifyEmailValidator = vine.create(newPassword())
 
 export const changePasswordValidator = vine.create({
   currentPassword: vine.string(),
-  password: password(),
-  passwordConfirmation: password().sameAs('password'),
+  ...newPassword(),
 })

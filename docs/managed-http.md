@@ -117,7 +117,7 @@ The enabled names are `authentication`, `registration`, `passwordReset`, `magicL
 
 ### A route is available only when selected
 
-The table lists the endpoint name, method and path after the configured prefix, required access, and normal success response. The exported `ManagedRequestBodies`/`ManagedRequestBody<Name>`, `ManagedQueries`/`ManagedQuery<Name>`, and `ManagedSuccessBodies`/`ManagedSuccessBody<Name>` types describe default JSON bodies, query parameters, and success bodies (including `202 { committed: true }` for applicable writes); VineJS validators enforce request schemas. Named route and response tests cover this inventory. `limited` means a valid credential may belong to an inactive account; `active` applies `authentication.requireActive` when `verificationRequired` is true and rejects that account with 403 `unverified_email`. Public routes do not accept an actor ID as authority.
+The table lists the endpoint name, method and path after the configured prefix, required access, and normal success response. The exported `ManagedRequestBodies`/`ManagedRequestBody<Name>`, `ManagedQueries`/`ManagedQuery<Name>`, and `ManagedSuccessBodies`/`ManagedSuccessBody<Name>` types describe default JSON bodies, query parameters, and success bodies (including `202 { committed: true }` for applicable writes); VineJS validators enforce request schemas. Named route and response tests cover this inventory. `limited` means a valid credential may belong to an inactive account; `active` applies `authentication.requireActive` when `verificationRequired` is true and rejects that account with 403 `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`. Public routes do not accept an actor ID as authority.
 
 | Name                              | Method and path                        | Access                        | Success                                                                                                                             |
 | --------------------------------- | -------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -145,13 +145,72 @@ The table lists the endpoint name, method and path after the configured prefix, 
 
 The default request validators accept only the documented fields: login `{ email, password }`; signup `{ email, password, passwordConfirmation, registrationData? }`; reset request `{ email }`; reset completion `{ password, passwordConfirmation }`; verification completion `{ password, passwordConfirmation }` for inactive-account claiming; invitation acceptance `{ password, passwordConfirmation, registrationData? }`; invitation send `{ email, role }`; password change `{ currentPassword?, recentProof?, newPassword, newPasswordConfirmation }`; profile update `{ currentPassword?, recentProof?, email?, registrationData? }`; invitation list query `{ limit?: 1..100, cursor? }`. The shared service requires the actual current password when an account has one; a caller cannot bypass that requirement with `recentProof`. For a provider-only account, it consumes a purpose-bound recent proof (`password_change` or `email_change`) inside the same transaction. With standard Ally adapters, establish a first password through reset, sign in with it, then re-enter that password for later sensitive changes. Optional `registrationData` must be an object; its keys and values pass to the shared service field mapper, which validates the configured allowlist and trusted adapter mapping. Custom registration, invitation-acceptance and profile validators may enforce a stricter application schema before the same shared field policy. Every newly established password is checked against the same configured `passwordPolicy` as the public services before a write; policy rejection is a 422 field error with rule `passwordPolicy`, never a false invalid-proof error. Proof is read from the path for both GET inspection and POST completion. A password or bearer credential is never put in a URL.
 
-Every package-originated error uses `{ errors: [{ code, message }] }`; when a client accepts `application/vnd.api+json` with positive quality at least as high as JSON, it uses `{ errors: [{ code, title }] }` and sets that response content type. Authentication failures are 401, access denial or inactive email 403, generic invalid proof 400, configured field-policy rejection 422 with code `E_ACCOUNT_KIT_INVALID_INPUT`, service conflicts 409, and limits 429 with `Retry-After`. Password, email and sign-in link proof codes are `E_INVALID_PASSWORD_TOKEN`, `E_INVALID_EMAIL_TOKEN` and `E_INVALID_MAGIC_LINK`; inactive access is `unverified_email`; rejected current identity proof is `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`. Negotiated error responses include `Vary: Accept`. AdonisJS VineJS request-validation errors retain their native 422 field/rule/message shape. Internal exceptions and database messages are never serialized. Recovery diagnostics contain only the endpoint name and outcome (`delivery_failed`, `followup_failed`, `authentication_failed`, or `representation_failed`), with no submitted secrets or proof URL. Duplicate signup email uses a 422 `email`/`unique` field error without revealing the existing account state.
+Every package-originated error uses `{ errors: [{ code, message }] }`; when a client accepts `application/vnd.api+json` with positive quality at least as high as JSON, it uses `{ errors: [{ code, title }] }` and sets that response content type. Authentication failures are 401, access denial or inactive email 403, generic invalid proof 400, configured field-policy rejection 422 with code `E_ACCOUNT_KIT_INVALID_INPUT`, service conflicts 409, and limits 429 with `Retry-After`. Password, email and sign-in link proof codes are `E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN`, `E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN` and `E_ACCOUNT_KIT_INVALID_MAGIC_LINK`; inactive access is `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`; rejected current identity proof is `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`. Negotiated error responses include `Vary: Accept`. AdonisJS VineJS request-validation errors retain their native 422 field/rule/message shape. Internal exceptions and database messages are never serialized. Recovery diagnostics contain only the endpoint name and outcome (`delivery_failed`, `followup_failed`, `authentication_failed`, or `representation_failed`), with no submitted secrets or proof URL. Duplicate signup email uses a 422 `email`/`unique` field error without revealing the existing account state.
 
 Managed signup consumes a shared, secret-keyed per-client `auth.signup` budget before creation using the configured `throttle` setting; a limit rejects without creating an account. Login uses the configured failure-only client and identity budgets. Password-reset requests, verification sends, invitation writes, and profile/credential writes use their public services' configured limits. Every proof GET and POST also consumes a separate per-endpoint, per-client managed budget using the configured shared limiter store, secret-keyed key namespace, and `throttle` setting. Limit failure returns 429 and a rounded-up `Retry-After` value. Configure trusted proxies before `request.ip()` is used as the client key.
 
 ### Inspection never consumes proof
 
 For any non-empty selected session capability set, managed routes include `auth.csrf` unless its endpoint name is explicitly excluded; token selections never include it. Proof GETs call read-only service inspection. Every proof GET and POST sets `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. The `auth.csrf` response also sets `Cache-Control: no-store`, so a shared cache cannot replay one session's CSRF token to another client. Install `managedProofHeadersMiddleware({ prefix, strategy, enabled, except })` in the application's early server middleware, before body parsing and Shield, with the same route selection as `registerManagedRoutes`. This ensures parser and CSRF failures on proof URLs retain those headers; handler-level headers alone run too late. POST completion or acceptance applies the service's atomic proof-consumption rule. Clients should treat a repeated completion as an invalid proof; request and resend operations may acknowledge repeat submissions while the underlying service limits issuance. A committed write with a failed post-commit callback remains a success response marked `{ committed: true }` when its full result is unavailable. Password-reset request always returns the same acknowledgement even when notification delivery fails after the request commits. There is no idempotency-key contract. A GET profile, invitation list, proof inspection, or CSRF bootstrap can be repeated without a write. A successful login creates a new session/token; repeat only if a new credential is wanted. A duplicate signup returns the same `email`/`unique` 422 regardless of account state; after an uncertain signup result, reconcile by login or recovery instead of assuming rollback. A repeated logout returns 401. Proof completion and invitation acceptance are one-use and reject a second submission. Password reset request returns the same acknowledgement on retries, while verification resend and invitation resend follow their service limits; an uncertain profile, password, or invitation write should be reconciled with the account/invitation read or recovery flow before retrying. A `202 { committed: true }` means the write committed but a post-commit callback failed; clients should reconcile current state, not repeat blindly.
+
+### Error messages follow the application's language
+
+When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n) and its locale middleware sets `ctx.i18n`, managed routes translate every `{ code, message }` error the same way the official AdonisJS packages do. The message for code `X` is looked up as `errors.X`. When neither the request's locale nor its configured fallback locale has the key, the English message below is used, and `@adonisjs/i18n` emits its `i18n:missing:translation` event. Codes and statuses never change. Without `@adonisjs/i18n`, responses stay in English. `extensions.message` still runs last and receives the translated message as its default.
+
+`E_INVALID_CREDENTIALS` is the same key `@adonisjs/auth` uses, so an existing translation covers both packages.
+
+The middleware generated by `@adonisjs/i18n` picks the locale from the `Accept-Language` header. For one site-wide language, return it from `getRequestLocale` in `app/middleware/detect_user_locale_middleware.ts` and keep the rest of the middleware, which also installs the validation messages provider:
+
+```ts
+protected getRequestLocale() {
+  return 'fr'
+}
+```
+
+Copy this file to `resources/lang/<locale>/errors.json` and translate the values:
+
+```json
+{
+  "E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN": "This link is invalid or expired.",
+  "E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN": "This link is invalid or expired.",
+  "E_ACCOUNT_KIT_INVALID_INVITATION_TOKEN": "This link is invalid or expired.",
+  "E_ACCOUNT_KIT_INVALID_MAGIC_LINK": "This link is invalid or expired.",
+  "E_INVALID_CREDENTIALS": "Authentication failed.",
+  "E_ACCOUNT_KIT_UNVERIFIED_EMAIL": "Email verification is required.",
+  "E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED": "Current identity proof could not be confirmed.",
+  "E_ACCOUNT_KIT_INVITATION_NOT_FOUND": "Invitation not found.",
+  "E_ACCOUNT_KIT_FORBIDDEN": "Access denied.",
+  "E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED": "The account request conflicts with an existing account.",
+  "E_ACCOUNT_KIT_THROTTLED": "Too many requests.",
+  "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected.",
+  "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected.",
+  "E_ACCOUNT_KIT_INVITATION_PENDING": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected.",
+  "E_ACCOUNT_KIT_OPERATION_FAILED": "Account operation failed."
+}
+```
+
+Request-validation messages already follow the locale: the managed routes call `request.validateUsing`, which uses the messages provider the i18n middleware installs. Two 422 messages come from checks the package runs after validation. They use the keys the `@adonisjs/i18n` VineJS messages provider reads: `validator.shared.messages.<rule>`, with `{field}` taken from `validator.shared.fields.<field>`. Add them to `resources/lang/<locale>/validator.json`:
+
+```json
+{
+  "shared": {
+    "messages": {
+      "unique": "The {field} has already been taken.",
+      "passwordPolicy": "The {field} does not meet the password policy."
+    }
+  }
+}
+```
+
+The fields people fill in are `email`, `password`, `passwordConfirmation`, `currentPassword`, `newPassword`, `newPasswordConfirmation` and `role`. Translate their names under `shared.fields`; the other managed fields are sent by client code.
 
 ### The selected guard protects application routes too
 
