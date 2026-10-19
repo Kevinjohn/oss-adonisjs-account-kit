@@ -4,7 +4,7 @@ Each recording runs real `curl` and `node ace` commands against a new AdonisJS 7
 the managed JSON routes under `/api` and emails printed to the log. Long tokens are shortened and the
 `content-type: application/json` header is left out on screen; the real requests send it. Social sign-in is not recorded, because it needs a live provider.
 
-The recordings are regenerated with `pnpm demos`; see
+The recordings are regenerated with `pnpm demos` and `pnpm demos:setup`; see
 [scripts/demos](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/scripts/demos).
 
 ## Install check
@@ -12,6 +12,14 @@ The recordings are regenerated with `pnpm demos`; see
 ![account-kit:doctor checking the configuration, limiter, APP_URL and tables in a new app](assets/demos/doctor.svg)
 
 More in [getting started](getting-started.md).
+
+## Setup preview and apply
+
+![account-kit:setup previewing the API choices file without writing, then applying it: config, guard adapter, middleware, inert route mount and 13 migrations](assets/demos/setup.svg)
+
+This one runs on a separate starter app without the managed routes. Setup prints a JSON report; the recording shows its pillars, file changes and next steps one line each.
+
+More in [setup](setup.md).
 
 ## Password reset
 
