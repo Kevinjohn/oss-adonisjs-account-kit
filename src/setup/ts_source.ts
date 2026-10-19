@@ -349,3 +349,35 @@ export function walk(source: SetupSource, visitor: (node: TypeScript.Node) => vo
   }
   visit(source.file)
 }
+
+export function lazyImportPath(source: SetupSource, node: TypeScript.Node): string | null {
+  const { ts } = source
+  if (!ts.isArrowFunction(node) || !ts.isCallExpression(node.body)) return null
+  const call = node.body
+  if (
+    call.expression.kind !== ts.SyntaxKind.ImportKeyword ||
+    call.arguments.length !== 1 ||
+    !ts.isStringLiteral(call.arguments[0])
+  )
+    return null
+  return call.arguments[0].text
+}
+
+export function callArray(
+  source: SetupSource,
+  receiver: string,
+  method: string
+): TypeScript.ArrayLiteralExpression | null {
+  const matches: TypeScript.ArrayLiteralExpression[] = []
+  walk(source, (node) => {
+    if (
+      exactCall(source, node, receiver, method) &&
+      source.ts.isExpressionStatement(node.parent) &&
+      node.parent.parent === source.file &&
+      node.arguments.length === 1 &&
+      source.ts.isArrayLiteralExpression(node.arguments[0])
+    )
+      matches.push(node.arguments[0])
+  })
+  return matches.length === 1 ? matches[0] : null
+}
