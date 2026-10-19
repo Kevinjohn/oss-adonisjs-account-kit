@@ -4,6 +4,9 @@ import {
   type SetupInspection,
   type SetupPlan,
   featureNames,
+  setupModes,
+  userAdapters,
+  userIdTypes,
 } from './types.js'
 import { sqlName, diagnostic } from './shared.js'
 import { validateRoutes } from './validate_routes.js'
@@ -28,7 +31,7 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
   const { production, env = process.env } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
-  if (!['services', 'managed'].includes(choices.mode))
+  if (!setupModes.includes(choices.mode))
     diagnostic(diagnostics, 'mode', 'Choose services or managed')
   if (!Array.isArray(choices.features) || choices.features.some((x) => !featureNames.includes(x)))
     diagnostic(diagnostics, 'features', `Choose from ${featureNames.join(', ')}`)
@@ -63,9 +66,9 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     )
   if (!sqlName.test(choices.user.table))
     diagnostic(diagnostics, 'user.table', 'Use a plain SQL identifier')
-  if (!['lucid', 'custom'].includes(choices.user.adapter))
+  if (!userAdapters.includes(choices.user.adapter))
     diagnostic(diagnostics, 'user.adapter', 'Choose lucid or custom')
-  if (!['integer', 'string', 'uuid'].includes(choices.user.idType))
+  if (!userIdTypes.includes(choices.user.idType))
     diagnostic(diagnostics, 'user.idType', 'Choose integer, string or uuid')
   if (
     choices.user.primaryKey !== 'id' ||
