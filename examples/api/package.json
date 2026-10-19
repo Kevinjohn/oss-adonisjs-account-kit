@@ -14,7 +14,7 @@
     "dev": "node ace serve --hmr",
     "migrate": "node ace migration:run --force",
     "test": "node ace test",
-    "test:session": "node ace test --files=tests/functional/authentication_session.spec.ts --files=tests/functional/reference_session.spec.ts --files=tests/functional/social_session.spec.ts",
+    "test:session": "node ace test --files=tests/functional/authentication_session.spec.ts --files=tests/functional/reference_session.spec.ts --files=tests/functional/social_session.spec.ts --files=tests/functional/token_reference.spec.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
