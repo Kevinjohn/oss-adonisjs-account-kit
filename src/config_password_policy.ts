@@ -1,4 +1,5 @@
 // Validates and defaults the passwordPolicy option.
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { AccountKitConfig, PasswordPolicy } from './types.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.js'
 
@@ -20,7 +21,7 @@ export function resolvePasswordPolicy(
       typeof config.passwordPolicy !== 'object' ||
       Array.isArray(config.passwordPolicy))
   )
-    throw new Error('account_kit: passwordPolicy must be an object')
+    throw new RuntimeException('account_kit: passwordPolicy must be an object')
   if (
     !Number.isSafeInteger(passwordPolicy.minLength) ||
     passwordPolicy.minLength < MIN_PASSWORD_LENGTH ||
@@ -30,7 +31,7 @@ export function resolvePasswordPolicy(
         passwordPolicy.maxLength > MAX_PASSWORD_LENGTH ||
         passwordPolicy.maxLength < passwordPolicy.minLength))
   )
-    throw new Error(
+    throw new RuntimeException(
       `account_kit: passwordPolicy lengths must stay within ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} and minLength must not exceed maxLength`
     )
   if (
@@ -38,9 +39,11 @@ export function resolvePasswordPolicy(
     passwordPolicy.minScore < 0 ||
     passwordPolicy.minScore > 4
   )
-    throw new Error('account_kit: passwordPolicy.minScore must be an integer from 0 to 4')
+    throw new RuntimeException(
+      'account_kit: passwordPolicy.minScore must be an integer from 0 to 4'
+    )
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
     if (typeof passwordPolicy[key] !== 'boolean')
-      throw new Error(`account_kit: passwordPolicy.${key} must be boolean`)
+      throw new RuntimeException(`account_kit: passwordPolicy.${key} must be boolean`)
   return passwordPolicy
 }
