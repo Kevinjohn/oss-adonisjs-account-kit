@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { exportFault } from '../account_export.js'
 import { DeliveryError, PostCommitError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedGuard, ManagedHandler } from './managed.js'
+import type { ManagedGuard, ManagedHandler } from './managed_types.js'
 import { recoveryDiagnostic } from './response_helpers.js'
 import { accountProofValidator } from './validators.js'
 

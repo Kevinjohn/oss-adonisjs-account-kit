@@ -1,6 +1,6 @@
 /** Managed handlers for the authentication capability: CSRF token, login, logout and profile read. */
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed.js'
+import type { ManagedHandler } from './managed_types.js'
 import { rememberManagedMethod } from './social.js'
 import { signInLabel } from './response_helpers.js'
 import { loginValidator } from './validators.js'
