@@ -63,6 +63,50 @@ function prefersJsonApi(accept?: string): boolean {
   )
 }
 
+type ErrorClass = abstract new (...args: never[]) => AccountKitError
+
+/** First match wins, so a subclass must come before its parent. */
+const managedErrors: ReadonlyArray<readonly [ErrorClass, number, string, string]> = [
+  [
+    InvalidTokenError,
+    400,
+    'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN',
+    'This link is invalid or expired.',
+  ],
+  [InvalidCredentialsError, 401, 'E_INVALID_CREDENTIALS', 'Authentication failed.'],
+  [InvalidSessionError, 401, 'E_INVALID_CREDENTIALS', 'Authentication failed.'],
+  [UnverifiedEmailError, 403, 'E_ACCOUNT_KIT_UNVERIFIED_EMAIL', 'Email verification is required.'],
+  [
+    IdentityNotConfirmedError,
+    403,
+    'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED',
+    'Current identity proof could not be confirmed.',
+  ],
+  [InvitationNotFoundError, 404, 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND', 'Invitation not found.'],
+  [
+    InvitationManagementDeniedError,
+    404,
+    'E_ACCOUNT_KIT_INVITATION_NOT_FOUND',
+    'Invitation not found.',
+  ],
+  [AuthorizationError, 403, 'E_ACCOUNT_KIT_FORBIDDEN', 'Access denied.'],
+  [
+    EmailAlreadyRegisteredError,
+    409,
+    'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED',
+    'The account request conflicts with an existing account.',
+  ],
+  [ThrottledError, 429, 'E_ACCOUNT_KIT_THROTTLED', 'Too many requests.'],
+  [InvalidInputError, 422, 'E_ACCOUNT_KIT_INVALID_INPUT', 'Account request rejected.'],
+]
+
+const invalidTokenCodes: Record<'password' | 'email' | 'invitation' | 'magicLink', string> = {
+  password: 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN',
+  email: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN',
+  invitation: 'E_ACCOUNT_KIT_INVALID_INVITATION_TOKEN',
+  magicLink: 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK',
+}
+
 /** Package errors are deliberately translated without exposing internal messages or causes. */
 export function managedErrorResponse(
   error: unknown,
@@ -79,52 +123,12 @@ export function managedErrorResponse(
   let status = 500
   let code = 'E_ACCOUNT_KIT_OPERATION_FAILED'
   let message = 'Account operation failed.'
-  if (error instanceof InvalidTokenError) {
-    status = 400
-    code =
-      options.proof === 'email'
-        ? 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN'
-        : options.proof === 'invitation'
-          ? 'E_ACCOUNT_KIT_INVALID_INVITATION_TOKEN'
-          : options.proof === 'magicLink'
-            ? 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK'
-            : 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN'
-    message = 'This link is invalid or expired.'
-  } else if (error instanceof InvalidCredentialsError || error instanceof InvalidSessionError) {
-    status = 401
-    code = 'E_INVALID_CREDENTIALS'
-    message = 'Authentication failed.'
-  } else if (error instanceof UnverifiedEmailError) {
-    status = 403
-    code = 'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
-    message = 'Email verification is required.'
-  } else if (error instanceof IdentityNotConfirmedError) {
-    status = 403
-    code = 'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED'
-    message = 'Current identity proof could not be confirmed.'
-  } else if (
-    error instanceof InvitationNotFoundError ||
-    error instanceof InvitationManagementDeniedError
-  ) {
-    status = 404
-    code = 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND'
-    message = 'Invitation not found.'
-  } else if (error instanceof AuthorizationError) {
-    status = 403
-    code = 'E_ACCOUNT_KIT_FORBIDDEN'
-    message = 'Access denied.'
-  } else if (error instanceof EmailAlreadyRegisteredError) {
-    status = 409
-    code = 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED'
-    message = 'The account request conflicts with an existing account.'
-  } else if (error instanceof ThrottledError) {
-    status = 429
-    code = 'E_ACCOUNT_KIT_THROTTLED'
-    message = 'Too many requests.'
-  } else if (error instanceof InvalidInputError) {
-    status = 422
-    code = 'E_ACCOUNT_KIT_INVALID_INPUT'
-    message = 'Account request rejected.'
+  const mapped = managedErrors.find(([errorClass]) => error instanceof errorClass)
+  if (mapped) {
+    status = mapped[1]
+    code = mapped[2]
+    message = mapped[3]
+    if (error instanceof InvalidTokenError) code = invalidTokenCodes[options.proof ?? 'password']
   } else if (error.status >= 400 && error.status < 500) {
     status = error.status
     code = error.code
