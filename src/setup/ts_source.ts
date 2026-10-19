@@ -148,6 +148,15 @@ export function hasUnsafeObjectEntries(
   return false
 }
 
+export function directObject(
+  source: SetupSource,
+  node: TypeScript.Node
+): TypeScript.ObjectLiteralExpression | null {
+  return source.ts.isObjectLiteralExpression(node) && !hasUnsafeObjectEntries(source, node)
+    ? node
+    : null
+}
+
 export function exactCall(
   source: SetupSource,
   node: TypeScript.Node,
