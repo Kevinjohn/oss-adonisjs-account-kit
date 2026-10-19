@@ -1,6 +1,6 @@
 // Issues a guard credential after a verified sign-in and re-checks the account under its lock.
 import type { Database } from '@adonisjs/lucid/database'
-import { revision } from './authentication.js'
+import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
 import { newSessionHandle, recordSession, sessionRegistryEnabled } from './session_registry.js'
 import type {

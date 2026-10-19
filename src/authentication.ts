@@ -1,13 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
-import { DateTime } from 'luxon'
 import { errors } from '@adonisjs/limiter'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { lockUser, transaction, userMetadata } from './db.js'
+import { lockUser, transaction } from './db.js'
 import { normaliseEmail } from './email.js'
 import { throttlerOf, type Throttler } from './throttle.js'
-import { clearSocialPending } from './credential_cleanup.js'
+import { credentialsChanged, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import {
   requireLiveSession,
@@ -18,7 +17,7 @@ import {
 } from './session_registry.js'
 import { waitForFloor } from './timing.js'
 import { hashToken } from './tokens.js'
-import { isSocialProviderName } from './social_providers.js'
+import { retirementImpact } from './login_method_retirement.js'
 import {
   CapabilityDisabledError,
   InvalidCredentialsError,
@@ -38,6 +37,8 @@ import type {
   UserId,
 } from './types.js'
 
+export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
+
 type Dependencies = {
   config: ResolvedConfig
   db: Database
@@ -49,72 +50,6 @@ function configured(deps: Pick<Dependencies, 'config'>) {
   const auth = deps.config.authentication
   if (!auth) throw new CapabilityDisabledError('Authentication is disabled')
   return auth
-}
-
-function normalizeStamp(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  const iso = typeof value === 'string' ? DateTime.fromISO(value, { zone: 'utc' }) : null
-  const at =
-    value instanceof Date
-      ? DateTime.fromJSDate(value, { zone: 'utc' })
-      : typeof value === 'number'
-        ? DateTime.fromMillis(value, { zone: 'utc' })
-        : iso?.isValid
-          ? iso
-          : DateTime.fromSQL(String(value), { zone: 'utc' })
-  if (!at.isValid) throw new Error('Invalid credentials_changed_at value')
-  return at.toUTC().toISO()
-}
-
-export async function revision(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId
-): Promise<string | null> {
-  const metadata = await userMetadata(config)
-  const table = metadata.table
-  const row = await trx.from(table).select('credentials_changed_at').where('id', userId).first()
-  if (!row) throw new InvalidCredentialsError()
-  return normalizeStamp(row.credentials_changed_at)
-}
-
-/** The account lock makes the revision advance even if two changes use the same wall-clock tick. */
-export async function advanceCredentialRevision(
-  trx: Trx,
-  config: ResolvedConfig,
-  userId: UserId
-): Promise<void> {
-  const metadata = await userMetadata(config)
-  const table = metadata.table
-  const previous = await revision(trx, config, userId)
-  const next = DateTime.fromMillis(Math.max(Date.now(), previous ? Date.parse(previous) + 1 : 0), {
-    zone: 'utc',
-  })
-  // MySQL's dialect format drops milliseconds, which the revision needs.
-  const value =
-    trx.dialect.name === 'better-sqlite3' || trx.dialect.name === 'mysql'
-      ? next.toFormat('yyyy-MM-dd HH:mm:ss.SSS')
-      : next.toFormat(trx.dialect.dateTimeFormat)
-  await trx.from(table).where('id', userId).update({ credentials_changed_at: value })
-  if (config.authentication?.strategy === 'access_tokens') {
-    await trx.from(config.authentication.tokenTable).where('tokenable_id', userId).delete()
-  }
-  // The registry table is installed for every application, so sessions end even while
-  // sessionManagement is off.
-  if (config.authentication) await trx.from(sessionTable).where('user_id', userId).delete()
-}
-
-export async function credentialsChanged(
-  trx: Trx,
-  config: ResolvedConfig,
-  user: AccountUser,
-  context: Parameters<NonNullable<ResolvedConfig['onCredentialsChangedTransaction']>>[1]
-): Promise<void> {
-  if (config.enabled.includes('socialAuthentication')) await clearSocialPending(trx, user.id)
-  // The table is installed for every application, so links die even while the capability is off.
-  await trx.from('login_link_tokens').where('tokenable_id', user.id).delete()
-  if (config.authentication) await advanceCredentialRevision(trx, config, user.id)
-  await config.onCredentialsChangedTransaction?.(user, context, trx)
 }
 
 export function safeAccount(user: AccountUser): CurrentAccount {
@@ -176,77 +111,7 @@ export function authenticationService(deps: Dependencies) {
       currentPasswordLogin: boolean
     }> {
       configured(deps)
-      if (typeof input.passwordLogin !== 'boolean')
-        throw new Error('Remaining password-login policy must be selected explicitly')
-      if (
-        input.providers &&
-        (new Set(input.providers).size !== input.providers.length ||
-          input.providers.some((provider) => !isSocialProviderName(provider)))
-      )
-        throw new Error('Remaining provider inventory must use unique supported providers')
-      const currentProviders = new Set(
-        deps.config.enabled.includes('socialAuthentication')
-          ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as SocialProviderName[])
-          : []
-      )
-      const remainingProviders = input.providers ?? [...currentProviders]
-      const { table } = await userMetadata(deps.config)
-      let inspectedAccounts = 0
-      let affectedAccounts = 0
-      let lastId: UserId | undefined
-      for (;;) {
-        const query = deps.db.from(table).select('id').orderBy('id', 'asc').limit(500)
-        if (lastId !== undefined) query.where('id', '>', lastId)
-        const rows = await query
-        if (!rows.length) break
-        const identities = currentProviders.size
-          ? await deps.db
-              .from('social_identities')
-              .whereIn(
-                'user_id',
-                rows.map((row) => row.id as UserId)
-              )
-              .whereNotNull('confirmed_at')
-              .select('user_id', 'provider')
-          : []
-        const byUser = new Map<string, Set<string>>()
-        for (const identity of identities) {
-          if (!isSocialProviderName(identity.provider))
-            throw new Error('Unknown confirmed provider in login inventory')
-          const key = String(identity.user_id)
-          const values = byUser.get(key) ?? new Set<string>()
-          values.add(identity.provider)
-          byUser.set(key, values)
-        }
-        for (const row of rows) {
-          const id = row.id as UserId
-          const user = await deps.config.users.findById(id)
-          if (!user) throw new Error('Account adapter could not resolve an inventoried user')
-          if (typeof user.hasPassword !== 'boolean')
-            throw new Error(
-              'Account adapter must report whether each inventoried user has a password'
-            )
-          inspectedAccounts++
-          const confirmed = byUser.get(String(id)) ?? new Set<string>()
-          const hadUsableMethod =
-            user.hasPassword ||
-            [...confirmed].some((provider) => currentProviders.has(provider as SocialProviderName))
-          const retainsMethod =
-            (input.passwordLogin && user.hasPassword) ||
-            remainingProviders.some(
-              (provider) => currentProviders.has(provider) && confirmed.has(provider)
-            )
-          if (hadUsableMethod && !retainsMethod) affectedAccounts++
-          lastId = id
-        }
-      }
-      return {
-        inspectedAccounts,
-        affectedAccounts,
-        checkedAt: new Date().toISOString(),
-        currentProviders: [...currentProviders],
-        currentPasswordLogin: true,
-      }
+      return retirementImpact(deps, input)
     },
 
     /**
