@@ -18,6 +18,7 @@
     "!docs/api/**",
     "!docs/PRD*.md",
     "!PLAN*.md",
+    "README-AGENTS.md",
     "SECURITY.md",
     "CHANGELOG.md"
   ],
