@@ -1,5 +1,4 @@
 import { readdir, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { test } from '@japa/runner'
@@ -465,9 +464,7 @@ async function generatedInvitationAcceptanceHook(kit: ReturnType<typeof useTestA
   const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))
   const stubs = await kit.app.stubs.create()
   const stub = await stubs.build('config/account_kit.stub', { source: stubsRoot })
-  const rendered = await stub.prepare({
-    config: { destination: join(tmpdir(), 'account_kit_generated_config.ts') },
-  })
+  const rendered = await stub.prepare({})
   const sourceFile = ts.createSourceFile(
     'account_kit_generated_config.ts',
     rendered.contents,

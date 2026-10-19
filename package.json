@@ -42,7 +42,7 @@
     "./commands": "./build/commands/main.js"
   },
   "scripts": {
-    "copy:templates": "copyfiles \"stubs/**/*.stub\" build",
+    "copy:templates": "copyfiles \"stubs/**/*.stub\" --up=\"1\" build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

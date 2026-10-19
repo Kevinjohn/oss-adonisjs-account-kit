@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 import { isSqlIdentifier } from './src/sql_identifier.js'
+import { stubsRoot } from './stubs/main.js'
 
 export const migrationNames = [
   'add_account_columns_to_users',
@@ -63,9 +64,7 @@ export async function configure(command: Configure) {
   }
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
-  await codemods.makeUsingStub(command.stubsRoot, 'config/account_kit.stub', {
-    config: { destination: command.app.makePath('config/account_kit.ts') },
-  })
+  await codemods.makeUsingStub(stubsRoot, 'config/account_kit.stub', {})
 
   let migrationFiles: string[] = []
   try {
@@ -81,7 +80,7 @@ export async function configure(command: Configure) {
       command.logger.info(`Skipped database/migrations/*${suffix}`)
       continue
     }
-    await codemods.makeUsingStub(command.stubsRoot, `migrations/${name}.stub`, {
+    await codemods.makeUsingStub(stubsRoot, `migrations/${name}.stub`, {
       migration: {
         ...schema,
         destination: command.app.makePath(`database/migrations/${timestamp + index}${suffix}`),
