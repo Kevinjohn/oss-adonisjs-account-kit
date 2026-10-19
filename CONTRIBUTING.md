@@ -80,6 +80,18 @@ Run them before a release and after changing `configure.ts`, `stubs/` or `exampl
 - Write commit messages in the imperative mood, describing the change ("Reject expired invitation
   tokens on resend").
 
+## Adding a translation
+
+Translations are copy-paste pages in the docs, not files in the package.
+
+1. Copy the `errors.json` and `validator.json` blocks from
+   [docs/managed-http.md](docs/managed-http.md) into `docs/translations/<locale>.md`, following
+   [docs/translations/index.md](docs/translations/index.md).
+2. Translate the values. Keep every key and every `{placeholder}`.
+3. Add the locale to the list in `docs/translations/index.md`.
+4. Run `pnpm quick:test --files=docs_translations.spec.ts`. It checks keys, ICU syntax and
+   placeholders, not wording.
+
 ## Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in
