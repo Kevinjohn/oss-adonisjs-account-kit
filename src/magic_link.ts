@@ -6,7 +6,7 @@ import { revision, safeAccount } from './authentication.js'
 import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   CapabilityDisabledError,
   InvalidCredentialsError,
@@ -61,7 +61,7 @@ export async function requestMagicLink(
       throw new InvalidInputError('Invalid client key')
     if (!isClientChallenge(input.clientChallenge))
       throw new InvalidInputError('Invalid client challenge')
-    const email = normaliseEmail(input.email)
+    const email = normalizeEmail(input.email)
 
     await throttlerOf(deps).consume('magic:client', input.clientKey, deps.config.throttle)
     await throttlerOf(deps).consume('magic:email', email, deps.config.throttle)
