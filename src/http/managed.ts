@@ -2,14 +2,9 @@ import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
 import { DeliveryError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
-import { managedErrorResponse, proofHeaders } from './responses.js'
+import { applyMappedHeaders, managedErrorResponse, proofHeaders } from './responses.js'
 import { managedSocialHandlers } from './social.js'
-import {
-  applyMappedHeaders,
-  recoveryDiagnostic,
-  requestTranslator,
-  safeAccount,
-} from './response_helpers.js'
+import { recoveryDiagnostic, requestTranslator, safeAccount } from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'

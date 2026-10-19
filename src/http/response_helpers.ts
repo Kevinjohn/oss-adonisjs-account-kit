@@ -3,8 +3,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidTokenError } from '../errors.js'
 import type { AccountUser, CurrentAccount } from '../types.js'
 import {
+  applyMappedHeaders,
   managedErrorResponse,
-  type ManagedErrorResponse,
   type ManagedMessage,
   type ManagedTranslator,
 } from './responses.js'
@@ -13,25 +13,6 @@ import type { ManagedEndpointName } from './routes.js'
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
 export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
   return 'i18n' in context ? (context.i18n as ManagedTranslator) : undefined
-}
-
-export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
-  for (const [name, value] of Object.entries(mapped.headers)) {
-    if (name.toLowerCase() !== 'vary') {
-      context.response.header(name, value)
-      continue
-    }
-    const existing = context.response.getHeader('Vary')
-    const terms = existing
-      ? String(existing)
-          .split(',')
-          .map((term) => term.trim())
-      : []
-    if (terms.includes('*')) continue
-    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
-    context.response.header('Vary', terms.join(', '))
-  }
-  context.response.header('Content-Type', mapped.contentType)
 }
 
 export function invalidProof(
