@@ -10,7 +10,7 @@ import * as commandLoader from '../commands/main.js'
 import type { AccountKit } from '../src/account_kit.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import { useTestApp, type TestApp } from './helpers/app.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 import { documentErrors } from './helpers/openapi.js'
 
 function kernelFor(kit: TestApp, router: Router) {
@@ -24,7 +24,7 @@ function kernelFor(kit: TestApp, router: Router) {
 }
 
 function mounted(options: { representAccount?: boolean } = {}) {
-  const { router } = fixture()
+  const { router } = fakeManagedHttp()
   registerManagedRoutes(router, {
     prefix: '/api/v1',
     kit: async () => ({}) as AccountKit,
@@ -99,7 +99,7 @@ test.group('account-kit:openapi', (group) => {
   })
 
   test('fails clearly without managed routes or without a needed schema', async ({ assert }) => {
-    const empty = kernelFor(kit, fixture().router)
+    const empty = kernelFor(kit, fakeManagedHttp().router)
     const missing = await empty.kernel.exec('account-kit:openapi', [])
     assert.equal(missing.exitCode, 1)
     assert.equal(empty.logs()[0].stream, 'stderr')

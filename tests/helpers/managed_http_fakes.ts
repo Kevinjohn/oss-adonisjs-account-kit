@@ -1,6 +1,7 @@
 import type { HttpContext, Router } from '@adonisjs/core/http'
+import type { ManagedGuard } from '../../src/http/managed.js'
 
-export function fixture() {
+export function fakeManagedHttp() {
   const routes = new Map<string, (context: HttpContext) => Promise<unknown>>()
   const committed: Array<{ methods: string[]; pattern: string; name: string }> = []
   const pending: Array<{ methods: string[]; pattern: string; name: string }> = []
@@ -64,4 +65,18 @@ export function fixture() {
     } as unknown as HttpContext & { headers: Record<string, string> }
   }
   return { router, routes, context, pending }
+}
+
+/** A guard whose adapter is never built: a signed-in session caller unless overridden. */
+export function stubGuard<Credential = unknown>(
+  overrides: Partial<ManagedGuard<Credential>> = {}
+): ManagedGuard<Credential> {
+  const strategy = overrides.strategy ?? 'session'
+  return {
+    strategy,
+    name: strategy === 'session' ? 'web' : 'api',
+    forRequest: () => ({}) as never,
+    current: async () => ({ userId: 1, revision: null }),
+    ...overrides,
+  }
 }
