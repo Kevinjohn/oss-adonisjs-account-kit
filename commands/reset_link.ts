@@ -1,7 +1,7 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
 import type { OperatorResetLinkResult } from '../src/types.js'
-import { BEARER_WARNING, writeFailure, writeResult, writeWarning } from './operator_output.js'
+import { reportOperatorOutcome, writeFailure } from './operator_output.js'
 
 /** Operator password-reset link: no throttles; replaces the account's live reset link. */
 export default class ResetLink extends BaseCommand {
@@ -26,24 +26,17 @@ export default class ResetLink extends BaseCommand {
         deliver: this.print ? 'print' : 'send',
       })
       this.result = result
-      if (result.url) writeWarning(this, BEARER_WARNING)
-      if (result.user.unverifiedEmail !== null && result.user.unverifiedEmail === result.user.email)
-        writeWarning(
-          this,
-          'This account has not verified its email; completing the reset will activate it.'
-        )
-      writeResult(this, {
-        result: this.print ? 'printed' : 'sent',
-        userId: result.user.id,
-        email: result.user.email,
-        ...(result.url ? { url: result.url } : {}),
-        ...(result.fault ? { fault: result.fault } : {}),
+      const unverified =
+        result.user.unverifiedEmail !== null && result.user.unverifiedEmail === result.user.email
+      this.failure = reportOperatorOutcome(this, {
+        result,
+        printed: this.print,
+        fields: { userId: result.user.id, email: result.user.email },
+        faultLabel: 'Reset link',
+        warnings: unverified
+          ? ['This account has not verified its email; completing the reset will activate it.']
+          : [],
       })
-      if (result.fault) {
-        this.failure = result.fault.name
-        this.logger.error(`Reset link committed but a follow-up failed: ${result.fault.message}`)
-        this.exitCode = 1
-      }
     } catch (error) {
       this.failure = writeFailure(this, error)
     }
