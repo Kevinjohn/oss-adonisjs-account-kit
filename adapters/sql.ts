@@ -1,6 +1,6 @@
 import type { Database } from '@adonisjs/lucid/database'
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
-import { isSqlIdentifier } from '../src/identifiers.js'
+import { isSqlIdentifier } from '../src/sql_identifier.js'
 import { readTimestamp, sqlTimestamp } from '../src/timestamps.js'
 import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } from '../src/types.js'
 

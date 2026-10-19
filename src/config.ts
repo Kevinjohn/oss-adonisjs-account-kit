@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { CapabilityDisabledError } from './errors.js'
 import { budget } from './config_budget.js'
-import { isSqlIdentifier } from './identifiers.js'
+import { isSqlIdentifier } from './sql_identifier.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'

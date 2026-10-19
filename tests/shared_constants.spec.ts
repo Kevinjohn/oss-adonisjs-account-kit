@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isSqlIdentifier } from '../src/identifiers.js'
+import { isSqlIdentifier } from '../src/sql_identifier.js'
 import { isPasswordShaped, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../src/password.js'
 
 test.group('Shared constants', () => {
