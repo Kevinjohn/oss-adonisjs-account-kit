@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, InvalidTokenError, PostCommitError } from 'adonisjs-account-kit'
 import accountKit from 'adonisjs-account-kit/services/main'
-import { verificationCompleteValidator } from '#validators/account_kit'
+import { passwordValidator } from '#validators/account_kit'
 import { proofFailure, proofHeaders } from '#services/http_responses'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
@@ -30,7 +30,7 @@ export default class EmailVerificationsController {
 
   async complete(ctx: HttpContext) {
     proofHeaders(ctx)
-    const { password } = await ctx.request.validateUsing(verificationCompleteValidator)
+    const { password } = await ctx.request.validateUsing(passwordValidator)
     try {
       const result = await accountKit.emailVerification.complete({
         token: ctx.params.token,
