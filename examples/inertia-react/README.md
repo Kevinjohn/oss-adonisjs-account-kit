@@ -44,7 +44,8 @@ the `adonisjs-account-kit` dependency with the published version and skip that s
   above, and `createLogNotifications` for email.
 - `app/services/session_guard.ts`: lets Account Kit sign users in through the `web` guard and
   stores the credential revision in the session.
-- `app/middleware/silent_auth_middleware.ts`: signs out sessions that started before the latest
+- `app/middleware/session_revision_middleware.ts`: runs after the starter's silent auth middleware
+  and signs out sessions that started before the latest
   password change, on every request, so changing a password signs out every other device.
 - `app/exceptions/handler.ts`: turns Account Kit errors into flash messages and sends signed-out
   sessions to the login page.
