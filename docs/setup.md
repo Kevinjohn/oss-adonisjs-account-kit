@@ -84,7 +84,7 @@ Wire them up:
    Adapt the example [token](../examples/api/app/controllers/access_tokens_controller.ts) or
    [session](../examples/api/app/controllers/session_controller.ts) login controller; the
    [guard example](../examples/api/app/services/account_kit_guards.ts) shows the same adapter
-   behaviour. Logging in through the native guard, or with a test helper such as `loginAs`, does
+   behavior. Logging in through the native guard, or with a test helper such as `loginAs`, does
    not record the revision.
 
 Then run the check:

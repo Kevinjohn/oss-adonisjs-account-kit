@@ -5,7 +5,7 @@ Thanks for helping. Bug reports, documentation fixes, recipes and adapters are a
 ## Before you start
 
 - For a bug, open an issue with a reproduction first, unless the fix is a one-line change.
-- For a new feature or a behaviour change, open an issue to agree the shape before writing code.
+- For a new feature or a behavior change, open an issue to agree the shape before writing code.
   Account Kit keeps a small public surface on purpose.
 - Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
   public issue.
@@ -15,7 +15,7 @@ Thanks for helping. Bug reports, documentation fixes, recipes and adapters are a
 Every change follows these.
 
 - **Built for everyone who uses AdonisJS.** Follow the open-source AdonisJS packages and starter
-  kits for names, shapes and behaviour. Match AdonisJS Plus only where that costs nothing; Plus
+  kits for names, shapes and behavior. Match AdonisJS Plus only where that costs nothing; Plus
   compatibility is not a goal and never outweighs consistency for open-source users.
 - **The application owns its language.** Do what the official AdonisJS packages do: look up
   user-facing text through `@adonisjs/i18n` when the application uses it, with English as the
@@ -76,14 +76,14 @@ Run them before a release and after changing `configure.ts`, `stubs/` or `exampl
 - Keep each pull request to one change.
 - Add or update tests. A bug fix should include a test that fails without the fix.
 - Update the relevant page in `docs/` and add a line under `## Unreleased` in
-  [CHANGELOG.md](CHANGELOG.md) when behaviour visible to users changes.
+  [CHANGELOG.md](CHANGELOG.md) when behavior visible to users changes.
 - Write commit messages in the imperative mood, describing the change ("Reject expired invitation
   tokens on resend").
 
 ## Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in
-`adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behaviour the
+`adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behavior the
 Lucid adapter passes.
 
 ## Code of conduct

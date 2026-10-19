@@ -28,12 +28,12 @@ original error yourself.
 - `InvitationManagementDeniedError` is reported as `InvitationNotFoundError`, so a caller cannot
   tell a hidden invitation from a missing one.
 
-## Catalogue
+## Catalog
 
 | Error                                     | Code                                           | Status | When                                                                                                                 | What to do                                                                                                     |
 | ----------------------------------------- | ---------------------------------------------- | -----: | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `AccountKitError`                         | `E_ACCOUNT_KIT`                                |    500 | Base class for every package error.                                                                                  | Catch it to handle all package errors together.                                                                |
-| `InvalidInputError`                       | `E_ACCOUNT_KIT_INVALID_INPUT`                  |    422 | Input fails a package rule, for example a password outside the policy or a malformed email.                          | Validate with VineJS first so users see field errors; treat this as the last line of defence.                  |
+| `InvalidInputError`                       | `E_ACCOUNT_KIT_INVALID_INPUT`                  |    422 | Input fails a package rule, for example a password outside the policy or a malformed email.                          | Validate with VineJS first so users see field errors; treat this as the last line of defense.                  |
 | `InvalidTokenError`                       | `E_ACCOUNT_KIT_INVALID_TOKEN`                  |    422 | A proof token is malformed, unknown, used or expired.                                                                | Show "this link is invalid or has expired" and offer to send a new one.                                        |
 | `ThrottledError`                          | `E_ACCOUNT_KIT_THROTTLED`                      |    429 | A rate limit is spent. `retryAfterSeconds` says when to retry.                                                       | Return 429 with `Retry-After`. Tune budgets with `throttle` and `invitationThrottle`.                          |
 | `AuthorizationError`                      | `E_ACCOUNT_KIT_AUTHORIZATION`                  |    403 | An `authorize` callback denied the action, or public registration is closed.                                         | Check the actor's role in your `authorize` callbacks.                                                          |

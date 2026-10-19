@@ -366,7 +366,7 @@ export interface AccountKitConfig {
   sessionManagement?: SessionManagementConfig
   /**
    * Application data for the account export. Runs inside the export transaction; return a
-   * JSON-serialisable value. Its result becomes the export's `application` section.
+   * JSON-serializable value. Its result becomes the export's `application` section.
    */
   exportAccountData?: (user: AccountUser, trx: Trx) => Promise<unknown>
   /**
