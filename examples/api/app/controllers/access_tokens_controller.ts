@@ -1,6 +1,5 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import User from '#models/user'
 import { loginValidator } from '#validators/user'
 import { accessTokenGuard } from '#services/account_kit_guards'
@@ -11,8 +10,7 @@ export default class AccessTokensController {
     const { request, serialize } = ctx
     const { email, password } = await request.validateUsing(loginValidator)
 
-    const kit = await app.container.make(AccountKit)
-    const result = await kit.authentication.login(
+    const result = await accountKit.authentication.login(
       { email, password, clientKey: request.ip() },
       accessTokenGuard()
     )
@@ -22,8 +20,7 @@ export default class AccessTokensController {
 
   async destroy({ auth }: HttpContext) {
     const user = auth.use('api').getUserOrFail()
-    const kit = await app.container.make(AccountKit)
-    await kit.authentication.logout({
+    await accountKit.authentication.logout({
       async terminate() {
         if (user.currentAccessToken) {
           await User.accessTokens.delete(user, user.currentAccessToken.identifier)

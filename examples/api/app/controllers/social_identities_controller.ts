@@ -1,6 +1,6 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit, InvalidInputError } from 'adonisjs-account-kit'
+import { InvalidInputError } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import { accountInput } from '#middleware/account_access_middleware'
 import { requiredString } from '#services/social_request'
 
@@ -13,8 +13,7 @@ function identityId(value: string): number {
 export default class SocialIdentitiesController {
   async provePassword(ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
-    const kit = await app.container.make(AccountKit)
-    const proof = await kit.socialAuthentication.provePassword({
+    const proof = await accountKit.socialAuthentication.provePassword({
       current: accountInput(ctx),
       password: requiredString(ctx.request.input('password'), 'password'),
       purpose: ctx.request.input('purpose'),
@@ -23,8 +22,7 @@ export default class SocialIdentitiesController {
   }
 
   async unlink(ctx: HttpContext) {
-    const kit = await app.container.make(AccountKit)
-    await kit.socialAuthentication.unlink({
+    await accountKit.socialAuthentication.unlink({
       current: accountInput(ctx),
       identityId: identityId(ctx.params.id),
       proof: requiredString(ctx.request.input('proof'), 'proof'),
