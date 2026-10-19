@@ -18,10 +18,14 @@ export type RetirementOptions = {
   runtimeInventoryUnavailable: boolean
 }
 
-export type ValidateOptions = RetirementOptions & { production: boolean }
+export type ValidateOptions = RetirementOptions & {
+  production: boolean
+  /** Deployment values read for readiness; defaults to `process.env`. */
+  env?: NodeJS.ProcessEnv
+}
 
 export function validate(choices: SetupChoices, state: SetupInspection, options: ValidateOptions) {
-  const { production } = options
+  const { production, env = process.env } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
   if (!['services', 'managed'].includes(choices.mode))
@@ -92,8 +96,8 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     diagnostic(diagnostics, 'user.adapter', 'Provide #services/account_kit_users before activation')
   validateAuthentication(diagnostics, choices, state, production)
   validatePolicy(diagnostics, choices, state)
-  validateMail(diagnostics, choices, state, production)
-  validateSocial(diagnostics, choices, state, production)
+  validateMail(diagnostics, choices, state, production, env)
+  validateSocial(diagnostics, choices, state, production, env)
   retirementDiagnostics(diagnostics, choices, state, options)
   if (state.existingPrefix && state.existingPrefix !== choices.routePrefix)
     diagnostic(
