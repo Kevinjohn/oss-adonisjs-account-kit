@@ -2,7 +2,8 @@ import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
 import { DeliveryError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
-import { managedErrorResponse, proofHeaders } from './responses.js'
+import { managedErrorResponse } from './responses.js'
+import { applyProofHeaders } from './proof_headers.js'
 import { managedSocialHandlers } from './social.js'
 import {
   applyMappedHeaders,
@@ -52,7 +53,7 @@ function routeEntries(router: Router) {
 
 function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
-  for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
+  applyProofHeaders(context.response)
 }
 
 /** One handler per endpoint: a route added to routes.ts without a handler does not compile. */
