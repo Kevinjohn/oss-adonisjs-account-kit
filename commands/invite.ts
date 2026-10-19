@@ -1,7 +1,7 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
 import type { OperatorInviteResult } from '../src/types.js'
-import { BEARER_WARNING, writeFailure, writeResult, writeWarning } from './operator_output.js'
+import { reportOperatorOutcome, writeFailure } from './operator_output.js'
 
 /** Operator invitation: no actor authorisation, replaces any invitation pending for the address. */
 export default class InviteAccount extends BaseCommand {
@@ -30,21 +30,17 @@ export default class InviteAccount extends BaseCommand {
         deliver: this.print ? 'print' : 'send',
       })
       this.result = result
-      if (result.url) writeWarning(this, BEARER_WARNING)
-      writeResult(this, {
-        result: this.print ? 'printed' : 'sent',
-        id: result.invitation.id,
-        email: result.invitation.email,
-        role: result.invitation.role,
-        expiresAt: result.invitation.expiresAt.toISO(),
-        ...(result.url ? { url: result.url } : {}),
-        ...(result.fault ? { fault: result.fault } : {}),
+      this.failure = reportOperatorOutcome(this, {
+        result,
+        printed: this.print,
+        fields: {
+          id: result.invitation.id,
+          email: result.invitation.email,
+          role: result.invitation.role,
+          expiresAt: result.invitation.expiresAt.toISO(),
+        },
+        faultLabel: 'Invitation',
       })
-      if (result.fault) {
-        this.failure = result.fault.name
-        this.logger.error(`Invitation committed but a follow-up failed: ${result.fault.message}`)
-        this.exitCode = 1
-      }
     } catch (error) {
       this.failure = writeFailure(this, error)
     }
