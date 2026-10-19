@@ -1,14 +1,13 @@
 import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
-import { DeliveryError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
-import { managedErrorResponse, proofHeaders } from './responses.js'
+import { applyMappedHeaders, managedErrorResponse, proofHeaders } from './responses.js'
 import { managedSocialHandlers } from './social.js'
 import {
-  applyMappedHeaders,
   recoveryDiagnostic,
+  reportCommittedFailure,
   requestTranslator,
-  safeAccount,
+  publicAccount,
 } from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
@@ -95,13 +94,13 @@ async function execute<Credential>(
     : undefined
   const actorId = account?.id
   const represent = (value: CurrentAccount) =>
-    options.extensions?.representAccount?.(value, context) ?? safeAccount(value)
+    options.extensions?.representAccount?.(value, context) ?? publicAccount(value)
   const representIssued = async (value: CurrentAccount) => {
     try {
       return await represent(value)
     } catch {
       recoveryDiagnostic(context, route.name, 'representation_failed')
-      return safeAccount(value)
+      return publicAccount(value)
     }
   }
   return managedHandlers[route.name]({
@@ -147,15 +146,9 @@ export function registerManagedRoutes<Credential>(
         } catch (error) {
           if (
             (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
-            (error instanceof PostCommitError || error instanceof DeliveryError)
-          ) {
-            recoveryDiagnostic(
-              context,
-              route.name,
-              error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
-            )
+            reportCommittedFailure(context, route.name, error)
+          )
             return context.response.accepted({ committed: true })
-          }
           const mapped = managedErrorResponse(error, {
             accept: context.request.header('accept'),
             message: options.extensions?.message,
