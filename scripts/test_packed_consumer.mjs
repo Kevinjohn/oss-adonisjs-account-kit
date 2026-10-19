@@ -17,6 +17,7 @@ import {
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { format, resolveConfig } from 'prettier'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const fixtureRoot = join(repoRoot, 'examples/api')
@@ -336,6 +337,23 @@ async function configure(appRoot, env) {
   )
 }
 
+/** Checks the generated config as written, before the app's formatter can repair it. */
+async function checkGeneratedStyle(appRoot, env) {
+  const configPath = join(appRoot, 'config/account_kit.ts')
+  // The AdonisJS stub engine trims every file it renders, so the final newline is not ours.
+  const generated = await readFile(configPath, 'utf8')
+  const written = generated + '\n'
+  const options = await resolveConfig(configPath)
+  if ((await format(written, { ...options, filepath: configPath })) !== written)
+    throw new Error('The generated config/account_kit.ts is not formatted')
+  await writeFile(configPath, written)
+  try {
+    run('pnpm', ['exec', 'eslint', '--max-warnings', '0', 'config/account_kit.ts'], appRoot, env)
+  } finally {
+    await writeFile(configPath, generated)
+  }
+}
+
 async function adaptGeneratedUserSchema(appRoot) {
   const schemaPath = join(appRoot, 'database/schema.ts')
   const modelPath = join(appRoot, 'app/models/user.ts')
@@ -394,6 +412,7 @@ async function runFresh(candidate, runName) {
   const installed = await installArchive(appRoot, candidate)
   await resetExclusivePostgresSchema(appRoot)
   await configure(appRoot, env)
+  await checkGeneratedStyle(appRoot, env)
   run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
   await adaptGeneratedUserSchema(appRoot)
   run('pnpm', ['run', 'typecheck'], appRoot, env)

@@ -44,7 +44,7 @@ The callback names distinguish a link provision from a completed-operation notic
 `enabled` accepts any unique subset of `passwordReset`, `emailVerification`, `invitations`,
 `emailPasswordManagement`, `registration`, `socialAuthentication`, `magicLinkLogin`,
 `sessionManagement`, `dataExport` and `accountDeletion`. `magicLinkLogin` and `sessionManagement`
-are off by default and require `authentication`; see [magic-link sign-in](magic-link.md) and
+are off by default and require the `authentication` config; see [magic-link sign-in](magic-link.md) and
 [signed-in devices](signed-in-devices.md). `dataExport` and `accountDeletion` are off by default;
 see [account export and deletion](account-data.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
@@ -147,8 +147,8 @@ not create tenant or team membership records unless the application callback doe
 
 ## Adapter and registration data
 
-Prefer `createLucidAdapter(async () => (await import('#models/user')).default, options)` for Lucid
-users. It resolves the model lazily, derives its physical table and requires the default Lucid
+Prefer `createLucidAdapter(loadUser, options)` for Lucid users, where `loadUser` imports
+`#models/user` and returns its default export, as the generated config does. It resolves the model lazily, derives its physical table and requires the default Lucid
 connection and an `id` primary-key column. Add
 `mapRegistrationData(data, user)` only when account creation needs additional required profile
 fields. The callback receives untrusted registration data and the new model instance. Explicitly

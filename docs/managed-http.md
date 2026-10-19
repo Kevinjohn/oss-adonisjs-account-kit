@@ -1,5 +1,50 @@
 # Managed HTTP
 
+Account Kit can mount its own JSON routes for every enabled flow, so you write no controllers.
+The rest of this page is the full contract; start with the smallest working mount.
+
+## Quick start
+
+This mounts login and password reset under `/api` for the access-token guard in the AdonisJS API
+starter kit. Add the guard to `config/account_kit.ts`:
+
+```ts
+authentication: { strategy: 'access_tokens', guard: 'api' },
+```
+
+Create the route file:
+
+```ts
+// start/account_kit_routes.ts
+import router from '@adonisjs/core/services/router'
+import app from '@adonisjs/core/services/app'
+import { AccountKit } from 'adonisjs-account-kit'
+import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/http'
+
+registerManagedRoutes(router, {
+  prefix: '/api',
+  enabled: ['authentication', 'passwordReset'],
+  kit: () => app.container.make(AccountKit),
+  guard: createManagedGuard({
+    strategy: 'access_tokens',
+    name: 'api',
+    loadUser: async () => (await import('#models/user')).default,
+  }),
+})
+```
+
+Import it at the end of `start/routes.ts`:
+
+```ts
+import './account_kit_routes.js'
+```
+
+`node ace list:routes` now shows `POST /api/auth/login`, `POST /api/auth/password-reset` and the
+other endpoints for those groups. Add groups to `enabled` as you turn on more capabilities; the
+[endpoint reference](reference/endpoints.md) lists them. Emailed links still come from `urls` in
+the config: point them at your frontend pages, which post to these routes. A session guard also
+needs the `config/session.ts` wrapper described below.
+
 ## Configuration
 
 Import `registerManagedRoutes` from `adonisjs-account-kit/http` in the application's routes file. Calling it is the activation step; importing the package or configuring services registers no route. The HTTP entry requires AdonisJS Core and VineJS. Service-only applications do not import it and do not need VineJS.
@@ -36,7 +81,10 @@ import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/
 const selectedExistingGuard = createManagedGuard({
   strategy: 'session',
   name: 'web',
-  loadUser: async () => (await import('#models/user')).default,
+  loadUser: async () => {
+    const { default: User } = await import('#models/user')
+    return User
+  },
 })
 
 registerManagedRoutes(router, {

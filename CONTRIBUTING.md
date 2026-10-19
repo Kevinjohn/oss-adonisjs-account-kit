@@ -44,6 +44,10 @@ own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB
 Changes to account operations should pass on both SQLite and PostgreSQL. The `checks` workflow runs
 both on every pull request.
 
+`pnpm test:consumer` and the example app's own checks run locally, not in the `checks` workflow.
+Run them before a release and after changing `configure.ts`, `stubs/` or `examples/api`; the
+[release gate](docs/maintainers/release-gate.md) records when they move to hosted CI.
+
 ## Code layout
 
 - `src/` holds the account operations, one responsibility per file.
