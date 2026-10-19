@@ -27,6 +27,14 @@ export interface ManagedErrorResponse {
  */
 export type ManagedMessage = (code: string, defaultMessage: string) => string
 
+/**
+ * The part of an `@adonisjs/i18n` `I18n` instance the managed routes use. Error wording is looked
+ * up as `errors.<code>`, with the English message as the fallback.
+ */
+export interface ManagedTranslator {
+  t(identifier: string, data: Record<string, unknown>, fallbackMessage: string): string
+}
+
 function prefersJsonApi(accept?: string): boolean {
   if (!accept) return false
   const ranges = accept.split(',').map((part) => {
@@ -64,6 +72,7 @@ export function managedErrorResponse(
     accept?: string
     proof?: 'password' | 'email' | 'invitation' | 'magicLink'
     message?: ManagedMessage
+    i18n?: ManagedTranslator
   } = {}
 ): ManagedErrorResponse | null {
   if (error instanceof PostCommitError) return null
@@ -125,7 +134,8 @@ export function managedErrorResponse(
   }
 
   const jsonApi = prefersJsonApi(options.accept)
-  const publicMessage = options.message?.(code, message) ?? message
+  const translated = options.i18n?.t(`errors.${code}`, {}, message) ?? message
+  const publicMessage = options.message?.(code, translated) ?? translated
   return {
     status,
     contentType: jsonApi ? 'application/vnd.api+json' : 'application/json',

@@ -1,4 +1,6 @@
+import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
+import * as errors from '../src/errors.js'
 import {
   InvalidCredentialsError,
   InvalidInputError,
@@ -91,6 +93,42 @@ test.group('managed HTTP responses', () => {
     )
   })
 
+  test('translates wording as errors.<code> and lets the message hook have the last word', ({
+    assert,
+  }) => {
+    const lookups: unknown[] = []
+    const i18n = {
+      t(identifier: string, data: Record<string, unknown>, fallbackMessage: string) {
+        lookups.push([identifier, data, fallbackMessage])
+        return identifier === 'errors.E_ACCOUNT_KIT_THROTTLED'
+          ? 'Trop de requêtes.'
+          : fallbackMessage
+      },
+    }
+    assert.deepEqual(managedErrorResponse(new ThrottledError(1), { i18n })?.body, {
+      errors: [{ code: 'E_ACCOUNT_KIT_THROTTLED', message: 'Trop de requêtes.' }],
+    })
+    assert.deepEqual(lookups, [['errors.E_ACCOUNT_KIT_THROTTLED', {}, 'Too many requests.']])
+    assert.deepEqual(
+      managedErrorResponse(new InvalidTokenError(), { proof: 'magicLink', i18n })?.body,
+      { errors: [{ code: 'E_INVALID_MAGIC_LINK', message: 'This link is invalid or expired.' }] }
+    )
+    assert.deepEqual(
+      managedErrorResponse(new ThrottledError(1), {
+        i18n,
+        message: (code, defaultMessage) => `${code}: ${defaultMessage}`,
+      })?.body,
+      {
+        errors: [
+          {
+            code: 'E_ACCOUNT_KIT_THROTTLED',
+            message: 'E_ACCOUNT_KIT_THROTTLED: Trop de requêtes.',
+          },
+        ],
+      }
+    )
+  })
+
   test('does not expose committed callback failures as a rolled-back response', ({ assert }) => {
     assert.isNull(managedErrorResponse(new PostCommitError('mail failed')))
     assert.deepEqual(proofHeaders(), {
@@ -113,5 +151,34 @@ test.group('managed HTTP responses', () => {
         ],
       },
     })
+  })
+})
+
+test.group('managed HTTP error wording docs', () => {
+  test('the documented errors.json lists every managed code with its English message', async ({
+    assert,
+  }) => {
+    const docs = await readFile(new URL('../docs/managed-http.md', import.meta.url), 'utf8')
+    const block = docs
+      .split('resources/lang/<locale>/errors.json')[1]
+      ?.match(/```json\n([\s\S]*?)```/)
+    const documented = JSON.parse(block![1])
+    const actual: Record<string, string> = {}
+    for (const ErrorClass of Object.values(errors)) {
+      if (
+        ErrorClass !== errors.AccountKitError &&
+        !(ErrorClass.prototype instanceof errors.AccountKitError)
+      )
+        continue
+      const error =
+        ErrorClass === errors.ThrottledError
+          ? new errors.ThrottledError(1)
+          : new (ErrorClass as new () => Error)()
+      for (const proof of ['password', 'email', 'invitation', 'magicLink'] as const) {
+        const body = managedErrorResponse(error, { proof })?.body.errors[0]
+        if (body && 'message' in body) actual[body.code] = body.message
+      }
+    }
+    assert.deepEqual(documented, actual)
   })
 })
