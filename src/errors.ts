@@ -140,7 +140,7 @@ export class CapabilityDisabledError extends AccountKitError {
  * accounts, so it reveals nothing about which.
  */
 export class InvalidCredentialsError extends AccountKitError {
-  static code = 'E_ACCOUNT_KIT_INVALID_CREDENTIALS'
+  static code = 'E_INVALID_CREDENTIALS'
   static status = 400
   constructor() {
     super('Invalid email or password')
