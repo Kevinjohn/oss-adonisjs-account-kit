@@ -1,5 +1,8 @@
 # Session reference integration
 
+How the [API example](../examples/api/README.md) wires browser sessions through its own controllers. File paths are relative to
+`examples/api/`.
+
 ## Configuration
 
 Set `ACCOUNT_KIT_AUTH_STRATEGY=session` to select the existing `web` guard. Configure a shared server-side `SESSION_DRIVER` for a multi-instance deployment; the fixture uses `memory` only in single-process tests and rejects `cookie` because logout could not invalidate a replayed self-contained cookie. The example disables remember-me tokens and sets its session cookie to `httpOnly`, `sameSite: 'lax'`, and `secure` in production. Use HTTPS for `APP_URL`, configure trusted proxies before relying on `request.ip()`, and allow only trusted browser origins in production CORS configuration. Cookie-backed requests require Shield CSRF protection, including unauthenticated login and signup.
@@ -20,7 +23,7 @@ Package password reset, password change, confirmed-email change, and restriction
 
 ## Files
 
-`app/controllers/session_controller.ts` adapts the existing guard and exposes CSRF bootstrap. `app/middleware/account_access_middleware.ts` and `app/middleware/verified_account_middleware.ts` gate application-owned and package-backed routes. `config/auth.ts`, `config/session.ts`, `config/shield.ts`, and `config/cors.ts` show the guard, cookie, CSRF, and origin settings. `tests/functional/authentication_session.spec.ts` exercises browser authentication and revocation on an application-owned route. `tests/functional/reference_session.spec.ts` checks login failure consistency, activation, pending email change, and invitation lifecycle through installed HTTP.
+`app/controllers/session_controller.ts` adapts the existing guard and exposes CSRF bootstrap. `app/middleware/account_access_middleware.ts` and `app/middleware/verified_account_middleware.ts` gate application-owned and package-backed routes. `config/auth.ts`, `config/session.ts`, `config/shield.ts`, and `config/cors.ts` show the guard, cookie, CSRF, and origin settings. `examples/api/tests/functional/authentication_session.spec.ts` exercises browser authentication and revocation on an application-owned route. `examples/api/tests/functional/reference_session.spec.ts` checks login failure consistency, activation, pending email change, and invitation lifecycle through installed HTTP.
 
 ## Before deployment
 

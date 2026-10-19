@@ -11,8 +11,8 @@ application-owned mode, not a choice between consumption modes. Account Kit does
 application-owned routes, choose the application's response format, or replace its authentication
 guard. The [API consumer example](../examples/api/README.md)
 shows a complete AdonisJS application. Its [route table](../examples/api/start/routes.ts),
-[session reference](../examples/api/SESSION.md), and
-[access-token reference](../examples/api/TOKENS.md) give the concrete paths, payloads, guard setup,
+[session reference](session-reference.md), and
+[access-token reference](token-reference.md) give the concrete paths, payloads, guard setup,
 and responses this guide summarizes.
 
 ## Configuration
@@ -152,7 +152,7 @@ Also redact full URLs and `Authorization` headers. For committed failures, use a
 in application logs and return the success or recovery response appropriate to that operation; do
 not retry a mutation as if it rolled back. See
 [HTTP and error handling](usage.md#http-and-error-handling),
-[token responses](../examples/api/TOKENS.md#how-it-works), and
+[token responses](token-reference.md#how-it-works), and
 [notifications](notifications.md) for the current contracts.
 
 ### Let package operations own account writes

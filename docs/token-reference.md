@@ -1,5 +1,8 @@
 # Access-token API reference
 
+How the [API example](../examples/api/README.md) wires opaque access tokens through its own controllers. File paths are relative to
+`examples/api/`.
+
 ## Configuration
 
 Set `ACCOUNT_KIT_AUTH_STRATEGY=access_tokens` and use the existing `api` AdonisJS guard with its opaque access-token provider. The example config sets `tokenExpiresIn: '1d'` and `tokenAbilities: ['*']`; choose a shorter lifetime and narrower abilities for your application. `auth_access_tokens` must exist before token login. The example checks `invitations:create` before its invitation-send action. Other application routes must check their own required abilities.
