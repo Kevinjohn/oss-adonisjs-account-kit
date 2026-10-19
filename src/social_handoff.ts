@@ -7,7 +7,7 @@ import { revision, safeAccount } from './authentication.js'
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { SocialTransactionError } from './errors.js'
-import { enabledProviders, now, type Dependencies } from './social_identity.js'
+import { enabledProviders, now, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type {
   AuthenticationGuard,
