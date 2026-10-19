@@ -9,7 +9,7 @@ import {
   type SocialProviderName,
 } from 'adonisjs-account-kit'
 import accountKit from 'adonisjs-account-kit/services/main'
-import { sessionGuard } from '#services/account_kit_guards'
+import { accountKitSessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 import { currentIfAuthenticated, requiredString, socialStrategy } from '#services/social_request'
 import { socialRegistrationValidator } from '#validators/user'
@@ -119,7 +119,7 @@ export default class SocialAuthController {
       const redeemed = await accountKit.socialAuthentication.redeemHandoff({
         code: result.handoffCode,
         verifier: browserVerifier,
-        guard: sessionGuard(ctx),
+        guard: accountKitSessionGuard(ctx),
       })
       rememberLastUsedMethod(ctx, redeemed.provider)
       return ctx.response.ok({ status: result.status, account: redeemed.account })

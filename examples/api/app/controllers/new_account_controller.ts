@@ -9,7 +9,7 @@ import {
 } from 'adonisjs-account-kit'
 import accountKit from 'adonisjs-account-kit/services/main'
 import UserTransformer from '#transformers/user_transformer'
-import { accessTokenGuard, sessionGuard } from '#services/account_kit_guards'
+import { accessTokenGuard, accountKitSessionGuard } from '#services/account_kit_guards'
 import {
   reportCommittedFailure,
   reportCredentialEstablishmentFailure,
@@ -44,7 +44,7 @@ export default class NewAccountController {
     try {
       result =
         strategy === 'session'
-          ? await accountKit.authentication.login(input, sessionGuard(ctx))
+          ? await accountKit.authentication.login(input, accountKitSessionGuard(ctx))
           : await accountKit.authentication.login(input, accessTokenGuard())
     } catch {
       reportCredentialEstablishmentFailure(ctx.logger, 'registration.credential_establish')
