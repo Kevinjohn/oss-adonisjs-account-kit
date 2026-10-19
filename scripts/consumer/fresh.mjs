@@ -66,10 +66,7 @@ export async function runFresh(candidate, runName) {
   run('pnpm', ['run', 'typecheck'], appRoot, env)
   const generatedConfigSha256 = await digest(configPath)
   const configuredRc = await readFile(adonisrcPath, 'utf8')
-  if (
-    (configuredRc.match(/adonisjs-account-kit\/account_kit_provider/g) ?? []).length !==
-    1
-  ) {
+  if ((configuredRc.match(/adonisjs-account-kit\/account_kit_provider/g) ?? []).length !== 1) {
     throw new Error('Configure did not register exactly one account-kit provider')
   }
   await copyFile(adapterPath, configPath)
