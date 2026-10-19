@@ -18,14 +18,10 @@ Package password reset, password change, confirmed-email change, and restriction
 
 `POST /api/v1/account/logout` ends the current server-side session. It does not revoke every credential. The old cookie is rejected; after a fresh CSRF bootstrap, a repeated authenticated logout returns 401. A repeat with the old CSRF token can fail CSRF validation first with 403.
 
-## Files delta
+## Files
 
 `app/controllers/session_controller.ts` adapts the existing guard and exposes CSRF bootstrap. `app/middleware/account_access_middleware.ts` and `app/middleware/verified_account_middleware.ts` gate application-owned and package-backed routes. `config/auth.ts`, `config/session.ts`, `config/shield.ts`, and `config/cors.ts` show the guard, cookie, CSRF, and origin settings. `tests/functional/authentication_session.spec.ts` exercises browser authentication and revocation on an application-owned route. `tests/functional/reference_session.spec.ts` checks login failure consistency, activation, pending email change, and invitation lifecycle through installed HTTP.
 
-## Manual steps
+## Before deployment
 
 Choose a shared server-side session store, trusted proxy policy, HTTPS origin, production CORS allowlist, and cookie scope for the deployment. Apply the users-table credential-revision migration before accepting new sessions. Protect all application-owned routes that need revocation or active-account checks. Redact proof path segments in access logs (`/api/v1/auth/password-reset/:token`, `/email-verification/:token`, `/email-change/:token`, and `/invitations/:token`). Configure a worker for durable account mail and inspect failed delivery records; the fixture's in-memory capture is for tests. Run the installed-consumer tests for SQLite and PostgreSQL with `ACCOUNT_KIT_AUTH_STRATEGY=session` coverage.
-
-## Changelog
-
-The [Unreleased changelog](../../CHANGELOG.md#unreleased) records the session reference and non-cacheable CSRF bootstrap.
