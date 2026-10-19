@@ -250,7 +250,7 @@ test('a limited inactive token cannot reach a verified account route', async ({
   assert.equal(restricted.status(), 403)
   assert.equal(
     (restricted.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
 })
 
@@ -376,7 +376,9 @@ test('verification GET inspects without consuming and POST completes once', asyn
   })
   assert.equal(replay.status(), 400)
   assert.deepEqual(replay.body(), {
-    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' }],
+    errors: [
+      { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' },
+    ],
   })
   const spentInspect = await client.get(path)
   assert.equal(spentInspect.status(), 400)
@@ -384,7 +386,9 @@ test('verification GET inspects without consuming and POST completes once', asyn
   const jsonApiProof = await client.get(path).header('accept', 'application/vnd.api+json')
   assert.equal(jsonApiProof.status(), 400)
   assert.deepEqual(jsonApiProof.body(), {
-    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' }],
+    errors: [
+      { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' },
+    ],
   })
 })
 

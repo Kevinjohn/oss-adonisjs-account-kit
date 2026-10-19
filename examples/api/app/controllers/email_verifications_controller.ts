@@ -25,7 +25,7 @@ export default class EmailVerificationsController {
     proofHeaders(ctx)
     const kit = await app.container.make(AccountKit)
     if (!(await kit.emailVerification.inspect({ token: ctx.params.token }))) {
-      return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+      return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
     }
     return ctx.response.ok({ confirmation: true })
   }
@@ -38,7 +38,8 @@ export default class EmailVerificationsController {
       const result = await kit.emailVerification.complete({ token: ctx.params.token, password })
       return ctx.response.ok({ result })
     } catch (error) {
-      if (error instanceof InvalidTokenError) return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+      if (error instanceof InvalidTokenError)
+        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
         reportCommittedFailure(ctx.logger, error, 'email_verification.complete')
         return ctx.response.ok({ result: 'verified' })

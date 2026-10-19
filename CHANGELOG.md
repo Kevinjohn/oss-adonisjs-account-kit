@@ -20,7 +20,7 @@ Initial public release.
 - Optional magic-link sign-in (`magicLinkLogin`, `kit.magicLink`): a one-use, 15-minute email link
   bound to the requesting client by a PKCE-style verifier, for session and access-token guards,
   with managed routes under `auth/magic-link`, the `magicLinkProvision` email, the
-  `E_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
+  `E_ACCOUNT_KIT_INVALID_MAGIC_LINK` managed error code, setup support and pruning. Every credential change
   deletes outstanding links, so the `login_link_tokens` table is required in every
   installation.
 - Optional sign-in management (`sessionManagement`, `kit.authentication.sessions`): list the
