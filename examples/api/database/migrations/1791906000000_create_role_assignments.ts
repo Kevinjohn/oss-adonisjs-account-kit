@@ -11,7 +11,7 @@ export default class extends BaseSchema {
       const idType = env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer'
       const userId =
         idType === 'integer'
-          ? table.integer('user_id')
+          ? table.integer('user_id').unsigned()
           : idType === 'uuid'
             ? table.uuid('user_id')
             : table.string('user_id')
