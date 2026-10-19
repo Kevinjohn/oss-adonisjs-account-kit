@@ -19,6 +19,7 @@
     "!docs/assets/**",
     "!docs/PRD*.md",
     "!PLAN*.md",
+    "README-AGENTS.md",
     "SECURITY.md",
     "CHANGELOG.md"
   ],
@@ -100,7 +101,7 @@
     "c8": "^11.0.0",
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
-    "drizzle-orm": "0.45.3",
+    "drizzle-orm": "0.45.4",
     "eslint": "^10.0.3",
     "luxon": "^3.0.0",
     "mysql2": "^3.24.6",
