@@ -36,6 +36,40 @@ test('every relative Markdown link points at a tracked path', async ({ assert })
   assert.deepEqual(broken, [])
 })
 
+/** GitHub's heading anchors: lowercase, punctuation dropped, spaces as hyphens. */
+async function headingAnchors(document: string): Promise<Set<string>> {
+  const source = await readFile(join(repoRoot, document), 'utf8')
+  const headings = source.replace(/```[\s\S]*?```/g, '').matchAll(/^#{1,6} (.+)$/gm)
+  return new Set(
+    [...headings].map(([, heading]) =>
+      heading
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N} _-]/gu, '')
+        .replace(/ /g, '-')
+    )
+  )
+}
+
+test('every anchor in a relative Markdown link names a heading', async ({ assert }) => {
+  const broken: string[] = []
+  let checked = 0
+  for (const document of trackedDocuments()) {
+    const source = await readFile(join(repoRoot, document), 'utf8')
+    const text = source.replace(/```[\s\S]*?```/g, '')
+    for (const [, target] of text.matchAll(/\]\(([^)\s]+)\)/g)) {
+      if (/^[a-z][a-z\d+.-]*:/i.test(target) || !target.includes('#')) continue
+      const [path, anchor] = target.split('#')
+      const linked = path ? posix.join(posix.dirname(document), path) : document
+      if (!linked.endsWith('.md') || !existsSync(join(repoRoot, linked))) continue
+      checked++
+      if (!(await headingAnchors(linked)).has(decodeURIComponent(anchor)))
+        broken.push(`${document}: ${target}`)
+    }
+  }
+  assert.isAbove(checked, 0)
+  assert.deepEqual(broken, [])
+})
+
 /** Paths in the npm tarball; Markdown there is read without the rest of the repository. */
 function packedFiles(): Set<string> {
   const packed = spawnSync('pnpm', ['pack', '--dry-run', '--json'], {
