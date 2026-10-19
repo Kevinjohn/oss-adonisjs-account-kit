@@ -6,6 +6,7 @@ import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
+import { configure, migrationNames } from '../configure.js'
 
 test('configures the package idempotently without replacing application-owned files', async ({
   assert,
@@ -137,3 +138,60 @@ test('configures the package idempotently without replacing application-owned fi
     await rm(root, { recursive: true, force: true })
   }
 }).timeout(10_000)
+
+test('configure passes dashed and camel-case CLI schema flags into generated migrations', async ({
+  assert,
+}) => {
+  const root = await mkdtemp(join(tmpdir(), 'account-kit-schema-flags-'))
+  try {
+    await mkdir(join(root, 'database', 'migrations'), { recursive: true })
+    await mkdir(join(root, 'start'), { recursive: true })
+    await writeFile(join(root, 'start', 'env.ts'), '')
+
+    for (const [parsedFlags, userIdType] of [
+      [{ 'users-table': 'order', 'user-id-type': 'uuid' }, 'uuid'],
+      [{ usersTable: 'group', userIdType: 'string' }, 'string'],
+    ] as const) {
+      const migrationData: Array<Record<string, unknown>> = []
+      const codemods = {
+        overwriteExisting: true,
+        async makeUsingStub(_root: string, name: string, data: Record<string, unknown>) {
+          if (name.startsWith('migrations/'))
+            migrationData.push(data.migration as Record<string, unknown>)
+        },
+        async updateRcFile(
+          update: (rcFile: {
+            addProvider(name: string): void
+            addCommand(name: string): void
+          }) => void
+        ) {
+          update({ addProvider() {}, addCommand() {} })
+        },
+        async defineEnvValidations() {},
+      }
+      const command = {
+        parsedFlags,
+        stubsRoot: fileURLToPath(new URL('../stubs', import.meta.url)),
+        app: { makePath: (...parts: string[]) => join(root, ...parts) },
+        logger: { info() {}, warning() {} },
+        async createCodemods() {
+          return codemods
+        },
+      } as unknown as Configure
+
+      await configure(command)
+      assert.lengthOf(migrationData, migrationNames.length)
+      for (const migration of migrationData) {
+        assert.equal(
+          migration.usersTable,
+          JSON.stringify(parsedFlags['users-table'] ?? parsedFlags.usersTable)
+        )
+        if (userIdType === 'uuid') assert.equal(migration.userIdColumn, "table.uuid('user_id')")
+        if (userIdType === 'string')
+          assert.equal(migration.userIdColumn, "table.string('user_id', 254)")
+      }
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
