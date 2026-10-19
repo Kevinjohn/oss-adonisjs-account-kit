@@ -1,6 +1,5 @@
 // Session sign-in registry: one row per signed-in browser session, keyed by a hashed handle.
 import { DateTime } from 'luxon'
-import { sessionTouchIntervalMs } from './config_session_management.js'
 import { InvalidSessionError } from './errors.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -8,6 +7,9 @@ import type { ResolvedConfig, Trx, UserId } from './types.js'
 import { sqlTimestamp } from './timestamps.js'
 
 export const sessionTable = 'account_sessions'
+
+/** Seen sign-ins are refreshed at most this often, so idle expiry must be longer. */
+export const sessionTouchIntervalMs = 5 * 60 * 1000
 
 /** Session guards record each sign-in only while `sessionManagement` is enabled. */
 export function sessionRegistryEnabled(config: ResolvedConfig): boolean {

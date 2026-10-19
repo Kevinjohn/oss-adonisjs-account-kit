@@ -337,7 +337,7 @@ test.group('session management config', (group) => {
     for (const idleExpiry of ['5m', 300, '1m'])
       assert.throws(
         () => defineConfig(base({ sessionManagement: { idleExpiry } })),
-        /idleExpiry must be longer than five minutes/
+        /idleExpiry must be longer than 5 minutes/
       )
     assert.throws(() => defineConfig(base({ sessionManagement: { idleExpiry: 'soon' } })))
     assert.throws(
