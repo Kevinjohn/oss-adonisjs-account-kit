@@ -135,7 +135,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
 
 - **One transaction per operation.** Each account operation runs in one package-owned transaction.
   PostgreSQL and MySQL lock the user row (`SELECT ... FOR UPDATE`); SQLite serializes package
-  writes through a lock row ([`db.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/db.ts), [`transaction.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/transaction.ts)).
+  writes through a lock row ([`user_lock.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/user_lock.ts), [`transaction.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/transaction.ts)).
 - **No half-finished changes.** If an adapter or hook fails, the token use, the password change and
   the revocation roll back together. Pinned by "adapter failure rolls back token consumption and
   password change".
