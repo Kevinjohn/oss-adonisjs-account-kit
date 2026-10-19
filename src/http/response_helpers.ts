@@ -15,6 +15,11 @@ export function requestTranslator(context: HttpContext): AccountKitTranslator | 
   return 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined
 }
 
+/** User-facing text looked up through the request's `@adonisjs/i18n` instance, with English as the fallback. */
+export function translate(context: HttpContext, key: string, fallbackMessage: string): string {
+  return requestTranslator(context)?.t(key, {}, fallbackMessage) ?? fallbackMessage
+}
+
 export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
   for (const [name, value] of Object.entries(mapped.headers)) {
     if (name.toLowerCase() !== 'vary') {

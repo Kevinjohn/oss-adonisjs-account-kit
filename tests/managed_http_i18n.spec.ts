@@ -12,13 +12,18 @@ const french: Record<string, string> = {
   'validator.shared.messages.unique': 'Le champ {field} est déjà utilisé.',
   'validator.shared.fields.password': 'mot de passe',
   'validator.shared.fields.email': 'e-mail',
+  'account_kit.password_reset_requested': 'Si le compte existe, les instructions seront envoyées.',
+  'account_kit.magic_link_requested': 'Si le compte existe, un lien de connexion sera envoyé.',
 }
 const i18n = {
   t: (identifier: string, data: Record<string, unknown>, fallbackMessage: string) =>
     (french[identifier] ?? fallbackMessage).replace(/\{(\w+)\}/g, (_, name) => String(data[name])),
 }
 
-function mount(kit: unknown, enabled: ('passwordReset' | 'registration')[] = ['passwordReset']) {
+function mount(
+  kit: unknown,
+  enabled: ('passwordReset' | 'registration' | 'magicLinkLogin')[] = ['passwordReset']
+) {
   const { router, routes, context } = fakeManagedHttp()
   registerManagedRoutes(router, {
     prefix: '/api/v1',
@@ -112,6 +117,41 @@ test.group('managed HTTP translation', () => {
       body: {
         errors: [{ field: 'email', rule: 'unique', message: 'Le champ e-mail est déjà utilisé.' }],
       },
+    })
+  })
+
+  test('request acknowledgements use the request i18n instance', async ({ assert }) => {
+    const { routes, context } = mount(
+      {
+        managedHttp: { assertGuard: () => {}, consume: async () => {} },
+        passwordReset: { request: async () => {} },
+        magicLink: { request: async () => {} },
+      },
+      ['passwordReset', 'magicLinkLogin']
+    )
+    const run = (key: string, translated: boolean) => {
+      const ctx = context()
+      ctx.request.validateUsing = (async () => ({
+        email: 'a@example.test',
+        clientChallenge: 'challenge',
+      })) as never
+      return routes.get(key)!(translated ? Object.assign(ctx, { i18n }) : ctx)
+    }
+    assert.deepEqual(await run('POST /api/v1/auth/password-reset', true), {
+      status: 202,
+      body: { message: 'Si le compte existe, les instructions seront envoyées.' },
+    })
+    assert.deepEqual(await run('POST /api/v1/auth/password-reset', false), {
+      status: 202,
+      body: { message: 'If the account exists, instructions will be sent.' },
+    })
+    assert.deepEqual(await run('POST /api/v1/auth/magic-link', true), {
+      status: 202,
+      body: { message: 'Si le compte existe, un lien de connexion sera envoyé.' },
+    })
+    assert.deepEqual(await run('POST /api/v1/auth/magic-link', false), {
+      status: 202,
+      body: { message: 'If the account exists, a sign-in link will be sent.' },
     })
   })
 })
