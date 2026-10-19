@@ -195,7 +195,7 @@ email, password, role, or verification after association.
 ## Files and migrations
 
 - The package adds `social_transactions`, `social_sensitive_proofs`, and `social_handoff_codes`
-  tables, and adds `social_identities.confirmed_at`. Handoff rows reference their source
+  tables, and `social_identities` has a `confirmed_at` column. Handoff rows reference their source
   association and cascade away when it is removed.
 - `src/social_identity.ts` owns local resolution and proof transitions; the existing user adapter
   and selected guard remain the identity and credential boundaries.
