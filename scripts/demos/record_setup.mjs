@@ -1,7 +1,7 @@
 // Records account-kit:setup previewing, then applying, the API choices on a setup demo app.
 // Usage: node scripts/demos/record_setup.mjs <app-dir> <out-dir>
 import { execFileSync } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import { Cast } from './cast.mjs'
 
@@ -40,7 +40,11 @@ function changes(report) {
 
 const info = (line) => line.replace('[ info ]', '\x1b[34m[ info ]\x1b[0m')
 
-// Start from the committed starter app, so the recording can be run again.
+// Start from the committed starter app, so the recording can be run again. Without its own
+// repository, git would find an enclosing one, such as this checkout, and reset that instead.
+const root = sh('git rev-parse --show-toplevel').trim()
+if (realpathSync(root) !== realpathSync(appDir))
+  throw new Error(`${appDir} is not a setup demo app; run create_setup_app.mjs first`)
 sh('git reset -q --hard && git clean -fdq')
 
 const cast = new Cast()
