@@ -8,6 +8,18 @@
 - `.nvmrc` pins `24`. If the shell starts on another version, run `nvm use` (or put
   `~/.nvm/versions/node/v24.*/bin` first on `PATH`) before `pnpm` commands.
 
+## Project principles
+
+The same rules as `CONTRIBUTING.md`; every change follows them.
+
+- **Built for everyone who uses AdonisJS.** Follow the open-source AdonisJS packages and starter
+  kits for names, shapes and behaviour. Match AdonisJS Plus only where that costs nothing; Plus
+  compatibility is not a goal and never outweighs consistency for open-source users.
+- **The application owns its language.** Do what the official AdonisJS packages do: look up
+  user-facing text through `@adonisjs/i18n` when the application uses it, with English as the
+  fallback. No locale detection, no package language setting, and no translations or loader
+  shipped in the package.
+
 ## Checks
 
 - Run the repository scripts, not the bare tools: `pnpm lint`, `pnpm typecheck`, `pnpm build`,
