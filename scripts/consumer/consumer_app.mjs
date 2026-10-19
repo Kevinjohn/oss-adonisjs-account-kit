@@ -19,7 +19,7 @@ export function databaseEnvironment(appRoot, schema = 'account_kit_consumer') {
     APP_URL: 'http://127.0.0.1:3333',
     SESSION_DRIVER: 'memory',
     LIMITER_STORE: 'memory',
-    DB_CONNECTION: database === 'sqlite' ? 'sqlite' : 'pg',
+    DB_CONNECTION: database === 'sqlite' ? 'sqlite' : 'postgres',
   }
   if (database === 'postgres') {
     Object.assign(dbEnv, {
