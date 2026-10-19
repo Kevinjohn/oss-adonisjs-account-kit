@@ -54,7 +54,7 @@ or refresh credentials. Existing application social identities need an applicati
 subject-to-user mapping; email equality alone does not prove ownership. Social sign-in endpoints
 are outside this contract.
 
-## Files delta
+## Files and migrations
 
 The public adapter types live in `src/types.ts`, the conventional mapping in
 `adapters/lucid.ts`, and proof operations in `src/verification.ts`, `src/credentials.ts`, and
@@ -62,7 +62,7 @@ The public adapter types live in `src/types.ts`, the conventional mapping in
 social identities, then retire the old email-change table. The API example includes matching
 migrations and model fields. Already-applied migration files are preserved.
 
-## Manual steps
+## Before deployment
 
 Before applying migrations, inspect the generated files and verify the existing users table,
 ID type, unique normalized email policy, password hashing hook, and transaction-compatible
@@ -83,8 +83,3 @@ Update custom adapters to the new create shape and pending-email setter, plus th
 `AccountUser.unverifiedEmail` property. Update application-owned schema representations and
 controllers to use the pending-email state for authorization rather than the audit timestamp.
 Run both database suites and the installed-consumer checks before deployment.
-
-## Changelog
-
-See the [Unreleased entries](../CHANGELOG.md#unreleased) for every changed public contract,
-table, and column.

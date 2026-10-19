@@ -147,7 +147,7 @@ Development capture must be explicit in the application's Mail transport and sho
 captured messages as local artifacts. Do not use a silent discard transport in production or
 present a captured message as delivered to its recipient.
 
-## Files delta
+## Files and migrations
 
 In the consuming application, install and configure AdonisJS Mail in `config/mail.ts`, register
 its provider and command in `adonisrc.ts`, and add sender, public-origin and transport references
@@ -157,7 +157,7 @@ must supply browser landing pages for enabled proof flows. A durable choice addi
 an application migration for its outbox or queue state, a worker, retry and failure monitoring,
 and operational configuration. Account Kit does not generate those application files.
 
-## Manual steps
+## Before deployment
 
 Configure the application Mail transport, sender, public origins and browser destinations. Send
 a development test message and inspect both HTML and text. Follow each link to the application
@@ -165,8 +165,3 @@ page and exercise its backend operation. Test a transport failure and check that
 account state is intact, the error is recorded privately, and the public password-reset
 acknowledgement remains generic. For production, verify the actual delivery mode and any
 application-owned worker operations before marking readiness complete.
-
-## Changelog
-
-Unreleased: Added maintained account email templates, AdonisJS Mail `sendLater` callbacks,
-trusted action links and explicit delivery readiness classification.

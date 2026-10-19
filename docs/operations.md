@@ -168,20 +168,15 @@ allowlisted, redacted diagnostic fields such as message kind, transport outcome,
 correlation ID. A correlation ID is diagnostic data, never authentication material. See
 [notifications](notifications.md) for exact delivery failure behavior.
 
-## Files delta
+## Files and migrations
 
 This operational guide adds no generated application files. Configure continues to create or
 preserve application-owned configuration and migration files; review their contents and the
 application's worker, mail, limiter, session, and revocation setup.
 
-## Manual steps
+## Before deployment
 
 Use the deployment and rotation procedures above in a staging environment first. Verify a throttled
 request, an outstanding proof, a credential change, the selected session/token revocation behavior,
 and scheduled pruning using the application's real stores and callbacks. Add alerts and retry policy
 to any application-owned notification dispatcher.
-
-## Changelog
-
-- Unreleased: document production stores, worker and pruning responsibilities, credential effects,
-  and secret rotation behavior.
