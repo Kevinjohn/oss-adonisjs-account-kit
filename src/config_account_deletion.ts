@@ -1,11 +1,7 @@
-// Validates the account export and deletion settings and hooks.
+// Validates the account deletion settings.
 import type { AccountDeletionConfig, AccountKitConfig } from './types.js'
 
 export function resolveAccountDeletion(config: AccountKitConfig): Required<AccountDeletionConfig> {
-  for (const hook of ['exportAccountData', 'onAccountDeletingTransaction'] as const) {
-    if (config[hook] !== undefined && typeof config[hook] !== 'function')
-      throw new Error(`account_kit: ${hook} must be a function when supplied`)
-  }
   const settings = config.accountDeletion ?? {}
   if (!settings || typeof settings !== 'object' || Array.isArray(settings))
     throw new Error('account_kit: accountDeletion must be an object')

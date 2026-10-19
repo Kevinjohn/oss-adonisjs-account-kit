@@ -135,6 +135,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     'onCredentialsChangedTransaction',
     'onPasswordResetIssuedTransaction',
     'onLifecycleEvent',
+    'exportAccountData',
+    'onAccountDeletingTransaction',
   ] as const) {
     if (config[hook] !== undefined && typeof config[hook] !== 'function')
       throw new Error(`account_kit: ${hook} must be a function when supplied`)
