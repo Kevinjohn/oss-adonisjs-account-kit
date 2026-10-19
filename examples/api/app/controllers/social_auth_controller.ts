@@ -11,7 +11,8 @@ import {
 import accountKit from 'adonisjs-account-kit/services/main'
 import { sessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
-import { currentIfAuthenticated, requiredString, socialStrategy } from '#services/social_request'
+import { currentIfAuthenticated, requiredString } from '#services/social_request'
+import { authStrategy } from '#services/auth_strategy'
 import { socialRegistrationValidator } from '#validators/user'
 
 type BrowserTransaction = { state: string; verifier: string }
@@ -30,7 +31,7 @@ export default class SocialAuthController {
     const provider = providerParam(ctx.params.provider)
     const intent = ctx.request.input('intent', 'login') as SocialBeginInput['intent']
     const current = intent === 'login' ? undefined : await currentIfAuthenticated(ctx)
-    const browserVerifier = socialStrategy() === 'session' ? verifier() : undefined
+    const browserVerifier = authStrategy() === 'session' ? verifier() : undefined
     const clientChallenge = browserVerifier
       ? challenge(browserVerifier)
       : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
@@ -55,7 +56,7 @@ export default class SocialAuthController {
       ctx.request.input('verificationToken'),
       'verificationToken'
     )
-    const browserVerifier = socialStrategy() === 'session' ? verifier() : undefined
+    const browserVerifier = authStrategy() === 'session' ? verifier() : undefined
     const clientChallenge = browserVerifier
       ? challenge(browserVerifier)
       : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
@@ -83,7 +84,7 @@ export default class SocialAuthController {
     ctx.response.header('Referrer-Policy', 'no-referrer')
     const provider = providerParam(ctx.params.provider)
     const state = requiredString(ctx.request.input('state'), 'state')
-    const browser = socialStrategy() === 'session'
+    const browser = authStrategy() === 'session'
     const pending = browser
       ? (ctx.session.get('socialTransaction') as BrowserTransaction | undefined)
       : undefined
@@ -132,10 +133,10 @@ export default class SocialAuthController {
     const continuation = requiredString(ctx.request.input('continuation'), 'continuation')
     const { fullName, email } = await ctx.request.validateUsing(socialRegistrationValidator)
     const pending =
-      socialStrategy() === 'session'
+      authStrategy() === 'session'
         ? (ctx.session.get('socialContinuation') as BrowserContinuation | undefined)
         : undefined
-    if (socialStrategy() === 'session' && pending?.continuation !== continuation) {
+    if (authStrategy() === 'session' && pending?.continuation !== continuation) {
       throw new InvalidInputError('Invalid social continuation')
     }
     const result = await accountKit.socialAuthentication.completeRegistration({
