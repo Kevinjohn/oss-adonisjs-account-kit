@@ -8,7 +8,8 @@ export function validateSocial(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection,
-  production: boolean
+  production: boolean,
+  env: NodeJS.ProcessEnv
 ) {
   if (choices.social.status === 'enabled') {
     if (
@@ -46,7 +47,8 @@ export function validateSocial(
       diagnostics,
       'social.callbackOriginEnv',
       choices.social.callbackOriginEnv,
-      production
+      production,
+      env
     )
     if (
       !choices.social.callbackPath.startsWith('/') ||
@@ -88,12 +90,12 @@ export function validateSocial(
         )
         continue
       }
-      for (const [key, env] of Object.entries(refs))
-        if (!process.env[env])
+      for (const [key, variable] of Object.entries(refs))
+        if (!env[variable])
           diagnostic(
             diagnostics,
             `social.credentials.${provider}.${key}`,
-            `${env} must be set before readiness can pass`,
+            `${variable} must be set before readiness can pass`,
             'action'
           )
     }

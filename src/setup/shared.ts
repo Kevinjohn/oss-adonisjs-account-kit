@@ -74,7 +74,8 @@ export function validateOrigin(
   diagnostics: SetupDiagnostic[],
   field: string,
   variable: string,
-  production: boolean
+  production: boolean,
+  env: NodeJS.ProcessEnv = process.env
 ) {
   if (!envName.test(variable)) {
     diagnostic(
@@ -84,7 +85,7 @@ export function validateOrigin(
     )
     return
   }
-  const value = process.env[variable]
+  const value = env[variable]
   if (!value) {
     diagnostic(diagnostics, field, `${variable} must be set before readiness can pass`, 'action')
     return

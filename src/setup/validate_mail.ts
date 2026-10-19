@@ -7,7 +7,8 @@ export function validateMail(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection,
-  production: boolean
+  production: boolean,
+  env: NodeJS.ProcessEnv
 ) {
   const emailEnabled = hasEmailFlow(choices)
   if (emailEnabled && !['adonisjs-mail', 'custom'].includes(choices.mail.integration))
@@ -60,7 +61,7 @@ export function validateMail(
     for (const field of ['senderEnv', 'transportEnv'] as const) {
       const name = choices.mail[field]
       if (!name || !envName.test(name)) continue
-      const value = process.env[name]
+      const value = env[name]
       if (value === undefined || value === '')
         diagnostic(
           diagnostics,
@@ -104,12 +105,19 @@ export function validateMail(
     }
   }
   if (emailEnabled) {
-    validateOrigin(diagnostics, 'mail.backendOriginEnv', choices.mail.backendOriginEnv, production)
+    validateOrigin(
+      diagnostics,
+      'mail.backendOriginEnv',
+      choices.mail.backendOriginEnv,
+      production,
+      env
+    )
     validateOrigin(
       diagnostics,
       'mail.frontendOriginEnv',
       choices.mail.frontendOriginEnv,
-      production
+      production,
+      env
     )
   }
   if (emailEnabled && choices.mail.delivery === 'durable' && !choices.mail.durableWorkerVerified)
