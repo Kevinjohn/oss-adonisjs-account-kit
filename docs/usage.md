@@ -265,7 +265,7 @@ boundary, then return the acknowledgement. Do not return error codes, delivery s
 details to the requester. `minRequestMs` defaults to 300ms as a mitigation against timing
 differences; it is not a guarantee that all requests take the same time.
 
-See the maintained [API reference](../examples/api/TOKENS.md) and its named controllers for
+See the maintained [API reference](token-reference.md) and its named controllers for
 illustrative route behavior. Adapt it to the application's own transport and error response
 conventions.
 
