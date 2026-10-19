@@ -29,6 +29,8 @@ import type {
   CurrentAccount,
   CurrentAccountInput,
   PasswordLoginInput,
+  ResolvedAuthenticationConfig,
+  ResolvedConfig,
   SocialProviderName,
   Trx,
   UserId,
@@ -37,10 +39,15 @@ import type { ServiceDependencies } from './service_dependencies.js'
 
 export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
 
-function configured(deps: Pick<ServiceDependencies, 'config'>) {
-  const auth = deps.config.authentication
-  if (!auth) throw new CapabilityDisabledError('Authentication is disabled')
-  return auth
+/** The authentication settings, or `CapabilityDisabledError` when authentication is off. */
+export function requireAuthentication(config: ResolvedConfig): ResolvedAuthenticationConfig {
+  if (!config.authentication) throw new CapabilityDisabledError('Authentication is disabled')
+  return config.authentication
+}
+
+/** An account is active unless its only address is still unconfirmed. */
+export function isActiveAccount(user: AccountUser): boolean {
+  return user.unverifiedEmail !== user.email
 }
 
 export function safeAccount(user: AccountUser): CurrentAccount {
@@ -49,7 +56,7 @@ export function safeAccount(user: AccountUser): CurrentAccount {
     email: user.email,
     unverifiedEmail: user.unverifiedEmail,
     hasPassword: user.hasPassword,
-    active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
+    active: isActiveAccount(user),
   }
 }
 
@@ -58,7 +65,7 @@ export async function currentInTransaction(
   input: CurrentAccountInput,
   trx: Trx
 ): Promise<CurrentAccount> {
-  const auth = configured(deps)
+  const auth = requireAuthentication(deps.config)
   await lockUser(trx, deps.config, input.userId)
   const user = await deps.config.users.findById(input.userId, trx)
   if (!user) throw new InvalidSessionError()
@@ -101,7 +108,7 @@ export function authenticationService(deps: ServiceDependencies) {
       currentProviders: SocialProviderName[]
       currentPasswordLogin: boolean
     }> {
-      configured(deps)
+      requireAuthentication(deps.config)
       return retirementImpact(deps, input)
     },
 
@@ -113,7 +120,7 @@ export function authenticationService(deps: ServiceDependencies) {
       input: PasswordLoginInput,
       guard: AuthenticationGuard<Credential>
     ): Promise<{ account: CurrentAccount; credential: Credential }> {
-      const auth = configured(deps)
+      const auth = requireAuthentication(deps.config)
       if (guard.strategy !== auth.strategy || guard.name !== auth.guard)
         throw new Error(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
       if (
@@ -200,7 +207,7 @@ export function authenticationService(deps: ServiceDependencies) {
       credential?: Credential,
       current?: CurrentAccountInput
     ): Promise<void> {
-      configured(deps)
+      requireAuthentication(deps.config)
       if (current?.sessionHandle && sessionRegistryEnabled(deps.config))
         await deps.db
           .from(sessionTable)
@@ -218,7 +225,7 @@ export function authenticationService(deps: ServiceDependencies) {
       userId: UserId
       change: (user: AccountUser, trx: Trx) => Promise<void>
     }): Promise<void> {
-      configured(deps)
+      requireAuthentication(deps.config)
       await transaction(deps.db, async (trx) => {
         await lockUser(trx, deps.config, input.userId)
         const user = await deps.config.users.findById(input.userId, trx)
