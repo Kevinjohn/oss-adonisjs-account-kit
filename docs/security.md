@@ -52,5 +52,6 @@ describes the package defaults; each value in the tables can be changed in `conf
 
 Follow the private process in [SECURITY.md](../SECURITY.md).
 
-Further detail: [operations](operations.md) covers secrets, budgets, pruning and redaction, and
+Further detail: [operations](operations.md) covers secrets, pruning and redaction,
+[production requirements](reference/production-requirements.md) cover budgets, and
 [authentication](authentication.md) covers guard and session behaviour.

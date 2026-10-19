@@ -43,7 +43,7 @@ environment.
 Before the maintenance window, confirm that every instance has the required configuration, URL
 callbacks, notifications for enabled features, selected guard, session store, and provider
 credentials. Custom notification transport requires the callbacks for selected features; invitation
-support also requires `invitationProvision`. See [operations](operations.md) for the complete
+support also requires `invitationProvision`. See [production requirements](reference/production-requirements.md) for the complete
 callback list, development capture limits, and shared-store and rotation behavior.
 
 Setup defaults the trusted frontend-origin environment-variable name to `FRONTEND_URL`; you may
@@ -424,7 +424,8 @@ Account Kit does not universally terminate browser sessions or remove team membe
 application-owned API token revocation through the transactional credential hook, and implement
 browser-session or tenant membership policy in the application where required. Expired token
 cleanup is an explicit Ace command, not an automatic scheduler. See
-[operations](operations.md) for safe pruning and durable notification guidance.
+[operations](operations.md) for safe pruning and [production boundaries](production-boundaries.md#durable-notifications)
+for durable notification guidance.
 
 The full route and validation example is in [`examples/api`](../examples/api/README.md). Current
 tested versions and remaining verification are in [compatibility](compatibility.md) and

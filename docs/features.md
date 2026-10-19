@@ -53,7 +53,7 @@ Reference: [usage](usage.md).
 - **Emails** for AdonisJS Mail, with English templates, or your own templates. See
   [notifications](notifications.md).
 - **Rate limits** through `@adonisjs/limiter`. Limiter keys are HMAC digests, so the store never
-  holds an email address or IP. See [operations](operations.md#limiter-secret-and-budgets).
+  holds an email address or IP. See [production requirements](reference/production-requirements.md#limiter-secret-and-budgets).
 - **Your routes or ours.** Call the service from your own controllers, or mount the
   [managed JSON routes](managed-http.md).
 - **Ace commands**: `account-kit:setup` for guided setup, `account-kit:doctor` to check the
