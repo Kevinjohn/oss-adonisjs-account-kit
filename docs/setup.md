@@ -73,7 +73,7 @@ export const accountKitNotifications: NotificationCallbacks = {
 }
 ```
 
-## Manual steps
+## After setup
 
 1. Explicitly install any reported missing packages with `pnpm add`. Setup does not install dependencies. If `@adonisjs/limiter` is missing, also run `pnpm exec node ace configure @adonisjs/limiter`; check that its provider is registered and `config/limiter.ts` uses `defineConfig` with a selected, configured store. A package install alone does not configure its runtime service.
 2. Review migration content and apply it with `node ace migration:run` during the chosen deployment window. Application startup does not run migrations.
@@ -81,7 +81,3 @@ export const accountKitNotifications: NotificationCallbacks = {
 4. Supply and validate deployment environment values, the user adapter and model contract, invitation permission, restricted-account policy, and any frontend pages that collect passwords or complete email actions. Attach the generated account access middleware to application-owned protected routes so credential revocation applies there as well. For a session guard, select a configured server-side session store, apply its table migration when using the database store, and verify logout rejects replay of the old cookie. Cookie-only storage cannot enforce this revocation. Managed sessions require `protectManagedSessionConfig` in `config/session.ts` before SessionMiddleware starts; setup wires a conventional inspected database or development memory store. If your config uses a custom syntax or store, integrate the public helper yourself and provide a verifier that establishes central destroy and revocation on the actual selected store. A method-shape check alone does not establish that for a custom store. Also verify cookie security, CSRF bootstrap, trusted origin/proxy configuration and session persistence. If the application's Shield config enables CSRF conditionally, set its condition for the selected session guard (the conventional example uses `ACCOUNT_KIT_AUTH_STRATEGY=session`), then exercise the CSRF bootstrap and a protected POST against the running application. Middleware registration alone does not prove CSRF is enabled. For a token guard, verify issuance, lifetime, abilities, revocation and safe client storage.
 5. When social is selected, install and configure Ally, register each exact callback URL in its provider console, supply only selected credential environment values, verify token-client callback forwarding, and exercise matching-email, missing-email, closed-registration, linking, unlinking, PKCE replay, and D14 first-password reset, password login, and password re-entry. Review any existing Ally config manually. Retire a provider only after a read-only inventory proves affected accounts retain another usable login method.
 6. Run `node ace account-kit:setup --check --production` after the application integration and exercise the selected workflows over HTTP. The command's static report cannot substitute for those end-to-end checks.
-
-## Changelog
-
-The Unreleased changelog records the new setup command and persisted setup contract.

@@ -269,7 +269,7 @@ See the maintained [API reference](../examples/api/TOKENS.md) and its named cont
 illustrative route behavior. Adapt it to the application's own transport and error response
 conventions.
 
-## Files delta
+## Files and migrations
 
 Configure generates `config/account_kit.ts` and the package migration files. The reset-token
 stub is `create_password_reset_tokens.stub` and generates
@@ -278,7 +278,7 @@ application-owned config and migration files are preserved.
 The implementation lives in `src/password_reset.ts`; import the public `AccountKit` and input
 types from the package root or its documented type entry point.
 
-## Manual steps
+## Before deployment
 
 Implement the callbacks for enabled capabilities, adapt application calls and imported input
 types, and update lifecycle listeners to `password_reset.requested`. The email-verification event
@@ -287,9 +287,3 @@ also retain their names. An inactive account becomes active when its current ema
 the canonical state now uses `email` and `unverifiedEmail`; `emailVerifiedAt` is audit metadata.
 
 No old service names, exported input aliases, or dual config keys are supplied.
-
-## Changelog
-
-The [Unreleased rename list](../CHANGELOG.md#unreleased) records every breaking public rename.
-The forgot password, email-verification, email and password management, and invitation operations
-retain their existing responses, defaults, proof semantics and security rules.

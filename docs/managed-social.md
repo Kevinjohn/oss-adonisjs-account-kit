@@ -33,14 +33,10 @@ An existing confirmed provider subject signs in even when registration is closed
 
 Every social state, continuation, proof, and handoff endpoint sends `Cache-Control: no-store` and `Referrer-Policy: no-referrer` and consumes the managed client limit. Package failures use `{ errors:[{ code,message }] }` or JSON:API `{ errors:[{ code,title }] }` when requested. Common statuses are 400 invalid social transaction, 401 missing guard, 403 invalid recent proof, 409 conflicting identity or last login method, and 429 with `Retry-After`. The stable social service error codes are preserved; internal exception and database messages are not serialized. There is no idempotency-key contract.
 
-## Files delta
+## Files and migrations
 
 `src/http/routes.ts` adds the named social inventory, guard-specific token routes, and collision checks. `src/http/social.ts` delegates every relationship, proof, and handoff transition to `kit.socialAuthentication`. `src/http/managed.ts` applies the same guard, CSRF, error, and rate-limit boundary as other managed routes. Social account responses return the service safe account shape; `extensions.representAccount` applies to password-managed responses only. The application adds its selected Ally configuration and explicit route mount; no social controller is generated for the standard flow.
 
-## Manual steps
+## Before deployment
 
 Register the exact selected callback URLs in the provider consoles. For GitHub, request `user:email` through Ally. Store client IDs and secrets only in deployment environment values. Redact the state or proof-bearing values on `auth/oauth/:provider/callback`, `auth/oauth/registration`, and `auth/oauth/token` from URL, body, and error logs; redact the existing proof path segments listed in [managed HTTP](managed-http.md). Configure notification delivery to the confirmed account address. With test provider accounts, exercise denial, replay, missing email, matching email, closed registration, linking, unlinking, and both guard flows; deterministic fixtures alone do not establish a live-provider result. On suspected unauthorized association, call `account.socialIdentities.unlink` and reset the password; either order is safe, because both end every established session and token. List the linked identities again afterwards to confirm nothing was relinked in between.
-
-## Changelog
-
-The [Unreleased changelog](../CHANGELOG.md#unreleased) records the managed social endpoint and pillar-five setup contracts.

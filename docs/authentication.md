@@ -48,14 +48,10 @@ accepts them and their rows stay in `authentication.tokenTable`. Changing the se
 keys, token table or Auth configuration can sign users out. Before production traffic, test an
 existing session, a fresh login, a kept token and a revoked token.
 
-## Files delta
+## Files and migrations
 
 `src/authentication.ts` owns the service and revision checks; `src/config.ts`, `src/types.ts`, and `src/errors.ts` define the public contract. `configure.ts` emits `add_credentials_changed_at_to_users` as the ninth package migration, and the example includes its matching migration. The example's selected-guard controllers, Shield configuration, access middleware, and functional tests show both supported modes. The generic service declarations do not import optional Auth or Session packages; the concrete example adapters do.
 
-## Manual steps
+## Before deployment
 
 Review and apply the new users-table migration before activating authentication. Verify that the existing guard, token table or server-side session store, CSRF middleware, trusted proxies, public origin, and application-owned route middleware match the chosen mode. Back up user and token tables before migrating. For multiple instances, use a shared limiter and session store, and deploy the middleware everywhere before accepting new sessions. Disable remember-me tokens unless their revocation policy is separately enforced. Existing browser sessions have no captured revision and must sign in again. Review direct account writes and move changes that require revocation to package operations. Run the SQLite and PostgreSQL suites plus both packed consumer modes before deployment.
-
-## Changelog
-
-See the [Unreleased entries](../CHANGELOG.md#unreleased) for the new authentication, guard, revision, and migration contracts.

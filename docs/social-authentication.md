@@ -30,14 +30,10 @@ Successful confirmed sign-in returns a short-lived `handoffCode`, not a session 
 
 Provider denial, missing callback state, expired/replayed state, unavailable provider, and persistence failures have generic public failures. A rejected attempt starts again; an incomplete registration resumes only with its live continuation. No provider profile can overwrite account email, password, role, or verification after association.
 
-## Files delta
+## Files and migrations
 
 The package adds `social_transactions`, `social_sensitive_proofs`, and `social_handoff_codes` tables, and adds `social_identities.confirmed_at`. Handoff rows reference their source association and cascade away when it is removed. `src/social_identity.ts` owns local resolution and proof transitions; the existing user adapter and selected guard remain the identity and credential boundaries. Cleanup removes expired transaction, sensitive-proof, and handoff rows in bounded batches. The optional Ally adapter is supplied by the integrating application; service-only imports do not require Ally, Auth, Session, Mail, or HTTP validation packages.
 
-## Manual steps
+## Before deployment
 
 Apply the generated migrations, then configure Ally's Google and GitHub credentials from environment references, exact callback URLs, scopes, and provider-console redirect settings. Do not put credentials in version control. With a private test account, run the Google redirect and callback in both supported guard modes; record the returned stable subject, email-verification state, denial, invalid state, and handoff replay outcomes. Run the same checks for GitHub, including a private or absent email and the corresponding collection and local-verification continuation. For each provider, also verify linked sign-in after provider email change, matching-email `link_required`, joint confirmation, and password-proven account linking and unlinking. Verify that provider-only reauthentication is rejected with the standard Ally adapters; exercise the password-reset then password re-entry recovery path for social-only users. Record which checks were actually performed; deterministic fixtures do not establish a real-provider result. Configure a confirmed-address notice delivery callback. On suspected unauthorized association, unlink through the account service/endpoints and reset the password; either order is safe, because both steps end every established session and token. After both, list the linked providers again to confirm that nothing was relinked in between.
-
-## Changelog
-
-See the [Unreleased entries](../CHANGELOG.md#unreleased) for social identity, recent proof, and handoff contracts.
