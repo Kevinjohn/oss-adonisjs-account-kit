@@ -33,16 +33,31 @@ function signInId(value: unknown): number {
   return id
 }
 
-/** The table, owner column and id of the caller's own sign-in. */
+/**
+ * The table, owner column, label and last-seen column expressions, and id of the caller's own
+ * sign-in.
+ */
 async function scope(trx: Trx, auth: ResolvedAuthenticationConfig, current: CurrentAccountInput) {
   if (auth.strategy === 'access_tokens')
-    return { table: auth.tokenTable, owner: 'tokenable_id', currentId: current.tokenId! }
+    return {
+      table: auth.tokenTable,
+      owner: 'tokenable_id',
+      label: 'name as label',
+      lastSeen: 'last_used_at as last_seen_at',
+      currentId: current.tokenId!,
+    }
   const row = await trx
     .from(sessionTable)
     .select('id')
     .where('handle_hash', hashToken(current.sessionHandle!))
     .first()
-  return { table: sessionTable, owner: 'user_id', currentId: row.id as UserId }
+  return {
+    table: sessionTable,
+    owner: 'user_id',
+    label: 'label',
+    lastSeen: 'last_seen_at',
+    currentId: row.id as UserId,
+  }
 }
 
 const sameId = (left: unknown, right: unknown) => String(left) === String(right)
@@ -75,16 +90,9 @@ export function sessionManagementService(deps: Dependencies) {
     /** Every live sign-in of the caller, newest first, with the caller's own marked `current`. */
     list(input: { current: CurrentAccountInput }): Promise<SignIn[]> {
       return asCurrent(input.current, async (trx, target, userId) => {
-        const tokens = target.table !== sessionTable
         const rows = await trx
           .from(target.table)
-          .select(
-            'id',
-            tokens ? 'name as label' : 'label',
-            'created_at',
-            tokens ? 'last_used_at as last_seen_at' : 'last_seen_at',
-            'expires_at'
-          )
+          .select('id', target.label, 'created_at', target.lastSeen, 'expires_at')
           .where(target.owner, userId)
           .orderBy('id', 'desc')
         const now = Date.now()
