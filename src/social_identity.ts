@@ -22,6 +22,7 @@ import {
   SocialTransactionError,
   SocialUserNotFoundError,
 } from './errors.js'
+import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isSocialProviderName } from './social_providers.js'
 import { authenticated, enabledProviders, expiry, now, type Dependencies } from './social_shared.js'
@@ -89,7 +90,7 @@ function freshAuthenticationMatches(
   )
     return false
   const verifiedAt = DateTime.fromISO(evidence.authenticatedAt, { zone: 'utc' })
-  const started = DateTime.fromJSDate(new Date(startedAt), { zone: 'utc' })
+  const started = readTimestamp(startedAt)!
   const current = DateTime.utc()
   return (
     verifiedAt.isValid &&

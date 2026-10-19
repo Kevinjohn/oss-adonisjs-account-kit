@@ -35,14 +35,5 @@ export function readTimestamp(value: unknown): DateTime | null {
 
 /** Read a timestamp column as ISO 8601 UTC, whatever the driver returns. */
 export function readIsoTimestamp(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  let at: DateTime
-  if (value instanceof Date) at = DateTime.fromJSDate(value, { zone: 'utc' })
-  else if (typeof value === 'number') at = DateTime.fromMillis(value, { zone: 'utc' })
-  else {
-    at = DateTime.fromISO(String(value), { zone: 'utc' })
-    if (!at.isValid) at = DateTime.fromSQL(String(value), { zone: 'utc' })
-  }
-  if (!at.isValid) throw new Error('Invalid timestamp value')
-  return at.toUTC().toISO()
+  return readTimestamp(value)?.toUTC().toISO() ?? null
 }
