@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import kit from 'adonisjs-account-kit/services/main'
 import { InvalidSessionError } from 'adonisjs-account-kit'
-import { sessionGuard } from '#services/session_guard'
+import { accountKitSessionGuard } from '#services/session_guard'
 
 /**
  * Signs out a session that started before the latest password change or reset. Runs after the
@@ -21,7 +21,7 @@ export default class SessionRevisionMiddleware {
         })
       } catch (error) {
         if (!(error instanceof InvalidSessionError)) throw error
-        await sessionGuard(ctx).terminate()
+        await accountKitSessionGuard(ctx).terminate()
       }
     }
 
