@@ -12,6 +12,8 @@ security details handled. You keep your user model, your routes and your policie
 
 ![A password reset in a new AdonisJS app: the doctor passes, a reset request returns the generic response, the dev server log prints the email, the link resets the password once and is rejected the second time](docs/assets/demo.svg)
 
+See every feature run in [short terminal recordings](docs/recordings.md).
+
 ## What you get
 
 The account flows every AdonisJS app ends up writing by hand:

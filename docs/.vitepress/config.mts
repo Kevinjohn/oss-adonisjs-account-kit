@@ -47,7 +47,13 @@ export default defineConfig({
     ],
     sidebar: [
       { text: 'Overview', items: [{ text: 'Features', link: '/features' }] },
-      { text: 'Tutorial', items: [{ text: 'Getting started', link: '/getting-started' }] },
+      {
+        text: 'Tutorial',
+        items: [
+          { text: 'Getting started', link: '/getting-started' },
+          { text: 'See it run', link: '/recordings' },
+        ],
+      },
       {
         text: 'How-to guides',
         items: [

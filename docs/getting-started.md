@@ -88,6 +88,8 @@ node ace account-kit:doctor
 
 Every line should be green. A red line names the step that fixes it.
 
+![account-kit:doctor checking the configuration, limiter, APP_URL and tables in a new app](assets/demos/doctor.svg)
+
 ## 5. Add the routes
 
 Create a controller:
