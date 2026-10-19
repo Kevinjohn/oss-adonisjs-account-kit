@@ -1,5 +1,3 @@
-import { lstat, readFile } from 'node:fs/promises'
-import { safeSetupPath } from './safe_path.js'
 import {
   directProperty,
   exactCall,
@@ -11,7 +9,6 @@ import {
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 
-/** Build the complete proposal before a write. Apply refuses every conflict in this plan. */
 export type InspectedColumn = {
   primary: boolean
   physical: string
@@ -171,34 +168,4 @@ export function unsupportedClassRuntime(
     return true
   }
   return false
-}
-
-/** Confirm the runtime package alias resolves to the exact contained source we inspect. */
-export async function conventionalSetupImport(
-  root: string,
-  specifier: string,
-  wildcard: string,
-  wildcardTarget: string,
-  exactTarget: string
-): Promise<boolean> {
-  const packagePath = await safeSetupPath(root, 'package.json')
-  const packageStat = await lstat(packagePath)
-  if (!packageStat.isFile()) throw new Error('Setup cannot inspect non-regular package.json')
-  const manifest = JSON.parse(await readFile(packagePath, 'utf8')) as {
-    imports?: Record<string, unknown>
-  }
-  const imports = manifest.imports ?? {}
-  const overlaps = Object.keys(imports).some((key) => {
-    if (key === specifier || key === wildcard) return false
-    const star = key.indexOf('*')
-    return (
-      star >= 0 &&
-      specifier.startsWith(key.slice(0, star)) &&
-      specifier.endsWith(key.slice(star + 1))
-    )
-  })
-  if (overlaps) return false
-  return imports[specifier] === undefined
-    ? imports[wildcard] === wildcardTarget
-    : imports[specifier] === exactTarget
 }

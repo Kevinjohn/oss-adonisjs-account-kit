@@ -15,11 +15,8 @@ import {
 } from './ts_source.js'
 import { diagnostic } from './shared.js'
 import { directClassBaseHeritage } from './source_edits.js'
-import {
-  classColumns,
-  unsupportedClassRuntime,
-  conventionalSetupImport,
-} from './model_inspection.js'
+import { classColumns, unsupportedClassRuntime } from './model_inspection.js'
+import { conventionalSetupImport } from './package_imports.js'
 import type * as TypeScript from 'typescript'
 
 export async function planUserModel(
@@ -35,13 +32,13 @@ export async function planUserModel(
     const modelPath = `app/models/${choices.user.model.slice('#models/'.length)}.ts`
     try {
       if (
-        !(await conventionalSetupImport(
-          state.root,
+        !conventionalSetupImport(
+          state.files['package.json'],
           choices.user.model,
           '#models/*',
           './app/models/*.js',
           `./${modelPath.slice(0, -3)}.js`
-        ))
+        )
       )
         diagnostic(
           diagnostics,
@@ -274,13 +271,13 @@ export async function planUserModel(
         const schemaPath = 'database/schema.ts'
         try {
           if (
-            !(await conventionalSetupImport(
-              state.root,
+            !conventionalSetupImport(
+              state.files['package.json'],
               '#database/schema',
               '#database/*',
               './database/*.js',
               './database/schema.js'
-            ))
+            )
           )
             throw new Error('Setup cannot resolve #database/schema to the inspected schema')
           const path = await safeSetupPath(state.root, schemaPath)
