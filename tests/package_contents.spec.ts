@@ -25,6 +25,7 @@ test('packs public documentation and examples without private planning documents
       'build/index.js',
       'docs/usage.md',
       'examples/api/README.md',
+      'README-AGENTS.md',
       'CHANGELOG.md',
     ]
     const privateFiles = [
