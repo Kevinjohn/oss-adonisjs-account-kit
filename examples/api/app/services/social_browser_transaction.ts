@@ -11,16 +11,21 @@ const transactionKey = 'socialTransaction'
 const continuationKey = 'socialContinuation'
 
 const isBrowser = () => socialStrategy() === 'session'
-const challenge = (value: string) => createHash('sha256').update(value).digest('base64url')
+
+/** A fresh PKCE verifier. */
+export const pkceVerifier = () => randomBytes(32).toString('base64url')
+/** The PKCE S256 challenge for `verifier`. */
+export const pkceChallenge = (verifier: string) =>
+  createHash('sha256').update(verifier).digest('base64url')
 
 /**
  * Session clients get a server-held verifier; token clients send their own `clientChallenge`.
  * Call `remember` with the begin result's state to keep the verifier for the callback.
  */
 export function beginBrowserTransaction(ctx: HttpContext) {
-  const verifier = isBrowser() ? randomBytes(32).toString('base64url') : undefined
+  const verifier = isBrowser() ? pkceVerifier() : undefined
   const clientChallenge = verifier
-    ? challenge(verifier)
+    ? pkceChallenge(verifier)
     : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
   return {
     clientChallenge,

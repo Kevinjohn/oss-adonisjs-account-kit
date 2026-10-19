@@ -1,13 +1,15 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { setSocialFixture } from '#services/social_provider_fixture'
 import { notifications } from '#services/account_kit_notifications'
+import {
+  pkceChallenge as challenge,
+  pkceVerifier as verifier,
+} from '#services/social_browser_transaction'
 import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
-const verifier = () => randomBytes(32).toString('base64url')
-const challenge = (value: string) => createHash('sha256').update(value).digest('base64url')
 const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
 
 type Body = Record<string, unknown>
