@@ -36,30 +36,36 @@ export interface NativeSessionConfiguration {
   selected: { name: string; kind: 'database' | 'memory' } | null
 }
 
+/** The variable name in `env.get('NAME', ...)`, whatever the remaining arguments are. */
+function envVariable(source: SetupSource, expression: TypeScript.Expression): string | null {
+  const envBinding = defaultImportName(source, '#start/env')
+  if (
+    !envBinding ||
+    !exactCall(source, expression, envBinding, 'get') ||
+    !safeEnvGetter(source, envBinding) ||
+    expression.arguments.length < 1 ||
+    !source.ts.isStringLiteral(expression.arguments[0])
+  )
+    return null
+  return expression.arguments[0].text
+}
+
 /** Read a store selected through `env.get('NAME')` or `env.get('NAME', 'fallback')`. */
 function envSelector(
   source: SetupSource,
   expression: TypeScript.Expression
 ): { variable: string; fallback: string | null } | null {
-  const { ts } = source
-  const envBinding = defaultImportName(source, '#start/env')
-  if (
-    !envBinding ||
-    !exactCall(source, expression, envBinding, 'get') ||
-    !safeEnvGetter(source, envBinding)
-  )
-    return null
+  const variable = envVariable(source, expression)
+  if (!variable || !source.ts.isCallExpression(expression)) return null
   const args = expression.arguments
   if (
-    args.length < 1 ||
     args.length > 2 ||
-    !ts.isStringLiteral(args[0]) ||
-    !/^[A-Z][A-Z0-9_]*$/.test(args[0].text) ||
-    (args.length === 2 && !ts.isStringLiteral(args[1]))
+    !/^[A-Z][A-Z0-9_]*$/.test(variable) ||
+    (args.length === 2 && !source.ts.isStringLiteral(args[1]))
   )
     return null
   return {
-    variable: args[0].text,
+    variable,
     fallback: args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null,
   }
 }
@@ -165,8 +171,8 @@ export async function selectedSessionDiagnostic(
   let name: string | null = null
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
   else {
-    const selector = envSelector(source, store.initializer)
-    if (selector) name = await selectedSessionEnvironment(root, selector.variable)
+    const variable = envVariable(source, store.initializer)
+    if (variable) name = await selectedSessionEnvironment(root, variable)
   }
   if (!name) return { name: null, kind: null }
   const selected = directProperty(source, stores.initializer, name)
