@@ -6,7 +6,7 @@ import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
 
@@ -49,7 +49,7 @@ test.group('managed magic-link routes', (group) => {
       },
       publicCredential: (credential: string) => `public:${credential}`,
     } as ManagedGuard<string>
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => service.account,
@@ -252,7 +252,7 @@ test.group('managed magic-link routes', (group) => {
   })
 
   test('access-token mounts require publicCredential', ({ assert }) => {
-    const { router } = fixture()
+    const { router } = fakeManagedHttp()
     assert.throws(
       () =>
         registerManagedRoutes(router, {
