@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import accountKit from 'adonisjs-account-kit/services/main'
 import { loginValidator } from '#validators/user'
-import { sessionGuard } from '#services/account_kit_guards'
+import { accountKitSessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 
 export default class SessionController {
@@ -15,7 +15,7 @@ export default class SessionController {
     const { email, password } = await request.validateUsing(loginValidator)
     const result = await accountKit.authentication.login(
       { email, password, clientKey: request.ip() },
-      sessionGuard(ctx)
+      accountKitSessionGuard(ctx)
     )
     rememberLastUsedMethod(ctx, 'password')
     return serialize({ user: result.account })
