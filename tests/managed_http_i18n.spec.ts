@@ -3,7 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
 import { EmailAlreadyRegisteredError, ThrottledError } from '../src/errors.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 const french: Record<string, string> = {
   'errors.E_ACCOUNT_KIT_THROTTLED': 'Trop de requêtes.',
@@ -19,7 +19,7 @@ const i18n = {
 }
 
 function mount(kit: unknown, enabled: ('passwordReset' | 'registration')[] = ['passwordReset']) {
-  const { router, routes, context } = fixture()
+  const { router, routes, context } = fakeManagedHttp()
   registerManagedRoutes(router, {
     prefix: '/api/v1',
     kit: async () => kit as AccountKit,
