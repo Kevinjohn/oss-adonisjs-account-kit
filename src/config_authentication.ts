@@ -1,4 +1,5 @@
 // Validates and defaults the authentication option.
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import { budget } from './config_budget.js'
 import { assertPlainObject } from './config_assert.js'
@@ -14,22 +15,28 @@ export function resolveAuthentication(
     const auth = config.authentication
     assertPlainObject(auth, 'authentication')
     if (auth.strategy !== 'session' && auth.strategy !== 'access_tokens')
-      throw new Error('account_kit: authentication.strategy must be session or access_tokens')
+      throw new RuntimeException(
+        'account_kit: authentication.strategy must be session or access_tokens'
+      )
     if (typeof auth.guard !== 'string' || auth.guard.trim() === '')
-      throw new Error('account_kit: authentication.guard must name an existing guard')
+      throw new RuntimeException('account_kit: authentication.guard must name an existing guard')
     if (auth.canAccess !== undefined && typeof auth.canAccess !== 'function')
-      throw new Error('account_kit: authentication.canAccess must be a function')
+      throw new RuntimeException('account_kit: authentication.canAccess must be a function')
     if (
       auth.tokenAbilities !== undefined &&
       (!Array.isArray(auth.tokenAbilities) ||
         auth.tokenAbilities.length === 0 ||
         auth.tokenAbilities.some((ability) => typeof ability !== 'string' || ability.trim() === ''))
     )
-      throw new Error('account_kit: authentication.tokenAbilities must be non-empty strings')
+      throw new RuntimeException(
+        'account_kit: authentication.tokenAbilities must be non-empty strings'
+      )
     if (auth.tokenExpiresIn !== undefined) expiresAt(DateTime.utc(), auth.tokenExpiresIn)
     const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
     if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
-      throw new Error('account_kit: authentication.tokenTable must be a plain SQL identifier')
+      throw new RuntimeException(
+        'account_kit: authentication.tokenTable must be a plain SQL identifier'
+      )
     const clientLimit = budget(
       auth.clientLimit,
       { requests: 10, duration: '1m' },
