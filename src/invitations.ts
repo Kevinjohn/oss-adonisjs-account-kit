@@ -11,7 +11,7 @@ import {
   isUserEmailUniqueViolation,
 } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   AuthorizationError,
   EmailAlreadyRegisteredError,
@@ -279,7 +279,7 @@ export async function sendInvitation(
   if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
   if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
     throw new InvalidInputError('Invalid role')
-  const email = normaliseEmail(input.email)
+  const email = normalizeEmail(input.email)
   const actor = await requireUser(deps.config, input.actorId)
   if ((await deps.config.authorize.invite(actor, input.role)) !== true)
     throw new AuthorizationError()
