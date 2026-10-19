@@ -169,3 +169,50 @@ export function unsupportedClassRuntime(
   }
   return false
 }
+
+/** Static property declarations of a class with the given name. */
+export function staticMembers(
+  source: SetupSource,
+  selected: TypeScript.ClassDeclaration | null | undefined,
+  name: string
+): TypeScript.ClassElement[] {
+  const { ts } = source
+  return (
+    selected?.members.filter(
+      (member) =>
+        ts.isPropertyDeclaration(member) &&
+        Boolean(
+          member.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+        ) &&
+        (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) &&
+        member.name.text === name
+    ) ?? []
+  )
+}
+
+/** Static blocks, computed or accessor-style static metadata, or duplicated metadata need review. */
+export function hasUnsafeStaticMetadata(
+  source: SetupSource,
+  selected: TypeScript.ClassDeclaration | null | undefined,
+  metadataNames: readonly string[]
+): boolean {
+  const { ts } = source
+  return Boolean(
+    selected?.members.some((member) => {
+      if (ts.isClassStaticBlockDeclaration(member)) return true
+      if (
+        !ts.canHaveModifiers(member) ||
+        !ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+      )
+        return false
+      const name = member.name
+      if (!name) return false
+      if (ts.isComputedPropertyName(name)) return true
+      return (
+        !ts.isPropertyDeclaration(member) &&
+        (ts.isIdentifier(name) || ts.isStringLiteral(name)) &&
+        metadataNames.includes(name.text)
+      )
+    }) || metadataNames.some((name) => staticMembers(source, selected, name).length > 1)
+  )
+}
