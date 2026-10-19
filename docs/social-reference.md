@@ -172,6 +172,8 @@ returns a generic 429 with `Retry-After`.
 - `app/controllers/social_auth_controller.ts`, `social_identities_controller.ts`,
   `oauth_token_controller.ts`, and `auth_methods_controller.ts` own the distinct HTTP transports.
 - `app/services/social_request.ts` shares request parsing and selected-guard lookup.
+- `app/services/social_browser_transaction.ts` keeps the session client's PKCE verifier between
+  redirect, callback and registration.
 - `start/routes.ts` registers the reference endpoints.
 - `tests/helpers/social_provider_fixture.ts` and the functional tests simulate provider replies
   without external accounts; they cannot prove live Google or GitHub connectivity.
