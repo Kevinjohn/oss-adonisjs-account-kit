@@ -19,7 +19,7 @@ type TokenTable =
 export interface PruneInput {
   /** Rows deleted per batch. Default 100. */
   batchSize?: number
-  /** The most batches per table in one run. Default 100. */
+  /** The most batches in one run, shared across all tables. Default 100. */
   maxBatches?: number
   /** Count expired rows without deleting them. */
   dryRun?: boolean
