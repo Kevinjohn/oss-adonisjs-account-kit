@@ -17,6 +17,7 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import { stock } from './helpers/native_starter_fixture.js'
 
 test.group('setup apply', (group) => {
   registerSetupTeardown(group)
@@ -76,8 +77,6 @@ test.group('setup apply', (group) => {
         )
       )
     )
-    const stock = (path: string) =>
-      readFile(new URL(`./fixtures/native_starter/${path}.fixture`, import.meta.url), 'utf8')
     for (const path of [
       'config/auth.ts',
       'config/mail.ts',

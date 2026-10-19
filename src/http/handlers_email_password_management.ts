@@ -1,7 +1,8 @@
 /** Managed handlers for the email and password management capability: email change, profile, password. */
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { currentAccount, invalidProof, passwordPolicyError } from './response_helpers.js'
+import { safeAccount } from '../authentication.js'
+import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
 
 export const emailPasswordManagementHandlers = {
@@ -13,7 +14,7 @@ export const emailPasswordManagementHandlers = {
     const user = await kit.emailPasswordManagement.completeEmailChange({
       token: context.params.token,
     })
-    return context.response.ok({ account: await representIssued(currentAccount(user)) })
+    return context.response.ok({ account: await representIssued(safeAccount(user)) })
   },
   'account.profile.update': async ({ context, kit, options, actorId, representIssued }) => {
     const { request, response } = context
@@ -27,7 +28,7 @@ export const emailPasswordManagementHandlers = {
       email: input.email,
       ...('registrationData' in input ? { registrationData: input.registrationData } : {}),
     })
-    return response.ok({ account: await representIssued(currentAccount(user)) })
+    return response.ok({ account: await representIssued(safeAccount(user)) })
   },
   'account.password.change': async ({ context, kit, actorId }) => {
     const { request, response } = context
