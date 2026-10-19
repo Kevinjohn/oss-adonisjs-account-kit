@@ -219,6 +219,21 @@ export function isTypeOnlyReference(source: SetupSource, node: TypeScript.Node):
   return false
 }
 
+export function directClassBaseHeritage(
+  source: SetupSource,
+  reference: TypeScript.Identifier
+): boolean {
+  const { ts } = source
+  const expression = reference.parent
+  return (
+    ts.isExpressionWithTypeArguments(expression) &&
+    expression.expression === reference &&
+    ts.isHeritageClause(expression.parent) &&
+    expression.parent.token === ts.SyntaxKind.ExtendsKeyword &&
+    ts.isClassDeclaration(expression.parent.parent)
+  )
+}
+
 export function safeEnvGetter(source: SetupSource, binding: string): boolean {
   return !hasUnsafeBindingReferences(source, binding, (call) =>
     exactCall(source, call, binding, 'get')
