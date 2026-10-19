@@ -1,5 +1,5 @@
 // The package-owned rows that belong to one user, and deleting them before the user row.
-import { sessionTable } from './session_registry.js'
+import { packageTables } from './package_tables.js'
 import type { ResolvedConfig, Trx, UserId } from './types.js'
 
 /**
@@ -8,13 +8,13 @@ import type { ResolvedConfig, Trx, UserId } from './types.js'
  * and disabling a capability does not remove existing rows.
  */
 export const userOwnedRows = [
-  { table: 'social_handoff_codes', column: 'user_id' },
-  { table: 'social_sensitive_proofs', column: 'user_id' },
-  { table: 'social_transactions', column: 'user_id' },
-  { table: 'social_identities', column: 'user_id' },
-  { table: 'password_reset_tokens', column: 'tokenable_id' },
-  { table: 'email_verification_tokens', column: 'tokenable_id' },
-  { table: 'login_link_tokens', column: 'tokenable_id' },
+  { table: packageTables.socialHandoffCodes, column: 'user_id' },
+  { table: packageTables.socialSensitiveProofs, column: 'user_id' },
+  { table: packageTables.socialTransactions, column: 'user_id' },
+  { table: packageTables.socialIdentities, column: 'user_id' },
+  { table: packageTables.passwordResetTokens, column: 'tokenable_id' },
+  { table: packageTables.emailVerificationTokens, column: 'tokenable_id' },
+  { table: packageTables.loginLinkTokens, column: 'tokenable_id' },
 ] as const
 
 /**
@@ -26,10 +26,11 @@ export async function deleteUserRows(trx: Trx, config: ResolvedConfig, userId: U
   for (const { table, column } of userOwnedRows)
     await trx.from(table).where(column, userId).delete()
   // The sign-in registry exists whenever authentication is configured; see the doctor check.
-  if (config.authentication) await trx.from(sessionTable).where('user_id', userId).delete()
+  if (config.authentication)
+    await trx.from(packageTables.accountSessions).where('user_id', userId).delete()
   if (config.authentication?.strategy === 'access_tokens')
     await trx.from(config.authentication.tokenTable).where('tokenable_id', userId).delete()
-  const sent = trx.from('account_invitations').where('inviter_id', userId)
+  const sent = trx.from(packageTables.accountInvitations).where('inviter_id', userId)
   if (config.accountDeletion.invitations === 'keep') await sent.update({ inviter_id: null })
   else await sent.delete()
 }
