@@ -48,6 +48,8 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- The provider registers an `account_kit` container alias, typed through `ContainerBindings`, so
+  `app.container.make('account_kit')` resolves the same `AccountKit` singleton.
 - Doc comments on every public export, so the generated API reference describes each type,
   option and service method. Types the reference named but could not link are now exported as
   types only: `LucidModelRow`, `LucidUsersAdapter`, `LucidCreateAttributes`, `MessageLogger` and the
