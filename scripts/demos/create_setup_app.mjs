@@ -8,23 +8,14 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { packCheckout, run } from './pack_checkout.mjs'
+import { run } from './pack_checkout.mjs'
+import { createAdonisApp } from './scaffold_app.mjs'
 
-const [target] = process.argv.slice(2)
-if (!target) throw new Error('Usage: node scripts/demos/create_setup_app.mjs <app-dir>')
-const appDir = resolve(target)
-if (existsSync(appDir)) throw new Error(`${appDir} already exists; remove it or pick another path`)
 const choices = fileURLToPath(new URL('../../docs/setup_choices.api.example.json', import.meta.url))
+const { appDir, tarball } = createAdonisApp('create_setup_app.mjs')
 
-const tarball = packCheckout(dirname(appDir))
-
-run(
-  'npx',
-  ['-y', 'create-adonisjs@3.4.0', basename(appDir), '--kit=api', '--pkg=npm'],
-  dirname(appDir)
-)
 // Setup's prerequisites: TypeScript to inspect the app, Mail and a limiter store.
 const packages = ['typescript@^5.9.3', '@adonisjs/mail@^10', '@adonisjs/limiter']
 run('npm', ['install', join('..', tarball), ...packages], appDir)
