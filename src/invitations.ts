@@ -28,6 +28,7 @@ import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './rows.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
+import { decodeInvitationCursor, encodeInvitationCursor } from './invitation_cursor.js'
 import type {
   Invitation,
   InvitationPage,
@@ -42,8 +43,6 @@ import type {
   Trx,
   UserId,
 } from './types.js'
-
-const MAX_INVITATION_CURSOR_LENGTH = 512
 
 async function requireActor(config: ResolvedConfig, actorId: UserId): Promise<AccountUser> {
   const actor = await config.users.findById(actorId)
@@ -72,6 +71,19 @@ async function lockManagedInvitation(
   return invitation
 }
 
+/** Lock an invitation the actor may manage and may still invite to its role. */
+async function lockResendable(
+  config: ResolvedConfig,
+  trx: Trx,
+  actor: AccountUser,
+  invitationId: number
+): Promise<Invitation> {
+  const current = await lockManagedInvitation(config, trx, actor, invitationId)
+  if ((await config.authorize.invite(actor, current.role, { trx })) !== true)
+    throw new InvitationManagementDeniedError()
+  return current
+}
+
 export async function resendInvitation(
   deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
   input: InvitationsResendInput
@@ -82,12 +94,9 @@ export async function resendInvitation(
   const operationId = randomUUID()
   // Both policy reads receive a transaction. The first commits before the limiter touches its
   // store; the second protects the row through rotation and catches intervening policy changes.
-  const preflight = await transaction(deps.db, async (trx) => {
-    const current = await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
-    if ((await deps.config.authorize.invite(actor, current.role, { trx })) !== true)
-      throw new InvitationManagementDeniedError()
-    return current
-  })
+  const preflight = await transaction(deps.db, (trx) =>
+    lockResendable(deps.config, trx, actor, input.invitationId)
+  )
   await throttlerOf(deps).consume(
     'invitation:resend:actor',
     String(actor.id),
@@ -100,9 +109,7 @@ export async function resendInvitation(
   )
   const { value: invitation, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      const current = await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
-      if ((await deps.config.authorize.invite(actor, current.role, { trx })) !== true)
-        throw new InvitationManagementDeniedError()
+      await lockResendable(deps.config, trx, actor, input.invitationId)
 
       const now = DateTime.utc()
       await trx
@@ -230,26 +237,7 @@ export async function listInvitations(
   const limit = input.limit ?? 25
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new InvalidInputError('Invalid invitation page limit')
-  let position: { createdAt: string; id: number } | null = null
-  if (input.cursor !== undefined) {
-    try {
-      if (input.cursor.length > MAX_INVITATION_CURSOR_LENGTH) throw new Error('invalid')
-      const decoded = JSON.parse(Buffer.from(input.cursor, 'base64url').toString('utf8'))
-      if (
-        !Array.isArray(decoded) ||
-        decoded.length !== 2 ||
-        typeof decoded[0] !== 'string' ||
-        !DateTime.fromISO(decoded[0], { setZone: true }).isValid ||
-        !Number.isSafeInteger(decoded[1]) ||
-        decoded[1] < 1 ||
-        Buffer.from(JSON.stringify(decoded)).toString('base64url') !== input.cursor
-      )
-        throw new Error('invalid')
-      position = { createdAt: decoded[0], id: decoded[1] }
-    } catch {
-      throw new InvalidInputError('Invalid invitation cursor')
-    }
-  }
+  const position = input.cursor === undefined ? null : decodeInvitationCursor(input.cursor)
   const actor = await requireActor(deps.config, input.actorId)
   if ((await deps.config.authorize.listInvitations(actor)) !== true) throw new AuthorizationError()
   const query = deps.db
@@ -271,9 +259,7 @@ export async function listInvitations(
   const last = rows.length > limit ? rows[limit - 1] : null
   return {
     items,
-    nextCursor: last
-      ? Buffer.from(JSON.stringify([last.created_at, last.id])).toString('base64url')
-      : null,
+    nextCursor: last ? encodeInvitationCursor(last.created_at, last.id) : null,
   }
 }
 
