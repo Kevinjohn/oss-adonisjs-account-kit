@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { sqlTimestamp } from '../src/timestamps.js'
+import { sqlTimestamp } from '../../src/timestamps.js'
 
 const engine = (name: string) => ({ dialect: { name } })
 
