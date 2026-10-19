@@ -4,14 +4,12 @@ import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -20,12 +18,12 @@ import type {
   PasswordResetInspectInput,
   PasswordResetRequestInput,
   PasswordResetCompleteInput,
-  ResolvedConfig,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export async function inspectPasswordReset(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: PasswordResetInspectInput
 ): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
@@ -41,7 +39,7 @@ export async function inspectPasswordReset(
 }
 
 export async function completePasswordReset(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: PasswordResetCompleteInput
 ): Promise<AccountUser> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
@@ -94,7 +92,7 @@ export async function completePasswordReset(
 }
 
 export async function requestPasswordReset(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: PasswordResetRequestInput
 ): Promise<void> {
   const started = performance.now()
@@ -148,7 +146,7 @@ export async function requestPasswordReset(
  * the operator command.
  */
 export function issueResetToken(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   userId: UserId,
   email: string,
   token: string

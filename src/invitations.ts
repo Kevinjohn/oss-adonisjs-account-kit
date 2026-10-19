@@ -2,7 +2,6 @@ import { DateTime } from 'luxon'
 import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import {
   consumeToken,
   lockRow,
@@ -22,7 +21,7 @@ import {
   InvalidTokenError,
   type PostCommitError,
 } from './errors.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
@@ -43,6 +42,7 @@ import type {
   Trx,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 async function requireActor(config: ResolvedConfig, actorId: UserId): Promise<AccountUser> {
   const actor = await config.users.findById(actorId)
@@ -85,7 +85,7 @@ async function lockResendable(
 }
 
 export async function resendInvitation(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: InvitationsResendInput
 ): Promise<Invitation> {
   requireInvitationId(input.invitationId)
@@ -145,7 +145,7 @@ export async function resendInvitation(
 }
 
 export async function revokeInvitation(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsRevokeInput
 ): Promise<void> {
   requireInvitationId(input.invitationId)
@@ -169,7 +169,7 @@ export async function revokeInvitation(
 }
 
 export async function acceptInvitation(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsAcceptInput
 ): Promise<AccountUser> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
@@ -231,7 +231,7 @@ export async function acceptInvitation(
 }
 
 export async function listInvitations(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsListInput
 ): Promise<InvitationPage> {
   const limit = input.limit ?? 25
@@ -278,7 +278,7 @@ export async function inspectInvitation(
 }
 
 export async function sendInvitation(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: InvitationsSendInput
 ): Promise<Invitation> {
   if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
@@ -333,7 +333,7 @@ export async function sendInvitation(
  * paths; a pending invitation otherwise surfaces as InvitationPendingError.
  */
 export async function storeInvitation(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: {
     email: string
     role: string

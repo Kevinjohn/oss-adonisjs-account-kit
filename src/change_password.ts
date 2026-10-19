@@ -1,19 +1,18 @@
 // Password change: confirms the actor, sets the new password and ends older credentials.
 import { randomUUID } from 'node:crypto'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { credentialsChanged } from './authentication.js'
 import { transaction } from './db.js'
 import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor } from './actor_confirmation.js'
-import type { ChangePasswordInput, ResolvedConfig } from './types.js'
+import type { ChangePasswordInput } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export async function changePassword(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: ChangePasswordInput
 ): Promise<void> {
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))

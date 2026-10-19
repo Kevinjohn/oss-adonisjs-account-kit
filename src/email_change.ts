@@ -1,8 +1,6 @@
 // Email change and profile update: issuing, inspecting and completing the `email_change` proof.
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
@@ -15,7 +13,7 @@ import {
   type PostCommitError,
 } from './errors.js'
 import { mapRegistrationFields } from './registration_fields.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -26,13 +24,13 @@ import type {
   CompleteEmailChangeInput,
   InspectEmailChangeInput,
   RequestEmailChangeInput,
-  ResolvedConfig,
   UpdateProfileInput,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export async function inspectEmailChange(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InspectEmailChangeInput
 ): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
@@ -48,7 +46,7 @@ export async function inspectEmailChange(
 }
 
 export async function requestEmailChange(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: RequestEmailChangeInput
 ): Promise<void> {
   await updateProfile(deps, {
@@ -60,7 +58,7 @@ export async function requestEmailChange(
 }
 
 export async function updateProfile(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: UpdateProfileInput
 ): Promise<AccountUser> {
   const hasRegistrationData = Object.hasOwn(input, 'registrationData')
@@ -214,7 +212,7 @@ interface EmailChangeRow {
 }
 
 export async function completeEmailChange(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: CompleteEmailChangeInput
 ): Promise<AccountUser> {
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
