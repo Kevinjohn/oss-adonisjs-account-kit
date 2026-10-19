@@ -1,4 +1,4 @@
-import { lstat } from 'node:fs/promises'
+import { lstat, readFile } from 'node:fs/promises'
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 
 /** Refuse any link between the application root and a path read or written by setup. */
@@ -24,4 +24,17 @@ export async function safeSetupPath(root: string, name: string): Promise<string>
     parent = dirname(parent)
   }
   return path
+}
+
+/** Read a regular file inside the application root; `null` when it does not exist. */
+export async function readRegularFile(root: string, name: string): Promise<string | null> {
+  const path = await safeSetupPath(root, name)
+  try {
+    const entry = await lstat(path)
+    if (!entry.isFile()) throw new Error(`Setup refuses non-regular file ${name}`)
+    return await readFile(path, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
 }
