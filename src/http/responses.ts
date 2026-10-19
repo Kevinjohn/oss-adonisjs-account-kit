@@ -1,3 +1,4 @@
+import type { HttpContext } from '@adonisjs/core/http'
 import {
   AccountKitError,
   AuthorizationError,
@@ -14,11 +15,32 @@ import {
   UnverifiedEmailError,
 } from '../errors.js'
 
+export { proofHeaders } from './proof_headers.js'
+
 export interface ManagedErrorResponse {
   status: number
   headers: Record<string, string>
   contentType: 'application/json' | 'application/vnd.api+json'
   body: { errors: Array<{ code: string; message: string } | { code: string; title: string }> }
+}
+
+export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
+  for (const [name, value] of Object.entries(mapped.headers)) {
+    if (name.toLowerCase() !== 'vary') {
+      context.response.header(name, value)
+      continue
+    }
+    const existing = context.response.getHeader('Vary')
+    const terms = existing
+      ? String(existing)
+          .split(',')
+          .map((term) => term.trim())
+      : []
+    if (terms.includes('*')) continue
+    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
+    context.response.header('Vary', terms.join(', '))
+  }
+  context.response.header('Content-Type', mapped.contentType)
 }
 
 /**
@@ -59,10 +81,6 @@ function prefersJsonApi(accept?: string): boolean {
     jsonApi > 0 &&
     jsonApi >= quality('application/json')
   )
-}
-
-export function proofHeaders(): Record<string, string> {
-  return { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
 }
 
 /** Package errors are deliberately translated without exposing internal messages or causes. */
