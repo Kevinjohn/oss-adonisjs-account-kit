@@ -8,7 +8,7 @@ import {
   PostCommitError,
   ThrottledError,
 } from '../src/errors.js'
-import { accountErrorResponse } from '../src/http.js'
+import { accountErrorResponse } from '../src/error_response.js'
 
 test.group('account HTTP error mapping', () => {
   test('maps status and stable error code while keeping causes private', ({ assert }) => {

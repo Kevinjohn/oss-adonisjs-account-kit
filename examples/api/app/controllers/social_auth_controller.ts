@@ -1,15 +1,14 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each short HTTP action next to its service operation. */
 
 import { createHash, randomBytes } from 'node:crypto'
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
-  AccountKit,
   InvalidInputError,
   type SocialCallbackResult,
   type SocialBeginInput,
   type SocialProviderName,
 } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import { sessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 import { currentIfAuthenticated, requiredString, socialStrategy } from '#services/social_request'
@@ -27,10 +26,6 @@ function providerParam(value: string): SocialProviderName {
 }
 
 export default class SocialAuthController {
-  private async kit() {
-    return app.container.make(AccountKit)
-  }
-
   async redirect(ctx: HttpContext) {
     const provider = providerParam(ctx.params.provider)
     const intent = ctx.request.input('intent', 'login') as SocialBeginInput['intent']
@@ -39,9 +34,7 @@ export default class SocialAuthController {
     const clientChallenge = browserVerifier
       ? challenge(browserVerifier)
       : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
-    const result = await (
-      await this.kit()
-    ).socialAuthentication.begin({
+    const result = await accountKit.socialAuthentication.begin({
       provider,
       intent,
       current,
@@ -66,9 +59,7 @@ export default class SocialAuthController {
     const clientChallenge = browserVerifier
       ? challenge(browserVerifier)
       : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
-    const result = await (
-      await this.kit()
-    ).socialAuthentication.beginConfirmation({
+    const result = await accountKit.socialAuthentication.beginConfirmation({
       provider,
       verificationToken,
       clientChallenge,
@@ -99,9 +90,7 @@ export default class SocialAuthController {
     if (browser && pending?.state !== state)
       throw new InvalidInputError('Invalid social transaction')
     const current = await currentIfAuthenticated(ctx)
-    const result = await (
-      await this.kit()
-    ).socialAuthentication.callback({
+    const result = await accountKit.socialAuthentication.callback({
       state,
       provider,
       callback: ctx,
@@ -127,9 +116,7 @@ export default class SocialAuthController {
     browserVerifier?: string
   ) {
     if ('handoffCode' in result && result.handoffCode && browserVerifier) {
-      const redeemed = await (
-        await this.kit()
-      ).socialAuthentication.redeemHandoff({
+      const redeemed = await accountKit.socialAuthentication.redeemHandoff({
         code: result.handoffCode,
         verifier: browserVerifier,
         guard: sessionGuard(ctx),
@@ -151,9 +138,7 @@ export default class SocialAuthController {
     if (socialStrategy() === 'session' && pending?.continuation !== continuation) {
       throw new InvalidInputError('Invalid social continuation')
     }
-    const result = await (
-      await this.kit()
-    ).socialAuthentication.completeRegistration({
+    const result = await accountKit.socialAuthentication.completeRegistration({
       continuation,
       email,
       registrationData: { fullName },

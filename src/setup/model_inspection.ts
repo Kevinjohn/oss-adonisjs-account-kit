@@ -1,5 +1,3 @@
-import { lstat, readFile } from 'node:fs/promises'
-import { safeSetupPath } from './safe_path.js'
 import {
   directProperty,
   exactCall,
@@ -11,7 +9,6 @@ import {
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 
-/** Build the complete proposal before a write. Apply refuses every conflict in this plan. */
 export type InspectedColumn = {
   primary: boolean
   physical: string
@@ -173,32 +170,49 @@ export function unsupportedClassRuntime(
   return false
 }
 
-/** Confirm the runtime package alias resolves to the exact contained source we inspect. */
-export async function conventionalSetupImport(
-  root: string,
-  specifier: string,
-  wildcard: string,
-  wildcardTarget: string,
-  exactTarget: string
-): Promise<boolean> {
-  const packagePath = await safeSetupPath(root, 'package.json')
-  const packageStat = await lstat(packagePath)
-  if (!packageStat.isFile()) throw new Error('Setup cannot inspect non-regular package.json')
-  const manifest = JSON.parse(await readFile(packagePath, 'utf8')) as {
-    imports?: Record<string, unknown>
-  }
-  const imports = manifest.imports ?? {}
-  const overlaps = Object.keys(imports).some((key) => {
-    if (key === specifier || key === wildcard) return false
-    const star = key.indexOf('*')
-    return (
-      star >= 0 &&
-      specifier.startsWith(key.slice(0, star)) &&
-      specifier.endsWith(key.slice(star + 1))
-    )
-  })
-  if (overlaps) return false
-  return imports[specifier] === undefined
-    ? imports[wildcard] === wildcardTarget
-    : imports[specifier] === exactTarget
+/** Static property declarations of a class with the given name. */
+export function staticMembers(
+  source: SetupSource,
+  selected: TypeScript.ClassDeclaration | null | undefined,
+  name: string
+): TypeScript.ClassElement[] {
+  const { ts } = source
+  return (
+    selected?.members.filter(
+      (member) =>
+        ts.isPropertyDeclaration(member) &&
+        Boolean(
+          member.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+        ) &&
+        (ts.isIdentifier(member.name) || ts.isStringLiteral(member.name)) &&
+        member.name.text === name
+    ) ?? []
+  )
+}
+
+/** Static blocks, computed or accessor-style static metadata, or duplicated metadata need review. */
+export function hasUnsafeStaticMetadata(
+  source: SetupSource,
+  selected: TypeScript.ClassDeclaration | null | undefined,
+  metadataNames: readonly string[]
+): boolean {
+  const { ts } = source
+  return Boolean(
+    selected?.members.some((member) => {
+      if (ts.isClassStaticBlockDeclaration(member)) return true
+      if (
+        !ts.canHaveModifiers(member) ||
+        !ts.getModifiers(member)?.some((modifier) => modifier.kind === ts.SyntaxKind.StaticKeyword)
+      )
+        return false
+      const name = member.name
+      if (!name) return false
+      if (ts.isComputedPropertyName(name)) return true
+      return (
+        !ts.isPropertyDeclaration(member) &&
+        (ts.isIdentifier(name) || ts.isStringLiteral(name)) &&
+        metadataNames.includes(name.text)
+      )
+    }) || metadataNames.some((name) => staticMembers(source, selected, name).length > 1)
+  )
 }

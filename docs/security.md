@@ -27,11 +27,11 @@ token.
 - **Stored as a hash.** The database holds the SHA-256 hash, never the token
   ([`tokens.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/tokens.ts)). A copy of the database cannot be turned into working links. Lookup is by
   hash, so application code never compares a secret against a stored value. Pinned by
-  `password_reset.spec.ts`: "stores only a hash of the notified token and the normalized user
-  email".
+  `password_reset_request.spec.ts`: "stores only a hash of the notified token and the normalized
+  user email".
 - **Single use.** Consuming a proof and making the change happen in one transaction, so two
-  concurrent submissions succeed at most once. Pinned by "two independent reset transactions allow
-  only one use".
+  concurrent submissions succeed at most once. Pinned by `password_reset_redeem.spec.ts`: "two
+  independent reset transactions allow only one use".
 - **Short-lived.** Password reset, email verification and email change expire after 1 hour, magic
   links after 15 minutes, invitations after 7 days (`expiresIn`). Pinned by "expired, reused, and
   malformed tokens cannot change the password".
@@ -42,7 +42,7 @@ token.
 
 Magic links add a client check: the browser or app that asked for the link keeps a PKCE-style
 verifier, and the link only completes with it. A wrong verifier burns the link, because it may have
-been forwarded. The verifier's challenge is compared with `timingSafeEqual` ([`magic_link.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/magic_link.ts)). Pinned
+been forwarded. The verifier's challenge is compared with `timingSafeEqual` ([`client_challenge.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/client_challenge.ts)). Pinned
 by `magic_link.spec.ts`: "a wrong verifier fails and burns the link; a malformed one consumes
 nothing". See [magic-link sign-in](magic-link.md).
 
@@ -135,7 +135,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
 
 - **One transaction per operation.** Each account operation runs in one package-owned transaction.
   PostgreSQL and MySQL lock the user row (`SELECT ... FOR UPDATE`); SQLite serializes package
-  writes through a lock row ([`db.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/db.ts), [`transaction.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/transaction.ts)).
+  writes through a lock row ([`user_lock.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/user_lock.ts), [`transaction.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/transaction.ts)).
 - **No half-finished changes.** If an adapter or hook fails, the token use, the password change and
   the revocation roll back together. Pinned by "adapter failure rolls back token consumption and
   password change".

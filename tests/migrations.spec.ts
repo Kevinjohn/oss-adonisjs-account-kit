@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
+import { insertUser } from './helpers/fakes.js'
 test.group('published account kit migrations', (group) => {
   const kit = useTestApp(group)
 
@@ -202,5 +203,35 @@ test.group('published account kit migrations', (group) => {
       .where('email', 'invite@example.test')
       .first()
     assert.isNull(invitation.inviter_id)
+  })
+
+  test('social identity relationships enforce subject uniqueness and cascade without credential storage', async ({
+    assert,
+  }) => {
+    const first = await insertUser(kit)
+    const second = await insertUser(kit, { email: 'second@example.test' })
+    const columns = await kit.db.connection().columnsInfo('social_identities')
+    assert.notProperty(columns, 'access_token')
+    assert.notProperty(columns, 'refresh_token')
+    const row = {
+      user_id: first.id,
+      provider: 'example',
+      provider_user_id: 'subject-1',
+      email: 'snapshot@example.test',
+      email_verified: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }
+    await kit.db.table('social_identities').insert(row)
+    await assert.rejects(() =>
+      kit.db
+        .table('social_identities')
+        .insert({ ...row, provider_user_id: 'orphan', user_id: 999999 })
+    )
+    await assert.rejects(() =>
+      kit.db.table('social_identities').insert({ ...row, user_id: second.id })
+    )
+    await kit.db.from('users').where('id', first.id).delete()
+    assert.lengthOf(await kit.db.from('social_identities'), 0)
   })
 })

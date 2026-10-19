@@ -4,8 +4,8 @@ import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { setSocialFixture } from '#services/social_provider_fixture'
 import { notifications } from '#services/account_kit_notifications'
+import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
-const isSession = process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session'
 const verifier = () => randomBytes(32).toString('base64url')
 const challenge = (value: string) => createHash('sha256').update(value).digest('base64url')
 const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
@@ -22,7 +22,6 @@ test('token client completes a verified social registration through one PKCE exc
   client,
   assert,
 }) => {
-  if (isSession) return
   const heldVerifier = verifier()
   const started = await client.post('/api/v1/auth/oauth/google/redirect').json({
     intent: 'login',
@@ -118,7 +117,10 @@ test('token client completes a verified social registration through one PKCE exc
       clientChallenge: challenge(verifier()),
     })
   assert.equal(reauth.status(), 403)
-  assert.equal((body(reauth).errors as { code: string }[])[0].code, 'E_SOCIAL_PROOF_INVALID')
+  assert.equal(
+    (body(reauth).errors as { code: string }[])[0].code,
+    'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID'
+  )
   const relation = await db.from('social_identities').where('user_id', created.id).first()
   const withoutProof = await client
     .delete(`/api/v1/account/social/${relation.id}`)
@@ -160,13 +162,12 @@ test('token client completes a verified social registration through one PKCE exc
     .json({ proof: body(passwordProof).proof })
   assert.equal(unlinked.status(), 204)
   assert.lengthOf(await db.from('social_identities').where('user_id', created.id), 0)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('matching email requires linking proof and never signs into that account', async ({
   client,
   assert,
 }) => {
-  if (isSession) return
   const user = await User.create({
     fullName: 'Existing Local User',
     email: `existing-social-${randomUUID()}@example.test`,
@@ -190,13 +191,12 @@ test('matching email requires linking proof and never signs into that account', 
   assert.equal(callback.status(), 200, JSON.stringify(callback.body()))
   assert.deepEqual(body(callback), { status: 'link_required' })
   assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('missing provider email stays inactive until local proof and fresh provider confirmation', async ({
   client,
   assert,
 }) => {
-  if (isSession) return
   const subject = randomUUID()
   const firstVerifier = verifier()
   const started = await client.post('/api/v1/auth/oauth/github/redirect').json({
@@ -259,13 +259,12 @@ test('missing provider email stays inactive until local proof and fresh provider
   assert.equal(redeemed.status(), 200, JSON.stringify(redeemed.body()))
   const active = await db.from('social_identities').where('provider_user_id', subject).first()
   assert.isNotNull(active.confirmed_at)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('token link and unlink use the authenticated actor and purpose-bound proof', async ({
   client,
   assert,
 }) => {
-  if (isSession) return
   const user = await User.create({
     fullName: 'Social Linking User',
     email: `link-social-${randomUUID()}@example.test`,
@@ -347,7 +346,7 @@ test('token link and unlink use the authenticated actor and purpose-bound proof'
   assert.equal(wrongActor.status(), 400)
   assert.equal(
     (body(wrongActor).errors as { code: string }[])[0].code,
-    'E_SOCIAL_TRANSACTION_INVALID'
+    'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID'
   )
   assert.lengthOf(await db.from('social_identities').where('user_id', otherUser.id), 0)
   assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
@@ -395,13 +394,12 @@ test('token link and unlink use the authenticated actor and purpose-bound proof'
     .json({ proof: body(unlinkProof).proof })
   assert.equal(unlinked.status(), 204, JSON.stringify(unlinked.body()))
   assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('password signup records the visitor hint only after credential establishment', async ({
   client,
   assert,
 }) => {
-  if (isSession) return
   notifications.reset()
   const signup = await client
     .post('/api/v1/auth/signup')
@@ -436,13 +434,12 @@ test('password signup records the visitor hint only after credential establishme
   } finally {
     notifications.failVerification = false
   }
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('social persistence failure has a generic public response and correlation ID', async ({
   client,
   assert,
 }) => {
-  if (isSession) return
   await db.connection().schema.renameTable('social_transactions', 'social_transactions_unavailable')
   try {
     for (const accept of ['application/json', 'application/vnd.api+json']) {
@@ -455,8 +452,8 @@ test('social persistence failure has a generic public response and correlation I
       assert.deepEqual(response.body(), {
         errors: [
           accept === 'application/json'
-            ? { code: 'E_SOCIAL_UNAVAILABLE', message: 'Account operation unavailable' }
-            : { code: 'E_SOCIAL_UNAVAILABLE', title: 'Account operation unavailable' },
+            ? { code: 'E_ACCOUNT_KIT_SOCIAL_UNAVAILABLE', message: 'Account operation unavailable' }
+            : { code: 'E_ACCOUNT_KIT_SOCIAL_UNAVAILABLE', title: 'Account operation unavailable' },
         ],
       })
       assert.notInclude(JSON.stringify(response.body()), 'social_transactions')
@@ -469,13 +466,12 @@ test('social persistence failure has a generic public response and correlation I
       .connection()
       .schema.renameTable('social_transactions_unavailable', 'social_transactions')
   }
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
 test('social starts and password proofs have explicit HTTP abuse budgets', async ({
   client,
   assert,
 }) => {
-  if (isSession) return
   let limitedStart = false
   for (let attempt = 0; attempt < 25; attempt++) {
     const response = await client.post('/api/v1/auth/oauth/unknown/redirect').json({
@@ -515,4 +511,4 @@ test('social starts and password proofs have explicit HTTP abuse budgets', async
     .json({ password: 'WrongPass123!', purpose: 'social_link' })
   assert.equal(limitedProof.status(), 429)
   assert.isString(limitedProof.header('retry-after'))
-})
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)

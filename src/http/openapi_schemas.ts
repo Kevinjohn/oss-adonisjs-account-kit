@@ -4,7 +4,7 @@
  * Request schemas mirror `validators.ts`; cross-field rules are described in text.
  */
 import { sensitivePurposes } from '../social_enums.js'
-import type { JsonSchema } from './route_registration.js'
+import type { JsonSchema } from './openapi_types.js'
 import type { ManagedEndpointName } from './routes.js'
 
 type Strategy = 'session' | 'access_tokens'

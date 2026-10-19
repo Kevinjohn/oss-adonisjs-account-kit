@@ -21,11 +21,12 @@ import {
   planRouterMiddleware,
   planServerProofMiddleware,
 } from './source_edits.js'
-import { mailerSelectionState } from './config_inspection.js'
-import { planSessionConfigIntegration } from './session_config.js'
+import { planSessionConfigIntegration } from './plan_session_config.js'
 import { planUserModel } from './plan_user_model.js'
 import { planSession } from './plan_session.js'
+import { planMail } from './plan_mail.js'
 import { planDependencies } from './plan_dependencies.js'
+import { planLimiter } from './plan_limiter.js'
 import { planSummary } from './plan_summary.js'
 
 export async function planSetup(
@@ -47,44 +48,7 @@ export async function planSetup(
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
   })
-  if (
-    hasEmailFlow(choices) &&
-    choices.mail.integration === 'adonisjs-mail' &&
-    state.files['config/mail.ts']
-  ) {
-    const selection = await mailerSelectionState(
-      state.files['config/mail.ts'],
-      state.root,
-      choices.mail.transportEnv
-    )
-    if (selection === 'missing')
-      diagnostic(
-        diagnostics,
-        'config/mail.ts',
-        'Selected Mail mailer is absent from the configured mailers map'
-      )
-    else if (selection === 'invalid')
-      diagnostic(
-        diagnostics,
-        'config/mail.ts',
-        'Selected Mail mailer must be a callable transport provider'
-      )
-    else if (selection === 'unsafe')
-      diagnostic(
-        diagnostics,
-        'config/mail.ts',
-        'Resolve runtime Mail and environment module provenance before setup'
-      )
-    else
-      diagnostic(
-        diagnostics,
-        'config/mail.ts',
-        selection === 'unresolved'
-          ? 'Confirm the selected Mail mailer and its transport configuration manually before readiness'
-          : 'Verify the selected Mail transport delivers messages with the deployed configuration before readiness',
-        'action'
-      )
-  }
+  await planMail(choices, state, diagnostics)
   await planUserModel(choices, state, diagnostics)
   const changes: SetupFileChange[] = []
   const retainedChoices = retainedGeneratedChoices(state)
@@ -193,7 +157,7 @@ export async function planSetup(
       'Protect proof responses before parser and CSRF failures'
     )
   }
-  await planArrayImports(changes, state, diagnostics, 'adonisrc.ts', 'providers: [', [
+  await planArrayImports(changes, state, diagnostics, 'adonisrc.ts', [
     ...(choices.managed.length ? ['@adonisjs/core/providers/vinejs_provider'] : []),
     '@adonisjs/lucid/database_provider',
     '@adonisjs/limiter/limiter_provider',
@@ -277,6 +241,7 @@ export async function planSetup(
     : []
   const endpoints = endpointLocations.map(({ name }) => name)
   const missingPackages = await planDependencies(choices, state, diagnostics)
+  await planLimiter(state, diagnostics)
   return planSummary({
     choices,
     state,

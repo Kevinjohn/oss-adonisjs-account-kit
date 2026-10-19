@@ -1,11 +1,6 @@
 import vine from '@vinejs/vine'
+import { email, fullName } from '#validators/fields'
 import { password } from '#validators/password'
-
-/**
- * Shared rules for email and password.
- */
-const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
-const fullName = () => vine.string().trim().minLength(1).maxLength(100)
 
 /** The social continuation collects the same trusted name as self-signup. */
 export const socialRegistrationValidator = vine.create({

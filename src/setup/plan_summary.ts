@@ -8,7 +8,6 @@ import type {
   SetupDiagnostic,
 } from './types.js'
 import { hasEmailFlow } from './shared.js'
-import { changedFields } from './changes.js'
 import { socialProviderLabels } from '../social_providers.js'
 
 export function planSummary({
@@ -120,4 +119,22 @@ export function planSummary({
       policy: `${choices.policy.registration} registration; verification ${choices.policy.verificationRequired ? 'required' : 'optional'}`,
     },
   }
+}
+
+export function changedFields(before: unknown, after: unknown, path = ''): string[] {
+  if (JSON.stringify(before) === JSON.stringify(after)) return []
+  if (
+    !before ||
+    !after ||
+    typeof before !== 'object' ||
+    typeof after !== 'object' ||
+    Array.isArray(before) ||
+    Array.isArray(after)
+  )
+    return [path]
+  const oldRecord = before as Record<string, unknown>
+  const newRecord = after as Record<string, unknown>
+  return [...new Set([...Object.keys(oldRecord), ...Object.keys(newRecord)])].flatMap((key) =>
+    changedFields(oldRecord[key], newRecord[key], path ? `${path}.${key}` : key)
+  )
 }

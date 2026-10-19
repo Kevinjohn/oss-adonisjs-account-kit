@@ -3,21 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { defaultSetupChoices } from '../../src/setup/defaults.js'
 import type { SetupChoices, SetupInspection } from '../../src/setup/types.js'
+import { setupVersions } from './setup_versions.js'
 
-export const versions: Record<string, string> = {
-  'typescript': '5.9.3',
-  '@adonisjs/core': '7.0.0',
-  '@adonisjs/lucid': '22.4.2',
-  '@adonisjs/limiter': '3.0.0',
-  '@adonisjs/auth': '10.1.0',
-  '@adonisjs/session': '8.1.0',
-  '@adonisjs/shield': '9.0.0',
-  '@vinejs/vine': '4.4.0',
-  '@adonisjs/mail': '10.0.0',
-  'adonisjs-account-kit': '0.0.0',
-}
+export const versions: Record<string, string> = { ...setupVersions, '@adonisjs/mail': '10.0.0' }
 
-export async function fixture() {
+export async function prerequisiteFixture() {
   const root = await mkdtemp(join(tmpdir(), 'account-kit-prerequisites-'))
   await mkdir(join(root, 'app/models'), { recursive: true })
   await writeFile(
@@ -69,7 +59,7 @@ export async function fixture() {
 export async function withFixture(
   run: (choices: SetupChoices, state: SetupInspection, root: string) => Promise<void>
 ) {
-  const { root, choices, state } = await fixture()
+  const { root, choices, state } = await prerequisiteFixture()
   try {
     await run(choices, state, root)
   } finally {

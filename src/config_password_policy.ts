@@ -31,7 +31,7 @@ export function resolvePasswordPolicy(
         passwordPolicy.maxLength < passwordPolicy.minLength))
   )
     throw new Error(
-      'account_kit: passwordPolicy lengths must stay within 8–256 and minLength must not exceed maxLength'
+      `account_kit: passwordPolicy lengths must stay within ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} and minLength must not exceed maxLength`
     )
   if (
     !Number.isSafeInteger(passwordPolicy.minScore) ||

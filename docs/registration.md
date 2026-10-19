@@ -41,7 +41,7 @@ committed failure; the account and proof remain. Do not retry registration as if
 The account can request a new activation proof through `emailVerification.send`, or use password
 reset. Applications can establish a limited credential through `authentication.login` immediately
 after successful registration. `authentication.requireActive` denies protected access with 403
-`unverified_email` in both bearer and session integrations. Verification resend and logout remain
+`E_ACCOUNT_KIT_UNVERIFIED_EMAIL` in both bearer and session integrations. Verification resend and logout remain
 available to inactive accounts.
 
 An activation proof for an inactive account now requires a fresh password:

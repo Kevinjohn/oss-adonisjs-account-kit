@@ -4,6 +4,7 @@ import app from '@adonisjs/core/services/app'
 import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
+import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
 const tokenFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
 
@@ -45,7 +46,6 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Session User',
     email: `session-user-${randomUUID()}@example.test`,
@@ -123,13 +123,12 @@ test('session login needs CSRF, rotates the session, and logout rejects the old 
     .header('cookie', rawCookies(repeatCsrf))
     .header('x-csrf-token', (repeatCsrf.body() as { csrfToken: string }).csrfToken)
   assert.equal(repeatedLogout.status(), 401)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('password reset rejects pre-existing sessions on an application-owned route', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   notifications.reset()
   const user = await User.create({
     fullName: 'Reset Session User',
@@ -204,13 +203,12 @@ test('password reset rejects pre-existing sessions on an application-owned route
     .header('x-csrf-token', (newCsrf.body() as { csrfToken: string }).csrfToken)
     .json({ email: user.email, password: 'ReplacementPass123!' })
   assert.equal(freshLogin.status(), 200)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('a committed reset rejects a login paused inside the real session guard', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   notifications.reset()
   const user = await User.create({
     fullName: 'Pending Reset Login',
@@ -251,13 +249,12 @@ test('a committed reset rejects a login paused inside the real session guard', a
   const replayCookies = rawCookies(rejected) || rawCookies(loginCsrf)
   const replay = await client.get('/api/v1/account/profile').header('cookie', replayCookies)
   assert.equal(replay.status(), 401)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('fresh-password claim rejects a login paused inside the real session guard', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   notifications.reset()
   const email = `pending-claim-${randomUUID()}@example.test`
   const signupCsrf = await client.get('/api/v1/auth/csrf')
@@ -303,13 +300,12 @@ test('fresh-password claim rejects a login paused inside the real session guard'
   const replayCookies = rawCookies(rejected) || rawCookies(loginCsrf)
   const replay = await client.get('/api/v1/account/profile').header('cookie', replayCookies)
   assert.equal(replay.status(), 401)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('inactive session may request activation but cannot use verified routes', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Inactive Session User',
     email: `inactive-session-${randomUUID()}@example.test`,
@@ -341,15 +337,14 @@ test('inactive session may request activation but cannot use verified routes', a
   assert.equal(protectedResponse.status(), 403)
   assert.equal(
     (protectedResponse.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('inactive session may replace its unconfirmed email through the guarded route', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Email Correction User',
     email: `email-correction-${randomUUID()}@example.test`,
@@ -378,10 +373,9 @@ test('inactive session may replace its unconfirmed email through the guarded rou
     .get('/api/v1/account/profile')
     .header('cookie', rawCookies(login))
   assert.equal(staleProfile.status(), 401)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('signup establishes a limited session for an inactive account', async ({ client, assert }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const bootstrap = await client.get('/api/v1/auth/csrf')
   const email = `signup-session-${randomUUID()}@example.test`
   const signupInput = {
@@ -412,15 +406,14 @@ test('signup establishes a limited session for an inactive account', async ({ cl
   assert.equal(protectedResponse.status(), 403)
   assert.equal(
     (protectedResponse.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('a password change revokes every previously issued browser session', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Revision Session User',
     email: `revision-session-${randomUUID()}@example.test`,
@@ -456,13 +449,12 @@ test('a password change revokes every previously issued browser session', async 
     const profile = await client.get('/api/v1/account/profile').header('cookie', cookies)
     assert.equal(profile.status(), 401)
   }
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)
 
 test('a package restriction change revokes an application-owned protected session route', async ({
   client,
   assert,
 }) => {
-  if (process.env.ACCOUNT_KIT_AUTH_STRATEGY !== 'session') return
   const user = await User.create({
     fullName: 'Restricted Session User',
     email: `restricted-session-${randomUUID()}@example.test`,
@@ -487,4 +479,4 @@ test('a package restriction change revokes an application-owned protected sessio
   })
   const after = await client.get('/api/v1/account/profile').header('cookie', cookies)
   assert.equal(after.status(), 401)
-})
+}).skip(!isSessionStrategy, SESSION_ONLY)

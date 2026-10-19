@@ -1,14 +1,12 @@
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { symlink, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-import type Configure from '@adonisjs/core/commands/configure'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { BaseModel, beforeCreate, column } from '@adonisjs/lucid/orm'
 import type { DateTime } from 'luxon'
-import { configure, migrationNames, migrationSchema, type UserIdType } from '../configure.js'
+import { migrationNames, migrationSchema, type UserIdType } from '../configure.js'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { transaction } from '../src/db.js'
 import { bootTestApp } from './helpers/app.js'
@@ -240,61 +238,4 @@ test('migration schema rejects invalid table identifiers and unsupported ID type
     assert.throws(() => migrationSchema(invalidTable))
   }
   assert.throws(() => migrationSchema('users', 'bigint' as UserIdType))
-})
-
-test('configure passes dashed and camel-case CLI schema flags into generated migrations', async ({
-  assert,
-}) => {
-  const root = await mkdtemp(join(tmpdir(), 'account-kit-schema-flags-'))
-  try {
-    await mkdir(join(root, 'database', 'migrations'), { recursive: true })
-    await mkdir(join(root, 'start'), { recursive: true })
-    await writeFile(join(root, 'start', 'env.ts'), '')
-
-    for (const [parsedFlags, userIdType] of [
-      [{ 'users-table': 'order', 'user-id-type': 'uuid' }, 'uuid'],
-      [{ usersTable: 'group', userIdType: 'string' }, 'string'],
-    ] as const) {
-      const migrationData: Array<Record<string, unknown>> = []
-      const codemods = {
-        overwriteExisting: true,
-        async makeUsingStub(_root: string, name: string, data: Record<string, unknown>) {
-          if (name.startsWith('migrations/'))
-            migrationData.push(data.migration as Record<string, unknown>)
-        },
-        async updateRcFile(
-          update: (rcFile: {
-            addProvider(name: string): void
-            addCommand(name: string): void
-          }) => void
-        ) {
-          update({ addProvider() {}, addCommand() {} })
-        },
-        async defineEnvValidations() {},
-      }
-      const command = {
-        parsedFlags,
-        stubsRoot: fileURLToPath(new URL('../stubs', import.meta.url)),
-        app: { makePath: (...parts: string[]) => join(root, ...parts) },
-        logger: { info() {}, warning() {} },
-        async createCodemods() {
-          return codemods
-        },
-      } as unknown as Configure
-
-      await configure(command)
-      assert.lengthOf(migrationData, migrationNames.length)
-      for (const migration of migrationData) {
-        assert.equal(
-          migration.usersTable,
-          JSON.stringify(parsedFlags['users-table'] ?? parsedFlags.usersTable)
-        )
-        if (userIdType === 'uuid') assert.equal(migration.userIdColumn, "table.uuid('user_id')")
-        if (userIdType === 'string')
-          assert.equal(migration.userIdColumn, "table.string('user_id', 254)")
-      }
-    }
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
 })

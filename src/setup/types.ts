@@ -16,12 +16,16 @@ export const featureNames = [
 ] as const
 
 export type SetupFeature = (typeof featureNames)[number]
-export type GuardStrategy = 'session' | 'access_tokens'
+export const setupModes = ['services', 'managed'] as const
+export const guardStrategies = ['session', 'access_tokens'] as const
+export const registrationPolicies = ['open', 'closed', 'application'] as const
+
+export type GuardStrategy = (typeof guardStrategies)[number]
 
 /** Values here are application choices. Deployment values remain environment references. */
 export interface SetupChoices {
   version: 1
-  mode: 'services' | 'managed'
+  mode: (typeof setupModes)[number]
   features: SetupFeature[]
   managed: SetupFeature[]
   managedExcept?: ManagedEndpointName[]
@@ -67,7 +71,7 @@ export interface SetupChoices {
     durableWorkerVerified: boolean
   }
   policy: {
-    registration: 'open' | 'closed' | 'application'
+    registration: (typeof registrationPolicies)[number]
     registrationFields: Array<{
       name: string
       type: 'string' | 'number' | 'boolean'
@@ -112,7 +116,7 @@ export interface SetupInspection {
   guardTokenProviders: Record<string, string>
   installedVersions: Record<string, string>
   database: 'sqlite' | 'postgres' | 'mysql' | 'unsupported' | 'unknown'
-  connection: 'default' | 'unsupported' | 'unknown'
+  connection: 'default' | 'unknown'
   installedPackages: string[]
   migrationNames: string[]
   existingPrefix: string | null

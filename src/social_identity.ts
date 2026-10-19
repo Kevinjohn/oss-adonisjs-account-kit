@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { sqlTimestamp, type DialectSource } from './timestamps.js'
 import { DateTime } from 'luxon'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
-import { credentialsChanged, currentInTransaction, revision } from './authentication.js'
+import { credentialsChanged, revision } from './authentication.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
@@ -26,7 +23,8 @@ import {
   SocialUserNotFoundError,
 } from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { isSocialProviderName, socialProviderNames } from './social_providers.js'
+import { isSocialProviderName } from './social_providers.js'
+import { authenticated, enabledProviders, expiry, now, type Dependencies } from './social_shared.js'
 import { isSensitivePurpose, isSocialBeginIntent } from './social_enums.js'
 import { completeActivationByHash, sendVerification } from './verification.js'
 import type {
@@ -34,7 +32,6 @@ import type {
   AuthenticationGuard,
   CurrentAccount,
   CurrentAccountInput,
-  ResolvedConfig,
   SensitivePurpose,
   SocialBeginInput,
   SocialCallbackInput,
@@ -47,7 +44,6 @@ import type {
   UserId,
 } from './types.js'
 
-export type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
 interface ProviderProfile {
   subject: string
   email: string | null
@@ -74,11 +70,7 @@ interface SocialTransactionRow {
   credential_revision: string | null
   created_at: string | Date
 }
-const MINUTES = 10
 const FRESH_CLOCK_TOLERANCE_MS = 30_000
-export const expiry = (client: DialectSource) =>
-  sqlTimestamp(client, DateTime.utc().plus({ minutes: MINUTES }))
-export const now = (client: DialectSource) => sqlTimestamp(client)
 const validChallenge = (value: unknown): value is string =>
   typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value)
 
@@ -152,12 +144,6 @@ function confirmedRecipient(user: AccountUser): boolean {
   return user.emailVerifiedAt !== null && user.unverifiedEmail !== user.email
 }
 
-export function enabledProviders(config: ResolvedConfig): SocialProviderName[] {
-  return socialProviderNames.filter(
-    (name) => config.socialAuthentication?.providers[name] !== undefined
-  )
-}
-
 async function consumeState(trx: Trx, state: string): Promise<SocialTransactionRow> {
   if (!isTokenShaped(state)) throw new SocialTransactionError()
   const rows = await consumeRows<SocialTransactionRow>(
@@ -168,18 +154,6 @@ async function consumeState(trx: Trx, state: string): Promise<SocialTransactionR
   )
   if (rows.length !== 1) throw new SocialTransactionError()
   return rows[0]
-}
-
-export async function authenticated(
-  deps: Dependencies,
-  current: CurrentAccountInput | undefined,
-  trx: Trx
-): Promise<AccountUser> {
-  if (!current) throw new SocialProofError()
-  await currentInTransaction(deps, current, trx)
-  const user = await deps.config.users.findById(current.userId, trx)
-  if (!user) throw new SocialUserNotFoundError()
-  return user
 }
 
 async function createAssociation(

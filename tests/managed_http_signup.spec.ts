@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
 import { DeliveryError, ThrottledError } from '../src/errors.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { fixture } from './helpers/managed_http.js'
+import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
 test.group('managed HTTP dispatch', () => {
   test('public registration is allowed only by shared open availability', ({ assert }) => {
@@ -20,7 +20,7 @@ test.group('managed HTTP dispatch', () => {
   test('application-owned registration never reaches the managed signup service', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     let created = false
     const kit = new AccountKit({
       config: {
@@ -39,12 +39,7 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
-        current: async () => ({ userId: 1, revision: null }),
-      },
+      guard: stubGuard(),
       enabled: ['registration'],
     })
     const ctx = context()
@@ -91,7 +86,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('signup exhaustion rejects before account creation', async ({ assert }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     let created = false
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -111,12 +106,7 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
-        current: async () => ({ userId: 1, revision: null }),
-      },
+      guard: stubGuard(),
       enabled: ['registration'],
     })
     const ctx = context()
@@ -129,7 +119,7 @@ test.group('managed HTTP dispatch', () => {
   test('shared configured password policy produces native field errors before a write', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const writes: string[] = []
     const real = new AccountKit({
       config: {
@@ -162,13 +152,11 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
         publicCredential: () => 'opaque',
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 1, tokenId: 1 }),
-      },
+      }),
       enabled: ['registration', 'passwordReset'],
     })
     for (const route of ['POST /api/v1/auth/signup', 'POST /api/v1/auth/password-reset/:token']) {
@@ -192,7 +180,7 @@ test.group('managed HTTP dispatch', () => {
   test('signup establishes the selected limited credential through authentication', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     const calls: string[] = []
     const credential = { userId: 7, identifier: 42, value: 'opaque' }
     registerManagedRoutes(router, {
@@ -226,13 +214,11 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
+      guard: stubGuard({
         strategy: 'access_tokens',
-        name: 'api',
         publicCredential: (value: typeof credential) => value.value,
-        forRequest: () => ({}) as never,
         current: async () => ({ userId: 7, tokenId: 42 }),
-      },
+      }),
       enabled: ['registration'],
     })
     assert.deepEqual(await routes.get('POST /api/v1/auth/signup')!(context()), {
@@ -254,7 +240,7 @@ test.group('managed HTTP dispatch', () => {
   test('a committed signup remains created when follow-up authentication fails', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () =>
@@ -276,12 +262,9 @@ test.group('managed HTTP dispatch', () => {
             },
           },
         }) as unknown as AccountKit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         current: async () => ({ userId: 7, revision: null }),
-      },
+      }),
       enabled: ['registration'],
     })
     const ctx = context()
@@ -301,7 +284,7 @@ test.group('managed HTTP dispatch', () => {
   test('a representation failure does not falsely say signup authentication failed', async ({
     assert,
   }) => {
-    const { router, routes, context } = fixture()
+    const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () =>
@@ -326,12 +309,9 @@ test.group('managed HTTP dispatch', () => {
             }),
           },
         }) as unknown as AccountKit,
-      guard: {
-        strategy: 'session',
-        name: 'web',
-        forRequest: () => ({}) as never,
+      guard: stubGuard({
         current: async () => ({ userId: 7, revision: null }),
-      },
+      }),
       enabled: ['registration'],
       extensions: {
         representAccount: () => {
