@@ -1,12 +1,11 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
-  AccountKit,
   DeliveryError,
   InvalidInputError,
   InvalidTokenError,
   PostCommitError,
 } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import {
   invitationAcceptValidator,
   invitationListValidator,
@@ -28,9 +27,8 @@ export default class InvitationsController {
       return accountError(ctx, 403, 'missing_ability', 'This token cannot create invitations.')
     }
     const { email, role } = await ctx.request.validateUsing(invitationValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      const invitation = await kit.invitations.send({ actorId: actor.id, email, role })
+      const invitation = await accountKit.invitations.send({ actorId: actor.id, email, role })
       return ctx.response.created({ id: invitation.id })
     } catch (error) {
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
@@ -44,14 +42,12 @@ export default class InvitationsController {
   async list(ctx: HttpContext) {
     const actor = await ctx.auth.getUserOrFail()
     const { limit, cursor } = await ctx.request.validateUsing(invitationListValidator)
-    const kit = await app.container.make(AccountKit)
-    return ctx.response.ok(await kit.invitations.list({ actorId: actor.id, limit, cursor }))
+    return ctx.response.ok(await accountKit.invitations.list({ actorId: actor.id, limit, cursor }))
   }
 
   async inspect(ctx: HttpContext) {
     proofHeaders(ctx)
-    const kit = await app.container.make(AccountKit)
-    const invitation = await kit.invitations.inspect({ token: ctx.params.token })
+    const invitation = await accountKit.invitations.inspect({ token: ctx.params.token })
     return invitation
       ? ctx.response.ok(invitation)
       : proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
@@ -60,9 +56,8 @@ export default class InvitationsController {
   async accept(ctx: HttpContext) {
     proofHeaders(ctx)
     const { password, fullName } = await ctx.request.validateUsing(invitationAcceptValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      const user = await kit.invitations.accept({
+      const user = await accountKit.invitations.accept({
         token: ctx.params.token,
         password,
         registrationData: { fullName },
@@ -86,9 +81,8 @@ export default class InvitationsController {
 
   async resend({ auth, params, response, logger }: HttpContext) {
     const actor = await auth.getUserOrFail()
-    const kit = await app.container.make(AccountKit)
     try {
-      const invitation = await kit.invitations.resend({
+      const invitation = await accountKit.invitations.resend({
         actorId: actor.id,
         invitationId: invitationIdParam(params.id),
       })
@@ -104,9 +98,8 @@ export default class InvitationsController {
 
   async revoke({ auth, params, response, logger }: HttpContext) {
     const actor = await auth.getUserOrFail()
-    const kit = await app.container.make(AccountKit)
     try {
-      await kit.invitations.revoke({
+      await accountKit.invitations.revoke({
         actorId: actor.id,
         invitationId: invitationIdParam(params.id),
       })
