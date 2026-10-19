@@ -2,6 +2,14 @@ import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { hasEmailFlow, managedExclusions } from './shared.js'
 
+const requiredEnvHelperLines = [
+  'const requiredEnv = (name: string): string => {',
+  '  const value = process.env[name]',
+  '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
+  '  return value',
+  '}',
+]
+
 export function managedRoutesSource(choices: SetupChoices): string {
   const social =
     choices.social.status === 'enabled' && choices.managed.includes('socialAuthentication')
@@ -65,11 +73,7 @@ export function allyConfigSource(choices: SetupChoices): string {
     "import { defineConfig, services } from '@adonisjs/ally'",
     "import type { InferSocialProviders } from '@adonisjs/ally/types'",
     '',
-    'const requiredEnv = (name: string): string => {',
-    '  const value = process.env[name]',
-    '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
-    '  return value',
-    '}',
+    ...requiredEnvHelperLines,
     '',
     'const allyConfig = defineConfig({',
     ...social.providers.map((provider) => {
@@ -182,15 +186,7 @@ export function accountConfigSource(choices: SetupChoices): string {
       : []),
     ...(social ? ["import type { HttpContext } from '@adonisjs/core/http'"] : []),
     '',
-    ...(emailEnabled
-      ? [
-          'const requiredEnv = (name: string): string => {',
-          '  const value = process.env[name]',
-          '  if (!value) throw new Error(`account_kit: ${name} must be configured`)',
-          '  return value',
-          '}',
-        ]
-      : []),
+    ...(emailEnabled ? requiredEnvHelperLines : []),
     ...(choices.policy.registrationFields.length
       ? [
           '',
