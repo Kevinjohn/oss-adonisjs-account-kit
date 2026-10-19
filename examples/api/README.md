@@ -73,6 +73,9 @@ or reuses this checkout's `node_modules`.
 Use the repository's `test:consumer` script to run it. A separate baseline tarball is required to
 run the upgrade scenario. PostgreSQL runs require the dedicated `account_kit_consumer` database;
 the harness resets its `public` schema before each independent scenario.
+The `compatibility/` and `upgrade/` folders are inputs for this harness, not part of the
+application: `compatibility/` is a separate minimum-version consumer, and `upgrade/` holds the
+baseline files for the upgrade scenario.
 The historical baseline config is kept in `upgrade/baseline_account_kit.stub` so current-app
 typechecking does not compile old package contracts. The upgrade harness copies that stub into
 the temporary application config only for its baseline phase.
