@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
-import { deleteReturning, lockRow, transaction } from '../src/db.js'
+import { deleteReturning } from '../src/consume_rows.js'
+import { lockRow, transaction } from '../src/db.js'
 import { isUniqueViolation, mysqlDuplicateKey } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'

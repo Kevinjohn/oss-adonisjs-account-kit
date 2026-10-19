@@ -1,4 +1,4 @@
-import { committedResult } from './db.js'
+import { committedResult } from './transaction.js'
 import { DeliveryError, PostCommitError } from './errors.js'
 import type { LifecycleEvent, ResolvedConfig } from './types.js'
 
