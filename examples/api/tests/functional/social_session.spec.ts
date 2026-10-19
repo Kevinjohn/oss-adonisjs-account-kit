@@ -95,6 +95,16 @@ test('browser session keeps PKCE verifier server-side and establishes the existi
   assert.equal(complete.status(), 200, JSON.stringify(complete.body()))
   assert.notProperty(complete.body(), 'handoffCode')
   assert.notProperty(complete.body(), 'token')
+  const completed = (complete.body() as { data: { status: string; user: object } }).data
+  assert.equal(completed.status, 'new')
+  assert.deepEqual(Object.keys(completed.user).sort(), [
+    'createdAt',
+    'email',
+    'fullName',
+    'id',
+    'initials',
+    'updatedAt',
+  ])
   const cookie = rawCookies(complete)
   assert.isNotEmpty(cookie)
   const profile = await client.get('/api/v1/account/profile').header('cookie', cookie)
