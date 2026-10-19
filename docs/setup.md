@@ -104,7 +104,7 @@ Then run the check:
    - With authentication alone, restrict the account with
      `kit.authentication.changeRestriction({ userId, change })`, which updates your access-policy
      state in its transaction, then call it again to restore access. The
-     [session restriction test](../examples/api/tests/functional/authentication_session.spec.ts)
+     [session restriction test](../examples/api/tests/functional/session_guard_races.spec.ts)
      and [service test](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/tests/authentication.spec.ts)
      show both calls. After restoring, log in again: the fresh credential must succeed on the
      protected route.
@@ -124,7 +124,7 @@ How to send the credential:
   and its [route](../examples/api/start/routes.ts). Fetch the CSRF token before login, keep the
   cookie through login and the protected request, send `x-csrf-token` on login and every
   state-changing request, then retry the protected route with the original cookie. The example
-  [session test](../examples/api/tests/functional/authentication_session.spec.ts) shows the
+  [session test](../examples/api/tests/functional/session_guard_races.spec.ts) shows the
   sequence. The session store must be server-side. The setup report names the managed CSRF
   endpoint only once it is switched on; if you exclude it, keep your own bootstrap route.
 
