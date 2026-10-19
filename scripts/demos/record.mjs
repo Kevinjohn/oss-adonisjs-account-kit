@@ -2,64 +2,15 @@
 // Usage: node record.mjs <app-dir> <out-dir> [scenario ...]
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { Cast, fit } from './cast.mjs'
 
 const [appDir, outDir, ...only] = process.argv.slice(2)
 if (!appDir || !outDir) throw new Error('Usage: node record.mjs <app-dir> <out-dir> [scenario ...]')
 const base = 'localhost:3333'
 const password = 'hunter2hunter2'
-
-// ---- terminal output ---------------------------------------------------------------------------
-
-class Cast {
-  events = []
-  t = 0.5
-  emit(text, gap = 0) {
-    this.t += gap
-    this.events.push([Number(this.t.toFixed(3)), 'o', text.replace(/\n/g, '\r\n')])
-  }
-  type(command) {
-    this.emit('\x1b[32m$\x1b[0m ', 0.5)
-    for (const ch of command) this.emit(ch, 0.025)
-    this.emit('\n', 0.3)
-  }
-  comment(text) {
-    this.emit(`\x1b[90m# ${text}\x1b[0m\n`, 0.7)
-  }
-  /** Prints output, cutting each line to the terminal width as a real terminal would wrap it. */
-  print(text, gap = 0.4) {
-    const lines = text.replace(/\n$/, '').split('\n').map(fit)
-    this.emit(lines.join('\n') + '\n', gap)
-  }
-  save(file, title) {
-    const header = { version: 2, width, height: 24, title }
-    const lines = [header, ...this.events].map((e) => JSON.stringify(e))
-    writeFileSync(file, lines.join('\n') + '\n')
-  }
-}
-
-const width = 100
-/** Cuts a line to the terminal width, ignoring colour codes when counting. */
-function fit(line) {
-  const visible = line.replace(/\x1b\[[0-9;]*m/g, '')
-  if (visible.length <= width - 2) return line
-  let count = 0
-  let out = ''
-  for (let i = 0; i < line.length; i++) {
-    const code = line.slice(i).match(/^\x1b\[[0-9;]*m/)
-    if (code) {
-      out += code[0]
-      i += code[0].length - 1
-      continue
-    }
-    if (count === width - 3) break
-    out += line[i]
-    count++
-  }
-  return out + '…\x1b[0m'
-}
 
 /** Long secrets are shortened on screen; the real values are still sent. */
 const shorten = (text) =>
