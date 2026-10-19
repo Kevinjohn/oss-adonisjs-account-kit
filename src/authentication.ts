@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction } from './db.js'
-import { normaliseEmail } from './email.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { normalizeEmail } from './email.js'
+import { throttlerOf } from './throttle.js'
 import { credentialsChanged, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import {
@@ -37,15 +35,9 @@ import type {
   Trx,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
-
-type Dependencies = {
-  config: ResolvedConfig
-  db: Database
-  limiter: LimiterService
-  throttler?: Throttler
-}
 
 /** The authentication settings, or `CapabilityDisabledError` when authentication is off. */
 export function requireAuthentication(config: ResolvedConfig): ResolvedAuthenticationConfig {
@@ -69,7 +61,7 @@ export function safeAccount(user: AccountUser): CurrentAccount {
 }
 
 export async function currentInTransaction(
-  deps: Pick<Dependencies, 'config'>,
+  deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx
 ): Promise<CurrentAccount> {
@@ -103,7 +95,7 @@ export async function currentInTransaction(
   return safeAccount(user)
 }
 
-export function authenticationService(deps: Dependencies) {
+export function authenticationService(deps: ServiceDependencies) {
   return {
     /** Read-only impact of the login methods that remain after a proposed change. */
     async retirementImpact(input: {
@@ -139,7 +131,7 @@ export function authenticationService(deps: Dependencies) {
       )
         throw new InvalidCredentialsError()
 
-      const email = normaliseEmail(input.email)
+      const email = normalizeEmail(input.email)
       const key = throttlerOf(deps).key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)

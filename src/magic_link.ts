@@ -2,15 +2,13 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { isActiveAccount, requireAuthentication, revision, safeAccount } from './authentication.js'
 import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import { InvalidCredentialsError, InvalidInputError, InvalidTokenError } from './errors.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -20,20 +18,13 @@ import type {
   MagicLinkCompleteInput,
   MagicLinkInspectInput,
   MagicLinkRequestInput,
-  ResolvedConfig,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 import { sqlTimestamp } from './timestamps.js'
 import { isClientChallenge, isClientVerifier, verifierMatches } from './client_challenge.js'
 
 export { clientChallengeFor } from './client_challenge.js'
-
-type Dependencies = {
-  config: ResolvedConfig
-  db: Database
-  limiter: LimiterService
-  throttler?: Throttler
-}
 
 interface LinkRow {
   tokenable_id: UserId
@@ -42,7 +33,7 @@ interface LinkRow {
 }
 
 export async function requestMagicLink(
-  deps: Dependencies,
+  deps: ServiceDependencies,
   input: MagicLinkRequestInput
 ): Promise<void> {
   const started = performance.now()
@@ -53,7 +44,7 @@ export async function requestMagicLink(
       throw new InvalidInputError('Invalid client key')
     if (!isClientChallenge(input.clientChallenge))
       throw new InvalidInputError('Invalid client challenge')
-    const email = normaliseEmail(input.email)
+    const email = normalizeEmail(input.email)
 
     await throttlerOf(deps).consume('magic:client', input.clientKey, deps.config.throttle)
     await throttlerOf(deps).consume('magic:email', email, deps.config.throttle)
@@ -111,7 +102,7 @@ export async function requestMagicLink(
 
 /** Read-only: mail scanners prefetch links, so inspection never consumes. */
 export async function inspectMagicLink(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: MagicLinkInspectInput
 ): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
@@ -131,7 +122,7 @@ export async function inspectMagicLink(
  * the wrong verifier may have been forwarded or intercepted, so the owner requests a new one.
  */
 export async function completeMagicLink<Credential>(
-  deps: Dependencies,
+  deps: ServiceDependencies,
   input: MagicLinkCompleteInput,
   guard: AuthenticationGuard<Credential>
 ): Promise<{ account: CurrentAccount; credential: Credential }> {
