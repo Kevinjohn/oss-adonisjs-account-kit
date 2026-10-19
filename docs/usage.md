@@ -147,8 +147,8 @@ not create tenant or team membership records unless the application callback doe
 
 ## Adapter and registration data
 
-Prefer `createLucidAdapter(async () => (await import('#models/user')).default, options)` for Lucid
-users. It resolves the model lazily, derives its physical table and requires the default Lucid
+Prefer `createLucidAdapter(loadUser, options)` for Lucid users, where `loadUser` imports
+`#models/user` and returns its default export, as the generated config does. It resolves the model lazily, derives its physical table and requires the default Lucid
 connection and an `id` primary-key column. Add
 `mapRegistrationData(data, user)` only when account creation needs additional required profile
 fields. The callback receives untrusted registration data and the new model instance. Explicitly
