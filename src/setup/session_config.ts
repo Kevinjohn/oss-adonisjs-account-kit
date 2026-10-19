@@ -1,4 +1,4 @@
-import { selectedSessionEnvironment } from './session_env.js'
+import { resolveSelectedEnvironment } from './selected_environment.js'
 import {
   defaultImportName,
   directProperty,
@@ -107,7 +107,7 @@ export async function nativeSessionConfiguration(
   else {
     const selector = envSelector(source, store.initializer)
     if (!selector) return null
-    selectedName = (await selectedSessionEnvironment(root, selector.variable)) ?? selector.fallback
+    selectedName = (await resolveSelectedEnvironment(root, selector.variable)) ?? selector.fallback
   }
   let unsafe = false
   walk(source, (node) => {
@@ -172,7 +172,7 @@ export async function selectedSessionDiagnostic(
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
   else {
     const variable = envVariable(source, store.initializer)
-    if (variable) name = await selectedSessionEnvironment(root, variable)
+    if (variable) name = await resolveSelectedEnvironment(root, variable)
   }
   if (!name) return { name: null, kind: null }
   const selected = directProperty(source, stores.initializer, name)

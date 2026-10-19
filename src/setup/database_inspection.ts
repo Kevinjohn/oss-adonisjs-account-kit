@@ -9,7 +9,7 @@ import {
   safeEnvGetter,
   topLevelConfig,
 } from './ts_source.js'
-import { resolveSelectedEnvironment } from './session_env.js'
+import { resolveSelectedEnvironment } from './selected_environment.js'
 import type * as TypeScript from 'typescript'
 
 export async function databaseKind(
