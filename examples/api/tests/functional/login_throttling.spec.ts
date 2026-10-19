@@ -98,7 +98,7 @@ test('login limits known and unknown identities independently after normalizatio
     password: 'wrong-password',
   })
   assert.equal(limitedUnknownLogin.status(), 429)
-})
+}).teardown(() => limiter.clear(['memory']))
 
 test('login limits each client across rotating identities', async ({ client, assert }) => {
   await limiter.clear(['memory'])
@@ -117,4 +117,4 @@ test('login limits each client across rotating identities', async ({ client, ass
     password: 'wrong-password',
   })
   assert.equal(limitedClient.status(), 429)
-})
+}).teardown(() => limiter.clear(['memory']))
