@@ -1,11 +1,13 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { parse, TYPE, type MessageFormatElement } from '@formatjs/icu-messageformat-parser'
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
 
 type Blocks = Record<string, string>
 
 const FILES = ['errors.json', 'validator.json']
-const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
+const read = (path: string) => readFile(join(repoRoot, path), 'utf8')
 
 /** The English blocks are the ones `docs/managed-http.md` tells applications to copy. */
 async function englishBlocks(): Promise<Blocks> {
@@ -96,8 +98,15 @@ function compare(english: Blocks, locale: Blocks): string[] {
         continue
       }
       const wanted = placeholders(parse(String(expected[key])))
-      if ([...wanted].sort().join() !== [...found].sort().join()) {
-        problems.push(`${file}: ${key} placeholders differ`)
+      // A subject line may drop the brand name, which the email already shows.
+      if (key.split('.').at(-1) === 'subject' && !found.has('brandName')) {
+        wanted.delete('brandName')
+      }
+      for (const name of wanted) {
+        if (!found.has(name)) problems.push(`${file}: ${key} lost {${name}}`)
+      }
+      for (const name of found) {
+        if (!wanted.has(name)) problems.push(`${file}: ${key} unknown {${name}}`)
       }
     }
   }
@@ -119,11 +128,12 @@ test.group('docs translations', () => {
 
   test('every locale page has the same keys and placeholders as English', async ({ assert }) => {
     const english = await englishBlocks()
-    const names = await readdir(new URL('../docs/translations/', import.meta.url))
-    const pages = names.filter((name) => name.endsWith('.md') && name !== 'index.md')
+    const pages = trackedMarkdown(['docs/translations/*.md']).filter(
+      (page) => page !== 'docs/translations/index.md'
+    )
     const problems: string[] = []
     for (const page of pages) {
-      const blocks = localeBlocks(await read(`docs/translations/${page}`))
+      const blocks = localeBlocks(await read(page))
       problems.push(...compare(english, blocks).map((problem) => `${page} ${problem}`))
     }
     assert.deepEqual(problems, [])
@@ -158,7 +168,28 @@ test.group('docs translations', () => {
       json.replace('The {field} has already been taken.', 'Already taken.')
     )
     assert.deepEqual(compare(await englishBlocks(), locale), [
-      'validator.json: shared.messages.unique placeholders differ',
+      'validator.json: shared.messages.unique lost {field}',
+    ])
+  })
+
+  test('an unknown placeholder is reported', async ({ assert }) => {
+    const locale = await localeFrom('validator.json', (json) =>
+      json.replace('The {field} has already been taken.', 'The {champ} has already been taken.')
+    )
+    assert.deepEqual(compare(await englishBlocks(), locale), [
+      'validator.json: shared.messages.unique lost {field}',
+      'validator.json: shared.messages.unique unknown {champ}',
+    ])
+  })
+
+  test('only a subject may drop or keep the brand name', ({ assert }) => {
+    const english = { 'emails.json': '{ "subject": "Reset your {brandName} password" }' }
+    for (const subject of ['Reset your password', 'Reset your {brandName} password']) {
+      assert.deepEqual(compare(english, { 'emails.json': JSON.stringify({ subject }) }), [])
+    }
+    const body = { 'emails.json': '{ "body": "Welcome to {brandName}" }' }
+    assert.deepEqual(compare(body, { 'emails.json': '{ "body": "Welcome" }' }), [
+      'emails.json: body lost {brandName}',
     ])
   })
 

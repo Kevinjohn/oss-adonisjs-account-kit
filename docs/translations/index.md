@@ -8,7 +8,7 @@ the package ships no translation files and no loader.
 1. Set up [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n) as described in
    [managed HTTP](../managed-http.md#error-messages-follow-the-application-s-language).
 2. Open the page for your locale and copy each block into `resources/lang/<locale>/` under the
-   file name in its title.
+   file name in its title, merging it with any file of that name you already have.
 3. Edit the wording as you like. The application owns its language.
 
 ## Locales
