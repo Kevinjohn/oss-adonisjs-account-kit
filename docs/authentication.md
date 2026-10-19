@@ -40,6 +40,14 @@ The selected guard authenticates a request first; call `kit.authentication.curre
 
 For a session JSON client, first GET `/api/v1/auth/csrf`, retain the HTTP-only session cookie, then send the returned CSRF token in `x-csrf-token` on login and other state-changing requests. Login regenerates the session identifier. Logout destroys the current server-side session; an old cookie fails, and a repeated authenticated logout returns 401 because that credential no longer exists. In token mode, login returns an opaque token, logout deletes the current token, and a repeat with the same token returns 401. Logout does not mean universal revocation; credential changes have the per-guard policy above. Responses never put credentials in URLs.
 
+### Adding login to an app with signed-in users
+
+Sessions created before Account Kit carry no credential revision, so the session guard rejects them
+and those users sign in again. Existing access tokens keep working only while native AdonisJS Auth
+accepts them and their rows stay in `authentication.tokenTable`. Changing the session store, session
+keys, token table or Auth configuration can sign users out. Before production traffic, test an
+existing session, a fresh login, a kept token and a revoked token.
+
 ## Files delta
 
 `src/authentication.ts` owns the service and revision checks; `src/config.ts`, `src/types.ts`, and `src/errors.ts` define the public contract. `configure.ts` emits `add_credentials_changed_at_to_users` as the ninth package migration, and the example includes its matching migration. The example's selected-guard controllers, Shield configuration, access middleware, and functional tests show both supported modes. The generic service declarations do not import optional Auth or Session packages; the concrete example adapters do.

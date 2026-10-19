@@ -11,6 +11,7 @@ import {
 import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
+import { testEngine } from './helpers/dialect.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { issueRecentProof, past, seedAccountRows, soon } from './helpers/account_rows.js'
 import { provider } from './helpers/social_identity.js'
@@ -118,6 +119,27 @@ test.group('account data export', (group) => {
     }).account.accountData.export(input)
     assert.notProperty(sessions, 'accessTokens')
   })
+
+  test('reads access-token times stored as epoch milliseconds', async ({ assert }) => {
+    // AdonisJS access tokens on SQLite store their timestamps as integer milliseconds.
+    const user = await insertUser(kit)
+    await kit.db.table('auth_access_tokens').insert({
+      tokenable_id: user.id,
+      name: 'Phone',
+      hash: 'not-a-real-hash',
+      created_at: Date.UTC(2026, 9, 1),
+      last_used_at: Date.UTC(2026, 9, 2),
+      expires_at: null,
+    })
+    const document = await service({
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+    }).account.accountData.export({ actorId: user.id, currentPassword: 'password123' })
+    assert.deepInclude(document.accessTokens![0], {
+      name: 'Phone',
+      createdAt: '2026-10-01T00:00:00.000Z',
+      lastUsedAt: '2026-10-02T00:00:00.000Z',
+    })
+  }).skip(testEngine !== 'sqlite', 'Only SQLite stores AdonisJS token times as integers')
 
   test('pending flags follow only unexpired proofs', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
