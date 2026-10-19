@@ -247,7 +247,7 @@ test.group('invitations.accept', (group) => {
   }) => {
     const actor = await createActor()
     const setupError = new Error(
-      'account_kit: implement onInvitationAccepted in config/account_kit.stub'
+      'account_kit: implement onInvitationAccepted in config/account_kit.ts'
     )
     const { account, recorder } = service({
       onInvitationAccepted: async () => {
@@ -448,7 +448,7 @@ test.group('generated invitation acceptance setup hook', (group) => {
 
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'new-password123' }),
-      'account_kit: implement onInvitationAccepted in config/account_kit.stub'
+      'account_kit: implement onInvitationAccepted in config/account_kit.ts'
     )
     assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
