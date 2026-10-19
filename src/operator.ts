@@ -54,7 +54,7 @@ async function followUps(
 }
 
 /**
- * Issue an invitation without actor authorisation or throttles. Any existing invitation for the
+ * Issue an invitation without actor authorization or throttles. Any existing invitation for the
  * address is replaced, so a rerun after a lost link is never blocked by the pending one.
  */
 export async function operatorInvite(
