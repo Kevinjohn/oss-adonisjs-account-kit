@@ -27,11 +27,11 @@ token.
 - **Stored as a hash.** The database holds the SHA-256 hash, never the token
   ([`tokens.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/tokens.ts)). A copy of the database cannot be turned into working links. Lookup is by
   hash, so application code never compares a secret against a stored value. Pinned by
-  `password_reset.spec.ts`: "stores only a hash of the notified token and the normalized user
-  email".
+  `password_reset_request.spec.ts`: "stores only a hash of the notified token and the normalized
+  user email".
 - **Single use.** Consuming a proof and making the change happen in one transaction, so two
-  concurrent submissions succeed at most once. Pinned by "two independent reset transactions allow
-  only one use".
+  concurrent submissions succeed at most once. Pinned by `password_reset_redeem.spec.ts`: "two
+  independent reset transactions allow only one use".
 - **Short-lived.** Password reset, email verification and email change expire after 1 hour, magic
   links after 15 minutes, invitations after 7 days (`expiresIn`). Pinned by "expired, reused, and
   malformed tokens cannot change the password".
