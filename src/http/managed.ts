@@ -6,7 +6,12 @@ import { isSocialProviderName } from '../social_providers.js'
 import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.js'
 import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
 import { managedSocialHandlers, type ManagedSocialExtension } from './social.js'
-import { applyMappedHeaders, recoveryDiagnostic, safeAccount } from './response_helpers.js'
+import {
+  applyMappedHeaders,
+  recoveryDiagnostic,
+  requestTranslator,
+  safeAccount,
+} from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'
@@ -266,6 +271,7 @@ export function registerManagedRoutes<Credential>(
           const mapped = managedErrorResponse(error, {
             accept: context.request.header('accept'),
             message: options.extensions?.message,
+            i18n: requestTranslator(context),
             proof:
               route.proof && route.capability !== 'socialAuthentication'
                 ? route.name.includes('passwordReset')

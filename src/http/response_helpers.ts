@@ -6,8 +6,14 @@ import {
   managedErrorResponse,
   type ManagedErrorResponse,
   type ManagedMessage,
+  type ManagedTranslator,
 } from './responses.js'
 import type { ManagedEndpointName } from './routes.js'
+
+/** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
+export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
+  return 'i18n' in context ? (context.i18n as ManagedTranslator) : undefined
+}
 
 export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
   for (const [name, value] of Object.entries(mapped.headers)) {
@@ -37,6 +43,7 @@ export function invalidProof(
     proof,
     accept: context.request.header('accept'),
     message,
+    i18n: requestTranslator(context),
   })!
   applyMappedHeaders(context, mapped)
   return context.response.status(mapped.status).send(mapped.body)
