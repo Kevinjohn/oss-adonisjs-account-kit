@@ -43,6 +43,12 @@ export function migrationSchema(usersTable = 'users', userIdType: UserIdType = '
   }
 }
 
+/**
+ * Runs on `node ace add adonisjs-account-kit` or `node ace configure adonisjs-account-kit`: writes
+ * `config/account_kit.ts`, generates the migrations and registers the provider and commands. Never
+ * overwrites existing files. Flags: `--users-table` and `--user-id-type` (`integer`, `string` or
+ * `uuid`).
+ */
 export async function configure(command: Configure) {
   const schema = migrationSchema(
     command.parsedFlags['users-table'] ?? command.parsedFlags.usersTable ?? 'users',

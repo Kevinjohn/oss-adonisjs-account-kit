@@ -266,6 +266,7 @@ export { consumeSocialSensitiveProof }
 
 export function socialIdentityService(deps: Dependencies) {
   return {
+    /** Starts a provider flow and returns the one-use state and the provider URL to redirect to. */
     async begin(input: SocialBeginInput): Promise<{ state: string; url: string }> {
       const adapter = provider(deps, input.provider)
       if (!validChallenge(input.clientChallenge)) throw new SocialTransactionError()
@@ -296,6 +297,10 @@ export function socialIdentityService(deps: Dependencies) {
       return { state, url: await adapter.authorizationUrl(state, input.context) }
     },
 
+    /**
+     * Starts the fresh provider callback that confirms a pending identity, bound to its email
+     * verification proof.
+     */
     async beginConfirmation(input: {
       provider: SocialProviderName
       verificationToken: string
@@ -339,6 +344,7 @@ export function socialIdentityService(deps: Dependencies) {
       return { state, url: await adapter.authorizationUrl(state, input.context) }
     },
 
+    /** Consumes the state once, resolves the provider profile and returns the outcome. */
     async callback(input: SocialCallbackInput): Promise<SocialCallbackResult> {
       if (!isTokenShaped(input.state)) throw new SocialTransactionError()
       const candidate = await deps.db
@@ -561,6 +567,10 @@ export function socialIdentityService(deps: Dependencies) {
       return settled.value
     },
 
+    /**
+     * Exchanges a one-use handoff code and its verifier for a real session or token through
+     * `guard`.
+     */
     async redeemHandoff<Credential>(input: {
       code: string
       verifier: string
@@ -569,6 +579,7 @@ export function socialIdentityService(deps: Dependencies) {
       return redeemSocialHandoff(deps, input)
     },
 
+    /** Finishes a `new` sign-in with the collected email or registration fields. */
     async completeRegistration(input: {
       continuation: string
       email?: string
@@ -643,6 +654,7 @@ export function socialIdentityService(deps: Dependencies) {
       return settled.value
     },
 
+    /** Checks the password and issues a 10-minute, single-use proof for one sensitive purpose. */
     async provePassword(input: {
       current: CurrentAccountInput
       password: string
@@ -651,6 +663,7 @@ export function socialIdentityService(deps: Dependencies) {
       return proveSocialPassword(deps, input)
     },
 
+    /** The caller's confirmed linked providers. */
     async list(input: { current: CurrentAccountInput }): Promise<SocialIdentity[]> {
       return transaction(deps.db, async (trx) => {
         const user = await authenticated(deps, input.current, trx)
@@ -663,6 +676,7 @@ export function socialIdentityService(deps: Dependencies) {
       })
     },
 
+    /** One of the caller's confirmed linked providers. */
     async get(input: {
       current: CurrentAccountInput
       identityId: number
@@ -673,6 +687,10 @@ export function socialIdentityService(deps: Dependencies) {
       return found
     },
 
+    /**
+     * Unlinks a provider with a `social_unlink` proof, keeping at least one way to sign in. A
+     * credential change: older sessions and tokens end.
+     */
     async unlink(input: {
       current: CurrentAccountInput
       identityId: number

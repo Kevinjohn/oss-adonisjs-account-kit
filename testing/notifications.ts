@@ -1,7 +1,9 @@
 import type { NotificationCallbacks } from '../src/types.js'
 
+/** The name of a notification callback, such as `passwordResetProvision`. */
 export type NotificationKind = keyof NotificationCallbacks
 
+/** One notification recorded by `captureNotifications`. */
 export interface CapturedNotification {
   kind: NotificationKind
   /** The address the built-in mail notifications would send this message to. */

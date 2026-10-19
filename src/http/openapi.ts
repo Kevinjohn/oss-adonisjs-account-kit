@@ -16,6 +16,7 @@ export interface ManagedOpenApiInput extends ManagedOpenApiOptions {
   sessionCookieName?: string
 }
 
+/** An OpenAPI 3.1 document for the mounted managed routes. */
 export type OpenApiDocument = JsonSchema & {
   openapi: string
   info: ManagedOpenApiInput['info']

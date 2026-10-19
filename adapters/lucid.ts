@@ -4,7 +4,8 @@ import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } fro
 
 export type { UsersAdapterMetadata } from '../src/types.js'
 
-type ModelRow = {
+/** The columns and methods the Lucid adapter needs on your user model. */
+export type LucidModelRow = {
   id: UserId
   email: string
   unverifiedEmail: string | null
@@ -18,33 +19,46 @@ type ModelRow = {
 type Query = {
   where(column: string, value: unknown): Query
   forUpdate(): Query
-  first(): Promise<ModelRow | null>
+  first(): Promise<LucidModelRow | null>
 }
 
 type AccountModel = LucidModel & {
-  new (): ModelRow
+  new (): LucidModelRow
   boot(): void
 }
 
-export interface LucidAdapterOptions<Model extends ModelRow = ModelRow> {
+/** Options for `createLucidAdapter`. */
+export interface LucidAdapterOptions<Model extends LucidModelRow = LucidModelRow> {
+  /** The name of the unique email constraint, when it is not the default. */
   emailConstraint?: string
+  /**
+   * Assigns validated extra signup fields to the new model. `data` is untrusted request input;
+   * never spread it onto the model.
+   */
   mapRegistrationData?: (data: unknown, user: Model) => void | Promise<void>
+  /** Checks a password against the stored hash. Defaults to the AdonisJS hash service. */
   verifyPassword?: (hashedPassword: string, password: string) => Promise<boolean>
 }
 
-type LucidCreateAttrs = {
+/** The fields Account Kit passes when it creates a user through the Lucid adapter. */
+export type LucidCreateAttributes = {
   email: string
   unverifiedEmail: string | null
   password: string | null
   registrationData?: unknown
 }
 
-type LucidUsersAdapter = UsersAdapter & {
-  create(attrs: LucidCreateAttrs, trx: Trx): Promise<AccountUser>
+/** The users adapter `createLucidAdapter` returns: the base contract plus creation and metadata. */
+export type LucidUsersAdapter = UsersAdapter & {
+  create(attrs: LucidCreateAttributes, trx: Trx): Promise<AccountUser>
   resolveMetadata(): Promise<UsersAdapterMetadata>
 }
 
-export type LucidModelLoader<Model extends ModelRow = ModelRow> = () => Promise<
+/**
+ * Loads your Lucid user model lazily, for example `async () => (await
+ * import('#models/user')).default`.
+ */
+export type LucidModelLoader<Model extends LucidModelRow = LucidModelRow> = () => Promise<
   LucidModel & (new () => Model)
 >
 
@@ -52,7 +66,7 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
 
-function toAccountUser(user: ModelRow): AccountUser {
+function toAccountUser(user: LucidModelRow): AccountUser {
   return {
     id: user.id,
     email: user.email,
@@ -68,8 +82,11 @@ function query(User: AccountModel, trx?: Trx): Query {
 }
 
 function assertSafeRegistrationMapping(
-  user: ModelRow,
-  before: Pick<ModelRow, 'id' | 'email' | 'unverifiedEmail' | 'password' | 'emailVerifiedAt'> & {
+  user: LucidModelRow,
+  before: Pick<
+    LucidModelRow,
+    'id' | 'email' | 'unverifiedEmail' | 'password' | 'emailVerifiedAt'
+  > & {
     role: unknown
   }
 ): void {
@@ -93,7 +110,7 @@ function assertSafeRegistrationMapping(
  * The loader runs only when an adapter operation needs the model, so application models
  * are never imported as a package side effect.
  */
-export function createLucidAdapter<Model extends ModelRow>(
+export function createLucidAdapter<Model extends LucidModelRow>(
   loadModel: LucidModelLoader<Model>,
   options: LucidAdapterOptions<Model> = {}
 ): LucidUsersAdapter {
@@ -151,7 +168,7 @@ export function createLucidAdapter<Model extends ModelRow>(
   const updateUser = async (
     id: UserId,
     trx: Trx,
-    change: (user: ModelRow) => void
+    change: (user: LucidModelRow) => void
   ): Promise<void> => {
     const User = await model()
     const user = await find(query(User, trx), 'id', id)
@@ -183,7 +200,7 @@ export function createLucidAdapter<Model extends ModelRow>(
 
     async create(attrs, trx) {
       const User = await model()
-      const user = new User() as unknown as ModelRow
+      const user = new User() as unknown as LucidModelRow
       const before = {
         id: user.id,
         email: user.email,

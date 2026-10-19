@@ -18,6 +18,10 @@ export interface ManagedOpenApiOptions {
   requestBodies?: Partial<Record<ReplaceableRequestEndpoint, JsonSchema>>
 }
 
+/**
+ * What `registerManagedRoutes` mounted on a router. Read it with `managedRouteRegistration` to
+ * build the OpenAPI document.
+ */
 export interface ManagedRouteRegistration {
   routes: readonly ManagedRoute[]
   strategy: 'session' | 'access_tokens'
