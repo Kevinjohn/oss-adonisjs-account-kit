@@ -168,95 +168,120 @@ function beginTransaction(
   return begin(undefined, { isolationLevel: 'read committed' })
 }
 
-/** Run a database-only callback; callers perform notifications after this resolves. */
-export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
-  const connection = db.connection()
-  if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
+type Connection = ReturnType<Database['connection']>
 
-  if (connection.dialect.name !== 'better-sqlite3') {
-    let committed = false
-    let result: T | undefined
+/** Records the callback's result and whether the commit landed, for reporting a later failure. */
+function trackCommit<T>() {
+  let committed = false
+  let result: T | undefined
+  return {
+    get committed() {
+      return committed
+    },
+    onCommitted: () => {
+      committed = true
+    },
+    onResult: (value: T) => {
+      result = value
+    },
+    /** A failure after the commit becomes a `PostCommitError`; any other is returned unchanged. */
+    failure: (error: unknown): unknown =>
+      committed ? committedFailure(error, result as T) : error,
+  }
+}
+
+/** One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards. */
+async function sqliteAttempt<T>(
+  connection: Connection,
+  callback: (trx: Trx) => Promise<T>,
+  commit: ReturnType<typeof trackCommit<T>>
+): Promise<T> {
+  const client = connection.getWriteClient().client
+  const sqlite = (await client.acquireConnection()) as SQLiteConnection
+  let timeout: number | undefined
+  let outcome: T | undefined
+  let failure: unknown
+  let failed = false
+  const cleanup: unknown[] = []
+  try {
+    timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
+    sqlite.pragma('busy_timeout = 0')
+    const trx = (await connection.transaction(
+      undefined as never,
+      { connection: sqlite } as never
+    )) as Trx
+    outcome = await runAndCommit(
+      trx,
+      async (sqliteTrx) => {
+        await lockSQLiteTransaction(sqliteTrx)
+        return callback(sqliteTrx)
+      },
+      commit.onCommitted,
+      commit.onResult,
+      sqlite
+    )
+  } catch (error) {
+    failure = error
+    failed = true
+  } finally {
     try {
-      return await runAndCommit(
-        await beginTransaction(db, connection),
-        callback,
-        () => {
-          committed = true
-        },
-        (value) => {
-          result = value
-        }
-      )
+      if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
     } catch (error) {
-      if (committed) throw committedFailure(error, result as T)
-      throw error
+      cleanup.push(error)
+    }
+    try {
+      if (timeout !== undefined) sqlite.pragma(`busy_timeout = ${timeout}`)
+    } catch (error) {
+      cleanup.push(error)
+    }
+    if (cleanup.length > 0 || sqlite.inTransaction) {
+      sqlite.__knex__disposed = new Error('Account kit discarded a dirty SQLite connection')
+    }
+    try {
+      await client.releaseConnection(sqlite)
+    } catch (error) {
+      cleanup.push(error)
     }
   }
-  const client = connection.getWriteClient().client
+  if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup)
+  return outcome as T
+}
 
+/** Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit. */
+async function sqliteTransaction<T>(
+  connection: Connection,
+  callback: (trx: Trx) => Promise<T>
+): Promise<T> {
   const deadline = performance.now() + SQLITE_DEADLINE_MS
   for (;;) {
-    let committed = false
-    let result: T | undefined
+    const commit = trackCommit<T>()
     try {
-      const sqlite = (await client.acquireConnection()) as SQLiteConnection
-      let timeout: number | undefined
-      let outcome: T | undefined
-      let failure: unknown
-      let failed = false
-      const cleanup: unknown[] = []
-      try {
-        timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
-        sqlite.pragma('busy_timeout = 0')
-        const trx = (await connection.transaction(
-          undefined as never,
-          { connection: sqlite } as never
-        )) as Trx
-        outcome = await runAndCommit(
-          trx,
-          async (sqliteTrx) => {
-            await lockSQLiteTransaction(sqliteTrx)
-            return callback(sqliteTrx)
-          },
-          () => {
-            committed = true
-          },
-          (value) => {
-            result = value
-          },
-          sqlite
-        )
-      } catch (error) {
-        failure = error
-        failed = true
-      } finally {
-        try {
-          if (sqlite.inTransaction) sqlite.exec('ROLLBACK')
-        } catch (error) {
-          cleanup.push(error)
-        }
-        try {
-          if (timeout !== undefined) sqlite.pragma(`busy_timeout = ${timeout}`)
-        } catch (error) {
-          cleanup.push(error)
-        }
-        if (cleanup.length > 0 || sqlite.inTransaction) {
-          sqlite.__knex__disposed = new Error('Account kit discarded a dirty SQLite connection')
-        }
-        try {
-          await client.releaseConnection(sqlite)
-        } catch (error) {
-          cleanup.push(error)
-        }
-      }
-      if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup)
-      return outcome as T
+      return await sqliteAttempt(connection, callback, commit)
     } catch (error) {
-      if (committed) throw committedFailure(error, result as T)
+      if (commit.committed) throw commit.failure(error)
       if (!isBusy(error) || performance.now() >= deadline) throw error
       await new Promise((resolve) =>
         setTimeout(resolve, Math.min(SQLITE_RETRY_MS, Math.max(0, deadline - performance.now())))
       )
     }
+  }
+}
+
+/** Run a database-only callback; callers perform notifications after this resolves. */
+export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
+  const connection = db.connection()
+  if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
+  if (connection.dialect.name === 'better-sqlite3') return sqliteTransaction(connection, callback)
+
+  const commit = trackCommit<T>()
+  try {
+    return await runAndCommit(
+      await beginTransaction(db, connection),
+      callback,
+      commit.onCommitted,
+      commit.onResult
+    )
+  } catch (error) {
+    throw commit.failure(error)
   }
 }
