@@ -1,5 +1,5 @@
 // Passwordless sign-in by a one-use email link bound to the client that asked for it.
-import { createHash, randomUUID, timingSafeEqual } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
@@ -30,6 +30,9 @@ import type {
   UserId,
 } from './types.js'
 import { sqlTimestamp } from './timestamps.js'
+import { isClientChallenge, isClientVerifier, verifierMatches } from './client_challenge.js'
+
+export { clientChallengeFor } from './client_challenge.js'
 
 type Dependencies = {
   config: ResolvedConfig
@@ -42,27 +45,6 @@ interface LinkRow {
   tokenable_id: UserId
   email: string
   client_challenge: string
-}
-
-/** A PKCE S256 challenge: base64url SHA-256, 43 characters. */
-export function isClientChallenge(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value)
-}
-
-/** A PKCE verifier: 43 to 128 unreserved characters. */
-export function isClientVerifier(value: unknown): value is string {
-  return typeof value === 'string' && /^[A-Za-z0-9._~-]{43,128}$/.test(value)
-}
-
-/** The challenge a client sends for `verifier`. */
-export function clientChallengeFor(verifier: string): string {
-  return createHash('sha256').update(verifier).digest('base64url')
-}
-
-function verifierMatches(verifier: string, challenge: string): boolean {
-  const expected = Buffer.from(challenge)
-  const actual = Buffer.from(clientChallengeFor(verifier))
-  return expected.length === actual.length && timingSafeEqual(expected, actual)
 }
 
 /** Accounts that never confirmed their address cannot sign in by link. */
