@@ -1,5 +1,5 @@
 import { sqlTimestamp } from './timestamps.js'
-import { isSqlIdentifier } from './identifiers.js'
+import { isSqlIdentifier } from './sql_identifier.js'
 import type { Database } from '@adonisjs/lucid/database'
 import { InvalidTokenError } from './errors.js'
 import { hashToken } from './tokens.js'
