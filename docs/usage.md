@@ -273,10 +273,8 @@ conventions.
 
 Configure generates `config/account_kit.ts` and the package migration files. The reset-token
 stub is `create_password_reset_tokens.stub` and generates
-`*_account_kit_create_password_reset_tokens.ts`, creating `password_reset_tokens`. On upgrade,
-the reset-token columns are renamed in place from `user_id` to `tokenable_id` and from
-`token_hash` to `hash`, preserving outstanding proofs. Existing application-owned config and
-migration files are preserved.
+`*_account_kit_create_password_reset_tokens.ts`, creating `password_reset_tokens`. Existing
+application-owned config and migration files are preserved.
 The implementation lives in `src/password_reset.ts`; import the public `AccountKit` and input
 types from the package root or its documented type entry point.
 
@@ -288,9 +286,7 @@ remains `verification.completed`; all other lifecycle events and `E_ACCOUNT_KIT_
 also retain their names. An inactive account becomes active when its current email is verified;
 the canonical state now uses `email` and `unverifiedEmail`; `emailVerifiedAt` is audit metadata.
 
-Existing installations must also rename their reset-token table in a controlled migration.
-Follow the [vocabulary upgrade steps](upgrade.md#vocabulary-alignment) before enabling the new
-code. No old service names, exported input aliases, or dual config keys are supplied.
+No old service names, exported input aliases, or dual config keys are supplied.
 
 ## Changelog
 

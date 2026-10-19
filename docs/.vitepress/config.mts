@@ -68,7 +68,6 @@ export default defineConfig({
           { text: 'Testing', link: '/recipes/testing' },
           { text: 'Audit log', link: '/recipes/audit-log' },
           { text: 'Guided setup', link: '/setup' },
-          { text: 'Upgrading a candidate', link: '/upgrade' },
           { text: 'Operations', link: '/operations' },
         ],
       },

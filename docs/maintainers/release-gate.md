@@ -1,6 +1,6 @@
 # Local candidate and future release gate
 
-The candidate is prepared through local package checks, an independent review, and installation of the exact packed archive in fresh and upgraded Adonis API consumers. Both SQLite and PostgreSQL must pass. Review the [verification record](verification.md), [compatibility assessment](../compatibility.md), and [upgrade guide](../upgrade.md) before a release decision.
+The candidate is prepared through local package checks, an independent review, and installation of the exact packed archive in fresh and upgraded Adonis API consumers. Both SQLite and PostgreSQL must pass. Review the [verification record](verification.md), [compatibility assessment](../compatibility.md) before a release decision.
 
 ## Owner-controlled release actions
 
@@ -16,8 +16,8 @@ Keep both database matrix jobs, Node 24, pnpm, lint, typecheck, tests, build and
 
 Back up deployed application config and migrations. Install the candidate, reconfigure without overwriting owned files, manually update configuration and apply the new package lock migration before serving the new SQLite write path. Rehearse the application-owned registration mapping and credential policy before accepting traffic.
 
-For vocabulary alignment, also follow the [reset-token table rename](../upgrade.md#vocabulary-alignment)
-and update service calls, callbacks and lifecycle listeners during a maintenance window. Preserve
+For vocabulary alignment, also rename the reset-token table in place (the `evolve_identity_contract`
+migration) and update service calls, callbacks and lifecycle listeners during a maintenance window. Preserve
 outstanding reset-token rows; fresh create-table stubs do not migrate existing data.
 
 A rollback to the baseline package must restore its compatible config API. The added lock table can remain unused; avoid destructive migration rollback while any candidate process is running. Credential changes and durable outbox entries already committed remain authoritative. Do not replay consumed bearer tokens after a post-commit error; recover queued effects from the outbox.

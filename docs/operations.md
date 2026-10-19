@@ -15,7 +15,8 @@ public HTTPS origin. In a multi-instance deployment, instances must share the sa
 limiter store, limiter secret and namespace, and (when using sessions) server-side session store.
 Keep application configuration and provider credentials consistent during a deployment.
 Take a recoverable database backup before migration and verify the restore procedure; migration
-`down()` methods may not restore migrated data. See the [upgrade rollback boundary](upgrade.md#rollback-boundary).
+`down()` methods may not restore migrated data. Prefer forward recovery; to go back, restore that
+backup instead of running `down()`.
 
 Review the final physical user table shown in setup's preview, whether explicitly chosen or the
 selected default, against the effective model and generated migration target before migration.
