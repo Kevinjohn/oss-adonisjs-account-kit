@@ -17,6 +17,7 @@ export default class extends BaseSchema {
       table.json('meta').nullable()
       table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
       table.timestamp('updated_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('confirmed_at', { useTz: true, precision: 3 }).nullable()
       table.unique(['provider', 'provider_user_id'])
       table.index(['user_id'])
     })

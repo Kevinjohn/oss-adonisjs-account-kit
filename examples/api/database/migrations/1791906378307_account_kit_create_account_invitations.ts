@@ -14,9 +14,9 @@ export default class extends BaseSchema {
         .inTable('users')
         .onDelete('SET NULL')
       table.string('token_hash', 64).notNullable().unique()
-      table.timestamp('expires_at', { useTz: true }).notNullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
-      table.timestamp('updated_at', { useTz: true }).notNullable()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('updated_at', { useTz: true, precision: 3 }).notNullable()
       table.index(
         ['created_at', 'id', 'expires_at'],
         'account_invitations_created_at_id_expires_at_index'

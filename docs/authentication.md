@@ -163,7 +163,7 @@ existing session, a fresh login, a kept token and a revoked token.
 
 - `src/authentication.ts` owns the service and revision checks; `src/config.ts`, `src/types.ts`,
   and `src/errors.ts` define the public contract.
-- `configure.ts` emits `add_credentials_changed_at_to_users` as the ninth package migration, and the example includes its matching migration.
+- `configure.ts` emits `add_account_columns_to_users` as the first package migration; it adds `credentials_changed_at` to the users table, and the example includes its matching migration.
 - The example's selected-guard controllers, Shield configuration, access middleware, and functional tests show both supported modes.
 - The generic service declarations do not import optional Auth or Session packages; the concrete example adapters do.
 

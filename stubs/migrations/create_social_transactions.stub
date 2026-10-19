@@ -24,31 +24,9 @@ export default class extends BaseSchema {
       table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
       table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
     })
-    this.schema.createTable('social_sensitive_proofs', (table) => {
-      table.increments('id')
-      table.string('hash', 64).notNullable().unique()
-      {{{ migration.userIdColumn }}}.notNullable().references('id').inTable({{{ migration.usersTable }}}).onDelete('CASCADE')
-      table.string('purpose', 32).notNullable()
-      table.string('credential_revision', 40).nullable()
-      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
-      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
-      table.index(['user_id', 'purpose'])
-    })
-    this.schema.createTable('social_handoff_codes', (table) => {
-      table.increments('id')
-      table.string('hash', 64).notNullable().unique()
-      {{{ migration.userIdColumn }}}.notNullable().references('id').inTable({{{ migration.usersTable }}}).onDelete('CASCADE')
-      table.integer('social_identity_id').unsigned().notNullable().references('id').inTable('social_identities').onDelete('CASCADE')
-      table.string('credential_revision', 40).nullable()
-      table.string('client_challenge', 43).notNullable()
-      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
-      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
-    })
   }
 
   async down() {
-    this.schema.dropTable('social_handoff_codes')
-    this.schema.dropTable('social_sensitive_proofs')
     this.schema.dropTable('social_transactions')
   }
 }

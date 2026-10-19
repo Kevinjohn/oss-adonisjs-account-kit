@@ -2,17 +2,15 @@ import { access, readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 
 export const migrationNames = [
+  'add_account_columns_to_users',
   'create_password_reset_tokens',
+  'create_email_verification_tokens',
   'create_account_invitations',
-  'create_account_email_changes',
-  'add_email_verified_at_to_users',
   'create_account_transaction_lock',
-  'evolve_identity_contract',
   'create_social_identities',
-  'retire_account_email_changes',
-  'add_credentials_changed_at_to_users',
   'create_social_transactions',
-  'add_social_identity_confirmation',
+  'create_social_sensitive_proofs',
+  'create_social_handoff_codes',
   'create_login_link_tokens',
   'create_account_sessions',
 ]

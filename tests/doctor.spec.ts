@@ -109,21 +109,6 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
-  test('names columns that a later migration adds', async ({ assert }) => {
-    try {
-      await kit.db.connection().schema.alterTable('password_reset_tokens', (table) => {
-        table.renameColumn('hash', 'token_hash')
-      })
-      const checks = await runDoctor(input())
-      assert.deepEqual(failures(checks), [
-        'Package tables: missing columns password_reset_tokens.hash',
-      ])
-      assert.match(checks.find((check) => !check.ok)!.fix!, /migration:run/)
-    } finally {
-      await resetSchema(kit)
-    }
-  })
-
   test('reports a users table that does not exist', async ({ assert }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const config = defineConfig(

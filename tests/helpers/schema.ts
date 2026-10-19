@@ -20,7 +20,6 @@ export async function resetSchema(
   await schema.dropTableIfExists('social_sensitive_proofs')
   await schema.dropTableIfExists('social_identities')
   await schema.dropTableIfExists('social_transactions')
-  await schema.dropTableIfExists('account_email_changes')
   await schema.dropTableIfExists('account_invitations')
   await schema.dropTableIfExists('password_reset_tokens')
   await schema.dropTableIfExists('adonis_schema_versions')

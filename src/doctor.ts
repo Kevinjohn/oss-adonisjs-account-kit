@@ -36,12 +36,6 @@ const capabilityTables: Record<Capability, string[]> = {
   sessionManagement: ['account_sessions'],
 }
 
-// Columns added or renamed by later migrations, which an older install may not have run.
-const laterColumns: Record<string, string[]> = {
-  password_reset_tokens: ['tokenable_id', 'hash'],
-  social_identities: ['confirmed_at'],
-}
-
 const migrationFix = 'Run `node ace configure adonisjs-account-kit`, then `node ace migration:run`'
 
 function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['environment']) {
@@ -74,31 +68,14 @@ async function tableChecks(db: Database, config: ResolvedConfig): Promise<Doctor
   // Every credential change clears the sign-in registry, whether or not it is enabled.
   if (config.authentication) required.add('account_sessions')
   const missing: string[] = []
-  const outdated: string[] = []
-  for (const table of required) {
-    if (!(await db.connection().schema.hasTable(table))) {
-      missing.push(table)
-      continue
-    }
-    for (const column of laterColumns[table] ?? [])
-      if (!(await db.connection().schema.hasColumn(table, column)))
-        outdated.push(`${table}.${column}`)
-  }
+  for (const table of required)
+    if (!(await db.connection().schema.hasTable(table))) missing.push(table)
   if (missing.length)
     return [
       {
         name: 'Package tables',
         ok: false,
         detail: `missing ${missing.join(', ')}`,
-        fix: migrationFix,
-      },
-    ]
-  if (outdated.length)
-    return [
-      {
-        name: 'Package tables',
-        ok: false,
-        detail: `missing columns ${outdated.join(', ')}`,
         fix: migrationFix,
       },
     ]
