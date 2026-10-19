@@ -63,6 +63,17 @@ The generated `notify` callbacks throw until you choose how to send email, and t
 run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
 sets them up.
 
+There are two ways to install. Pick one per app:
+
+- **`node ace add`** (above) gives you a starter config. You write the controllers, or mount the
+  [managed JSON routes](docs/managed-http.md) yourself. Start with
+  [getting started](docs/getting-started.md).
+- **`node ace account-kit:setup`** asks about your guard, mail and signup policy, then writes the
+  config, guard adapter, middleware and managed route file for you. Install the package with
+  `npm install adonisjs-account-kit` instead of `node ace add`; setup reports every file
+  `node ace add` already wrote as a conflict and will not apply. See
+  [guided setup](docs/setup.md).
+
 Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite, PostgreSQL or MySQL, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.
 
