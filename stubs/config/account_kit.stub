@@ -1,4 +1,4 @@
-{{{ exports({ to: config.destination }) }}}
+{{{ exports({ to: app.configPath('account_kit.ts') }) }}}
 import env from '#start/env'
 import {
   createLucidAdapter,
