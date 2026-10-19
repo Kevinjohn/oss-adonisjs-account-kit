@@ -136,7 +136,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
     .json({ email, password: 'WrongPass123!' })
   assert.equal(rejected.status(), 401)
   assert.deepEqual(rejected.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const jsonApi = await client
     .post('/api/v1/auth/login')
@@ -145,7 +145,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.equal(jsonApi.status(), 401)
   assert.include(jsonApi.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(jsonApi.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', title: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', title: 'Account request rejected' }],
   })
   const excluded = await client
     .post('/api/v1/auth/login')
@@ -154,7 +154,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.equal(excluded.status(), 401)
   assert.notInclude(excluded.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(excluded.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const wildcard = await client
     .post('/api/v1/auth/login')
@@ -163,7 +163,7 @@ test('account errors use stable JSON and JSON:API envelopes while Vine errors re
   assert.equal(wildcard.status(), 401)
   assert.notInclude(wildcard.header('content-type'), 'application/vnd.api+json')
   assert.deepEqual(wildcard.body(), {
-    errors: [{ code: 'E_ACCOUNT_KIT_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+    errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
   })
   const validation = await client
     .post('/api/v1/auth/login')
@@ -245,7 +245,7 @@ test('a limited inactive token cannot reach a verified account route', async ({
   assert.equal(restricted.status(), 403)
   assert.equal(
     (restricted.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
 }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
@@ -368,7 +368,9 @@ test('verification GET inspects without consuming and POST completes once', asyn
   })
   assert.equal(replay.status(), 400)
   assert.deepEqual(replay.body(), {
-    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' }],
+    errors: [
+      { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', message: 'This link is invalid or expired.' },
+    ],
   })
   const spentInspect = await client.get(path)
   assert.equal(spentInspect.status(), 400)
@@ -376,7 +378,9 @@ test('verification GET inspects without consuming and POST completes once', asyn
   const jsonApiProof = await client.get(path).header('accept', 'application/vnd.api+json')
   assert.equal(jsonApiProof.status(), 400)
   assert.deepEqual(jsonApiProof.body(), {
-    errors: [{ code: 'E_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' }],
+    errors: [
+      { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' },
+    ],
   })
 }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 

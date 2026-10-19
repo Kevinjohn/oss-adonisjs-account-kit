@@ -28,7 +28,7 @@ authentication: {
   changes. Its callback writes through the supplied transaction; the package then advances the
   credential revision and applies the selected revocation policy in that transaction.
 - Account activation is a separate state: an inactive account may hold a limited credential, but
-  `requireActive` denies protected actions with HTTP 403 and code `unverified_email`.
+  `requireActive` denies protected actions with HTTP 403 and code `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`.
 
 ### Session guard requirements
 

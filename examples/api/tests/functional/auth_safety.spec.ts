@@ -43,7 +43,7 @@ test('signup issues a limited bearer token and fresh-password claim revokes it',
   assert.equal(blocked.status(), 403)
   assert.equal(
     (blocked.body() as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'unverified_email'
+    'E_ACCOUNT_KIT_UNVERIFIED_EMAIL'
   )
   const provision = notifications.events.find((event) => event.kind === 'verification')
   assert.isDefined(provision)

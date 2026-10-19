@@ -64,7 +64,7 @@ test('session reference gives the same public login failure for missing, wrong, 
   assert.deepEqual(failures[2], failures[3])
   assert.equal(
     (failures[0] as unknown as { errors: [{ code: string }] }).errors[0].code,
-    'E_ACCOUNT_KIT_INVALID_CREDENTIALS'
+    'E_INVALID_CREDENTIALS'
   )
   const success = await client
     .post('/api/v1/auth/login')

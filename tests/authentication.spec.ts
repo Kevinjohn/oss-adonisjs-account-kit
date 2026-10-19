@@ -124,7 +124,7 @@ test.group('authentication contract', (group) => {
     )
     await assert.rejects(
       () => account.authentication.requireActive({ userId: user.id, revision }),
-      'unverified_email'
+      'Email verification is required'
     )
   })
 

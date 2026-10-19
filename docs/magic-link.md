@@ -71,7 +71,7 @@ With `registerManagedRoutes`, add `magicLinkLogin` to `enabled`:
   the mount requires `publicCredential`.
 - The request route answers `202` with the same body for known and unknown addresses, including
   when the email or a lifecycle hook fails.
-- An invalid link returns `400` with code `E_INVALID_MAGIC_LINK`.
+- An invalid link returns `400` with code `E_ACCOUNT_KIT_INVALID_MAGIC_LINK`.
 
 ## The landing page
 
@@ -81,7 +81,7 @@ The emailed URL points at your frontend (`urls.magicLink`). The page should:
 2. Show a "Sign in" button. Do not complete on page load: link scanners and previews open links
    automatically.
 3. On click, call `POST auth/magic-link/:token` (with `verifier` for access-token clients).
-4. On `E_INVALID_MAGIC_LINK`, offer to send a new link.
+4. On `E_ACCOUNT_KIT_INVALID_MAGIC_LINK`, offer to send a new link.
 
 Native and single-page clients generate the verifier with a secure random source before the
 request, keep it in memory or app storage, and send it on completion:
