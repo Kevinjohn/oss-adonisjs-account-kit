@@ -8,7 +8,8 @@ export function createAdonisApp(script) {
   const [target] = process.argv.slice(2)
   if (!target) throw new Error(`Usage: node scripts/demos/${script} <app-dir>`)
   const appDir = resolve(target)
-  if (existsSync(appDir)) throw new Error(`${appDir} already exists; remove it or pick another path`)
+  if (existsSync(appDir))
+    throw new Error(`${appDir} already exists; remove it or pick another path`)
 
   const tarball = packCheckout(dirname(appDir))
   run(
