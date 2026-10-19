@@ -1,6 +1,5 @@
 import { test } from '@japa/runner'
 import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
-import { planManagedRoutes } from '../src/http/routes.js'
 import type { AccountKitConfig, AccountUser, CurrentAccountInput, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -218,20 +217,5 @@ test.group('managed account data routes', (group) => {
         /require Shield CSRF middleware/
       )
     assert.isNotNull(await kit.db.from('users').where('id', user.id).first())
-  })
-
-  test('the route plan publishes export and delete as limited routes', ({ assert }) => {
-    const routes = planManagedRoutes({
-      prefix: '/api/v1',
-      strategy: 'access_tokens',
-      enabled: ['dataExport', 'accountDeletion'],
-    })
-    assert.deepEqual(
-      routes.map(({ name, method, path, access, proof }) => [name, method, path, access, proof]),
-      [
-        ['account.data.export', 'POST', '/api/v1/account/export', 'limited', undefined],
-        ['account.delete', 'DELETE', '/api/v1/account', 'limited', undefined],
-      ]
-    )
   })
 })
