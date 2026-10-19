@@ -81,7 +81,14 @@ test('token client completes a verified social registration through one PKCE exc
   assert.equal(redeemed.status(), 200, JSON.stringify(redeemed.body()))
   const redeemedData = body(redeemed).data as { user: object; token: string }
   assert.isString(redeemedData.token)
-  assert.deepEqual(Object.keys(redeemedData.user).sort(), ['createdAt', 'email', 'fullName', 'id', 'initials', 'updatedAt'])
+  assert.deepEqual(Object.keys(redeemedData.user).sort(), [
+    'createdAt',
+    'email',
+    'fullName',
+    'id',
+    'initials',
+    'updatedAt',
+  ])
   const methodsAfterSocial = await client
     .get('/api/v1/account/methods')
     .bearerToken(redeemedData.token)
@@ -97,9 +104,7 @@ test('token client completes a verified social registration through one PKCE exc
     .bearerToken(redeemedData.token)
     .cookie('account_kit_last_method', 'password')
   assert.equal(body(unavailablePasswordHint).lastUsedMethod, null)
-  const profile = await client
-    .get('/api/v1/account/profile')
-    .bearerToken(redeemedData.token)
+  const profile = await client.get('/api/v1/account/profile').bearerToken(redeemedData.token)
   assert.equal(profile.status(), 200)
   const replay = await client.post('/api/v1/auth/oauth/token').json({
     code: handoffCode,

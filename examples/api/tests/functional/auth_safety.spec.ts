@@ -379,10 +379,14 @@ test('bearer login uses the real token guard and password changes revoke issued 
     responseBody<{ data: { user: Record<string, unknown> } }>(login).data.user,
     'password'
   )
-  assert.deepEqual(
-    Object.keys(responseBody<{ data: { user: object } }>(login).data.user).sort(),
-    ['createdAt', 'email', 'fullName', 'id', 'initials', 'updatedAt']
-  )
+  assert.deepEqual(Object.keys(responseBody<{ data: { user: object } }>(login).data.user).sort(), [
+    'createdAt',
+    'email',
+    'fullName',
+    'id',
+    'initials',
+    'updatedAt',
+  ])
   const profile = await client.get('/api/v1/account/profile').bearerToken(token)
   assert.equal(profile.status(), 200)
   assert.notProperty(responseBody<{ data: Record<string, unknown> }>(profile).data, 'password')
