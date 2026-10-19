@@ -42,11 +42,10 @@ database. It verifies that authentication, session, shield, Tuyau, mail, and All
 are absent. Core and its transitive validation dependencies remain installed as required by
 AdonisJS.
 
-For authentication integration, the fresh and upgrade API consumers run both the default
+For authentication integration, the fresh API consumer runs both the default
 `access_tokens` route group and the `session` route group using a server-side session store.
 The session fixture exercises CSRF bootstrap, fixation protection, protected access, revision
-revocation, and logout. Run `--mode=both` with the historical stage-3 baseline tarball and
-`--baseline-revision=stage-3` to verify the upgrade path; run the service-only mode separately
+revocation, and logout. Run the service-only mode separately
 for both databases to check that optional Auth and Session imports do not enter the generic
 service declarations.
 
@@ -212,15 +211,14 @@ concrete dependency/database versions and each command outcome. A packed install
 resolve its actual archive, with no repository-source link. The final candidate record accompanies
 the pull request; historical development archives do not count as evidence for it.
 
-The latest-compatible API fixture exercises fresh and upgraded applications on both databases,
+The latest-compatible API fixture exercises fresh applications on both databases,
 including all HTTP flows, required profile data, string/UUID IDs and a custom table, confirmations,
 non-disclosing password reset responses, permission failures, scanner-safe inspection, token revocation,
 and retryable outbox delivery. The exact-floor consumer independently typechecks the public
 package API and exercises rollback, deferred commit failure, post-commit failure and concurrent
 acceptance on both databases. See [compatibility](../compatibility.md) for the distinct dependency sets.
 
-For upgrade checks, supply `--mode=upgrade --baseline-tarball=PATH --baseline-revision=REV`. For a
-prebuilt immutable candidate, also supply `--candidate-tarball=PATH --candidate-revision=REV`.
+For a prebuilt immutable candidate, supply `--candidate-tarball=PATH --candidate-revision=REV`.
 Schema variants use `--mode=fresh --user-id-type=string` (or `uuid`) with
 `--users-table=account_users`. The harness records a representative contention measurement; this
 is a smoke check for blocking and duplicate acceptance, not a throughput benchmark.

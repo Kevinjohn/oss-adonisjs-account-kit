@@ -5,7 +5,7 @@ export default class extends BaseSchema {
     this.schema.createTable('password_reset_tokens', (table) => {
       table.increments('id')
       table
-        .integer('user_id')
+        .integer('tokenable_id')
         .unsigned()
         .notNullable()
         .unique()
@@ -13,9 +13,9 @@ export default class extends BaseSchema {
         .inTable('users')
         .onDelete('CASCADE')
       table.string('email', 254).notNullable()
-      table.string('token_hash', 64).notNullable().unique()
-      table.timestamp('expires_at', { useTz: true }).notNullable()
-      table.timestamp('created_at', { useTz: true }).notNullable()
+      table.string('hash', 64).notNullable().unique()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
     })
   }
 

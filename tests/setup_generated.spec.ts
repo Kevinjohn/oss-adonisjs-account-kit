@@ -50,7 +50,6 @@ test.group('setup generated sources', (group) => {
           'account_invitations',
           'password_reset_tokens',
           'email_verification_tokens',
-          'account_email_changes',
           'adonis_schema_versions',
           'adonis_schema',
           'users',
@@ -114,7 +113,7 @@ test.group('setup generated sources', (group) => {
     ])
     assert.lengthOf(
       plan.changes.filter(({ action }) => action === 'create'),
-      20
+      18
     )
     assert.isFalse(plan.readiness.productionReady)
     assert.isFalse(plan.readiness.migrationsApplied)
@@ -255,7 +254,7 @@ test.group('setup generated sources', (group) => {
       path.endsWith('create_password_reset_tokens.ts')
     )!
     const guard = plan.changes.find(({ path }) => path === 'app/services/account_kit_guard.ts')!
-    assert.include(migration.content, "table.string('user_id', 254)")
+    assert.include(migration.content, "table.string('tokenable_id', 254)")
     assert.include(guard.content, '"access_tokens"')
     assert.notInclude(plan.endpoints, 'auth.csrf')
     assert.notInclude(
