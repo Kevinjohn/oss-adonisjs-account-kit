@@ -23,8 +23,7 @@ package, then exercises password reset through its preserved config and adapter 
 baseline config and migration files. It verifies configure preserves them, then applies the
 maintained candidate config, password-reset controller and exception handler as documented manual upgrade steps.
 It changes the newly generated reset-token migration to rename the existing table, preserving rows
-and applied migration files, before booting and typechecking the candidate. See the
-[vocabulary upgrade guide](../../docs/upgrade.md#vocabulary-alignment). The candidate-phase test verifies the recovered password,
+and applied migration files, before booting and typechecking the candidate. The candidate-phase test verifies the recovered password,
 user data, role assignment, and application migration record survived. It also carries a live reset
 proof through the table rename, compares every stored row field, redeems that proof once, and
 rejects replay. The proof is transferred between phases in a mode-0600 temporary file and removed
