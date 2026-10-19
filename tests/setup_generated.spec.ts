@@ -15,7 +15,7 @@ import { migrationNames } from '../configure.js'
 import { socialRegistrationValidator } from '../src/http/validators.js'
 import { InvalidInputError } from '../src/errors.js'
 import { managedErrorResponse } from '../src/http/responses.js'
-import { fixture, registerSetupTeardown } from './helpers/setup.js'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 test.group('setup generated sources', (group) => {
   registerSetupTeardown(group)

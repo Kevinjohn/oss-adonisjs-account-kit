@@ -3,8 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Group } from '@japa/runner/core'
 import { defaultSetupChoices } from '../../src/setup/defaults.js'
-
-export { retirementIgnitor } from './retirement_ignitor.js'
+import { setupVersions } from './setup_versions.js'
 
 export const cleanupRoots: string[] = []
 
@@ -44,17 +43,7 @@ export async function fixture() {
       imports: { '#models/*': './app/models/*.js', '#database/*': './database/*.js' },
     })
   )
-  for (const [name, version] of Object.entries({
-    'typescript': '5.9.3',
-    '@adonisjs/core': '7.0.0',
-    '@adonisjs/lucid': '22.4.2',
-    '@adonisjs/limiter': '3.0.0',
-    '@adonisjs/auth': '10.1.0',
-    '@adonisjs/session': '8.1.0',
-    '@adonisjs/shield': '9.0.0',
-    '@vinejs/vine': '4.4.0',
-    'adonisjs-account-kit': '0.0.0',
-  })) {
+  for (const [name, version] of Object.entries(setupVersions)) {
     await mkdir(join(root, 'node_modules', name), { recursive: true })
     await writeFile(
       join(root, 'node_modules', name, 'package.json'),

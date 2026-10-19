@@ -4,7 +4,7 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { fixture, registerSetupTeardown } from './helpers/setup.js'
+import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 test.group('setup social providers', (group) => {
   registerSetupTeardown(group)
