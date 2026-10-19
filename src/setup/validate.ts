@@ -4,6 +4,7 @@ import {
   type SetupInspection,
   type SetupPlan,
   featureNames,
+  setupModes,
   userAdapters,
   userIdTypes,
 } from './types.js'
@@ -30,7 +31,7 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
   const { production, env = process.env } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
-  if (!['services', 'managed'].includes(choices.mode))
+  if (!setupModes.includes(choices.mode))
     diagnostic(diagnostics, 'mode', 'Choose services or managed')
   if (!Array.isArray(choices.features) || choices.features.some((x) => !featureNames.includes(x)))
     diagnostic(diagnostics, 'features', `Choose from ${featureNames.join(', ')}`)
