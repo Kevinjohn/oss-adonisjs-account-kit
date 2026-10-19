@@ -20,9 +20,10 @@ function hasClosingQuote(text: string, quote: string): boolean {
 /** Resolve one selected enum without loading an application's other environment values. */
 export async function resolveSelectedEnvironment(
   root: string,
-  variable: string
+  variable: string,
+  env: NodeJS.ProcessEnv = process.env
 ): Promise<string | null> {
-  if (Object.hasOwn(process.env, variable)) return process.env[variable] ?? null
+  if (Object.hasOwn(env, variable)) return env[variable] ?? null
   for (const candidate of new EnvLoader(root).getPaths()) {
     const name = relative(root, candidate)
     const path = await safeSetupPath(root, name)
