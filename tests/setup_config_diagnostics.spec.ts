@@ -6,7 +6,7 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
-test.group('setup config inspection', (group) => {
+test.group('setup config diagnostics', (group) => {
   registerSetupTeardown(group)
 
   test('session backend follows its proven factory instead of its selected alias', async ({
