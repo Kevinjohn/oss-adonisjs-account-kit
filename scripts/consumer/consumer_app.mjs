@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { run } from './harness.mjs'
-import { ensureExclusivePostgresDatabase } from './postgres.mjs'
+import { ensureExclusivePostgresDatabase, pgClient } from './postgres.mjs'
 import { compatibility, database, repoRoot, secret, userIdType, usersTable } from './settings.mjs'
 
 export function databaseEnvironment(appRoot, schema = 'account_kit_consumer') {
@@ -102,14 +102,7 @@ export async function installArchive(appRoot, archive) {
 
   let databaseVersion = `SQLite ${sqliteVersion}`
   if (database === 'postgres') {
-    const { Client } = require('pg')
-    const client = new Client({
-      host: process.env.DB_HOST ?? '127.0.0.1',
-      port: Number(process.env.DB_PORT ?? '55432'),
-      user: process.env.DB_USER ?? 'account_kit',
-      password: secret || undefined,
-      database: process.env.DB_DATABASE ?? 'account_kit_consumer',
-    })
+    const client = pgClient(appRoot, process.env.DB_DATABASE ?? 'account_kit_consumer')
     await client.connect()
     const result = await client.query('SHOW server_version')
     databaseVersion = `PostgreSQL ${result.rows[0].server_version}`
