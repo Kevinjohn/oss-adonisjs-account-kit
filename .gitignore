@@ -11,6 +11,7 @@ package-lock.json
 .env
 .env.*
 !.env.example
+!examples/inertia-react/.env.test
 *.tgz
 /tmp/
 
