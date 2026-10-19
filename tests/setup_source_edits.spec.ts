@@ -7,6 +7,7 @@ import { applySetup } from '../src/setup/apply.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import ts from 'typescript'
 import { withFixture } from './helpers/setup_prerequisites.js'
+import { stripSourceComments } from '../src/setup/strip_source_comments.js'
 import { stock } from './helpers/native_starter_fixture.js'
 
 test.group('setup source edits', (group) => {
@@ -671,6 +672,139 @@ test.group('setup source edits', (group) => {
       'start/kernel.ts'
     )
   })
+
+  test('literal examples cannot register providers, routes, middleware, or Shield', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['adonisrc.ts'] =
+        "const example = `providers: [() => import('@adonisjs/auth/auth_provider')]`\nexport default { providers: [] }\n"
+      state.files['start/routes.ts'] = "const example = `import './account_kit_routes.js'`\n"
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nconst example = `() => import('@adonisjs/shield/shield_middleware'); () => import('#middleware/account_kit_proof_headers_middleware')`\nserver.use([])\nrouter.use([() => import('@adonisjs/core/bodyparser_middleware')])\n"
+      state.files['config/shield.ts'] =
+        "const example = `csrf: { enabled: true }`\nexport default { csrf: { enabled: process.env.CSRF === 'on' } }\n"
+      const plan = await planSetup(choices, state)
+      const providers = plan.changes.find(({ path }) => path === 'adonisrc.ts')?.content ?? ''
+      const routes = plan.changes.find(({ path }) => path === 'start/routes.ts')?.content ?? ''
+      const kernel = plan.changes.find(({ path }) => path === 'start/kernel.ts')?.content ?? ''
+      assert.equal(providers.split("import('@adonisjs/auth/auth_provider')").length - 1, 2)
+      assert.equal(kernel.split("import('@adonisjs/shield/shield_middleware')").length - 1, 2)
+      assert.equal(
+        kernel.split("import('#middleware/account_kit_proof_headers_middleware')").length - 1,
+        2
+      )
+      const routeSource = ts.createSourceFile('routes.ts', routes, ts.ScriptTarget.Latest)
+      assert.isTrue(
+        routeSource.statements.some(
+          (node) =>
+            ts.isImportDeclaration(node) &&
+            ts.isStringLiteral(node.moduleSpecifier) &&
+            node.moduleSpecifier.text === './account_kit_routes.js'
+        )
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/shield.ts' && severity === 'action'
+        )
+      )
+      for (const path of ['adonisrc.ts', 'start/routes.ts', 'start/kernel.ts']) {
+        const content = plan.changes.find((change) => change.path === path)?.content
+        if (!content) continue
+        const parsed = ts.createSourceFile(
+          path,
+          content,
+          ts.ScriptTarget.Latest
+        ) as ts.SourceFile & {
+          parseDiagnostics: readonly ts.Diagnostic[]
+        }
+        assert.isEmpty(parsed.parseDiagnostics)
+      }
+    })
+  })
+
+  test('ambiguous config objects and later bindings cannot certify integrations', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['adonisrc.ts'] =
+        'const config = { providers: [] }; config.providers = []; export default config'
+      state.files['config/shield.ts'] =
+        "export default { csrf: { enabled: true, ['enabled']: false } }"
+      state.files['config/limiter.ts'] =
+        "import { defineConfig, stores } from '@adonisjs/limiter'\nexport default defineConfig({ default: 'memory', stores: { memory: stores.doesNotExist({}) } })"
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'adonisrc.ts' && severity === 'error'
+        )
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/shield.ts' && severity === 'error'
+        )
+      )
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity }) => field === 'config/limiter.ts' && severity === 'error'
+        )
+      )
+    })
+  })
+
+  test('route mount distinguishes type imports and aliased executable registration', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/routes.ts'] = "import type {} from './account_kit_routes.js'\n"
+      const typeOnly = await planSetup(choices, state)
+      assert.include(
+        typeOnly.changes.find(({ path }) => path === 'start/routes.ts')!.content,
+        "import './account_kit_routes.js'"
+      )
+      state.files['start/routes.ts'] =
+        "import { registerManagedRoutes as mount } from 'adonisjs-account-kit/http'\nmount(router, {})\n"
+      const alias = await planSetup(choices, state)
+      assert.isTrue(
+        alias.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        )
+      )
+      assert.isFalse(alias.changes.some(({ path }) => path === 'start/routes.ts'))
+      state.files['start/routes.ts'] =
+        "import { registerManagedRoutes } from 'adonisjs-account-kit/http'\nconst mount = registerManagedRoutes\nmount(router, {})\n"
+      const escaped = await planSetup(choices, state)
+      assert.isTrue(
+        escaped.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        )
+      )
+      assert.isFalse(escaped.changes.some(({ path }) => path === 'start/routes.ts'))
+      state.files['start/routes.ts'] =
+        "import type { registerManagedRoutes } from 'adonisjs-account-kit/http'\nconst example = 'registerManagedRoutes'\n"
+      const typeOnlyName = await planSetup(choices, state)
+      assert.isFalse(
+        typeOnlyName.diagnostics.some(
+          ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+        )
+      )
+      for (const routes of [
+        "import * as account from 'adonisjs-account-kit/http'\nconst mount = account.registerManagedRoutes\nmount(router, {})\n",
+        "import { registerManagedRoutes as first, registerManagedRoutes as second } from 'adonisjs-account-kit/http'\nsecond(router, {})\n",
+        "import { registerManagedRoutes as mount } from 'adonisjs-account-kit/http'\nimport { createManagedGuard } from 'adonisjs-account-kit/http'\nmount(router, {})\n",
+        "import { registerManagedRoutes as mount } from 'adonisjs-account-kit/http'\nconst other = await import('adonisjs-account-kit/http')\nmount(router, {})\n",
+      ]) {
+        state.files['start/routes.ts'] = routes
+        const hidden = await planSetup(choices, state)
+        assert.isTrue(
+          hidden.diagnostics.some(
+            ({ field, severity }) => field === 'start/routes.ts' && severity === 'error'
+          )
+        )
+        assert.isFalse(hidden.changes.some(({ path }) => path === 'start/routes.ts'))
+      }
+    })
+  })
 })
 
 test.group('setup middleware edits', () => {
@@ -724,6 +858,23 @@ test.group('setup middleware edits', () => {
           ({ field, severity }) => field === 'start/kernel.ts' && severity === 'error'
         )
       )
+    })
+  })
+
+  test('commented middleware is not treated as installed', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['start/kernel.ts'] =
+        "import router from '@adonisjs/core/services/router'\nimport server from '@adonisjs/core/services/server'\nserver.use([() => import('@adonisjs/cors/cors_middleware')])\nrouter.use([\n  // () => import('@adonisjs/session/session_middleware'),\n  // () => import('@adonisjs/shield/shield_middleware'),\n  // () => import('@adonisjs/auth/initialize_auth_middleware'),\n  () => import('@adonisjs/core/bodyparser_middleware'),\n])"
+      const plan = await planSetup(choices, state)
+      const kernel = plan.changes.find(({ path }) => path === 'start/kernel.ts')
+      assert.equal(kernel?.action, 'update')
+      const executable = stripSourceComments(kernel!.content)
+      for (const name of [
+        '@adonisjs/session/session_middleware',
+        '@adonisjs/shield/shield_middleware',
+        '@adonisjs/auth/initialize_auth_middleware',
+      ])
+        assert.equal(executable.split(name).length - 1, 1)
     })
   })
 })
