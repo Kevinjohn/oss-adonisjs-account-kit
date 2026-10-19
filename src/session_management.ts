@@ -1,6 +1,10 @@
 // Lists and revokes the places a user is signed in, for session and access-token guards.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged, currentInTransaction } from './authentication.js'
+import {
+  credentialsChanged,
+  currentInTransaction,
+  requireAuthentication,
+} from './authentication.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { CapabilityDisabledError, SessionNotFoundError } from './errors.js'
@@ -20,9 +24,9 @@ import type { ServiceDependencies } from './service_dependencies.js'
 function configured(
   deps: Pick<ServiceDependencies, 'config' | 'db'>
 ): ResolvedAuthenticationConfig {
-  if (!deps.config.enabled.includes('sessionManagement') || !deps.config.authentication)
+  if (!deps.config.enabled.includes('sessionManagement'))
     throw new CapabilityDisabledError('Session management is disabled')
-  return deps.config.authentication
+  return requireAuthentication(deps.config)
 }
 
 /** Row ids arrive from URLs; anything but a positive integer cannot name a sign-in. */
