@@ -5,7 +5,7 @@ import {
   type SocialProvider,
   type SocialProviderName,
 } from 'adonisjs-account-kit'
-import { fixtureProvider } from '#services/social_provider_fixture'
+import { fixtureProvider } from '#tests/helpers/social_provider_fixture'
 
 export class SocialProviderExchangeError extends Error {
   constructor(readonly category: 'denied' | 'missing_code' | 'unavailable' | 'provider_mismatch') {
