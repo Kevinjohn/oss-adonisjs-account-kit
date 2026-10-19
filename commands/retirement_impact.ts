@@ -2,6 +2,16 @@ import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
 import type { SocialProviderName } from '../src/types.js'
 
+/** Parse `--providers`: absent keeps every configured provider; `none` or an empty list retires them all. */
+function parseProviders(value?: string): SocialProviderName[] | undefined {
+  if (value === undefined) return undefined
+  if (value.trim() === 'none') return []
+  return value
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean) as SocialProviderName[]
+}
+
 /** Booted, read-only inventory for proposed login-method retirement. */
 export default class RetirementImpact extends BaseCommand {
   static commandName = 'account-kit:retirement-impact'
@@ -23,17 +33,9 @@ export default class RetirementImpact extends BaseCommand {
   async run(): Promise<void> {
     try {
       const kit = await this.app.container.make(AccountKit)
-      const providers =
-        this.providers === undefined
-          ? undefined
-          : this.providers === 'none'
-            ? []
-            : this.providers.length
-              ? this.providers.split(',')
-              : []
       this.impact = await kit.authentication.retirementImpact({
         passwordLogin: this.keepPasswordLogin === true,
-        providers: providers as SocialProviderName[] | undefined,
+        providers: parseProviders(this.providers),
       })
       if (!this.quiet) this.logger.info(JSON.stringify(this.impact))
     } catch {
