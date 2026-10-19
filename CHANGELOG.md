@@ -74,7 +74,8 @@ Initial public release.
   as the official AdonisJS packages do: the message for code `X` is looked up as `errors.X` in
   the request's locale, with the English message as the fallback. `extensions.message` now
   receives the translated message as its default. The duplicate-email and password-policy 422
-  messages are looked up as `validation.unique` and `validation.passwordPolicy`.
+  messages are looked up as `validator.shared.messages.unique` and
+  `validator.shared.messages.passwordPolicy`, the keys the VineJS messages provider reads.
 
 <details>
 <summary>Pre-release candidate history</summary>

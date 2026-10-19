@@ -50,8 +50,9 @@ export function invalidProof(
 }
 
 /**
- * A 422 for a rule the package checks itself, worded through `validation.<rule>` when the app
- * has i18n, the key VineJS messages use.
+ * A 422 for a rule the package checks itself, worded through the keys the `@adonisjs/i18n` VineJS
+ * messages provider reads: `validator.shared.messages.<rule>`, with the field name from
+ * `validator.shared.fields.<field>`.
  */
 export function ruleError(
   context: HttpContext,
@@ -59,9 +60,14 @@ export function ruleError(
   rule: string,
   fallbackMessage: string
 ): unknown {
-  const message =
-    requestTranslator(context)?.t(`validation.${rule}`, { field }, fallbackMessage) ??
-    fallbackMessage
+  const i18n = requestTranslator(context)
+  const message = i18n
+    ? i18n.t(
+        `validator.shared.messages.${rule}`,
+        { field: i18n.t(`validator.shared.fields.${field}`, {}, field) },
+        fallbackMessage
+      )
+    : fallbackMessage
   return context.response.status(422).send({ errors: [{ field, rule, message }] })
 }
 
