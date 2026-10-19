@@ -95,6 +95,8 @@ const clientChallenge = base64url(
 
 ## How it works
 
+![A magic link opened without the right verifier fails and is used up; a new link completes in the app that asked for it](assets/demos/magic-link.svg)
+
 ### One live link per account
 
 The table holds one row per user. A new request replaces the previous link. Only a hash of the

@@ -45,7 +45,13 @@ export default defineConfig({
       { text: 'API', link: '/api/' },
     ],
     sidebar: [
-      { text: 'Tutorial', items: [{ text: 'Getting started', link: '/getting-started' }] },
+      {
+        text: 'Tutorial',
+        items: [
+          { text: 'Getting started', link: '/getting-started' },
+          { text: 'See it run', link: '/recordings' },
+        ],
+      },
       {
         text: 'How-to guides',
         items: [

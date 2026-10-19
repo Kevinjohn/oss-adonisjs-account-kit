@@ -3,6 +3,7 @@
 ## Tutorial
 
 - [Getting started](getting-started.md): install, migrate, and send your first password reset.
+- [See it run](recordings.md): short terminal recordings of each feature.
 
 ## How-to guides
 

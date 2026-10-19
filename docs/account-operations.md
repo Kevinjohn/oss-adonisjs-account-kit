@@ -17,6 +17,12 @@ both creation and updates.
 
 ## How it works
 
+![An invitation with a role is sent, the invitee checks the link and sets a password, and a second use of the link fails](assets/demos/invitations.svg)
+
+![An email change sends a confirmation link to the new address; once it is used the address changes and the old address is told](assets/demos/email-change.svg)
+
+![A password change on one device signs out the other: its token is rejected with 401](assets/demos/password-change.svg)
+
 ### A link inspection does not consume proof
 
 `passwordReset.inspect`, `emailVerification.inspect`, and
