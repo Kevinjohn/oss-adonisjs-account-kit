@@ -6,7 +6,8 @@ import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { CapabilityDisabledError, SessionNotFoundError } from './errors.js'
 import { recordRevocation } from './session_revocation.js'
-import { isoTimestamp, sessionTable } from './session_registry.js'
+import { sessionTable } from './session_registry.js'
+import { readIsoTimestamp } from './timestamps.js'
 import { hashToken } from './tokens.js'
 import type {
   CurrentAccountInput,
@@ -100,9 +101,9 @@ export function sessionManagementService(deps: Dependencies) {
           .map((row) => ({
             id: Number(row.id),
             label: (row.label as string | null) ?? null,
-            createdAt: isoTimestamp(row.created_at),
-            lastSeenAt: isoTimestamp(row.last_seen_at),
-            expiresAt: isoTimestamp(row.expires_at),
+            createdAt: readIsoTimestamp(row.created_at),
+            lastSeenAt: readIsoTimestamp(row.last_seen_at),
+            expiresAt: readIsoTimestamp(row.expires_at),
             current: sameId(row.id, target.currentId),
           }))
           .filter((row) => row.expiresAt === null || Date.parse(row.expiresAt) > now) as SignIn[]
