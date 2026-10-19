@@ -17,7 +17,7 @@ import {
 import { mapRegistrationFields } from './registration_fields.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
-import { confirmActor } from './actor_confirmation.js'
+import { confirmActor, requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -103,8 +103,7 @@ export async function updateProfile(
             await deps.config.users.setUnverifiedEmail(current.id, null, trx)
             await clearRecoveryTokens(trx, current.id, ['email_verification_tokens'])
           }
-          const reloaded = await deps.config.users.findById(current.id, trx)
-          if (!reloaded) throw new InvalidInputError('Unknown actor')
+          const reloaded = await requireUser(deps.config, current.id, trx)
           return { user: reloaded, changedConfirmedEmail: false, send: false }
         }
         if (await deps.config.users.findByEmail(newEmail, trx))
@@ -125,8 +124,7 @@ export async function updateProfile(
               now
             )
           ) {
-            const reloaded = await deps.config.users.findById(current.id, trx)
-            if (!reloaded) throw new InvalidInputError('Unknown actor')
+            const reloaded = await requireUser(deps.config, current.id, trx)
             return { user: reloaded, changedConfirmedEmail: false, send: false }
           }
         }
@@ -149,16 +147,14 @@ export async function updateProfile(
           .onConflict('tokenable_id')
           .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
         if (inactive) {
-          const reloaded = await deps.config.users.findById(current.id, trx)
-          if (!reloaded) throw new InvalidInputError('Unknown actor')
+          const reloaded = await requireUser(deps.config, current.id, trx)
           await credentialsChanged(trx, deps.config, reloaded, {
             operation: 'email_change',
             operationId,
             userId: current.id,
           })
         }
-        const issuedUser = await deps.config.users.findById(current.id, trx)
-        if (!issuedUser) throw new InvalidInputError('Unknown actor')
+        const issuedUser = await requireUser(deps.config, current.id, trx)
         return { user: issuedUser, changedConfirmedEmail: inactive, send: true }
       })
     ))
