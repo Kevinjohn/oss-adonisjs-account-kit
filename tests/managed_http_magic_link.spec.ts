@@ -1,23 +1,13 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
+import { registerManagedRoutes } from '../src/http/managed.js'
 import { clientChallengeFor } from '../src/magic_link.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+import { fakeManagedHttp, sessionStore, stubGuard } from './helpers/managed_http_fakes.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
-
-function sessionStore() {
-  const values = new Map<string, unknown>()
-  return {
-    values,
-    get: (key: string) => values.get(key),
-    put: (key: string, value: unknown) => void values.set(key, value),
-    forget: (key: string) => void values.delete(key),
-  }
-}
 
 test.group('managed magic-link routes', (group) => {
   const kit = useTestApp(group)
@@ -30,9 +20,8 @@ test.group('managed magic-link routes', (group) => {
       ...overrides,
     })
     const established: unknown[] = []
-    const guard = {
+    const guard = stubGuard<string>({
       strategy,
-      name: strategy === 'session' ? 'web' : 'api',
       forRequest: () =>
         ({
           strategy,
@@ -47,7 +36,7 @@ test.group('managed magic-link routes', (group) => {
         throw new Error('public routes never read the current account')
       },
       publicCredential: (credential: string) => `public:${credential}`,
-    } as ManagedGuard<string>
+    })
     const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
