@@ -21,7 +21,7 @@ import {
   planRouterMiddleware,
   planServerProofMiddleware,
 } from './source_edits.js'
-import { planSessionConfigIntegration } from './session_config.js'
+import { planSessionConfigIntegration } from './plan_session_config.js'
 import { planUserModel } from './plan_user_model.js'
 import { planSession } from './plan_session.js'
 import { planMail } from './plan_mail.js'
