@@ -1,3 +1,5 @@
+import type { PasswordPolicy } from './types.js'
+
 export const MIN_PASSWORD_LENGTH = 8
 export const MAX_PASSWORD_LENGTH = 256
 
@@ -8,8 +10,6 @@ export function isPasswordShaped(value: unknown): value is string {
     value.length <= MAX_PASSWORD_LENGTH
   )
 }
-
-import type { PasswordPolicy } from './types.js'
 
 function strengthScore(estimatedBits: number): 0 | 1 | 2 | 3 | 4 {
   if (estimatedBits < 28) return 0
