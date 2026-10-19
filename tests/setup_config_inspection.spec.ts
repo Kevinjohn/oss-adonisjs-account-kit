@@ -107,6 +107,25 @@ test.group('setup config inspection', (group) => {
     assert.isTrue(plan.prerequisites.some((item) => item.includes('CSRF-protected POST')))
   })
 
+  test('session planning rejects a cookie store selected through any env.get call', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/session.ts'),
+      "import env from '#start/env'\nconst fallback = 'cookie'\nexport default { store: env.get('SESSION_DRIVER', fallback), stores: { cookie: stores.cookie(), database: stores.database() } }\n"
+    )
+    const previous = process.env.SESSION_DRIVER
+    try {
+      process.env.SESSION_DRIVER = 'cookie'
+      const plan = await planSetup(choices, await inspectSetup(root))
+      assert.isTrue(plan.diagnostics.some((item) => item.message.includes('Cookie-only sessions')))
+    } finally {
+      if (previous === undefined) delete process.env.SESSION_DRIVER
+      else process.env.SESSION_DRIVER = previous
+    }
+  })
+
   test('session planning rejects cookie replay and unconfigured stores', async ({ assert }) => {
     const { root, choices } = await fixture()
     await writeFile(
