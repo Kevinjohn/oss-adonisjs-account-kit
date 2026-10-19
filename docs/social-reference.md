@@ -173,7 +173,7 @@ returns a generic 429 with `Retry-After`.
   `oauth_token_controller.ts`, and `auth_methods_controller.ts` own the distinct HTTP transports.
 - `app/services/social_request.ts` shares request parsing and selected-guard lookup.
 - `start/routes.ts` registers the reference endpoints.
-- `app/services/social_provider_fixture.ts` and the functional tests simulate provider replies
+- `tests/helpers/social_provider_fixture.ts` and the functional tests simulate provider replies
   without external accounts; they cannot prove live Google or GitHub connectivity.
 
 The example migrations match the package's social transaction and confirmation schema. No frontend
