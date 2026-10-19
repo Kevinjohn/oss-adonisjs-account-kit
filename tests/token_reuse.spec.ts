@@ -57,4 +57,27 @@ test.group('recent token issue', () => {
       )
     )
   })
+
+  test('reads zoneless MySQL timestamps as UTC whatever the process time zone', ({
+    assert,
+    cleanup,
+  }) => {
+    const previous = process.env.TZ
+    process.env.TZ = 'Asia/Tokyo'
+    cleanup(() => {
+      if (previous === undefined) delete process.env.TZ
+      else process.env.TZ = previous
+    })
+    const mysql = (value: DateTime) => value.toUTC().toFormat('yyyy-MM-dd HH:mm:ss.SSS')
+    assert.isTrue(
+      isRecentIssue(
+        row({
+          created_at: mysql(now.minus({ seconds: 5 })),
+          expires_at: mysql(now.plus({ minutes: 5 })),
+        }),
+        expected,
+        now
+      )
+    )
+  })
 })

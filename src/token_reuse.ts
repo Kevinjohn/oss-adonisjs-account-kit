@@ -1,5 +1,6 @@
 // Decides whether a matching email token was issued recently enough to suppress a resend.
-import { DateTime } from 'luxon'
+import type { DateTime } from 'luxon'
+import { readTimestamp } from './timestamps.js'
 
 /** A matching, unexpired token younger than this is reused instead of reissued. */
 export const RESEND_WINDOW = { minutes: 1 }
@@ -8,8 +9,8 @@ export interface IssuedTokenRow {
   purpose: unknown
   email: unknown
   current_email: unknown
-  created_at: string | number | Date
-  expires_at: string | number | Date
+  created_at: unknown
+  expires_at: unknown
 }
 
 export interface ExpectedToken {
@@ -32,7 +33,7 @@ export function isRecentIssue(
     row?.purpose === expected.purpose &&
     row.email === expected.email &&
     row.current_email === expected.currentEmail &&
-    DateTime.fromJSDate(new Date(row.expires_at)).toMillis() > now.toMillis() &&
-    DateTime.fromJSDate(new Date(row.created_at)).toMillis() > now.minus(RESEND_WINDOW).toMillis()
+    readTimestamp(row.expires_at)!.toMillis() > now.toMillis() &&
+    readTimestamp(row.created_at)!.toMillis() > now.minus(RESEND_WINDOW).toMillis()
   )
 }
