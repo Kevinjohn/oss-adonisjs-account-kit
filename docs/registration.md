@@ -63,9 +63,8 @@ Set registration availability explicitly, review the trusted field mapping and u
 confirm the users table has a unique normalized email key. Wire the application-owned signup
 controller to validate request fields and translate duplicate errors consistently. Give inactive
 credentials access only to verification resend, logout, and other intentionally limited actions.
-Move existing activation clients from GET completion to a POST request with a fresh password and
-confirmation. Reissue outstanding legacy activation links after the proof migration described in
-the [upgrade guide](upgrade.md); a token alone no longer claims an inactive account. Exercise both
+Completion is a POST with a fresh password and confirmation; a token alone does not claim an
+inactive account. Exercise both
 guard modes and both databases before deployment.
 
 ## Changelog

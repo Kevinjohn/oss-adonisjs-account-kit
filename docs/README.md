@@ -36,7 +36,6 @@ Operations and quality
 - [Testing your account flows](recipes/testing.md)
 - [Audit log](recipes/audit-log.md)
 - [Guided setup with `account-kit:setup`](setup.md)
-- [Upgrading from a pre-release candidate](upgrade.md)
 - [Operations](operations.md): deploy, prune, operator commands, secret rotation and redaction.
 
 Integration modes
