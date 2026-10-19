@@ -11,6 +11,7 @@ on:
       - 'http/**'
       - 'testing/**'
       - 'typedoc.json'
+      - '.github/workflows/docs.yml'
 
 permissions:
   contents: read
@@ -21,8 +22,6 @@ concurrency:
 
 jobs:
   build:
-    # Pages needs a public repository on the current plan; skipping avoids private-repo minutes.
-    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -35,7 +34,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:build
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs/.vitepress/dist
 
@@ -50,4 +49,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

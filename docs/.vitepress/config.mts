@@ -39,12 +39,14 @@ export default defineConfig({
     socialLinks: [{ icon: 'github', link: repository }],
     editLink: { pattern: `${repository}/edit/main/docs/:path` },
     nav: [
+      { text: 'Features', link: '/features' },
       { text: 'Get started', link: '/getting-started' },
       { text: 'Recipes', link: '/recipes/access-tokens' },
       { text: 'Reference', link: '/reference/errors' },
       { text: 'API', link: '/api/' },
     ],
     sidebar: [
+      { text: 'Overview', items: [{ text: 'Features', link: '/features' }] },
       { text: 'Tutorial', items: [{ text: 'Getting started', link: '/getting-started' }] },
       {
         text: 'How-to guides',
@@ -66,6 +68,7 @@ export default defineConfig({
           { text: 'Testing', link: '/recipes/testing' },
           { text: 'Audit log', link: '/recipes/audit-log' },
           { text: 'Guided setup', link: '/setup' },
+          { text: 'Operations', link: '/operations' },
         ],
       },
       {
@@ -85,9 +88,10 @@ export default defineConfig({
           { text: 'Account operations', link: '/account-operations' },
           { text: 'Errors', link: '/reference/errors' },
           { text: 'Managed endpoints', link: '/reference/endpoints' },
+          { text: 'Setup choices', link: '/reference/setup-choices' },
           { text: 'OpenAPI document', link: '/openapi' },
           { text: 'Notifications', link: '/notifications' },
-          { text: 'Operations', link: '/operations' },
+          { text: 'Production requirements', link: '/reference/production-requirements' },
           { text: 'Compatibility', link: '/compatibility' },
           { text: 'Glossary', link: '/glossary' },
         ],
@@ -96,6 +100,8 @@ export default defineConfig({
         text: 'Explanation',
         items: [
           { text: 'Security model', link: '/security' },
+          { text: 'How setup works', link: '/how-setup-works' },
+          { text: 'Production boundaries', link: '/production-boundaries' },
           { text: 'Authentication', link: '/authentication' },
           { text: 'Identity creation', link: '/identity-creation' },
           { text: 'Registration', link: '/registration' },

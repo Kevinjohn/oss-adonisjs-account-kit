@@ -224,7 +224,7 @@ could not be delivered; a `PostCommitError` means a post-commit callback failed 
 change committed and exposes `committed: true`. Do not retry a committed account mutation as if it
 had rolled back. If delivery must survive process failure, write an outbox row in the transaction
 and deliver it from an application-owned worker. See the
-[operations guide](operations.md#durable-notifications).
+[production boundaries](production-boundaries.md#durable-notifications).
 
 ## HTTP and error handling
 
