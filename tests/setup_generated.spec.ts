@@ -25,6 +25,8 @@ import {
   makeUsersAdapter,
   tokenFrom,
 } from './helpers/fakes.js'
+import { interactive } from './helpers/interactive_choices.js'
+import { parseSetupChoices } from '../src/setup/parse.js'
 
 test.group('setup generated sources', (group) => {
   registerSetupTeardown(group)
@@ -356,6 +358,107 @@ test.group('setup generated sources', (group) => {
       })
     }
     assert.deepEqual(await validate({ fullName: '  Ada  ' }), { fullName: 'Ada' })
+  })
+
+  test('magic-link sign-in asks for its destination and generates its config and routes', async ({
+    assert,
+  }) => {
+    const answers: Record<string, string> = {
+      'Enabled services': 'authentication,magicLinkLogin',
+      'Managed endpoint groups': 'authentication,magicLinkLogin',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Token revocation': 'yes',
+      'Application-owned protected': 'yes',
+      'Delivery integration': 'custom',
+      'magicLink relative': 'login/link',
+    }
+    const asked = await interactive(answers)
+    assert.equal(asked.mail.destinations.magicLink, 'login/link')
+    assert.deepEqual(parseSetupChoices(asked), asked)
+
+    const { root, choices } = await fixture()
+    choices.features.push('magicLinkLogin')
+    choices.managed.push('magicLinkLogin')
+    choices.mail.destinations.magicLink = 'account/magic-link'
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"magicLinkLogin"')
+    assert.include(config, '"magicLink":"account/magic-link"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"magicLinkLogin"')
+
+    delete choices.mail.destinations.magicLink
+    choices.authentication = null
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.includeMembers(
+      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
+      [
+        'authentication: Magic-link sign-in requires a selected existing guard',
+        'mail.destinations.magicLink: Enabled email flow needs a relative frontend destination',
+      ]
+    )
+  })
+
+  test('session management generates its config and routes and requires a guard', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('sessionManagement')
+    choices.managed.push('sessionManagement')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"sessionManagement"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"sessionManagement"')
+
+    choices.authentication = null
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.include(
+      blocked.diagnostics.map(({ field, message }) => `${field}: ${message}`),
+      'authentication: Session management requires a selected existing guard'
+    )
+  })
+
+  test('account export and deletion generate their config and routes; deletion needs email', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('dataExport', 'accountDeletion')
+    choices.managed.push('dataExport', 'accountDeletion')
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const messages = (diagnostics: typeof plan.diagnostics) =>
+      diagnostics.map(({ field, message }) => `${field}: ${message}`)
+    const emailNeeded =
+      'features: Account deletion sends a confirmation email; also select an email service such as passwordReset'
+    assert.notInclude(messages(plan.diagnostics), emailNeeded)
+    const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content!
+    assert.include(config, '"dataExport"')
+    assert.include(config, '"accountDeletion"')
+    const routes = plan.changes.find(({ path }) => path === 'start/account_kit_routes.ts')!.content!
+    assert.include(routes, '"accountDeletion"')
+
+    choices.features = ['authentication', 'accountDeletion']
+    const blocked = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.include(messages(blocked.diagnostics), emailNeeded)
   })
 })
 
