@@ -6,8 +6,8 @@ import { capabilities, capabilityRegistry, defaultCapabilities } from './capabil
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
 import { resolveAccountDeletion } from './config_account_deletion.js'
-import { isSocialProviderName } from './social_providers.js'
 import { resolveSessionManagement } from './config_session_management.js'
+import { validateSocialAuthentication } from './config_social_authentication.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountKitConfig,
@@ -15,7 +15,6 @@ import type {
   InvitationThrottle,
   NotificationCallbacks,
   ResolvedConfig,
-  SocialProviderName,
   UrlCallbacks,
 } from './types.js'
 
@@ -100,35 +99,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     throw new Error('account_kit: registration.mapFields must be a function')
   if (enabled.includes('magicLinkLogin') && !config.authentication)
     throw new Error('account_kit: magicLinkLogin requires authentication')
-  if (enabled.includes('socialAuthentication')) {
-    if (!enabled.includes('emailVerification'))
-      throw new Error(
-        'account_kit: socialAuthentication requires emailVerification for unverified provider email'
-      )
-    const social = config.socialAuthentication
-    if (!social || !social.providers || !config.registration || !config.authentication)
-      throw new Error(
-        'account_kit: socialAuthentication requires providers, registration and authentication'
-      )
-    const names = Object.keys(social.providers)
-    if (names.length === 0 || names.some((name) => !isSocialProviderName(name)))
-      throw new Error('account_kit: socialAuthentication supports google and github only')
-    for (const name of names) {
-      const provider = social.providers[name as SocialProviderName]
-      if (
-        typeof provider?.authorizationUrl !== 'function' ||
-        typeof provider.resolve !== 'function'
-      )
-        throw new Error(`account_kit: socialAuthentication.providers.${name} must use Ally`)
-      if (
-        provider.verifyFreshAuthentication !== undefined &&
-        typeof provider.verifyFreshAuthentication !== 'function'
-      )
-        throw new Error(
-          `account_kit: socialAuthentication.providers.${name}.verifyFreshAuthentication must be a function`
-        )
-    }
-  }
+  if (enabled.includes('socialAuthentication')) validateSocialAuthentication(config, enabled)
   for (const hook of [
     'onInvitationAccepted',
     'onCredentialsChanged',
