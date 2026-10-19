@@ -4,7 +4,7 @@ import { defineConfig, SessionCollection, stores } from '@adonisjs/session'
 import type { ResolvedSessionConfig } from '@adonisjs/session/types'
 import { InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
-import { protectManagedSessionConfig } from '../src/http/session_store.js'
+import { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
 
 class ServerStore {}
 
