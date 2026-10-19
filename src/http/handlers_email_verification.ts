@@ -1,6 +1,6 @@
 /** Managed handlers for the email verification capability: link inspection, completion and resend. */
 import type { ManagedEndpointName } from './routes.js'
-import type { ManagedHandler } from './managed.js'
+import type { ManagedHandler } from './managed_types.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import { passwordResetCompleteValidator } from './validators.js'
 

@@ -1,11 +1,9 @@
 import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
-import type { AccountKit } from '../account_kit.js'
 import { DeliveryError, PostCommitError } from '../errors.js'
-import { isSocialProviderName } from '../social_providers.js'
-import type { AuthenticationGuard, CurrentAccount, CurrentAccountInput } from '../types.js'
-import { managedErrorResponse, proofHeaders, type ManagedMessage } from './responses.js'
-import { managedSocialHandlers, type ManagedSocialExtension } from './social.js'
+import type { CurrentAccount } from '../types.js'
+import { managedErrorResponse, proofHeaders } from './responses.js'
+import { managedSocialHandlers } from './social.js'
 import { applyMappedHeaders, recoveryDiagnostic, safeAccount } from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
@@ -16,95 +14,23 @@ import { magicLinkHandlers } from './handlers_magic_link.js'
 import { passwordResetHandlers } from './handlers_password_reset.js'
 import { registrationHandlers } from './handlers_registration.js'
 import { sessionManagementHandlers } from './handlers_session_management.js'
-import {
-  managedRouteRegistration,
-  recordManagedRegistration,
-  type ManagedOpenApiOptions,
-} from './route_registration.js'
+import { managedRouteRegistration, recordManagedRegistration } from './route_registration.js'
 import {
   assertManagedRouteCollisions,
   planManagedRoutes,
-  type ManagedCapability,
   type ManagedEndpointName,
   type ManagedRoute,
 } from './routes.js'
+import { assertManagedRoutesOptions } from './managed_options.js'
+import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
 
-/** Connects the managed routes to your existing guard. `createManagedGuard` builds one. */
-export interface ManagedGuard<Credential> {
-  /** Must match `authentication.strategy` in the config. */
-  strategy: 'session' | 'access_tokens'
-  /** Must match `authentication.guard` in the config. */
-  name: string
-  /** Construct the existing selected guard's service adapter for this request. */
-  forRequest(context: HttpContext): AuthenticationGuard<Credential>
-  /** Authenticate through that guard and return its trusted token id or session revision. */
-  current(context: HttpContext): Promise<CurrentAccountInput>
-  /** Return the current credential for bearer logout; sessions may omit this callback. */
-  logoutCredential?(context: HttpContext): Promise<Credential>
-  /** Expose only the opaque bearer value after successful token issuance. */
-  publicCredential?(credential: Credential): string
-}
-
-/**
- * Optional overrides for the managed routes: wording, social sign-in, replacement validators and
- * the account representation.
- */
-export interface ManagedExtensions {
-  /** Public wording only; the stable status and machine code cannot be changed. */
-  message?: ManagedMessage
-  /** Social sign-in routes. Required when `socialAuthentication` is mounted. */
-  social?: ManagedSocialExtension
-  /** Replaces the signup body validator. */
-  registration?: {
-    /** HTTP schema; field mapping and domain rules remain in the public registration service. */
-    validate(context: HttpContext): Promise<{
-      email: string
-      password: string
-      registrationData?: unknown
-    }>
-  }
-  /** Replaces the invitation acceptance body validator. */
-  invitationAcceptance?: {
-    validate(context: HttpContext): Promise<{ password: string; registrationData?: unknown }>
-  }
-  /** Replaces the profile update body validator. */
-  profile?: {
-    validate(context: HttpContext): Promise<{
-      currentPassword?: string
-      recentProof?: string
-      email?: string
-      registrationData?: unknown
-    }>
-  }
-  /** After service reads; output is application-owned public data and must exclude secrets. */
-  representAccount?(
-    account: CurrentAccount,
-    context: HttpContext
-  ): Promise<Record<string, unknown>> | Record<string, unknown>
-}
-
-/** Options for `registerManagedRoutes`. */
-export interface ManagedRoutesOptions<Credential> {
-  /** A static absolute prefix such as `/api`. */
-  prefix: string
-  /** Resolves the Account Kit service, normally `() => app.container.make(AccountKit)`. */
-  kit(): Promise<AccountKit>
-  /**
-   * Your existing guard, adapted with `createManagedGuard`. Must match `authentication` in the
-   * config.
-   */
-  guard: ManagedGuard<Credential>
-  /** The route groups to mount. Each also needs its capability in the config. */
-  enabled: readonly ManagedCapability[]
-  /** Endpoint names to leave out, for example to replace one with your own route. */
-  except?: readonly ManagedEndpointName[]
-  /** Require verified email on active routes; defaults to true. Guard and revision checks always apply. */
-  verificationRequired?: boolean
-  /** Optional overrides; see `ManagedExtensions`. */
-  extensions?: ManagedExtensions
-  /** Schemas for application-owned bodies, used by `generateManagedOpenApi`. */
-  openapi?: ManagedOpenApiOptions
-}
+export type {
+  ManagedExtensions,
+  ManagedGuard,
+  ManagedHandler,
+  ManagedRequest,
+  ManagedRoutesOptions,
+} from './managed_types.js'
 
 /** Flatten committed router definitions into one entry per method for collision checks. */
 function routeEntries(router: Router) {
@@ -123,24 +49,6 @@ function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
   for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
 }
-
-/** Everything a managed handler may read once the shared request preamble has run. */
-export interface ManagedRequest<Credential> {
-  route: ManagedRoute
-  context: HttpContext
-  options: ManagedRoutesOptions<Credential>
-  kit: AccountKit
-  csrfToken: string | undefined
-  /** The guard's trusted input for the signed-in caller; undefined on public routes. */
-  accountInput: CurrentAccountInput | undefined
-  account: CurrentAccount | undefined
-  actorId: CurrentAccount['id'] | undefined
-  methodsEnabled: boolean
-  represent(value: CurrentAccount): Promise<Record<string, unknown>> | Record<string, unknown>
-  representIssued(value: CurrentAccount): Promise<Record<string, unknown>>
-}
-
-export type ManagedHandler = <Credential>(request: ManagedRequest<Credential>) => Promise<unknown>
 
 /** One handler per endpoint: a route added to routes.ts without a handler does not compile. */
 export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
@@ -213,27 +121,7 @@ export function registerManagedRoutes<Credential>(
 ): readonly ManagedRoute[] {
   if (router.commited)
     throw new Error('Managed routes must be registered before the router commits')
-  if (
-    options.guard.strategy === 'access_tokens' &&
-    options.enabled.some(
-      (capability) =>
-        capability === 'authentication' ||
-        capability === 'registration' ||
-        capability === 'magicLinkLogin' ||
-        capability === 'socialAuthentication'
-    ) &&
-    !options.guard.publicCredential
-  )
-    throw new Error('Managed access-token routes require publicCredential')
-  if (
-    options.enabled.includes('socialAuthentication') &&
-    (!options.extensions?.social ||
-      !options.extensions.social.providers.length ||
-      options.extensions.social.providers.some((name) => !isSocialProviderName(name)) ||
-      new Set(options.extensions.social.providers).size !==
-        options.extensions.social.providers.length)
-  )
-    throw new Error('Managed social routes require a selected Google or GitHub provider inventory')
+  assertManagedRoutesOptions(options)
   const existing = routeEntries(router)
   const routes = planManagedRoutes(
     {
