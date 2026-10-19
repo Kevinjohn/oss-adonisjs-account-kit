@@ -4,7 +4,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, InvalidInputError, InvalidTokenError, PostCommitError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { invalidProof, recoveryDiagnostic } from './response_helpers.js'
+import { invalidProof, recoveryDiagnostic, translate } from './response_helpers.js'
 import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
 
 const verifierKey = 'accountKit.magicLink.verifier'
@@ -49,7 +49,13 @@ export const magicLinkHandlers = {
     }
     // Stored only once the link is issued: a refused request must not orphan the live link.
     if (verifier) session(context).put(verifierKey, verifier)
-    return response.accepted({ message: 'If the account exists, a sign-in link will be sent.' })
+    return response.accepted({
+      message: translate(
+        context,
+        'account_kit.magic_link_requested',
+        'If the account exists, a sign-in link will be sent.'
+      ),
+    })
   },
   'auth.magicLink.inspect': async ({ context, kit, options }) =>
     (await kit.magicLink.inspect({ token: context.params.token }))
