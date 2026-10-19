@@ -62,8 +62,8 @@ test('every anchor in a relative Markdown link names a heading', async ({ assert
       const linked = path ? posix.join(posix.dirname(document), path) : document
       if (!linked.endsWith('.md') || !existsSync(join(repoRoot, linked))) continue
       checked++
-      if (!(await headingAnchors(linked)).has(decodeURIComponent(anchor)))
-        broken.push(`${document}: ${target}`)
+      const anchors = await headingAnchors(linked)
+      if (!anchors.has(decodeURIComponent(anchor))) broken.push(`${document}: ${target}`)
     }
   }
   assert.isAbove(checked, 0)
