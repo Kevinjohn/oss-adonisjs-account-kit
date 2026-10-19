@@ -137,59 +137,91 @@ test('configures the package idempotently without replacing application-owned fi
   }
 }).timeout(10_000)
 
-test('configure passes dashed and camel-case CLI schema flags into generated migrations', async ({
-  assert,
-}) => {
+function fakeCommand(root: string, parsedFlags: Record<string, string>) {
+  const calls = {
+    migrations: [] as Array<Record<string, unknown>>,
+    envValidations: 0,
+    errors: [] as string[],
+  }
+  const codemods = {
+    overwriteExisting: true,
+    async makeUsingStub(_root: string, name: string, data: Record<string, unknown>) {
+      if (name.startsWith('migrations/'))
+        calls.migrations.push(data.migration as Record<string, unknown>)
+    },
+    async updateRcFile(
+      update: (rcFile: { addProvider(name: string): void; addCommand(name: string): void }) => void
+    ) {
+      update({ addProvider() {}, addCommand() {} })
+    },
+    async defineEnvValidations() {
+      calls.envValidations++
+    },
+  }
+  const command = {
+    parsedFlags,
+    exitCode: undefined as number | undefined,
+    stubsRoot: fileURLToPath(new URL('../stubs', import.meta.url)),
+    app: { makePath: (...parts: string[]) => join(root, ...parts) },
+    logger: {
+      info() {},
+      logError(message: string) {
+        calls.errors.push(message)
+      },
+    },
+    async createCodemods() {
+      return codemods
+    },
+  }
+  return { command, calls }
+}
+
+test('configure passes dashed CLI schema flags into generated migrations', async ({ assert }) => {
   const root = await mkdtemp(join(tmpdir(), 'account-kit-schema-flags-'))
   try {
     await mkdir(join(root, 'database', 'migrations'), { recursive: true })
-    await mkdir(join(root, 'start'), { recursive: true })
-    await writeFile(join(root, 'start', 'env.ts'), '')
 
-    for (const [parsedFlags, userIdType] of [
-      [{ 'users-table': 'order', 'user-id-type': 'uuid' }, 'uuid'],
-      [{ usersTable: 'group', userIdType: 'string' }, 'string'],
+    for (const [parsedFlags, usersTable, userIdColumn] of [
+      [{ 'users-table': 'order', 'user-id-type': 'uuid' }, 'order', "table.uuid('user_id')"],
+      [
+        { 'users-table': 'group', 'user-id-type': 'string' },
+        'group',
+        "table.string('user_id', 254)",
+      ],
+      [
+        { usersTable: 'group', userIdType: 'string' },
+        'users',
+        "table.integer('user_id').unsigned()",
+      ],
     ] as const) {
-      const migrationData: Array<Record<string, unknown>> = []
-      const codemods = {
-        overwriteExisting: true,
-        async makeUsingStub(_root: string, name: string, data: Record<string, unknown>) {
-          if (name.startsWith('migrations/'))
-            migrationData.push(data.migration as Record<string, unknown>)
-        },
-        async updateRcFile(
-          update: (rcFile: {
-            addProvider(name: string): void
-            addCommand(name: string): void
-          }) => void
-        ) {
-          update({ addProvider() {}, addCommand() {} })
-        },
-        async defineEnvValidations() {},
+      const { command, calls } = fakeCommand(root, parsedFlags)
+      await configure(command as unknown as Configure)
+      assert.isUndefined(command.exitCode)
+      assert.lengthOf(calls.migrations, migrationNames.length)
+      for (const migration of calls.migrations) {
+        assert.equal(migration.usersTable, JSON.stringify(usersTable))
+        assert.equal(migration.userIdColumn, userIdColumn)
       }
-      const command = {
-        parsedFlags,
-        stubsRoot: fileURLToPath(new URL('../stubs', import.meta.url)),
-        app: { makePath: (...parts: string[]) => join(root, ...parts) },
-        logger: { info() {}, warning() {} },
-        async createCodemods() {
-          return codemods
-        },
-      } as unknown as Configure
-
-      await configure(command)
-      assert.lengthOf(migrationData, migrationNames.length)
-      for (const migration of migrationData) {
-        assert.equal(
-          migration.usersTable,
-          JSON.stringify(parsedFlags['users-table'] ?? parsedFlags.usersTable)
-        )
-        if (userIdType === 'uuid') assert.equal(migration.userIdColumn, "table.uuid('user_id')")
-        if (userIdType === 'string')
-          assert.equal(migration.userIdColumn, "table.string('user_id', 254)")
-      }
+      // No start/env.ts exists here: configure leaves reporting that to the codemod.
+      assert.equal(calls.envValidations, 1)
     }
   } finally {
     await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('configure reports invalid schema flags with exit code 1 and generates nothing', async ({
+  assert,
+}) => {
+  for (const [parsedFlags, message] of [
+    [{ 'users-table': 'bad-name' }, 'account_kit: users-table must be a plain SQL identifier'],
+    [{ 'user-id-type': 'bigint' }, 'account_kit: user-id-type must be integer, string or uuid'],
+  ] as const) {
+    const { command, calls } = fakeCommand(tmpdir(), parsedFlags)
+    await configure(command as unknown as Configure)
+    assert.equal(command.exitCode, 1)
+    assert.deepEqual(calls.errors, [message])
+    assert.lengthOf(calls.migrations, 0)
+    assert.equal(calls.envValidations, 0)
   }
 })
