@@ -15,17 +15,17 @@ Emails are printed to the dev server log instead of being sent.
 
 ## Run it
 
-You need Node.js 24 and pnpm (for packing the package from this repository).
+You need Node.js 24 and pnpm.
 
 ```sh
 cd examples/inertia-react
-npm run kit:pack
-npm install
+pnpm kit:pack
+pnpm install
 cp .env.example .env
 node ace generate:key
 node ace codegen
 node ace migration:run
-npm run dev
+pnpm dev
 ```
 
 Open http://localhost:3333/signup, create an account, then copy the verification link from the
