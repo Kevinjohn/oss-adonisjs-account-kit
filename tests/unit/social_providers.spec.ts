@@ -3,7 +3,7 @@ import {
   isSocialProviderName,
   socialProviderLabels,
   socialProviderNames,
-} from '../src/social_providers.js'
+} from '../../src/social_providers.js'
 
 test.group('Social provider names', () => {
   test('guard accepts every listed provider and rejects anything else', ({ assert }) => {

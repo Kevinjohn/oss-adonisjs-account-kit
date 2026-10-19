@@ -5,7 +5,7 @@ import {
   isSocialIntent,
   sensitivePurposes,
   socialIntents,
-} from '../src/social_enums.js'
+} from '../../src/social_enums.js'
 
 const junk = ['', 'Login', 'other', undefined, null, 1, {}, ['login']]
 
