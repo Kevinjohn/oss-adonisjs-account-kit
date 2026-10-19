@@ -49,13 +49,27 @@ export function invalidProof(
   return context.response.status(mapped.status).send(mapped.body)
 }
 
+/**
+ * A 422 for a rule the package checks itself, worded through `validation.<rule>` when the app
+ * has i18n, the key VineJS messages use.
+ */
+export function ruleError(
+  context: HttpContext,
+  field: string,
+  rule: string,
+  fallbackMessage: string
+): unknown {
+  const message =
+    requestTranslator(context)?.t(`validation.${rule}`, { field }, fallbackMessage) ??
+    fallbackMessage
+  return context.response.status(422).send({ errors: [{ field, rule, message }] })
+}
+
 export function passwordPolicyError(
   context: HttpContext,
   field: 'password' | 'newPassword'
 ): unknown {
-  return context.response.status(422).send({
-    errors: [{ field, rule: 'passwordPolicy', message: 'Password does not meet the policy.' }],
-  })
+  return ruleError(context, field, 'passwordPolicy', 'Password does not meet the policy.')
 }
 
 export function safeAccount(account: CurrentAccount): Record<string, unknown> {
