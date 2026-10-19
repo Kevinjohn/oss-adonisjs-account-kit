@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { isRecentIssue, RESEND_WINDOW } from '../src/token_reuse.js'
+import { isRecentIssue, RESEND_WINDOW } from '../../src/token_reuse.js'
 
 const now = DateTime.utc(2026, 1, 1, 12, 0, 0)
 const expected = { purpose: 'activation', email: 'a@example.test', currentEmail: 'a@example.test' }
