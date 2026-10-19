@@ -1,4 +1,6 @@
+import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
+import * as errors from '../src/errors.js'
 import {
   AccountKitError,
   AuthorizationError,
@@ -93,5 +95,30 @@ test.group('account HTTP error mapping', () => {
       accountErrorResponse(new DeliveryError())!.body.message,
       'Account operation failed'
     )
+  })
+
+  test('the documented errors.json lists every returned code with its English message', async ({
+    assert,
+  }) => {
+    const docs = await readFile(new URL('../docs/reference/errors.md', import.meta.url), 'utf8')
+    const block = docs
+      .split('resources/lang/<locale>/errors.json')[1]
+      ?.match(/```json\n([\s\S]*?)```/)
+    const documented = JSON.parse(block![1])
+    const actual: Record<string, string> = {}
+    for (const ErrorClass of Object.values(errors)) {
+      if (
+        ErrorClass !== errors.AccountKitError &&
+        !(ErrorClass.prototype instanceof errors.AccountKitError)
+      )
+        continue
+      const error =
+        ErrorClass === errors.ThrottledError
+          ? new errors.ThrottledError(1)
+          : new (ErrorClass as new () => Error)()
+      const body = accountErrorResponse(error)!.body
+      actual[body.code] = body.message
+    }
+    assert.deepEqual(documented, actual)
   })
 })

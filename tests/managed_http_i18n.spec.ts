@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
@@ -153,5 +154,37 @@ test.group('managed HTTP translation', () => {
       status: 202,
       body: { message: 'If the account exists, a sign-in link will be sent.' },
     })
+  })
+
+  test('the documented account_kit.json lists every acknowledgement key', async ({ assert }) => {
+    const docs = await readFile(new URL('../docs/managed-http.md', import.meta.url), 'utf8')
+    const block = docs
+      .split('resources/lang/<locale>/account_kit.json')[1]
+      ?.match(/```json\n([\s\S]*?)```/)
+    const documented = JSON.parse(block![1])
+    const { routes, context } = mount(
+      {
+        managedHttp: { assertGuard: () => {}, consume: async () => {} },
+        passwordReset: { request: async () => {} },
+        magicLink: { request: async () => {} },
+      },
+      ['passwordReset', 'magicLinkLogin']
+    )
+    const actual: Record<string, string> = {}
+    const recorder = {
+      t: (identifier: string, _data: Record<string, unknown>, fallbackMessage: string) => {
+        actual[identifier.replace(/^account_kit\./, '')] = fallbackMessage
+        return fallbackMessage
+      },
+    }
+    for (const key of ['POST /api/v1/auth/password-reset', 'POST /api/v1/auth/magic-link']) {
+      const ctx = context()
+      ctx.request.validateUsing = (async () => ({
+        email: 'a@example.test',
+        clientChallenge: 'challenge',
+      })) as never
+      await routes.get(key)!(Object.assign(ctx, { i18n: recorder }))
+    }
+    assert.deepEqual(documented, actual)
   })
 })
