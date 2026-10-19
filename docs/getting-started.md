@@ -19,7 +19,9 @@ You need:
 
 ## 1. Install
 
-Account Kit uses `@adonisjs/limiter` for rate limits. Add it first, then add Account Kit:
+Account Kit uses `@adonisjs/limiter` for rate limits. Add it first, then add Account Kit. When
+the limiter asks for a storage layer, choose `database`; it adds a `rate_limits` migration that
+step 2 runs:
 
 ```sh
 node ace add @adonisjs/limiter
@@ -44,6 +46,9 @@ yet, add a hook:
 
 ```ts
 // app/models/user.ts
+import { beforeSave } from '@adonisjs/lucid/orm'
+
+// inside the User class:
 @beforeSave()
 static normalizeEmail(user: User) {
   user.email = user.email.trim().toLowerCase()
@@ -79,6 +84,10 @@ onCredentialsChangedTransaction: async () => {},
 
 [Sessions](recipes/sessions.md) and [access tokens](recipes/access-tokens.md) explain what to put
 there once users can sign in.
+
+The generated config also enables `registration` with `availability: 'open'`. Nobody can sign up
+through Account Kit until you add a signup route; before you do, set `availability` to `closed`,
+or to `application` for your own admission rule. See [registration](registration.md).
 
 ## 4. Check the installation
 
@@ -145,10 +154,12 @@ your frontend page, which then posts the new password to the API.
 
 ## 6. Try it
 
-Start the server and request a reset for an existing user:
+Start the server, create a user through the starter kit's signup route, then request a reset:
 
 ```sh
 node ace serve --hmr
+curl -X POST http://localhost:3333/api/v1/auth/signup -H 'content-type: application/json' \
+  -d '{"fullName":null,"email":"someone@example.com","password":"old-password","passwordConfirmation":"old-password"}'
 curl -X POST http://localhost:3333/account-kit/recovery -H 'content-type: application/json' \
   -d '{"email":"someone@example.com"}'
 ```
