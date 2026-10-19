@@ -2,20 +2,13 @@ import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { dirname, join, posix } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
-
-const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
 
 /** Tracked Markdown outside dependencies; ignored local notes are not published. */
 function trackedDocuments(): string[] {
-  const listed = spawnSync('git', ['ls-files', '-z', '--', ':(glob)**/*.md'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  })
-  if (listed.status !== 0) throw new Error(listed.stderr)
   // The changelog records renamed files, so its old paths are history, not links.
-  return listed.stdout.split('\0').filter((name) => name !== '' && name !== 'CHANGELOG.md')
+  return trackedMarkdown(['**/*.md']).filter((name) => name !== 'CHANGELOG.md')
 }
 
 test('every relative Markdown link points at a tracked path', async ({ assert }) => {
