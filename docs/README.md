@@ -1,5 +1,7 @@
 # Account Kit documentation
 
+- [Features](features.md): the core account flows and the opt-in extras.
+
 ## Tutorial
 
 - [Getting started](getting-started.md): install, migrate, and send your first password reset.
