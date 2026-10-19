@@ -5,7 +5,7 @@ import { isSqlIdentifier } from './sql_identifier.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
-import { resolveAccountDeletion } from './config_account_data.js'
+import { resolveAccountDeletion } from './config_account_deletion.js'
 import { isSocialProviderName } from './social_providers.js'
 import { resolveSessionManagement } from './config_session_management.js'
 import { expiresAt } from './ttl.js'
@@ -135,6 +135,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     'onCredentialsChangedTransaction',
     'onPasswordResetIssuedTransaction',
     'onLifecycleEvent',
+    'exportAccountData',
+    'onAccountDeletingTransaction',
   ] as const) {
     if (config[hook] !== undefined && typeof config[hook] !== 'function')
       throw new Error(`account_kit: ${hook} must be a function when supplied`)
