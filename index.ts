@@ -18,8 +18,8 @@ export type {
   LucidModelRow,
   LucidUsersAdapter,
 } from './adapters/lucid.ts'
-export { accountErrorResponse } from './src/http.ts'
-export type { AccountErrorResponse } from './src/http.ts'
+export { accountErrorResponse } from './src/error_response.ts'
+export type { AccountErrorResponse } from './src/error_response.ts'
 export type { PruneInput, PruneCounts } from './src/maintenance.ts'
 export { createLogNotifications } from './src/log_notifications.ts'
 export type { LogNotificationOptions, MessageLogger } from './src/log_notifications.ts'
