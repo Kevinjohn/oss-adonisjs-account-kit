@@ -1,6 +1,6 @@
 import { lockUser } from './db.js'
 import { IdentityNotConfirmedError, InvalidInputError, NoPasswordError } from './errors.js'
-import { consumeSocialSensitiveProof } from './social_identity.js'
+import { consumeSocialSensitiveProof } from './social_proofs.js'
 import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
 
 /** Lock the actor and consume the credential proof inside the same write transaction. */
