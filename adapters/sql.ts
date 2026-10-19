@@ -1,6 +1,7 @@
 import type { Database } from '@adonisjs/lucid/database'
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
 import { isSqlIdentifier } from '../src/sql_identifier.js'
+import { normalizeEmail } from '../src/email.js'
 import { readTimestamp, sqlTimestamp } from '../src/timestamps.js'
 import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } from '../src/types.js'
 
@@ -50,10 +51,6 @@ const controlledColumns = new Set([
 ])
 
 const userColumns = ['id', 'email', 'unverified_email', 'password', 'email_verified_at']
-
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase()
-}
 
 function toAccountUser(row: Record<string, unknown> | null | undefined): AccountUser | null {
   if (!row) return null
