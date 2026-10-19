@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
-import type { Database } from '@adonisjs/lucid/database'
 import { transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normaliseEmail, isEmailShaped } from './email.js'
@@ -15,11 +14,12 @@ import { mapRegistrationFields } from './registration_fields.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type { PostCommitError } from './errors.js'
-import type { AccountUser, RegistrationInput, ResolvedConfig } from './types.js'
+import type { AccountUser, RegistrationInput } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 /** Create an inactive account and its activation proof in one transaction. */
 export async function register(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: RegistrationInput
 ): Promise<AccountUser> {
   if (deps.config.registration?.availability === 'closed')
