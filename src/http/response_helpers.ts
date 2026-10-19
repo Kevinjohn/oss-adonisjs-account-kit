@@ -9,6 +9,7 @@ import {
   type ManagedTranslator,
 } from './responses.js'
 import type { ManagedEndpointName } from './routes.js'
+import type { ManagedRequest } from './managed_types.js'
 
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
 export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
@@ -85,6 +86,19 @@ export function safeAccount(account: CurrentAccount): Record<string, unknown> {
     unverifiedEmail: account.unverifiedEmail,
     hasPassword: account.hasPassword,
     active: account.active,
+  }
+}
+
+/** The body after a sign-in: the issued account, plus the bearer token under `access_tokens`. */
+export async function issuedAccountBody<Credential>(
+  { options, representIssued }: Pick<ManagedRequest<Credential>, 'options' | 'representIssued'>,
+  result: { account: CurrentAccount; credential: Credential }
+): Promise<Record<string, unknown>> {
+  return {
+    account: await representIssued(result.account),
+    ...(options.guard.strategy === 'access_tokens'
+      ? { token: options.guard.publicCredential!(result.credential) }
+      : {}),
   }
 }
 

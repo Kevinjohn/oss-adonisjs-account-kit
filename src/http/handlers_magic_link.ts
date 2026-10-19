@@ -4,7 +4,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidInputError, InvalidTokenError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { invalidProof, reportCommittedFailure } from './response_helpers.js'
+import { invalidProof, issuedAccountBody, reportCommittedFailure } from './response_helpers.js'
 import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
 
 const verifierKey = 'accountKit.magicLink.verifier'
@@ -65,11 +65,6 @@ export const magicLinkHandlers = {
     )
     // Kept after a failure: it only matches the one link issued with it, which is single use.
     if (options.guard.strategy === 'session') session(context).forget(verifierKey)
-    return response.ok({
-      account: await representIssued(result.account),
-      ...(options.guard.strategy === 'access_tokens'
-        ? { token: options.guard.publicCredential!(result.credential) }
-        : {}),
-    })
+    return response.ok(await issuedAccountBody({ options, representIssued }, result))
   },
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>
