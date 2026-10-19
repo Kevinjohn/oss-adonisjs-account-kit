@@ -112,7 +112,7 @@ export interface SetupInspection {
   guardTokenProviders: Record<string, string>
   installedVersions: Record<string, string>
   database: 'sqlite' | 'postgres' | 'mysql' | 'unsupported' | 'unknown'
-  connection: 'default' | 'unsupported' | 'unknown'
+  connection: 'default' | 'unknown'
   installedPackages: string[]
   migrationNames: string[]
   existingPrefix: string | null
