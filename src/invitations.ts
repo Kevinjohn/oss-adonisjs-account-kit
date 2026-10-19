@@ -25,7 +25,7 @@ import {
 import { throttlerOf, type Throttler } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { mapRegistrationFields } from './registration_fields.js'
-import { toInvitation, type InvitationDatabaseRow } from './rows.js'
+import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import { decodeInvitationCursor, encodeInvitationCursor } from './invitation_cursor.js'
