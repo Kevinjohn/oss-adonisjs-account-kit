@@ -25,6 +25,7 @@ import {
   socialUnlinkValidator,
 } from './validators.js'
 import { rememberManagedMethod } from './last_used_method.js'
+import { positiveId } from './positive_id.js'
 import {
   forgetSessionState,
   optionalSession,
@@ -57,12 +58,6 @@ function providerName(value: string, enabled: readonly SocialProviderName[]): So
   if (!isSocialProviderName(value) || !enabled.includes(value))
     throw new InvalidInputError('Unsupported social provider')
   return value
-}
-
-function identityId(value: string): number {
-  const id = Number(value)
-  if (!Number.isSafeInteger(id) || id <= 0) throw new InvalidInputError('Invalid identity ID')
-  return id
 }
 
 function safeIdentity(identity: {
@@ -287,7 +282,7 @@ const socialHandlers = {
     const input = await context.request.validateUsing(socialUnlinkValidator)
     await social.unlink({
       current: await guard.current(context),
-      identityId: identityId(context.params.id),
+      identityId: positiveId(context.params.id, 'identity'),
       proof: input.proof,
     })
     return context.response.noContent()
