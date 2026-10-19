@@ -22,7 +22,9 @@ export default class PasswordResetsController {
   async inspect(ctx: HttpContext) {
     proofHeaders(ctx)
     const valid = await accountKit.passwordReset.inspect({ token: ctx.params.token })
-    return valid ? ctx.response.ok({ valid: true }) : proofFailure(ctx, 'E_INVALID_PASSWORD_TOKEN')
+    return valid
+      ? ctx.response.ok({ valid: true })
+      : proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
   }
 
   async complete(ctx: HttpContext) {
@@ -32,7 +34,8 @@ export default class PasswordResetsController {
       await accountKit.passwordReset.reset({ token: ctx.params.token, password })
       return ctx.response.accepted({ message: 'Password reset.' })
     } catch (error) {
-      if (error instanceof InvalidTokenError) return proofFailure(ctx, 'E_INVALID_PASSWORD_TOKEN')
+      if (error instanceof InvalidTokenError)
+        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
       if (error instanceof PostCommitError || error instanceof DeliveryError) {
         reportCommittedFailure(ctx.logger, error, 'password_reset.complete')
         return ctx.response.accepted({ message: 'Password reset.' })

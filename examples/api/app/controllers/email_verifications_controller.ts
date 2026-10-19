@@ -23,7 +23,7 @@ export default class EmailVerificationsController {
   async inspect(ctx: HttpContext) {
     proofHeaders(ctx)
     if (!(await accountKit.emailVerification.inspect({ token: ctx.params.token }))) {
-      return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+      return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
     }
     return ctx.response.ok({ confirmation: true })
   }
@@ -38,7 +38,8 @@ export default class EmailVerificationsController {
       })
       return ctx.response.ok({ result })
     } catch (error) {
-      if (error instanceof InvalidTokenError) return proofFailure(ctx, 'E_INVALID_EMAIL_TOKEN')
+      if (error instanceof InvalidTokenError)
+        return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
       if (error instanceof DeliveryError || error instanceof PostCommitError) {
         reportCommittedFailure(ctx.logger, error, 'email_verification.complete')
         return ctx.response.ok({ result: 'verified' })
