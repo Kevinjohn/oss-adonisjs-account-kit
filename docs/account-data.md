@@ -3,6 +3,8 @@
 A signed-in user can download the personal data Account Kit holds, merged with your application's
 data, and can permanently delete their account. Both need fresh re-authentication.
 
+![Exporting account data after re-entering the password, then deleting the account; login fails afterwards](assets/demos/export-deletion.svg)
+
 ## Configuration
 
 Both capabilities are off by default and independent:

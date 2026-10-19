@@ -52,7 +52,8 @@ test('relative links in packed Markdown stay inside the package', async ({ asser
   // npm rewrites the README's relative links to the repository, so only other files count.
   for (const document of [...files].filter((f) => f.endsWith('.md') && f !== 'README.md')) {
     const source = await readFile(join(repoRoot, document), 'utf8')
-    const text = source.replace(/```[\s\S]*?```/g, '')
+    // Docs images are left out of the package; npm readers do not render them.
+    const text = source.replace(/```[\s\S]*?```/g, '').replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     for (const [, target] of text.matchAll(/\]\(([^)\s]+)\)/g)) {
       if (/^(?:[a-z][a-z\d+.-]*:|#)/i.test(target)) continue
       const path = posix.normalize(posix.join(posix.dirname(document), target.split('#')[0]))

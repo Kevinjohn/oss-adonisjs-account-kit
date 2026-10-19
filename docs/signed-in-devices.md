@@ -79,6 +79,8 @@ With `registerManagedRoutes`, add `sessionManagement` to `enabled`:
 
 ## How it works
 
+![Listing signed-in devices, then signing out every other device](assets/demos/devices.svg)
+
 ### Sessions
 
 At login the package generates a random handle. The guard keeps it in the server-side session;
