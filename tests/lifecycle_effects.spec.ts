@@ -556,4 +556,49 @@ test.group('credential and lifecycle effects', (group) => {
       await schema.dropTableIfExists('test_retry_revocations')
     }
   })
+
+  test('SQLite lifecycle no-ops and invitation management leave no phantom update audit', async ({
+    assert,
+  }) => {
+    if (locksRows) return
+    const schema = kit.db.connection().schema
+    await kit.db.rawQuery('DROP TRIGGER IF EXISTS test_user_audit').exec()
+    await kit.db.rawQuery('DROP TRIGGER IF EXISTS test_invitation_audit').exec()
+    await schema.dropTableIfExists('test_lifecycle_audit')
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, { minRequestMs: 0 })
+    await schema.createTable('test_lifecycle_audit', (table) => {
+      table.increments('id')
+      table.string('source').notNullable()
+    })
+    await kit.db
+      .rawQuery(
+        "CREATE TRIGGER test_user_audit AFTER UPDATE ON users BEGIN INSERT INTO test_lifecycle_audit (source) VALUES ('users'); END"
+      )
+      .exec()
+    await kit.db
+      .rawQuery(
+        "CREATE TRIGGER test_invitation_audit AFTER UPDATE ON account_invitations BEGIN INSERT INTO test_lifecycle_audit (source) VALUES ('invitations'); END"
+      )
+      .exec()
+    try {
+      assert.equal(await account.emailVerification.send({ userId: user.id }), 'already_verified')
+      await account.emailPasswordManagement.requestEmailChange({
+        actorId: user.id,
+        currentPassword: 'password123',
+        newEmail: ' PERSON@EXAMPLE.TEST ',
+      })
+      const invitation = await account.invitations.send({
+        actorId: user.id,
+        email: 'invitee@example.test',
+        role: 'member',
+      })
+      await account.invitations.revoke({ actorId: user.id, invitationId: invitation.id })
+      assert.lengthOf(await kit.db.from('test_lifecycle_audit'), 0)
+    } finally {
+      await kit.db.rawQuery('DROP TRIGGER test_user_audit').exec()
+      await kit.db.rawQuery('DROP TRIGGER test_invitation_audit').exec()
+      await schema.dropTableIfExists('test_lifecycle_audit')
+    }
+  })
 })
