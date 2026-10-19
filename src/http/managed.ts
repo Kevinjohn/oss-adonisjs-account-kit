@@ -1,12 +1,12 @@
 import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
-import { DeliveryError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import { managedErrorResponse, proofHeaders } from './responses.js'
 import { managedSocialHandlers } from './social.js'
 import {
   applyMappedHeaders,
   recoveryDiagnostic,
+  reportCommittedFailure,
   requestTranslator,
   safeAccount,
 } from './response_helpers.js'
@@ -147,15 +147,9 @@ export function registerManagedRoutes<Credential>(
         } catch (error) {
           if (
             (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
-            (error instanceof PostCommitError || error instanceof DeliveryError)
-          ) {
-            recoveryDiagnostic(
-              context,
-              route.name,
-              error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
-            )
+            reportCommittedFailure(context, route.name, error)
+          )
             return context.response.accepted({ committed: true })
-          }
           const mapped = managedErrorResponse(error, {
             accept: context.request.header('accept'),
             message: options.extensions?.message,
