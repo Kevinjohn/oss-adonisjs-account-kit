@@ -121,7 +121,11 @@ test.group('managed HTTP responses', () => {
     assert.deepEqual(lookups, [['errors.E_ACCOUNT_KIT_THROTTLED', {}, 'Too many requests.']])
     assert.deepEqual(
       managedErrorResponse(new InvalidTokenError(), { proof: 'magicLink', i18n })?.body,
-      { errors: [{ code: 'E_INVALID_MAGIC_LINK', message: 'This link is invalid or expired.' }] }
+      {
+        errors: [
+          { code: 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK', message: 'This link is invalid or expired.' },
+        ],
+      }
     )
     assert.deepEqual(
       managedErrorResponse(new ThrottledError(1), {

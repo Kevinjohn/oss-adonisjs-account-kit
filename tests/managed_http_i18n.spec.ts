@@ -7,7 +7,7 @@ import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 const french: Record<string, string> = {
   'errors.E_ACCOUNT_KIT_THROTTLED': 'Trop de requêtes.',
-  'errors.E_INVALID_PASSWORD_TOKEN': 'Ce lien est invalide ou expiré.',
+  'errors.E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN': 'Ce lien est invalide ou expiré.',
   'validator.shared.messages.passwordPolicy': 'Le {field} est refusé.',
   'validator.shared.messages.unique': 'Le champ {field} est déjà utilisé.',
   'validator.shared.fields.password': 'mot de passe',
@@ -65,7 +65,12 @@ test.group('managed HTTP translation', () => {
     assert.deepEqual(await routes.get('GET /api/v1/auth/password-reset/:token')!(ctx), {
       status: 400,
       body: {
-        errors: [{ code: 'E_INVALID_PASSWORD_TOKEN', message: 'Ce lien est invalide ou expiré.' }],
+        errors: [
+          {
+            code: 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN',
+            message: 'Ce lien est invalide ou expiré.',
+          },
+        ],
       },
     })
   })
