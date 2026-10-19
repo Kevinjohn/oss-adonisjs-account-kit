@@ -4,23 +4,17 @@ import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
-import { revision, safeAccount } from './authentication.js'
+import { isActiveAccount, requireAuthentication, revision, safeAccount } from './authentication.js'
 import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normaliseEmail } from './email.js'
-import {
-  CapabilityDisabledError,
-  InvalidCredentialsError,
-  InvalidInputError,
-  InvalidTokenError,
-} from './errors.js'
+import { InvalidCredentialsError, InvalidInputError, InvalidTokenError } from './errors.js'
 import { throttlerOf, type Throttler } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type {
-  AccountUser,
   AuthenticationGuard,
   CurrentAccount,
   MagicLinkCompleteInput,
@@ -47,23 +41,13 @@ interface LinkRow {
   client_challenge: string
 }
 
-/** Accounts that never confirmed their address cannot sign in by link. */
-function isActive(user: AccountUser): boolean {
-  return user.unverifiedEmail !== user.email
-}
-
-function configured(config: ResolvedConfig) {
-  if (!config.authentication) throw new CapabilityDisabledError('Authentication is disabled')
-  return config.authentication
-}
-
 export async function requestMagicLink(
   deps: Dependencies,
   input: MagicLinkRequestInput
 ): Promise<void> {
   const started = performance.now()
   try {
-    const auth = configured(deps.config)
+    const auth = requireAuthentication(deps.config)
     if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
       throw new InvalidInputError('Invalid client key')
@@ -83,7 +67,7 @@ export async function requestMagicLink(
       transaction(deps.db, async (trx) => {
         await lockUser(trx, deps.config, user.id)
         const current = await deps.config.users.findById(user.id, trx)
-        if (!current || current.email !== email || !isActive(current)) return null
+        if (!current || current.email !== email || !isActiveAccount(current)) return null
         if (!(await auth.canAccess(current, trx))) return null
         await trx
           .table('login_link_tokens')
@@ -139,7 +123,7 @@ export async function inspectMagicLink(
     .first()
   if (!row) return false
   const user = await deps.config.users.findById(row.tokenable_id)
-  return user !== null && user.email === row.email && isActive(user)
+  return user !== null && user.email === row.email && isActiveAccount(user)
 }
 
 /**
@@ -151,7 +135,7 @@ export async function completeMagicLink<Credential>(
   input: MagicLinkCompleteInput,
   guard: AuthenticationGuard<Credential>
 ): Promise<{ account: CurrentAccount; credential: Credential }> {
-  const auth = configured(deps.config)
+  const auth = requireAuthentication(deps.config)
   if (guard.strategy !== auth.strategy || guard.name !== auth.guard)
     throw new Error(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
   if (!isTokenShaped(input.token) || !isClientVerifier(input.verifier))
@@ -167,7 +151,7 @@ export async function completeMagicLink<Credential>(
     )
     if (
       !verifierMatches(input.verifier, row.client_challenge) ||
-      !isActive(user) ||
+      !isActiveAccount(user) ||
       !(await auth.canAccess(user, trx))
     )
       return null

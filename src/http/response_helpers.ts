@@ -1,7 +1,7 @@
 /** Response shaping shared by managed endpoint handlers: proof errors, policy errors, account bodies. */
 import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidTokenError } from '../errors.js'
-import type { AccountUser, CurrentAccount } from '../types.js'
+import type { CurrentAccount } from '../types.js'
 import {
   applyMappedHeaders,
   managedErrorResponse,
@@ -59,23 +59,13 @@ export function passwordPolicyError(
   return ruleError(context, field, 'passwordPolicy', 'Password does not meet the policy.')
 }
 
-export function safeAccount(account: CurrentAccount): Record<string, unknown> {
+export function publicAccount(account: CurrentAccount): Record<string, unknown> {
   return {
     id: account.id,
     email: account.email,
     unverifiedEmail: account.unverifiedEmail,
     hasPassword: account.hasPassword,
     active: account.active,
-  }
-}
-
-export function currentAccount(user: AccountUser): CurrentAccount {
-  return {
-    id: user.id,
-    email: user.email,
-    unverifiedEmail: user.unverifiedEmail,
-    hasPassword: user.hasPassword,
-    active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
   }
 }
 
