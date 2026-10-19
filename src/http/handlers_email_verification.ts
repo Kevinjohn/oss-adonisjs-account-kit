@@ -2,7 +2,7 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'
-import { passwordResetCompleteValidator } from './validators.js'
+import { newPasswordValidator } from './validators.js'
 
 export const emailVerificationHandlers = {
   'auth.emailVerification.inspect': async ({ context, kit, options }) =>
@@ -11,7 +11,7 @@ export const emailVerificationHandlers = {
       : invalidProof(context, 'email', options.extensions?.message),
   'auth.emailVerification.complete': async ({ context, kit }) => {
     const { request, response, params } = context
-    const { password } = await request.validateUsing(passwordResetCompleteValidator)
+    const { password } = await request.validateUsing(newPasswordValidator)
     if (!kit.managedHttp.passwordAllowed(password)) return passwordPolicyError(context, 'password')
     await kit.emailVerification.complete({ token: params.token, password })
     return response.ok({ verified: true })

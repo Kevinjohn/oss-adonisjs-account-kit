@@ -5,7 +5,7 @@ import {
   invitationSendValidator,
   loginValidator,
   passwordChangeValidator,
-  passwordResetCompleteValidator,
+  newPasswordValidator,
   passwordResetRequestValidator,
   profileUpdateValidator,
   signupValidator,
@@ -136,10 +136,10 @@ test.group('managed request schemas match the validators', () => {
     ['auth.passwordReset.request', passwordResetRequestValidator, {}],
     [
       'auth.passwordReset.complete',
-      passwordResetCompleteValidator,
+      newPasswordValidator,
       { password: valid, passwordConfirmation: valid },
     ],
-    ['auth.passwordReset.complete', passwordResetCompleteValidator, { password: valid }],
+    ['auth.passwordReset.complete', newPasswordValidator, { password: valid }],
     [
       'auth.invitation.accept',
       invitationAcceptValidator,
