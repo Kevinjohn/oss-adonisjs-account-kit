@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { CapabilityDisabledError } from './errors.js'
 import { budget } from './config_budget.js'
+import { assertPlainObject } from './config_assert.js'
 import { isSqlIdentifier } from './sql_identifier.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
 import { resolveAuthentication } from './config_authentication.js'
@@ -70,9 +71,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (enabled.includes('emailPasswordManagement') && !enabled.includes('emailVerification'))
     throw new Error('account_kit: emailPasswordManagement requires emailVerification')
   for (const name of ['authorize', 'urls', 'notify', 'expiresIn', 'invitationThrottle'] as const) {
-    const value = config[name]
-    if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value)))
-      throw new Error(`account_kit: ${name} must be an object`)
+    if (config[name] !== undefined) assertPlainObject(config[name], name)
   }
   for (const capability of enabled) {
     for (const method of capabilityRegistry[capability].adapterMethods) {

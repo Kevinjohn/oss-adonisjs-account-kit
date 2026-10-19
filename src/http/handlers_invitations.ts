@@ -2,7 +2,8 @@
 import { InvalidInputError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { currentAccount, invalidProof, passwordPolicyError } from './response_helpers.js'
+import { safeAccount } from '../authentication.js'
+import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import {
   invitationAcceptValidator,
   invitationListValidator,
@@ -34,7 +35,7 @@ export const invitationHandlers = {
       password: input.password,
       registrationData: 'registrationData' in input ? input.registrationData : undefined,
     })
-    return response.created({ account: await representIssued(currentAccount(user)) })
+    return response.created({ account: await representIssued(safeAccount(user)) })
   },
   'account.invitation.send': async ({ context, kit, actorId }) => {
     const { email, role } = await context.request.validateUsing(invitationSendValidator)
