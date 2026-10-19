@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 import { isSqlIdentifier } from './src/sql_identifier.js'
 
@@ -89,8 +89,18 @@ export async function configure(command: Configure) {
     })
   }
 
+  // Applications configured before the root export keep their registered legacy provider path.
+  let rcContents = ''
+  try {
+    rcContents = await readFile(command.app.makePath('adonisrc.ts'), 'utf8')
+  } catch (error) {
+    if (!isMissing(error)) throw error
+  }
+  const hasLegacyProvider = /['"]adonisjs-account-kit\/providers\/account_kit_provider['"]/.test(
+    rcContents
+  )
   await codemods.updateRcFile((rcFile) => {
-    rcFile.addProvider('adonisjs-account-kit/providers/account_kit_provider')
+    if (!hasLegacyProvider) rcFile.addProvider('adonisjs-account-kit/account_kit_provider')
     rcFile.addCommand('adonisjs-account-kit/commands')
   })
 

@@ -623,6 +623,25 @@ test.group('setup source edits', (group) => {
     )
   })
 
+  test('registers the root provider export and keeps a registered legacy path', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(join(root, 'adonisrc.ts'), 'export default { providers: [] }\n')
+    const fresh = await planSetup(choices, await inspectSetup(root))
+    const freshRc = fresh.changes.find(({ path }) => path === 'adonisrc.ts')!.content
+    assert.include(freshRc, "() => import('adonisjs-account-kit/account_kit_provider'),")
+    assert.notInclude(freshRc, 'adonisjs-account-kit/providers/account_kit_provider')
+
+    await writeFile(
+      join(root, 'adonisrc.ts'),
+      "export default { providers: [() => import('adonisjs-account-kit/providers/account_kit_provider')] }\n"
+    )
+    const legacy = await planSetup(choices, await inspectSetup(root))
+    const legacyRc = legacy.changes.find(({ path }) => path === 'adonisrc.ts')!.content
+    assert.notInclude(legacyRc, "import('adonisjs-account-kit/account_kit_provider')")
+  })
+
   test('requires configured limiter and repairs a comma-free router array', async ({ assert }) => {
     const { root, choices } = await fixture()
     await rm(join(root, 'config/limiter.ts'))
