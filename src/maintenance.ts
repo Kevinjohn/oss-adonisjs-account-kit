@@ -1,6 +1,7 @@
 import { sqlTimestamp } from './timestamps.js'
 import type { Database } from '@adonisjs/lucid/database'
 import { deletedCount } from './consume_rows.js'
+import { sessionTable } from './session_registry.js'
 
 type TokenTable =
   | 'password_reset_tokens'
@@ -10,7 +11,7 @@ type TokenTable =
   | 'social_sensitive_proofs'
   | 'social_handoff_codes'
   | 'login_link_tokens'
-  | 'account_sessions'
+  | typeof sessionTable
 
 /**
  * Options for `maintenance.prune`: rows per batch, the most batches to run, and `dryRun` to count
@@ -45,7 +46,7 @@ const TABLES: Array<[keyof PruneCounts, TokenTable]> = [
   ['socialSensitiveProofs', 'social_sensitive_proofs'],
   ['socialHandoffCodes', 'social_handoff_codes'],
   ['loginLinks', 'login_link_tokens'],
-  ['sessions', 'account_sessions'],
+  ['sessions', sessionTable],
 ]
 
 /** Remove expired rows in small batches, rechecking expiry when each selected batch is deleted. */
@@ -57,16 +58,7 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
   if (!Number.isSafeInteger(maxBatches) || maxBatches < 1 || maxBatches > 1000)
     throw new RangeError('maxBatches must be an integer from 1 to 1000')
   const cutoff = sqlTimestamp(db)
-  const counts: PruneCounts = {
-    recovery: 0,
-    invitations: 0,
-    emailVerifications: 0,
-    socialTransactions: 0,
-    socialSensitiveProofs: 0,
-    socialHandoffCodes: 0,
-    loginLinks: 0,
-    sessions: 0,
-  }
+  const counts = Object.fromEntries(TABLES.map(([key]) => [key, 0])) as unknown as PruneCounts
   const cursors = new Map<TokenTable, number>()
   const done = new Set<TokenTable>()
   for (let batch = 0; batch < maxBatches && done.size < TABLES.length;) {
