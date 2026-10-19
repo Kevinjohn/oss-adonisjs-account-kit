@@ -72,6 +72,7 @@ export default defineConfig({
           { text: 'Usage', link: '/usage' },
           { text: 'Account operations', link: '/account-operations' },
           { text: 'Errors', link: '/reference/errors' },
+          { text: 'Translations', link: '/translations/' },
           { text: 'Managed endpoints', link: '/reference/endpoints' },
           { text: 'Setup choices', link: '/reference/setup-choices' },
           { text: 'OpenAPI document', link: '/openapi' },
