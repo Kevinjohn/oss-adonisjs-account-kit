@@ -23,9 +23,10 @@ export default class PruneAccountKit extends BaseCommand {
       maxBatches: this.maxBatches,
       dryRun: this.dryRun,
     })
-    const action = this.dryRun ? 'Expired' : 'Pruned'
-    this.logger.info(
-      `${action}: recovery=${counts.recovery}, invitations=${counts.invitations}, emailVerifications=${counts.emailVerifications}, socialTransactions=${counts.socialTransactions}, socialSensitiveProofs=${counts.socialSensitiveProofs}, socialHandoffCodes=${counts.socialHandoffCodes}, loginLinks=${counts.loginLinks}, sessions=${counts.sessions}`
-    )
+    this.logger.info(this.dryRun ? 'Expired rows (dry run, nothing deleted)' : 'Pruned rows')
+    const table = this.ui.table()
+    table.head(['Table', 'Rows'])
+    for (const [key, count] of Object.entries(counts)) table.row([key, String(count)])
+    table.render()
   }
 }
