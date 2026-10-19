@@ -13,3 +13,6 @@ export const provider = (subject: string, email: string | null, verified: boolea
     authenticatedAt: new Date().toISOString(),
   }),
 })
+
+/** The current-account input for a user without a credential revision. */
+export const current = (userId: number | string) => ({ userId, revision: null })
