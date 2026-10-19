@@ -4,7 +4,7 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
-test.group('setup prerequisite inspection', () => {
+test.group('setup mail prerequisites', () => {
   test('maintained Mail validates brand and sender without leaking values', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       choices.mail.integration = 'adonisjs-mail'
