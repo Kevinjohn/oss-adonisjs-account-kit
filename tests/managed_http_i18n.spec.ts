@@ -8,12 +8,14 @@ import { fixture } from './helpers/managed_http.js'
 const french: Record<string, string> = {
   'errors.E_ACCOUNT_KIT_THROTTLED': 'Trop de requêtes.',
   'errors.E_INVALID_PASSWORD_TOKEN': 'Ce lien est invalide ou expiré.',
-  'validation.passwordPolicy': 'Mot de passe refusé.',
-  'validation.unique': 'Adresse déjà utilisée.',
+  'validator.shared.messages.passwordPolicy': 'Le {field} est refusé.',
+  'validator.shared.messages.unique': 'Le champ {field} est déjà utilisé.',
+  'validator.shared.fields.password': 'mot de passe',
+  'validator.shared.fields.email': 'e-mail',
 }
 const i18n = {
-  t: (identifier: string, _data: Record<string, unknown>, fallbackMessage: string) =>
-    french[identifier] ?? fallbackMessage,
+  t: (identifier: string, data: Record<string, unknown>, fallbackMessage: string) =>
+    (french[identifier] ?? fallbackMessage).replace(/\{(\w+)\}/g, (_, name) => String(data[name])),
 }
 
 function mount(kit: unknown, enabled: ('passwordReset' | 'registration')[] = ['passwordReset']) {
@@ -78,7 +80,9 @@ test.group('managed HTTP translation', () => {
     assert.deepEqual(await routes.get('POST /api/v1/auth/password-reset/:token')!(reset), {
       status: 422,
       body: {
-        errors: [{ field: 'password', rule: 'passwordPolicy', message: 'Mot de passe refusé.' }],
+        errors: [
+          { field: 'password', rule: 'passwordPolicy', message: 'Le mot de passe est refusé.' },
+        ],
       },
     })
     const { routes: signup, context: signupContext } = mount(
@@ -100,7 +104,9 @@ test.group('managed HTTP translation', () => {
     const ctx = Object.assign(signupContext(), { i18n })
     assert.deepEqual(await signup.get('POST /api/v1/auth/signup')!(ctx), {
       status: 422,
-      body: { errors: [{ field: 'email', rule: 'unique', message: 'Adresse déjà utilisée.' }] },
+      body: {
+        errors: [{ field: 'email', rule: 'unique', message: 'Le champ e-mail est déjà utilisé.' }],
+      },
     })
   })
 })
