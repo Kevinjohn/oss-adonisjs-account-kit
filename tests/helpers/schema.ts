@@ -5,6 +5,19 @@ import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { migrationNames, migrationSchema } from '../../configure.js'
 import type { TestApp } from './app.js'
 
+type SchemaBuilder = ReturnType<TestApp['db']['connection']>['schema']
+
+/** Tables the package migrations create, newest first so children drop before their parents. */
+export const packageTables = migrationNames
+  .filter((name) => name.startsWith('create_'))
+  .map((name) => name.slice('create_'.length))
+  .reverse()
+
+/** Drop every package table, if it exists. */
+export async function dropPackageTables(schema: SchemaBuilder): Promise<void> {
+  for (const table of packageTables) await schema.dropTableIfExists(table)
+}
+
 export async function resetSchema(
   kit: TestApp,
   options: { stringUserIds?: boolean; usersTable?: string } = {}
@@ -12,16 +25,7 @@ export async function resetSchema(
   const usersTable = options.usersTable ?? 'users'
   const schema = kit.db.connection().schema
   await schema.dropTableIfExists('auth_access_tokens')
-  await schema.dropTableIfExists('login_link_tokens')
-  await schema.dropTableIfExists('account_sessions')
-  await schema.dropTableIfExists('account_transaction_lock')
-  await schema.dropTableIfExists('email_verification_tokens')
-  await schema.dropTableIfExists('social_handoff_codes')
-  await schema.dropTableIfExists('social_sensitive_proofs')
-  await schema.dropTableIfExists('social_identities')
-  await schema.dropTableIfExists('social_transactions')
-  await schema.dropTableIfExists('account_invitations')
-  await schema.dropTableIfExists('password_reset_tokens')
+  await dropPackageTables(schema)
   await schema.dropTableIfExists('adonis_schema_versions')
   await schema.dropTableIfExists('adonis_schema')
   await schema.dropTableIfExists('users')
@@ -89,19 +93,8 @@ export const userTables = [
   ['auth_access_tokens', 'tokenable_id'],
 ] as const
 
-const dataTables = [
-  'auth_access_tokens',
-  'login_link_tokens',
-  'account_sessions',
-  'account_invitations',
-  'password_reset_tokens',
-  'email_verification_tokens',
-  'social_identities',
-  'social_sensitive_proofs',
-  'social_handoff_codes',
-  'social_transactions',
-  'users',
-]
+/** Tables that hold rows: every user-keyed table, then the users table. */
+const dataTables = [...userTables.map(([table]) => table), 'users']
 
 /** Empty every table and restart id sequences without touching the schema. */
 export async function clearRows(kit: TestApp): Promise<void> {
