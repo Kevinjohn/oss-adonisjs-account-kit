@@ -45,6 +45,11 @@ Initial public release.
 - `createLogNotifications` prints account emails and their links to the logger during development.
 - `createMailNotifications` and `createLogNotifications` resolve the AdonisJS Mail and logger
   services when a message is sent; both `mail` and `logger` are optional.
+- Built-in account emails can be translated into one site-wide language: pass an `@adonisjs/i18n`
+  instance as `i18n` to `createMailNotifications` (resolved when each message is sent) or as the
+  fourth argument of `renderAccountMessage`. Keys are `account_kit.emails.<kind>.<part>` and
+  `account_kit.emails.copy_link`, each falling back to the English text. Output without `i18n` is
+  unchanged.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
