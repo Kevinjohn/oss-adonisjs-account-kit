@@ -75,5 +75,3 @@ export async function resolveSelectedEnvironment(
   }
   return null
 }
-
-export const selectedSessionEnvironment = resolveSelectedEnvironment
