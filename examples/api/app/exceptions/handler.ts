@@ -9,16 +9,7 @@ import {
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { accountError } from '#services/http_responses'
 import { SocialProviderExchangeError } from '#services/social_provider'
-
-function isSocialRequest(ctx: HttpContext) {
-  const path = ctx.request.url().split('?', 1)[0]
-  return (
-    path.startsWith('/api/v1/auth/oauth/') ||
-    path.startsWith('/api/v1/account/social/') ||
-    path === '/api/v1/account/methods' ||
-    path.startsWith('/api/v1/auth/social-verification/')
-  )
-}
+import { isSocialPath } from '#services/social_path'
 
 function providerFailure(error: unknown) {
   if (error instanceof SocialProviderExchangeError) return error
@@ -26,6 +17,21 @@ function providerFailure(error: unknown) {
     return error.cause
   }
   return undefined
+}
+
+function logSocialFailure(
+  ctx: HttpContext,
+  provider: SocialProviderExchangeError | undefined,
+  unexpected: boolean
+) {
+  const correlationId = randomUUID()
+  ctx.response.header('X-Correlation-ID', correlationId)
+  const category = provider
+    ? `provider_${provider.category}`
+    : unexpected
+      ? 'unexpected_social_failure'
+      : 'service_failure'
+  ctx.logger.warn({ correlationId, category }, 'Social account operation failed')
 }
 
 export default class HttpExceptionHandler extends ExceptionHandler {
@@ -40,7 +46,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
-    const social = isSocialRequest(ctx)
+    const social = isSocialPath(ctx.request.url())
     const provider = social ? providerFailure(error) : undefined
     const status =
       error && typeof error === 'object' && 'status' in error && typeof error.status === 'number'
@@ -49,14 +55,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     const unexpected =
       social && !provider && !(error instanceof AccountKitError) && !(status && status < 500)
     if (provider || (social && status && status >= 500) || unexpected) {
-      const correlationId = randomUUID()
-      ctx.response.header('X-Correlation-ID', correlationId)
-      const category = provider
-        ? `provider_${provider.category}`
-        : unexpected
-          ? 'unexpected_social_failure'
-          : 'service_failure'
-      ctx.logger.warn({ correlationId, category }, 'Social account operation failed')
+      logSocialFailure(ctx, provider, unexpected)
     }
     if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN) {
       return accountError(ctx, 403, 'E_BAD_CSRF_TOKEN', error.message)
@@ -89,7 +88,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * @note You should not attempt to send a response from this method.
    */
   async report(error: unknown, ctx: HttpContext) {
-    if (isSocialRequest(ctx)) return
+    if (isSocialPath(ctx.request.url())) return
     return super.report(error, ctx)
   }
 }
