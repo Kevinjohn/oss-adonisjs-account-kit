@@ -9,8 +9,7 @@ import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 import { ACCESS_TOKENS_ONLY, SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
+import { tokenFrom as proofFrom } from '#tests/helpers/link_tokens'
 
 test('committed follow-up diagnostics omit private error details', async ({ assert }) => {
   const reported: Array<{ details: object; message: string }> = []
