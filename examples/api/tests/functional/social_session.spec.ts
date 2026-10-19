@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { setSocialFixture } from '#services/social_provider_fixture'
+import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
 import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 
 function rawCookies(response: { header(name: string): string | string[] | undefined }): string {
