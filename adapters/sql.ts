@@ -34,6 +34,8 @@ export interface SqlUsersAdapterOptions {
 }
 
 export type SqlUsersAdapter = UsersAdapter & {
+  updateRegistrationData: NonNullable<UsersAdapter['updateRegistrationData']>
+  delete: NonNullable<UsersAdapter['delete']>
   resolveMetadata(): Promise<UsersAdapterMetadata>
 }
 
