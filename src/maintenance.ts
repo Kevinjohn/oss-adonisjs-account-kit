@@ -1,17 +1,7 @@
 import { sqlTimestamp } from './timestamps.js'
 import type { Database } from '@adonisjs/lucid/database'
 import { deletedCount } from './consume_rows.js'
-import { sessionTable } from './session_registry.js'
-
-type TokenTable =
-  | 'password_reset_tokens'
-  | 'account_invitations'
-  | 'email_verification_tokens'
-  | 'social_transactions'
-  | 'social_sensitive_proofs'
-  | 'social_handoff_codes'
-  | 'login_link_tokens'
-  | typeof sessionTable
+import { packageTables, type PackageTable } from './package_tables.js'
 
 /**
  * Options for `maintenance.prune`: rows per batch, the most batches to run, and `dryRun` to count
@@ -38,15 +28,15 @@ export interface PruneCounts {
   sessions: number
 }
 
-const TABLES: Array<[keyof PruneCounts, TokenTable]> = [
-  ['recovery', 'password_reset_tokens'],
-  ['invitations', 'account_invitations'],
-  ['emailVerifications', 'email_verification_tokens'],
-  ['socialTransactions', 'social_transactions'],
-  ['socialSensitiveProofs', 'social_sensitive_proofs'],
-  ['socialHandoffCodes', 'social_handoff_codes'],
-  ['loginLinks', 'login_link_tokens'],
-  ['sessions', sessionTable],
+const TABLES: Array<[keyof PruneCounts, PackageTable]> = [
+  ['recovery', packageTables.passwordResetTokens],
+  ['invitations', packageTables.accountInvitations],
+  ['emailVerifications', packageTables.emailVerificationTokens],
+  ['socialTransactions', packageTables.socialTransactions],
+  ['socialSensitiveProofs', packageTables.socialSensitiveProofs],
+  ['socialHandoffCodes', packageTables.socialHandoffCodes],
+  ['loginLinks', packageTables.loginLinkTokens],
+  ['sessions', packageTables.accountSessions],
 ]
 
 /** Remove expired rows in small batches, rechecking expiry when each selected batch is deleted. */
@@ -59,8 +49,8 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
     throw new RangeError('maxBatches must be an integer from 1 to 1000')
   const cutoff = sqlTimestamp(db)
   const counts = Object.fromEntries(TABLES.map(([key]) => [key, 0])) as unknown as PruneCounts
-  const cursors = new Map<TokenTable, number>()
-  const done = new Set<TokenTable>()
+  const cursors = new Map<PackageTable, number>()
+  const done = new Set<PackageTable>()
   for (let batch = 0; batch < maxBatches && done.size < TABLES.length;) {
     for (const [key, table] of TABLES) {
       if (done.has(table) || batch >= maxBatches) continue

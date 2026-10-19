@@ -6,11 +6,9 @@ import {
   hasUnsafeObjectEntries,
   importedName,
   parseSetupSource,
-  safeEnvGetter,
   topLevelConfig,
 } from './ts_source.js'
-import { resolveSelectedEnvironment } from './selected_environment.js'
-import type * as TypeScript from 'typescript'
+import { selectedEnvName } from './selected_environment.js'
 
 export async function databaseKind(
   sourceText: string,
@@ -36,26 +34,15 @@ export async function databaseKind(
   const { ts } = source
   let selected: string | null = null
   if (ts.isStringLiteral(connection)) selected = connection.text
-  else if (
-    ts.isCallExpression(connection) &&
-    ts.isPropertyAccessExpression(connection.expression) &&
-    ts.isIdentifier(connection.expression.expression) &&
-    connection.expression.expression.text === defaultImportName(source, '#start/env') &&
-    connection.expression.name.text === 'get' &&
-    connection.arguments.length >= 1 &&
-    connection.arguments.length <= 2 &&
-    ts.isStringLiteral(connection.arguments[0]) &&
-    connection.arguments[0].text === 'DB_CONNECTION' &&
-    (connection.arguments.length === 1 || ts.isStringLiteral(connection.arguments[1]))
-  ) {
-    const envBinding = defaultImportName(source, '#start/env')
-    if (!envBinding || !safeEnvGetter(source, envBinding)) return 'unknown'
+  else
     selected =
-      (await resolveSelectedEnvironment(root, 'DB_CONNECTION')) ??
-      (connection.arguments.length === 2
-        ? (connection.arguments[1] as TypeScript.StringLiteral).text
-        : null)
-  }
+      (await selectedEnvName(
+        source,
+        root,
+        defaultImportName(source, '#start/env'),
+        connection,
+        'DB_CONNECTION'
+      )) ?? null
   if (!selected) return 'unknown'
   const selectedConnection = directObject(
     source,
