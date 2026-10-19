@@ -1,14 +1,13 @@
 // The account export: one versioned JSON document of the data Account Kit holds for a user.
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { confirmActor } from './actor_confirmation.js'
 import { revision } from './authentication.js'
 import { transaction } from './db.js'
 import { settleCommitted } from './effects.js'
 import type { PostCommitError } from './errors.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
@@ -67,7 +66,7 @@ async function accessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
 }
 
 export async function exportAccountData(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: AccountDataInput
 ): Promise<AccountExport> {
   const { config } = deps

@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction } from './db.js'
 import { normalizeEmail } from './email.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { credentialsChanged, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import {
@@ -31,22 +29,15 @@ import type {
   CurrentAccount,
   CurrentAccountInput,
   PasswordLoginInput,
-  ResolvedConfig,
   SocialProviderName,
   Trx,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
 
-type Dependencies = {
-  config: ResolvedConfig
-  db: Database
-  limiter: LimiterService
-  throttler?: Throttler
-}
-
-function configured(deps: Pick<Dependencies, 'config'>) {
+function configured(deps: Pick<ServiceDependencies, 'config'>) {
   const auth = deps.config.authentication
   if (!auth) throw new CapabilityDisabledError('Authentication is disabled')
   return auth
@@ -63,7 +54,7 @@ export function safeAccount(user: AccountUser): CurrentAccount {
 }
 
 export async function currentInTransaction(
-  deps: Pick<Dependencies, 'config'>,
+  deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx
 ): Promise<CurrentAccount> {
@@ -97,7 +88,7 @@ export async function currentInTransaction(
   return safeAccount(user)
 }
 
-export function authenticationService(deps: Dependencies) {
+export function authenticationService(deps: ServiceDependencies) {
   return {
     /** Read-only impact of the login methods that remain after a proposed change. */
     async retirementImpact(input: {

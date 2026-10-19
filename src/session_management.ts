@@ -1,6 +1,5 @@
 // Lists and revokes the places a user is signed in, for session and access-token guards.
 import { randomUUID } from 'node:crypto'
-import type { Database } from '@adonisjs/lucid/database'
 import { credentialsChanged, currentInTransaction } from './authentication.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
@@ -12,15 +11,15 @@ import { hashToken } from './tokens.js'
 import type {
   CurrentAccountInput,
   ResolvedAuthenticationConfig,
-  ResolvedConfig,
   SignIn,
   Trx,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
-type Dependencies = { config: ResolvedConfig; db: Database }
-
-function configured(deps: Dependencies): ResolvedAuthenticationConfig {
+function configured(
+  deps: Pick<ServiceDependencies, 'config' | 'db'>
+): ResolvedAuthenticationConfig {
   if (!deps.config.enabled.includes('sessionManagement') || !deps.config.authentication)
     throw new CapabilityDisabledError('Session management is disabled')
   return deps.config.authentication
@@ -63,7 +62,7 @@ async function scope(trx: Trx, auth: ResolvedAuthenticationConfig, current: Curr
 
 const sameId = (left: unknown, right: unknown) => String(left) === String(right)
 
-export function sessionManagementService(deps: Dependencies) {
+export function sessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
   /** Authenticate the caller and run `mutate` in one transaction under the account lock. */
   function asCurrent<T>(
     current: CurrentAccountInput,
