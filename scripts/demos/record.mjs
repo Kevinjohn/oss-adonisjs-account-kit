@@ -26,7 +26,14 @@ const shorten = (text) =>
 
 let server
 let log = ''
+/** Process IDs listening on port 3333; clients connected to it are not included. */
+const listeners = () =>
+  execFileSync('bash', ['-c', 'lsof -ti tcp:3333 -sTCP:LISTEN || true'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+
 async function startServer() {
+  if (listeners().length) throw new Error('Port 3333 is in use; stop that process first')
   log = ''
   server = spawn('node', ['ace', 'serve'], { cwd: appDir, stdio: ['ignore', 'pipe', 'pipe'] })
   server.stdout.on('data', (d) => (log += d))
@@ -36,9 +43,12 @@ async function startServer() {
 }
 function stopServer() {
   server?.kill()
-  try {
-    execFileSync('bash', ['-c', 'lsof -ti :3333 | xargs kill 2>/dev/null || true'])
-  } catch {}
+  // `ace serve` runs the HTTP server in a child process, so end whatever this run left listening.
+  for (const pid of listeners()) {
+    try {
+      process.kill(Number(pid))
+    } catch {}
+  }
 }
 const ace = (...args) => execFileSync('node', ['ace', ...args], { cwd: appDir, encoding: 'utf8' })
 
