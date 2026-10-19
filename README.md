@@ -63,6 +63,29 @@ The generated `notify` callbacks throw until you choose how to send email, and t
 run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
 sets them up.
 
+Account Kit errors carry a `status` and `code` but do not render themselves. Map them in
+`app/exceptions/handler.ts` with `accountErrorResponse`, which returns a safe status, headers
+(`Retry-After` when throttled) and body, or `null` for any other error:
+
+```ts
+import { accountErrorResponse } from 'adonisjs-account-kit'
+
+export default class HttpExceptionHandler extends ExceptionHandler {
+  async handle(error: unknown, ctx: HttpContext) {
+    const mapped = accountErrorResponse(error)
+    if (mapped) {
+      for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
+      const { code, message } = mapped.body
+      return ctx.response.status(mapped.status).send({ errors: [{ code, message }] })
+    }
+    return super.handle(error, ctx)
+  }
+}
+```
+
+[Keep HTTP policy in the application](docs/application-owned-integration.md#keep-http-policy-in-the-application)
+explains the status codes and the `committed` marker.
+
 There are two ways to install. Pick one per app:
 
 - **`node ace add`** (above) gives you a starter config. You write the controllers, or mount the
