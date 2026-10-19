@@ -153,6 +153,42 @@ Managed signup consumes a shared, secret-keyed per-client `auth.signup` budget b
 
 For any non-empty selected session capability set, managed routes include `auth.csrf` unless its endpoint name is explicitly excluded; token selections never include it. Proof GETs call read-only service inspection. Every proof GET and POST sets `Cache-Control: no-store` and `Referrer-Policy: no-referrer`. The `auth.csrf` response also sets `Cache-Control: no-store`, so a shared cache cannot replay one session's CSRF token to another client. Install `managedProofHeadersMiddleware({ prefix, strategy, enabled, except })` in the application's early server middleware, before body parsing and Shield, with the same route selection as `registerManagedRoutes`. This ensures parser and CSRF failures on proof URLs retain those headers; handler-level headers alone run too late. POST completion or acceptance applies the service's atomic proof-consumption rule. Clients should treat a repeated completion as an invalid proof; request and resend operations may acknowledge repeat submissions while the underlying service limits issuance. A committed write with a failed post-commit callback remains a success response marked `{ committed: true }` when its full result is unavailable. Password-reset request always returns the same acknowledgement even when notification delivery fails after the request commits. There is no idempotency-key contract. A GET profile, invitation list, proof inspection, or CSRF bootstrap can be repeated without a write. A successful login creates a new session/token; repeat only if a new credential is wanted. A duplicate signup returns the same `email`/`unique` 422 regardless of account state; after an uncertain signup result, reconcile by login or recovery instead of assuming rollback. A repeated logout returns 401. Proof completion and invitation acceptance are one-use and reject a second submission. Password reset request returns the same acknowledgement on retries, while verification resend and invitation resend follow their service limits; an uncertain profile, password, or invitation write should be reconciled with the account/invitation read or recovery flow before retrying. A `202 { committed: true }` means the write committed but a post-commit callback failed; clients should reconcile current state, not repeat blindly.
 
+### Error messages follow the application's language
+
+When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n) and its locale middleware sets `ctx.i18n`, managed routes translate each error message the same way the official AdonisJS packages do. The message for code `X` is looked up as `errors.X` in the request's locale. A missing translation falls back to the English message below. Codes and statuses never change. Without `@adonisjs/i18n`, responses stay in English. `extensions.message` still runs last and receives the translated message as its default.
+
+Copy this file to `resources/lang/<locale>/errors.json` and translate the values:
+
+```json
+{
+  "E_INVALID_PASSWORD_TOKEN": "This link is invalid or expired.",
+  "E_INVALID_EMAIL_TOKEN": "This link is invalid or expired.",
+  "E_INVALID_INVITATION_TOKEN": "This link is invalid or expired.",
+  "E_INVALID_MAGIC_LINK": "This link is invalid or expired.",
+  "E_INVALID_CREDENTIALS": "Authentication failed.",
+  "unverified_email": "Email verification is required.",
+  "E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED": "Current identity proof could not be confirmed.",
+  "E_INVITATION_NOT_FOUND": "Invitation not found.",
+  "E_ACCOUNT_KIT_FORBIDDEN": "Access denied.",
+  "E_EMAIL_ALREADY_REGISTERED": "The account request conflicts with an existing account.",
+  "E_ACCOUNT_KIT_THROTTLED": "Too many requests.",
+  "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected.",
+  "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected.",
+  "E_ACCOUNT_KIT_INVITATION_PENDING": "Account request rejected.",
+  "E_SOCIAL_TRANSACTION_INVALID": "Account request rejected.",
+  "E_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected.",
+  "E_SOCIAL_EMAIL_MISSING": "Account request rejected.",
+  "E_SOCIAL_USER_NOT_FOUND": "Account request rejected.",
+  "E_SOCIAL_PROOF_INVALID": "Account request rejected.",
+  "E_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected.",
+  "E_ACCOUNT_KIT_OPERATION_FAILED": "Account operation failed."
+}
+```
+
+Request-validation messages already follow the locale: the managed routes call `request.validateUsing`, which uses the messages provider the i18n middleware installs.
+
 ### The selected guard protects application routes too
 
 Managed account routes validate the existing guard and the package's current account state on every request. The application must apply the same revision/token check to its own protected routes for revocation to cover them. Session login must regenerate the session, logout must destroy the current server-side session, and the application must use a shared server-side session store across instances. Access-token login issues an opaque token; logout deletes only the current token. See [authentication](authentication.md) for the exact revocation boundary.
