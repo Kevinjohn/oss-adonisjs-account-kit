@@ -73,7 +73,8 @@ Initial public release.
 - Managed route errors are translated through `@adonisjs/i18n` when the application uses it,
   as the official AdonisJS packages do: the message for code `X` is looked up as `errors.X` in
   the request's locale, with the English message as the fallback. `extensions.message` now
-  receives the translated message as its default.
+  receives the translated message as its default. The duplicate-email and password-policy 422
+  messages are looked up as `validation.unique` and `validation.passwordPolicy`.
 
 <details>
 <summary>Pre-release candidate history</summary>

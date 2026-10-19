@@ -187,7 +187,14 @@ Copy this file to `resources/lang/<locale>/errors.json` and translate the values
 }
 ```
 
-Request-validation messages already follow the locale: the managed routes call `request.validateUsing`, which uses the messages provider the i18n middleware installs.
+Request-validation messages already follow the locale: the managed routes call `request.validateUsing`, which uses the messages provider the i18n middleware installs. Two 422 messages come from checks the package runs after validation. They are looked up under the same `validation.<rule>` keys VineJS uses, with `field` as data. Add them to `resources/lang/<locale>/validation.json`:
+
+```json
+{
+  "unique": "The {field} has already been taken.",
+  "passwordPolicy": "Password does not meet the policy."
+}
+```
 
 ### The selected guard protects application routes too
 
