@@ -48,6 +48,13 @@ Initial public release.
 - `adonisjs-account-kit/testing/notifications` captures notifications in application tests and
   returns the proof token from the latest link.
 - `adonisjs-account-kit/ally` exports the Ally social provider adapter.
+- Doc comments on every public export, so the generated API reference describes each type,
+  option and service method. Types the reference named but could not link are now exported as
+  types only: `LucidModelRow`, `LucidUsersAdapter`, `LucidCreateAttributes`, `MessageLogger` and the
+  `socialIntents`, `sensitivePurposes` and `socialProviderNames` lists behind the social union types
+  from the package root, and `ExistingRoute`, `RoutePatternToken`, `ManagedSessionGuardOptions`,
+  `ManagedTokenGuardOptions`, `ManagedSessionConfiguration`, `ManagedSessionStoreFactory` and
+  `ManagedSocialExtension` from `adonisjs-account-kit/http`. No runtime export is added.
 - Operator commands `account-kit:invite` and `account-kit:reset-link` (and the `kit.operator`
   services behind them) for shell-trusted invitations and reset links, with `--print` for
   printed links and JSON output.

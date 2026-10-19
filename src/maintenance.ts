@@ -12,12 +12,20 @@ type TokenTable =
   | 'login_link_tokens'
   | 'account_sessions'
 
+/**
+ * Options for `maintenance.prune`: rows per batch, the most batches to run, and `dryRun` to count
+ * without deleting.
+ */
 export interface PruneInput {
+  /** Rows deleted per batch. Default 100. */
   batchSize?: number
+  /** The most batches in one run, shared across all tables. Default 100. */
   maxBatches?: number
+  /** Count expired rows without deleting them. */
   dryRun?: boolean
 }
 
+/** How many expired rows `maintenance.prune` deleted, or would delete, per table. */
 export interface PruneCounts {
   recovery: number
   invitations: number

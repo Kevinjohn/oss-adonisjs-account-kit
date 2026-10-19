@@ -14,5 +14,6 @@
   "excludeInternal": true,
   "hidePageHeader": true,
   "githubPages": false,
-  "gitRevision": "main"
+  "gitRevision": "main",
+  "treatWarningsAsErrors": true
 }

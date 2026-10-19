@@ -2,8 +2,10 @@
 // Kept apart from social_providers.ts: that file is about who the provider is, this one about what the flow is for.
 import type { SensitivePurpose, SocialIntent } from './types.js'
 
+/** Every social flow intent. */
 export const socialIntents = ['login', 'link', 'reauth', 'confirm'] as const
 
+/** Every purpose a recent-authentication proof can be issued for. */
 export const sensitivePurposes = [
   'social_link',
   'social_unlink',

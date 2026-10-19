@@ -3,6 +3,7 @@ import { isSocialProviderName, socialProviderLabels } from './social_providers.j
 
 export type AccountMessageKind = keyof NotificationCallbacks
 
+/** A rendered account email: subject, plain text and HTML. */
 export interface RenderedAccountMessage {
   subject: string
   text: string
@@ -14,6 +15,7 @@ export interface AccountMailService {
   sendLater(callback: (message: AccountMailMessage) => void): Promise<unknown>
 }
 
+/** The part of an AdonisJS Mail message `createMailNotifications` uses. */
 export interface AccountMailMessage {
   to(address: string): this
   from(address: string): this
@@ -22,13 +24,16 @@ export interface AccountMailMessage {
   text(content: string): this
 }
 
+/** Options for `createMailNotifications`. */
 export interface MailNotificationOptions {
   /**
    * Defaults to the AdonisJS Mail service, resolved when a message is sent. Config files load
    * before that service exists, so pass a function rather than the service itself.
    */
   mail?: AccountMailService | (() => AccountMailService)
+  /** The sender address. */
   from: string
+  /** Your product name, used in subjects and message bodies. */
   brandName: string
   /** Receives escaped body markup; return a complete HTML document or wrapper. */
   emailLayout?: (body: string) => string
@@ -108,6 +113,10 @@ function escapeHtml(value: string): string {
   )
 }
 
+/**
+ * Renders the built-in English template for one kind of account email. Use it to send through your
+ * own transport with the same wording.
+ */
 export function renderAccountMessage(
   kind: AccountMessageKind,
   values: { brandName: string; actionUrl?: string; providerName?: string },
@@ -150,6 +159,7 @@ export class PasswordResetProvision {
     readonly actionUrl: string
   ) {}
 }
+/** An account activation email to send: recipient and action URL. */
 export class AccountActivationProvision {
   readonly kind = 'accountActivationProvision' as const
   constructor(
@@ -157,6 +167,7 @@ export class AccountActivationProvision {
     readonly actionUrl: string
   ) {}
 }
+/** An invitation email to send: recipient and action URL. */
 export class InvitationProvision {
   readonly kind = 'invitationProvision' as const
   constructor(
@@ -164,6 +175,7 @@ export class InvitationProvision {
     readonly actionUrl: string
   ) {}
 }
+/** An email-change confirmation to send: recipient and action URL. */
 export class EmailChangeProvision {
   readonly kind = 'emailChangeProvision' as const
   constructor(
@@ -172,6 +184,7 @@ export class EmailChangeProvision {
   ) {}
 }
 
+/** A magic sign-in link email to send: recipient and action URL. */
 export class MagicLinkProvision {
   readonly kind = 'magicLinkProvision' as const
   constructor(
@@ -187,6 +200,10 @@ async function resolveMail(option: MailNotificationOptions['mail']): Promise<Acc
   return mail
 }
 
+/**
+ * Implements every notification callback with AdonisJS Mail and the built-in English templates.
+ * Messages are queued with `sendLater`.
+ */
 export function createMailNotifications(options: MailNotificationOptions): NotificationCallbacks {
   if (
     !options.from?.trim() ||
@@ -252,10 +269,20 @@ function providerLabel(provider: string): string {
   return isSocialProviderName(provider) ? socialProviderLabels[provider] : 'Social'
 }
 
+/**
+ * Options for `createActionUrls`: the backend and frontend origins, the relative path of each page,
+ * and the environment. Production origins must be HTTPS.
+ */
 export interface ActionUrlOptions {
+  /** The API's public origin. */
   backendOrigin: string
+  /** The frontend URL the links point at, including any base path. */
   appFrontendUrl: string
+  /**
+   * The relative page path for each kind of link, such as `reset-password`. The token is appended.
+   */
   destinations: Partial<Record<keyof UrlCallbacks, string>>
+  /** In production, origins must be HTTPS; HTTP is allowed only for loopback in development. */
   environment: 'development' | 'test' | 'production'
 }
 
@@ -337,14 +364,24 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
   }
 }
 
+/**
+ * What `notificationReadiness` checks: environment, delivery mode, mail transport, origins, enabled
+ * capabilities and page paths.
+ */
 export interface NotificationReadinessInput {
+  /** The environment being checked. */
   environment: ActionUrlOptions['environment']
+  /** The configured `delivery` mode. */
   delivery: 'best-effort' | 'durable' | 'capture'
   /** The application's selected AdonisJS Mail transport behavior. */
   transport: 'delivery' | 'capture' | 'discard'
+  /** The API's public origin. */
   backendOrigin: string
+  /** The frontend origin the links point at. */
   actionOrigin: string
+  /** The enabled capabilities, to know which links are needed. */
   enabled: Capability[]
+  /** The relative page path for each kind of link. */
   destinations: Partial<Record<keyof UrlCallbacks, string>>
   /** Application assertions; Account Kit cannot inspect an application-owned worker. */
   durableChecks?: {
@@ -356,6 +393,10 @@ export interface NotificationReadinessInput {
   }
 }
 
+/**
+ * Checks that account email will actually reach people in this environment. Returns `ready`, a
+ * delivery classification, and the problems and notes to show an operator.
+ */
 export function notificationReadiness(input: NotificationReadinessInput) {
   const problems: string[] = []
   for (const [label, origin] of [
