@@ -60,4 +60,38 @@ test.group('account HTTP error mapping', () => {
     assert.isNull(accountErrorResponse(new Error('unmapped')))
     assert.isNull(accountErrorResponse({ code: 'E_ACCOUNT_KIT_FAKE', status: 500 }))
   })
+
+  test('looks up the message as errors.<code> through i18n after normalising the code', ({
+    assert,
+  }) => {
+    const french: Record<string, string> = {
+      'errors.E_ACCOUNT_KIT_INVITATION_NOT_FOUND': 'Invitation introuvable',
+      'errors.E_ACCOUNT_KIT_DELIVERY': "L'opération a échoué",
+    }
+    const lookups: string[] = []
+    const i18n = {
+      t: (identifier: string, _data: Record<string, unknown>, fallbackMessage: string) => {
+        lookups.push(identifier)
+        return french[identifier] ?? fallbackMessage
+      },
+    }
+    const missing = accountErrorResponse(new InvitationNotFoundError(), { i18n })!
+    const denied = accountErrorResponse(new InvitationManagementDeniedError(), { i18n })!
+    assert.deepEqual(denied, missing)
+    assert.equal(missing.body.message, 'Invitation introuvable')
+    assert.equal(
+      accountErrorResponse(new DeliveryError(), { i18n })!.body.message,
+      "L'opération a échoué"
+    )
+    assert.equal(
+      accountErrorResponse(new AuthorizationError(), { i18n })!.body.message,
+      'Account request rejected'
+    )
+    assert.notInclude(lookups, 'errors.E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED')
+    assert.include(lookups, 'errors.E_ACCOUNT_KIT_AUTHORIZATION')
+    assert.equal(
+      accountErrorResponse(new DeliveryError())!.body.message,
+      'Account operation failed'
+    )
+  })
 })
