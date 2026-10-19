@@ -62,11 +62,10 @@ original error yourself.
 ## Stability
 
 Error `code` values are public API from the first public release. This covers the codes in the
-catalogue above and the managed-route codes in the
-[`errors.json` block](../managed-http.md#error-messages-follow-the-application-s-language). A code
-is changed or removed only as a breaking change listed in the
-[changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md). Before
-1.0 that can happen in a minor release, and it is still listed as breaking.
+catalogue above and the managed-route codes in the `errors.json` block in
+[managed HTTP](../managed-http.md). A code is changed or removed only as a breaking change listed
+in the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md).
+Before 1.0 that can happen in a minor release, and it is still listed as breaking.
 
 `message` text can change in any release. Never key on it.
 
@@ -74,8 +73,7 @@ is changed or removed only as a breaking change listed in the
 
 SPA and mobile clients that translate on their side should key translations on `code`, not
 `message`. The full lists are the catalogue above and the `errors.json` block in
-[managed HTTP](../managed-http.md#error-messages-follow-the-application-s-language). Every
-package code starts with `E_`.
+[managed HTTP](../managed-http.md). Every package code starts with `E_`.
 
 Request-validation errors come from VineJS and are keyed on the rule and field instead: `rule` and
 `field` in JSON, `code` and `source.pointer` in JSON:API. There, `code` is the rule name, such as
