@@ -16,8 +16,8 @@ import {
 } from 'adonisjs-account-kit'
 import type { AccountUser, Invitation, Trx } from 'adonisjs-account-kit'
 
-const databaseClient = process.env.DB_CONNECTION === 'pg' ? 'pg' : 'better-sqlite3'
-const databaseName = process.env.DB_CONNECTION === 'pg' ? 'postgres' : 'sqlite'
+const databaseClient = process.env.DB_CONNECTION === 'postgres' ? 'pg' : 'better-sqlite3'
+const databaseName = process.env.DB_CONNECTION === 'postgres' ? 'postgres' : 'sqlite'
 const require = createRequire(import.meta.url)
 interface NativeSqliteConnection {
   readonly inTransaction: boolean
