@@ -1,6 +1,5 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each short HTTP action next to its service operation. */
 
-import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
   InvalidInputError,
@@ -11,15 +10,16 @@ import {
 import accountKit from 'adonisjs-account-kit/services/main'
 import { sessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
+import {
+  beginBrowserTransaction,
+  forgetBrowserContinuation,
+  forgetBrowserTransaction,
+  pendingBrowserContinuation,
+  pendingBrowserTransaction,
+  rememberBrowserContinuation,
+} from '#services/social_browser_transaction'
 import { currentIfAuthenticated, requiredString } from '#services/social_request'
-import { authStrategy } from '#services/auth_strategy'
 import { socialRegistrationValidator } from '#validators/user'
-
-type BrowserTransaction = { state: string; verifier: string }
-type BrowserContinuation = { continuation: string; verifier: string }
-
-const verifier = () => randomBytes(32).toString('base64url')
-const challenge = (value: string) => createHash('sha256').update(value).digest('base64url')
 
 function providerParam(value: string): SocialProviderName {
   if (value !== 'google' && value !== 'github') throw new InvalidInputError('Unknown provider')
@@ -31,22 +31,17 @@ export default class SocialAuthController {
     const provider = providerParam(ctx.params.provider)
     const intent = ctx.request.input('intent', 'login') as SocialBeginInput['intent']
     const current = intent === 'login' ? undefined : await currentIfAuthenticated(ctx)
-    const browserVerifier = authStrategy() === 'session' ? verifier() : undefined
-    const clientChallenge = browserVerifier
-      ? challenge(browserVerifier)
-      : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
+    const transaction = beginBrowserTransaction(ctx)
     const result = await accountKit.socialAuthentication.begin({
       provider,
       intent,
       current,
-      clientChallenge,
+      clientChallenge: transaction.clientChallenge,
       purpose: ctx.request.input('purpose'),
       proof: ctx.request.input('proof'),
       context: ctx,
     })
-    if (browserVerifier) {
-      ctx.session.put('socialTransaction', { state: result.state, verifier: browserVerifier })
-    }
+    transaction.remember(result.state)
     return ctx.response.ok({ authorizationUrl: result.url })
   }
 
@@ -56,19 +51,14 @@ export default class SocialAuthController {
       ctx.request.input('verificationToken'),
       'verificationToken'
     )
-    const browserVerifier = authStrategy() === 'session' ? verifier() : undefined
-    const clientChallenge = browserVerifier
-      ? challenge(browserVerifier)
-      : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
+    const transaction = beginBrowserTransaction(ctx)
     const result = await accountKit.socialAuthentication.beginConfirmation({
       provider,
       verificationToken,
-      clientChallenge,
+      clientChallenge: transaction.clientChallenge,
       context: ctx,
     })
-    if (browserVerifier) {
-      ctx.session.put('socialTransaction', { state: result.state, verifier: browserVerifier })
-    }
+    transaction.remember(result.state)
     return ctx.response.ok({ authorizationUrl: result.url })
   }
 
@@ -84,12 +74,7 @@ export default class SocialAuthController {
     ctx.response.header('Referrer-Policy', 'no-referrer')
     const provider = providerParam(ctx.params.provider)
     const state = requiredString(ctx.request.input('state'), 'state')
-    const browser = authStrategy() === 'session'
-    const pending = browser
-      ? (ctx.session.get('socialTransaction') as BrowserTransaction | undefined)
-      : undefined
-    if (browser && pending?.state !== state)
-      throw new InvalidInputError('Invalid social transaction')
+    const pending = pendingBrowserTransaction(ctx, state)
     const current = await currentIfAuthenticated(ctx)
     const result = await accountKit.socialAuthentication.callback({
       state,
@@ -98,14 +83,9 @@ export default class SocialAuthController {
       current,
       intent: ctx.request.input('intent'),
     })
-    if (browser) ctx.session.forget('socialTransaction')
+    if (pending) forgetBrowserTransaction(ctx)
     if ('continuation' in result) {
-      if (pending) {
-        ctx.session.put('socialContinuation', {
-          continuation: result.continuation,
-          verifier: pending.verifier,
-        })
-      }
+      if (pending) rememberBrowserContinuation(ctx, result.continuation, pending)
       return ctx.response.ok({ status: 'new', continuation: result.continuation })
     }
     return this.finishCallback(ctx, result, pending?.verifier)
@@ -132,20 +112,14 @@ export default class SocialAuthController {
     ctx.response.header('Cache-Control', 'no-store')
     const continuation = requiredString(ctx.request.input('continuation'), 'continuation')
     const { fullName, email } = await ctx.request.validateUsing(socialRegistrationValidator)
-    const pending =
-      authStrategy() === 'session'
-        ? (ctx.session.get('socialContinuation') as BrowserContinuation | undefined)
-        : undefined
-    if (authStrategy() === 'session' && pending?.continuation !== continuation) {
-      throw new InvalidInputError('Invalid social continuation')
-    }
+    const pending = pendingBrowserContinuation(ctx, continuation)
     const result = await accountKit.socialAuthentication.completeRegistration({
       continuation,
       email,
       registrationData: { fullName },
     })
-    if (pending?.continuation === continuation) {
-      ctx.session.forget('socialContinuation')
+    if (pending) {
+      forgetBrowserContinuation(ctx)
       return this.finishCallback(ctx, result, pending.verifier)
     }
     return ctx.response.ok(result)
