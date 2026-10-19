@@ -7,10 +7,6 @@ import {
   defineConfig,
 } from 'adonisjs-account-kit'
 
-if (env.get('SESSION_DRIVER') === 'cookie') {
-  throw new Error('account_kit: session login needs a server-side session store')
-}
-
 const environment = app.inProduction ? 'production' : app.inTest ? 'test' : 'development'
 
 const loadUser = async () => {
@@ -18,9 +14,14 @@ const loadUser = async () => {
   return User
 }
 
+/**
+ * The starter signup form sends a full name; Account Kit stores it on the new user.
+ */
+const fullNameFrom = (data: unknown) => (data as { fullName?: string | null }).fullName ?? null
+
 const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
-    user.fullName = (data as { fullName?: string | null }).fullName ?? null
+    user.fullName = fullNameFrom(data)
   },
 })
 
@@ -29,20 +30,28 @@ export default defineConfig({
   enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
   registration: {
     availability: 'open',
-    mapFields: (data) => ({ fullName: (data as { fullName?: string | null }).fullName ?? null }),
+    mapFields: (data) => ({ fullName: fullNameFrom(data) }),
   },
   authentication: {
     strategy: 'session',
     guard: 'web',
+    /**
+     * Every account may sign in. Return false here to block an account.
+     */
     canAccess: async () => true,
   },
   limiterSecret: env.get('APP_KEY').release(),
+  /**
+   * This app sends no invitations, so every invitation action is refused.
+   */
   authorize: {
     invite: async () => false,
     manageInvitation: async () => false,
     listInvitations: async () => false,
   },
-  // Links are built from APP_URL only, and must use HTTPS outside localhost.
+  /**
+   * Links are built from APP_URL only, and must use HTTPS outside localhost.
+   */
   urls: createActionUrls({
     backendOrigin: env.get('APP_URL'),
     appFrontendUrl: env.get('APP_URL'),
@@ -54,10 +63,14 @@ export default defineConfig({
       emailChange: 'confirm-email',
     },
   }),
-  // Prints each email, link included, to the server log, and refuses to boot in production.
-  // Before deploying, add @adonisjs/mail and switch to createMailNotifications.
+  /**
+   * Prints each email, link included, to the server log, and refuses to boot in production.
+   * Before deploying, add @adonisjs/mail and switch to createMailNotifications.
+   */
   notify: createLogNotifications({ brandName: 'My App', environment }),
-  // Session login checks the credential revision on every request, so older sessions end on
-  // their own. Nothing else holds credentials in this app.
+  /**
+   * A no-op on purpose: session login checks the credential revision on every request, so older
+   * sessions end on their own. Nothing else holds credentials in this app.
+   */
   onCredentialsChangedTransaction: async () => {},
 })
