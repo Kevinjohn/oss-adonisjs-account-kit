@@ -229,6 +229,8 @@ that ran a candidate build.
   `PostCommitError` with `committed: true`.
 - Invitation resend and revoke now run their link delivery and lifecycle event after the same kind
   of committed cleanup fault, matching the other invitation operations.
+- The Drizzle and Prisma users adapters now forward `delete`, so account deletion no longer fails
+  with `users.delete must be a function`.
 
 ### Integration notes
 
