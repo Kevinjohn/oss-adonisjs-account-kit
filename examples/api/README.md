@@ -70,19 +70,6 @@ repository, inserts the exact candidate tarball as its `adonisjs-account-kit` de
 package configure command, and tests the installed package. It never resolves the repository source
 or reuses this checkout's `node_modules`.
 
-Use the repository's `test:consumer` script to run it. A separate baseline tarball is required to
-run the upgrade scenario. PostgreSQL runs require the dedicated `account_kit_consumer` database;
-the harness resets its `public` schema before each independent scenario.
-The historical baseline config is kept in `upgrade/baseline_account_kit.stub` so current-app
-typechecking does not compile old package contracts. The upgrade harness copies that stub into
-the temporary application config only for its baseline phase.
-The upgrade scenario uses an application-owned handler compatible with the preserved baseline
-package, then exercises password reset through its preserved config and adapter before hashing the
-baseline config and migration files. It verifies configure preserves them, then applies the
-maintained candidate config, password-reset controller and exception handler as documented manual upgrade steps.
-It changes the newly generated reset-token migration to rename the existing table, preserving rows
-and applied migration files, before booting and typechecking the candidate. The candidate-phase test verifies the recovered password,
-user data, role assignment, and application migration record survived. It also carries a live reset
-proof through the table rename, compares every stored row field, redeems that proof once, and
-rejects replay. The proof is transferred between phases in a mode-0600 temporary file and removed
-before redemption assertions.
+Use the repository's `test:consumer` script to run it. PostgreSQL runs require the dedicated
+`account_kit_consumer` database; the harness resets its `public` schema before each independent
+scenario.

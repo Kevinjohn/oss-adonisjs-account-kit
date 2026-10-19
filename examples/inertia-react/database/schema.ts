@@ -28,6 +28,25 @@ export class AccountInvitationSchema extends BaseModel {
   declare updatedAt: DateTime
 }
 
+export class AccountSessionSchema extends BaseModel {
+  static $columns = ['createdAt', 'expiresAt', 'handleHash', 'id', 'label', 'lastSeenAt', 'userId'] as const
+  $columns = AccountSessionSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare handleHash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare label: string | null
+  @column.dateTime()
+  declare lastSeenAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class AccountTransactionLockSchema extends BaseModel {
   static $columns = ['id', 'version'] as const
   $columns = AccountTransactionLockSchema.$columns
@@ -54,6 +73,25 @@ export class EmailVerificationTokenSchema extends BaseModel {
   declare id: number
   @column()
   declare purpose: string
+  @column()
+  declare tokenableId: number
+}
+
+export class LoginLinkTokenSchema extends BaseModel {
+  static $columns = ['clientChallenge', 'createdAt', 'email', 'expiresAt', 'hash', 'id', 'tokenableId'] as const
+  $columns = LoginLinkTokenSchema.$columns
+  @column()
+  declare clientChallenge: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
   @column()
   declare tokenableId: number
 }

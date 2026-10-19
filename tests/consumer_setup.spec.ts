@@ -11,7 +11,7 @@ const consumerHarness = join(repoRoot, 'scripts/test_packed_consumer.mjs')
 test('rejects minimum compatibility for modes that do not support it before setup', ({
   assert,
 }) => {
-  for (const mode of ['fresh', 'upgrade', 'both']) {
+  for (const mode of ['fresh', 'service-only']) {
     const result = spawnSync(
       process.execPath,
       [

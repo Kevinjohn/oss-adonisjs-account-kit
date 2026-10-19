@@ -47,7 +47,6 @@ for (const userIdType of idTypes) {
     try {
       const schema = kit.db.connection().schema
       for (const table of [
-        'account_email_changes',
         'email_verification_tokens',
         'login_link_tokens',
         'account_sessions',
@@ -193,7 +192,6 @@ for (const userIdType of idTypes) {
       assert.isTrue(await tableExists(kit, usersTable))
     } finally {
       for (const table of [
-        'account_email_changes',
         'email_verification_tokens',
         'login_link_tokens',
         'account_sessions',

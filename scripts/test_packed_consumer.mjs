@@ -40,10 +40,8 @@ const userIdType = option('user-id-type', 'integer')
 const usersTable = option('users-table', 'users')
 const prepareOnly = process.argv.includes('--prepare-only')
 const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
-const baselineInput = option('baseline-tarball', process.env.BASELINE_TARBALL)
 const candidateRevision = option('candidate-revision', process.env.CANDIDATE_REVISION)
-const baselineRevision = option('baseline-revision', process.env.BASELINE_REVISION)
-const supportedModes = new Set(['fresh', 'upgrade', 'both', 'minimum', 'service-only'])
+const supportedModes = new Set(['fresh', 'minimum', 'service-only'])
 
 if (!supportedModes.has(mode)) throw new Error(`Unknown mode: ${mode}`)
 if (prepareOnly && mode !== 'fresh') {
@@ -65,10 +63,7 @@ if (!['integer', 'string', 'uuid'].includes(userIdType)) {
 if (!/^[a-z][a-z0-9_]*$/.test(usersTable))
   throw new Error(`Invalid users table name: ${usersTable}`)
 if (mode !== 'fresh' && (userIdType !== 'integer' || usersTable !== 'users')) {
-  throw new Error('Baseline upgrade runs currently require the default integer users table')
-}
-if (['upgrade', 'both'].includes(mode) && !baselineInput) {
-  throw new Error('Upgrade modes require --baseline-tarball=PATH or BASELINE_TARBALL')
+  throw new Error('Minimum and service-only runs currently require the default integer users table')
 }
 
 const tempRoot = await mkdtemp(join(tmpdir(), 'account-kit-consumer-'))
@@ -487,129 +482,6 @@ async function runFresh(candidate, runName) {
   }
 }
 
-async function runUpgrade(candidate, baseline, runName) {
-  const appRoot = join(tempRoot, runName)
-  await cp(fixtureRoot, appRoot, {
-    recursive: true,
-    filter: (path) => !path.includes('/node_modules/'),
-  })
-  await mkdir(join(appRoot, 'tmp'), { recursive: true })
-  const env = databaseEnvironment(appRoot)
-  const configPath = join(appRoot, 'config/account_kit.ts')
-  const handlerPath = join(appRoot, 'app/exceptions/handler.ts')
-  const controllerPath = join(appRoot, 'app/controllers/password_resets_controller.ts')
-  await copyFile(join(appRoot, 'upgrade/baseline_account_kit.stub'), configPath)
-  await copyFile(join(appRoot, 'upgrade/baseline_handler.ts'), handlerPath)
-  // Only the temporary historical fixture uses the baseline package vocabulary.
-  const controller = await readFile(controllerPath, 'utf8')
-  await writeFile(
-    controllerPath,
-    controller
-      .replaceAll('.passwordReset.', '.recovery.')
-      .replaceAll('.emailVerification.', '.verification.')
-      .replaceAll('.emailPasswordManagement.', '.credentials.')
-  )
-  for (const migration of await packageMigrations(appRoot)) await rm(migration)
-  const baselineInstall = await installArchive(appRoot, baseline)
-  await resetExclusivePostgresSchema(appRoot)
-  await configure(appRoot, env)
-  run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
-  await adaptGeneratedUserSchema(appRoot)
-  run('pnpm', ['run', 'migrate'], appRoot, env)
-  run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
-  await adaptGeneratedUserSchema(appRoot)
-  run('pnpm', ['run', 'format'], appRoot, env)
-  run('pnpm', ['run', 'test:upgrade-baseline'], appRoot, {
-    ...env,
-    ACCOUNT_KIT_UPGRADE_PHASE: 'baseline',
-  })
-
-  const configBeforeUpgrade = await digest(configPath)
-  const migrationDir = join(appRoot, 'database/migrations')
-  const appMigrations = (await readdir(migrationDir)).sort()
-  const appMigrationHashes = await hashFiles(appMigrations.map((file) => join(migrationDir, file)))
-  const candidateInstall = await installArchive(appRoot, candidate)
-  await configure(appRoot, env)
-  if ((await digest(configPath)) !== configBeforeUpgrade)
-    throw new Error('Upgrade replaced the app-owned config')
-  const upgradedMigrations = (await readdir(migrationDir)).sort()
-  if (appMigrations.some((file) => !upgradedMigrations.includes(file)))
-    throw new Error('Upgrade configure removed an existing application migration')
-  if (
-    JSON.stringify(await hashFiles(appMigrations.map((file) => join(migrationDir, file)))) !==
-    JSON.stringify(appMigrationHashes)
-  )
-    throw new Error('Upgrade configure changed an existing application migration')
-  const newlyGenerated = upgradedMigrations.filter((file) => !appMigrations.includes(file))
-  const resetMigration = newlyGenerated.find((file) =>
-    file.endsWith('_account_kit_create_password_reset_tokens.ts')
-  )
-  const expectedSuffixes = [
-    '_account_kit_create_password_reset_tokens.ts',
-    '_account_kit_create_account_transaction_lock.ts',
-    '_account_kit_evolve_identity_contract.ts',
-    '_account_kit_create_social_identities.ts',
-    '_account_kit_retire_account_email_changes.ts',
-    '_account_kit_add_credentials_changed_at_to_users.ts',
-    '_account_kit_create_social_transactions.ts',
-    '_account_kit_add_social_identity_confirmation.ts',
-  ]
-  if (
-    newlyGenerated.length !== expectedSuffixes.length ||
-    !resetMigration ||
-    expectedSuffixes.some((suffix, index) => !newlyGenerated[index]?.endsWith(suffix))
-  ) {
-    throw new Error(
-      `Upgrade should add only the eight expected account migrations in order; added: ${newlyGenerated.join(', ')}`
-    )
-  }
-  // Rehearse the documented application-owned table rename without editing applied migrations.
-  await writeFile(
-    join(migrationDir, resetMigration),
-    `import { BaseSchema } from '@adonisjs/lucid/schema'
-
-export default class extends BaseSchema {
-  async up() {
-    this.schema.renameTable('account_recovery_tokens', 'password_reset_tokens')
-  }
-
-  async down() {
-    this.schema.renameTable('password_reset_tokens', 'account_recovery_tokens')
-  }
-}
-`
-  )
-  await copyFile(join(fixtureRoot, 'config/account_kit.ts'), configPath)
-  await copyFile(join(fixtureRoot, 'app/exceptions/handler.ts'), handlerPath)
-  await writeFile(controllerPath, controller)
-  const manuallyUpdatedConfigSha256 = await digest(configPath)
-  const manuallyUpdatedHandlerSha256 = await digest(handlerPath)
-  run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
-  run('pnpm', ['run', 'migrate'], appRoot, env)
-  run('pnpm', ['run', 'format'], appRoot, env)
-  run('pnpm', ['run', 'typecheck'], appRoot, env)
-  run('pnpm', ['run', 'lint'], appRoot, env)
-  run('pnpm', ['run', 'format:check'], appRoot, env)
-  run('pnpm', ['run', 'test:upgrade-baseline'], appRoot, {
-    ...env,
-    ACCOUNT_KIT_UPGRADE_PHASE: 'candidate',
-  })
-  run('pnpm', ['run', 'test'], appRoot, env)
-  run('pnpm', ['run', 'test:session'], appRoot, {
-    ...env,
-    ACCOUNT_KIT_AUTH_STRATEGY: 'session',
-    SESSION_DRIVER: 'memory',
-  })
-  return {
-    appRoot,
-    baselineInstall,
-    candidateInstall,
-    preservedBaselineConfigSha256: configBeforeUpgrade,
-    manuallyUpdatedConfigSha256,
-    manuallyUpdatedHandlerSha256,
-  }
-}
-
 async function runMinimumCompatibility(candidate, runName) {
   const appRoot = join(tempRoot, runName)
   const compatibilityRoot = join(fixtureRoot, 'compatibility')
@@ -743,8 +615,6 @@ const evidence = {
   sourceChanges: run('git', ['status', '--short'], repoRoot).trim(),
   candidateRevision:
     candidateRevision ?? (candidateInput ? 'unknown external archive revision' : null),
-  baselineRevision:
-    baselineRevision ?? (baselineInput ? 'unknown external archive revision' : null),
   runtime: process.versions.node,
   packageManager: run('pnpm', ['--version'], repoRoot).trim(),
   database,
@@ -765,7 +635,7 @@ try {
     candidateRevision ?? (candidateInput ? 'unknown external archive revision' : evidence.revision)
   evidence.candidateSha256 = await digest(candidate)
 
-  if (mode === 'fresh' || mode === 'both') {
+  if (mode === 'fresh') {
     evidence.runs.push(await runFresh(candidate, `fresh-${database}-${compatibility}`))
   }
   if (mode === 'minimum') {
@@ -773,15 +643,6 @@ try {
   }
   if (mode === 'service-only') {
     evidence.runs.push(await runServiceOnly(candidate, `service-only-${database}`))
-  }
-  if (mode === 'upgrade' || mode === 'both') {
-    const baseline = resolve(baselineInput)
-    evidence.baselineTarball = baseline
-    evidence.baselineSha256 = await digest(baseline)
-    evidence.baselineRevision = baselineRevision ?? 'unknown external archive revision'
-    evidence.runs.push(
-      await runUpgrade(candidate, baseline, `upgrade-${database}-${compatibility}`)
-    )
   }
 
   evidence.status = 'passed'

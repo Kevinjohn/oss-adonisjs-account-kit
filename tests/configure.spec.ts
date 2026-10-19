@@ -78,25 +78,23 @@ test('configures the package idempotently without replacing application-owned fi
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
     let migrationFiles = firstMigrationFiles.sort()
-    assert.lengthOf(migrationFiles, 13)
+    assert.lengthOf(migrationFiles, 11)
     assert.deepEqual(
       migrationFiles
         .map((filename) => filename.replace(/^.*_account_kit_/, '').replace(/\.ts$/, ''))
         .sort(),
       [
-        'add_credentials_changed_at_to_users',
-        'add_email_verified_at_to_users',
-        'add_social_identity_confirmation',
-        'create_account_email_changes',
+        'add_account_columns_to_users',
         'create_account_invitations',
         'create_account_sessions',
         'create_account_transaction_lock',
+        'create_email_verification_tokens',
         'create_login_link_tokens',
         'create_password_reset_tokens',
+        'create_social_handoff_codes',
         'create_social_identities',
+        'create_social_sensitive_proofs',
         'create_social_transactions',
-        'evolve_identity_contract',
-        'retire_account_email_changes',
       ]
     )
     const firstRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')
