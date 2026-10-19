@@ -57,7 +57,7 @@ export default defineConfig({
     ...(authStrategy === 'access_tokens' ? { tokenExpiresIn: '1d', tokenAbilities: ['*'] } : {}),
     canAccess,
   },
-  limiterSecret: env.get('APP_KEY').release(),
+  limiterSecret: env.get('APP_KEY'),
   // The functional suite sends many requests from one client; production keeps the package
   // default of five requests per 15 minutes.
   ...(app.inTest ? { throttle: { requests: 100, duration: '15m' } } : {}),
