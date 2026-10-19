@@ -76,6 +76,7 @@ export default defineConfig({
           { text: 'Setup choices', link: '/reference/setup-choices' },
           { text: 'OpenAPI document', link: '/openapi' },
           { text: 'Notifications', link: '/notifications' },
+          { text: 'Translations', link: '/translations/' },
           { text: 'Production requirements', link: '/reference/production-requirements' },
           { text: 'Compatibility', link: '/compatibility' },
           { text: 'Glossary', link: '/glossary' },

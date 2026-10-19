@@ -80,6 +80,20 @@ Run them before a release and after changing `configure.ts`, `stubs/` or `exampl
 - Write commit messages in the imperative mood, describing the change ("Reject expired invitation
   tokens on resend").
 
+## Adding a translation
+
+Translations of the managed error and validation messages live in `docs/translations/`, one page
+per locale, for applications to copy into `resources/lang/<locale>/`. To add a locale in one pull
+request:
+
+1. Create `docs/translations/<locale>.md` with a `# <Language>` title, an `## errors.json` heading
+   and an `## validator.json` heading.
+2. Under each heading, paste the matching English JSON block from `docs/managed-http.md` and
+   translate the values. Keep every key and every `{placeholder}` as it is.
+3. List the page under "Locales" in `docs/translations/index.md`.
+4. Run `pnpm quick:test --files=docs_translations.spec.ts`. It checks the keys, placeholders and
+   ICU syntax, not the wording.
+
 ## Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in

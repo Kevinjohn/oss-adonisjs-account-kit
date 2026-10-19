@@ -205,12 +205,21 @@ Request-validation messages already follow the locale: the managed routes call `
     "messages": {
       "unique": "The {field} has already been taken.",
       "passwordPolicy": "The {field} does not meet the password policy."
+    },
+    "fields": {
+      "email": "email",
+      "password": "password",
+      "passwordConfirmation": "password confirmation",
+      "currentPassword": "current password",
+      "newPassword": "new password",
+      "newPasswordConfirmation": "new password confirmation",
+      "role": "role"
     }
   }
 }
 ```
 
-The fields people fill in are `email`, `password`, `passwordConfirmation`, `currentPassword`, `newPassword`, `newPasswordConfirmation` and `role`. Translate their names under `shared.fields`; the other managed fields are sent by client code.
+`shared.fields` names the fields people fill in, so `{field}` reads naturally in every validation message. The other managed fields are sent by client code. Ready-to-copy [translations](translations/index.md) of both files are kept in the docs.
 
 ### The selected guard protects application routes too
 
