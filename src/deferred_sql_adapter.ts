@@ -23,5 +23,6 @@ export function deferredSqlUsersAdapter(
     updateRegistrationData: async (...args) => inner().updateRegistrationData!(...args),
     markEmailVerified: async (...args) => inner().markEmailVerified(...args),
     verifyPassword: async (...args) => inner().verifyPassword(...args),
+    delete: async (...args) => inner().delete!(...args),
   }
 }
