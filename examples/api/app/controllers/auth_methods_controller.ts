@@ -1,6 +1,5 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import accountKitConfig from '#config/account_kit'
 import { accountInput } from '#middleware/account_access_middleware'
 import { lastUsedMethod } from '#services/last_used_method'
@@ -8,10 +7,9 @@ import { lastUsedMethod } from '#services/last_used_method'
 export default class AuthMethodsController {
   async methods(ctx: HttpContext) {
     const current = accountInput(ctx)
-    const kit = await app.container.make(AccountKit)
     const [account, identities] = await Promise.all([
-      kit.authentication.current(current),
-      kit.socialAuthentication.list({ current }),
+      accountKit.authentication.current(current),
+      accountKit.socialAuthentication.list({ current }),
     ])
     const configuredProviders = Object.keys(accountKitConfig.socialAuthentication?.providers ?? {})
     return ctx.response.ok({
