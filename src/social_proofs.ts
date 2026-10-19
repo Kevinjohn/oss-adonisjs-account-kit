@@ -4,7 +4,7 @@ import { consumeRows } from './consume_rows.js'
 import { revision } from './authentication.js'
 import { SocialProofError } from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
-import { authenticated, expiry, now, type Dependencies } from './social_identity.js'
+import { authenticated, expiry, now, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type { CurrentAccountInput, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
 
