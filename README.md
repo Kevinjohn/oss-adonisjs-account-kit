@@ -14,26 +14,34 @@ security details handled. You keep your user model, your routes and your policie
 
 ## What you get
 
-- **Forgot password** with single-use, hashed, expiring links and the same response for known and
-  unknown addresses.
-- **Email verification and signup**, open, closed, or behind your own admission rule.
-- **Invitations** with roles, resend, revoke and paged listing.
+The account flows every AdonisJS app ends up writing by hand:
+
+- **Forgot password** with single-use, expiring links and the same response for known and unknown
+  addresses.
+- **Signup and email verification**, open, closed, or behind your own admission rule.
+- **Login** with sessions or access tokens through your existing Auth guard. Changing a password or
+  email signs out older sessions and tokens.
 - **Account settings**: change password, change email with confirmation, update profile.
-- **Login** with sessions or access tokens through your existing Auth guard. Every credential
-  change signs out older sessions and tokens.
-- **Google and GitHub sign-in** through Ally (optional).
-- **Magic-link sign-in** by a one-use email link that only works in the browser or app that asked
-  for it (optional).
-- **Signed-in devices**: list sign-ins, sign out one, all others, or everywhere (optional).
-- **Account export and deletion**: a JSON download of the user's data and permanent deletion,
-  both behind fresh re-authentication (optional).
-- **Emails** for AdonisJS Mail out of the box, or your own templates.
-- **Rate limits** on password reset, verification resend, invitations, login and account changes.
-- **Managed JSON routes** (optional), if you would rather not write the controllers.
-- **Ace commands**: `account-kit:doctor`, `account-kit:setup`, `account-kit:prune`, and the
-  [operator commands](docs/operations.md#operator-commands) `account-kit:invite` and
-  `account-kit:reset-link` for shell-trusted invitations and reset links.
-- Tested on **SQLite, PostgreSQL 16 and MySQL 8.4**.
+- **Invitations** with roles, resend and revoke.
+
+Each flow comes with its emails, rate limits and test helpers. Call it from your own controllers, or mount
+the managed JSON routes.
+
+## Additional features
+
+Use the ones you need; the rest stay out of the way:
+
+- **Magic-link sign-in**: a one-use email link that only works in the browser or app that asked
+  for it.
+- **Signed-in devices**: list sign-ins, sign out one device, every other device, or everywhere.
+- **Account export and deletion**: a JSON download of the user's data and permanent deletion, for
+  GDPR requests.
+- **Google and GitHub sign-in** through Ally.
+- **Operator commands**: `account-kit:invite` and `account-kit:reset-link` from the shell.
+- **OpenAPI 3.1 document** for the managed routes.
+- **Drizzle, Prisma and plain SQL** users adapters, as well as Lucid.
+
+[All features](docs/features.md) has the details of each.
 
 ## Install
 
@@ -53,46 +61,8 @@ The generated `notify` callbacks throw until you choose how to send email, and t
 run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
 sets them up.
 
-Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
+Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite, PostgreSQL or MySQL, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.
-
-## A forgot-password flow in two routes
-
-```ts
-// app/controllers/password_resets_controller.ts
-import app from '@adonisjs/core/services/app'
-import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
-
-export default class PasswordResetsController {
-  async request({ request, response, logger }: HttpContext) {
-    const kit = await app.container.make(AccountKit)
-    try {
-      await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
-    } catch (error) {
-      // Only known addresses get an email, so a failed send must not change the response.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ err: error }, 'password reset email failed')
-    }
-    return response.accepted({ message: 'If the account exists, instructions will be sent.' })
-  }
-
-  async complete({ request, params, logger }: HttpContext) {
-    const kit = await app.container.make(AccountKit)
-    try {
-      await kit.passwordReset.reset({ token: params.token, password: request.input('password') })
-    } catch (error) {
-      // The password has already changed; only the follow-up email failed.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ err: error }, 'password reset notice failed')
-    }
-    return { message: 'Password reset.' }
-  }
-}
-```
-
-The [getting started tutorial](docs/getting-started.md) takes you from a new API starter app to a
-working reset, with the email printed to your terminal, in about ten minutes.
 
 ## How it fits together
 
@@ -111,29 +81,6 @@ flowchart LR
 
 Account Kit owns the account transaction: tokens, locking, revocation and events. Your app owns the
 HTTP layer, validation, authorization and the user model.
-
-## Features at a glance
-
-| Operation               | Service API                                  | Managed route                           | Email sent                                  | Rate limit                    |
-| ----------------------- | -------------------------------------------- | --------------------------------------- | ------------------------------------------- | ----------------------------- |
-| Request password reset  | `passwordReset.request`                      | `POST /auth/password-reset`             | `passwordResetProvision`                    | Per client and per address    |
-| Complete password reset | `passwordReset.reset`                        | `POST /auth/password-reset/:token`      | `passwordResetCompleted`                    | Per client (managed route)    |
-| Sign up                 | `registration.register`                      | `POST /auth/signup`                     | `accountActivationProvision`                | Per client (managed route)    |
-| Resend verification     | `emailVerification.send`                     | `POST /account/email-verification/send` | `accountActivationProvision`                | Per user                      |
-| Confirm email           | `emailVerification.complete`                 | `POST /auth/email-verification/:token`  | none                                        | Per client (managed route)    |
-| Log in                  | `authentication.login`                       | `POST /auth/login`                      | none                                        | Per client and per identity   |
-| Request sign-in link    | `magicLink.request`                          | `POST /auth/magic-link`                 | `magicLinkProvision`                        | Per client and per address    |
-| Sign in by link         | `magicLink.complete`                         | `POST /auth/magic-link/:token`          | none                                        | Per client (managed route)    |
-| Change password         | `emailPasswordManagement.changePassword`     | `POST /account/password`                | `passwordChanged`                           | Per user                      |
-| Change email            | `emailPasswordManagement.requestEmailChange` | `PATCH /account/profile`                | `emailChangeProvision`, then `emailChanged` | Per user                      |
-| Invite                  | `invitations.send`                           | `POST /account/invitations`             | `invitationProvision`                       | Per inviter and per recipient |
-| Accept invitation       | `invitations.accept`                         | `POST /auth/invitations/:token`         | none                                        | Per client (managed route)    |
-| Export account data     | `accountData.export`                         | `POST /account/export`                  | none                                        | Per user                      |
-| Delete account          | `accountData.delete`                         | `DELETE /account`                       | `accountDeleted`                            | Per user                      |
-
-The full lists are in [usage](docs/usage.md) and the [endpoint reference](docs/reference/endpoints.md).
-`node ace account-kit:openapi` prints an [OpenAPI 3.1 document](docs/openapi.md) for the managed
-routes you mounted.
 
 ## Security
 
@@ -184,10 +131,12 @@ See [testing your account flows](docs/recipes/testing.md).
 
 ## Bring your own ORM
 
-Users live behind a small `UsersAdapter` interface. Lucid, Drizzle, Prisma and plain SQL adapters
-ship with the package; see [users adapters](docs/adapters.md). For anything else, `adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the
-Lucid adapter passes, so you can prove your adapter is correct. See
-[custom adapter](docs/recipes/custom-adapter.md).
+- **Lucid** model: the default.
+- **Drizzle** or **Prisma** schema: Account Kit reads your existing table definition.
+- **Plain SQL**: just a table name, no model.
+- **Anything else**: write a small adapter and prove it with the bundled contract tests.
+
+See [users adapters](docs/adapters.md) and [custom adapter](docs/recipes/custom-adapter.md).
 
 ## Documentation
 
