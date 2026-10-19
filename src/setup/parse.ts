@@ -1,4 +1,4 @@
-import type { SetupChoices } from './types.js'
+import { guardStrategies, registrationPolicies, setupModes, type SetupChoices } from './types.js'
 import { DateTime } from 'luxon'
 import { expiresAt } from '../ttl.js'
 import { socialProviderNames } from '../social_providers.js'
@@ -35,34 +35,8 @@ function strings(value: unknown, path: string): void {
     throw new Error(`${path}: expected a string array`)
 }
 
-/** Reject unknown fields so a deployment secret cannot be silently written to the setup file. */
-export function parseSetupChoices(input: unknown): SetupChoices {
-  const root = record(
-    input,
-    'setup',
-    [
-      'version',
-      'mode',
-      'features',
-      'managed',
-      'routePrefix',
-      'user',
-      'authentication',
-      'mail',
-      'policy',
-      'social',
-    ],
-    ['managedExcept']
-  )
-  strings(root.features, 'features')
-  strings(root.managed, 'managed')
-  if (root.managedExcept !== undefined) strings(root.managedExcept, 'managedExcept')
-  string(root.mode, 'mode')
-  if (!['services', 'managed'].includes(root.mode as string))
-    throw new Error('mode: choose services or managed')
-  if (root.version !== 1) throw new Error('version: expected 1')
-  string(root.routePrefix, 'routePrefix')
-  const user = record(root.user, 'user', [
+function parseUser(input: unknown): void {
+  const user = record(input, 'user', [
     'model',
     'table',
     'idType',
@@ -74,51 +48,55 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     'verifiedColumn',
   ])
   for (const [key, value] of Object.entries(user)) string(value, `user.${key}`)
-  if (root.authentication !== null) {
-    const auth = record(
-      root.authentication,
-      'authentication',
-      ['strategy', 'guard', 'applicationRouteRevocation'],
-      ['session', 'token']
+}
+
+function parseAuthentication(input: unknown): void {
+  if (input === null) return
+  const auth = record(
+    input,
+    'authentication',
+    ['strategy', 'guard', 'applicationRouteRevocation'],
+    ['session', 'token']
+  )
+  string(auth.strategy, 'authentication.strategy')
+  if (!(guardStrategies as readonly string[]).includes(auth.strategy as string))
+    throw new Error('authentication.strategy: choose session or access_tokens')
+  string(auth.guard, 'authentication.guard')
+  bool(auth.applicationRouteRevocation, 'authentication.applicationRouteRevocation')
+  const optional = input as Record<string, unknown>
+  if ('session' in optional) {
+    const session = record(optional.session, 'authentication.session', [
+      'secureCookie',
+      'csrf',
+      'originChecked',
+      'persistentStore',
+    ])
+    for (const [key, value] of Object.entries(session)) bool(value, `authentication.session.${key}`)
+  }
+  if ('token' in optional) {
+    const token = record(optional.token, 'authentication.token', [
+      'revocation',
+      'lifetime',
+      'abilities',
+    ])
+    bool(token.revocation, 'authentication.token.revocation')
+    string(token.lifetime, 'authentication.token.lifetime')
+    strings(token.abilities, 'authentication.token.abilities')
+    if (
+      !(token.abilities as string[]).length ||
+      (token.abilities as string[]).some((value) => !value.trim())
     )
-    string(auth.strategy, 'authentication.strategy')
-    if (!['session', 'access_tokens'].includes(auth.strategy as string))
-      throw new Error('authentication.strategy: choose session or access_tokens')
-    string(auth.guard, 'authentication.guard')
-    bool(auth.applicationRouteRevocation, 'authentication.applicationRouteRevocation')
-    const optional = root.authentication as Record<string, unknown>
-    if ('session' in optional) {
-      const session = record(optional.session, 'authentication.session', [
-        'secureCookie',
-        'csrf',
-        'originChecked',
-        'persistentStore',
-      ])
-      for (const [key, value] of Object.entries(session))
-        bool(value, `authentication.session.${key}`)
-    }
-    if ('token' in optional) {
-      const token = record(optional.token, 'authentication.token', [
-        'revocation',
-        'lifetime',
-        'abilities',
-      ])
-      bool(token.revocation, 'authentication.token.revocation')
-      string(token.lifetime, 'authentication.token.lifetime')
-      strings(token.abilities, 'authentication.token.abilities')
-      if (
-        !(token.abilities as string[]).length ||
-        (token.abilities as string[]).some((value) => !value.trim())
-      )
-        throw new Error('authentication.token.abilities: provide non-empty abilities')
-      try {
-        expiresAt(DateTime.utc(), token.lifetime as string)
-      } catch {
-        throw new Error('authentication.token.lifetime: provide a supported positive duration')
-      }
+      throw new Error('authentication.token.abilities: provide non-empty abilities')
+    try {
+      expiresAt(DateTime.utc(), token.lifetime as string)
+    } catch {
+      throw new Error('authentication.token.lifetime: provide a supported positive duration')
     }
   }
-  const mail = record(root.mail, 'mail', [
+}
+
+function parseMail(input: unknown): void {
+  const mail = record(input, 'mail', [
     'integration',
     'delivery',
     'senderEnv',
@@ -147,7 +125,10 @@ export function parseSetupChoices(input: unknown): SetupChoices {
       throw new Error(`mail.destinations.${key}: unsupported field`)
     string(value, `mail.destinations.${key}`)
   }
-  const policy = record(root.policy, 'policy', [
+}
+
+function parsePolicy(input: unknown): void {
+  const policy = record(input, 'policy', [
     'registration',
     'registrationFields',
     'password',
@@ -157,7 +138,7 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     'accessRestrictionHook',
   ])
   string(policy.registration, 'policy.registration')
-  if (!['open', 'closed', 'application'].includes(policy.registration as string))
+  if (!(registrationPolicies as readonly string[]).includes(policy.registration as string))
     throw new Error('policy.registration: choose open, closed or application')
   if (!Array.isArray(policy.registrationFields))
     throw new Error('policy.registrationFields: expected an array')
@@ -194,12 +175,14 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     throw new Error('policy.password.maxLength: expected a number or null')
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'])
     bool(password[key], `policy.password.${key}`)
-  const social = root.social
-  if (!social || typeof social !== 'object' || Array.isArray(social))
+}
+
+function parseSocial(input: unknown): void {
+  if (!input || typeof input !== 'object' || Array.isArray(input))
     throw new Error('social: expected an object')
-  const status = (social as Record<string, unknown>).status
+  const status = (input as Record<string, unknown>).status
   if (status === 'enabled') {
-    const selected = record(social, 'social', [
+    const selected = record(input, 'social', [
       'status',
       'providers',
       'callbackOriginEnv',
@@ -219,8 +202,42 @@ export function parseSetupChoices(input: unknown): SetupChoices {
       string(entry.clientSecretEnv, `social.credentials.${provider}.clientSecretEnv`)
     }
   } else if (status === 'not-applicable') {
-    const skipped = record(social, 'social', ['status', 'reason'])
+    const skipped = record(input, 'social', ['status', 'reason'])
     string(skipped.reason, 'social.reason')
   } else throw new Error('social.status: expected enabled or not-applicable')
+}
+
+/** Reject unknown fields so a deployment secret cannot be silently written to the setup file. */
+export function parseSetupChoices(input: unknown): SetupChoices {
+  const root = record(
+    input,
+    'setup',
+    [
+      'version',
+      'mode',
+      'features',
+      'managed',
+      'routePrefix',
+      'user',
+      'authentication',
+      'mail',
+      'policy',
+      'social',
+    ],
+    ['managedExcept']
+  )
+  strings(root.features, 'features')
+  strings(root.managed, 'managed')
+  if (root.managedExcept !== undefined) strings(root.managedExcept, 'managedExcept')
+  string(root.mode, 'mode')
+  if (!(setupModes as readonly string[]).includes(root.mode as string))
+    throw new Error('mode: choose services or managed')
+  if (root.version !== 1) throw new Error('version: expected 1')
+  string(root.routePrefix, 'routePrefix')
+  parseUser(root.user)
+  parseAuthentication(root.authentication)
+  parseMail(root.mail)
+  parsePolicy(root.policy)
+  parseSocial(root.social)
   return input as SetupChoices
 }
