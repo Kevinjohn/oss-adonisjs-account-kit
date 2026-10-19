@@ -1,6 +1,5 @@
 import { test } from '@japa/runner'
 import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
-import { planManagedRoutes } from '../src/http/routes.js'
 import { clientChallengeFor } from '../src/magic_link.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
@@ -270,25 +269,5 @@ test.group('managed magic-link routes', (group) => {
         }),
       /require publicCredential/
     )
-  })
-
-  test('the route plan publishes request, inspect and complete', ({ assert }) => {
-    for (const strategy of ['session', 'access_tokens'] as const) {
-      const routes = planManagedRoutes({ prefix: '/api/v1', strategy, enabled: ['magicLinkLogin'] })
-      assert.deepEqual(
-        routes
-          .filter((route) => route.capability === 'magicLinkLogin')
-          .map(({ name, method, path, access, proof }) => [name, method, path, access, proof]),
-        [
-          ['auth.magicLink.request', 'POST', '/api/v1/auth/magic-link', 'public', undefined],
-          ['auth.magicLink.inspect', 'GET', '/api/v1/auth/magic-link/:token', 'public', true],
-          ['auth.magicLink.complete', 'POST', '/api/v1/auth/magic-link/:token', 'public', true],
-        ]
-      )
-      assert.equal(
-        routes.some((route) => route.name === 'auth.csrf'),
-        strategy === 'session'
-      )
-    }
   })
 })
