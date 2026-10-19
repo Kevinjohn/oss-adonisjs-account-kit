@@ -1,0 +1,26 @@
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  async up() {
+    this.schema.createTable('account_sessions', (table) => {
+      table.increments('id')
+      table
+        .integer('user_id')
+        .unsigned()
+        .notNullable()
+        .index()
+        .references('id')
+        .inTable('users')
+        .onDelete('CASCADE')
+      table.string('handle_hash', 64).notNullable().unique()
+      table.string('label', 255).nullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('last_seen_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('expires_at', { useTz: true, precision: 3 }).notNullable()
+    })
+  }
+
+  async down() {
+    this.schema.dropTable('account_sessions')
+  }
+}

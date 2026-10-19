@@ -25,10 +25,8 @@ export const userIdType = option('user-id-type', 'integer')
 export const usersTable = option('users-table', 'users')
 export const prepareOnly = process.argv.includes('--prepare-only')
 export const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
-export const baselineInput = option('baseline-tarball', process.env.BASELINE_TARBALL)
 export const candidateRevision = option('candidate-revision', process.env.CANDIDATE_REVISION)
-export const baselineRevision = option('baseline-revision', process.env.BASELINE_REVISION)
-const supportedModes = new Set(['fresh', 'upgrade', 'both', 'minimum', 'service-only'])
+const supportedModes = new Set(['fresh', 'minimum', 'service-only'])
 
 if (!supportedModes.has(mode)) throw new Error(`Unknown mode: ${mode}`)
 if (prepareOnly && mode !== 'fresh') {
@@ -50,10 +48,7 @@ if (!['integer', 'string', 'uuid'].includes(userIdType)) {
 if (!/^[a-z][a-z0-9_]*$/.test(usersTable))
   throw new Error(`Invalid users table name: ${usersTable}`)
 if (mode !== 'fresh' && (userIdType !== 'integer' || usersTable !== 'users')) {
-  throw new Error('Baseline upgrade runs currently require the default integer users table')
-}
-if (['upgrade', 'both'].includes(mode) && !baselineInput) {
-  throw new Error('Upgrade modes require --baseline-tarball=PATH or BASELINE_TARBALL')
+  throw new Error('Minimum and service-only runs currently require the default integer users table')
 }
 
 export const tempRoot = await mkdtemp(join(tmpdir(), 'account-kit-consumer-'))

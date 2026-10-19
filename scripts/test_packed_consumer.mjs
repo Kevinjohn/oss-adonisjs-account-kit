@@ -7,8 +7,6 @@ import { commands, digest, output, redact, run } from './consumer/harness.mjs'
 import { runMinimumCompatibility } from './consumer/minimum.mjs'
 import { runServiceOnly } from './consumer/service_only.mjs'
 import {
-  baselineInput,
-  baselineRevision,
   candidateInput,
   candidateRevision,
   compatibility,
@@ -20,7 +18,6 @@ import {
   userIdType,
   usersTable,
 } from './consumer/settings.mjs'
-import { runUpgrade } from './consumer/upgrade.mjs'
 
 const evidencePath = join(tempRoot, 'evidence.json')
 
@@ -45,8 +42,6 @@ const evidence = {
   sourceChanges: run('git', ['status', '--short'], repoRoot).trim(),
   candidateRevision:
     candidateRevision ?? (candidateInput ? 'unknown external archive revision' : null),
-  baselineRevision:
-    baselineRevision ?? (baselineInput ? 'unknown external archive revision' : null),
   runtime: process.versions.node,
   packageManager: run('pnpm', ['--version'], repoRoot).trim(),
   database,
@@ -67,7 +62,7 @@ try {
     candidateRevision ?? (candidateInput ? 'unknown external archive revision' : evidence.revision)
   evidence.candidateSha256 = await digest(candidate)
 
-  if (mode === 'fresh' || mode === 'both') {
+  if (mode === 'fresh') {
     evidence.runs.push(await runFresh(candidate, `fresh-${database}-${compatibility}`))
   }
   if (mode === 'minimum') {
@@ -75,15 +70,6 @@ try {
   }
   if (mode === 'service-only') {
     evidence.runs.push(await runServiceOnly(candidate, `service-only-${database}`))
-  }
-  if (mode === 'upgrade' || mode === 'both') {
-    const baseline = resolve(baselineInput)
-    evidence.baselineTarball = baseline
-    evidence.baselineSha256 = await digest(baseline)
-    evidence.baselineRevision = baselineRevision ?? 'unknown external archive revision'
-    evidence.runs.push(
-      await runUpgrade(candidate, baseline, `upgrade-${database}-${compatibility}`)
-    )
   }
 
   evidence.status = 'passed'

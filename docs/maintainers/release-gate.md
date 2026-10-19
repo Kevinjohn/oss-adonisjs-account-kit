@@ -1,6 +1,6 @@
 # Local candidate and future release gate
 
-The candidate is prepared through local package checks, an independent review, and installation of the exact packed archive in fresh and upgraded Adonis API consumers. Both SQLite and PostgreSQL must pass. Review the [verification record](verification.md), [compatibility assessment](../compatibility.md) before a release decision.
+The candidate is prepared through local package checks, an independent review, and installation of the exact packed archive in fresh Adonis API consumers. Both SQLite and PostgreSQL must pass. Review the [verification record](verification.md), [compatibility assessment](../compatibility.md) before a release decision.
 
 ## Owner-controlled release actions
 
@@ -18,15 +18,12 @@ Keep both database matrix jobs, Node 24, pnpm, lint, typecheck, tests, build and
 
 ## Upgrade and rollback
 
-Back up deployed application config and migrations. Install the candidate, reconfigure without overwriting owned files, manually update configuration and apply the new package lock migration before serving the new SQLite write path. Rehearse the application-owned registration mapping and credential policy before accepting traffic.
+No released install exists. Before the first alpha the migration stubs were squashed to create
+the final schema directly, so a database created by an earlier unreleased build has no in-place
+upgrade path: reset it and run the current migrations.
 
-For vocabulary alignment, also rename the reset-token table in place (the `evolve_identity_contract`
-migration) and update service calls, callbacks and lifecycle listeners during a maintenance window. Preserve
-outstanding reset-token rows; fresh create-table stubs do not migrate existing data.
+Back up deployed application config and migrations. Install the candidate, reconfigure without overwriting owned files, and apply any new package migration before serving traffic. Rehearse the application-owned registration mapping and credential policy before accepting traffic.
 
-A rollback to the baseline package must restore its compatible config API. The added lock table can remain unused; avoid destructive migration rollback while any candidate process is running. Credential changes and durable outbox entries already committed remain authoritative. Do not replay consumed bearer tokens after a post-commit error; recover queued effects from the outbox.
-
-Restore the previous reset-token table name before restarting old package code. Do not run old
-and new code together while their table names differ.
+A rollback must restore the previous package's compatible config API. Avoid destructive migration rollback while any candidate process is running. Credential changes and durable outbox entries already committed remain authoritative. Do not replay consumed bearer tokens after a post-commit error; recover queued effects from the outbox.
 
 No release or publication is performed by these steps.
