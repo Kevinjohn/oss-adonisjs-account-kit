@@ -154,16 +154,7 @@ export function registerManagedRoutes<Credential>(
             accept: context.request.header('accept'),
             message: options.extensions?.message,
             i18n: requestTranslator(context),
-            proof:
-              route.proof && route.capability !== 'socialAuthentication'
-                ? route.name.includes('passwordReset')
-                  ? 'password'
-                  : route.name.includes('invitation')
-                    ? 'invitation'
-                    : route.capability === 'magicLinkLogin'
-                      ? 'magicLink'
-                      : 'email'
-                : undefined,
+            proof: route.proofKind,
           })
           if (!mapped) throw error
           applyMappedHeaders(context, mapped)
