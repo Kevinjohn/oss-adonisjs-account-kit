@@ -77,13 +77,25 @@ export interface UsersAdapter {
     attrs: {
       email: string
       unverifiedEmail: string | null
+      /** The plain password to hash, or null. Null whenever `passwordHash` is set. */
       password: string | null
+      /** A hash from `hashPassword`, to store as is. Only passed when `hashPassword` exists. */
+      passwordHash?: string
       registrationData?: unknown
     },
     trx: Trx
   ): Promise<AccountUser>
   /** Hashes and stores a new password through `trx`. */
   setPassword(id: UserId, password: string, trx: Trx): Promise<void>
+  /**
+   * Hashes a password outside any transaction. When present, Account Kit hashes every new
+   * password before it opens the write transaction and passes the result to `create` as
+   * `passwordHash` or to `setPasswordHash`, so a slow hash never holds the transaction open.
+   * Requires `setPasswordHash`.
+   */
+  hashPassword?(password: string): Promise<string>
+  /** Stores a hash from `hashPassword` as is, through `trx`. Required with `hashPassword`. */
+  setPasswordHash?(id: UserId, hash: string, trx: Trx): Promise<void>
   /** Stores a confirmed email address through `trx`. */
   setEmail(id: UserId, email: string, trx: Trx): Promise<void>
   /** Stores or clears the address waiting for confirmation, through `trx`. */

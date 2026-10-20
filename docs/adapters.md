@@ -49,6 +49,27 @@ As a result, ORM runtime behavior does not run for rows Account Kit writes:
 Use database defaults instead (`DEFAULT CURRENT_TIMESTAMP`, `gen_random_uuid()`), or pass
 `generateId` for string keys that have no database default.
 
+### Hashing before the transaction
+
+A password hash takes 100 to 300 ms. Hashed inside the write transaction, it holds that
+transaction open; on SQLite that blocks every other write in the application. An adapter that
+implements the optional `hashPassword(password)` and `setPasswordHash(id, hash, trx)` avoids
+this. Account Kit then hashes each new password before it opens the transaction. Sign-up,
+invitation acceptance, activation with a password, password reset and password change all do
+this. The hash goes to `create` as `passwordHash`, with `password` null, or to
+`setPasswordHash`. Store it as is; never hash it again. Without `hashPassword`, nothing changes:
+`create` and `setPassword` receive the plain password. `defineConfig` refuses `hashPassword`
+without `setPasswordHash`.
+
+The Lucid, SQL, Drizzle and Prisma adapters implement both methods with their `hashPassword`
+option. The Lucid adapter writes the hash with a query, so the model's hashing hook does not run
+on it. When it is given `verifyPassword` alone, it leaves both methods out and the model hook
+hashes inside the transaction, as before. Two trade-offs: a sign-up with an address that is already
+registered now hashes before it is refused, and completing a password reset or an activation hashes
+before the token is checked, so a request with a bogus token also costs a hash. Account Kit does
+not throttle those completions; throttle the routes that call them, for example with
+`@adonisjs/limiter`.
+
 ## Required columns
 
 The users table must have these physical columns:

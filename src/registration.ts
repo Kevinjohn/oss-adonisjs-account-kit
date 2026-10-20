@@ -10,6 +10,7 @@ import {
   InvalidInputError,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
+import { passwordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -33,6 +34,7 @@ export async function register(
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
+  const password = await preparePassword(deps.config.users, input.password)
   let created: AccountUser
   let fault: PostCommitError | undefined
   try {
@@ -44,7 +46,7 @@ export async function register(
           {
             email,
             unverifiedEmail: email,
-            password: input.password,
+            ...passwordAttributes(password),
             registrationData,
           },
           trx
