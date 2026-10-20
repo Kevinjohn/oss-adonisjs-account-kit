@@ -188,12 +188,13 @@ code are fixtures or unrelated features; copy them only if your application need
 
 ## Run it
 
-You need Node.js 24 and pnpm.
+From the repository root, use Node.js 24 and pnpm 11.23.0:
 
 ```sh
+pnpm install --frozen-lockfile
 cd examples/inertia-react
 pnpm kit:pack
-pnpm install
+pnpm install --frozen-lockfile
 cp .env.example .env
 node ace generate:key
 node ace codegen
@@ -204,8 +205,14 @@ pnpm dev
 Open http://localhost:3333/signup, create an account, then copy the verification link from the
 server log.
 
-`kit:pack` builds Account Kit from this checkout into `vendor/`. Once the package is on npm, replace
-the `adonisjs-account-kit` dependency with the published version and skip that step.
+The root install provides the build tools that `kit:pack` uses to build Account Kit. Packing creates
+`vendor/adonisjs-account-kit.tgz`, which is ignored by Git. The committed example lockfile records
+that archive's integrity.
+
+When a change to packaged source files changes the archive, run `pnpm kit:pack` from this example,
+then `pnpm install --lockfile-only` to refresh its lockfile. Commit the changed package source files
+and the refreshed `pnpm-lock.yaml`; keep the generated `vendor/` archive ignored. Once the package is
+on npm, replace the `adonisjs-account-kit` dependency with the published version and skip packing.
 
 ## What was added to the starter kit
 
