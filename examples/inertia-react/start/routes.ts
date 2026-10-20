@@ -23,10 +23,13 @@ router
 
     router.get('forgot-password', [controllers.PasswordResets, 'create'])
     router.post('forgot-password', [controllers.PasswordResets, 'store'])
-    router.get('reset-password/:token', [controllers.PasswordResets, 'edit'])
-    router.post('reset-password/:token', [controllers.PasswordResets, 'update'])
   })
   .use(middleware.guest())
+
+// A reset link can belong to this session's account or to someone else using this browser.
+// Inspection never changes the signed-in identity; a successful reset ends the old session.
+router.get('reset-password/:token', [controllers.PasswordResets, 'edit'])
+router.post('reset-password/:token', [controllers.PasswordResets, 'update'])
 
 // The link in a verification email works whether or not the user is signed in.
 router.get('verify-email/:token', [controllers.EmailVerifications, 'edit'])
