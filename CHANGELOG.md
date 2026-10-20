@@ -268,6 +268,7 @@ that ran a candidate build.
 
 ### Fixed
 
+- Setup asks only mail and destination questions required by the selected email flows.
 - Setup readiness checks resolve selected origin values from Adonis environment files while keeping process values first and reporting unsafe assignments without exposing their contents.
 - Package archives exclude private planning and review documents while retaining public docs and examples.
 - Installed-consumer upgrade checks preserve an outstanding password-reset proof through the table rename and verify one-time redemption.
