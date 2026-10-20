@@ -81,20 +81,24 @@ const actor = await auth.getUserOrFail()
 const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
 const kit = await app.container.make(AccountKit)
 
+let revision: string | null
 try {
-  const { revision } = await kit.emailPasswordManagement.changePassword({
+  ;({ revision } = await kit.emailPasswordManagement.changePassword({
     actorId: actor.id,
     currentPassword,
     newPassword,
     // Keep this session; every other session and token ends.
     keepCurrent: { sessionHandle: session.get(handleKey) },
-  })
-  // `handleKey` and `revisionKey` are the keys your guard's `establish` wrote.
-  session.put(revisionKey, revision ?? '')
+  }))
 } catch (error) {
-  if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+  // A follow-up failed after commit: the change stands, so keep this session on its revision.
+  const committed = passwordChangeRevision(error)
+  if (!(error instanceof PostCommitError) || committed === undefined) throw error
   reportCommittedFailure(logger, error, 'account_password.change')
+  revision = committed
 }
+// `handleKey` and `revisionKey` are the keys your guard's `establish` wrote.
+session.put(revisionKey, revision ?? '')
 
 return response.ok({ changed: true })
 ```
@@ -103,11 +107,12 @@ For a token guard, pass `keepCurrent: { tokenId }` with the current token's iden
 token survives and needs no refresh. Without `keepCurrent`, the change signs out every session and
 token, including the caller's.
 
-Import `DeliveryError` and `PostCommitError` from `adonisjs-account-kit`, and
+Import `PostCommitError` and `passwordChangeRevision` from `adonisjs-account-kit`, and
 `reportCommittedFailure` from the reference diagnostic helper. The logger is the request logger. This
-handling matters because a delivery or observer error can be reported after the password change and
-credential revocation have committed; return the success response and do not invite a retry as if the
-change rolled back. The example's [password-change action](../examples/api/app/controllers/account_password_controller.ts)
+handling matters because an observer or notification error can be reported after the password change
+and credential revocation have committed. `passwordChangeRevision(error)` returns the revision that
+change wrote, so the session survives; return the success response and do not invite a retry as if
+the change rolled back. The example's [password-change action](../examples/api/app/controllers/account_password_controller.ts)
 uses this service contract and safe diagnostic.
 
 The signup route follows the same boundary: validate the email, password, confirmation and
