@@ -20,7 +20,29 @@ conflict and `--apply` writes nothing.
    default one.
 5. If you select authentication, create `app/services/account_kit_policy.ts` exporting
    `accountKitPolicy` with an async `canAccess(user, trx)` that returns whether the account may
-   sign in. Setup will not preview or apply without it.
+   sign in. For an application with no restriction state, its complete minimal implementation is:
+
+   ```ts
+   // Shape illustration; use the typed, copyable module below in your application.
+   export const accountKitPolicy = {
+     canAccess: async (_user, _trx) => true,
+   }
+   ```
+
+   Create `app/services/account_kit_policy.ts` with this typed, copyable form:
+
+   ```ts
+   import type { AccountUser, Trx } from 'adonisjs-account-kit'
+
+   export const accountKitPolicy = {
+     canAccess: async (_user: AccountUser, _trx: Trx) => true,
+   }
+   ```
+
+   Returning `true` is an explicit application choice, not a safe universal default. If your app can
+   suspend or otherwise restrict accounts, implement its actual rule in `canAccess`. This policy
+   prerequisite remains mandatory whenever authentication is selected; setup does not generate an
+   authorization policy.
 
 ## Run setup
 
