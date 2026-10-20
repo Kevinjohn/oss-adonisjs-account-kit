@@ -1,5 +1,10 @@
 import type { SetupDiagnostic } from './types.js'
 
+export type SelectedSetupOrigins = {
+  values: Record<string, string | null>
+  errors: Record<string, { message: string; indirect: boolean }>
+}
+
 export const envName = /^[A-Z][A-Z0-9_]*$/
 
 export const sqlName = /^[A-Za-z_][A-Za-z0-9_]*$/
@@ -20,7 +25,9 @@ export function validateOrigin(
   field: string,
   variable: string,
   production: boolean,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv = process.env,
+  resolvedValue?: string | null,
+  resolutionError?: { message: string; indirect: boolean }
 ) {
   if (!envName.test(variable)) {
     diagnostic(
@@ -30,7 +37,24 @@ export function validateOrigin(
     )
     return
   }
-  const value = env[variable]
+  if (resolutionError?.indirect) {
+    diagnostic(
+      diagnostics,
+      field,
+      `${variable} refers to other values, so setup cannot check it before the application starts. Confirm it resolves to a trusted HTTP(S) origin.`,
+      'action'
+    )
+    return
+  }
+  if (resolutionError) {
+    diagnostic(
+      diagnostics,
+      field,
+      `${variable} could not be inspected safely: ${resolutionError.message}. Use one direct value assignment.`
+    )
+    return
+  }
+  const value = resolvedValue === undefined ? env[variable] : resolvedValue
   if (!value) {
     diagnostic(diagnostics, field, `${variable} must be set before readiness can pass`, 'action')
     return

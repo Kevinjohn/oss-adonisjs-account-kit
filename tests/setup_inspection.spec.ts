@@ -5,7 +5,10 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
-import { resolveSelectedEnvironment } from '../src/setup/selected_environment.js'
+import {
+  resolveSelectedEnvironment,
+  resolveSelectedEnvironmentValue,
+} from '../src/setup/selected_environment.js'
 import { fixture, registerSetupTeardown } from './helpers/setup.js'
 
 async function applicationRoot() {
@@ -390,6 +393,61 @@ test('selected environment prefers the environment map passed in over dotenv fil
         ACCOUNT_SELECTED_PASSED: 'sqlite',
       }),
       'sqlite'
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('selected scalar environment follows Adonis file precedence without evaluating values', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  const previousNodeEnv = process.env.NODE_ENV
+  try {
+    process.env.NODE_ENV = 'production'
+    await writeFile(join(root, '.env.production.local'), 'ACCOUNT_ORIGIN=https://local.test\n')
+    await writeFile(join(root, '.env.local'), 'ACCOUNT_ORIGIN=https://dot-local.test\n')
+    await writeFile(join(root, '.env.production'), 'ACCOUNT_ORIGIN=https://production.test\n')
+    await writeFile(join(root, '.env'), 'ACCOUNT_ORIGIN=https://default.test\n')
+    assert.equal(
+      await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {}),
+      'https://local.test'
+    )
+    assert.equal(
+      await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {
+        ACCOUNT_ORIGIN: 'https://process.test',
+      }),
+      'https://process.test'
+    )
+    await writeFile(join(root, '.env.production.local'), 'ACCOUNT_ORIGIN=$BASE_URL\n')
+    await assert.rejects(
+      () => resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {}),
+      /must be a direct value/
+    )
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = previousNodeEnv
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('selected environment values inside backtick multiline assignments are rejected', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(
+      join(root, '.env'),
+      'PRIVATE_TEXT=`first line\nACCOUNT_SELECTED_PASSED=pg\nAPP_URL=https://private.test\nlast line`\n'
+    )
+    await assert.rejects(
+      () => resolveSelectedEnvironment(root, 'ACCOUNT_SELECTED_PASSED', {}),
+      /inside a multiline value/
+    )
+    await assert.rejects(
+      () => resolveSelectedEnvironmentValue(root, 'APP_URL', {}),
+      /inside a multiline value/
     )
   } finally {
     await rm(root, { recursive: true, force: true })
