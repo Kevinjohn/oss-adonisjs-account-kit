@@ -11,7 +11,7 @@ import {
   pkceChallenge as challenge,
   pkceVerifier as verifier,
 } from '#services/social_browser_transaction'
-import { grantAdmittedOwner } from '#tests/helpers/admission'
+import { grantAdmission, grantAdmittedOwner } from '#tests/helpers/admission'
 import { cookies } from '#tests/helpers/cookies'
 import { truncateDatabase } from '#tests/helpers/database'
 import { tokenFrom } from '#tests/helpers/link_tokens'
@@ -213,7 +213,7 @@ test.group('Admission', (group) => {
     assert.equal((await as(client.get('/api/v1/reports'), again)).status(), 403)
   })
 
-  test('a pending owner cannot list or decide, and an owner cannot approve themselves', async ({
+  test('only an admitted owner lists and decides, and never for themselves', async ({
     client,
     assert,
   }) => {
@@ -233,6 +233,16 @@ test.group('Admission', (group) => {
     assert.equal((await approve).status(), 403)
     const self = as(client.post(`/api/v1/account/admissions/${owner.id}/approve`), credential)
     assert.equal((await self).status(), 403)
+    const member = await createPerson()
+    await grantAdmission(member)
+    const memberSession = await signIn(client, member.email)
+    assert.equal((await as(client.get('/api/v1/reports'), memberSession)).status(), 200)
+    const byMember = as(
+      client.post(`/api/v1/account/admissions/${person.id}/approve`),
+      memberSession
+    )
+    assert.equal((await byMember).status(), 403)
+    assert.equal((await as(client.get('/api/v1/account/admissions'), memberSession)).status(), 403)
     const row = await db.from('account_admissions').where('user_id', person.id).first()
     assert.isNull(row ?? null)
   })
@@ -287,25 +297,10 @@ test.group('Admission', (group) => {
     client,
     assert,
   }) => {
-    const { credential: owner } = await createOwner(client)
     const inside = await createPerson()
     const outside = await createPerson(`person-${randomUUID()}@outside.test`)
-    for (const person of [inside, outside]) {
-      const now = DateTime.utc().toJSDate()
-      await db.table('account_admissions').insert({
-        user_id: person.id,
-        invited_email: person.email,
-        invitation_source: 'operator',
-        invitation_recorded_at: now,
-        created_at: now,
-        updated_at: now,
-      })
-      const approved = await as(
-        client.post(`/api/v1/account/admissions/${person.id}/approve`),
-        owner
-      )
-      assert.equal(approved.status(), 200, JSON.stringify(approved.body()))
-    }
+    await grantAdmission(inside)
+    await grantAdmission(outside)
 
     const allowed = await as(client.get('/api/v1/reports'), await signIn(client, inside.email))
     assert.equal(allowed.status(), 200)

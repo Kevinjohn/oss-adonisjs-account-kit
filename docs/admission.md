@@ -274,16 +274,16 @@ with the same approve command. There is no "first user is admin" shortcut.
 `examples/api` runs admission with invitation and approval on, and domain on when
 `ACCOUNT_KIT_ADMISSION_DOMAINS` (comma-separated) is set:
 
-| File                                            | Holds                                                                                                                          |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `config/admission.ts`                           | The requirements; owners decide and list                                                                                       |
-| `config/account_kit.ts`                         | `withInvitationEvidence`, `withAdmissionCleanup`, and `exportAccountData` with the admission record                            |
-| `app/services/account_kit_authorization.ts`     | `isAdmitted`; `authorize.*` require an admitted owner; `admissionAuthorize`                                                    |
-| `app/middleware/admitted_account_middleware.ts` | The gate, like `verified_account_middleware.ts`                                                                                |
-| `app/controllers/admissions_controller.ts`      | Status, request, list, approve, reject, revoke                                                                                 |
-| `app/exceptions/handler.ts`                     | Adds `decision` to the 403 body                                                                                                |
-| `start/routes.ts`                               | `GET /account/admission` and `POST /account/admission/request` (limited); the list and decisions and `GET /reports` (admitted) |
-| `tests/functional/admission.spec.ts`            | The flows above, for both guard strategies                                                                                     |
+| File                                              | Holds                                                                                                                          |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `config/admission.ts`                             | The requirements; owners decide and list                                                                                       |
+| `config/account_kit.ts`                           | `withInvitationEvidence`, `withAdmissionCleanup`, and `exportAccountData` with the admission record                            |
+| `app/services/account_kit_authorization.ts`       | `isAdmitted`; `authorize.*` require an admitted owner; `admissionAuthorize`                                                    |
+| `app/middleware/admitted_account_middleware.ts`   | The gate, like `verified_account_middleware.ts`                                                                                |
+| `app/controllers/admissions_controller.ts`        | Status, request, list, approve, reject, revoke                                                                                 |
+| `app/exceptions/handler.ts`                       | Adds `decision` to the 403 body                                                                                                |
+| `start/routes.ts`                                 | `GET /account/admission` and `POST /account/admission/request` (limited); the list and decisions and `GET /reports` (admitted) |
+| `examples/api/tests/functional/admission.spec.ts` | The flows above, for both guard strategies                                                                                     |
 
 ## Files delta
 
