@@ -35,11 +35,10 @@ urls: {
 
 ```ts
 // app/controllers/password_resets_controller.ts
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import vine from '@vinejs/vine'
+import accountKit from 'adonisjs-account-kit/services/main'
 import {
-  AccountKit,
   DeliveryError,
   InvalidTokenError,
   PostCommitError,
@@ -49,7 +48,7 @@ import {
 const emailValidator = vine.compile(vine.object({ email: vine.string().email() }))
 const passwordValidator = vine.compile(
   vine.object({
-    password: vine.string().minLength(8).maxLength(256),
+    password: vine.string().minLength(8).maxLength(32),
     passwordConfirmation: vine.string().sameAs('password'),
   })
 )
@@ -61,9 +60,8 @@ export default class PasswordResetsController {
 
   async store({ request, response, session, logger }: HttpContext) {
     const { email } = await request.validateUsing(emailValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      await kit.passwordReset.request({ email, clientKey: request.ip() })
+      await accountKit.passwordReset.request({ email, clientKey: request.ip() })
     } catch (error) {
       if (error instanceof ThrottledError) {
         session.flash('error', 'Too many attempts. Try again later.')
@@ -81,16 +79,14 @@ export default class PasswordResetsController {
     // Keeps the token out of the Referer sent to other sites; same-origin still lets form errors
     // redirect back to this page.
     response.header('Referrer-Policy', 'same-origin')
-    const kit = await app.container.make(AccountKit)
-    const valid = await kit.passwordReset.inspect({ token: params.token })
+    const valid = await accountKit.passwordReset.inspect({ token: params.token })
     return inertia.render('auth/reset_password', { token: params.token, valid })
   }
 
   async update({ request, response, session, params, logger }: HttpContext) {
     const { password } = await request.validateUsing(passwordValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      await kit.passwordReset.reset({ token: params.token, password })
+      await accountKit.passwordReset.reset({ token: params.token, password })
     } catch (error) {
       if (error instanceof InvalidTokenError) {
         session.flash('error', 'This link is invalid or has expired.')
@@ -105,6 +101,12 @@ export default class PasswordResetsController {
   }
 }
 ```
+
+The example keeps the starter's 32-character ceiling for new passwords. Account Kit accepts new
+passwords up to 256 UTF-16 code units by default; an application may choose a stricter
+`passwordPolicy` and matching validator. Login does not apply that new-password policy, so existing
+passwords up to the service's 256-unit ceiling remain usable. Keep the same new-password limit on
+signup, reset and password-change forms.
 
 `inspect` checks the link without using it up, so the page can show that a link cannot be used
 before the user types a new password.
@@ -143,7 +145,8 @@ export default function ResetPassword({ token, valid }: { token: string; valid: 
   if (!valid)
     return (
       <p>
-        This link may be invalid, already used, or expired. <Link href="/forgot-password">Request a new one</Link>.
+        This link may be invalid, already used, or expired.{' '}
+        <Link href="/forgot-password">Request a new one</Link>.
       </p>
     )
   return (
@@ -167,7 +170,9 @@ export default function ResetPassword({ token, valid }: { token: string; valid: 
         value={form.data.passwordConfirmation}
         onChange={(e) => form.setData('passwordConfirmation', e.target.value)}
         aria-invalid={form.errors.passwordConfirmation ? true : undefined}
-        aria-describedby={form.errors.passwordConfirmation ? 'password-confirmation-error' : undefined}
+        aria-describedby={
+          form.errors.passwordConfirmation ? 'password-confirmation-error' : undefined
+        }
       />
       {form.errors.passwordConfirmation && (
         <p id="password-confirmation-error">{form.errors.passwordConfirmation}</p>
