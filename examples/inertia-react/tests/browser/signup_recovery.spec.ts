@@ -18,9 +18,15 @@ type SignupConfig = {
 test.group('Signup recovery in the browser', (group) => {
   group.each.setup(async () => {
     const truncate = await testUtils.db().truncate()
+    await truncate()
+    await db
+      .table('account_transaction_lock')
+      .insert({ id: 1, version: 0 })
+      .onConflict('id')
+      .ignore()
+
     return async () => {
       await truncate()
-      await db.table('account_transaction_lock').insert({ id: 1, version: 0 })
     }
   })
 
