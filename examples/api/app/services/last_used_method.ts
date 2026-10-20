@@ -26,6 +26,7 @@ export function lastUsedMethod(
 ): Method | null {
   const value: unknown = ctx.request.cookie(cookieName)
   if (value === 'password') return options.password ? 'password' : null
-  if ((value === 'google' || value === 'github') && options.providers.includes(value)) return value
+  if (typeof value === 'string' && options.providers.includes(value))
+    return value as SocialProviderName
   return null
 }
