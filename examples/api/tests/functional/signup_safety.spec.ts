@@ -10,8 +10,7 @@ import accountKitConfig from '#config/account_kit'
 import { referencePasswordLimits } from '#validators/password'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const responseBody = <T>(response: { body(): unknown }) => response.body() as T
+import { responseBody } from '#tests/helpers/response_body'
 
 test('signup issues a limited bearer token and fresh-password claim revokes it', async ({
   client,

@@ -4,14 +4,7 @@ import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
-
-function cookies(response: { header(name: string): string | string[] | undefined }): string {
-  const values = response.header('set-cookie')
-  return (Array.isArray(values) ? values : [values])
-    .filter(Boolean)
-    .map((value) => String(value).split(';', 1)[0])
-    .join('; ')
-}
+import { cookies } from '#tests/helpers/cookies'
 
 function bearerFromLogin(response: { body(): unknown }): string {
   const body = response.body()

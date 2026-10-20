@@ -1,11 +1,26 @@
 // Steps every consumer app shares: environment, archive install, configure and schema codegen fixes.
 import { randomBytes } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { createServer } from 'node:net'
 import { readFile, readdir, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { run } from './harness.mjs'
 import { ensureExclusivePostgresDatabase, pgClient } from './postgres.mjs'
 import { compatibility, database, repoRoot, secret, userIdType, usersTable } from './settings.mjs'
+
+/** A loopback port the OS reports free, so concurrent runs on one machine do not collide. */
+async function freePort() {
+  const server = createServer()
+  await new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', resolve)
+  })
+  const { port } = server.address()
+  await new Promise((resolve) => server.close(resolve))
+  return String(port)
+}
+
+const port = await freePort()
 
 export function databaseEnvironment(appRoot, schema = 'account_kit_consumer') {
   const dbEnv = {
@@ -13,10 +28,10 @@ export function databaseEnvironment(appRoot, schema = 'account_kit_consumer') {
     NODE_ENV: 'test',
     TZ: 'UTC',
     LOG_LEVEL: 'silent',
-    PORT: '3333',
+    PORT: port,
     HOST: '127.0.0.1',
     APP_KEY: `account-kit-consumer-${randomBytes(24).toString('hex')}`,
-    APP_URL: 'http://127.0.0.1:3333',
+    APP_URL: `http://127.0.0.1:${port}`,
     SESSION_DRIVER: 'memory',
     LIMITER_STORE: 'memory',
     DB_CONNECTION: database === 'sqlite' ? 'sqlite' : 'postgres',

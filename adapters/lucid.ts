@@ -1,5 +1,6 @@
 import type { DateTime } from 'luxon'
 import type { LucidModel } from '@adonisjs/lucid/types/model'
+import { normalizeEmail } from '../src/email.js'
 import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } from '../src/types.js'
 
 export type { UsersAdapterMetadata } from '../src/types.js'
@@ -61,10 +62,6 @@ export type LucidUsersAdapter = UsersAdapter & {
 export type LucidModelLoader<Model extends LucidModelRow = LucidModelRow> = () => Promise<
   LucidModel & (new () => Model)
 >
-
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase()
-}
 
 function toAccountUser(user: LucidModelRow): AccountUser {
   return {

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { sqlTimestamp } from '../../src/timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from '../../src/timestamps.js'
 
 const engine = (name: string) => ({ dialect: { name } })
 
@@ -25,5 +25,22 @@ test.group('SQL timestamps', () => {
       () => sqlTimestamp(engine('mysql'), DateTime.invalid('test')),
       /invalid timestamp/
     )
+  })
+})
+
+test.group('reading timestamps as ISO 8601', () => {
+  test('reads every driver shape as UTC ISO 8601 and keeps null', ({ assert }) => {
+    const iso = '2026-03-04T05:06:07.089Z'
+    assert.equal(readIsoTimestamp(new Date(iso)), iso)
+    assert.equal(readIsoTimestamp(Date.parse(iso)), iso)
+    assert.equal(readIsoTimestamp(iso), iso)
+    assert.equal(readIsoTimestamp('2026-03-04 05:06:07.089'), iso)
+    assert.isNull(readIsoTimestamp(null))
+    assert.isNull(readIsoTimestamp(undefined))
+  })
+
+  test('rejects an unreadable value', ({ assert }) => {
+    assert.throws(() => readIsoTimestamp('not a time'), /unreadable timestamp value/)
+    assert.throws(() => readIsoTimestamp({}), /unreadable timestamp value/)
   })
 })

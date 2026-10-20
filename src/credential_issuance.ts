@@ -1,5 +1,4 @@
 // Issues a guard credential after a verified sign-in and re-checks the account under its lock.
-import type { Database } from '@adonisjs/lucid/database'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
 import { newSessionHandle, recordSession, sessionRegistryEnabled } from './session_registry.js'
@@ -8,9 +7,9 @@ import type {
   AuthenticationGuard,
   CurrentAccount,
   ResolvedAuthenticationConfig,
-  ResolvedConfig,
   Trx,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export interface IssuanceOptions {
   /** Untrusted display text for the sign-in list; truncated to 255 characters. */
@@ -31,7 +30,7 @@ export interface IssuanceOptions {
  * Any failure terminates the credential.
  */
 export async function establishCredential<Credential>(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   auth: ResolvedAuthenticationConfig,
   guard: AuthenticationGuard<Credential>,
   verified: { account: CurrentAccount; revision: string | null },

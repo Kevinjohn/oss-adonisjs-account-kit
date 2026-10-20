@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import type { Router } from '@adonisjs/core/http'
 import { type AccountKit } from '../src/account_kit.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
+import { bootTestApp } from './helpers/app.js'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 test.group('managed HTTP dispatch', () => {
@@ -95,5 +96,36 @@ test.group('managed HTTP dispatch', () => {
       sentinel
     )
     assert.isTrue(called)
+  })
+
+  test('registration keeps Adonis route constraints through router commit', async ({ assert }) => {
+    for (const [pattern, matcher, intersects] of [
+      ['/auth/:id', /^[0-9]+$/, false],
+      ['/auth/:id', /^login$/, true],
+      ['/auth/login/:id/:tail?', undefined, true],
+      ['/auth/login/:id/:tail.json?', undefined, false],
+    ] as const) {
+      const app = await bootTestApp()
+      try {
+        const router = await app.app.container.make('router')
+        const route = router.route(`/api/v1${pattern}`, ['POST'], () => null)
+        if (matcher) route.where('id', matcher)
+        registerManagedRoutes(router, {
+          prefix: '/api/v1',
+          kit: async () => ({}) as AccountKit,
+          guard: {
+            strategy: 'session',
+            name: 'web',
+            forRequest: () => ({}) as never,
+            current: async () => ({ userId: 1, revision: null }),
+          },
+          enabled: ['authentication'],
+        })
+        if (intersects) assert.throws(() => router.commit(), /Managed route collision/)
+        else assert.doesNotThrow(() => router.commit())
+      } finally {
+        await app.close()
+      }
+    }
   })
 })
