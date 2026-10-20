@@ -86,7 +86,7 @@ Initial public release.
 - The adapter contract checks that create, password, and registration-data writes roll back with
   the transaction, and that a password-less user never verifies.
 - Tested on SQLite, PostgreSQL 16 and MySQL 8.4. MySQL uses the `mysql2` client with
-  `timezone: 'Z'` and a UTC session time zone; see [compatibility](docs/compatibility.md).
+  `timezone: 'Z'` and a UTC session time zone; see [compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/compatibility.md).
 - Generated timestamp columns have millisecond precision, so MySQL does not round expiries and
   credential revisions to the second. Existing installations keep their columns.
 - Managed route errors are translated through `@adonisjs/i18n` when the application uses it,
