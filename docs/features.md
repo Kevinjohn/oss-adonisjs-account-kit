@@ -141,7 +141,7 @@ package, and a contract test suite checks any adapter you write yourself. Guide:
 
 ### Databases
 
-Tested on SQLite, PostgreSQL 16 and MySQL 8.4. See [compatibility](compatibility.md).
+Tested on SQLite and PostgreSQL 16. MySQL 8.4 is experimental. See [compatibility](compatibility.md).
 
 ## Features at a glance
 
