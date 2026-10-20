@@ -238,6 +238,13 @@ The password-reset and magic-link requests answer `202` with an acknowledgement 
 
 Managed account routes validate the existing guard and the package's current account state on every request. The application must apply the same revision/token check to its own protected routes for revocation to cover them. Session login must regenerate the session, logout must destroy the current server-side session, and the application must use a shared server-side session store across instances. Access-token login issues an opaque token; logout deletes only the current token. See [authentication](authentication.md) for the exact revocation boundary.
 
+### Admission sits beside the managed routes
+
+The managed routes stay `limited` or `active`; none is gated by [admission](admission.md), so a
+person who is not admitted can still sign in, verify and manage their account. Gate your own
+data routes with `admissionMiddleware`, after the same guard, and check `isAdmitted` in the
+`authorize` callbacks that the managed invitation routes and data export call.
+
 ## Files and migrations
 
 Managed activation adds one call in the application's routes file and uses existing authentication, session, Shield, VineJS, database, and Account Kit configuration. The package maintains handlers and validators. No application controller is generated for selected standard routes. Custom fields or policy may require application-owned configuration and adapter mapping. The optional import lives at `adonisjs-account-kit/http`; the root service import stays separate.

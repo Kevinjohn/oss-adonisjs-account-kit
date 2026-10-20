@@ -55,12 +55,44 @@ export async function runFresh(candidate, runName) {
   )
   if (withoutProvider === originalRc)
     throw new Error('Fresh fixture did not contain a removable provider entry')
-  await writeFile(adonisrcPath, withoutProvider)
+  // Admission has its own install command: drop the fixture's registrations and config so it adds them.
+  const withoutAdmission = withoutProvider
+    .replace(/^\s*\(\) => import\(['"]adonisjs-account-kit\/admission\/provider['"]\),?\r?\n/m, '')
+    .replace(/^\s*\(\) => import\(['"]adonisjs-account-kit\/admission\/commands['"]\),?\r?\n/m, '')
+  const admissionEntries = (rc) => (rc.match(/adonisjs-account-kit\/admission\//g) ?? []).length
+  if (admissionEntries(withoutProvider) !== 2 || admissionEntries(withoutAdmission) !== 0)
+    throw new Error('Fresh fixture did not contain removable admission entries')
+  await writeFile(adonisrcPath, withoutAdmission)
+  const admissionConfigPath = join(appRoot, 'config/admission.ts')
+  const admissionConfigCopy = join(tempRoot, `${runName}-admission.ts`)
+  await copyFile(admissionConfigPath, admissionConfigCopy)
+  await rm(admissionConfigPath)
 
   const installed = await installArchive(appRoot, candidate)
   await resetExclusivePostgresSchema(appRoot)
   await configure(appRoot, env)
   await checkGeneratedStyle(appRoot, env)
+  run(
+    'pnpm',
+    [
+      'exec',
+      'node',
+      'ace',
+      'account-kit:admission:install',
+      '--users-table',
+      usersTable,
+      '--user-id-type',
+      userIdType,
+    ],
+    appRoot,
+    env
+  )
+  const admittedRc = await readFile(adonisrcPath, 'utf8')
+  for (const entry of ['admission/provider', 'admission/commands']) {
+    if ((admittedRc.match(new RegExp(`adonisjs-account-kit/${entry}`, 'g')) ?? []).length !== 1)
+      throw new Error(`Admission install did not register exactly one ${entry} entry`)
+  }
+  await copyFile(admissionConfigCopy, admissionConfigPath)
   run('pnpm', ['exec', 'node', 'ace', 'codegen'], appRoot, env)
   await adaptGeneratedUserSchema(appRoot)
   run('pnpm', ['run', 'typecheck'], appRoot, env)
@@ -115,6 +147,18 @@ export async function runFresh(candidate, runName) {
       appRoot,
       { ...env, ACCOUNT_KIT_AUTH_STRATEGY: 'session', SESSION_DRIVER: 'memory' }
     )
+    for (const strategy of ['access_tokens', 'session'])
+      run(
+        'pnpm',
+        ['exec', 'node', 'ace', 'test', '--files=tests/functional/admission.spec.ts'],
+        appRoot,
+        {
+          ...env,
+          ACCOUNT_KIT_AUTH_STRATEGY: strategy,
+          SESSION_DRIVER: 'memory',
+          ACCOUNT_KIT_ADMISSION_DOMAINS: 'example.test',
+        }
+      )
     expectFailure(
       'pnpm',
       ['run', 'test:session'],

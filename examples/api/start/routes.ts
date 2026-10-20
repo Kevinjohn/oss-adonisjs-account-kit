@@ -97,9 +97,30 @@ router
         router
           .delete('invitations/:id', [controllers.Invitations, 'revoke'])
           .use(middleware.verifiedAccount())
+        // Limited surface: reachable while pending, rejected or revoked, so the decision is shown.
+        router.get('admission', [controllers.Admissions, 'show'])
+        router.post('admission/request', [controllers.Admissions, 'request'])
+        router
+          .get('admissions', [controllers.Admissions, 'index'])
+          .use(middleware.admittedAccount())
+        router
+          .post('admissions/:id/approve', [controllers.Admissions, 'approve'])
+          .use(middleware.admittedAccount())
+        router
+          .post('admissions/:id/reject', [controllers.Admissions, 'reject'])
+          .use(middleware.admittedAccount())
+        router
+          .post('admissions/:id/revoke', [controllers.Admissions, 'revoke'])
+          .use(middleware.admittedAccount())
       })
       .prefix('account')
       .as('account')
       .use(middleware.auth())
+
+    // Application data: admitted accounts only.
+    router
+      .get('reports', [controllers.Reports, 'index'])
+      .use(middleware.auth())
+      .use(middleware.admittedAccount())
   })
   .prefix('/api/v1')

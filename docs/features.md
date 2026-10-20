@@ -96,6 +96,17 @@ The two account rights the GDPR asks for.
 Turn on: `enabled: [..., 'dataExport', 'accountDeletion']`. Guide:
 [account export and deletion](account-data.md).
 
+### Admission
+
+Keep signed-in accounts out of your application data until they are admitted.
+
+- Require any mix of an allowed email domain, an accepted invitation and an approver's decision.
+- People who are not admitted can still sign in, see why, and ask for approval.
+- Your callbacks decide who may approve; Account Kit stores the state and checks it on every
+  gated request.
+
+Install: `node ace account-kit:admission:install`. Guide: [admission](admission.md).
+
 ### Google and GitHub sign-in
 
 - Sign-in and account linking through AdonisJS Ally.

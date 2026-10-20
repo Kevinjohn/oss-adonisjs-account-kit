@@ -49,6 +49,13 @@ revocation, and logout. Run the service-only mode separately
 for both databases to check that optional Auth and Session imports do not enter the generic
 service declarations.
 
+The fresh API consumer also removes the fixture's admission provider, command loader and
+`config/admission.ts`, runs `account-kit:admission:install` with the run's `--users-table` and
+`--user-id-type`, and checks that exactly one provider and one loader are registered. Its suites
+include `examples/api/tests/functional/admission.spec.ts` for both strategies, then run that spec again with
+`ACCOUNT_KIT_ADMISSION_DOMAINS=example.test` for the domain case. The service-only consumer does
+not install admission.
+
 ### Vocabulary alignment: 15 October 2026
 
 The vocabulary implementation and review fixes at `f526a5e4e94ff730a8f63873a23b54619820e288`
@@ -185,7 +192,7 @@ The integrated commands passed: `bash -n bin/pg.sh`, the scoped Prettier check, 
 
 Real-service checks also passed for repeated start/stop, preserving a standalone cluster,
 refusing a different port without changing its server, reset with database creation, invocation
-from `tests/`, hostile PG*/DB_* settings, a live non-PostgreSQL listener, missing binaries and
+from `tests/`, hostile PG*/DB\_* settings, a live non-PostgreSQL listener, missing binaries and
 wrong-version reset recovery. A temporary failing Japa test produced exit 1 with 205 passing
 tests and one deliberate failure; cleanup still completed. Selector forwarding selected only
 `db.spec.ts`. A directly spawned wrapper interrupted with SIGINT exited 130, terminated the

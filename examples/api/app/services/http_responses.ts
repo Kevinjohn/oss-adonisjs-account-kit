@@ -9,12 +9,15 @@ export function accountError(
   status: number,
   code: string,
   message: string,
-  field?: string
+  field?: string,
+  // Extra top-level members; a JSON:API body carries them in `meta`.
+  extra?: Record<string, unknown>
 ) {
   const jsonApi = wantsJsonApi(ctx.request.header('accept'))
   if (jsonApi) ctx.response.type('application/vnd.api+json')
   const error = jsonApi ? { code, title: message } : { code, message, ...(field ? { field } : {}) }
-  return ctx.response.status(status).send({ errors: [error] })
+  const members = extra ? (jsonApi ? { meta: extra } : extra) : {}
+  return ctx.response.status(status).send({ errors: [error], ...members })
 }
 
 export function proofHeaders(ctx: HttpContext) {
