@@ -9,9 +9,8 @@ import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { dispatchAccountKitOutbox } from '#services/account_kit_outbox'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
-
-const tokenFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
-const responseBody = <T>(response: { body(): unknown }) => response.body() as T
+import { tokenFrom } from '#tests/helpers/link_tokens'
+import { responseBody } from '#tests/helpers/response_body'
 
 test('account workflows over HTTP commit, notify, and enforce token boundaries', async ({
   client,

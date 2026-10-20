@@ -34,6 +34,6 @@ export default class PasswordsController {
       return ctx.response.redirect().toRoute('session.create')
     }
     ctx.session.flash('success', 'Password changed. Other devices have been signed out.')
-    ctx.response.redirect().back()
+    return ctx.response.redirect().back()
   }
 }

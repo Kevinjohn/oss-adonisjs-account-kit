@@ -1,11 +1,10 @@
 /** Managed handlers for the password reset capability: request, link inspection and completion. */
-import { DeliveryError, PostCommitError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import {
   invalidProof,
   passwordPolicyError,
-  recoveryDiagnostic,
+  reportCommittedFailure,
   translate,
 } from './response_helpers.js'
 import { newPasswordValidator, passwordResetRequestValidator } from './validators.js'
@@ -17,12 +16,7 @@ export const passwordResetHandlers = {
     try {
       await kit.passwordReset.request({ email, clientKey: request.ip() })
     } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      recoveryDiagnostic(
-        context,
-        route.name,
-        error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
-      )
+      if (!reportCommittedFailure(context, route.name, error)) throw error
     }
     return response.accepted({
       message: translate(

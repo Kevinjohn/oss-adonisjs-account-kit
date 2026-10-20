@@ -5,6 +5,7 @@ export { configure } from './configure.js'
 export const stubsRoot = fileURLToPath(new URL('./stubs/', import.meta.url))
 export * from './src/types.js'
 export * from './src/errors.js'
+export * as errors from './src/errors.js'
 export type { sensitivePurposes, socialIntents } from './src/social_enums.js'
 export type { socialProviderNames } from './src/social_providers.js'
 export { AccountKit, defineConfig } from './src/account_kit.js'
