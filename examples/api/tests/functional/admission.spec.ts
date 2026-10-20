@@ -184,6 +184,22 @@ test.group('Admission', (group) => {
       status: 'pending',
       requested: false,
     })
+    // A JSON:API client gets the same refusal in its envelope, with the decision in `meta`.
+    const jsonApi = await as(client.get('/api/v1/reports'), session).header(
+      'accept',
+      'application/vnd.api+json'
+    )
+    assert.equal(jsonApi.status(), 403)
+    assert.match(jsonApi.header('content-type') ?? '', /^application\/vnd\.api\+json/)
+    const envelope = jsonApi.body() as {
+      errors: Array<{ code: string; title: string }>
+      meta: { decision: Decision }
+    }
+    assert.deepEqual(envelope.errors, [
+      { code: 'E_ACCOUNT_KIT_ADMISSION_REQUIRED', title: 'Admission is required' },
+    ])
+    assert.deepEqual(envelope.meta.decision, refusal(refused).decision)
+    assert.notProperty(envelope, 'decision')
     const status = await as(client.get('/api/v1/account/admission'), session)
     assert.equal(status.status(), 200)
     assert.isFalse(decisionOf(status).admitted)

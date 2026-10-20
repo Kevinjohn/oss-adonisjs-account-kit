@@ -185,8 +185,9 @@ Both errors extend `AccountKitError` and are exported from `adonisjs-account-kit
 | `AdmissionDecisionError` | `E_ACCOUNT_KIT_ADMISSION_DECISION` |    409 | An approve, reject or revoke the current approval state does not allow.          |
 
 `accountErrorResponse` returns only `code` and `message`. Add `error.decision` to the 403 body in
-your exception handler so the application can say what is missing; the package sends no
-notification of any kind.
+your exception handler so the application can say what is missing, inside whatever error envelope
+it already negotiates; the example puts it at the top level of a JSON body and in `meta` of a
+JSON:API body. The package sends no notification of any kind.
 
 ## Decisions
 
@@ -303,7 +304,7 @@ above keeps working.
 | `app/services/account_kit_authorization.ts`       | `isAdmitted`; `authorize.*` require an admitted owner; `admissionAuthorize`                                                    |
 | `app/middleware/admitted_account_middleware.ts`   | The gate, like `verified_account_middleware.ts`                                                                                |
 | `app/controllers/admissions_controller.ts`        | Status, request, list, approve, reject, revoke                                                                                 |
-| `app/exceptions/handler.ts`                       | Adds `decision` to the 403 body                                                                                                |
+| `app/exceptions/handler.ts`                       | Adds `decision` to the 403 body (`meta.decision` for JSON:API)                                                                 |
 | `start/routes.ts`                                 | `GET /account/admission` and `POST /account/admission/request` (limited); the list and decisions and `GET /reports` (admitted) |
 | `examples/api/tests/functional/admission.spec.ts` | The flows above, for both guard strategies                                                                                     |
 
