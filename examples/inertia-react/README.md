@@ -193,7 +193,7 @@ You need Node.js 24 and pnpm.
 ```sh
 cd examples/inertia-react
 pnpm kit:pack
-pnpm install
+pnpm install --frozen-lockfile
 cp .env.example .env
 node ace generate:key
 node ace codegen
@@ -204,8 +204,11 @@ pnpm dev
 Open http://localhost:3333/signup, create an account, then copy the verification link from the
 server log.
 
-`kit:pack` builds Account Kit from this checkout into `vendor/`. Once the package is on npm, replace
-the `adonisjs-account-kit` dependency with the published version and skip that step.
+`kit:pack` builds Account Kit from this checkout into `vendor/`; run it before installing because
+the committed lockfile records that archive's integrity. When a change to the packaged files changes
+the archive, run `pnpm kit:pack` and `pnpm install --lockfile-only` to refresh the lockfile, then
+commit both files. Once the package is on npm, replace the `adonisjs-account-kit` dependency with
+the published version and skip that step.
 
 ## What was added to the starter kit
 
