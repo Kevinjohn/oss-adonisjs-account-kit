@@ -39,6 +39,70 @@ Import it at the end of `start/routes.ts`:
 import './account_kit_routes.js'
 ```
 
+### Prepare before the first reset request
+
+Mounting the routes does not configure email. The generated `notify` callbacks intentionally throw
+until the application chooses a delivery method. Configure the callback before exercising password
+reset, and keep the generated `APP_KEY` stable. Set a fixed local `APP_URL`, for example
+`http://localhost:3333`, and apply the generated schema before starting the request flow:
+
+```sh
+node ace migration:run
+```
+
+This applies Account Kit's user columns and `password_reset_tokens` table, along with any selected
+limiter migration. Follow the install and migration steps in [Getting started](getting-started.md)
+to install the limiter integration and generate the schema before running migrations.
+The generated `urls.passwordReset` uses `{APP_URL}/account-kit/recovery/:token`; it names the link
+destination, but Account Kit does not generate a browser page there. For a browser flow, point it
+to a page owned by your application and have that page POST the token and password fields to the
+managed completion route.
+
+For a local API walkthrough, replace the generated `notify` block with the maintained development
+log callback before starting the server:
+
+```ts
+import { createLogNotifications } from 'adonisjs-account-kit'
+
+notify: createLogNotifications({ brandName: 'My App', environment: 'development' }),
+onCredentialsChangedTransaction: async () => {},
+```
+
+See the [development-mail recipe](recipes/development-mail.md) for the full generated-config
+edit. The generated `onCredentialsChangedTransaction` throws until replaced. Account Kit already
+deletes its managed access tokens transactionally for an `access_tokens` guard, or advances the
+session revision for a `session` guard. For this walkthrough, the no-op above is appropriate when
+those are the only credentials the application issues; extend the callback if the application has
+other credentials to revoke. See the [access-token](recipes/access-tokens.md) and
+[session](recipes/sessions.md) guides for those policies. The log entry contains a live bearer
+proof; use it only in a private development log.
+
+Use an email address belonging to a test account in the selected local database. Unknown addresses
+receive the same `202` response but do not produce a message. With the local logger configured,
+request a reset:
+
+```sh
+curl -i -X POST http://localhost:3333/api/auth/password-reset \
+  -H 'content-type: application/json' \
+  -d '{"email":"person@example.test"}'
+```
+
+The response is a generic `202` acknowledgement for privacy; it does not confirm that the callback
+ran or that a recipient received a message. Copy the token from the private local log entry and
+complete the proof through the managed route:
+
+```sh
+curl -i -X POST "http://localhost:3333/api/auth/password-reset/${TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"password":"a-new-test-password","passwordConfirmation":"a-new-test-password"}'
+```
+
+The completion response is `200 {"reset":true}`. If the request was acknowledged but no local
+message appeared, check that the generated throwing callback was replaced, `APP_URL` and
+`urls.passwordReset` point to the intended local origin and page, and the AdonisJS logger is
+visible. For production, configure the application's real Mail transport and verified sender and
+verify delivery through that transport; see [Account notifications](notifications.md).
+
 `node ace list:routes` now shows `POST /api/auth/login`, `POST /api/auth/password-reset` and the
 other endpoints for those groups. Add groups to `enabled` as you turn on more capabilities; the
 [endpoint reference](reference/endpoints.md) lists them. Emailed links still come from `urls` in
@@ -106,6 +170,11 @@ registerManagedRoutes(router, {
 The enabled names are `authentication`, `registration`, `passwordReset`, `magicLinkLogin`, `emailVerification`, `emailPasswordManagement`, `invitations`, `socialAuthentication`, `sessionManagement`, `dataExport`, and `accountDeletion`. Magic-link routes are described in [magic-link sign-in](magic-link.md); sign-in management routes in [signed-in devices](signed-in-devices.md); export and deletion routes in [account export and deletion](account-data.md). `verificationRequired` defaults to `true`. Setting it to `false` permits an unverified account on routes marked `active`; the selected guard, credential revision, restriction, and invitation permission checks still apply. Use the same setting in `managedAccountMiddleware({ active })` on application-owned routes. Registration availability remains an explicit `registration.availability` setting in the service configuration. Managed signup accepts only `open`; `closed` and `application` reject before calling registration. An application-owned signup decision must exclude `auth.signup` and call the public registration service from its trusted controller. Invitations are excluded by default until selected and authorized. One group with one guard is supported. A second registration on the same router is rejected. Path and method collisions with application routes are checked when Adonis commits routes, before the server starts handling requests; onboarding also reports known conflicts during its plan. The social group requires `extensions.social.providers` and follows [the managed social contract](managed-social.md).
 
 `extensions.registration.validate`, `extensions.invitationAcceptance.validate`, and `extensions.profile.validate` receive an `HttpContext` and return typed, validated input including optional `registrationData`. They run before a service call and outside its transaction. Service configuration owns the shared field allowlist, trusted mapping and password policy for both managed and service callers. `extensions.representAccount` receives a safe `CurrentAccount` after a service read and returns application-owned public JSON. It runs after the read; it must never add password hashes or private adapter data. A representation error after credential issuance or an account mutation is logged and the response uses the package's safe account allowlist, preserving the committed result. A representation error on a read-only route propagates. `extensions.message(code, defaultMessage)` may change public error wording without changing the status or machine code; it receives no exception or database details and runs during response mapping. Notifications, access policy hooks, and link destinations remain typed callbacks in `defineConfig`; their transaction and delivery semantics are documented with those public services. Replacing a route means adding its named endpoint to `except` and calling the public service from the application's controller. For setup-generated mounts, record exclusions in the setup input's `managedExcept` list so regeneration preserves them; direct callers pass `except` to `registerManagedRoutes`. There is no middleware-stack replacement hook.
+
+For workspace invitations, exclude `account.invitation.list` and mount the
+[application-owned scoped listing](recipes/multi-tenant.md). The managed list permission callback
+only grants access; it does not restrict its query to a workspace. Keep the other invitation
+endpoints mounted and use workspace-aware creation and management callbacks.
 
 ### OpenAPI document
 
