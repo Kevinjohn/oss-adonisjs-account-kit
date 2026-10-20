@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { Kernel, ListLoader } from '@adonisjs/core/ace'
+import { aceKernel } from './helpers/ace_kernel.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { AccountKit } from '../src/account_kit.js'
@@ -128,8 +128,7 @@ test.group('authentication retirement impact', (group) => {
     await insertUser(kit, { email: 'other@example.test', password: null })
     const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
     kit.app.container.bindValue(AccountKit, account)
-    const kernel = new Kernel(kit.app)
-    kernel.addLoader(new ListLoader([RetirementImpact]))
+    const { kernel } = aceKernel(kit, [RetirementImpact])
     const result = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [
       '--quiet',
     ])

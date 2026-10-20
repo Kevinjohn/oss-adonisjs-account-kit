@@ -1,11 +1,9 @@
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
   createAllySocialProvider,
   type SocialProvider,
   type SocialProviderName,
 } from 'adonisjs-account-kit'
-import { fixtureProvider } from '#services/social_provider_fixture'
 
 export class SocialProviderExchangeError extends Error {
   constructor(readonly category: 'denied' | 'missing_code' | 'unavailable' | 'provider_mismatch') {
@@ -44,8 +42,4 @@ export function allySocialProvider(name: SocialProviderName): SocialProvider {
       }
     },
   })
-}
-
-export function socialProvider(name: SocialProviderName): SocialProvider {
-  return app.inTest ? fixtureProvider(name) : allySocialProvider(name)
 }
