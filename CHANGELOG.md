@@ -189,6 +189,7 @@ that ran a candidate build.
 
 ### Changed
 
+- Interactive setup now starts from valid saved choices, keeps applicable values when answers are blank, and explains when it falls back to safe defaults.
 - `emailVerification.complete({ token })` → `emailVerification.complete({ token, password })` (export contract) for inactive account claims; the claim replaces the earlier password and invalidates earlier credentials.
 - `GET /account-kit/verification/:token` → `POST /account-kit/verification/:token` (API example route) with password and confirmation in the body.
 - The API example's password validator maximum changes from 128 to 256 characters to match the service ceiling.
@@ -277,6 +278,8 @@ that ran a candidate build.
 
 ### Fixed
 
+- Setup asks only mail and destination questions required by the selected email flows.
+- Setup readiness checks resolve selected origin values from Adonis environment files while keeping process values first and reporting unsafe assignments without exposing their contents.
 - Package archives exclude private planning and review documents while retaining public docs and examples.
 - Installed-consumer upgrade checks preserve an outstanding password-reset proof through the table rename and verify one-time redemption.
 - Minimum-consumer diagnostic markers use the current password-reset and email-verification vocabulary.
