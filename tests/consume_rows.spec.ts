@@ -1,10 +1,11 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { consumeRows, deletedCount } from '../src/consume_rows.js'
+import { consumeRows, deleteReturning, deletedCount } from '../src/consume_rows.js'
 import { transaction } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
 import { insertUser } from './helpers/fakes.js'
+import { testEngine } from './helpers/dialect.js'
 
 test.group('consuming single-use rows', (group) => {
   const kit = useTestApp(group)
@@ -61,5 +62,26 @@ test.group('consuming single-use rows', (group) => {
   test('counts deleted rows from either driver shape', ({ assert }) => {
     assert.equal(deletedCount(3), 3)
     assert.equal(deletedCount([2]), 2)
+  })
+
+  test('deleteReturning normalises both driver result shapes', async ({ assert }) => {
+    const client = (result: unknown) =>
+      ({ rawQuery: () => ({ exec: async () => result }) }) as unknown as Parameters<
+        typeof deleteReturning
+      >[0]
+    assert.deepEqual(await deleteReturning(client([{ id: 1 }]), 'sql', []), [{ id: 1 }])
+    assert.deepEqual(await deleteReturning(client({ rows: [{ id: 2 }] }), 'sql', []), [{ id: 2 }])
+  })
+
+  test('deleteReturning returns the deleted rows from the real database', async ({ assert }) => {
+    // MySQL has no RETURNING; consumeRows covers it.
+    if (testEngine === 'mysql') return
+    await kit.db.table('users').insert({ email: 'gone@example.test', created_at: new Date() })
+    const rows = await deleteReturning<{ email: string }>(
+      kit.db,
+      'delete from users where email = ? returning email',
+      ['gone@example.test']
+    )
+    assert.deepEqual(rows, [{ email: 'gone@example.test' }])
   })
 })
