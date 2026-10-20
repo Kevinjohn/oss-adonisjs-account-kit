@@ -1,11 +1,12 @@
 /** Managed handler for the registration capability: public signup followed by login. */
-import { DeliveryError, EmailAlreadyRegisteredError, PostCommitError } from '../errors.js'
+import { EmailAlreadyRegisteredError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler, ManagedRequest } from './managed_types.js'
 import {
   passwordPolicyError,
   recoveryDiagnostic,
+  reportCommittedFailure,
   ruleError,
   signInLabel,
 } from './response_helpers.js'
@@ -35,12 +36,7 @@ async function signup<Credential>({
   } catch (error) {
     if (error instanceof EmailAlreadyRegisteredError)
       return ruleError(context, 'email', 'unique', 'The email has already been taken.')
-    if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-    recoveryDiagnostic(
-      context,
-      route.name,
-      error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
-    )
+    if (!reportCommittedFailure(context, route.name, error)) throw error
   }
   let result: { account: CurrentAccount; credential: Credential }
   try {

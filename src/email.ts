@@ -1,13 +1,13 @@
 const MAX_RAW_EMAIL_LENGTH = 512
 
-export function normaliseEmail(email: string): string {
+export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
 
 export function isEmailShaped(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > MAX_RAW_EMAIL_LENGTH) return false
 
-  const email = normaliseEmail(value)
+  const email = normalizeEmail(value)
   if (email.length < 3 || email.length > 254 || /\s/.test(email)) return false
 
   const at = email.indexOf('@')
