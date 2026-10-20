@@ -15,7 +15,8 @@ Initial public release.
 - Password change, verified email change and profile updates behind the current password.
 - Users adapters can hash a new password before the write transaction opens (optional
   `hashPassword` and `setPasswordHash`; `create` receives `passwordHash`). The shipped adapters
-  implement both, so a slow hash no longer holds the SQLite writer.
+  implement both, so a slow hash no longer holds the SQLite writer. Reset and activation completion
+  now hash before the token is checked; throttle the routes that call them.
 - Session and opaque-token login through an existing AdonisJS Auth guard, with failed-attempt
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a

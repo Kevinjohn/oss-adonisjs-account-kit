@@ -64,8 +64,11 @@ without `setPasswordHash`.
 The Lucid, SQL, Drizzle and Prisma adapters implement both methods with their `hashPassword`
 option. The Lucid adapter writes the hash with a query, so the model's hashing hook does not run
 on it. When it is given `verifyPassword` alone, it leaves both methods out and the model hook
-hashes inside the transaction, as before. One trade-off: a sign-up with an address that is already
-registered now hashes before it is refused.
+hashes inside the transaction, as before. Two trade-offs: a sign-up with an address that is already
+registered now hashes before it is refused, and completing a password reset or an activation hashes
+before the token is checked, so a request with a bogus token also costs a hash. Account Kit does
+not throttle those completions; throttle the routes that call them, for example with
+`@adonisjs/limiter`.
 
 ## Required columns
 
