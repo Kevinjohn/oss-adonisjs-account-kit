@@ -20,6 +20,6 @@ export default class NewAccountController {
       accountKitSessionGuard(ctx)
     )
     ctx.session.flash('success', 'Account created. Check your email for a verification link.')
-    ctx.response.redirect().toRoute('dashboard')
+    return ctx.response.redirect().toRoute('dashboard')
   }
 }

@@ -1,3 +1,4 @@
+// Both guards exist so the test harness can switch auth strategy; an application keeps one.
 import { defineConfig } from '@adonisjs/auth'
 import { sessionGuard, sessionUserProvider } from '@adonisjs/auth/session'
 import { tokensGuard, tokensUserProvider } from '@adonisjs/auth/access_tokens'

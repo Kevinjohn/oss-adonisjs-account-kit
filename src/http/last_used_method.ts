@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { SocialProviderName } from '../types.js'
 import type { ManagedSocialExtension } from './social.js'
-import { optionalSession } from './social_session_state.js'
+import { optionalSession } from './session_access.js'
 
 /** A server-held visitor preference, never an account lookup or authentication signal. */
 export async function rememberManagedMethod(

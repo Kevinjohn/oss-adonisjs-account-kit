@@ -1,4 +1,4 @@
-import { resolveSelectedEnvironment } from './selected_environment.js'
+import { resolveSelectedEnvironment, selectedEnvName } from './selected_environment.js'
 import {
   defaultImportName,
   directProperty,
@@ -50,26 +50,6 @@ function envVariable(source: SetupSource, expression: TypeScript.Expression): st
   return expression.arguments[0].text
 }
 
-/** Read a store selected through `env.get('NAME')` or `env.get('NAME', 'fallback')`. */
-function envSelector(
-  source: SetupSource,
-  expression: TypeScript.Expression
-): { variable: string; fallback: string | null } | null {
-  const variable = envVariable(source, expression)
-  if (!variable || !source.ts.isCallExpression(expression)) return null
-  const args = expression.arguments
-  if (
-    args.length > 2 ||
-    !/^[A-Z][A-Z0-9_]*$/.test(variable) ||
-    (args.length === 2 && !source.ts.isStringLiteral(args[1]))
-  )
-    return null
-  return {
-    variable,
-    fallback: args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null,
-  }
-}
-
 export async function nativeSessionConfiguration(
   text: string,
   root: string
@@ -105,9 +85,14 @@ export async function nativeSessionConfiguration(
   let selectedName: string | null = null
   if (ts.isStringLiteral(store.initializer)) selectedName = store.initializer.text
   else {
-    const selector = envSelector(source, store.initializer)
-    if (!selector) return null
-    selectedName = (await resolveSelectedEnvironment(root, selector.variable)) ?? selector.fallback
+    const name = await selectedEnvName(
+      source,
+      root,
+      defaultImportName(source, '#start/env'),
+      store.initializer
+    )
+    if (name === undefined) return null
+    selectedName = name
   }
   let unsafe = false
   walk(source, (node) => {

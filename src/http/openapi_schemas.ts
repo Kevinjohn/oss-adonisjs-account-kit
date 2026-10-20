@@ -30,6 +30,19 @@ export interface EndpointSchemas {
   success: (strategy: Strategy) => Record<number, EndpointResponse>
   /** The endpoint can report a conflict with existing account state (409). */
   conflict?: true
+  /** A public endpoint that authenticates its caller: a failed sign-in is a 401 or 403. */
+  authenticates?: true
+  /** A public endpoint that can refuse the caller (403) without authenticating them. */
+  forbidden?: true
+  /** A public endpoint that also authenticates the caller for `link` and `reauth` intents. */
+  optionalAuth?: true
+  /**
+   * The provider redirects the browser here: the GET carries the session cookie but never a
+   * bearer token, and it can commit changes.
+   */
+  providerCallback?: true
+  /** Success responses carry `Cache-Control: no-store`. */
+  noStore?: true
 }
 
 export const ref = (name: string): JsonSchema => ({ $ref: `#/components/schemas/${name}` })
@@ -120,10 +133,12 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         },
       },
     }),
+    forbidden: true,
   },
   'auth.csrf': {
     summary: 'Read the CSRF token for session requests',
     success: ok('CSRF token for the `X-CSRF-TOKEN` header.', closed({ csrfToken: string() })),
+    noStore: true,
   },
   'auth.login': {
     summary: 'Sign in with email and password',
@@ -131,6 +146,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     success: (strategy) => ({
       200: { description: 'Signed in.', schema: accountBody(strategy, 'required') },
     }),
+    authenticates: true,
   },
   'auth.passwordReset.request': {
     summary: 'Request a password-reset email',
@@ -300,6 +316,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         strategy === 'access_tokens' ? ['clientChallenge'] : []
       ),
     success: authorizationUrl,
+    optionalAuth: true,
   },
   'auth.oauth.callback': {
     summary: 'Provider redirect target',
@@ -312,6 +329,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     ],
     success: socialFlow,
     conflict: true,
+    optionalAuth: true,
+    providerCallback: true,
   },
   'auth.oauth.complete': {
     summary: 'Finish a social flow from an access-token client',
@@ -326,6 +345,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       ),
     success: socialFlow,
     conflict: true,
+    optionalAuth: true,
   },
   'auth.oauth.registration': {
     summary: 'Finish registration after a social sign-in',
