@@ -56,8 +56,9 @@ export function accountKitSessionGuard(ctx: HttpContext) {
 ## 3. Log in
 
 ```ts
-const kit = await app.container.make(AccountKit)
-const result = await kit.authentication.login(
+import accountKit from 'adonisjs-account-kit/services/main'
+
+const result = await accountKit.authentication.login(
   { email, password, clientKey: ctx.request.ip() },
   accountKitSessionGuard(ctx)
 )
@@ -74,7 +75,7 @@ const input = {
   // '' means "signed in before any credential change"; a missing value must fail closed.
   ...(revision === undefined ? {} : { revision: revision === '' ? null : revision }),
 }
-await kit.authentication.current(input) // or requireActive(input) for verified-only routes
+await accountKit.authentication.current(input) // or requireActive(input) for verified-only routes
 ```
 
 The example's
