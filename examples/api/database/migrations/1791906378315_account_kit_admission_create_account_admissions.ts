@@ -6,14 +6,16 @@ export default class extends BaseSchema {
   async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
+      // Null only on a bootstrap approval waiting for its account.
       table
         .integer('user_id')
         .unsigned()
-        .notNullable()
+        .nullable()
         .unique()
         .references('id')
         .inTable('users')
         .onDelete('CASCADE')
+      table.string('bootstrap_email', 254).nullable().unique()
       table.timestamp('requested_at', { useTz: true, precision: 3 }).nullable()
       // The consumed account_invitations id. No foreign key: acceptance deletes that row.
       table.integer('invitation_id').nullable()
