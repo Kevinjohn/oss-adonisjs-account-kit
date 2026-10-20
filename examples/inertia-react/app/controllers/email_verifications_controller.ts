@@ -7,7 +7,7 @@ export default class EmailVerificationsController {
   async store({ auth, response, session }: HttpContext) {
     await kit.emailVerification.send({ userId: auth.getUserOrFail().id })
     session.flash('success', 'We have sent a new verification link.')
-    response.redirect().back()
+    return response.redirect().back()
   }
 
   async edit({ inertia, params, response }: HttpContext) {
@@ -24,6 +24,6 @@ export default class EmailVerificationsController {
     const { password } = await request.validateUsing(verifyEmailValidator)
     await kit.emailVerification.complete({ token: params.token, password })
     session.flash('success', 'Email confirmed. Sign in with your new password.')
-    response.redirect().toRoute('session.create')
+    return response.redirect().toRoute('session.create')
   }
 }

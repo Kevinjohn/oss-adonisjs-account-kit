@@ -14,11 +14,11 @@ export default class SessionController {
       { email, password, clientKey: ctx.request.ip() },
       sessionGuard(ctx)
     )
-    ctx.response.redirect().toRoute('dashboard')
+    return ctx.response.redirect().toRoute('dashboard')
   }
 
   async destroy(ctx: HttpContext) {
     await kit.authentication.logout(sessionGuard(ctx))
-    ctx.response.redirect().toRoute('session.create')
+    return ctx.response.redirect().toRoute('session.create')
   }
 }
