@@ -13,6 +13,9 @@ Initial public release.
 - Invitations with role, authorization callbacks, resend, revoke, cursor-paged listing and
   separate actor and recipient rate limits.
 - Password change, verified email change and profile updates behind the current password.
+- A self-service password change can keep the caller's own sign-in (`keepCurrent`) and returns
+  the new credential revision. The managed route keeps the calling session or token, and the
+  managed session guard gains `refresh(revision)`.
 - Session and opaque-token login through an existing AdonisJS Auth guard, with failed-attempt
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a
