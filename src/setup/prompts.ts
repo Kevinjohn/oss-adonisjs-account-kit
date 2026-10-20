@@ -55,6 +55,8 @@ export async function collectSetupChoices(
 ): Promise<SetupChoices> {
   const hasSavedChoices = initialChoices !== undefined
   const choices = parseSetupChoices(structuredClone(initialChoices ?? defaultSetupChoices()))
+  const savedRoutePrefix = choices.routePrefix
+  const savedStrategy = choices.authentication?.strategy
   const confirmed = async (question: string, fallback = false) => {
     const input = await ask(question)
     const answer = input.trim().toLowerCase()
@@ -84,7 +86,9 @@ export async function collectSetupChoices(
     'emailPasswordManagement',
     'socialAuthentication',
   ].some((feature) => choices.features.includes(feature as (typeof featureNames)[number]))
-  if (!registrationEnabled) {
+  // Social sign-in creates accounts under `closed` or `application` too; only `open` needs
+  // ordinary registration.
+  if (!registrationEnabled && choices.policy.registration === 'open') {
     choices.policy.registration = 'closed'
   }
   if (!registrationFieldsApplicable) choices.policy.registrationFields = []
@@ -282,7 +286,7 @@ export async function collectSetupChoices(
   } else {
     choices.mail = defaultSetupChoices().mail
   }
-  if (registrationEnabled) {
+  if (registrationEnabled || choices.features.includes('socialAuthentication')) {
     choices.policy.registration = answerChoice(
       await ask(
         `Registration policy (open/closed/application; current: ${choices.policy.registration})`
@@ -376,14 +380,21 @@ export async function collectSetupChoices(
       )) ||
       previous?.callbackOriginEnv ||
       'ACCOUNT_SOCIAL_ORIGIN'
-    choices.social.callbackPath =
-      (await ask(
-        `Social callback path with {provider} placeholder (${previous?.callbackPath ?? (choices.authentication?.strategy === 'access_tokens' ? '/auth/oauth/{provider}/callback' : `${choices.routePrefix}/auth/oauth/{provider}/callback`)})`
-      )) ||
-      previous?.callbackPath ||
-      (choices.authentication?.strategy === 'access_tokens'
+    const strategy = choices.authentication?.strategy
+    // A saved session path embeds the route prefix, so keep it only while both are unchanged.
+    const savedCallbackPath =
+      strategy === savedStrategy &&
+      (strategy === 'access_tokens' || choices.routePrefix === savedRoutePrefix)
+        ? previous?.callbackPath
+        : undefined
+    const defaultCallbackPath =
+      savedCallbackPath ||
+      (strategy === 'access_tokens'
         ? '/auth/oauth/{provider}/callback'
         : `${choices.routePrefix}/auth/oauth/{provider}/callback`)
+    choices.social.callbackPath =
+      (await ask(`Social callback path with {provider} placeholder (${defaultCallbackPath})`)) ||
+      defaultCallbackPath
     for (const provider of choices.social.providers) {
       const existingCredentials = previous?.credentials[provider]
       choices.social.credentials[provider] = {

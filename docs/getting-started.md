@@ -1,7 +1,8 @@
 # Getting started
 
-This tutorial adds password reset to an AdonisJS 7 API starter using its existing opaque `api`
-guard and `auth_access_tokens` table. It covers credential revocation and HTTP input validation.
+This focused tutorial adds password reset to an AdonisJS 7 API starter using its existing opaque
+`api` guard and `auth_access_tokens` table. For signup through protected access, settings, and
+reset in one namespace, start with the [complete core API walkthrough](guides/core-api.md).
 
 ## Before you start
 
@@ -116,7 +117,11 @@ or to `application` for your own signup rule. See [registration](registration.md
 node ace account-kit:doctor
 ```
 
-Every line should be green. A red line names the step that fixes it.
+Every installation check should be green. A red line names the step that fixes it. The doctor
+checks required tables and columns, including password nullability when social registration may
+create passwordless users. Its final **Unverified** summary is informational: it does not run
+notification callbacks, application policy, or credential revocation. The reset and protected-route
+checks below supply that smoke test.
 
 ![account-kit:doctor checking the configuration, limiter, APP_URL and tables in a new app](assets/demos/doctor.svg)
 
@@ -267,6 +272,8 @@ notice fails after commit, the controller still reports the successful password 
   and [error reference](reference/errors.md).
 - Send real email: [notifications](notifications.md) and
   [custom email templates](recipes/email-templates.md).
-- Add login, verification and invitations: the [recipes](README.md#how-to-guides).
+- Add signup, verification, login and protected settings with the
+  [complete core API walkthrough](guides/core-api.md); use the [recipes](README.md#how-to-guides)
+  for individual flows and invitations.
 - Prefer not to write controllers? Mount the [managed JSON routes](managed-http.md).
 - Test your flows: [testing](recipes/testing.md).
