@@ -117,7 +117,7 @@ test.group('setup Ace command', (group) => {
     await writeFile(join(root, 'config/account_kit_setup.json'), `${JSON.stringify(choices)}\n`)
     let prompted = false
     class NoPromptSetup extends SetupAccountKit {
-      override async interactiveChoices() {
+      override async interactiveChoices(): Promise<never> {
         prompted = true
         throw new Error('--check must not start the interactive wizard')
       }
