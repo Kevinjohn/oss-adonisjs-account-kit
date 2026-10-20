@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
 - Recover the Inertia example signup flow when account creation commits but notification or initial sign-in fails.
 - Improve account example contrast, keyboard focus, page landmarks, reduced motion, and narrow-screen layout.
 
