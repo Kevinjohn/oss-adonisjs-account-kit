@@ -28,19 +28,23 @@ for reset, activation, and email change, and seven days for invitations.
 The maintained Lucid mapping in [`adapters/lucid.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/adapters/lucid.ts)
 uses these application user fields:
 
-| Model property    | Database column     | Meaning                                                                                                  |
-| ----------------- | ------------------- | -------------------------------------------------------------------------------------------------------- |
-| `id`              | `id`                | Physical primary key; integer, string, or UUID.                                                          |
-| `email`           | `email`             | Confirmed address, or the address held by an inactive account.                                           |
-| `password`        | `password`          | Nullable local password hash; social-only accounts can have no password.                                 |
-| `unverifiedEmail` | `unverified_email`  | Pending address awaiting activation or email-change proof.                                               |
-| `emailVerifiedAt` | `email_verified_at` | Audit timestamp for the last completed verification; it does not determine whether an account is active. |
+| Model property    | Database column     | Meaning                                                                                                                            |
+| ----------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | `id`                | Physical primary key; integer, string, or UUID.                                                                                    |
+| `email`           | `email`             | Confirmed address, or the address held by an inactive account.                                                                     |
+| `password`        | `password`          | Nullable local password hash; social-only accounts can have no password.                                                           |
+| `unverifiedEmail` | `unverified_email`  | Pending address awaiting activation or email-change proof.                                                                         |
+| `emailVerifiedAt` | `email_verified_at` | Last completed verification; it does not decide whether an account is active, but a null value means the address is not confirmed. |
 
 An account is active when `unverified_email` differs from `email`. This includes
 `unverified_email = null`: existing records with a null value are treated as active, regardless of
 `email_verified_at`. A new inactive account stores the same normalized address in both `email` and
 `unverified_email`; a verified or invited account has `unverified_email = null`. Do not infer current
-verification status from `email_verified_at` alone.
+verification status from `email_verified_at` alone. A confirmed address needs both: an active
+account and a non-null `email_verified_at`. The admission domain requirement and the social
+link and unlink security notices check for a confirmed address, so an active row with a null
+`email_verified_at` fails domain admission with `reason: 'unverified'` and cannot fix that itself:
+`emailVerification.send` reports `already_verified` for an active account.
 
 ## Fresh installation
 
@@ -90,7 +94,9 @@ Use this owner checklist as application planning, not as a package migration com
 - Inventory current account rows, email values, password state, verification fields, pending email
   changes, and outstanding proofs or social identities.
 - Decide which existing rows should be active, which need activation, and how old proofs and linked
-  identities will be handled. Implement and review any data changes in the application.
+  identities will be handled. Set `email_verified_at` on active rows whose address you already
+  trust; leave it null only where domain admission and social notices should treat the address as
+  unconfirmed. Implement and review any data changes in the application.
 - In a disposable copy, run the migrations and exercise the selected existing-user and new-user
   flows, including attempts to use old proofs. Roll out only after the observed results match the
   decision.
