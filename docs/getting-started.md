@@ -116,7 +116,11 @@ or to `application` for your own signup rule. See [registration](registration.md
 node ace account-kit:doctor
 ```
 
-Every line should be green. A red line names the step that fixes it.
+Every installation check should be green. A red line names the step that fixes it. The doctor
+checks required tables and columns, including password nullability when social registration may
+create passwordless users. Its final **Unverified** summary is informational: it does not run
+notification callbacks, application policy, or credential revocation. The reset and protected-route
+checks below supply that smoke test.
 
 ![account-kit:doctor checking the configuration, limiter, APP_URL and tables in a new app](assets/demos/doctor.svg)
 
