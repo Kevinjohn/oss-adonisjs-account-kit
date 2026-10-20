@@ -29,7 +29,11 @@ export default class AccountPasswordController {
       reportCommittedFailure(logger, error, 'account_password.change')
       revision = committed
     }
-    if (authStrategy() === 'session') ctx.session.put('accountKitRevision', revision ?? '')
+    if (authStrategy() === 'session') {
+      // A new session id, so a copied cookie for this session does not survive the change.
+      ctx.session.regenerate()
+      ctx.session.put('accountKitRevision', revision ?? '')
+    }
     return response.ok({ changed: true })
   }
 }

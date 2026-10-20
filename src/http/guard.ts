@@ -186,6 +186,8 @@ export function createManagedGuard<User>(
             ctx.session.regenerate()
           },
           async refresh(revision) {
+            // A new session id, so a copied cookie for this session does not survive the change.
+            ctx.session.regenerate()
             ctx.session.put(revisionKey, revision ?? '')
           },
         }

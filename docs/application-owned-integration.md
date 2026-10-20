@@ -97,7 +97,9 @@ try {
   reportCommittedFailure(logger, error, 'account_password.change')
   revision = committed
 }
-// `handleKey` and `revisionKey` are the keys your guard's `establish` wrote.
+// `handleKey` and `revisionKey` are the keys your guard's `establish` wrote. Regenerating gives the
+// session a new id, so a copied cookie for it does not survive the change.
+session.regenerate()
 session.put(revisionKey, revision ?? '')
 
 return response.ok({ changed: true })
