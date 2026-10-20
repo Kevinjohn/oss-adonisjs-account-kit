@@ -7,7 +7,12 @@ import { notifications } from '#services/account_kit_notifications'
 import { authorize, canAccess, onInvitationAccepted } from '#services/account_kit_authorization'
 import { registrationFullName } from '#services/registration_fields'
 import { referencePasswordLimits } from '#validators/password'
-import { socialProvider } from '#services/social_provider'
+import { allySocialProvider } from '#services/social_provider'
+
+// Tests swap Ally for a deterministic fixture; production never loads test code.
+const socialProvider = app.inTest
+  ? (await import('#tests/helpers/social_provider_fixture')).fixtureProvider
+  : allySocialProvider
 
 const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value : `${value}/`)
 const appUrl = normalizeBaseUrl(env.get('APP_URL'))

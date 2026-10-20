@@ -67,6 +67,17 @@ export function fakeManagedHttp() {
   return { router, routes, context, pending }
 }
 
+/** An in-memory stand-in for the request session: get, put and forget over a Map. */
+export function sessionStore() {
+  const values = new Map<string, unknown>()
+  return {
+    values,
+    get: (key: string) => values.get(key),
+    put: (key: string, value: unknown) => void values.set(key, value),
+    forget: (key: string) => void values.delete(key),
+  }
+}
+
 /** A guard whose adapter is never built: a signed-in session caller unless overridden. */
 export function stubGuard<Credential = unknown>(
   overrides: Partial<ManagedGuard<Credential>> = {}
