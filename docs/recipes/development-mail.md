@@ -36,6 +36,10 @@ Use the link below to set a new password. If you did not request this, you can i
 Reset password: http://localhost:3333/account-kit/recovery/2fGx...
 ```
 
+`/account-kit/recovery` is the generated default action-link destination for an application-owned
+page. It is not a managed API route; managed password-reset endpoints use `auth/password-reset`
+after the configured route prefix.
+
 It throws when `environment` is `'production'`, because logged links are live credentials.
 
 For production, replace the capture callback with `createMailNotifications` after configuring the
