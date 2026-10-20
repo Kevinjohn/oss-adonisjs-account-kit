@@ -231,6 +231,36 @@ test.group('admission decisions', (group) => {
     }
   })
 
+  test('two approvers deciding on each other at once apply in some serial order', async ({
+    assert,
+  }) => {
+    const first = await owner('first@example.test')
+    const second = await owner('second@example.test')
+    // Each decision waits briefly for the other inside its transaction, so both would hold their
+    // locks at once if the two could run together.
+    let arrived = 0
+    const decide = async () => {
+      arrived++
+      for (let waited = 0; arrived < 2 && waited < 20; waited++)
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      return true
+    }
+    const { admission } = makeAdmission(kit, {
+      approval: { required: true, authorize: { decide, list: async () => true } },
+    })
+    const results = await Promise.allSettled([
+      admission.revoke({ actorId: first.id, userId: second.id }),
+      admission.revoke({ actorId: second.id, userId: first.id }),
+    ])
+    // The first revocation leaves the other actor revoked, so the second is refused.
+    assert.lengthOf(
+      results.filter((result) => result.status === 'fulfilled'),
+      1
+    )
+    const refused = results.find((result) => result.status === 'rejected')
+    assert.instanceOf((refused as PromiseRejectedResult).reason, AuthorizationError)
+  })
+
   test('a rejection survives login, verification, magic link, social login and email change', async ({
     assert,
   }) => {

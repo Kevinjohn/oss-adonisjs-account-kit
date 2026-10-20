@@ -67,7 +67,7 @@ export default class InstallAdmission extends BaseCommand {
       '  2. Gate protected routes with admissionMiddleware(...), and keep the admission status route reachable'
     )
     this.logger.log(
-      '  3. Decide who may approve in config/admission.ts (approval.authorize), then run node ace migrate'
+      '  3. Decide who may approve in config/admission.ts (approval.authorize), then run node ace migration:run'
     )
   }
 }
