@@ -6,7 +6,8 @@ import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { configure, migrationNames } from '../configure.js'
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import { configure, migrationNames, migrationSchema } from '../configure.js'
 
 test('configures the package idempotently without replacing application-owned files', async ({
   assert,
@@ -107,6 +108,13 @@ test('configures the package idempotently without replacing application-owned fi
         await readFile(join(migrationsDirectory, filename), 'utf8'),
       ])
     )
+    for (const [filename, contents] of generatedFiles) {
+      const tableName = filename.match(/^\d+_account_kit_create_(.+)\.ts$/)?.[1]
+      if (!tableName) continue
+      assert.include(contents, `protected tableName = '${tableName}'`)
+      assert.include(contents, 'createTable(this.tableName,')
+      assert.include(contents, 'dropTable(this.tableName)')
+    }
     await writeFile(configPath, existingConfig)
     await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
 
@@ -246,4 +254,9 @@ test('configure registers the root provider export and keeps a registered legacy
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('migrationSchema reports invalid schema flags with RuntimeException', ({ assert }) => {
+  assert.throws(() => migrationSchema('bad-name'), RuntimeException)
+  assert.throws(() => migrationSchema('users', 'bigint' as never), RuntimeException)
 })

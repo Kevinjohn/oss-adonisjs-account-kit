@@ -103,7 +103,7 @@ registerManagedRoutes(router, {
 })
 ```
 
-The enabled names are `authentication`, `registration`, `passwordReset`, `magicLinkLogin`, `emailVerification`, `emailPasswordManagement`, `invitations`, `socialAuthentication`, `sessionManagement`, `dataExport`, and `accountDeletion`. Magic-link routes are described in [magic-link sign-in](magic-link.md); sign-in management routes in [signed-in devices](signed-in-devices.md); export and deletion routes in [account export and deletion](account-data.md). `verificationRequired` defaults to `true`. Setting it to `false` permits an unverified account on routes marked `active`; the selected guard, credential revision, restriction, and invitation permission checks still apply. Use the same setting in `managedAccountMiddleware({ active })` on application-owned routes. Registration availability remains an explicit `registration.availability` setting in the service configuration. Managed signup accepts only `open`; `closed` and `application` reject before calling registration. Application-owned admission must exclude `auth.signup` and call the public registration service from its trusted controller. Invitations are excluded by default until selected and authorised. One group with one guard is supported. A second registration on the same router is rejected. Path and method collisions with application routes are checked when Adonis commits routes, before the server starts handling requests; onboarding also reports known conflicts during its plan. The social group requires `extensions.social.providers` and follows [the managed social contract](managed-social.md).
+The enabled names are `authentication`, `registration`, `passwordReset`, `magicLinkLogin`, `emailVerification`, `emailPasswordManagement`, `invitations`, `socialAuthentication`, `sessionManagement`, `dataExport`, and `accountDeletion`. Magic-link routes are described in [magic-link sign-in](magic-link.md); sign-in management routes in [signed-in devices](signed-in-devices.md); export and deletion routes in [account export and deletion](account-data.md). `verificationRequired` defaults to `true`. Setting it to `false` permits an unverified account on routes marked `active`; the selected guard, credential revision, restriction, and invitation permission checks still apply. Use the same setting in `managedAccountMiddleware({ active })` on application-owned routes. Registration availability remains an explicit `registration.availability` setting in the service configuration. Managed signup accepts only `open`; `closed` and `application` reject before calling registration. Application-owned admission must exclude `auth.signup` and call the public registration service from its trusted controller. Invitations are excluded by default until selected and authorized. One group with one guard is supported. A second registration on the same router is rejected. Path and method collisions with application routes are checked when Adonis commits routes, before the server starts handling requests; onboarding also reports known conflicts during its plan. The social group requires `extensions.social.providers` and follows [the managed social contract](managed-social.md).
 
 `extensions.registration.validate`, `extensions.invitationAcceptance.validate`, and `extensions.profile.validate` receive an `HttpContext` and return typed, validated input including optional `registrationData`. They run before a service call and outside its transaction. Service configuration owns the shared field allowlist, trusted mapping and password policy for both managed and service callers. `extensions.representAccount` receives a safe `CurrentAccount` after a service read and returns application-owned public JSON. It runs after the read; it must never add password hashes or private adapter data. A representation error after credential issuance or an account mutation is logged and the response uses the package's safe account allowlist, preserving the committed result. A representation error on a read-only route propagates. `extensions.message(code, defaultMessage)` may change public error wording without changing the status or machine code; it receives no exception or database details and runs during response mapping. Notifications, access policy hooks, and link destinations remain typed callbacks in `defineConfig`; their transaction and delivery semantics are documented with those public services. Replacing a route means adding its named endpoint to `except` and calling the public service from the application's controller. For setup-generated mounts, record exclusions in the setup input's `managedExcept` list so regeneration preserves them; direct callers pass `except` to `registerManagedRoutes`. There is no middleware-stack replacement hook.
 
@@ -159,6 +159,8 @@ When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/di
 
 `E_INVALID_CREDENTIALS` is the same key `@adonisjs/auth` uses, so an existing translation covers both packages.
 
+Clients that translate on their side should key on `code`, which is a stable contract; see [error code stability](reference/errors.md#stability).
+
 The middleware generated by `@adonisjs/i18n` picks the locale from the `Accept-Language` header. For one site-wide language, return it from `getRequestLocale` in `app/middleware/detect_user_locale_middleware.ts` and keep the rest of the middleware, which also installs the validation messages provider:
 
 ```ts
@@ -205,12 +207,32 @@ Request-validation messages already follow the locale: the managed routes call `
     "messages": {
       "unique": "The {field} has already been taken.",
       "passwordPolicy": "The {field} does not meet the password policy."
+    },
+    "fields": {
+      "email": "email",
+      "password": "password",
+      "passwordConfirmation": "password confirmation",
+      "currentPassword": "current password",
+      "newPassword": "new password",
+      "newPasswordConfirmation": "new password confirmation",
+      "role": "role"
     }
   }
 }
 ```
 
-The fields people fill in are `email`, `password`, `passwordConfirmation`, `currentPassword`, `newPassword`, `newPasswordConfirmation` and `role`. Translate their names under `shared.fields`; the other managed fields are sent by client code.
+`shared.fields` names the fields people fill in; translate those names too. The other managed fields are sent by client code.
+
+Community [translations](translations/index.md) of both files are ready to copy.
+
+The password-reset and magic-link requests answer `202` with an acknowledgement looked up as `account_kit.<key>`. Add them to `resources/lang/<locale>/account_kit.json`:
+
+```json
+{
+  "password_reset_requested": "If the account exists, instructions will be sent.",
+  "magic_link_requested": "If the account exists, a sign-in link will be sent."
+}
+```
 
 ### The selected guard protects application routes too
 
@@ -224,4 +246,4 @@ Managed activation adds one call in the application's routes file and uses exist
 
 For session clients, enable Shield CSRF middleware on authentication-establishing and other state-changing routes, use the managed CSRF bootstrap endpoint (or supply an application-owned replacement when `auth.csrf` is excluded), send its token in `x-csrf-token`, use secure HTTP-only cookies, configure trusted proxies before deriving client IP, and set a deliberate origin/CORS policy. JSON and CORS alone do not provide CSRF protection. The managed session handlers fail closed when Shield CSRF state is absent. Configure HTTPS public origins in production.
 
-Redact the proof-bearing path segment from access logs for `auth/password-reset/:token`, `auth/email-verification/:token`, `auth/invitations/:token`, and `auth/email-change/:token`; do not log full bearer credentials, passwords, or proofs. Supply a shared limiter store and the applicable service budgets. Choose mail delivery and, if durable delivery is required by the application, route notification callbacks through its own transactional outbox and worker. Configure explicit invitation authorisation before enabling invitation routes. Send/resend permission is checked when the invitation is issued; acceptance validates the live invitation and recipient proof, but does not automatically re-check whether the inviter still has permission. Revoke outstanding invitations when an inviter loses that authority if your application requires it. Apply the selected guard's revision check to application-owned protected routes. If an endpoint is excluded, the application owns its request validation, response mapping, authentication and CSRF boundary; it may reuse the public account service.
+Redact the proof-bearing path segment from access logs for `auth/password-reset/:token`, `auth/email-verification/:token`, `auth/invitations/:token`, and `auth/email-change/:token`; do not log full bearer credentials, passwords, or proofs. Supply a shared limiter store and the applicable service budgets. Choose mail delivery and, if durable delivery is required by the application, route notification callbacks through its own transactional outbox and worker. Configure explicit invitation authorization before enabling invitation routes. Send/resend permission is checked when the invitation is issued; acceptance validates the live invitation and recipient proof, but does not automatically re-check whether the inviter still has permission. Revoke outstanding invitations when an inviter loses that authority if your application requires it. Apply the selected guard's revision check to application-owned protected routes. If an endpoint is excluded, the application owns its request validation, response mapping, authentication and CSRF boundary; it may reuse the public account service.
