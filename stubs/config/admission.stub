@@ -1,0 +1,30 @@
+{{{ exports({ to: app.configPath('admission.ts') }) }}}
+import { defineAdmission } from 'adonisjs-account-kit/admission'
+
+export default defineAdmission({
+  /**
+   * Admit only confirmed addresses on these domains. Omit to disable.
+   */
+  // domain: { allowed: ['example.com'], includeSubdomains: false },
+
+  /**
+   * Admit only people with invitation evidence. Omit to disable.
+   */
+  // invitation: { required: true },
+
+  /**
+   * Admit only people an approver approved. Everything is denied until you decide who decides.
+   */
+  approval: {
+    required: true,
+    authorize: {
+      decide: async () => false,
+      list: async () => false,
+    },
+  },
+
+  /**
+   * Receives admission events after commit. Account Kit sends no notification of its own.
+   */
+  // onAdmissionEvent: async (event) => {},
+})

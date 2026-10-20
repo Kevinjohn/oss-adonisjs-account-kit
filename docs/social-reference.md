@@ -39,7 +39,7 @@ loopback URLs.
 - The example's `registration.mapFields` requires an application-collected full name. Provider name
   and email are never passed through that mapper as trusted registration data.
 - Applications with `registration.availability: 'application'` must make their own server-side
-  admission decision and call `completeRegistration` with a trusted `admit` callback.
+  signup decision and call `completeRegistration` with a trusted `admit` callback.
 - Closed registration still permits already linked identities to sign in.
 - A new account with a provider-verified invited address accepts that invitation
   ([Signing in with the invited address](account-operations.md#signing-in-with-the-invited-address)).

@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Kernel } from '@adonisjs/core/ace'
 import { test } from '@japa/runner'
 import { bootTestApp } from './helpers/app.js'
@@ -22,6 +25,9 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     const http = await import('adonisjs-account-kit/http')
     const ally = await import('adonisjs-account-kit/ally')
     const capture = await import('adonisjs-account-kit/testing/notifications')
+    const admission = await import('adonisjs-account-kit/admission')
+    const admissionProvider = await import('adonisjs-account-kit/admission/provider')
+    const admissionCommands = await import('adonisjs-account-kit/admission/commands')
     assert.isFunction(root.AccountKit)
     assert.isFunction(root.defineConfig)
     assert.isFunction(root.configure)
@@ -44,6 +50,18 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(commands.getCommand)
     assert.isFunction(http.registerManagedRoutes)
     assert.isFunction(http.createManagedGuard)
+    assert.isFunction(admission.defineAdmission)
+    assert.isFunction(admission.AccountAdmission)
+    assert.isFunction(admission.admissionMiddleware)
+    assert.isFunction(admission.withInvitationEvidence)
+    assert.isFunction(admission.withAdmissionCleanup)
+    assert.instanceOf(new admission.AdmissionDecisionError(), root.AccountKitError)
+    assert.isFunction(admissionProvider.default)
+    const admissionCommandList = await admissionCommands.getMetaData()
+    assert.includeMembers(
+      admissionCommandList.map((command) => command.commandName),
+      ['account-kit:admission:approve', 'account-kit:admission:revoke']
+    )
     const built = await bootTestApp({ accountKitProvider: 'build' })
     try {
       await resetSchema(built)
@@ -59,6 +77,14 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       const service = await import('adonisjs-account-kit/services/main')
       assert.equal(service.default, first)
 
+      new admissionProvider.default(built.app).register()
+      built.app.config.set(
+        'admission',
+        admission.defineAdmission({ invitation: { required: true } })
+      )
+      const gate = await built.app.container.make(admission.AccountAdmission)
+      assert.equal(gate.kit, first)
+
       const metadata = await commands.getMetaData()
       const pruneMetadata = metadata.find((item) => item.commandName === 'account-kit:prune')
       assert.isDefined(pruneMetadata)
@@ -70,4 +96,38 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     } finally {
       await built.close()
     }
+  })
+
+/** Every built module `entry` reaches through relative static imports, including itself. */
+async function reachable(entry: string): Promise<Set<string>> {
+  const seen = new Set<string>()
+  const pending = [resolve(entry)]
+  while (pending.length > 0) {
+    const file = pending.pop()!
+    if (seen.has(file)) continue
+    seen.add(file)
+    const source = await readFile(file, 'utf8')
+    for (const match of source.matchAll(/(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/g))
+      pending.push(resolve(dirname(file), match[1]))
+  }
+  return seen
+}
+
+if (process.env.TEST_BUILT_EXPORTS === '1')
+  test('the built root entry never reaches the admission module', async ({ assert }) => {
+    const build = fileURLToPath(new URL('../build/', import.meta.url))
+    const rootFiles = await reachable(join(build, 'index.js'))
+    const admissionFiles = await reachable(join(build, 'src/admission/main.js'))
+    assert.isAbove(rootFiles.size, 1)
+    const admissionOnly = [...admissionFiles].filter((file) => !rootFiles.has(file))
+    assert.isNotEmpty(admissionOnly)
+    const leaked: string[] = []
+    for (const file of rootFiles) {
+      if (file.includes('/src/admission/')) leaked.push(file)
+      else {
+        const source = await readFile(file, 'utf8')
+        if (source.includes('account_admissions')) leaked.push(file)
+      }
+    }
+    assert.deepEqual(leaked, [])
   })
