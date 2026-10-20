@@ -54,6 +54,8 @@ Initial public release.
 - A Lucid users adapter and a reusable adapter contract suite for custom adapters.
 - Ace commands: `account-kit:setup`, `account-kit:prune`, `account-kit:retirement-impact` and
   `account-kit:doctor`, which checks config, limiter, `APP_URL` and database tables.
+- `account-kit:doctor` also checks deletion cleanup tables and password nullability for enabled
+  passwordless social registration, then names the callback and credential flows it did not test.
 - `createLogNotifications` prints account emails and their links to the logger during development.
 - `createMailNotifications` and `createLogNotifications` resolve the AdonisJS Mail and logger
   services when a message is sent; both `mail` and `logger` are optional.
