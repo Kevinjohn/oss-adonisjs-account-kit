@@ -11,10 +11,10 @@ Setup is the alternative to `node ace add adonisjs-account-kit`, not a step afte
 `config/account_kit.ts` or the package migrations already exist, setup marks each of them as a
 conflict and `--apply` writes nothing.
 
-1. Install the package without configuring it: `npm install adonisjs-account-kit`.
+1. Install the package without configuring it: `pnpm add adonisjs-account-kit`.
 2. Add `() => import('adonisjs-account-kit/commands')` to the `commands` array in `adonisrc.ts`.
 3. Install TypeScript 5.9.3 or newer 5.x, or 6.0.3 or newer 6.x, if the app does not have it:
-   `npm install -D typescript@^5.9.3`. Setup reads your config files with it instead of running
+   `pnpm add -D typescript@^5.9.3`. Setup reads your config files with it instead of running
    them. Other Account Kit entry points do not load TypeScript.
 4. Check `config/auth.ts` for the guard you will use. Setup never creates a guard or changes the
    default one.
@@ -41,7 +41,20 @@ Both give the same typed choices. The command previews by default:
 | `--check`      | Reads the saved choices and checks the current app, without writing |
 | `--production` | Also checks public origins and session security for deployment      |
 
-![account-kit:setup previewing the API choices file without writing, then applying it: config, guard adapter, middleware, inert route mount and 13 migrations](assets/demos/setup.svg)
+![Recording of account-kit:setup previewing and applying an earlier 13-migration inventory](assets/demos/setup.svg)
+
+This recording predates the current migration inventory. A fresh setup currently generates 11
+migrations.
+
+The generated migrations assume the application users table already exists. On a fresh application,
+create that table with the application's own migration before running Account Kit migrations. The
+package adds nullable account and verification columns to that table and makes `password` nullable;
+it does not create the users table or infer verification state for existing rows. See the
+[identity creation guide](identity-creation.md) for the expected fields and the owner checklist for
+existing accounts. Rows with `unverified_email = null` are treated as active, so decide how legacy
+verification state should be represented before enabling account flows. The migration leaves
+`email_verified_at` null on existing rows; set it where the address is already trusted, or domain
+admission treats those accounts as unconfirmed.
 
 The first apply leaves the managed routes switched off. Keep
 `authentication.applicationRouteRevocation` false for it:
