@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import kit from 'adonisjs-account-kit/services/main'
 import { DateTime } from 'luxon'
 import User from '#models/user'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 type SignupConfig = {
   deps: {
@@ -16,19 +16,7 @@ type SignupConfig = {
 }
 
 test.group('Signup recovery in the browser', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await truncate()
-    await db
-      .table('account_transaction_lock')
-      .insert({ id: 1, version: 0 })
-      .onConflict('id')
-      .ignore()
-
-    return async () => {
-      await truncate()
-    }
-  })
+  group.each.setup(setupAccountDatabase)
 
   test('keeps the account and offers dashboard resend after activation delivery fails', async ({
     visit,
