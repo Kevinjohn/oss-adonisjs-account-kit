@@ -33,7 +33,7 @@ export function accessTokenGuard() {
   }
 }
 
-export function sessionGuard(ctx: HttpContext) {
+export function accountKitSessionGuard(ctx: HttpContext) {
   const guard = ctx.auth.use('web')
   return {
     strategy: 'session' as const,
