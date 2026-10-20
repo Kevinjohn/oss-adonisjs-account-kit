@@ -10,6 +10,7 @@ import { normalizeEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { invitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
+import { preparePassword, storePassword } from './password_hashing.js'
 import { throttlerOf } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -47,6 +48,7 @@ export async function completePasswordReset(
     throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
+  const password = await preparePassword(deps.config.users, input.password)
 
   const { value: reset, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
@@ -61,7 +63,7 @@ export async function completePasswordReset(
         (candidate, account) => candidate.email === account.email
       )
 
-      await deps.config.users.setPassword(row.tokenable_id, input.password, trx)
+      await storePassword(deps.config.users, row.tokenable_id, password, trx)
       if (deps.config.enabled.includes('socialAuthentication'))
         await clearPendingSocialIdentities(trx, row.tokenable_id)
       if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email)

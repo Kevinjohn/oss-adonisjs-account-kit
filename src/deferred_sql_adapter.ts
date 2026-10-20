@@ -18,6 +18,8 @@ export function deferredSqlUsersAdapter(
     findById: async (...args) => inner().findById(...args),
     create: async (...args) => inner().create(...args),
     setPassword: async (...args) => inner().setPassword(...args),
+    hashPassword: async (...args) => inner().hashPassword(...args),
+    setPasswordHash: async (...args) => inner().setPasswordHash(...args),
     setEmail: async (...args) => inner().setEmail(...args),
     setUnverifiedEmail: async (...args) => inner().setUnverifiedEmail(...args),
     updateRegistrationData: async (...args) => inner().updateRegistrationData(...args),

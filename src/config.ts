@@ -76,6 +76,14 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   for (const name of ['authorize', 'urls', 'notify', 'expiresIn', 'invitationThrottle'] as const) {
     if (config[name] !== undefined) assertPlainObject(config[name], name)
   }
+  if (config.users.hashPassword !== undefined) {
+    if (typeof config.users.hashPassword !== 'function')
+      throw new RuntimeException('account_kit: users.hashPassword must be a function')
+    if (typeof config.users.setPasswordHash !== 'function')
+      throw new RuntimeException(
+        'account_kit: users.setPasswordHash must be a function when users.hashPassword is set'
+      )
+  }
   for (const capability of enabled) {
     for (const method of capabilityRegistry[capability].adapterMethods) {
       if (typeof config.users[method] !== 'function')
