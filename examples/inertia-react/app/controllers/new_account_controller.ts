@@ -1,7 +1,7 @@
 import kit from 'adonisjs-account-kit/services/main'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
-import { sessionGuard } from '#services/session_guard'
+import { accountKitSessionGuard } from '#services/session_guard'
 
 export default class NewAccountController {
   async create({ inertia }: HttpContext) {
@@ -17,7 +17,7 @@ export default class NewAccountController {
     await kit.registration.register({ email, password, registrationData: { fullName } })
     await kit.authentication.login(
       { email, password, clientKey: ctx.request.ip() },
-      sessionGuard(ctx)
+      accountKitSessionGuard(ctx)
     )
     ctx.session.flash('success', 'Account created. Check your email for a verification link.')
     return ctx.response.redirect().toRoute('dashboard')
