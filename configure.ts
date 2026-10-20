@@ -1,5 +1,7 @@
-import { access, readdir } from 'node:fs/promises'
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import { readFile, readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
+import { isSqlIdentifier } from './src/sql_identifier.js'
 
 export const migrationNames = [
   'add_account_columns_to_users',
@@ -19,14 +21,15 @@ function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'
 }
 
-export type UserIdType = 'integer' | 'string' | 'uuid'
+const userIdTypes = ['integer', 'string', 'uuid'] as const
+export type UserIdType = (typeof userIdTypes)[number]
 
 /** Metadata for newly generated migrations; existing application files are never rewritten. */
 export function migrationSchema(usersTable = 'users', userIdType: UserIdType = 'integer') {
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(usersTable))
-    throw new Error('account_kit: users-table must be a plain SQL identifier')
-  if (!['integer', 'string', 'uuid'].includes(userIdType))
-    throw new Error('account_kit: user-id-type must be integer, string or uuid')
+  if (!isSqlIdentifier(usersTable))
+    throw new RuntimeException('account_kit: users-table must be a plain SQL identifier')
+  if (!userIdTypes.includes(userIdType))
+    throw new RuntimeException('account_kit: user-id-type must be integer, string or uuid')
   const column = (name: string) =>
     userIdType === 'integer'
       ? `table.integer('${name}').unsigned()`
@@ -48,10 +51,17 @@ export function migrationSchema(usersTable = 'users', userIdType: UserIdType = '
  * `uuid`).
  */
 export async function configure(command: Configure) {
-  const schema = migrationSchema(
-    command.parsedFlags['users-table'] ?? command.parsedFlags.usersTable ?? 'users',
-    command.parsedFlags['user-id-type'] ?? command.parsedFlags.userIdType ?? 'integer'
-  )
+  let schema: ReturnType<typeof migrationSchema>
+  try {
+    schema = migrationSchema(
+      command.parsedFlags['users-table'] ?? 'users',
+      command.parsedFlags['user-id-type'] ?? 'integer'
+    )
+  } catch (error) {
+    command.exitCode = 1
+    command.logger.logError((error as Error).message)
+    return
+  }
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
   await codemods.makeUsingStub(command.stubsRoot, 'config/account_kit.stub', {
@@ -80,20 +90,23 @@ export async function configure(command: Configure) {
     })
   }
 
+  // Applications configured before the root export keep their registered legacy provider path.
+  let rcContents = ''
+  try {
+    rcContents = await readFile(command.app.makePath('adonisrc.ts'), 'utf8')
+  } catch (error) {
+    if (!isMissing(error)) throw error
+  }
+  const hasLegacyProvider = /['"]adonisjs-account-kit\/providers\/account_kit_provider['"]/.test(
+    rcContents
+  )
   await codemods.updateRcFile((rcFile) => {
-    rcFile.addProvider('adonisjs-account-kit/providers/account_kit_provider')
+    if (!hasLegacyProvider) rcFile.addProvider('adonisjs-account-kit/account_kit_provider')
     rcFile.addCommand('adonisjs-account-kit/commands')
   })
 
   // The generated config builds links from APP_URL. Declare it in start/env.ts so a missing
   // value fails at boot; defineEnvValidations leaves an existing declaration unchanged.
-  try {
-    await access(command.app.makePath('start/env.ts'))
-  } catch (error) {
-    if (!isMissing(error)) throw error
-    command.logger.warning('start/env.ts not found; declare APP_URL as a validated URL manually')
-    return
-  }
   await codemods.defineEnvValidations({
     leadingComment: 'Variables for adonisjs-account-kit',
     variables: { APP_URL: "Env.schema.string({ format: 'url', tld: false })" },

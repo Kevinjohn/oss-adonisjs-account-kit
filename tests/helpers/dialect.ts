@@ -5,7 +5,7 @@ export const testEngine = ({ 'pg': 'pg', 'mysql2': 'mysql', 'better-sqlite3': 's
   testClient()
 ]
 
-/** SQLite serialises writers with one database lock; PostgreSQL and MySQL lock rows. */
+/** SQLite serializes writers with one database lock; PostgreSQL and MySQL lock rows. */
 export const locksRows = testEngine !== 'sqlite'
 
 /** The error code a lock request that must not wait fails with. */

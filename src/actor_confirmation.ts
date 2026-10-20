@@ -3,6 +3,17 @@ import { IdentityNotConfirmedError, InvalidInputError, NoPasswordError } from '.
 import { consumeSocialSensitiveProof } from './social_proofs.js'
 import type { AccountUser, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
 
+/** Load a user by id, or reject the request when the user no longer exists. */
+export async function requireUser(
+  config: ResolvedConfig,
+  id: UserId,
+  trx?: Trx
+): Promise<AccountUser> {
+  const user = await config.users.findById(id, trx)
+  if (!user) throw new InvalidInputError('Unknown actor')
+  return user
+}
+
 /** Lock the actor and consume the credential proof inside the same write transaction. */
 export async function confirmActor(
   config: ResolvedConfig,
@@ -13,8 +24,7 @@ export async function confirmActor(
   purpose: SensitivePurpose
 ): Promise<AccountUser> {
   await lockUser(trx, config, actorId)
-  const actor = await config.users.findById(actorId, trx)
-  if (!actor) throw new InvalidInputError('Unknown actor')
+  const actor = await requireUser(config, actorId, trx)
   if (!actor.hasPassword) {
     if (!config.enabled.includes('socialAuthentication')) throw new NoPasswordError()
     if (typeof recentProof !== 'string') throw new IdentityNotConfirmedError()

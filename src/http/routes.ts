@@ -85,6 +85,8 @@ export interface ManagedRoute {
    * headers.
    */
   proof?: true
+  /** The kind of token a proof route checks; it picks the invalid-token error code. */
+  proofKind?: 'password' | 'email' | 'invitation' | 'magicLink'
   /** Set when the route exists only for one guard type. */
   strategy?: 'session' | 'access_tokens'
 }
@@ -138,6 +140,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/password-reset/:token',
     access: 'public',
     proof: true,
+    proofKind: 'password',
   },
   {
     name: 'auth.passwordReset.complete',
@@ -146,6 +149,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/password-reset/:token',
     access: 'public',
     proof: true,
+    proofKind: 'password',
   },
   {
     name: 'auth.magicLink.request',
@@ -161,6 +165,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/magic-link/:token',
     access: 'public',
     proof: true,
+    proofKind: 'magicLink',
   },
   {
     name: 'auth.magicLink.complete',
@@ -169,6 +174,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/magic-link/:token',
     access: 'public',
     proof: true,
+    proofKind: 'magicLink',
   },
   {
     name: 'auth.emailVerification.inspect',
@@ -177,6 +183,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/email-verification/:token',
     access: 'public',
     proof: true,
+    proofKind: 'email',
   },
   {
     name: 'auth.emailVerification.complete',
@@ -185,6 +192,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/email-verification/:token',
     access: 'public',
     proof: true,
+    proofKind: 'email',
   },
   {
     name: 'auth.invitation.inspect',
@@ -193,6 +201,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/invitations/:token',
     access: 'public',
     proof: true,
+    proofKind: 'invitation',
   },
   {
     name: 'auth.invitation.accept',
@@ -201,6 +210,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/invitations/:token',
     access: 'public',
     proof: true,
+    proofKind: 'invitation',
   },
   {
     name: 'auth.emailChange.inspect',
@@ -209,6 +219,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/email-change/:token',
     access: 'public',
     proof: true,
+    proofKind: 'email',
   },
   {
     name: 'auth.emailChange.complete',
@@ -217,6 +228,7 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
     suffix: 'auth/email-change/:token',
     access: 'public',
     proof: true,
+    proofKind: 'email',
   },
   {
     name: 'account.logout',

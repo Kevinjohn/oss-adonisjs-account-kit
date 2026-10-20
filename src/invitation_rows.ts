@@ -1,5 +1,6 @@
-import { DateTime } from 'luxon'
+import type { DateTime } from 'luxon'
 import type { Invitation, UserId } from './types.js'
+import { readTimestamp } from './timestamps.js'
 
 type DatabaseDate = Date | string
 
@@ -15,11 +16,7 @@ export interface InvitationDatabaseRow {
 }
 
 function toDateTime(value: DatabaseDate): DateTime {
-  const dateTime =
-    value instanceof Date
-      ? DateTime.fromJSDate(value, { zone: 'utc' })
-      : DateTime.fromISO(value, { zone: 'utc' })
-  return dateTime.toUTC()
+  return readTimestamp(value)!.toUTC()
 }
 
 export function toInvitation(row: InvitationDatabaseRow): Invitation {

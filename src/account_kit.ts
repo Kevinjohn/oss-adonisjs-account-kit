@@ -229,7 +229,7 @@ export class AccountKit {
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
   }
   /**
-   * Operator context only: callers with shell access (Ace commands). No actor authorisation and no
+   * Operator context only: callers with shell access (Ace commands). No actor authorization and no
    * throttles apply; never expose these methods to an HTTP request.
    */
   readonly operator = {

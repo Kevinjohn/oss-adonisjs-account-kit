@@ -1,19 +1,14 @@
 /** Managed handlers for the invitations capability: public inspect/accept and actor send/list/resend/revoke. */
-import { InvalidInputError } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { currentAccount, invalidProof, passwordPolicyError } from './response_helpers.js'
+import { positiveId } from './positive_id.js'
+import { safeAccount } from '../authentication.js'
+import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import {
   invitationAcceptValidator,
   invitationListValidator,
   invitationSendValidator,
 } from './validators.js'
-
-function invitationId(value: string): number {
-  const id = Number(value)
-  if (!Number.isSafeInteger(id) || id <= 0) throw new InvalidInputError('Invalid invitation ID')
-  return id
-}
 
 export const invitationHandlers = {
   'auth.invitation.inspect': async ({ context, kit, options }) => {
@@ -34,7 +29,7 @@ export const invitationHandlers = {
       password: input.password,
       registrationData: 'registrationData' in input ? input.registrationData : undefined,
     })
-    return response.created({ account: await representIssued(currentAccount(user)) })
+    return response.created({ account: await representIssued(safeAccount(user)) })
   },
   'account.invitation.send': async ({ context, kit, actorId }) => {
     const { email, role } = await context.request.validateUsing(invitationSendValidator)
@@ -48,14 +43,14 @@ export const invitationHandlers = {
   'account.invitation.resend': async ({ context, kit, actorId }) => {
     const invitation = await kit.invitations.resend({
       actorId: actorId!,
-      invitationId: invitationId(context.params.id),
+      invitationId: positiveId(context.params.id, 'invitation'),
     })
     return context.response.ok({ id: invitation.id })
   },
   'account.invitation.revoke': async ({ context, kit, actorId }) => {
     await kit.invitations.revoke({
       actorId: actorId!,
-      invitationId: invitationId(context.params.id),
+      invitationId: positiveId(context.params.id, 'invitation'),
     })
     return context.response.noContent()
   },
