@@ -18,6 +18,33 @@ full picture.
 | Signing out old credentials      | [`app/middleware/account_access_middleware.ts`](app/middleware/account_access_middleware.ts)                                                                         |
 | HTTP tests for every flow        | [`tests/functional/`](tests/functional)                                                                                                                              |
 
+## Admission routes
+
+All routes below use the `/api/v1` prefix. The `account` route group applies `auth()` to every
+route, so callers need a valid selected-guard credential. Status and request routes deliberately
+have no `admittedAccount()` gate; they remain available to signed-in people who are pending,
+rejected, or revoked.
+
+| Route                                                                  | Controller and request                                                                                                                                                                                                                                        | Route gate and application policy                                                                             |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/account/admission`                                        | [`AdmissionsController.show`](app/controllers/admissions_controller.ts) returns the current decision.                                                                                                                                                         | `auth()` only; available before admission.                                                                    |
+| `POST /api/v1/account/admission/request`                               | [`AdmissionsController.request`](app/controllers/admissions_controller.ts) records an idempotent request; no request body.                                                                                                                                    | `auth()` only; available before admission. The service refuses an unconfirmed account.                        |
+| `GET /api/v1/account/admissions?status=&cursor=&limit=`                | [`AdmissionsController.index`](app/controllers/admissions_controller.ts) validates the query with [`admissionListValidator`](app/validators/admission.ts). `status` is `pending`, `approved`, `rejected`, or `revoked`; `limit` is 1–100; `cursor` is opaque. | `auth()` then `admittedAccount()`, followed by `admissionAuthorize.list`; the example policy allows owners.   |
+| `POST /api/v1/account/admissions/:id/approve`, `/reject`, or `/revoke` | [`AdmissionsController.approve`, `.reject`, and `.revoke`](app/controllers/admissions_controller.ts) take the subject ID from the path and no request body.                                                                                                   | `auth()` then `admittedAccount()`, followed by `admissionAuthorize.decide`; the example policy allows owners. |
+
+The route gates are placed in [`start/routes.ts`](start/routes.ts). The selected guard is
+authenticated by the account group; among these admission routes, `admittedAccount()` is attached
+only to the list and decision routes. The service also checks its `list` or `decide` callback, configured in
+[`config/admission.ts`](config/admission.ts). The example's owner check lives in
+[`account_kit_authorization.ts`](app/services/account_kit_authorization.ts); your application owns
+what an owner is and who may grant roles or approve accounts. Account Kit does not define tenant
+roles or grant invitation roles itself.
+
+The example's explicit invitation-link path is `POST /api/v1/auth/invitations/:token`; its
+password and signup fields are described in the [invitation controller](app/controllers/invitations_controller.ts)
+and [`invitationAcceptValidator`](app/validators/account_kit.ts). A verified social signup may
+instead consume a matching invitation automatically. See the [social invitation scenario map](../../docs/social-authentication.md#signing-in-with-the-invited-address).
+
 The [token reference](../../docs/token-reference.md) and [session reference](../../docs/session-reference.md) walk through bearer and
 browser clients.
 
