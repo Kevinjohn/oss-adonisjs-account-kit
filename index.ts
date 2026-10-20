@@ -1,8 +1,5 @@
-import { fileURLToPath } from 'node:url'
-
 export { configure } from './configure.js'
-/** The package's stub directory, for `node ace configure`. */
-export const stubsRoot = fileURLToPath(new URL('./stubs/', import.meta.url))
+export { stubsRoot } from './stubs/main.js'
 export * from './src/types.js'
 export * from './src/errors.js'
 export * as errors from './src/errors.js'

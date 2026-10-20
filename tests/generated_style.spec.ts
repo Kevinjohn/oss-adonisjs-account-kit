@@ -1,5 +1,3 @@
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import { format, resolveConfig } from 'prettier'
@@ -16,9 +14,7 @@ test('configure renders config/account_kit.ts already formatted', async ({ asser
   try {
     const stubs = await kit.app.stubs.create()
     const stub = await stubs.build('config/account_kit.stub', { source: stubsRoot })
-    const prepared = await stub.prepare({
-      config: { destination: join(tmpdir(), 'account_kit.ts') },
-    })
+    const prepared = await stub.prepare({})
     // The AdonisJS stub engine trims every file it renders, so the final newline is not ours.
     const contents = prepared.contents + '\n'
     const options = await resolveConfig(configPath)
