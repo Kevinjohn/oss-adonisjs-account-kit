@@ -4,7 +4,6 @@ import type { HttpContext } from '@adonisjs/core/http'
 import {
   InvalidInputError,
   type SocialCallbackResult,
-  type SocialBeginInput,
   type SocialProviderName,
 } from 'adonisjs-account-kit'
 import accountKit from 'adonisjs-account-kit/services/main'
@@ -18,7 +17,12 @@ import {
   pendingBrowserTransaction,
   rememberBrowserContinuation,
 } from '#services/social_browser_transaction'
-import { currentIfAuthenticated, requiredString } from '#services/social_request'
+import { currentIfAuthenticated } from '#services/social_request'
+import {
+  socialCallbackValidator,
+  socialConfirmValidator,
+  socialRedirectValidator,
+} from '#validators/social'
 import { socialRegistrationValidator } from '#validators/user'
 
 function providerParam(value: string): SocialProviderName {
@@ -29,16 +33,17 @@ function providerParam(value: string): SocialProviderName {
 export default class SocialAuthController {
   async redirect(ctx: HttpContext) {
     const provider = providerParam(ctx.params.provider)
-    const intent = ctx.request.input('intent', 'login') as SocialBeginInput['intent']
+    const input = await ctx.request.validateUsing(socialRedirectValidator)
+    const intent = input.intent ?? 'login'
     const current = intent === 'login' ? undefined : await currentIfAuthenticated(ctx)
-    const transaction = beginBrowserTransaction(ctx)
+    const transaction = beginBrowserTransaction(ctx, input.clientChallenge)
     const result = await accountKit.socialAuthentication.begin({
       provider,
       intent,
       current,
       clientChallenge: transaction.clientChallenge,
-      purpose: ctx.request.input('purpose'),
-      proof: ctx.request.input('proof'),
+      purpose: input.purpose,
+      proof: input.proof,
       context: ctx,
     })
     transaction.remember(result.state)
@@ -47,11 +52,9 @@ export default class SocialAuthController {
 
   async confirm(ctx: HttpContext) {
     const provider = providerParam(ctx.params.provider)
-    const verificationToken = requiredString(
-      ctx.request.input('verificationToken'),
-      'verificationToken'
-    )
-    const transaction = beginBrowserTransaction(ctx)
+    const { verificationToken, clientChallenge } =
+      await ctx.request.validateUsing(socialConfirmValidator)
+    const transaction = beginBrowserTransaction(ctx, clientChallenge)
     const result = await accountKit.socialAuthentication.beginConfirmation({
       provider,
       verificationToken,
@@ -65,15 +68,14 @@ export default class SocialAuthController {
   async verificationEntry(ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
     ctx.response.header('Referrer-Policy', 'no-referrer')
-    const verificationToken = requiredString(ctx.params.token, 'verificationToken')
-    return ctx.response.ok({ verificationToken })
+    return ctx.response.ok({ verificationToken: ctx.params.token })
   }
 
   async callback(ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
     ctx.response.header('Referrer-Policy', 'no-referrer')
     const provider = providerParam(ctx.params.provider)
-    const state = requiredString(ctx.request.input('state'), 'state')
+    const { state, intent } = await ctx.request.validateUsing(socialCallbackValidator)
     const pending = pendingBrowserTransaction(ctx, state)
     const current = await currentIfAuthenticated(ctx)
     const result = await accountKit.socialAuthentication.callback({
@@ -81,7 +83,7 @@ export default class SocialAuthController {
       provider,
       callback: ctx,
       current,
-      intent: ctx.request.input('intent'),
+      intent,
     })
     if (pending) forgetBrowserTransaction(ctx)
     if ('continuation' in result) {
@@ -110,8 +112,9 @@ export default class SocialAuthController {
 
   async completeRegistration(ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
-    const continuation = requiredString(ctx.request.input('continuation'), 'continuation')
-    const { fullName, email } = await ctx.request.validateUsing(socialRegistrationValidator)
+    const { continuation, fullName, email } = await ctx.request.validateUsing(
+      socialRegistrationValidator
+    )
     const pending = pendingBrowserContinuation(ctx, continuation)
     const result = await accountKit.socialAuthentication.completeRegistration({
       continuation,

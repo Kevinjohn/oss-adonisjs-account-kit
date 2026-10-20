@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidInputError } from 'adonisjs-account-kit'
-import { requiredString } from '#services/social_request'
 import { authStrategy } from '#services/auth_strategy'
 
 /** The browser's PKCE verifier, kept in the session between redirect and callback. */
@@ -20,16 +19,14 @@ export const pkceChallenge = (verifier: string) =>
   createHash('sha256').update(verifier).digest('base64url')
 
 /**
- * Session clients get a server-held verifier; token clients send their own `clientChallenge`.
+ * Session clients get a server-held verifier; token clients send their own `clientChallenge`,
+ * which the social validators require for them.
  * Call `remember` with the begin result's state to keep the verifier for the callback.
  */
-export function beginBrowserTransaction(ctx: HttpContext) {
+export function beginBrowserTransaction(ctx: HttpContext, clientChallenge?: string) {
   const verifier = isBrowser() ? pkceVerifier() : undefined
-  const clientChallenge = verifier
-    ? pkceChallenge(verifier)
-    : requiredString(ctx.request.input('clientChallenge'), 'clientChallenge')
   return {
-    clientChallenge,
+    clientChallenge: verifier ? pkceChallenge(verifier) : (clientChallenge ?? ''),
     remember(state: string) {
       if (verifier) ctx.session.put(transactionKey, { state, verifier })
     },

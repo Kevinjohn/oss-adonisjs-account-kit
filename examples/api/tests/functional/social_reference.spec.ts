@@ -20,6 +20,26 @@ const continuationFrom = (response: { body(): unknown }): string => {
   return continuation
 }
 
+test('social request input is rejected by VineJS validators', async ({ client, assert }) => {
+  const vineFields = (response: { body(): unknown }) =>
+    (response.body() as { errors: Array<{ field: string; rule: string }> }).errors.map(
+      (error) => error.field
+    )
+  const noChallenge = await client.post('/api/v1/auth/oauth/google/redirect').json({})
+  assert.equal(noChallenge.status(), 422)
+  assert.deepEqual(vineFields(noChallenge), ['clientChallenge'])
+  const badIntent = await client
+    .post('/api/v1/auth/oauth/google/redirect')
+    .json({ intent: 'unknown', clientChallenge: challenge(verifier()) } as never)
+  assert.equal(badIntent.status(), 422)
+  assert.deepEqual(vineFields(badIntent), ['intent'])
+  const noVerifier = await client
+    .post('/api/v1/auth/oauth/token')
+    .json({ code: 'handoff' } as never)
+  assert.equal(noVerifier.status(), 422)
+  assert.deepEqual(vineFields(noVerifier), ['verifier'])
+}).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
+
 test('token client completes a verified social registration through one PKCE exchange', async ({
   client,
   assert,
@@ -161,7 +181,7 @@ test('token client completes a verified social registration through one PKCE exc
   const unlinked = await client
     .delete(`/api/v1/account/social/${relation.id}`)
     .bearerToken(passwordToken)
-    .json({ proof: body(passwordProof).proof })
+    .json({ proof: body(passwordProof).proof as string })
   assert.equal(unlinked.status(), 204)
   assert.lengthOf(await db.from('social_identities').where('user_id', created.id), 0)
 }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
@@ -255,7 +275,7 @@ test('missing provider email stays inactive until local proof and fresh provider
   assert.equal(confirmed.status(), 200, JSON.stringify(confirmed.body()))
   assert.equal(body(confirmed).status, 'linked')
   const redeemed = await client.post('/api/v1/auth/oauth/token').json({
-    code: body(confirmed).handoffCode,
+    code: body(confirmed).handoffCode as string,
     verifier: confirmationVerifier,
   })
   assert.equal(redeemed.status(), 200, JSON.stringify(redeemed.body()))
