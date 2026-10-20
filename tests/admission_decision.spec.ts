@@ -37,6 +37,7 @@ const user = (overrides: Partial<AccountUser> = {}): AccountUser => ({
 const row = (overrides: Partial<AdmissionRow> = {}): AdmissionRow => ({
   id: 1,
   user_id: 1,
+  bootstrap_email: null,
   requested_at: '2026-10-20T00:00:00.000Z',
   invitation_id: 3,
   invited_email: 'person@example.test',
