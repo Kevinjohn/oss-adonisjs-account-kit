@@ -20,8 +20,9 @@ and responses this guide summarizes.
 Configure the user adapter, enabled capabilities, registration availability, password policy,
 authorization and notification callbacks in `config/account_kit.ts` with `defineConfig`. The API
 example uses a lazy Lucid user adapter and explicitly maps validated registration data; it never
-spreads request fields onto the user model. Match application validators to the shared 8–256
-UTF-16-unit service password bounds and any configured `passwordPolicy`. See the
+spreads request fields onto the user model. Account Kit accepts new passwords from 8 to 256
+UTF-16 code units by default. Applications may choose a stricter `passwordPolicy` and matching
+validators for new passwords; login remains compatible with existing credentials. See the
 [example configuration](../examples/api/config/account_kit.ts), [registration guide](registration.md),
 and [service configuration guide](usage.md#configuration) for options and defaults. For maintained
 mail, use `createActionUrls` with fixed public backend and frontend origins and
@@ -58,6 +59,9 @@ import { AccountKit } from 'adonisjs-account-kit'
 const kit = await app.container.make(AccountKit)
 ```
 
+This shows provider and container resolution explicitly. For ordinary controller examples, the
+short default service import is `import accountKit from 'adonisjs-account-kit/services/main'`.
+
 Keep each route's middleware and capability selection explicit. Apply the selected authentication
 integration before loading an actor, and apply verified-account or application authorization checks
 where the operation requires them. The [authentication guide](authentication.md) and the two
@@ -77,9 +81,11 @@ For example, validate a password change and derive its actor from the authentica
 calling the service:
 
 ```ts
+import accountKit from 'adonisjs-account-kit/services/main'
+
 const actor = await auth.getUserOrFail()
 const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
-const kit = await app.container.make(AccountKit)
+const kit = accountKit
 
 let revision: string | null
 try {

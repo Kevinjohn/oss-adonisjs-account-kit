@@ -13,16 +13,31 @@ API starter kit has both. Point Account Kit at the existing guard:
 authentication: {
   strategy: 'access_tokens',
   guard: 'api',
+  tokenTable: 'auth_access_tokens',
   tokenExpiresIn: '30d',
   tokenAbilities: ['*'],
-  canAccess: async (user, trx) => true, // replace with your suspended-account check
+  canAccess: async () => true, // replace with your application restriction lookup
 },
 onCredentialsChangedTransaction: async () => {},
 ```
 
-With `access_tokens`, every password reset, password change and email change deletes the user's
-rows in `tokenTable` inside the same transaction. The empty `onCredentialsChangedTransaction` is
-fine unless you hold other credentials that need revoking.
+The starter's `User.accessTokens` provider uses `auth_access_tokens`. With `access_tokens`, a
+password reset deletes all of that user's rows in the configured `tokenTable` inside the password
+transaction; the starter's protected `api` routes then reject previously issued bearer values.
+Password change and confirmed email change use the same revision policy. The example `canAccess`
+allows every account through Account Kit authentication calls. The unchanged starter login and
+`api` middleware use their own checks, so enforce suspension there separately if needed.
+`tokenExpiresIn` and `tokenAbilities` configure Account Kit token issuance, not the starter's
+direct token issuance.
+
+`tokenAbilities: ['*']` is the starter-compatible default: it makes
+`currentAccessToken.allows(...)` true for every ability. A narrower ability list can limit which
+operations a token is intended to call, but abilities alone do not authorize access to a workspace,
+record, or role. Keep the application's resource and role policy check on the route as well.
+The empty `onCredentialsChangedTransaction` is appropriate only if the application holds no other
+credentials. Revoke application-owned sessions, remember-me credentials or API keys in that
+callback using its transaction when your policy requires them to end on a credential change.
+The [reset tutorial](../getting-started.md) exercises two starter tokens across a reset.
 
 ## 2. Adapt the guard
 
@@ -66,17 +81,15 @@ export function accessTokenGuard() {
 
 ```ts
 // app/controllers/access_tokens_controller.ts
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit } from 'adonisjs-account-kit'
+import accountKit from 'adonisjs-account-kit/services/main'
 import User from '#models/user'
 import { accessTokenGuard } from '#services/account_kit_guard'
 
 export default class AccessTokensController {
   async store({ request }: HttpContext) {
     const { email, password } = request.only(['email', 'password'])
-    const kit = await app.container.make(AccountKit)
-    const result = await kit.authentication.login(
+    const result = await accountKit.authentication.login(
       { email, password, clientKey: request.ip() },
       accessTokenGuard()
     )
@@ -85,8 +98,7 @@ export default class AccessTokensController {
 
   async destroy({ auth }: HttpContext) {
     const user = auth.use('api').getUserOrFail()
-    const kit = await app.container.make(AccountKit)
-    await kit.authentication.logout({
+    await accountKit.authentication.logout({
       async terminate() {
         if (user.currentAccessToken)
           await User.accessTokens.delete(user, user.currentAccessToken.identifier)
@@ -108,14 +120,22 @@ account, and for routes that need a confirmed email, that the account is active:
 ```ts
 const user = auth.use('api').getUserOrFail()
 const input = { userId: user.id, tokenId: user.currentAccessToken?.identifier?.toString() }
-await kit.authentication.current(input) // signed in, any account
-await kit.authentication.requireActive(input) // signed in and email confirmed
+await accountKit.authentication.current(input) // signed in, any account
+await accountKit.authentication.requireActive(input) // signed in and email confirmed
 ```
 
 The example's
 [verified account middleware](../../examples/api/app/middleware/verified_account_middleware.ts)
 wraps this.
-Check abilities on privileged routes with `user.currentAccessToken.allows('invitations:create')`.
+Check abilities and application policy on privileged routes. For example:
+
+```ts
+if (!user.currentAccessToken.allows('invitations:create')) return response.forbidden()
+if (!(await canInviteToWorkspace(user, workspaceId))) return response.forbidden()
+```
+
+The second check decides whether this user may invite someone to this workspace. The ability check
+alone does not prove that authority; when the issued ability is `'*'`, it always passes.
 
 ## Further reading
 
