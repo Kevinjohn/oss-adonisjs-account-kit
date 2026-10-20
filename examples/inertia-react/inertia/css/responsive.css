@@ -1,0 +1,30 @@
+@media (max-width: 880px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+  .auth__aside {
+    display: none;
+  }
+  .prose-card {
+    padding: 34px 28px 20px;
+  }
+  .pc-lead {
+    font-size: 30px;
+  }
+}
+@media (max-width: 720px) {
+  .page {
+    padding: 28px 16px 48px;
+  }
+  .sidebar-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .sidebar-layout__nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .panel {
+    padding: 20px;
+  }
+}
