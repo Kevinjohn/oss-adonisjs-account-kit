@@ -42,6 +42,7 @@ export function migrationSchema(usersTable = 'users', userIdType: UserIdType = '
     userIdColumn: column('user_id'),
     tokenableIdColumn: column('tokenable_id'),
     inviterIdColumn: column('inviter_id'),
+    actorIdColumn: column('approval_actor_id'),
   }
 }
 

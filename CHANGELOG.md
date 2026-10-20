@@ -91,6 +91,16 @@ Initial public release.
   `account_kit.password_reset_requested` and `account_kit.magic_link_requested`.
   `accountErrorResponse(error, { i18n })` looks up its message as `errors.<code>` the same way;
   the translator type is exported as `AccountKitTranslator`.
+- Optional admission module (`adonisjs-account-kit/admission`, #518): after authentication and
+  email verification, require an allowed email domain, invitation evidence and approval, each
+  optional and cumulative. Adds `defineAdmission`, the `AccountAdmission` service and provider,
+  `admissionMiddleware`, `withInvitationEvidence`, `withAdmissionCleanup`, the
+  `account_admissions` migration stub, `AdmissionRequiredError` and `AdmissionDecisionError`.
+  "Admission" now names this module; who may create an account is _registration availability_.
+- Admission decisions (#518): `request`, `approve`, `reject`, `revoke` and cursor-paged `list` on
+  `AccountAdmission`, `onAdmissionEvent`, and the commands `account-kit:admission:install`,
+  `account-kit:admission:approve`, `account-kit:admission:revoke` and
+  `account-kit:admission:grant-invitation` (export `adonisjs-account-kit/admission/commands`).
 
 <details>
 <summary>Pre-release candidate history</summary>

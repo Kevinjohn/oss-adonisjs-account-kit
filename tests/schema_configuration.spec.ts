@@ -183,12 +183,15 @@ test('migration schema quotes reserved table names and selects each supported ID
     if (userIdType === 'integer') {
       assert.equal(schema.userIdColumn, "table.integer('user_id').unsigned()")
       assert.equal(schema.inviterIdColumn, "table.integer('inviter_id').unsigned()")
+      assert.equal(schema.actorIdColumn, "table.integer('approval_actor_id').unsigned()")
     } else if (userIdType === 'uuid') {
       assert.equal(schema.userIdColumn, "table.uuid('user_id')")
       assert.equal(schema.inviterIdColumn, "table.uuid('inviter_id')")
+      assert.equal(schema.actorIdColumn, "table.uuid('approval_actor_id')")
     } else {
       assert.equal(schema.userIdColumn, "table.string('user_id', 254)")
       assert.equal(schema.inviterIdColumn, "table.string('inviter_id', 254)")
+      assert.equal(schema.actorIdColumn, "table.string('approval_actor_id', 254)")
     }
   }
 })
