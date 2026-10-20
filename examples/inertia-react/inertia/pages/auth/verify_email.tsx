@@ -4,18 +4,21 @@ import { type InertiaProps } from '~/types'
 
 type Props = InertiaProps<{ token: string; valid: boolean }>
 
-export default function VerifyEmail({ token, valid }: Props) {
+export default function VerifyEmail({ token, valid, user }: Props) {
   if (!valid) {
     return (
       <>
-        <h1 className="auth__title">This link has expired</h1>
-        <p className="auth__sub">Sign in and request a new verification link from the dashboard.</p>
+        <h1 className="auth__title">This link can’t be used</h1>
+        <p className="auth__sub">
+          It may be invalid, already used, or expired. Request a new verification link from the
+          dashboard.
+        </p>
         <Link
-          route="session.create"
+          route={user ? 'dashboard' : 'session.create'}
           className="btn btn--primary btn--block"
           style={{ marginTop: 16 }}
         >
-          Sign in
+          {user ? 'Go to dashboard' : 'Sign in'}
         </Link>
       </>
     )
