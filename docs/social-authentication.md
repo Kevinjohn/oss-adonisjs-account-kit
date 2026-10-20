@@ -109,6 +109,14 @@ revocation.
 This prevents an attacker who controls a provider account but supplied somebody else's unverified
 email from gaining that account after the real email owner claims it.
 
+### Signing in with the invited address
+
+A new account whose provider-verified address holds a pending invitation accepts it in the same
+transaction: the invitation is deleted, `onInvitationAccepted` runs, and `invitation.accepted` is
+reported after commit. An unverified provider address leaves the invitation alone until the address
+is confirmed. Signing in to an existing account never accepts one. See
+[Signing in with the invited address](account-operations.md#signing-in-with-the-invited-address).
+
 ### Linking and sensitive actions require recent proof
 
 **Linking**

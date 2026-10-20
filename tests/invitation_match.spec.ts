@@ -1,3 +1,5 @@
+/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
+
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { InvalidTokenError } from '../src/errors.js'
@@ -106,7 +108,9 @@ test.group('invitation match', (group) => {
     const result = await socialSignIn(service)
     check.equal(result.status, 'new')
     if (result.status !== 'new' || !('userId' in result)) throw new Error('Expected an account')
-    check.deepEqual(service.accepted, [{ userId: result.userId, role: 'admin', inTransaction: true }])
+    check.deepEqual(service.accepted, [
+      { userId: result.userId, role: 'admin', inTransaction: true },
+    ])
     check.equal(await invitationCount(), 0)
     check.deepEqual(
       accepted(service.events).map((event) => [event.invitationId, event.userId]),
@@ -205,7 +209,8 @@ test.group('invitation match', (group) => {
     )
     await invite(continued)
     const start = await socialSignIn(continued)
-    if (start.status !== 'new' || !('continuation' in start)) throw new Error('Expected continuation')
+    if (start.status !== 'new' || !('continuation' in start))
+      throw new Error('Expected continuation')
     const finished = await continued.account.socialAuthentication.completeRegistration({
       continuation: start.continuation,
       admit: async () => {},

@@ -41,7 +41,8 @@ loopback URLs.
 - Applications with `registration.availability: 'application'` must make their own server-side
   admission decision and call `completeRegistration` with a trusted `admit` callback.
 - Closed registration still permits already linked identities to sign in.
-- Social invitation admission is not enabled here.
+- A new account with a provider-verified invited address accepts that invitation
+  ([Signing in with the invited address](account-operations.md#signing-in-with-the-invited-address)).
 
 ## How it works
 

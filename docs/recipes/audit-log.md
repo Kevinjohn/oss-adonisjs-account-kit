@@ -24,7 +24,7 @@ The events:
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | `registration.created`, `verification.completed`, `password_reset.requested`, `password.reset`, `password.changed`, `email_change.requested`, `email_change.completed` | `userId`, `operationId`                 |
 | `invitation.sent`, `invitation.resent`, `invitation.revoked`                                                                                                           | `invitationId`, `operationId`           |
-| `invitation.accepted`                                                                                                                                                  | `invitationId`, `userId`, `operationId` |
+| `invitation.accepted` (the link, or a new social account or activation for the invited address)                                                                        | `invitationId`, `userId`, `operationId` |
 
 Events carry IDs only, never email addresses, tokens or passwords.
 
