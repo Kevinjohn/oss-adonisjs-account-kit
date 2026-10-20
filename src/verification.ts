@@ -6,14 +6,12 @@ import {
   clearRecoveryTokens,
   clearSocialTransactions,
 } from './credential_cleanup.js'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { consumeUserToken, consumeUserTokenHash, lockUser, transaction } from './db.js'
 import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -26,6 +24,7 @@ import type {
   VerificationSendInput,
   Trx,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 type ActivationRow = {
   tokenable_id: UserId
@@ -48,7 +47,7 @@ function activationMatches(
 }
 
 export async function inspectVerification(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: VerificationInspectInput
 ): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
@@ -104,7 +103,7 @@ export async function completeActivationByHash(
 }
 
 export async function sendVerification(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: VerificationSendInput
 ): Promise<'sent' | 'already_verified'> {
   const user = await deps.config.users.findById(input.userId)
@@ -180,7 +179,7 @@ export async function sendVerification(
 }
 
 export async function completeVerification(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: VerificationCompleteInput
 ): Promise<'verified'> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))

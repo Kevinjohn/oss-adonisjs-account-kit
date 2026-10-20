@@ -1,11 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
-import {
-  AccountKitError,
-  accountErrorResponse,
-  InvalidCredentialsError,
-} from 'adonisjs-account-kit'
+import { accountErrorResponse, errors } from 'adonisjs-account-kit'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { accountError } from '#services/http_responses'
 import { SocialProviderExchangeError } from '#services/social_provider'
@@ -13,7 +9,10 @@ import { isSocialPath } from '#services/social_path'
 
 function providerFailure(error: unknown) {
   if (error instanceof SocialProviderExchangeError) return error
-  if (error instanceof AccountKitError && error.cause instanceof SocialProviderExchangeError) {
+  if (
+    error instanceof errors.AccountKitError &&
+    error.cause instanceof SocialProviderExchangeError
+  ) {
     return error.cause
   }
   return undefined
@@ -53,7 +52,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         ? error.status
         : undefined
     const unexpected =
-      social && !provider && !(error instanceof AccountKitError) && !(status && status < 500)
+      social && !provider && !(error instanceof errors.AccountKitError) && !(status && status < 500)
     if (provider || (social && status && status >= 500) || unexpected) {
       logSocialFailure(ctx, provider, unexpected)
     }
@@ -65,7 +64,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
       return accountError(
         ctx,
-        error instanceof InvalidCredentialsError ? 401 : mapped.status,
+        error instanceof errors.InvalidCredentialsError ? 401 : mapped.status,
         mapped.body.code,
         mapped.body.message
       )

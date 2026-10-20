@@ -6,13 +6,13 @@ Each carries a stable `code` and an HTTP `status`. Import them from `adonisjs-ac
 
 ## Mapping errors to responses
 
-`accountErrorResponse(error)` turns any `AccountKitError` into a safe response and returns `null`
-for other errors. Call it from your exception handler:
+`accountErrorResponse(error, options?)` turns any `AccountKitError` into a safe response and
+returns `null` for other errors. Call it from your exception handler:
 
 ```ts
 import { accountErrorResponse } from 'adonisjs-account-kit'
 
-const mapped = accountErrorResponse(error)
+const mapped = accountErrorResponse(error, { i18n: 'i18n' in ctx ? ctx.i18n : undefined })
 if (mapped) {
   for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
   return ctx.response.status(mapped.status).send(mapped.body)
@@ -28,12 +28,52 @@ original error yourself.
 - `InvitationManagementDeniedError` is reported as `InvitationNotFoundError`, so a caller cannot
   tell a hidden invitation from a missing one.
 
-## Catalogue
+### Translating the message
+
+When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n),
+pass the request's `ctx.i18n` as `i18n`. The message for code `X` is looked up as `errors.X`, with
+the English message as the fallback, the same keys the [managed routes](../managed-http.md) use.
+The code is the error's own `code` from the catalog below, except that
+`E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` is never returned. These are the keys and their
+English messages for `resources/lang/<locale>/errors.json`:
+
+```json
+{
+  "E_ACCOUNT_KIT": "Account operation failed",
+  "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected",
+  "E_ACCOUNT_KIT_INVALID_TOKEN": "Account request rejected",
+  "E_ACCOUNT_KIT_THROTTLED": "Account request rejected",
+  "E_ACCOUNT_KIT_AUTHORIZATION": "Account request rejected",
+  "E_ACCOUNT_KIT_INVITATION_NOT_FOUND": "Invitation not found",
+  "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected",
+  "E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED": "Account request rejected",
+  "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected",
+  "E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED": "Account request rejected",
+  "E_ACCOUNT_KIT_INVITATION_PENDING": "Account request rejected",
+  "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected",
+  "E_ACCOUNT_KIT_DELIVERY": "Account operation failed",
+  "E_ACCOUNT_KIT_POST_COMMIT": "Account operation failed",
+  "E_ACCOUNT_KIT_CAPABILITY_DISABLED": "Account operation failed",
+  "E_INVALID_CREDENTIALS": "Account request rejected",
+  "E_ACCOUNT_KIT_INVALID_SESSION": "Account request rejected",
+  "E_ACCOUNT_KIT_UNVERIFIED_EMAIL": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected"
+}
+```
+
+An application that also uses the managed routes keeps one `errors.json` for both.
+
+## Catalog
 
 | Error                                     | Code                                           | Status | When                                                                                                                 | What to do                                                                                                     |
 | ----------------------------------------- | ---------------------------------------------- | -----: | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `AccountKitError`                         | `E_ACCOUNT_KIT`                                |    500 | Base class for every package error.                                                                                  | Catch it to handle all package errors together.                                                                |
-| `InvalidInputError`                       | `E_ACCOUNT_KIT_INVALID_INPUT`                  |    422 | Input fails a package rule, for example a password outside the policy or a malformed email.                          | Validate with VineJS first so users see field errors; treat this as the last line of defence.                  |
+| `InvalidInputError`                       | `E_ACCOUNT_KIT_INVALID_INPUT`                  |    422 | Input fails a package rule, for example a password outside the policy or a malformed email.                          | Validate with VineJS first so users see field errors; treat this as the last line of defense.                  |
 | `InvalidTokenError`                       | `E_ACCOUNT_KIT_INVALID_TOKEN`                  |    422 | A proof token is malformed, unknown, used or expired.                                                                | Show "this link is invalid or has expired" and offer to send a new one.                                        |
 | `ThrottledError`                          | `E_ACCOUNT_KIT_THROTTLED`                      |    429 | A rate limit is spent. `retryAfterSeconds` says when to retry.                                                       | Return 429 with `Retry-After`. Tune budgets with `throttle` and `invitationThrottle`.                          |
 | `AuthorizationError`                      | `E_ACCOUNT_KIT_AUTHORIZATION`                  |    403 | An `authorize` callback denied the action, or public registration is closed.                                         | Check the actor's role in your `authorize` callbacks.                                                          |
@@ -58,5 +98,25 @@ original error yourself.
 | `SocialUserNotFoundError`                 | `E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND`          |    404 | No account is linked to this provider identity.                                                                      | Offer registration or linking from a signed-in account.                                                        |
 | `SocialProofError`                        | `E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID`           |    403 | A sensitive social action lacks a valid recent authentication proof.                                                 | Ask the user to re-enter their password, then retry.                                                           |
 | `LastLoginMethodError`                    | `E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD`       |    409 | Unlinking would leave the account without any way to sign in.                                                        | Ask the user to set a password or link another provider first.                                                 |
+
+## Stability
+
+Error `code` values are public API from the first public release. This covers the codes in the
+catalog above and the managed-route codes in the `errors.json` block in
+[managed HTTP](../managed-http.md). A code is changed or removed only as a breaking change listed
+in the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md).
+Before 1.0 that can happen in a minor release, and it is still listed as breaking.
+
+`message` text can change in any release. Never key on it.
+
+## Translating on the client
+
+SPA and mobile clients that translate on their side should key translations on `code`, not
+`message`. The full lists are the catalog above and the `errors.json` block in
+[managed HTTP](../managed-http.md). Every package code starts with `E_`.
+
+Request-validation errors come from VineJS and are keyed on the rule and field instead: `rule` and
+`field` in JSON, `code` and `source.pointer` in JSON:API. There, `code` is the rule name, such as
+`required`, never an `E_` code.
 
 Related: the [security model](../security.md) explains why several of these errors are generic.

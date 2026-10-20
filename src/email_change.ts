@@ -1,13 +1,11 @@
 // Email change and profile update: issuing, inspecting and completing the `email_change` proof.
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
 import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
   InvalidInputError,
@@ -15,9 +13,9 @@ import {
   type PostCommitError,
 } from './errors.js'
 import { mapRegistrationFields } from './registration_fields.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
-import { confirmActor } from './actor_confirmation.js'
+import { confirmActor, requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -26,13 +24,13 @@ import type {
   CompleteEmailChangeInput,
   InspectEmailChangeInput,
   RequestEmailChangeInput,
-  ResolvedConfig,
   UpdateProfileInput,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export async function inspectEmailChange(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InspectEmailChangeInput
 ): Promise<boolean> {
   if (!isTokenShaped(input.token)) return false
@@ -48,7 +46,7 @@ export async function inspectEmailChange(
 }
 
 export async function requestEmailChange(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: RequestEmailChangeInput
 ): Promise<void> {
   await updateProfile(deps, {
@@ -60,7 +58,7 @@ export async function requestEmailChange(
 }
 
 export async function updateProfile(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: UpdateProfileInput
 ): Promise<AccountUser> {
   const hasRegistrationData = Object.hasOwn(input, 'registrationData')
@@ -68,7 +66,7 @@ export async function updateProfile(
     throw new InvalidInputError('Profile update is empty')
   if (input.email !== undefined && !isEmailShaped(input.email))
     throw new InvalidInputError('Invalid email')
-  const newEmail = input.email === undefined ? undefined : normaliseEmail(input.email)
+  const newEmail = input.email === undefined ? undefined : normalizeEmail(input.email)
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)
     : undefined
@@ -103,8 +101,7 @@ export async function updateProfile(
             await deps.config.users.setUnverifiedEmail(current.id, null, trx)
             await clearRecoveryTokens(trx, current.id, ['email_verification_tokens'])
           }
-          const reloaded = await deps.config.users.findById(current.id, trx)
-          if (!reloaded) throw new InvalidInputError('Unknown actor')
+          const reloaded = await requireUser(deps.config, current.id, trx)
           return { user: reloaded, changedConfirmedEmail: false, send: false }
         }
         if (await deps.config.users.findByEmail(newEmail, trx))
@@ -125,8 +122,7 @@ export async function updateProfile(
               now
             )
           ) {
-            const reloaded = await deps.config.users.findById(current.id, trx)
-            if (!reloaded) throw new InvalidInputError('Unknown actor')
+            const reloaded = await requireUser(deps.config, current.id, trx)
             return { user: reloaded, changedConfirmedEmail: false, send: false }
           }
         }
@@ -149,16 +145,14 @@ export async function updateProfile(
           .onConflict('tokenable_id')
           .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
         if (inactive) {
-          const reloaded = await deps.config.users.findById(current.id, trx)
-          if (!reloaded) throw new InvalidInputError('Unknown actor')
+          const reloaded = await requireUser(deps.config, current.id, trx)
           await credentialsChanged(trx, deps.config, reloaded, {
             operation: 'email_change',
             operationId,
             userId: current.id,
           })
         }
-        const issuedUser = await deps.config.users.findById(current.id, trx)
-        if (!issuedUser) throw new InvalidInputError('Unknown actor')
+        const issuedUser = await requireUser(deps.config, current.id, trx)
         return { user: issuedUser, changedConfirmedEmail: inactive, send: true }
       })
     ))
@@ -214,7 +208,7 @@ interface EmailChangeRow {
 }
 
 export async function completeEmailChange(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: CompleteEmailChangeInput
 ): Promise<AccountUser> {
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()

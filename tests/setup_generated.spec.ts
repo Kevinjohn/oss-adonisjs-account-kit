@@ -1,5 +1,4 @@
 import { readdir, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { test } from '@japa/runner'
@@ -17,6 +16,7 @@ import { socialRegistrationValidator } from '../src/http/validators.js'
 import { InvalidInputError } from '../src/errors.js'
 import { managedErrorResponse } from '../src/http/responses.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import { withFixture } from './helpers/setup_prerequisites.js'
 import { defineConfig } from '../src/account_kit.js'
 import {
   insertUser,
@@ -459,15 +459,64 @@ test.group('setup generated sources', (group) => {
     })
     assert.include(messages(blocked.diagnostics), emailNeeded)
   })
+
+  test('generated mapper with omitted maxLength is semantically type-safe', async ({ assert }) => {
+    await withFixture(async (choices, state, root) => {
+      choices.policy.registrationFields = [{ name: 'fullName', type: 'string', required: true }]
+      const plan = await planSetup(choices, state)
+      const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content
+      const mapper = config.slice(
+        config.indexOf('const registrationFields:'),
+        config.indexOf('const users =')
+      )
+      const file = join(root, 'mapper.ts')
+      await writeFile(file, `class InvalidInputError extends Error {}\n${mapper}`)
+      const program = ts.createProgram([file], {
+        strict: true,
+        noEmit: true,
+        skipLibCheck: true,
+        target: ts.ScriptTarget.ES2022,
+      })
+      assert.deepEqual(
+        ts
+          .getPreEmitDiagnostics(program)
+          .map((issue) => ts.flattenDiagnosticMessageText(issue.messageText, '\n')),
+        []
+      )
+    })
+  }).timeout(10_000)
+
+  test('optional registration fields ignore inherited object properties', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      choices.policy.registrationFields = [{ name: 'toString', type: 'string', required: false }]
+      const plan = await planSetup(choices, state)
+      assert.isFalse(
+        plan.diagnostics.some(({ field }) => field === 'policy.registrationFields.0.name')
+      )
+      const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content
+      const mapper = config.slice(
+        config.indexOf('const registrationFields:'),
+        config.indexOf('const users =')
+      )
+      const runnable = ts.transpileModule(
+        `class InvalidInputError extends Error {}\n${mapper}\nreturn mapRegistrationFields`,
+        { compilerOptions: { target: ts.ScriptTarget.ES2022 } }
+      ).outputText
+      const map = new Function(runnable)() as (input: unknown) => Record<string, unknown>
+      assert.deepEqual(map({}), {})
+      assert.deepEqual(map({ toString: 'Only an own field' }), {
+        toString: 'Only an own field',
+      })
+      assert.include(config, 'Object.prototype.hasOwnProperty.call(fields, field.name)')
+    })
+  })
 })
 
 async function generatedInvitationAcceptanceHook(kit: ReturnType<typeof useTestApp>) {
   const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))
   const stubs = await kit.app.stubs.create()
   const stub = await stubs.build('config/account_kit.stub', { source: stubsRoot })
-  const rendered = await stub.prepare({
-    config: { destination: join(tmpdir(), 'account_kit_generated_config.ts') },
-  })
+  const rendered = await stub.prepare({})
   const sourceFile = ts.createSourceFile(
     'account_kit_generated_config.ts',
     rendered.contents,

@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import { defineConfig } from '../src/account_kit.js'
 import { expiresAt } from '../src/ttl.js'
@@ -106,6 +107,23 @@ test.group('account kit configuration and service surface', (group) => {
     assert.equal(defineConfig({ ...base, usersTable: 'accounts' }).usersTable, 'accounts')
     for (const usersTable of ['', 'users; drop table users', '1users', 'app.users']) {
       assert.throws(() => defineConfig({ ...base, usersTable }))
+    }
+  })
+
+  test('reports invalid configuration with RuntimeException', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    const invalid = [
+      { ...base, usersTable: 'bad-name' },
+      { ...base, throttle: 'often' },
+      { ...base, throttle: { requests: 0 } },
+      { ...base, passwordPolicy: { minScore: 9 } },
+      { ...base, authentication: { strategy: 'cookies' } },
+      { ...base, sessionManagement: 'always' },
+      { ...base, accountDeletion: { invitations: 'archive' } },
+      { ...base, enabled: ['socialAuthentication'] },
+    ]
+    for (const config of invalid) {
+      assert.throws(() => defineConfig(config as never), RuntimeException, /^account_kit: /)
     }
   })
 

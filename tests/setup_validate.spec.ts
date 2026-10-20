@@ -7,6 +7,7 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup choice validation', (group) => {
   registerSetupTeardown(group)
@@ -192,5 +193,74 @@ test.group('setup choice validation', (group) => {
       'policy.registrationFields.1.name'
     )
     await assert.rejects(() => applySetup(root, blocked), /blocking diagnostics/)
+  })
+
+  test('runtime feature dependency does not depend on verification policy', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      choices.features = ['authentication', 'emailPasswordManagement']
+      choices.managed = ['authentication', 'emailPasswordManagement']
+      choices.policy.registration = 'closed'
+      choices.policy.verificationRequired = false
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'features'
+      )
+    })
+  })
+
+  test('excluded managed signup permits application admission and rejects prototype field names', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.policy.registration = 'application'
+      choices.managedExcept = ['auth.signup']
+      choices.policy.registrationFields = [{ name: '__proto__', type: 'string', required: false }]
+      const plan = await planSetup(choices, state)
+      assert.isFalse(plan.diagnostics.some(({ field }) => field === 'policy.registration'))
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'policy.registrationFields.0.name'
+      )
+    })
+  })
+
+  test('registration requires verification service even with application-owned endpoints', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.features = ['registration']
+      choices.managed = []
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'features' &&
+            severity === 'error' &&
+            message.includes('Registration requires')
+        )
+      )
+    })
+  })
+
+  test('authentication retirement identifies application-owned access middleware cleanup', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.existingChoices = structuredClone(choices)
+      state.files['app/middleware/account_kit_access_middleware.ts'] =
+        'export default class AccountAccess {}'
+      choices.authentication = null
+      choices.managed = []
+      const plan = await planSetup(choices, state)
+      assert.isTrue(
+        plan.diagnostics.some(
+          ({ field, severity, message }) =>
+            field === 'authentication.retirement' &&
+            severity === 'action' &&
+            message.includes('application-owned routes')
+        )
+      )
+    })
   })
 })

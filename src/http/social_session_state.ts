@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { SocialTransactionError } from '../errors.js'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialIntent, SocialProviderName } from '../types.js'
+import { requireSession, type SessionStore } from './session_access.js'
 
 export interface SessionSocialState {
   verifier: string
@@ -20,27 +21,11 @@ const pendingKey = 'accountKit.social.pendingStates'
 const maxPendingStates = 8
 const stateLifetimeMs = 10 * 60 * 1000
 
-export interface SessionStore {
-  get(key: string): unknown
-  put(key: string, value: unknown): void
-  forget(key: string): void
-}
-
 function session(context: HttpContext): SessionStore {
-  const value = (context as HttpContext & { session?: SessionStore }).session
-  if (!value?.get || !value.put || !value.forget)
-    throw new Error('Managed social session flow requires persistent AdonisJS session middleware')
-  return value
-}
-
-export function optionalSession(context: HttpContext): SessionStore | undefined {
-  const value = (context as HttpContext & { session?: SessionStore }).session
-  return value &&
-    typeof value.get === 'function' &&
-    typeof value.put === 'function' &&
-    typeof value.forget === 'function'
-    ? value
-    : undefined
+  return requireSession(
+    context,
+    'Managed social session flow requires persistent AdonisJS session middleware'
+  )
 }
 
 function stateKey(state: string): string {

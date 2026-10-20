@@ -334,4 +334,40 @@ test.group('social reauthentication proof atomicity', (group) => {
       newPassword: 'another-Password-9!',
     })
   })
+
+  test('missing or unsupported reauthentication purpose fails before redirect', async ({
+    assert,
+  }) => {
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: {
+        providers: { google: provider('purpose-subject', 'purpose@example.test', true) },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const start = await account.socialAuthentication.begin({
+      provider: 'google',
+      intent: 'login',
+      clientChallenge,
+    })
+    const created = await account.socialAuthentication.callback({
+      state: start.state,
+      callback: {},
+    })
+    if (created.status !== 'new' || !('userId' in created)) throw new Error('Expected account')
+    for (const purpose of [undefined, 'unsupported' as never]) {
+      await assert.rejects(
+        () =>
+          account.socialAuthentication.begin({
+            provider: 'google',
+            intent: 'reauth',
+            current: current(created.userId),
+            purpose,
+            clientChallenge,
+          }),
+        'Invalid social transaction'
+      )
+    }
+  })
 })
