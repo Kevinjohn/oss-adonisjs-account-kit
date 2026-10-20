@@ -12,7 +12,8 @@ import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
  * When `user.email` holds an unused, unexpired invitation, delete it and run
  * `onInvitationAccepted` inside `trx`, and return the invitation id; otherwise return null and
  * change nothing. Call it only where core has just confirmed control of the address: a new social
- * account with a provider-verified address, and account activation.
+ * account with a provider-verified address, account activation, and a password reset that confirms
+ * a never-confirmed account.
  */
 export async function matchInvitation(
   config: Pick<ResolvedConfig, 'enabled' | 'users' | 'onInvitationAccepted'>,

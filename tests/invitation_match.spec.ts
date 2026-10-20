@@ -200,6 +200,44 @@ test.group('invitation match', (group) => {
     )
   })
 
+  test('a password reset that confirms a never-confirmed account consumes the invitation', async ({
+    assert: check,
+  }) => {
+    const service = setup(
+      { email: 'unused@example.test', verified: true },
+      {
+        enabled: [
+          'emailVerification',
+          'invitations',
+          'registration',
+          'emailPasswordManagement',
+          'passwordReset',
+        ],
+      }
+    )
+    const { invitation } = await invite(service)
+    const user = await service.account.registration.register({
+      email: 'person@example.test',
+      password: 'newPassword123',
+    })
+    await service.account.passwordReset.request({
+      email: 'person@example.test',
+      clientKey: 'client',
+    })
+    const sent = service.recorder.calls.findLast((call) => call.method === 'passwordResetProvision')
+    check.equal(await invitationCount(), 1)
+    await service.account.passwordReset.reset({
+      token: tokenFrom(sent!.args[1]),
+      password: 'resetPassword123',
+    })
+    check.deepEqual(service.accepted, [{ userId: user.id, role: 'admin', inTransaction: true }])
+    check.equal(await invitationCount(), 0)
+    check.deepEqual(
+      accepted(service.events).map((event) => [event.invitationId, event.userId]),
+      [[invitation.id, user.id]]
+    )
+  })
+
   test('a completed registration continuation and a social confirmation also match', async ({
     assert: check,
   }) => {
