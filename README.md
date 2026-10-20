@@ -57,13 +57,16 @@ node ace account-kit:doctor
 ```
 
 `node ace add` writes `config/account_kit.ts`, generates the migrations and registers the provider
-and commands. The doctor checks the config, limiter, `APP_URL` and database:
+and commands. The doctor checks the config, limiter, `APP_URL`, required package tables and user
+columns. It also checks that the password column permits `NULL` when selected social registration
+can create an account without a password:
 
 ![account-kit:doctor output with every check passing](docs/assets/doctor.svg)
 
-The generated `notify` callbacks throw until you choose how to send email, and the doctor cannot
-run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
-sets them up.
+Green installation checks end with an **Unverified** summary. Doctor does not send mail, invoke
+callbacks, check application policy, or prove credential revocation. Follow its smoke-test prompt
+with a disposable account; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
+sets up development notifications.
 
 Account Kit errors carry a `status` and `code` but do not render themselves. Map them in
 `app/exceptions/handler.ts` with `accountErrorResponse`, which returns a safe status, headers

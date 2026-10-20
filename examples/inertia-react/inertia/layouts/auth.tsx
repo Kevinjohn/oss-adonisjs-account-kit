@@ -6,7 +6,7 @@ import ThemeToggle from '~/components/theme_toggle'
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="auth">
+      <main className="auth">
         <div className="auth__form-col">
           <Logo size={28} />
           <div className="auth__form-wrap">{children}</div>
@@ -38,7 +38,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             </a>
           </div>
         </aside>
-      </div>
+      </main>
       <FlashToasts />
     </>
   )
