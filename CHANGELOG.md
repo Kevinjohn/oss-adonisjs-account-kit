@@ -3,11 +3,17 @@
 ## Unreleased
 
 - Improve account example contrast, keyboard focus, page landmarks, reduced motion, and narrow-screen layout.
+- Recover the Inertia example signup flow when account creation commits but notification or initial sign-in fails.
 
 Initial public release.
 
 ### Added
 
+- Account forms in the Inertia example announce validation errors, focus a field summary, and use
+  readable field names; the reset recipe includes labeled inputs and matching error keys.
+- The Inertia example accepts password-reset links during an existing session, signs out after a
+  successful reset, ends the current browser session before redirecting from completed email
+  verification, and describes invalid, used, or expired proof links accurately.
 - Password reset with single-use, expiring, hashed proof tokens and a generic response for unknown
   addresses.
 - Email verification and self-service registration with open, closed or application-controlled
@@ -56,6 +62,8 @@ Initial public release.
 - A Lucid users adapter and a reusable adapter contract suite for custom adapters.
 - Ace commands: `account-kit:setup`, `account-kit:prune`, `account-kit:retirement-impact` and
   `account-kit:doctor`, which checks config, limiter, `APP_URL` and database tables.
+- `account-kit:doctor` also checks deletion cleanup tables and password nullability for enabled
+  passwordless social registration, then names the callback and credential flows it did not test.
 - `createLogNotifications` prints account emails and their links to the logger during development.
 - `createMailNotifications` and `createLogNotifications` resolve the AdonisJS Mail and logger
   services when a message is sent; both `mail` and `logger` are optional.
@@ -270,6 +278,7 @@ that ran a candidate build.
 
 ### Fixed
 
+- Setup readiness checks resolve selected origin values from Adonis environment files while keeping process values first and reporting unsafe assignments without exposing their contents.
 - Package archives exclude private planning and review documents while retaining public docs and examples.
 - Installed-consumer upgrade checks preserve an outstanding password-reset proof through the table rename and verify one-time redemption.
 - Minimum-consumer diagnostic markers use the current password-reset and email-verification vocabulary.

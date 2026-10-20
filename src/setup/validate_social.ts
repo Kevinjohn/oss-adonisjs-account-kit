@@ -2,6 +2,7 @@ import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialProviderName } from '../types.js'
 import { envName, diagnostic, validateOrigin } from './shared.js'
+import type { SelectedSetupOrigins } from './diagnostics.js'
 
 /** Social providers, callbacks, credential references and Ally prerequisites. */
 export function validateSocial(
@@ -9,7 +10,8 @@ export function validateSocial(
   choices: SetupChoices,
   state: SetupInspection,
   production: boolean,
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  selectedOrigins?: SelectedSetupOrigins
 ) {
   if (choices.social.status === 'enabled') {
     if (
@@ -48,7 +50,9 @@ export function validateSocial(
       'social.callbackOriginEnv',
       choices.social.callbackOriginEnv,
       production,
-      env
+      env,
+      selectedOrigins?.values[choices.social.callbackOriginEnv],
+      selectedOrigins?.errors[choices.social.callbackOriginEnv]
     )
     if (
       !choices.social.callbackPath.startsWith('/') ||

@@ -48,7 +48,10 @@ import {
 
 const emailValidator = vine.compile(vine.object({ email: vine.string().email() }))
 const passwordValidator = vine.compile(
-  vine.object({ password: vine.string().minLength(8).maxLength(256).confirmed() })
+  vine.object({
+    password: vine.string().minLength(8).maxLength(256),
+    passwordConfirmation: vine.string().sameAs('password'),
+  })
 )
 
 export default class PasswordResetsController {
@@ -103,7 +106,7 @@ export default class PasswordResetsController {
 }
 ```
 
-`inspect` checks the link without using it up, so the page can show "this link has expired"
+`inspect` checks the link without using it up, so the page can show that a link cannot be used
 before the user types a new password.
 
 ## Pages
@@ -136,26 +139,39 @@ export default function ForgotPassword() {
 import { useForm, Link } from '@inertiajs/react'
 
 export default function ResetPassword({ token, valid }: { token: string; valid: boolean }) {
-  const form = useForm({ password: '', password_confirmation: '' })
+  const form = useForm({ password: '', passwordConfirmation: '' })
   if (!valid)
     return (
       <p>
-        This link is invalid or has expired. <Link href="/forgot-password">Request a new one</Link>.
+        This link may be invalid, already used, or expired. <Link href="/forgot-password">Request a new one</Link>.
       </p>
     )
   return (
     <form onSubmit={(event) => (event.preventDefault(), form.post(`/reset-password/${token}`))}>
+      <label htmlFor="password">New password</label>
       <input
+        id="password"
+        name="password"
         type="password"
         value={form.data.password}
         onChange={(e) => form.setData('password', e.target.value)}
+        aria-invalid={form.errors.password ? true : undefined}
+        aria-describedby={form.errors.password ? 'password-error' : undefined}
       />
+      {form.errors.password && <p id="password-error">{form.errors.password}</p>}
+      <label htmlFor="passwordConfirmation">Confirm new password</label>
       <input
+        id="passwordConfirmation"
+        name="passwordConfirmation"
         type="password"
-        value={form.data.password_confirmation}
-        onChange={(e) => form.setData('password_confirmation', e.target.value)}
+        value={form.data.passwordConfirmation}
+        onChange={(e) => form.setData('passwordConfirmation', e.target.value)}
+        aria-invalid={form.errors.passwordConfirmation ? true : undefined}
+        aria-describedby={form.errors.passwordConfirmation ? 'password-confirmation-error' : undefined}
       />
-      {form.errors.password && <p>{form.errors.password}</p>}
+      {form.errors.passwordConfirmation && (
+        <p id="password-confirmation-error">{form.errors.passwordConfirmation}</p>
+      )}
       <button disabled={form.processing}>Set new password</button>
     </form>
   )
