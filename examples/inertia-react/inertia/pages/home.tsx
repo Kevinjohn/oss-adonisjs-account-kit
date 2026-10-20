@@ -3,7 +3,7 @@ import MarketingLayout from '~/layouts/marketing'
 
 export default function Home() {
   return (
-    <div className="home">
+    <main className="home">
       <article className="prose-card">
         <div className="pc-top">
           <span className="pc-status mono tag" style={{ color: 'var(--ok)' }}>
@@ -11,7 +11,7 @@ export default function Home() {
           </span>
         </div>
 
-        <div className="pc-lead">Welcome to the power of a full-stack React app.</div>
+        <h1 className="pc-lead">Welcome to the power of a full-stack React app.</h1>
 
         <p className="pc-para">
           Powered by Inertia and React, this setup blends server-driven routing with rich
@@ -159,7 +159,7 @@ export default function Home() {
           </div>
         </div>
       </article>
-    </div>
+    </main>
   )
 }
 
