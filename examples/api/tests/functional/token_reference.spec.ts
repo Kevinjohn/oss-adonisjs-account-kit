@@ -65,7 +65,10 @@ test.group('Token reference', (group) => {
     assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
   }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
-  test('password change revokes every bearer token for the account', async ({ client, assert }) => {
+  test('password change keeps the calling bearer token and revokes the others', async ({
+    client,
+    assert,
+  }) => {
     const user = await User.create({
       fullName: 'Multi Token User',
       email: `multi-token-${randomUUID()}@example.test`,
@@ -85,10 +88,9 @@ test.group('Token reference', (group) => {
       newPasswordConfirmation: 'ReplacementPass123!',
     })
     assert.equal(change.status(), 200)
-    for (const token of tokens) {
-      assert.equal((await client.get('/api/v1/account/profile').bearerToken(token)).status(), 401)
-    }
-    assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
+    assert.equal((await client.get('/api/v1/account/profile').bearerToken(tokens[0])).status(), 200)
+    assert.equal((await client.get('/api/v1/account/profile').bearerToken(tokens[1])).status(), 401)
+    assert.lengthOf(await db.from('auth_access_tokens').where('tokenable_id', user.id), 1)
   }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
   test('account errors use stable JSON and JSON:API envelopes while Vine errors retain 422', async ({
