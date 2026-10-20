@@ -99,6 +99,10 @@ namespace, and operation".
   or old stamp never captures a fresh revision".
 - **Token guards** delete the user's access tokens in the same transaction. Pinned by "token guard
   revokes all user tokens in the same transaction as a password change".
+- **Self-service password change** may keep the caller's own session or token (`keepCurrent`). The
+  caller already proved the current password or a recent provider proof. Every other sign-in still
+  ends, and a handle or id that matches nothing ends them all. Pinned by "keeps the initiating
+  session with the new revision and ends every other".
 - **Races at sign-in.** A credential change that lands while a login is in flight cannot return a
   usable session or token. Pinned by "a credential change during provisional session establishment
   cannot return a usable session".

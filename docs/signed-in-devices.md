@@ -105,6 +105,15 @@ unlink, sign out everywhere) deletes the account's `account_sessions` rows whene
 every installation that uses `authentication`. The credential revision already signs out older
 sessions; deleting the rows keeps the list accurate.
 
+A self-service password change is the one exception. `changePassword({ ..., keepCurrent })` keeps
+the caller's own sign-in: `keepCurrent.sessionHandle` keeps that `account_sessions` row and
+`keepCurrent.tokenId` keeps that access token. Every other one is deleted. A handle or id that
+matches nothing deletes them all. The call returns `{ revision }`, the new credential revision. A
+session guard must store it where `establish` stored the first one, or the next request fails the
+revision check. The managed session guard's `refresh(revision)` does this, and the managed
+password-change route passes `keepCurrent` and calls it. Password reset, email change, restriction,
+social unlink and sign out everywhere still end every sign-in.
+
 ### Custom guard adapters
 
 The session adapter's `establish(userId, revision, handle?)` receives a handle when the capability

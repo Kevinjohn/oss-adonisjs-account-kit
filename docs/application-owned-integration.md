@@ -82,11 +82,15 @@ const { currentPassword, newPassword } = await request.validateUsing(credentialC
 const kit = await app.container.make(AccountKit)
 
 try {
-  await kit.emailPasswordManagement.changePassword({
+  const { revision } = await kit.emailPasswordManagement.changePassword({
     actorId: actor.id,
     currentPassword,
     newPassword,
+    // Keep this session; every other session and token ends.
+    keepCurrent: { sessionHandle: session.get(handleKey) },
   })
+  // `handleKey` and `revisionKey` are the keys your guard's `establish` wrote.
+  session.put(revisionKey, revision ?? '')
 } catch (error) {
   if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
   reportCommittedFailure(logger, error, 'account_password.change')
@@ -94,6 +98,10 @@ try {
 
 return response.ok({ changed: true })
 ```
+
+For a token guard, pass `keepCurrent: { tokenId }` with the current token's identifier instead; the
+token survives and needs no refresh. Without `keepCurrent`, the change signs out every session and
+token, including the caller's.
 
 Import `DeliveryError` and `PostCommitError` from `adonisjs-account-kit`, and
 `reportCommittedFailure` from the reference diagnostic helper. The logger is the request logger. This
