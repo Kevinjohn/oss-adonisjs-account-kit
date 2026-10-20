@@ -9,6 +9,7 @@ import { transaction } from '../src/db.js'
 import { EmailAlreadyRegisteredError, InvalidInputError } from '../src/errors.js'
 import type { Invitation } from '../src/types.js'
 import { aceKernel } from './helpers/ace_kernel.js'
+import { dbTime } from './helpers/db_time.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission } from './helpers/admission.js'
 import { insertUser, tokenFrom } from './helpers/fakes.js'
@@ -97,12 +98,43 @@ test.group('admission bootstrap', (group) => {
     await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
     assert.lengthOf((await admission.list({ actorId: actor.id })).items, 0)
     assert.lengthOf((await admission.list({ actorId: actor.id, status: 'approved' })).items, 0)
+    // The waiting row is older than the account's row, yet the first page of one holds the account.
+    const person = await insertUser(kit, { email: 'person@example.test' })
+    await admission.operator.approve({ email: person.email })
+    const page = await admission.list({ actorId: actor.id, limit: 1 })
+    assert.deepEqual(
+      page.items.map((item) => item.email),
+      [person.email]
+    )
+    assert.isNull(page.nextCursor)
+  })
+
+  test('an account that already has a record keeps it and leaves the waiting approval', async ({
+    assert,
+  }) => {
+    const { admission } = setup()
+    await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
+    const user = await insertUser(kit, { email: 'boss@example.test' })
+    await kit.db.table('account_admissions').insert({
+      user_id: user.id,
+      requested_at: dbTime(kit),
+      created_at: dbTime(kit),
+      updated_at: dbTime(kit),
+    })
+    await transaction(kit.db, (trx) =>
+      withInvitationEvidence()(user, operatorInvitation('boss@example.test', null), trx)
+    )
+    const row = await kit.db.from('account_admissions').where('user_id', user.id).first()
+    assert.equal(row.invitation_source, 'invitation')
+    assert.isNull(row.approval_status)
+    assert.lengthOf(await waiting(), 1)
   })
 
   test('refuses a registered address, a bad role or address, and writes nothing', async ({
     assert,
   }) => {
     const { admission } = setup()
+    await admission.operator.bootstrap({ email: 'taken@example.test', role: 'owner' })
     await insertUser(kit, { email: 'taken@example.test' })
     await assert.rejects(
       () => admission.operator.bootstrap({ email: 'taken@example.test', role: 'owner' }),
@@ -114,8 +146,12 @@ test.group('admission bootstrap', (group) => {
       { email: 'not-an-email', role: 'owner' },
     ])
       await assert.rejects(() => admission.operator.bootstrap(input), InvalidInputError)
-    assert.lengthOf(await kit.db.from('account_admissions'), 0)
-    assert.lengthOf(await kit.db.from('account_invitations'), 0)
+    // The earlier waiting approval for the taken address is left as it was.
+    assert.deepEqual(
+      (await kit.db.from('account_admissions')).map((row) => row.bootstrap_email),
+      ['taken@example.test']
+    )
+    assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })
 
   test('a failed invitation removes the approval it wrote', async ({ assert }) => {
