@@ -139,7 +139,10 @@ test.group('managed HTTP dispatch', () => {
         requireActive: async () => account,
       },
       emailPasswordManagement: {
-        changePassword: async (input: unknown) => calls.push({ operation: 'password', input }),
+        changePassword: async (input: unknown) => {
+          calls.push({ operation: 'password', input })
+          return { revision: null }
+        },
         updateProfile: async (input: unknown) => {
           calls.push({ operation: 'profile', input })
           return account
@@ -173,6 +176,7 @@ test.group('managed HTTP dispatch', () => {
           currentPassword: undefined,
           recentProof: 'password-proof',
           newPassword: 'new-password',
+          keepCurrent: { tokenId: 11 },
         },
       },
       {

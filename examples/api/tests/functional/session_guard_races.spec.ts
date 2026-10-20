@@ -415,7 +415,7 @@ test.group('Session guard races', (group) => {
     )
   }).skip(!isSessionStrategy, SESSION_ONLY)
 
-  test('a password change revokes every previously issued browser session', async ({
+  test('a password change keeps the calling browser session and revokes the others', async ({
     client,
     assert,
   }) => {
@@ -450,10 +450,15 @@ test.group('Session guard races', (group) => {
         newPasswordConfirmation: 'ReplacementPass123!',
       })
     assert.equal(change.status(), 200, JSON.stringify(change.body()))
-    for (const cookies of sessions) {
-      const profile = await client.get('/api/v1/account/profile').header('cookie', cookies)
-      assert.equal(profile.status(), 401)
-    }
+    const kept = await client
+      .get('/api/v1/account/profile')
+      .header('cookie', rawCookies(change) || sessions[0])
+    assert.equal(kept.status(), 200)
+    // The kept session moved to a new id, so a copy of its old cookie is signed out.
+    const copied = await client.get('/api/v1/account/profile').header('cookie', sessions[0])
+    assert.equal(copied.status(), 401)
+    const other = await client.get('/api/v1/account/profile').header('cookie', sessions[1])
+    assert.equal(other.status(), 401)
   }).skip(!isSessionStrategy, SESSION_ONLY)
 
   test('a package restriction change revokes an application-owned protected session route', async ({
