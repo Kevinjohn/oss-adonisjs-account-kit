@@ -5,16 +5,8 @@ import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const tokenFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
-
-function rawCookies(response: { header(name: string): string | string[] | undefined }): string {
-  const values = response.header('set-cookie')
-  return (Array.isArray(values) ? values : [values])
-    .filter(Boolean)
-    .map((value) => String(value).split(';', 1)[0])
-    .join('; ')
-}
+import { cookies as rawCookies } from '#tests/helpers/cookies'
+import { tokenFrom } from '#tests/helpers/link_tokens'
 
 function pauseNextSessionLookup(userId: number | string) {
   const original = User.findOrFail

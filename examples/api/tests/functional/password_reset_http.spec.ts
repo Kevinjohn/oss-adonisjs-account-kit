@@ -4,8 +4,7 @@ import { test } from '@japa/runner'
 import hash from '@adonisjs/core/services/hash'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
-
-const tokenFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
+import { tokenFrom } from '#tests/helpers/link_tokens'
 
 test('stage-3 recovery baseline persists through real HTTP requests', async ({
   client,

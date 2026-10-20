@@ -1,26 +1,19 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
-import {
-  AccountKitError,
-  IdentityNotConfirmedError,
-  InvalidCredentialsError,
-  InvalidSessionError,
-  InvalidTokenError,
-  ThrottledError,
-} from 'adonisjs-account-kit'
+import { errors } from 'adonisjs-account-kit'
 import { isDeliveryFailure } from '#services/delivery_failure'
 
 /**
  * Messages for Account Kit errors shown as a flash toast. Anything else gets a generic message,
  * so internal causes never reach the page.
  */
-function accountMessage(error: AccountKitError) {
-  if (error instanceof InvalidCredentialsError) return 'Invalid email or password.'
-  if (error instanceof ThrottledError)
+function accountMessage(error: errors.AccountKitError) {
+  if (error instanceof errors.InvalidCredentialsError) return 'Invalid email or password.'
+  if (error instanceof errors.ThrottledError)
     return `Too many attempts. Try again in ${error.retryAfterSeconds} seconds.`
-  if (error instanceof InvalidTokenError) return 'This link is invalid or has expired.'
-  if (error instanceof IdentityNotConfirmedError) return 'The password is incorrect.'
+  if (error instanceof errors.InvalidTokenError) return 'This link is invalid or has expired.'
+  if (error instanceof errors.IdentityNotConfirmedError) return 'The password is incorrect.'
   if (isDeliveryFailure(error))
     return 'Your change was saved, but we could not send the email. Try again later.'
   return 'Something went wrong. Please try again.'
@@ -54,13 +47,13 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
-    if (error instanceof InvalidSessionError) {
+    if (error instanceof errors.InvalidSessionError) {
       await ctx.auth.use('web').logout()
       ctx.session.clear()
       ctx.session.flash('error', 'Your session has ended. Please sign in again.')
       return ctx.response.redirect().toRoute('session.create')
     }
-    if (error instanceof AccountKitError) {
+    if (error instanceof errors.AccountKitError) {
       ctx.session.flash('error', accountMessage(error))
       return ctx.response.redirect().back()
     }

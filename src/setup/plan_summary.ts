@@ -19,6 +19,7 @@ export function planSummary({
   endpoints,
   endpointLocations,
   missingPackages,
+  env,
 }: {
   choices: SetupChoices
   state: SetupInspection
@@ -28,6 +29,7 @@ export function planSummary({
   endpoints: string[]
   endpointLocations: Array<{ name: string; method: string; path: string }>
   missingPackages: string[]
+  env: NodeJS.ProcessEnv
 }): SetupPlan {
   const socialChoices = choices.social.status === 'enabled' ? choices.social : null
   const csrfLocation = endpointLocations.find(({ name }) => name === 'auth.csrf')?.path
@@ -51,7 +53,7 @@ export function planSummary({
       : []),
     ...(socialChoices
       ? socialChoices.providers.map((provider) => {
-          const origin = process.env[socialChoices.callbackOriginEnv]
+          const origin = env[socialChoices.callbackOriginEnv]
           const path = socialChoices.callbackPath.replace('{provider}', provider)
           let callback = '$' + '{' + socialChoices.callbackOriginEnv + '}' + path
           if (origin) {

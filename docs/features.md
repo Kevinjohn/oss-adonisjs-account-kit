@@ -50,8 +50,8 @@ Reference: [usage](usage.md).
 
 ### Included with every flow
 
-- **Emails** for AdonisJS Mail, with English templates, or your own templates. See
-  [notifications](notifications.md).
+- **Emails** for AdonisJS Mail, with English templates you can translate with `@adonisjs/i18n`,
+  or your own templates. See [notifications](notifications.md).
 - **Rate limits** through `@adonisjs/limiter`. Limiter keys are HMAC digests, so the store never
   holds an email address or IP. See [production requirements](reference/production-requirements.md#limiter-secret-and-budgets).
 - **Your routes or ours.** Call the service from your own controllers, or mount the
