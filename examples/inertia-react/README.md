@@ -26,46 +26,46 @@ links point to the reviewed example source so you can compare each file while ad
   Add the limiter first with `node ace add @adonisjs/limiter`, then add Account Kit with
   `node ace add adonisjs-account-kit`. The latter registers its provider and commands and generates
   the base config and migrations; preserve existing entries in
-  [`adonisrc.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/adonisrc.ts).
+  [`adonisrc.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/adonisrc.ts).
 - **User adapter and application policy:** Adapt
-  [`config/account_kit.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/config/account_kit.ts)
-  and [`app/models/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/models/user.ts)
+  [`config/account_kit.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/config/account_kit.ts)
+  and [`app/models/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/models/user.ts)
   to your user table and key type. The example maps the form's `fullName`, allows open registration,
   and permits sign-in; choose your own registration and access policy. The application owns field
   validation and every user-facing message. Configure `createActionUrls` with the real backend
   origin and the pages that receive reset and verification links.
 - **Shared validators and failure helper:**
-  [`app/validators/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/validators/user.ts)
+  [`app/validators/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/validators/user.ts)
   provides the email/password rules and messages used by signup, login, and the shared
-  [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/validators/account.ts)
+  [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/validators/account.ts)
   for verification, reset, and password changes. Keep both modules when transplanting any flow.
   Signup and reset also use
-  [`app/services/delivery_failure.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d0c63e1478022879351c76c5afeb048ab08087a6/examples/inertia-react/app/services/delivery_failure.ts)
+  [`app/services/delivery_failure.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/services/delivery_failure.ts)
   to recognize committed delivery or post-commit failures; include it when adding either flow and
   keep the response consistent with the operation's committed outcome.
 - **Guard and server-side sessions:** Adapt
-  [`config/auth.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/config/auth.ts),
-  [`config/session.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/config/session.ts),
-  and [`app/services/session_guard.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/services/session_guard.ts).
+  [`config/auth.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/config/auth.ts),
+  [`config/session.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/config/session.ts),
+  and [`app/services/session_guard.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/services/session_guard.ts).
   The example uses the existing `web` session guard, disables remember-me tokens, and stores
   sessions in the database. Set `SESSION_DRIVER=database`, `APP_KEY`, `APP_URL`, and your existing
   database variables. Choose `LIMITER_STORE` to match your configured limiter store. Use HTTPS for
   production action links. The example uses `APP_URL` for both `backendOrigin` and `appFrontendUrl`;
   set each to its real origin if they differ. Add the session table with `node ace make:session-table`.
-- **Environment schema:** Update [`start/env.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/start/env.ts)
+- **Environment schema:** Update [`start/env.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/start/env.ts)
   to validate the selected `SESSION_DRIVER` and `LIMITER_STORE`, and document those values in the
   environment-file example. The example sets both to `database`.
-- **Middleware order:** In [`start/kernel.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/start/kernel.ts), keep Shield/CSRF and session initialization before
+- **Middleware order:** In [`start/kernel.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/start/kernel.ts), keep Shield/CSRF and session initialization before
   authentication, then run the app's
-  [`silent_auth_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/middleware/silent_auth_middleware.ts)
+  [`silent_auth_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/middleware/silent_auth_middleware.ts)
   before
-  [`session_revision_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/middleware/session_revision_middleware.ts).
+  [`session_revision_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/middleware/session_revision_middleware.ts).
   Both run before route-level guest/auth checks. This checks the stored credential revision on every
   authenticated request. Keep Shield enabled for CSRF protection and keep the Inertia middleware in
   the server stack so it shares form errors and flash data.
-- **Routes and migrations:** Adapt [`start/routes.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/start/routes.ts)
-  and the app's [`auth_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/middleware/auth_middleware.ts)
-  and [`guest_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/middleware/guest_middleware.ts)
+- **Routes and migrations:** Adapt [`start/routes.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/start/routes.ts)
+  and the app's [`auth_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/middleware/auth_middleware.ts)
+  and [`guest_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/middleware/guest_middleware.ts)
   at the flow paths below. Keep verification and reset proof routes public and password settings
   inside the authenticated group. Also add the authenticated `/dashboard` route (signup and login
   redirect there) and POST `/logout` (the app layout and invalid-reset state sign out through it).
@@ -75,36 +75,36 @@ links point to the reviewed example source so you can compare each file while ad
   If transplanting only part of that route set, update each affected link/form to a route your app
   exposes. Retain the complete generated migration set unless supported pruning is established;
   disabled routes can still have required internal tables. The example's
-  [`account columns`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/database/migrations/1792342506854_account_kit_add_account_columns_to_users.ts),
-  [`account sessions`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/database/migrations/1792342506864_account_kit_create_account_sessions.ts),
-  [`transaction lock`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/database/migrations/1792342506858_account_kit_create_account_transaction_lock.ts),
-  [`login-link tokens`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/database/migrations/1792342506863_account_kit_create_login_link_tokens.ts),
-  [`reset proofs`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/database/migrations/1792342506855_account_kit_create_password_reset_tokens.ts),
-  and [`verification proofs`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/database/migrations/1792342506856_account_kit_create_email_verification_tokens.ts)
+  [`account columns`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/database/migrations/1792342506854_account_kit_add_account_columns_to_users.ts),
+  [`account sessions`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/database/migrations/1792342506864_account_kit_create_account_sessions.ts),
+  [`transaction lock`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/database/migrations/1792342506858_account_kit_create_account_transaction_lock.ts),
+  [`login-link tokens`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/database/migrations/1792342506863_account_kit_create_login_link_tokens.ts),
+  [`reset proofs`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/database/migrations/1792342506855_account_kit_create_password_reset_tokens.ts),
+  and [`verification proofs`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/database/migrations/1792342506856_account_kit_create_email_verification_tokens.ts)
   show tables touched by these flows. Keep `login_link_tokens` even when magic-link sign-in is off:
   credential changes delete outstanding sign-in links. Add `rate_limits` only when
   `LIMITER_STORE=database`. Run `node ace migration:run` after reviewing
   the generated migrations, then run `node ace account-kit:doctor` to check the config and schema.
 - **Errors, flash, and proof pages:** Adapt
-  [`app/exceptions/handler.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/exceptions/handler.ts)
+  [`app/exceptions/handler.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/exceptions/handler.ts)
   to turn known Account Kit errors into application-owned safe flash messages, and adapt
-  [`app/middleware/inertia_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/middleware/inertia_middleware.ts)
+  [`app/middleware/inertia_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/middleware/inertia_middleware.ts)
   to share validation errors and expose flash messages to React. Preserve
-  [`app/services/token_page_headers.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/services/token_page_headers.ts)
+  [`app/services/token_page_headers.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/services/token_page_headers.ts)
   on pages that render a proof from a URL; it sets `Referrer-Policy: same-origin`.
 - **Shared React form props:** The Inertia middleware imports
-  [`user_transformer.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/transformers/user_transformer.ts)
+  [`user_transformer.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/transformers/user_transformer.ts)
   and shares validation errors, transformed `user`, `emailVerified`, and the app's other shared
   props; keep the matching client contract in
-  [`inertia/types.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/types.ts).
+  [`inertia/types.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/types.ts).
   Its `flash()` method puts messages in Inertia's dedicated flash payload. Keep its
-  [`app/middleware/inertia_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/middleware/inertia_middleware.ts)
+  [`app/middleware/inertia_middleware.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/middleware/inertia_middleware.ts)
   for these shared values and run `node ace codegen` to refresh generated shared-prop types. The pages below import
-  [`form_error_summary.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/components/form_error_summary.tsx);
+  [`form_error_summary.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/components/form_error_summary.tsx);
   adapt the app's auth and app layouts (the example's
-  [`auth layout`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/layouts/auth.tsx)
-  and [`app layout`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/layouts/app.tsx)) to render
-  [`flash_toasts.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/components/flash_toasts.tsx)
+  [`auth layout`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/layouts/auth.tsx)
+  and [`app layout`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/layouts/app.tsx)) to render
+  [`flash_toasts.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/components/flash_toasts.tsx)
   so controller flash feedback is visible. It uses `sonner` and `lucide-react`; keep those
   dependencies or replace it with your own flash UI, and adapt auth/app layouts to render that UI.
   Adapt the example layouts' imports, shared props, route links, and components to your existing
@@ -120,12 +120,12 @@ links point to the reviewed example source so you can compare each file while ad
 
 **Signup and login**
 
-- Adapt [`new_account_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d0c63e1478022879351c76c5afeb048ab08087a6/examples/inertia-react/app/controllers/new_account_controller.ts),
-  [`session_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/controllers/session_controller.ts),
+- Adapt [`new_account_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/controllers/new_account_controller.ts),
+  [`session_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/controllers/session_controller.ts),
   and the `signupValidator` and `loginValidator` from the shared
-  [`app/validators/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/validators/user.ts),
-  [`inertia/pages/auth/signup.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/pages/auth/signup.tsx),
-  [`inertia/pages/auth/login.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/pages/auth/login.tsx),
+  [`app/validators/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/validators/user.ts),
+  [`inertia/pages/auth/signup.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/pages/auth/signup.tsx),
+  [`inertia/pages/auth/login.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/pages/auth/login.tsx),
   and the GET/POST `/signup` and `/login` routes inside your guest-only route group. Keep the
   authenticated dashboard and POST `/logout` routes from the shared foundation. Enable
   `registration` and session `authentication` in `config/account_kit.ts`; the controller uses the
@@ -138,10 +138,10 @@ links point to the reviewed example source so you can compare each file while ad
 
 **Email verification**
 
-- Adapt [`email_verifications_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/controllers/email_verifications_controller.ts),
-  `verifyEmailValidator` from [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/validators/account.ts),
-  [`inertia/pages/auth/verify_email.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/pages/auth/verify_email.tsx),
-  and [`inertia/components/verify_email_notice.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/components/verify_email_notice.tsx),
+- Adapt [`email_verifications_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/controllers/email_verifications_controller.ts),
+  `verifyEmailValidator` from [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/validators/account.ts),
+  [`inertia/pages/auth/verify_email.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/pages/auth/verify_email.tsx),
+  and [`inertia/components/verify_email_notice.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/components/verify_email_notice.tsx),
   rendered on the dashboard. Add public
   GET/POST `/verify-email/:token` and authenticated POST `/email-verification` for resend. Enable
   `emailVerification` and keep
@@ -152,10 +152,10 @@ links point to the reviewed example source so you can compare each file while ad
 
 **Password reset**
 
-- Adapt [`password_resets_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/controllers/password_resets_controller.ts),
-  `forgotPasswordValidator` and `resetPasswordValidator` from [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/validators/account.ts), and the
-  [`inertia/pages/auth/forgot_password.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/pages/auth/forgot_password.tsx)
-  and [`inertia/pages/auth/reset_password.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/pages/auth/reset_password.tsx)
+- Adapt [`password_resets_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/controllers/password_resets_controller.ts),
+  `forgotPasswordValidator` and `resetPasswordValidator` from [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/validators/account.ts), and the
+  [`inertia/pages/auth/forgot_password.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/pages/auth/forgot_password.tsx)
+  and [`inertia/pages/auth/reset_password.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/pages/auth/reset_password.tsx)
   pages. Add GET/POST `/forgot-password` and
   `/reset-password/:token`; enable `passwordReset`. The request route is guest-only, while the proof
   route remains usable regardless of the current browser's signed-in account. Its invalid-link
@@ -170,9 +170,9 @@ links point to the reviewed example source so you can compare each file while ad
 
 **Password settings**
 
-- Adapt [`passwords_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/controllers/passwords_controller.ts),
-  `changePasswordValidator` from [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/app/validators/account.ts),
-  and [`inertia/pages/settings/password.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/4b0031bf66d33d380e122f0246b9d8e7c9b44e6f/examples/inertia-react/inertia/pages/settings/password.tsx),
+- Adapt [`passwords_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/controllers/passwords_controller.ts),
+  `changePasswordValidator` from [`app/validators/account.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/validators/account.ts),
+  and [`inertia/pages/settings/password.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/inertia/pages/settings/password.tsx),
   adapting its app and settings layouts to your navigation.
   Add GET/POST `/settings/password` inside authenticated routes. The controller requires the
   current password, changes it through `emailPasswordManagement`, then signs the caller back in;
