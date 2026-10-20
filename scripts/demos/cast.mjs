@@ -29,7 +29,7 @@ export class Cast {
 }
 
 const width = 100
-/** Cuts a line to the terminal width, ignoring colour codes when counting. */
+/** Cuts a line to the terminal width, ignoring color codes when counting. */
 export function fit(line) {
   const visible = line.replace(/\x1b\[[0-9;]*m/g, '')
   if (visible.length <= width - 2) return line

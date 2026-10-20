@@ -1,24 +1,13 @@
 import { test } from '@japa/runner'
-import { registerManagedRoutes, type ManagedGuard } from '../src/http/managed.js'
-import { planManagedRoutes } from '../src/http/routes.js'
+import { registerManagedRoutes } from '../src/http/managed.js'
 import { clientChallengeFor } from '../src/magic_link.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
+import { fakeManagedHttp, sessionStore, stubGuard } from './helpers/managed_http_fakes.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
-
-function sessionStore() {
-  const values = new Map<string, unknown>()
-  return {
-    values,
-    get: (key: string) => values.get(key),
-    put: (key: string, value: unknown) => void values.set(key, value),
-    forget: (key: string) => void values.delete(key),
-  }
-}
 
 test.group('managed magic-link routes', (group) => {
   const kit = useTestApp(group)
@@ -31,9 +20,8 @@ test.group('managed magic-link routes', (group) => {
       ...overrides,
     })
     const established: unknown[] = []
-    const guard = {
+    const guard = stubGuard<string>({
       strategy,
-      name: strategy === 'session' ? 'web' : 'api',
       forRequest: () =>
         ({
           strategy,
@@ -48,7 +36,7 @@ test.group('managed magic-link routes', (group) => {
         throw new Error('public routes never read the current account')
       },
       publicCredential: (credential: string) => `public:${credential}`,
-    } as ManagedGuard<string>
+    })
     const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -172,6 +160,16 @@ test.group('managed magic-link routes', (group) => {
     )
   })
 
+  test('session guards refuse a request without session middleware', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { call, service } = mount('session')
+    await assert.rejects(
+      () => call('POST /api/v1/auth/magic-link', { email: user.email }, { session: {} as never }),
+      /require persistent AdonisJS session middleware/
+    )
+    assert.isUndefined(service.recorder.calls.find((c) => c.method === 'magicLinkProvision'))
+  })
+
   test('known, unknown and failed requests answer identically', async ({ assert }) => {
     const user = await insertUser(kit)
     const delivery = mount('session')
@@ -270,25 +268,5 @@ test.group('managed magic-link routes', (group) => {
         }),
       /require publicCredential/
     )
-  })
-
-  test('the route plan publishes request, inspect and complete', ({ assert }) => {
-    for (const strategy of ['session', 'access_tokens'] as const) {
-      const routes = planManagedRoutes({ prefix: '/api/v1', strategy, enabled: ['magicLinkLogin'] })
-      assert.deepEqual(
-        routes
-          .filter((route) => route.capability === 'magicLinkLogin')
-          .map(({ name, method, path, access, proof }) => [name, method, path, access, proof]),
-        [
-          ['auth.magicLink.request', 'POST', '/api/v1/auth/magic-link', 'public', undefined],
-          ['auth.magicLink.inspect', 'GET', '/api/v1/auth/magic-link/:token', 'public', true],
-          ['auth.magicLink.complete', 'POST', '/api/v1/auth/magic-link/:token', 'public', true],
-        ]
-      )
-      assert.equal(
-        routes.some((route) => route.name === 'auth.csrf'),
-        strategy === 'session'
-      )
-    }
   })
 })

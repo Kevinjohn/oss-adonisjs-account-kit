@@ -41,7 +41,7 @@ password hash.
 
 ## Prove it with the contract suite
 
-`adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the Lucid adapter
+`adonisjs-account-kit/testing/adapter_contract` runs the same behavior checks the Lucid adapter
 passes: creation, lookups, password hashing, email changes, verification, and row locking.
 
 ```ts

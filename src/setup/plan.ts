@@ -39,11 +39,15 @@ export async function planSetup(
     retirementImpact?: SetupPlan['retirementImpact']
     retirementMaintenanceWindow?: boolean
     runtimeInventoryUnavailable?: boolean
+    /** Deployment values read for readiness and callback URLs; defaults to `process.env`. */
+    env?: NodeJS.ProcessEnv
   } = {}
 ): Promise<SetupPlan> {
   choices = parseSetupChoices(choices)
+  const env = options.env ?? process.env
   const diagnostics = validate(choices, state, {
     production: options.production ?? false,
+    env,
     retirementImpact: options.retirementImpact ?? null,
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
@@ -251,5 +255,6 @@ export async function planSetup(
     endpoints,
     endpointLocations,
     missingPackages,
+    env,
   })
 }

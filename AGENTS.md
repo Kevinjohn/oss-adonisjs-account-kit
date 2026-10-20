@@ -13,7 +13,7 @@
 The same rules as `CONTRIBUTING.md`; every change follows them.
 
 - **Built for everyone who uses AdonisJS.** Follow the open-source AdonisJS packages and starter
-  kits for names, shapes and behaviour. Match AdonisJS Plus only where that costs nothing; Plus
+  kits for names, shapes and behavior. Match AdonisJS Plus only where that costs nothing; Plus
   compatibility is not a goal and never outweighs consistency for open-source users.
 - **The application owns its language.** Do what the official AdonisJS packages do: look up
   user-facing text through `@adonisjs/i18n` when the application uses it, with English as the
