@@ -4,7 +4,9 @@
 
 ## Tutorial
 
-- [Getting started](getting-started.md): install, migrate, and send your first password reset.
+- [Build one account API](guides/core-api.md): recommended complete API-starter path from signup
+  and ownership proof through protected settings and reset.
+- [Getting started](getting-started.md): focused install and password-reset tutorial.
 - [See it run](recordings.md): short terminal recordings of each feature.
 
 ## How-to guides

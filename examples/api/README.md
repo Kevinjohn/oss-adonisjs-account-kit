@@ -4,6 +4,10 @@ A complete AdonisJS 7 API app that uses Account Kit from its own controllers. Co
 you wire Account Kit into your app; the [usage guide](../../docs/usage.md) points here for the
 full picture.
 
+For a single supported API-starter journey with one namespace and the opaque `api` guard, begin
+with [Build one account API](../../docs/guides/core-api.md). This example has additional admission,
+invitation, social, and outbox integrations; copy those only when your application needs them.
+
 ## What to copy
 
 | You want                         | Look at                                                                                                                                                              |
