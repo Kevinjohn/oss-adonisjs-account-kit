@@ -23,6 +23,15 @@ The body is `{ code, message }`. The message is generic ("Account request reject
 operation failed") so that internal causes and callback errors never reach the client. Log the
 original error yourself.
 
+For a copyable HTTP boundary, validate email, proof route parameters and the selected password
+policy with Vine first; its field errors follow AdonisJS's normal validation response. Map known
+service errors with `accountErrorResponse`; rethrow non-package database or callback failures to
+ordinary application reporting. On a reset **request**, a committed `DeliveryError` or
+`PostCommitError` still gets the same generic `202` acknowledgement as an unknown address. On
+reset **completion**, these committed follow-up failures must tell the client that the password
+changed, rather than inviting another reset. The [starter tutorial](../getting-started.md) shows
+both cases. Never log full proof-bearing URLs or raw bearer credentials.
+
 - `ThrottledError` adds a `Retry-After` header.
 - `PostCommitError` adds `committed: true` to the body.
 - `InvitationManagementDeniedError` is reported as `InvitationNotFoundError`, so a caller cannot
