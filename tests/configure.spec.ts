@@ -6,7 +6,8 @@ import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { configure, migrationNames } from '../configure.js'
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import { configure, migrationNames, migrationSchema } from '../configure.js'
 
 test('configures the package idempotently without replacing application-owned files', async ({
   assert,
@@ -231,4 +232,9 @@ test('configure reports invalid schema flags with exit code 1 and generates noth
     assert.lengthOf(calls.migrations, 0)
     assert.equal(calls.envValidations, 0)
   }
+})
+
+test('migrationSchema reports invalid schema flags with RuntimeException', ({ assert }) => {
+  assert.throws(() => migrationSchema('bad-name'), RuntimeException)
+  assert.throws(() => migrationSchema('users', 'bigint' as never), RuntimeException)
 })
