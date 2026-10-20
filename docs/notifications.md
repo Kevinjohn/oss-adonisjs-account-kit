@@ -86,9 +86,12 @@ system, choose `best-effort`; this is allowed in production and the report says 
 
 ## How it works
 
-The maintained templates cover password reset, account activation, invitation and email-change
-links, plus password-reset, password-change, email-change, social-link and social-unlink security notices. Each message has
-an HTML heading, descriptive link text, and a plain-text version containing the full URL.
+The maintained templates cover password-reset, activation, invitation, email-change and magic-link
+links, plus password-reset, password-change, email-change, social-link and social-unlink security
+notices and an account-deletion confirmation. Each message has an HTML heading, descriptive link text
+when it has an action, and a plain-text version containing the full URL when applicable. The
+[custom email callback reference](recipes/email-templates.md) lists every callback, recipient and
+operation timing.
 Dynamic text and URLs are HTML escaped. `createMailNotifications` calls AdonisJS Mail's
 `sendLater`, after the account operation has committed. It does not install a queue or outbox.
 Social notices name Google or GitHub and go only to the account address confirmed at the time
