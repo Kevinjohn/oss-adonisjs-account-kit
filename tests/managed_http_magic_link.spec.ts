@@ -160,6 +160,16 @@ test.group('managed magic-link routes', (group) => {
     )
   })
 
+  test('session guards refuse a request without session middleware', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { call, service } = mount('session')
+    await assert.rejects(
+      () => call('POST /api/v1/auth/magic-link', { email: user.email }, { session: {} as never }),
+      /require persistent AdonisJS session middleware/
+    )
+    assert.isUndefined(service.recorder.calls.find((c) => c.method === 'magicLinkProvision'))
+  })
+
   test('known, unknown and failed requests answer identically', async ({ assert }) => {
     const user = await insertUser(kit)
     const delivery = mount('session')
