@@ -423,6 +423,12 @@ its own cleanup. Preserve any unrelated routes in `start/routes.ts`.
 
 ## 6. Add a focused integration test
 
+Create the functional-test directory first; the API starter may not contain it yet.
+
+```sh
+mkdir -p tests/functional
+```
+
 Inside the application’s `tests/functional` directory, create `core_account_journey.spec.ts`. The test sends real HTTP requests to
 this starter, including a resend after the one-minute proof reuse window, and checks the actual
 opaque credentials after both password changes. It uses only fictional data.

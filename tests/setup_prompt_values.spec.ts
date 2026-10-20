@@ -352,4 +352,43 @@ test.group('setup prompt values', () => {
     assert.equal(choices.managed.filter((name) => name === 'socialAuthentication').length, 1)
     assert.doesNotThrow(() => parseSetupChoices(choices))
   })
+
+  test('social sign-in without ordinary registration keeps an application policy', async ({
+    assert,
+  }) => {
+    const saved = savedNonDefaultChoices()
+    saved.features = ['authentication', 'socialAuthentication']
+    saved.managed = ['authentication', 'socialAuthentication']
+    saved.managedExcept = []
+    saved.policy.registration = 'application'
+    const questions: string[] = []
+    const choices = await collectFromSavedChoices(
+      async (question) => {
+        questions.push(question)
+        return ''
+      },
+      () => {},
+      saved
+    )
+
+    assert.equal(choices.policy.registration, 'application')
+    assert.isTrue(questions.some((question) => question.startsWith('Registration policy')))
+  })
+
+  test('a changed route prefix replaces a saved session callback path', async ({ assert }) => {
+    const saved = savedNonDefaultChoices()
+    saved.authentication = defaultSetupChoices().authentication
+    const social = saved.social as Extract<SetupChoices['social'], { status: 'enabled' }>
+    social.callbackPath = '/members/auth/oauth/{provider}/callback'
+    const answers: Record<string, string> = { 'Managed route prefix': '/auth' }
+    const ask = async (question: string) =>
+      Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
+
+    const moved = await collectFromSavedChoices(ask, () => {}, saved)
+    assert.deepInclude(moved.social, { callbackPath: '/auth/auth/oauth/{provider}/callback' })
+
+    delete answers['Managed route prefix']
+    const kept = await collectFromSavedChoices(ask, () => {}, saved)
+    assert.deepInclude(kept.social, { callbackPath: '/members/auth/oauth/{provider}/callback' })
+  })
 })

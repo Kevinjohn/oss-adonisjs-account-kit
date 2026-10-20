@@ -8,6 +8,13 @@ import type * as TypeScript from 'typescript'
 import { safeSetupPath } from './safe_path.js'
 import { exactCall, safeEnvGetter, type SetupSource } from './ts_source.js'
 
+/** A selected assignment refers to other values, so reading it would mean evaluating it. */
+export class IndirectEnvironmentValueError extends Error {
+  constructor() {
+    super('Selected environment assignment must be a direct value')
+  }
+}
+
 function hasClosingQuote(text: string, quote: string): boolean {
   for (let index = 0; index < text.length; index++) {
     if (text[index] === '\\') {
@@ -61,8 +68,7 @@ async function resolveEnvironmentValue(
         if (found || !new RegExp(`^\\s*(?:export\\s+)?${variable}\\s*=`).test(line))
           throw new Error('Selected environment assignment is ambiguous')
         found = true
-        if (line.includes('$') || line.includes('`'))
-          throw new Error('Selected environment assignment must be a direct value')
+        if (line.includes('$') || line.includes('`')) throw new IndirectEnvironmentValueError()
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
