@@ -2,17 +2,18 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, InvalidTokenError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
-import {
-  applyMappedHeaders,
-  managedErrorResponse,
-  type ManagedMessage,
-  type ManagedTranslator,
-} from './responses.js'
+import { applyMappedHeaders, managedErrorResponse, type ManagedMessage } from './responses.js'
+import type { AccountKitTranslator } from '../translator.js'
 import type { ManagedEndpointName } from './routes.js'
 
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
-export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
-  return 'i18n' in context ? (context.i18n as ManagedTranslator) : undefined
+export function requestTranslator(context: HttpContext): AccountKitTranslator | undefined {
+  return 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined
+}
+
+/** User-facing text looked up through the request's `@adonisjs/i18n` instance, with English as the fallback. */
+export function translate(context: HttpContext, key: string, fallbackMessage: string): string {
+  return requestTranslator(context)?.t(key, {}, fallbackMessage) ?? fallbackMessage
 }
 
 export function invalidProof(

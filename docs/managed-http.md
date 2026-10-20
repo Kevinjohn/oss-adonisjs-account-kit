@@ -225,6 +225,15 @@ Request-validation messages already follow the locale: the managed routes call `
 
 Community [translations](translations/index.md) of both files are ready to copy.
 
+The password-reset and magic-link requests answer `202` with an acknowledgement looked up as `account_kit.<key>`. Add them to `resources/lang/<locale>/account_kit.json`:
+
+```json
+{
+  "password_reset_requested": "If the account exists, instructions will be sent.",
+  "magic_link_requested": "If the account exists, a sign-in link will be sent."
+}
+```
+
 ### The selected guard protects application routes too
 
 Managed account routes validate the existing guard and the package's current account state on every request. The application must apply the same revision/token check to its own protected routes for revocation to cover them. Session login must regenerate the session, logout must destroy the current server-side session, and the application must use a shared server-side session store across instances. Access-token login issues an opaque token; logout deletes only the current token. See [authentication](authentication.md) for the exact revocation boundary.

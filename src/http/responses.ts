@@ -14,6 +14,7 @@ import {
   ThrottledError,
   UnverifiedEmailError,
 } from '../errors.js'
+import type { AccountKitTranslator } from '../translator.js'
 
 export { proofHeaders } from './proof_headers.js'
 
@@ -49,14 +50,6 @@ export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorRes
  */
 export type ManagedMessage = (code: string, defaultMessage: string) => string
 
-/**
- * The part of an `@adonisjs/i18n` `I18n` instance the managed routes use. Error wording is looked
- * up as `errors.<code>`, with the English message as the fallback.
- */
-export interface ManagedTranslator {
-  t(identifier: string, data: Record<string, unknown>, fallbackMessage: string): string
-}
-
 function prefersJsonApi(accept?: string): boolean {
   if (!accept) return false
   const ranges = accept.split(',').map((part) => {
@@ -90,7 +83,7 @@ export function managedErrorResponse(
     accept?: string
     proof?: 'password' | 'email' | 'invitation' | 'magicLink'
     message?: ManagedMessage
-    i18n?: ManagedTranslator
+    i18n?: AccountKitTranslator
   } = {}
 ): ManagedErrorResponse | null {
   if (error instanceof PostCommitError) return null
