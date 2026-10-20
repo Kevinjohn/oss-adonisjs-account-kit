@@ -1,11 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { lockUser, transaction } from './db.js'
-import { normaliseEmail } from './email.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { normalizeEmail } from './email.js'
+import { throttlerOf } from './throttle.js'
 import { credentialsChanged, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import {
@@ -31,25 +29,25 @@ import type {
   CurrentAccount,
   CurrentAccountInput,
   PasswordLoginInput,
+  ResolvedAuthenticationConfig,
   ResolvedConfig,
   SocialProviderName,
   Trx,
   UserId,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
 
-type Dependencies = {
-  config: ResolvedConfig
-  db: Database
-  limiter: LimiterService
-  throttler?: Throttler
+/** The authentication settings, or `CapabilityDisabledError` when authentication is off. */
+export function requireAuthentication(config: ResolvedConfig): ResolvedAuthenticationConfig {
+  if (!config.authentication) throw new CapabilityDisabledError('Authentication is disabled')
+  return config.authentication
 }
 
-function configured(deps: Pick<Dependencies, 'config'>) {
-  const auth = deps.config.authentication
-  if (!auth) throw new CapabilityDisabledError('Authentication is disabled')
-  return auth
+/** An account is active unless its only address is still unconfirmed. */
+export function isActiveAccount(user: AccountUser): boolean {
+  return user.unverifiedEmail !== user.email
 }
 
 export function safeAccount(user: AccountUser): CurrentAccount {
@@ -58,16 +56,16 @@ export function safeAccount(user: AccountUser): CurrentAccount {
     email: user.email,
     unverifiedEmail: user.unverifiedEmail,
     hasPassword: user.hasPassword,
-    active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
+    active: isActiveAccount(user),
   }
 }
 
 export async function currentInTransaction(
-  deps: Pick<Dependencies, 'config'>,
+  deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx
 ): Promise<CurrentAccount> {
-  const auth = configured(deps)
+  const auth = requireAuthentication(deps.config)
   await lockUser(trx, deps.config, input.userId)
   const user = await deps.config.users.findById(input.userId, trx)
   if (!user) throw new InvalidSessionError()
@@ -97,7 +95,7 @@ export async function currentInTransaction(
   return safeAccount(user)
 }
 
-export function authenticationService(deps: Dependencies) {
+export function authenticationService(deps: ServiceDependencies) {
   return {
     /** Read-only impact of the login methods that remain after a proposed change. */
     async retirementImpact(input: {
@@ -110,7 +108,7 @@ export function authenticationService(deps: Dependencies) {
       currentProviders: SocialProviderName[]
       currentPasswordLogin: boolean
     }> {
-      configured(deps)
+      requireAuthentication(deps.config)
       return retirementImpact(deps, input)
     },
 
@@ -122,7 +120,7 @@ export function authenticationService(deps: Dependencies) {
       input: PasswordLoginInput,
       guard: AuthenticationGuard<Credential>
     ): Promise<{ account: CurrentAccount; credential: Credential }> {
-      const auth = configured(deps)
+      const auth = requireAuthentication(deps.config)
       if (guard.strategy !== auth.strategy || guard.name !== auth.guard)
         throw new Error(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
       if (
@@ -133,7 +131,7 @@ export function authenticationService(deps: Dependencies) {
       )
         throw new InvalidCredentialsError()
 
-      const email = normaliseEmail(input.email)
+      const email = normalizeEmail(input.email)
       const key = throttlerOf(deps).key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
@@ -209,7 +207,7 @@ export function authenticationService(deps: Dependencies) {
       credential?: Credential,
       current?: CurrentAccountInput
     ): Promise<void> {
-      configured(deps)
+      requireAuthentication(deps.config)
       if (current?.sessionHandle && sessionRegistryEnabled(deps.config))
         await deps.db
           .from(sessionTable)
@@ -227,7 +225,7 @@ export function authenticationService(deps: Dependencies) {
       userId: UserId
       change: (user: AccountUser, trx: Trx) => Promise<void>
     }): Promise<void> {
-      configured(deps)
+      requireAuthentication(deps.config)
       await transaction(deps.db, async (trx) => {
         await lockUser(trx, deps.config, input.userId)
         const user = await deps.config.users.findById(input.userId, trx)

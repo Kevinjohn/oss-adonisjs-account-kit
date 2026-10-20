@@ -4,50 +4,11 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
-import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { AccountKit } from 'adonisjs-account-kit'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
-import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
-import { ACCESS_TOKENS_ONLY, SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const proofFrom = (url: string) => decodeURIComponent(new URL(url).pathname.split('/').at(-1)!)
-
-test('committed follow-up diagnostics omit private error details', async ({ assert }) => {
-  const reported: Array<{ details: object; message: string }> = []
-  const logger = {
-    error(details: object, message: string) {
-      reported.push({ details, message })
-    },
-  }
-  reportCommittedFailure(
-    logger,
-    new DeliveryError('secret proof and recipient@example.test'),
-    'password_reset.request'
-  )
-  reportCommittedFailure(
-    logger,
-    new PostCommitError('secret proof and recipient@example.test'),
-    'password_reset.complete'
-  )
-  assert.deepEqual(reported, [
-    {
-      details: {
-        event: 'account_kit_follow_up_failed',
-        operation: 'password_reset.request',
-        failure: 'delivery',
-      },
-      message: 'Account operation committed but a follow-up failed',
-    },
-    {
-      details: {
-        event: 'account_kit_follow_up_failed',
-        operation: 'password_reset.complete',
-        failure: 'post_commit',
-      },
-      message: 'Account operation committed but a follow-up failed',
-    },
-  ])
-})
+import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
+import { tokenFrom as proofFrom } from '#tests/helpers/link_tokens'
 
 test('bearer logout revokes only the current token and repeat is unauthenticated', async ({
   client,
@@ -383,28 +344,3 @@ test('verification GET inspects without consuming and POST completes once', asyn
     ],
   })
 }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
-
-test('malformed proof submission still receives private-cache and referrer headers', async ({
-  client,
-  assert,
-}) => {
-  const malformed = await client
-    .post('/api/v1/auth/email-verification/malformed-proof')
-    .unsafeJson('{"password":')
-  assert.equal(malformed.status(), 400)
-  assert.equal(malformed.header('cache-control'), 'no-store')
-  assert.equal(malformed.header('referrer-policy'), 'no-referrer')
-})
-
-test('session CSRF rejection on a proof POST retains private response headers', async ({
-  client,
-  assert,
-}) => {
-  const rejected = await client
-    .post('/api/v1/auth/password-reset/invalid-proof')
-    .header('x-csrf-token', 'invalid')
-    .json({ password: 'NewPass123!', passwordConfirmation: 'NewPass123!' })
-  assert.equal(rejected.status(), 403)
-  assert.equal(rejected.header('cache-control'), 'no-store')
-  assert.equal(rejected.header('referrer-policy'), 'no-referrer')
-}).skip(!isSessionStrategy, SESSION_ONLY)

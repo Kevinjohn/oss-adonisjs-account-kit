@@ -1,12 +1,8 @@
 /** Response shaping shared by managed endpoint handlers: proof errors, policy errors, account bodies. */
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidTokenError } from '../errors.js'
-import type { AccountUser, CurrentAccount } from '../types.js'
-import {
-  managedErrorResponse,
-  type ManagedErrorResponse,
-  type ManagedMessage,
-} from './responses.js'
+import { DeliveryError, InvalidTokenError, PostCommitError } from '../errors.js'
+import type { CurrentAccount } from '../types.js'
+import { applyMappedHeaders, managedErrorResponse, type ManagedMessage } from './responses.js'
 import type { AccountKitTranslator } from '../translator.js'
 import type { ManagedEndpointName } from './routes.js'
 
@@ -18,25 +14,6 @@ export function requestTranslator(context: HttpContext): AccountKitTranslator | 
 /** User-facing text looked up through the request's `@adonisjs/i18n` instance, with English as the fallback. */
 export function translate(context: HttpContext, key: string, fallbackMessage: string): string {
   return requestTranslator(context)?.t(key, {}, fallbackMessage) ?? fallbackMessage
-}
-
-export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
-  for (const [name, value] of Object.entries(mapped.headers)) {
-    if (name.toLowerCase() !== 'vary') {
-      context.response.header(name, value)
-      continue
-    }
-    const existing = context.response.getHeader('Vary')
-    const terms = existing
-      ? String(existing)
-          .split(',')
-          .map((term) => term.trim())
-      : []
-    if (terms.includes('*')) continue
-    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
-    context.response.header('Vary', terms.join(', '))
-  }
-  context.response.header('Content-Type', mapped.contentType)
 }
 
 export function invalidProof(
@@ -83,23 +60,13 @@ export function passwordPolicyError(
   return ruleError(context, field, 'passwordPolicy', 'Password does not meet the policy.')
 }
 
-export function safeAccount(account: CurrentAccount): Record<string, unknown> {
+export function publicAccount(account: CurrentAccount): Record<string, unknown> {
   return {
     id: account.id,
     email: account.email,
     unverifiedEmail: account.unverifiedEmail,
     hasPassword: account.hasPassword,
     active: account.active,
-  }
-}
-
-export function currentAccount(user: AccountUser): CurrentAccount {
-  return {
-    id: user.id,
-    email: user.email,
-    unverifiedEmail: user.unverifiedEmail,
-    hasPassword: user.hasPassword,
-    active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
   }
 }
 
@@ -119,4 +86,22 @@ export function recoveryDiagnostic(
     | 'session_end_failed'
 ): void {
   context.logger?.warn({ operation, outcome }, 'Managed account operation needs reconciliation')
+}
+
+/**
+ * Logs a failure that happened after the operation committed and returns `true`; returns `false`
+ * for any other error, which the caller rethrows or maps.
+ */
+export function reportCommittedFailure(
+  context: HttpContext,
+  operation: ManagedEndpointName,
+  error: unknown
+): boolean {
+  if (!(error instanceof DeliveryError || error instanceof PostCommitError)) return false
+  recoveryDiagnostic(
+    context,
+    operation,
+    error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'
+  )
+  return true
 }

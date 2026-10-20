@@ -5,21 +5,7 @@ import { clearSocialPending } from './credential_cleanup.js'
 import { sessionTable } from './session_registry.js'
 import { InvalidCredentialsError } from './errors.js'
 import type { AccountUser, ResolvedConfig, Trx, UserId } from './types.js'
-
-function normalizeStamp(value: unknown): string | null {
-  if (value === null || value === undefined) return null
-  const iso = typeof value === 'string' ? DateTime.fromISO(value, { zone: 'utc' }) : null
-  const at =
-    value instanceof Date
-      ? DateTime.fromJSDate(value, { zone: 'utc' })
-      : typeof value === 'number'
-        ? DateTime.fromMillis(value, { zone: 'utc' })
-        : iso?.isValid
-          ? iso
-          : DateTime.fromSQL(String(value), { zone: 'utc' })
-  if (!at.isValid) throw new Error('Invalid credentials_changed_at value')
-  return at.toUTC().toISO()
-}
+import { readIsoTimestamp } from './timestamps.js'
 
 export async function revision(
   trx: Trx,
@@ -30,7 +16,7 @@ export async function revision(
   const table = metadata.table
   const row = await trx.from(table).select('credentials_changed_at').where('id', userId).first()
   if (!row) throw new InvalidCredentialsError()
-  return normalizeStamp(row.credentials_changed_at)
+  return readIsoTimestamp(row.credentials_changed_at)
 }
 
 /** The account lock makes the revision advance even if two changes use the same wall-clock tick. */
