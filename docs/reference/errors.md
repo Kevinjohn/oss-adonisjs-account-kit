@@ -6,13 +6,13 @@ Each carries a stable `code` and an HTTP `status`. Import them from `adonisjs-ac
 
 ## Mapping errors to responses
 
-`accountErrorResponse(error)` turns any `AccountKitError` into a safe response and returns `null`
-for other errors. Call it from your exception handler:
+`accountErrorResponse(error, options?)` turns any `AccountKitError` into a safe response and
+returns `null` for other errors. Call it from your exception handler:
 
 ```ts
 import { accountErrorResponse } from 'adonisjs-account-kit'
 
-const mapped = accountErrorResponse(error)
+const mapped = accountErrorResponse(error, { i18n: 'i18n' in ctx ? ctx.i18n : undefined })
 if (mapped) {
   for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
   return ctx.response.status(mapped.status).send(mapped.body)
@@ -27,6 +27,46 @@ original error yourself.
 - `PostCommitError` adds `committed: true` to the body.
 - `InvitationManagementDeniedError` is reported as `InvitationNotFoundError`, so a caller cannot
   tell a hidden invitation from a missing one.
+
+### Translating the message
+
+When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n),
+pass the request's `ctx.i18n` as `i18n`. The message for code `X` is looked up as `errors.X`, with
+the English message as the fallback, the same keys the [managed routes](../managed-http.md) use.
+The code is the error's own `code` from the catalogue below, except that
+`E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` is never returned. These are the keys and their
+English messages for `resources/lang/<locale>/errors.json`:
+
+```json
+{
+  "E_ACCOUNT_KIT": "Account operation failed",
+  "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected",
+  "E_ACCOUNT_KIT_INVALID_TOKEN": "Account request rejected",
+  "E_ACCOUNT_KIT_THROTTLED": "Account request rejected",
+  "E_ACCOUNT_KIT_AUTHORIZATION": "Account request rejected",
+  "E_ACCOUNT_KIT_INVITATION_NOT_FOUND": "Invitation not found",
+  "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected",
+  "E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED": "Account request rejected",
+  "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected",
+  "E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED": "Account request rejected",
+  "E_ACCOUNT_KIT_INVITATION_PENDING": "Account request rejected",
+  "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected",
+  "E_ACCOUNT_KIT_DELIVERY": "Account operation failed",
+  "E_ACCOUNT_KIT_POST_COMMIT": "Account operation failed",
+  "E_ACCOUNT_KIT_CAPABILITY_DISABLED": "Account operation failed",
+  "E_INVALID_CREDENTIALS": "Account request rejected",
+  "E_ACCOUNT_KIT_INVALID_SESSION": "Account request rejected",
+  "E_ACCOUNT_KIT_UNVERIFIED_EMAIL": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected"
+}
+```
+
+An application that also uses the managed routes keeps one `errors.json` for both.
 
 ## Catalogue
 
