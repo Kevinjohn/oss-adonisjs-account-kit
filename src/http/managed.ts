@@ -1,14 +1,14 @@
 import type { HttpContext, Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
 import type { CurrentAccount } from '../types.js'
-import { managedErrorResponse, proofHeaders } from './responses.js'
+import { applyMappedHeaders, managedErrorResponse } from './responses.js'
+import { applyProofHeaders } from './proof_headers.js'
 import { managedSocialHandlers } from './social.js'
 import {
-  applyMappedHeaders,
   recoveryDiagnostic,
   reportCommittedFailure,
   requestTranslator,
-  safeAccount,
+  publicAccount,
 } from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
@@ -52,7 +52,7 @@ function routeEntries(router: Router) {
 
 function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
-  for (const [name, value] of Object.entries(proofHeaders())) context.response.header(name, value)
+  applyProofHeaders(context.response)
 }
 
 /** One handler per endpoint: a route added to routes.ts without a handler does not compile. */
@@ -95,13 +95,13 @@ async function execute<Credential>(
     : undefined
   const actorId = account?.id
   const represent = (value: CurrentAccount) =>
-    options.extensions?.representAccount?.(value, context) ?? safeAccount(value)
+    options.extensions?.representAccount?.(value, context) ?? publicAccount(value)
   const representIssued = async (value: CurrentAccount) => {
     try {
       return await represent(value)
     } catch {
       recoveryDiagnostic(context, route.name, 'representation_failed')
-      return safeAccount(value)
+      return publicAccount(value)
     }
   }
   return managedHandlers[route.name]({
@@ -154,16 +154,7 @@ export function registerManagedRoutes<Credential>(
             accept: context.request.header('accept'),
             message: options.extensions?.message,
             i18n: requestTranslator(context),
-            proof:
-              route.proof && route.capability !== 'socialAuthentication'
-                ? route.name.includes('passwordReset')
-                  ? 'password'
-                  : route.name.includes('invitation')
-                    ? 'invitation'
-                    : route.capability === 'magicLinkLogin'
-                      ? 'magicLink'
-                      : 'email'
-                : undefined,
+            proof: route.proofKind,
           })
           if (!mapped) throw error
           applyMappedHeaders(context, mapped)

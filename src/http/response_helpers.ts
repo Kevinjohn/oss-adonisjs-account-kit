@@ -1,38 +1,20 @@
 /** Response shaping shared by managed endpoint handlers: proof errors, policy errors, account bodies. */
 import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, InvalidTokenError, PostCommitError } from '../errors.js'
-import type { AccountUser, CurrentAccount } from '../types.js'
-import {
-  managedErrorResponse,
-  type ManagedErrorResponse,
-  type ManagedMessage,
-  type ManagedTranslator,
-} from './responses.js'
+import type { CurrentAccount } from '../types.js'
+import { applyMappedHeaders, managedErrorResponse, type ManagedMessage } from './responses.js'
+import type { AccountKitTranslator } from '../translator.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedRequest } from './managed_types.js'
 
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
-export function requestTranslator(context: HttpContext): ManagedTranslator | undefined {
-  return 'i18n' in context ? (context.i18n as ManagedTranslator) : undefined
+export function requestTranslator(context: HttpContext): AccountKitTranslator | undefined {
+  return 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined
 }
 
-export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
-  for (const [name, value] of Object.entries(mapped.headers)) {
-    if (name.toLowerCase() !== 'vary') {
-      context.response.header(name, value)
-      continue
-    }
-    const existing = context.response.getHeader('Vary')
-    const terms = existing
-      ? String(existing)
-          .split(',')
-          .map((term) => term.trim())
-      : []
-    if (terms.includes('*')) continue
-    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
-    context.response.header('Vary', terms.join(', '))
-  }
-  context.response.header('Content-Type', mapped.contentType)
+/** User-facing text looked up through the request's `@adonisjs/i18n` instance, with English as the fallback. */
+export function translate(context: HttpContext, key: string, fallbackMessage: string): string {
+  return requestTranslator(context)?.t(key, {}, fallbackMessage) ?? fallbackMessage
 }
 
 export function invalidProof(
@@ -79,7 +61,7 @@ export function passwordPolicyError(
   return ruleError(context, field, 'passwordPolicy', 'Password does not meet the policy.')
 }
 
-export function safeAccount(account: CurrentAccount): Record<string, unknown> {
+export function publicAccount(account: CurrentAccount): Record<string, unknown> {
   return {
     id: account.id,
     email: account.email,
@@ -99,16 +81,6 @@ export async function issuedAccountBody<Credential>(
     ...(options.guard.strategy === 'access_tokens'
       ? { token: options.guard.publicCredential!(result.credential) }
       : {}),
-  }
-}
-
-export function currentAccount(user: AccountUser): CurrentAccount {
-  return {
-    id: user.id,
-    email: user.email,
-    unverifiedEmail: user.unverifiedEmail,
-    hasPassword: user.hasPassword,
-    active: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
   }
 }
 

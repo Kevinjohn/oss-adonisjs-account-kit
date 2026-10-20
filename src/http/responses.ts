@@ -1,3 +1,4 @@
+import type { HttpContext } from '@adonisjs/core/http'
 import {
   AccountKitError,
   AuthorizationError,
@@ -13,6 +14,9 @@ import {
   ThrottledError,
   UnverifiedEmailError,
 } from '../errors.js'
+import type { AccountKitTranslator } from '../translator.js'
+
+export { proofHeaders } from './proof_headers.js'
 
 export interface ManagedErrorResponse {
   status: number
@@ -21,19 +25,30 @@ export interface ManagedErrorResponse {
   body: { errors: Array<{ code: string; message: string } | { code: string; title: string }> }
 }
 
+export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
+  for (const [name, value] of Object.entries(mapped.headers)) {
+    if (name.toLowerCase() !== 'vary') {
+      context.response.header(name, value)
+      continue
+    }
+    const existing = context.response.getHeader('Vary')
+    const terms = existing
+      ? String(existing)
+          .split(',')
+          .map((term) => term.trim())
+      : []
+    if (terms.includes('*')) continue
+    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
+    context.response.header('Vary', terms.join(', '))
+  }
+  context.response.header('Content-Type', mapped.contentType)
+}
+
 /**
  * Replaces the public wording of a managed response. Receives the stable code and the default
  * message; the status and code cannot change.
  */
 export type ManagedMessage = (code: string, defaultMessage: string) => string
-
-/**
- * The part of an `@adonisjs/i18n` `I18n` instance the managed routes use. Error wording is looked
- * up as `errors.<code>`, with the English message as the fallback.
- */
-export interface ManagedTranslator {
-  t(identifier: string, data: Record<string, unknown>, fallbackMessage: string): string
-}
 
 function prefersJsonApi(accept?: string): boolean {
   if (!accept) return false
@@ -61,10 +76,6 @@ function prefersJsonApi(accept?: string): boolean {
   )
 }
 
-export function proofHeaders(): Record<string, string> {
-  return { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
-}
-
 /** Package errors are deliberately translated without exposing internal messages or causes. */
 export function managedErrorResponse(
   error: unknown,
@@ -72,7 +83,7 @@ export function managedErrorResponse(
     accept?: string
     proof?: 'password' | 'email' | 'invitation' | 'magicLink'
     message?: ManagedMessage
-    i18n?: ManagedTranslator
+    i18n?: AccountKitTranslator
   } = {}
 ): ManagedErrorResponse | null {
   if (error instanceof PostCommitError) return null
