@@ -14,6 +14,7 @@ import {
 } from './types.js'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialProviderName } from '../types.js'
+import { emailDestinations, hasEmailFlow } from './mail_flow.js'
 
 function list(value: string): string[] {
   return value
@@ -127,42 +128,54 @@ export async function collectSetupChoices(
       'Application-owned protected routes use account revision checks? (yes/no)'
     )
   } else choices.authentication = null
-  choices.mail.integration = answerChoice(
-    await ask('Delivery integration (custom/adonisjs-mail)'),
-    'mail.integration',
-    mailIntegrations,
-    choices.mail.integration
-  )
-  choices.mail.delivery = answerChoice(
-    await ask('Delivery guarantee (best-effort/durable)'),
-    'mail.delivery',
-    mailDeliveries,
-    choices.mail.delivery
-  )
-  choices.mail.durableWorkerVerified =
-    choices.mail.delivery === 'durable' &&
-    (await confirmed('Application queue worker, retries and terminal failures verified? (yes/no)'))
-  if (choices.mail.integration === 'adonisjs-mail') {
-    choices.mail.senderEnv =
-      (await ask('Mail sender environment name (ACCOUNT_MAIL_FROM)')) || 'ACCOUNT_MAIL_FROM'
-    choices.mail.transportEnv =
-      (await ask('Mail transport environment name (MAIL_MAILER)')) || 'MAIL_MAILER'
-  } else {
-    choices.mail.senderEnv = null
-    choices.mail.transportEnv = null
-  }
-  choices.mail.appName = (await ask('Application name')) || choices.mail.appName
-  choices.mail.backendOriginEnv =
-    (await ask('Trusted backend origin environment name (APP_URL)')) || 'APP_URL'
-  const frontendOriginEnv = await ask('Trusted frontend origin environment name (FRONTEND_URL)')
-  choices.mail.frontendOriginEnv = frontendOriginEnv.trim() || choices.mail.frontendOriginEnv
-  if (choices.features.includes('invitations'))
-    choices.mail.destinations.invitation = 'account/invitation'
-  if (choices.features.includes('magicLinkLogin'))
-    choices.mail.destinations.magicLink = 'account/magic-link'
-  for (const [name, value] of Object.entries(choices.mail.destinations)) {
-    choices.mail.destinations[name as keyof typeof choices.mail.destinations] =
-      (await ask(`${name} relative frontend path (${value})`)) || value
+  if (hasEmailFlow(choices)) {
+    choices.mail.integration = answerChoice(
+      await ask('Delivery integration (custom/adonisjs-mail)'),
+      'mail.integration',
+      mailIntegrations,
+      choices.mail.integration
+    )
+    choices.mail.delivery = answerChoice(
+      await ask('Delivery guarantee (best-effort/durable)'),
+      'mail.delivery',
+      mailDeliveries,
+      choices.mail.delivery
+    )
+    choices.mail.durableWorkerVerified =
+      choices.mail.delivery === 'durable' &&
+      (await confirmed(
+        'Application queue worker, retries and terminal failures verified? (yes/no)'
+      ))
+    if (choices.mail.integration === 'adonisjs-mail') {
+      choices.mail.senderEnv =
+        (await ask('Mail sender environment name (ACCOUNT_MAIL_FROM)')) || 'ACCOUNT_MAIL_FROM'
+      choices.mail.transportEnv =
+        (await ask('Mail transport environment name (MAIL_MAILER)')) || 'MAIL_MAILER'
+    } else {
+      choices.mail.senderEnv = null
+      choices.mail.transportEnv = null
+    }
+    choices.mail.appName = (await ask('Application name')) || choices.mail.appName
+    choices.mail.backendOriginEnv =
+      (await ask('Trusted backend origin environment name (APP_URL)')) || 'APP_URL'
+    const frontendOriginEnv = await ask('Trusted frontend origin environment name (FRONTEND_URL)')
+    choices.mail.frontendOriginEnv = frontendOriginEnv.trim() || choices.mail.frontendOriginEnv
+    if (choices.features.includes('invitations'))
+      choices.mail.destinations.invitation = 'account/invitation'
+    if (choices.features.includes('magicLinkLogin'))
+      choices.mail.destinations.magicLink = 'account/magic-link'
+    const requiredDestinations = new Set(
+      choices.features
+        .map((feature) => emailDestinations[feature])
+        .filter((destination): destination is NonNullable<typeof destination> =>
+          Boolean(destination)
+        )
+    )
+    for (const [name, value] of Object.entries(choices.mail.destinations)) {
+      if (!requiredDestinations.has(name as keyof typeof choices.mail.destinations)) continue
+      choices.mail.destinations[name as keyof typeof choices.mail.destinations] =
+        (await ask(`${name} relative frontend path (${value})`)) || value
+    }
   }
   choices.policy.registration = answerChoice(
     await ask('Registration policy (open/closed/application)'),
