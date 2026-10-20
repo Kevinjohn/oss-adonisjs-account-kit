@@ -459,3 +459,4 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     success: noContent,
   },
 }
+export { sharedSchemas } from './openapi_components.js'

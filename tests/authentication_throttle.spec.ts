@@ -113,7 +113,4 @@ test.group('authentication contract', (group) => {
       'Too many requests'
     )
   })
-
-  for (const {} of ['session', 'access_tokens'] as const) {
-  }
 })

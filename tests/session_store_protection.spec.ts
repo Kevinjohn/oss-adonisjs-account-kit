@@ -4,31 +4,7 @@ import { defineConfig, SessionCollection, stores } from '@adonisjs/session'
 import type { ResolvedSessionConfig } from '@adonisjs/session/types'
 import { createManagedGuard } from '../src/http/guard.js'
 import { protectManagedSessionConfig } from '../src/http/session_store_protection.js'
-
-class ServerStore {}
-
-async function protectedContext(
-  selected: () => unknown = () => new ServerStore(),
-  store = 'browser',
-  verifyStore: (value: unknown) => boolean = (value) => value instanceof ServerStore
-) {
-  const config = await configProvider.resolve<{
-    store: string
-    stores: Record<string, (context: never, config: never) => unknown>
-  }>(
-    {} as never,
-    protectManagedSessionConfig(
-      configProvider.create(async () => ({ store, stores: { [store]: selected } })),
-      {
-        verifyStore,
-      }
-    )
-  )
-  if (!config) throw new Error('Test session config did not resolve')
-  const context = {} as never
-  config.stores[store](context, config as never)
-  return { context, config }
-}
+import { protectedContext, ServerStore } from './helpers/protected_context.js'
 
 test.group('managed existing-guard adapters', () => {
   test('rejects cookie ancestry on the actual selected instance before custom attestation', async ({

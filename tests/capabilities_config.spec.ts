@@ -154,9 +154,6 @@ test.group('capability configuration', (group) => {
     )
   })
 
-  for (const {} of ['passwordReset', 'emailPasswordManagement'] as const) {
-  }
-
   test('requires supplied hooks to be callable but does not execute placeholders', ({ assert }) => {
     const base = makeConfig({
       users: makeUsersAdapter(kit.db, kit.hash),
