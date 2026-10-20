@@ -7,7 +7,8 @@ Initial public release.
 ### Added
 
 - The Inertia example accepts password-reset links during an existing session, signs out after a
-  successful reset, and describes invalid, used, or expired proof links accurately.
+  successful reset, ends the current browser session before redirecting from completed email
+  verification, and describes invalid, used, or expired proof links accurately.
 - Password reset with single-use, expiring, hashed proof tokens and a generic response for unknown
   addresses.
 - Email verification and self-service registration with open, closed or application-controlled
