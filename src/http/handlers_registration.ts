@@ -4,6 +4,7 @@ import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler, ManagedRequest } from './managed_types.js'
 import {
+  issuedAccountBody,
   passwordPolicyError,
   recoveryDiagnostic,
   reportCommittedFailure,
@@ -53,12 +54,7 @@ async function signup<Credential>({
     recoveryDiagnostic(context, route.name, 'authentication_failed')
     return response.created({ registered: true, authenticated: false })
   }
-  return response.created({
-    account: await representIssued(result.account),
-    ...(options.guard.strategy === 'access_tokens'
-      ? { token: options.guard.publicCredential!(result.credential) }
-      : {}),
-  })
+  return response.created(await issuedAccountBody({ options, representIssued }, result))
 }
 
 export const registrationHandlers = {
