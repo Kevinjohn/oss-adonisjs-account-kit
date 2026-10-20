@@ -63,15 +63,17 @@ acceptance transaction. Closed ordinary registration does not disable invitation
 
 An invited person may never open the link: the email is late, or they click "Sign in with Google"
 first. When core first confirms control of an address that holds an unused, unexpired invitation,
-it accepts that invitation the way the link would. That happens in two places:
+it accepts that invitation the way the link would. That happens in three places:
 
 - a new social account whose provider reports the address as verified;
 - account activation (`emailVerification.complete`, or a social confirmation), which also covers a
-  password registration and an unverified provider address.
+  password registration and an unverified provider address;
+- a password reset (`passwordReset.reset`) that confirms an account whose address was never
+  confirmed.
 
 In the same transaction, the invitation is deleted and `onInvitationAccepted(user, invitation, trx)`
 runs. After commit, `invitation.accepted` is reported with the same fields as for the link. If the
-callback throws, the new account or the activation is rolled back and the invitation stays. A
+callback throws, the new account, the activation or the reset is rolled back and the invitation stays. A
 missing or expired invitation changes nothing. The emailed link then answers `InvalidTokenError`,
 because the invitation was already accepted by signing in.
 
