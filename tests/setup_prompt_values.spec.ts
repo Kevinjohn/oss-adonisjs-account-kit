@@ -1,7 +1,20 @@
 import { test } from '@japa/runner'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
+import { collectSetupChoices } from '../src/setup/prompts.js'
 import { interactive } from './helpers/interactive_choices.js'
+
+async function collectWithTrace(answers: Record<string, string>) {
+  const questions: string[] = []
+  const choices = await collectSetupChoices(
+    async (question) => {
+      questions.push(question)
+      return Object.entries(answers).find(([prefix]) => question.startsWith(prefix))?.[1] ?? ''
+    },
+    () => {}
+  )
+  return { choices, questions }
+}
 
 test.group('setup prompt values', () => {
   for (const [field, question] of [
@@ -85,6 +98,42 @@ test.group('setup prompt values', () => {
     assert.equal(choices.mail.destinations.invitation, 'invites/accept')
     assert.lengthOf(choices.policy.registrationFields, 1)
     assert.deepEqual(parseSetupChoices(choices), choices)
+  })
+
+  test('services without email flows do not ask mail or origin questions', async ({ assert }) => {
+    const { choices, questions } = await collectWithTrace({
+      'Consumption mode': 'services',
+      'Enabled services': 'authentication',
+    })
+
+    assert.deepEqual(choices.features, ['authentication'])
+    assert.equal(choices.mode, 'services')
+    assert.equal(choices.mail.integration, defaultSetupChoices().mail.integration)
+    assert.equal(choices.mail.delivery, defaultSetupChoices().mail.delivery)
+    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(
+      questions.filter((question) =>
+        /^(Delivery integration|Delivery guarantee|Application queue worker|Mail sender|Mail transport|Application name|Trusted backend origin|Trusted frontend origin)|relative frontend path/.test(
+          question
+        )
+      ),
+      []
+    )
+  })
+
+  test('only prompts for destinations used by selected email flows', async ({ assert }) => {
+    for (const [features, expected] of [
+      ['passwordReset', ['passwordReset']],
+      ['passwordReset,emailPasswordManagement', ['passwordReset', 'emailChange']],
+    ] as const) {
+      const { choices, questions } = await collectWithTrace({ 'Enabled services': features })
+      const destinations = questions
+        .map((question) => /^([A-Za-z]+) relative frontend path/.exec(question)?.[1])
+        .filter((name): name is string => name !== undefined)
+
+      assert.deepEqual(destinations, expected)
+      assert.deepEqual(parseSetupChoices(choices), choices)
+    }
   })
 
   test('interactive provider selection does not duplicate an already selected social group', async ({
