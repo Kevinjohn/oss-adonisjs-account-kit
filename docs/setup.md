@@ -63,6 +63,18 @@ Both give the same typed choices. The command previews by default:
 | `--check`      | Reads the saved choices and checks the current app, without writing |
 | `--production` | Also checks public origins and session security for deployment      |
 
+### Reconfigure saved choices
+
+When you rerun the interactive wizard, valid saved choices seed the questions. Leave an answer
+blank to keep its displayed value. Choices for capabilities you disable are cleared so the new
+preview does not carry stale nested settings forward. Setup still previews the complete plan and
+refuses to apply over owner-edited conflicts.
+
+If the saved file is missing or invalid, the wizard explains that it is using starter defaults. To
+preserve an earlier setup in that case, correct or remove `config/account_kit_setup.json`, or pass a
+reviewed, valid choices file with `--input=choices.json`. An explicit `--input` always takes
+precedence and does not start the interview; `--check` reads saved choices without prompting.
+
 ![Recording of account-kit:setup previewing and applying an earlier 13-migration inventory](assets/demos/setup.svg)
 
 This recording predates the current migration inventory. A fresh setup currently generates 11
