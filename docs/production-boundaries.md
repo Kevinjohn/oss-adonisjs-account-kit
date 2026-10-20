@@ -70,3 +70,7 @@ session-store cleanup, API token policies beyond the configured hook, tenant mem
 and other application identity rules remain application responsibilities. A notification or
 post-commit hook failure can be reported after account state has committed; inspect the error's
 committed status and never blindly repeat the account mutation.
+
+Direct writes to `account_admissions` are outside the [admission](admission.md) guarantees: they
+skip the subject lock, the transition table and `onAdmissionEvent`. Use the service or the
+admission commands.

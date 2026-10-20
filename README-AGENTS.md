@@ -132,21 +132,22 @@ the config's `notify` in tests, run a flow, then read `tokenFor(kind, email)`.
 
 ## Source map
 
-| Path                                                                                                              | Holds                                              |
-| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `src/account_kit.ts`                                                                                              | The `AccountKit` service and its namespaces        |
-| `src/config*.ts`                                                                                                  | `defineConfig` and validation of each config block |
-| `src/capabilities.ts`                                                                                             | Per-capability adapter methods and required hooks  |
-| `src/password_reset.ts`, `src/verification.ts`, `src/credentials.ts`, `src/invitations.ts`, `src/registration.ts` | Account operations                                 |
-| `src/authentication.ts`, `src/session_*.ts`                                                                       | Login, revision checks, signed-in devices          |
-| `src/magic_link.ts`, `src/social_*.ts`                                                                            | Magic-link and social sign-in                      |
-| `src/account_export.ts`, `src/account_deletion.ts`                                                                | Export and deletion                                |
-| `src/transaction.ts`, `src/db.ts`, `src/effects.ts`                                                               | Transactions, locking, post-commit effects         |
-| `src/throttle.ts`                                                                                                 | Rate limiting with HMAC limiter keys               |
-| `src/notifications.ts`, `src/log_notifications.ts`                                                                | Built-in emails and development logging            |
-| `src/http/`                                                                                                       | Managed routes, validators, OpenAPI                |
-| `src/setup/`                                                                                                      | `account-kit:setup` planning and apply             |
-| `adapters/`, `stubs/`                                                                                             | Users adapters, generated config and migrations    |
+| Path                                                                                                              | Holds                                                                 |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `src/account_kit.ts`                                                                                              | The `AccountKit` service and its namespaces                           |
+| `src/config*.ts`                                                                                                  | `defineConfig` and validation of each config block                    |
+| `src/capabilities.ts`                                                                                             | Per-capability adapter methods and required hooks                     |
+| `src/password_reset.ts`, `src/verification.ts`, `src/credentials.ts`, `src/invitations.ts`, `src/registration.ts` | Account operations                                                    |
+| `src/authentication.ts`, `src/session_*.ts`                                                                       | Login, revision checks, signed-in devices                             |
+| `src/magic_link.ts`, `src/social_*.ts`                                                                            | Magic-link and social sign-in                                         |
+| `src/account_export.ts`, `src/account_deletion.ts`                                                                | Export and deletion                                                   |
+| `src/transaction.ts`, `src/db.ts`, `src/effects.ts`                                                               | Transactions, locking, post-commit effects                            |
+| `src/throttle.ts`                                                                                                 | Rate limiting with HMAC limiter keys                                  |
+| `src/admission/`                                                                                                  | Admission (`adonisjs-account-kit/admission`); see `docs/admission.md` |
+| `src/notifications.ts`, `src/log_notifications.ts`                                                                | Built-in emails and development logging                               |
+| `src/http/`                                                                                                       | Managed routes, validators, OpenAPI                                   |
+| `src/setup/`                                                                                                      | `account-kit:setup` planning and apply                                |
+| `adapters/`, `stubs/`                                                                                             | Users adapters, generated config and migrations                       |
 
 ## Further reading
 

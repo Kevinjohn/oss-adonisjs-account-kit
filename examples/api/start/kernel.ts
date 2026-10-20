@@ -50,5 +50,6 @@ export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
   accountAccess: () => import('#middleware/account_access_middleware'),
   verifiedAccount: () => import('#middleware/verified_account_middleware'),
+  admittedAccount: () => import('#middleware/admitted_account_middleware'),
   socialThrottle: () => import('#middleware/social_throttle_middleware'),
 })

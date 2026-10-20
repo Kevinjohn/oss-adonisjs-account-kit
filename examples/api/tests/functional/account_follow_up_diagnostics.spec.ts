@@ -3,13 +3,13 @@
 import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
 import { tokenFrom } from '#tests/helpers/link_tokens'
 import { responseBody } from '#tests/helpers/response_body'
 import { truncateDatabase } from '#tests/helpers/database'
+import { grantAdmittedOwner } from '#tests/helpers/admission'
 
 test.group('Account follow up diagnostics', (group) => {
   group.each.setup(truncateDatabase)
@@ -71,7 +71,7 @@ test.group('Account follow up diagnostics', (group) => {
         password: 'InviterPass123!',
         emailVerifiedAt: DateTime.utc(),
       })
-      await db.table('role_assignments').insert({ user_id: inviter.id, role: 'owner' })
+      await grantAdmittedOwner(inviter)
       const invitedEmail = `invite-${suffix}@example.test`
       notifications.failLifecycle = true
       const invitationSend = await captureFollowUpDiagnostics(() =>

@@ -100,6 +100,10 @@ Initial public release.
   `AccountAdmission`, `onAdmissionEvent`, and the commands `account-kit:admission:install`,
   `account-kit:admission:approve`, `account-kit:admission:revoke` and
   `account-kit:admission:grant-invitation` (export `adonisjs-account-kit/admission/commands`).
+- Admission in the example application and guide (#518): `examples/api` gates `GET /api/v1/reports`
+  on invitation and approval (and domain with `ACCOUNT_KIT_ADMISSION_DOMAINS`), with status,
+  request and owner decision routes; invitation and export callbacks require an admitted owner.
+  The packed consumer installs admission with `account-kit:admission:install`.
 
 <details>
 <summary>Pre-release candidate history</summary>

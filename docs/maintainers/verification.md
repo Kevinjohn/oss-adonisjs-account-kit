@@ -49,6 +49,13 @@ revocation, and logout. Run the service-only mode separately
 for both databases to check that optional Auth and Session imports do not enter the generic
 service declarations.
 
+The fresh API consumer also removes the fixture's admission provider, command loader and
+`config/admission.ts`, runs `account-kit:admission:install` with the run's `--users-table` and
+`--user-id-type`, and checks that exactly one provider and one loader are registered. Its suites
+include `tests/functional/admission.spec.ts` for both strategies, then run that spec again with
+`ACCOUNT_KIT_ADMISSION_DOMAINS=example.test` for the domain case. The service-only consumer does
+not install admission.
+
 ### Vocabulary alignment: 15 October 2026
 
 The vocabulary implementation and review fixes at `f526a5e4e94ff730a8f63873a23b54619820e288`

@@ -155,6 +155,16 @@ not retry a mutation as if it rolled back. See
 [token responses](token-reference.md#how-it-works), and
 [notifications](notifications.md) for the current contracts.
 
+### Place the admission gate after the activation check
+
+With [admission](admission.md), protected application routes call `admission.require(input)`,
+or use `admissionMiddleware`, where they would call `requireActive`. It checks the credential,
+then activation, then admission, in one transaction. Keep the routes a person needs before
+admission, such as profile, sign-out and an admission status route, on the plain credential check.
+Your `authorize` and `exportAccountData` callbacks run behind routes that accept any valid
+credential, so call `isAdmitted` there. `examples/api/app/middleware/admitted_account_middleware.ts`
+is the reference.
+
 ### Let package operations own account writes
 
 Call the public operation for registration, password resets, email verification, invitations, and

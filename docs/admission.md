@@ -268,3 +268,47 @@ with the same approve command. There is no "first user is admin" shortcut.
   config deploy with the same window.
 - Rolling back the code keeps the table and its rows. Dropping the table loses evidence and
   decisions and is not a supported rollback.
+
+## Example application
+
+`examples/api` runs admission with invitation and approval on, and domain on when
+`ACCOUNT_KIT_ADMISSION_DOMAINS` (comma-separated) is set:
+
+| File                                            | Holds                                                                                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `config/admission.ts`                           | The requirements; owners decide and list                                                                                       |
+| `config/account_kit.ts`                         | `withInvitationEvidence`, `withAdmissionCleanup`, and `exportAccountData` with the admission record                            |
+| `app/services/account_kit_authorization.ts`     | `isAdmitted`; `authorize.*` require an admitted owner; `admissionAuthorize`                                                    |
+| `app/middleware/admitted_account_middleware.ts` | The gate, like `verified_account_middleware.ts`                                                                                |
+| `app/controllers/admissions_controller.ts`      | Status, request, list, approve, reject, revoke                                                                                 |
+| `app/exceptions/handler.ts`                     | Adds `decision` to the 403 body                                                                                                |
+| `start/routes.ts`                               | `GET /account/admission` and `POST /account/admission/request` (limited); the list and decisions and `GET /reports` (admitted) |
+| `tests/functional/admission.spec.ts`            | The flows above, for both guard strategies                                                                                     |
+
+## Files delta
+
+`account-kit:admission:install` adds:
+
+- `config/admission.ts`, from the stub, when it does not exist;
+- `database/migrations/<timestamp>_account_kit_admission_create_account_admissions.ts`, when no
+  migration with that suffix exists;
+- the provider `adonisjs-account-kit/admission/provider` and the command loader
+  `adonisjs-account-kit/admission/commands` in `adonisrc.ts`.
+
+It changes no other file.
+
+## Manual steps
+
+1. Set the requirements and `approval.authorize` in `config/admission.ts`.
+2. Wrap `onInvitationAccepted` with `withInvitationEvidence` and set `onAccountDeletingTransaction:
+withAdmissionCleanup()` in `config/account_kit.ts`.
+3. Run `node ace migration:run`.
+4. Gate the routes that serve application data, and keep a status route reachable.
+5. Make your `authorize` callbacks for invitations and data export check `isAdmitted`, since
+   managed routes accept any valid credential.
+6. Admit the [first administrator](#first-administrator).
+
+## Changelog
+
+Admission arrived in the Unreleased section of the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md):
+the module, decisions and commands, and the example application.

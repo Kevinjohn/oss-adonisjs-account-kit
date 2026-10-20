@@ -18,6 +18,7 @@ Authentication
 - [Magic-link sign-in](magic-link.md)
 - [Signed-in devices](signed-in-devices.md)
 - [Account export and deletion](account-data.md)
+- [Admission](admission.md): domain, invitation and approval requirements for application data.
 
 Users and data
 

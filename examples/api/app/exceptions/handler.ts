@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import { accountErrorResponse, errors } from 'adonisjs-account-kit'
+import { AdmissionRequiredError } from 'adonisjs-account-kit/admission'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { accountError } from '#services/http_responses'
 import { SocialProviderExchangeError } from '#services/social_provider'
@@ -58,6 +59,13 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     }
     if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN) {
       return accountError(ctx, 403, 'E_BAD_CSRF_TOKEN', error.message)
+    }
+    // The structured decision says which requirement is unmet, so the client can explain it.
+    if (error instanceof AdmissionRequiredError) {
+      return ctx.response.status(403).send({
+        errors: [{ code: AdmissionRequiredError.code, message: 'Admission is required' }],
+        decision: error.decision,
+      })
     }
     const mapped = accountErrorResponse(error)
     if (mapped) {
