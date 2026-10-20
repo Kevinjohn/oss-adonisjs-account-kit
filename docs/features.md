@@ -18,7 +18,7 @@ Guide: [getting started](getting-started.md).
 
 ### Email verification and signup
 
-- Signup open to anyone, closed, or behind your own admission rule.
+- Signup open to anyone, closed, or behind your own signup rule.
 - Confirmation links, with a rate-limited resend.
 - New accounts stay inactive until the address is confirmed.
 
@@ -28,7 +28,8 @@ Guide: [registration](registration.md).
 
 - Sessions or access tokens, through the Auth guard you already have.
 - One generic error for every failed login, with rate limits per client and per identity.
-- Changing a password or email signs out older sessions and tokens.
+- Changing a password or email signs out older sessions and tokens. A password change can keep
+  the session or token that made it; the managed route does.
 
 Guides: [sessions](recipes/sessions.md), [access tokens](recipes/access-tokens.md).
 

@@ -8,6 +8,7 @@ import { consumeUserToken, lockUser, transaction } from './db.js'
 import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
+import { invitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
 import { throttlerOf } from './throttle.js'
@@ -49,7 +50,7 @@ export async function completePasswordReset(
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
 
-  const { value: user, fault } = await settleCommitted(
+  const { value: reset, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
       const { row, user: current } = await consumeUserToken<{
         tokenable_id: UserId
@@ -67,8 +68,14 @@ export async function completePasswordReset(
         await clearPendingSocialIdentities(trx, row.tokenable_id)
       if (current.unverifiedEmail !== null && current.unverifiedEmail !== current.email)
         await deps.config.users.setUnverifiedEmail(row.tokenable_id, null, trx)
-      if (current.unverifiedEmail === current.email)
-        await deps.config.users.markEmailVerified(row.tokenable_id, DateTime.utc(), trx)
+      // A reset proves control of the address, so it confirms a never-confirmed account and
+      // consumes an invitation waiting for it, like activation.
+      let invitationId: number | null = null
+      if (current.unverifiedEmail === current.email) {
+        const now = DateTime.utc()
+        await deps.config.users.markEmailVerified(row.tokenable_id, now, trx)
+        invitationId = await matchInvitation(deps.config, trx, current, now)
+      }
       await clearRecoveryTokens(trx, row.tokenable_id, ['email_verification_tokens'])
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
       if (!reloaded) throw new InvalidTokenError()
@@ -77,9 +84,10 @@ export async function completePasswordReset(
         operationId,
         userId: reloaded.id,
       })
-      return reloaded
+      return { user: reloaded, invitationId }
     })
   )
+  const user = reset.user
 
   const context = { operation: 'password_reset' as const, operationId, userId: user.id }
   await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
@@ -87,7 +95,11 @@ export async function completePasswordReset(
       'Credentials changed but a follow-up failed',
       () => deps.config.onCredentialsChanged?.(user, context),
       () => deps.config.notify.passwordResetCompleted(user, context),
-      () => deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId })
+      () =>
+        deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId }),
+      ...invitationAccepted(deps.config, reset.invitationId, user.id, operationId).map(
+        (effect) => effect.run
+      )
     )
   )
   return user

@@ -14,7 +14,7 @@ import { truncateDatabase } from '#tests/helpers/database'
 test.group('Account password change', (group) => {
   group.each.setup(truncateDatabase)
 
-  test('password change over HTTP requires proof, revokes tokens, and reports follow-up failures', async ({
+  test('password change over HTTP requires proof, revokes other tokens, and reports follow-up failures', async ({
     client,
     assert,
   }) => {
@@ -26,7 +26,7 @@ test.group('Account password change', (group) => {
       password: 'CurrentPass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await User.accessTokens.create(passwordUser)
+    const otherToken = await User.accessTokens.create(passwordUser)
     assert.equal(
       Number(
         (
@@ -72,18 +72,9 @@ test.group('Account password change', (group) => {
     assert.equal(passwordChangeOutbox.operation_id, passwordChangeNotice.value)
     assert.equal(passwordChangeNotice.recipient, passwordUser.email)
     assert.equal(await dispatchAccountKitOutbox(), 1)
-    assert.equal(
-      Number(
-        (
-          await db
-            .from('auth_access_tokens')
-            .where('tokenable_id', passwordUser.id)
-            .count('* as count')
-            .first()
-        ).count
-      ),
-      0
-    )
+    const remaining = await db.from('auth_access_tokens').where('tokenable_id', passwordUser.id)
+    assert.lengthOf(remaining, 1)
+    assert.notEqual(String(remaining[0].id), String(otherToken.identifier))
     const badProof = await client.post('/api/v1/account/password').loginAs(passwordUser).json({
       currentPassword: 'wrong-proof',
       newPassword: 'ChangedAgain123!',

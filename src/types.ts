@@ -627,6 +627,8 @@ export type AuthenticationGuard<Credential> =
       /** `handle` is set when `sessionManagement` is enabled; store it in the session. */
       establish(userId: UserId, revision: string | null, handle?: string): Promise<Credential>
       terminate(credential?: Credential): Promise<void>
+      /** Store a new revision for the current session, where `establish` stored the first one. */
+      refresh?(revision: string | null): Promise<void>
     }
   | {
       strategy: 'access_tokens'
@@ -867,6 +869,11 @@ export interface ChangePasswordInput {
   recentProof?: string
   /** The new password. Checked against `passwordPolicy`. */
   newPassword: string
+  /**
+   * The caller's own sign-in, from `authentication.current` input, to keep while every other one
+   * ends. A handle or id that matches nothing ends every sign-in.
+   */
+  keepCurrent?: { sessionHandle?: string; tokenId?: UserId }
 }
 /**
  * Input for `emailPasswordManagement.requestEmailChange`. Give `currentPassword`, or `recentProof`

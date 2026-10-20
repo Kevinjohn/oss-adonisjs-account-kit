@@ -35,7 +35,7 @@ test.group('Bearer revocation', (group) => {
     )
   }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
-  test('bearer login uses the real token guard and password changes revoke issued tokens', async ({
+  test('bearer login uses the real token guard and password changes keep the calling token', async ({
     client,
     assert,
   }) => {
@@ -74,8 +74,8 @@ test.group('Bearer revocation', (group) => {
       newPasswordConfirmation: 'ReplacementPass123!',
     })
     assert.equal(change.status(), 200)
-    const revokedProfile = await client.get('/api/v1/account/profile').bearerToken(token)
-    assert.equal(revokedProfile.status(), 401)
+    const keptProfile = await client.get('/api/v1/account/profile').bearerToken(token)
+    assert.equal(keptProfile.status(), 200)
 
     const nextLogin = await client.post('/api/v1/auth/login').json({
       email: user.email,

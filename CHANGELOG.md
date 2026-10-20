@@ -12,7 +12,15 @@ Initial public release.
   admission and trusted mapping of extra profile fields.
 - Invitations with role, authorization callbacks, resend, revoke, cursor-paged listing and
   separate actor and recipient rate limits.
+- An invitation is accepted when its address is first confirmed without the link: a new social
+  account with a provider-verified address, account activation, or a password reset that confirms
+  the account. `onInvitationAccepted` runs in that transaction and `invitation.accepted` is
+  reported after commit.
 - Password change, verified email change and profile updates behind the current password.
+- A self-service password change can keep the caller's own sign-in (`keepCurrent`) and returns
+  the new credential revision. The managed route keeps the calling session or token, and the
+  managed session guard gains `refresh(revision)`. `passwordChangeRevision(error)` returns the
+  committed revision from a `PostCommitError`, so the caller's session survives a failed follow-up.
 - Users adapters can hash a new password before the write transaction opens (optional
   `hashPassword` and `setPasswordHash`; `create` receives `passwordHash`). The shipped adapters
   implement both, so a slow hash no longer holds the SQLite writer. Reset and activation completion
@@ -91,6 +99,16 @@ Initial public release.
   `account_kit.password_reset_requested` and `account_kit.magic_link_requested`.
   `accountErrorResponse(error, { i18n })` looks up its message as `errors.<code>` the same way;
   the translator type is exported as `AccountKitTranslator`.
+- Optional admission module (`adonisjs-account-kit/admission`, #518): after authentication and
+  email verification, require an allowed email domain, invitation evidence and approval, each
+  optional and cumulative. Adds `defineAdmission`, the `AccountAdmission` service and provider,
+  `admissionMiddleware`, `withInvitationEvidence`, `withAdmissionCleanup`, the
+  `account_admissions` migration stub, `AdmissionRequiredError` and `AdmissionDecisionError`.
+  "Admission" now names this module; who may create an account is _registration availability_.
+- Admission decisions (#518): `request`, `approve`, `reject`, `revoke` and cursor-paged `list` on
+  `AccountAdmission`, `onAdmissionEvent`, and the commands `account-kit:admission:install`,
+  `account-kit:admission:approve`, `account-kit:admission:revoke` and
+  `account-kit:admission:grant-invitation` (export `adonisjs-account-kit/admission/commands`).
 
 <details>
 <summary>Pre-release candidate history</summary>
