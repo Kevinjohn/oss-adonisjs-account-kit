@@ -7,6 +7,7 @@ import { normalizeEmail } from '../email.js'
 import { InvalidSessionError, UnverifiedEmailError } from '../errors.js'
 import type {
   AccountUser,
+  OperatorInviteResult,
   CurrentAccount,
   CurrentAccountInput,
   ResolvedConfig,
@@ -27,6 +28,7 @@ import { requestAdmission } from './request.js'
 import { decideAdmission } from './decisions.js'
 import { listAdmissions, type AdmissionPage } from './listing.js'
 import { operatorDecision, operatorGrantInvitation } from './operator.js'
+import { cancelBootstrap, operatorBootstrap } from './bootstrap.js'
 
 /** The dependencies the admission service is built from; the provider supplies them. */
 export interface AdmissionDependencies {
@@ -158,6 +160,15 @@ export class AccountAdmission {
         operatorDecision(this.deps, input, 'revoke'),
       grantInvitation: (input: { email: string; role?: string }): Promise<AdmissionRecord> =>
         operatorGrantInvitation(this.deps, input),
+      /**
+       * Issues an operator invitation and an approval waiting for the account it creates; that
+       * account lands admitted once its invitation evidence is recorded.
+       */
+      bootstrap: (input: { email: string; role: string }): Promise<OperatorInviteResult> =>
+        operatorBootstrap(this.kit, this.deps, input),
+      /** Deletes the waiting approval for `email`; returns whether there was one. */
+      cancelBootstrap: (input: { email: string }): Promise<boolean> =>
+        cancelBootstrap(this.deps, input.email),
     }
   }
 }

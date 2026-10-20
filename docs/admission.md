@@ -229,6 +229,7 @@ opaque and checked; a forged one is `InvalidInputError`.
 | `account-kit:admission:approve <email>`                          | Operator approval, through the same transitions. For the first administrator and for recovery.                                                  |
 | `account-kit:admission:revoke <email>`                           | Operator revocation.                                                                                                                            |
 | `account-kit:admission:grant-invitation <email> [--role]`        | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
+| `account-kit:admission:bootstrap <email> --role <role>`          | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
 
 The runtime commands write one JSON line to stdout and report failures on stderr with the error
 code and exit code 1, like `account-kit:invite`.
@@ -260,6 +261,26 @@ For example:
 
 That account is now admitted, so it can approve others. A locked-out administrator is recovered
 with the same approve command. There is no "first user is admin" shortcut.
+
+`node ace account-kit:admission:bootstrap admin@example.com --role owner` does steps 1 and 3 in
+one command, before the account exists:
+
+- It issues an operator invitation, prints the link like `account-kit:invite --print`, and writes
+  an approval for that address with no account yet (`user_id` null, `bootstrap_email` set).
+- When that invitation is accepted, or matched when the address first signs in,
+  `withInvitationEvidence` attaches the approval to the new account. The account lands admitted:
+  evidence `source: 'invitation'` and approval `actorId: null`.
+- Only the invitation the bootstrap issued attaches it: the approval records that invitation's id.
+  Another invitation to the same address does not, including one whose inviter was deleted.
+- If the invitation cannot be issued, the command removes the approval it wrote and leaves any
+  later bootstrap's approval in place.
+- A second bootstrap for the address replaces the approval and the invitation. `--cancel` deletes
+  the approval.
+- `list` and decisions never show an approval that waits for its account.
+- Nothing prunes these rows. Cancel the ones you no longer want.
+
+The address must still be on an allowed domain when that requirement is on. The two-command path
+above keeps working.
 
 ## Deployment
 
