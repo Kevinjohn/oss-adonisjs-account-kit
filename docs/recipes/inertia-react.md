@@ -6,6 +6,20 @@ guard, so set that up first with the [sessions recipe](sessions.md).
 The [Inertia React example app](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/examples/inertia-react/README.md) puts this recipe together
 with signup, email confirmation and password change in the official starter kit.
 
+For profile and email settings, copy the example's authenticated `settings/profile` and
+`settings/email` routes and its public `confirm-email/:token` GET/POST pair. The profile controller
+passes only the signed-in user's ID, current password, and validated `fullName` to
+`emailPasswordManagement.updateProfile`. An email request uses `requestEmailChange`; the confirmed
+address remains active while the new address is pending. The confirmation GET calls
+`inspectEmailChange` without using the proof, and the POST calls `completeEmailChange`, ends the
+current browser session, and redirects to sign-in. Cancel a pending address through
+`updateProfile({ actorId, currentPassword, email: currentEmail })`; the service also invalidates
+its proof. Keep the profile and email settings routes behind authentication, and do not accept a
+user ID from form data as authority. Show generic copy when an address cannot be used.
+The example blocks email-change requests until the current address is confirmed, because the
+service immediately changes an inactive account's address. Direct unconfirmed users to the
+dashboard's verification resend action; this is an application policy, not a service restriction.
+
 This recipe covers forgot password. Verification, invitations and email change follow the same
 pattern: a form posts to a controller, the link in the email opens a page, and that page posts the
 token back.
