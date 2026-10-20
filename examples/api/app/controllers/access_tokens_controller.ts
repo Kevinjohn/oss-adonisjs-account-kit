@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import accountKit from 'adonisjs-account-kit/services/main'
 import User from '#models/user'
 import { loginValidator } from '#validators/user'
+import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 
@@ -14,8 +15,9 @@ export default class AccessTokensController {
       { email, password, clientKey: request.ip() },
       accessTokenGuard()
     )
+    const user = await User.findOrFail(result.account.id)
     rememberLastUsedMethod(ctx, 'password')
-    return serialize({ user: result.account, token: result.credential.value })
+    return serialize({ user: UserTransformer.transform(user), token: result.credential.value })
   }
 
   async destroy({ auth }: HttpContext) {
