@@ -63,6 +63,8 @@ Initial public release.
 - A Lucid users adapter and a reusable adapter contract suite for custom adapters.
 - Ace commands: `account-kit:setup`, `account-kit:prune`, `account-kit:retirement-impact` and
   `account-kit:doctor`, which checks config, limiter, `APP_URL` and database tables.
+- `account-kit:doctor` also checks deletion cleanup tables and password nullability for enabled
+  passwordless social registration, then names the callback and credential flows it did not test.
 - `createLogNotifications` prints account emails and their links to the logger during development.
 - `createMailNotifications` and `createLogNotifications` resolve the AdonisJS Mail and logger
   services when a message is sent; both `mail` and `logger` are optional.
@@ -189,6 +191,7 @@ that ran a candidate build.
 
 ### Changed
 
+- Interactive setup now starts from valid saved choices, keeps applicable values when answers are blank, and explains when it falls back to safe defaults.
 - `emailVerification.complete({ token })` → `emailVerification.complete({ token, password })` (export contract) for inactive account claims; the claim replaces the earlier password and invalidates earlier credentials.
 - `GET /account-kit/verification/:token` → `POST /account-kit/verification/:token` (API example route) with password and confirmation in the body.
 - The API example's password validator maximum changes from 128 to 256 characters to match the service ceiling.
@@ -277,6 +280,8 @@ that ran a candidate build.
 
 ### Fixed
 
+- Setup asks only mail and destination questions required by the selected email flows.
+- Setup readiness checks resolve selected origin values from Adonis environment files while keeping process values first and reporting unsafe assignments without exposing their contents.
 - Package archives exclude private planning and review documents while retaining public docs and examples.
 - Installed-consumer upgrade checks preserve an outstanding password-reset proof through the table rename and verify one-time redemption.
 - Minimum-consumer diagnostic markers use the current password-reset and email-verification vocabulary.
