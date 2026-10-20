@@ -5,6 +5,9 @@ import { transaction } from '../../src/transaction.js'
 import type { ResolvedConfig, SensitivePurpose, UserId } from '../../src/types.js'
 import type { TestApp } from './app.js'
 import { unwrapId } from './users_adapter.js'
+import { userTables } from './schema.js'
+
+export { userTables }
 
 export const soon = (kit: Pick<TestApp, 'db'>) => dbTime(kit, DateTime.utc().plus({ hours: 1 }))
 export const past = (kit: Pick<TestApp, 'db'>) => dbTime(kit, DateTime.utc().minus({ hours: 1 }))
@@ -119,20 +122,6 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
   })
   return secrets
 }
-
-/** Package tables keyed by the user, with the column that holds the user id. */
-export const userTables = [
-  ['social_handoff_codes', 'user_id'],
-  ['social_sensitive_proofs', 'user_id'],
-  ['social_transactions', 'user_id'],
-  ['social_identities', 'user_id'],
-  ['password_reset_tokens', 'tokenable_id'],
-  ['email_verification_tokens', 'tokenable_id'],
-  ['login_link_tokens', 'tokenable_id'],
-  ['account_sessions', 'user_id'],
-  ['account_invitations', 'inviter_id'],
-  ['auth_access_tokens', 'tokenable_id'],
-] as const
 
 /** Row counts per table for one user, through the given query client. */
 export async function userRowCounts(

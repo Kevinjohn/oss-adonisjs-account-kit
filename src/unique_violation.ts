@@ -1,4 +1,4 @@
-// Unique-violation detection: recognising duplicate-key errors across MySQL, PostgreSQL and SQLite.
+// Unique-violation detection: recognizing duplicate-key errors across MySQL, PostgreSQL and SQLite.
 import type { Database } from '@adonisjs/lucid/database'
 import { userMetadata, type UsersStorage } from './user_lock.js'
 

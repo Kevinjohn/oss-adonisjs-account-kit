@@ -175,7 +175,7 @@ returns a generic 429 with `Retry-After`.
 - `app/services/social_browser_transaction.ts` keeps the session client's PKCE verifier between
   redirect, callback and registration.
 - `start/routes.ts` registers the reference endpoints.
-- `app/services/social_provider_fixture.ts` and the functional tests simulate provider replies
+- `tests/helpers/social_provider_fixture.ts` and the functional tests simulate provider replies
   without external accounts; they cannot prove live Google or GitHub connectivity.
 
 The example migrations match the package's social transaction and confirmation schema. No frontend
