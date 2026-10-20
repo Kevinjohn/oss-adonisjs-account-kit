@@ -82,6 +82,10 @@ test.group('Session guard races', (group) => {
     assert.notEqual(afterCookie!.value, beforeCookie!.value)
     assert.isTrue(afterCookie!.httpOnly)
     assert.notProperty((login.body() as unknown as { data: Record<string, unknown> }).data, 'token')
+    assert.deepEqual(
+      Object.keys((login.body() as unknown as { data: { user: object } }).data.user).sort(),
+      ['createdAt', 'email', 'fullName', 'id', 'initials', 'updatedAt']
+    )
 
     const profile = await client.get('/api/v1/account/profile').header('cookie', rawCookies(login))
     assert.equal(profile.status(), 200, JSON.stringify(profile.body()))

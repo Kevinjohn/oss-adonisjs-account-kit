@@ -267,4 +267,106 @@ test.group('social unlink atomicity', (group) => {
     )
     assert.lengthOf(await kit.db.from('social_sensitive_proofs').where('user_id', user.id), 0)
   })
+
+  test('a disabled provider is not a remaining login method', async ({ assert }) => {
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: {
+        providers: { github: provider('usable-subject', 'usable@example.test', true) },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const login = await account.socialAuthentication.begin({
+      provider: 'github',
+      intent: 'login',
+      clientChallenge,
+    })
+    const created = await account.socialAuthentication.callback({
+      state: login.state,
+      callback: {},
+    })
+    if (created.status !== 'new' || !('userId' in created)) throw new Error('Expected account')
+    await kit.db.table('social_identities').insert({
+      user_id: created.userId,
+      provider: 'google',
+      provider_user_id: 'disabled-subject',
+      email_verified: true,
+      confirmed_at: dbTime(kit),
+      created_at: dbTime(kit),
+      updated_at: dbTime(kit),
+    })
+    const reauth = await account.socialAuthentication.begin({
+      provider: 'github',
+      intent: 'reauth',
+      purpose: 'social_unlink',
+      current: current(created.userId),
+      clientChallenge,
+    })
+    const proof = await account.socialAuthentication.callback({
+      state: reauth.state,
+      callback: {},
+      current: current(created.userId),
+    })
+    if (proof.status !== 'reauthenticated') throw new Error('Expected proof')
+    const relations = await account.socialAuthentication.list({ current: current(created.userId) })
+    const github = relations.find((relation) => relation.provider === 'github')!
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.unlink({
+          current: current(created.userId),
+          identityId: github.id,
+          proof: proof.proof,
+        }),
+      'At least one login method must remain'
+    )
+  })
+
+  test('unlink notice failure occurs after relationship removal', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { account, recorder } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: { providers: { google: provider('unlink-notice', null, false) } },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const linkProof = await account.socialAuthentication.provePassword({
+      current: current(user.id),
+      password: 'password123',
+      purpose: 'social_link',
+    })
+    const started = await account.socialAuthentication.begin({
+      provider: 'google',
+      intent: 'link',
+      current: current(user.id),
+      clientChallenge,
+      proof: linkProof,
+    })
+    await account.socialAuthentication.callback({
+      state: started.state,
+      callback: {},
+      current: current(user.id),
+    })
+    const relations = await account.socialAuthentication.list({ current: current(user.id) })
+    const unlinkProof = await account.socialAuthentication.provePassword({
+      current: current(user.id),
+      password: 'password123',
+      purpose: 'social_unlink',
+    })
+    recorder.failOn('socialIdentityUnlinked')
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.unlink({
+          current: current(user.id),
+          identityId: relations[0].id,
+          proof: unlinkProof,
+        }),
+      'Social identity unlinked but a follow-up failed'
+    )
+    assert.lengthOf(await kit.db.from('social_identities'), 0)
+    assert.equal(
+      recorder.calls.filter((call) => call.method === 'socialIdentityUnlinked').length,
+      1
+    )
+  })
 })

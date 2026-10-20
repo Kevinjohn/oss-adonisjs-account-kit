@@ -1,6 +1,5 @@
 // Operator-context services: shell-trusted invitation and reset-link issuance for Ace commands.
 import { randomUUID } from 'node:crypto'
-import type { Database } from '@adonisjs/lucid/database'
 import {
   finishCommitted,
   lifecycle,
@@ -8,7 +7,7 @@ import {
   settleCommitted,
   type PostCommitEffect,
 } from './effects.js'
-import { isEmailShaped, normaliseEmail } from './email.js'
+import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
   InvalidInputError,
@@ -24,10 +23,8 @@ import type {
   OperatorInviteResult,
   OperatorResetLinkInput,
   OperatorResetLinkResult,
-  ResolvedConfig,
 } from './types.js'
-
-type Dependencies = { config: ResolvedConfig; db: Database }
+import type { ServiceDependencies } from './service_dependencies.js'
 
 function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
   if (value !== 'send' && value !== 'print') throw new InvalidInputError('Invalid delivery')
@@ -35,7 +32,7 @@ function requireDelivery(value: unknown): asserts value is 'send' | 'print' {
 
 function requireEmail(value: unknown): string {
   if (!isEmailShaped(value)) throw new InvalidInputError('Invalid email')
-  return normaliseEmail(value)
+  return normalizeEmail(value)
 }
 
 /** Run committed follow-ups and report any failure as safe data instead of throwing. */
@@ -54,11 +51,11 @@ async function followUps(
 }
 
 /**
- * Issue an invitation without actor authorisation or throttles. Any existing invitation for the
+ * Issue an invitation without actor authorization or throttles. Any existing invitation for the
  * address is replaced, so a rerun after a lost link is never blocked by the pending one.
  */
 export async function operatorInvite(
-  deps: Dependencies,
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorInviteInput
 ): Promise<OperatorInviteResult> {
   requireDelivery(input.deliver)
@@ -106,7 +103,7 @@ export async function operatorInvite(
  * reported, because the operator already has database-level access.
  */
 export async function operatorResetLink(
-  deps: Dependencies,
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorResetLinkInput
 ): Promise<OperatorResetLinkResult> {
   requireDelivery(input.deliver)

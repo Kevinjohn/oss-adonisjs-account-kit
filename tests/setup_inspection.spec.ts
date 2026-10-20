@@ -5,6 +5,7 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { planSetup } from '../src/setup/plan.js'
+import { resolveSelectedEnvironment } from '../src/setup/selected_environment.js'
 import { fixture, registerSetupTeardown } from './helpers/setup.js'
 
 async function applicationRoot() {
@@ -375,4 +376,22 @@ test.group('setup database selection', (group) => {
       else process.env.DB_CONNECTION = before
     }
   })
+})
+
+test('selected environment prefers the environment map passed in over dotenv files', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(join(root, '.env'), 'ACCOUNT_SELECTED_PASSED=pg\n')
+    assert.equal(await resolveSelectedEnvironment(root, 'ACCOUNT_SELECTED_PASSED'), 'pg')
+    assert.equal(
+      await resolveSelectedEnvironment(root, 'ACCOUNT_SELECTED_PASSED', {
+        ACCOUNT_SELECTED_PASSED: 'sqlite',
+      }),
+      'sqlite'
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

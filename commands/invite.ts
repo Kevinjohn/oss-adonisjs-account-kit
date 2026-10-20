@@ -3,7 +3,7 @@ import { AccountKit } from '../src/account_kit.js'
 import type { OperatorInviteResult } from '../src/types.js'
 import { reportOperatorOutcome, writeFailure } from './operator_output.js'
 
-/** Operator invitation: no actor authorisation, replaces any invitation pending for the address. */
+/** Operator invitation: no actor authorization, replaces any invitation pending for the address. */
 export default class InviteAccount extends BaseCommand {
   static commandName = 'account-kit:invite'
   static description = 'Invite an email address as an operator, replacing any pending invitation'

@@ -7,9 +7,9 @@ How the [API example](../examples/api/README.md) wires opaque access tokens thro
 
 Set `ACCOUNT_KIT_AUTH_STRATEGY=access_tokens` and use the existing `api` AdonisJS guard with its opaque access-token provider. The example config sets `tokenExpiresIn: '1d'` and `tokenAbilities: ['*']`; choose a shorter lifetime and narrower abilities for your application. `auth_access_tokens` must exist before token login. The example checks `invitations:create` before its invitation-send action. Other application routes must check their own required abilities.
 
-Invitation list, resend, and revoke use the configured invitation authorisation callbacks; this reference does not impose token-ability names on those operations. Add explicit ability checks if your application's token policy requires them.
+Invitation list, resend, and revoke use the configured invitation authorization callbacks; this reference does not impose token-ability names on those operations. Add explicit ability checks if your application's token policy requires them.
 
-Use HTTPS, a fixed public `APP_URL`, and trusted proxy configuration before using `request.ip()` for login limits. The configured registration-field policy and invitation authorisation callback remain application decisions.
+Use HTTPS, a fixed public `APP_URL`, and trusted proxy configuration before using `request.ip()` for login limits. The configured registration-field policy and invitation authorization callback remain application decisions.
 
 The shipped example config and Vine request validators share the 8–256 character policy for newly established passwords. If you change `passwordPolicy`, update the application's Vine rules to match; package service checks remain authoritative for registration, activation, invitation acceptance, password reset, and password change. Login accepts existing credentials separately and does not apply new-password rules.
 

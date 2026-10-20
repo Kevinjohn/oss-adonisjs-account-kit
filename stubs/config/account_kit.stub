@@ -43,7 +43,7 @@ export default defineConfig({
   /**
    * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
    */
-  limiterSecret: env.get('APP_KEY').release(),
+  limiterSecret: env.get('APP_KEY'),
 
   /**
    * Who may send, manage and list invitations. Everything is denied until you decide.

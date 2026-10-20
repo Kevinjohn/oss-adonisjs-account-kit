@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { Secret } from '@adonisjs/core/helpers'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { CapabilityDisabledError } from '../src/errors.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from '../src/capabilities.js'
@@ -193,10 +194,23 @@ test.group('capability configuration', (group) => {
     assert.isFunction(resolved.onInvitationAccepted)
   })
 
+  test('accepts an AdonisJS Secret for limiterSecret and resolves it to its value', ({
+    assert,
+  }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    const value = 'a-shared-limiter-secret-of-at-least-32-bytes'
+    const resolved = defineConfig({ ...base, limiterSecret: new Secret(value) })
+    assert.strictEqual(resolved.limiterSecret, value)
+  })
+
   test('validates limiter secret, all budgets, and exclusive revocation hooks', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     assert.throws(() => defineConfig({ ...base, limiterSecret: 'short' }), /limiterSecret/)
     assert.throws(() => defineConfig({ ...base, limiterSecret: 'é'.repeat(15) }), /limiterSecret/)
+    assert.throws(
+      () => defineConfig({ ...base, limiterSecret: new Secret('short') }),
+      /limiterSecret/
+    )
     assert.throws(() => defineConfig({ ...base, throttle: { requests: 0 } }), /throttle\.requests/)
     assert.throws(
       () => defineConfig({ ...base, throttle: { duration: '0s' } }),

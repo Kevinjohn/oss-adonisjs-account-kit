@@ -1,14 +1,16 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { setSocialFixture } from '#services/social_provider_fixture'
+import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
 import { notifications } from '#services/account_kit_notifications'
+import {
+  pkceChallenge as challenge,
+  pkceVerifier as verifier,
+} from '#services/social_browser_transaction'
 import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { truncateDatabase } from '#tests/helpers/database'
 
-const verifier = () => randomBytes(32).toString('base64url')
-const challenge = (value: string) => createHash('sha256').update(value).digest('base64url')
 const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
 
 type Body = Record<string, unknown>
@@ -21,6 +23,26 @@ const continuationFrom = (response: { body(): unknown }): string => {
 
 test.group('Social reference', (group) => {
   group.each.setup(truncateDatabase)
+
+  test('social request input is rejected by VineJS validators', async ({ client, assert }) => {
+    const vineFields = (response: { body(): unknown }) =>
+      (response.body() as { errors: Array<{ field: string; rule: string }> }).errors.map(
+        (error) => error.field
+      )
+    const noChallenge = await client.post('/api/v1/auth/oauth/google/redirect').json({})
+    assert.equal(noChallenge.status(), 422)
+    assert.deepEqual(vineFields(noChallenge), ['clientChallenge'])
+    const badIntent = await client
+      .post('/api/v1/auth/oauth/google/redirect')
+      .json({ intent: 'unknown', clientChallenge: challenge(verifier()) } as never)
+    assert.equal(badIntent.status(), 422)
+    assert.deepEqual(vineFields(badIntent), ['intent'])
+    const noVerifier = await client
+      .post('/api/v1/auth/oauth/token')
+      .json({ code: 'handoff' } as never)
+    assert.equal(noVerifier.status(), 422)
+    assert.deepEqual(vineFields(noVerifier), ['verifier'])
+  }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 
   test('token client completes a verified social registration through one PKCE exchange', async ({
     client,
@@ -83,25 +105,32 @@ test.group('Social reference', (group) => {
       verifier: heldVerifier,
     })
     assert.equal(redeemed.status(), 200, JSON.stringify(redeemed.body()))
-    assert.isString(body(redeemed).token)
+    const redeemedData = body(redeemed).data as { user: object; token: string }
+    assert.isString(redeemedData.token)
+    assert.deepEqual(Object.keys(redeemedData.user).sort(), [
+      'createdAt',
+      'email',
+      'fullName',
+      'id',
+      'initials',
+      'updatedAt',
+    ])
     const methodsAfterSocial = await client
       .get('/api/v1/account/methods')
-      .bearerToken(body(redeemed).token as string)
+      .bearerToken(redeemedData.token)
       .cookie('account_kit_last_method', redeemed.cookie('account_kit_last_method')!.value)
     assert.equal(body(methodsAfterSocial).lastUsedMethod, 'google')
     const unsupportedHint = await client
       .get('/api/v1/account/methods')
-      .bearerToken(body(redeemed).token as string)
+      .bearerToken(redeemedData.token)
       .cookie('account_kit_last_method', 'unsupported-method')
     assert.equal(body(unsupportedHint).lastUsedMethod, null)
     const unavailablePasswordHint = await client
       .get('/api/v1/account/methods')
-      .bearerToken(body(redeemed).token as string)
+      .bearerToken(redeemedData.token)
       .cookie('account_kit_last_method', 'password')
     assert.equal(body(unavailablePasswordHint).lastUsedMethod, null)
-    const profile = await client
-      .get('/api/v1/account/profile')
-      .bearerToken(body(redeemed).token as string)
+    const profile = await client.get('/api/v1/account/profile').bearerToken(redeemedData.token)
     assert.equal(profile.status(), 200)
     const replay = await client.post('/api/v1/auth/oauth/token').json({
       code: handoffCode,
@@ -114,7 +143,7 @@ test.group('Social reference', (group) => {
 
     const reauth = await client
       .post('/api/v1/auth/oauth/google/redirect')
-      .bearerToken(body(redeemed).token as string)
+      .bearerToken(redeemedData.token)
       .json({
         intent: 'reauth',
         purpose: 'social_unlink',
@@ -128,7 +157,7 @@ test.group('Social reference', (group) => {
     const relation = await db.from('social_identities').where('user_id', created.id).first()
     const withoutProof = await client
       .delete(`/api/v1/account/social/${relation.id}`)
-      .bearerToken(body(redeemed).token as string)
+      .bearerToken(redeemedData.token)
       .json({ proof: verifier() })
     assert.equal(withoutProof.status(), 403)
     assert.lengthOf(await db.from('social_identities').where('user_id', created.id), 1)
@@ -163,7 +192,7 @@ test.group('Social reference', (group) => {
     const unlinked = await client
       .delete(`/api/v1/account/social/${relation.id}`)
       .bearerToken(passwordToken)
-      .json({ proof: body(passwordProof).proof })
+      .json({ proof: body(passwordProof).proof as string })
     assert.equal(unlinked.status(), 204)
     assert.lengthOf(await db.from('social_identities').where('user_id', created.id), 0)
   }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
@@ -257,7 +286,7 @@ test.group('Social reference', (group) => {
     assert.equal(confirmed.status(), 200, JSON.stringify(confirmed.body()))
     assert.equal(body(confirmed).status, 'linked')
     const redeemed = await client.post('/api/v1/auth/oauth/token').json({
-      code: body(confirmed).handoffCode,
+      code: body(confirmed).handoffCode as string,
       verifier: confirmationVerifier,
     })
     assert.equal(redeemed.status(), 200, JSON.stringify(redeemed.body()))

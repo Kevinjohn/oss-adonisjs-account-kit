@@ -19,6 +19,11 @@ export type SetupFeature = (typeof featureNames)[number]
 export const setupModes = ['services', 'managed'] as const
 export const guardStrategies = ['session', 'access_tokens'] as const
 export const registrationPolicies = ['open', 'closed', 'application'] as const
+export const userIdTypes = ['integer', 'string', 'uuid'] as const
+export const userAdapters = ['lucid', 'custom'] as const
+export const mailIntegrations = ['adonisjs-mail', 'custom'] as const
+export const mailDeliveries = ['best-effort', 'durable'] as const
+export const unverifiedActionNames = ['logout', 'verificationResend', 'passwordReset'] as const
 
 export type GuardStrategy = (typeof guardStrategies)[number]
 
@@ -33,8 +38,8 @@ export interface SetupChoices {
   user: {
     model: string
     table: string
-    idType: 'integer' | 'string' | 'uuid'
-    adapter: 'lucid' | 'custom'
+    idType: (typeof userIdTypes)[number]
+    adapter: (typeof userAdapters)[number]
     connection: 'default'
     primaryKey: 'id'
     emailColumn: 'email'
@@ -55,8 +60,8 @@ export interface SetupChoices {
     applicationRouteRevocation: boolean
   } | null
   mail: {
-    integration: 'adonisjs-mail' | 'custom'
-    delivery: 'best-effort' | 'durable'
+    integration: (typeof mailIntegrations)[number]
+    delivery: (typeof mailDeliveries)[number]
     senderEnv: string | null
     transportEnv: string | null
     appName: string
@@ -88,7 +93,7 @@ export interface SetupChoices {
       minScore: number
     }
     verificationRequired: boolean
-    unverifiedActions: Array<'logout' | 'verificationResend' | 'passwordReset'>
+    unverifiedActions: Array<(typeof unverifiedActionNames)[number]>
     invitationPermissionHook: boolean
     accessRestrictionHook: boolean
   }
