@@ -1,10 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import {
-  DeliveryError,
-  InvalidInputError,
-  InvalidTokenError,
-  PostCommitError,
-} from 'adonisjs-account-kit'
+import { InvalidInputError, InvalidTokenError } from 'adonisjs-account-kit'
 import accountKit from 'adonisjs-account-kit/services/main'
 import {
   invitationAcceptValidator,
@@ -12,7 +7,7 @@ import {
   invitationValidator,
 } from '#validators/account_kit'
 import { accountError, proofFailure, proofHeaders } from '#services/http_responses'
-import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
+import { committedFollowUp } from '#services/committed_failure_diagnostic'
 
 function invitationIdParam(value: string): number {
   const id = Number(value)
@@ -27,16 +22,12 @@ export default class InvitationsController {
       return accountError(ctx, 403, 'missing_ability', 'This token cannot create invitations.')
     }
     const { email, role } = await ctx.request.validateUsing(invitationValidator)
-    try {
-      const invitation = await accountKit.invitations.send({ actorId: actor.id, email, role })
-      return ctx.response.created({ id: invitation.id })
-    } catch (error) {
-      if (error instanceof DeliveryError || error instanceof PostCommitError) {
-        reportCommittedFailure(ctx.logger, error, 'invitation.send')
-        return ctx.response.accepted({ requested: true })
-      }
-      throw error
-    }
+    const invitation = await committedFollowUp(ctx.logger, 'invitation.send', () =>
+      accountKit.invitations.send({ actorId: actor.id, email, role })
+    )
+    return invitation
+      ? ctx.response.created({ id: invitation.id })
+      : ctx.response.accepted({ requested: true })
   }
 
   async list(ctx: HttpContext) {
@@ -57,11 +48,14 @@ export default class InvitationsController {
     proofHeaders(ctx)
     const { password, fullName } = await ctx.request.validateUsing(invitationAcceptValidator)
     try {
-      const user = await accountKit.invitations.accept({
-        token: ctx.params.token,
-        password,
-        registrationData: { fullName },
-      })
+      const user = await committedFollowUp(ctx.logger, 'invitation.accept', () =>
+        accountKit.invitations.accept({
+          token: ctx.params.token,
+          password,
+          registrationData: { fullName },
+        })
+      )
+      if (!user) return ctx.response.accepted({ accepted: true })
       return ctx.response.created({
         id: user.id,
         email: user.email,
@@ -71,42 +65,29 @@ export default class InvitationsController {
       if (error instanceof InvalidTokenError) {
         return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
       }
-      if (error instanceof DeliveryError || error instanceof PostCommitError) {
-        reportCommittedFailure(ctx.logger, error, 'invitation.accept')
-        return ctx.response.accepted({ accepted: true })
-      }
       throw error
     }
   }
 
   async resend({ auth, params, response, logger }: HttpContext) {
     const actor = await auth.getUserOrFail()
-    try {
-      const invitation = await accountKit.invitations.resend({
+    const invitation = await committedFollowUp(logger, 'invitation.resend', () =>
+      accountKit.invitations.resend({
         actorId: actor.id,
         invitationId: invitationIdParam(params.id),
       })
-      return response.ok({ id: invitation.id })
-    } catch (error) {
-      if (error instanceof DeliveryError || error instanceof PostCommitError) {
-        reportCommittedFailure(logger, error, 'invitation.resend')
-        return response.accepted({ requested: true })
-      }
-      throw error
-    }
+    )
+    return invitation ? response.ok({ id: invitation.id }) : response.accepted({ requested: true })
   }
 
   async revoke({ auth, params, response, logger }: HttpContext) {
     const actor = await auth.getUserOrFail()
-    try {
-      await accountKit.invitations.revoke({
+    await committedFollowUp(logger, 'invitation.revoke', () =>
+      accountKit.invitations.revoke({
         actorId: actor.id,
         invitationId: invitationIdParam(params.id),
       })
-    } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      reportCommittedFailure(logger, error, 'invitation.revoke')
-    }
+    )
     return response.noContent()
   }
 }
