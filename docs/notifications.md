@@ -47,6 +47,11 @@ callbacks can be overridden by spreading the maintained set first. The mail inte
 message content and transport calls, while the application owns the sender identity and Mail
 transport. `emailLayout` wraps escaped package content; treat that callback as trusted
 application code. `brandName`, `from`, and `emailLayout` do not affect token issuance.
+
+For local development, [replace the generated throwing callbacks with the log recipe](recipes/development-mail.md).
+That renders a live proof into the application's private log and does not send email or establish
+recipient delivery. Production requires the application's configured real Mail transport and a
+verified sender.
 The exported `*Provision` classes hold action-link values for the maintained callbacks; they
 are not AdonisJS `BaseMail` subclasses. Pass callbacks returned by `createMailNotifications`
 to Account Kit rather than passing those values directly to `mail.sendLater`.
@@ -99,8 +104,14 @@ as `DeliveryError`; credential notice or other post-commit follow-up failure is 
 `PostCommitError` with `committed: true`. Both can follow a committed account change, so never
 blindly repeat a non-repeatable mutation. A transport failure _after_ `sendLater` accepts the
 message is observable through the application's Mail transport or worker logs, not a later
-Account Kit exception. Password-reset request HTTP handlers must suppress delivery status and
-return the same acknowledgement for known and unknown addresses.
+Account Kit exception. Password-reset request HTTP handlers return the same generic `202`
+acknowledgement for known and unknown addresses, even when delivery fails after commit. This privacy
+response is not evidence that the notification callback ran or the message reached a recipient. If
+a local request is acknowledged without a log entry, check that the generated callback was
+replaced, the configured `urls.passwordReset` destination is correct, and the application logger
+is visible, and the address belongs to an account in the selected local database. Unknown addresses
+receive the same acknowledgement without a message. In production, check the configured transport and its worker or provider status;
+`sendLater` acceptance alone does not prove delivery.
 With Mail's default in-memory messenger, a later transport failure emits the
 `queued:mail:error` event. Subscribe in the application and record a private, redacted failure
 with an operation correlation ID where available; queue acceptance alone cannot prove recipient
