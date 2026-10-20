@@ -1,5 +1,6 @@
 /** Builds an OpenAPI 3.1 document for exactly the managed routes registered on one router. */
-import { managedEndpointSchemas, ref, sharedSchemas } from './openapi_schemas.js'
+import { managedEndpointSchemas, ref } from './openapi_schemas.js'
+import { sharedSchemas } from './openapi_components.js'
 import type {
   JsonSchema,
   ManagedOpenApiOptions,
