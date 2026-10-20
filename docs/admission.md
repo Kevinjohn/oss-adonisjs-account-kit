@@ -124,13 +124,17 @@ guard strategies. To also sign the person out, call `kit.authentication.changeRe
 
 ### Service
 
-| Method                        | Does                                                                                                                                            |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `current(input)`              | Checks the credential like `kit.authentication.current`, then evaluates admission, in one transaction. Returns `{ account, decision }`.         |
-| `require(input, { active? })` | Like `current`; throws `UnverifiedEmailError` for an unconfirmed account unless `active: false`, then `AdmissionRequiredError` unless admitted. |
-| `decide(user, trx)`           | Evaluates the requirements for a user row inside your transaction.                                                                              |
-| `isAdmitted(userId, trx?)`    | True when admitted; false for an unknown user. For `authorize` and `exportAccountData` callbacks.                                               |
-| `eligibleDomain(email)`       | Whether an address would meet the domain requirement once confirmed. True when the requirement is off; false for a malformed one.               |
+| Method                                                            | Does                                                                                                                                            |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `current(input)`                                                  | Checks the credential like `kit.authentication.current`, then evaluates admission, in one transaction. Returns `{ account, decision }`.         |
+| `require(input, { active? })`                                     | Like `current`; throws `UnverifiedEmailError` for an unconfirmed account unless `active: false`, then `AdmissionRequiredError` unless admitted. |
+| `decide(user, trx)`                                               | Evaluates the requirements for a user row inside your transaction.                                                                              |
+| `isAdmitted(userId, trx?)`                                        | True when admitted; false for an unknown user. For `authorize` and `exportAccountData` callbacks.                                               |
+| `request(input)`                                                  | The signed-in person asks for approval, so the pending list shows them. Idempotent; refuses an unconfirmed account.                             |
+| `approve`, `reject`, `revoke`                                     | An approver's decision: `{ actorId, userId }`. See [decisions](#decisions).                                                                     |
+| `list({ actorId, status?, cursor?, limit? })`                     | Admission records, oldest first, 1 to 100 a page (default 25), after `authorize.list` returns `true`.                                           |
+| `operator.approve`, `operator.revoke`, `operator.grantInvitation` | Shell-trusted changes by `{ email }` for Ace commands: no actor, no `authorize`. Never expose them to a request.                                |
+| `eligibleDomain(email)`                                           | Whether an address would meet the domain requirement once confirmed. True when the requirement is off; false for a malformed one.               |
 
 `input` is the same `CurrentAccountInput` your guard returns: a credential check always comes
 first, so an expired session fails with `InvalidSessionError` before admission is evaluated.
@@ -183,3 +187,85 @@ Both errors extend `AccountKitError` and are exported from `adonisjs-account-kit
 `accountErrorResponse` returns only `code` and `message`. Add `error.decision` to the 403 body in
 your exception handler so the application can say what is missing; the package sends no
 notification of any kind.
+
+## Decisions
+
+`approve`, `reject` and `revoke` take `{ actorId, userId }` and run in one transaction that locks
+the actor and the subject in id order, so two approvers deciding on each other cannot deadlock.
+They are refused with:
+
+- `UserNotFoundError` for an unknown subject, `InvalidInputError('Unknown actor')` for an unknown
+  actor;
+- `AuthorizationError` when the actor is the subject, when the actor is not admitted, or when
+  `authorize.decide(actor, subject, { trx })` returns anything but `true`;
+- `AdmissionDecisionError` for a transition the table does not allow;
+- `CapabilityDisabledError` when `approval` is not configured. The same applies to `request`,
+  `list` and the operator decisions.
+
+| From        | approve  | reject   | revoke  |
+| ----------- | -------- | -------- | ------- |
+| no decision | approved | rejected | refused |
+| approved    | refused  | refused  | revoked |
+| rejected    | approved | refused  | refused |
+| revoked     | approved | refused  | refused |
+
+Repeating a successful call is refused on purpose; read `list` for the current state. The
+record stores who decided and when; an operator decision stores no actor.
+
+After commit, `onAdmissionEvent` receives `admission.requested`, `admission.approved`,
+`admission.rejected`, `admission.revoked` or `admission.invitation_granted`, with ids and an
+`operationId` only. A failing hook surfaces as `PostCommitError`: the change is saved, so do not
+repeat it. Account Kit sends no email about admission; use the hook to notify people.
+
+`list` filters by `status`: `pending` is a person who asked and has no decision; `approved`,
+`rejected` and `revoked` are the stored decisions; omitted lists every record. The cursor is
+opaque and checked; a forged one is `InvalidInputError`.
+
+## Commands
+
+| Command                                                          | Does                                                                                                                                            |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `account-kit:admission:install [--users-table] [--user-id-type]` | Writes the migration and `config/admission.ts` (never overwriting), registers the provider and the command loader, and prints the manual steps. |
+| `account-kit:admission:approve <email>`                          | Operator approval, through the same transitions. For the first administrator and for recovery.                                                  |
+| `account-kit:admission:revoke <email>`                           | Operator revocation.                                                                                                                            |
+| `account-kit:admission:grant-invitation <email> [--role]`        | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
+
+The runtime commands write one JSON line to stdout and report failures on stderr with the error
+code and exit code 1, like `account-kit:invite`.
+
+## Turning a requirement on later
+
+A requirement applies to every existing account on its next gated request:
+
+| Enabled later | Existing accounts              | Path back                                                                           |
+| ------------- | ------------------------------ | ----------------------------------------------------------------------------------- |
+| domain        | outside the list: not admitted | none by design; change the list                                                     |
+| invitation    | no evidence: not admitted      | `account-kit:admission:grant-invitation <email>`, or a migration writing the rows   |
+| approval      | no decision: pending           | `account-kit:admission:approve <email>` for the first administrator, then approvers |
+
+Disabling a requirement leaves its stored columns untouched; turning it on again reads them
+again, so an earlier rejection still stands. Deleting an account removes its row, so a person who
+deletes and registers again starts pending.
+
+## First administrator
+
+Account Kit bootstraps admission state only; the application establishes authority its own way.
+For example:
+
+1. `node ace account-kit:invite admin@example.com --role owner --print`, then accept the link.
+   The application's `onInvitationAccepted` assigns the role and the wrapper records the
+   evidence.
+2. Confirm the address is on an allowed domain.
+3. `node ace account-kit:admission:approve admin@example.com`.
+
+That account is now admitted, so it can approve others. A locked-out administrator is recovered
+with the same approve command. There is no "first user is admin" shortcut.
+
+## Deployment
+
+- Run the migration before deploying code that installs the provider or the wrappers.
+- During a rolling deploy an old instance has no gate and a new one has it, so protected data is
+  gated everywhere only once every instance runs the new code. Changing `domain.allowed` is a
+  config deploy with the same window.
+- Rolling back the code keeps the table and its rows. Dropping the table loses evidence and
+  decisions and is not a supported rollback.
