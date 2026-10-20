@@ -95,7 +95,7 @@ explains the status codes and the `committed` marker.
 To have the config, guard adapter, middleware and managed route file generated from your answers
 instead, follow [guided setup](docs/setup.md) in place of `node ace add adonisjs-account-kit`.
 
-Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite, PostgreSQL or MySQL, `@adonisjs/limiter`, a stable `APP_KEY` of at
+Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite or PostgreSQL (MySQL is experimental), `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.
 
 ## How it fits together
