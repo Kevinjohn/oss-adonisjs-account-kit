@@ -40,12 +40,13 @@ test.group('emailPasswordManagement', (group) => {
         InvalidInputError
       )
     assert.equal(lookups, 0)
-    assert.isUndefined(
+    assert.deepEqual(
       await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
-      })
+      }),
+      { revision: null }
     )
   })
 
@@ -190,12 +191,13 @@ test.group('emailPasswordManagement', (group) => {
         )
       },
     })
-    assert.isUndefined(
+    assert.deepEqual(
       await account.emailPasswordManagement.changePassword({
         actorId: user.id,
         currentPassword: 'oldPassword123',
         newPassword: 'newPassword123',
-      })
+      }),
+      { revision: null }
     )
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))

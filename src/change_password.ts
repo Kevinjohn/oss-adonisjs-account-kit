@@ -1,10 +1,11 @@
 // Password change: confirms the actor, sets the new password and ends older credentials.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged } from './authentication.js'
+import { credentialsChanged, revision } from './authentication.js'
 import { transaction } from './db.js'
 import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
+import { rememberPasswordChangeRevision } from './password_change_revision.js'
 import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
@@ -14,13 +15,13 @@ import type { ServiceDependencies } from './service_dependencies.js'
 export async function changePassword(
   deps: ServiceDependencies,
   input: ChangePasswordInput
-): Promise<void> {
+): Promise<{ revision: string | null }> {
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid new password')
 
   await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()
-  const { value: user, fault } = await settleCommitted(
+  const { value: changed, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
       const actor = await confirmActor(
         deps.config,
@@ -38,23 +39,34 @@ export async function changePassword(
         'email_verification_tokens',
       ])
       const reloaded = await requireUser(deps.config, actor.id, trx)
-      await credentialsChanged(trx, deps.config, reloaded, {
-        operation: 'password_change',
-        operationId,
-        userId: reloaded.id,
-      })
-      return reloaded
+      await credentialsChanged(
+        trx,
+        deps.config,
+        reloaded,
+        { operation: 'password_change', operationId, userId: reloaded.id },
+        input.keepCurrent
+      )
+      const stamp = deps.config.authentication ? await revision(trx, deps.config, actor.id) : null
+      return { user: reloaded, revision: stamp }
     })
   )
+  const user = changed.user
 
   const context = { operation: 'password_change' as const, operationId, userId: user.id }
-  await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
-    afterCommit(
-      'Credentials changed but a follow-up failed',
-      () => deps.config.onCredentialsChanged?.(user, context),
-      () => deps.config.notify.passwordChanged(user, context),
-      () =>
-        deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
+  try {
+    await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
+      afterCommit(
+        'Credentials changed but a follow-up failed',
+        () => deps.config.onCredentialsChanged?.(user, context),
+        () => deps.config.notify.passwordChanged(user, context),
+        () =>
+          deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
+      )
     )
-  )
+  } catch (error) {
+    // The change committed: the caller still needs the revision to keep its own session.
+    rememberPasswordChangeRevision(error, changed.revision)
+    throw error
+  }
+  return { revision: changed.revision }
 }
