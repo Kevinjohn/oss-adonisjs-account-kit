@@ -1,6 +1,7 @@
 import type { Database } from '@adonisjs/lucid/database'
 import { userMetadata } from './db.js'
 import { packageTables } from './package_tables.js'
+import { userOwnedRows } from './user_rows.js'
 import type { Capability, ResolvedConfig } from './types.js'
 
 export interface DoctorCheck {
@@ -66,6 +67,12 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
+  if (config.enabled.includes('accountDeletion')) {
+    for (const { table } of userOwnedRows) required.add(table)
+    required.add(packageTables.accountInvitations)
+    if (config.authentication?.strategy === 'access_tokens')
+      required.add(config.authentication.tokenTable)
+  }
   if (db.connection().dialect.name === 'better-sqlite3')
     required.add(packageTables.accountTransactionLock)
   // Every credential change clears sign-in links, whether or not magic links are enabled.
@@ -110,6 +117,19 @@ async function usersCheck(db: Database, config: ResolvedConfig): Promise<DoctorC
       detail: `${table} is missing ${missing.join(', ')}`,
       fix: migrationFix,
     }
+  if (
+    config.enabled.includes('socialAuthentication') &&
+    config.registration.availability !== 'closed'
+  ) {
+    const password = await db.connection().columnsInfo(table, 'password')
+    if (!password.nullable)
+      return {
+        name,
+        ok: false,
+        detail: `${table}.password must allow NULL for social registration`,
+        fix: `Make ${table}.password nullable before allowing passwordless social accounts`,
+      }
+  }
   return { name, ok: true, detail: `${table} has the required columns` }
 }
 

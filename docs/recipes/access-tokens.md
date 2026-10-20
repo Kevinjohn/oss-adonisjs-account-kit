@@ -13,16 +13,26 @@ API starter kit has both. Point Account Kit at the existing guard:
 authentication: {
   strategy: 'access_tokens',
   guard: 'api',
+  tokenTable: 'auth_access_tokens',
   tokenExpiresIn: '30d',
   tokenAbilities: ['*'],
-  canAccess: async (user, trx) => true, // replace with your suspended-account check
+  canAccess: async () => true, // replace with your application restriction lookup
 },
 onCredentialsChangedTransaction: async () => {},
 ```
 
-With `access_tokens`, every password reset, password change and email change deletes the user's
-rows in `tokenTable` inside the same transaction. The empty `onCredentialsChangedTransaction` is
-fine unless you hold other credentials that need revoking.
+The starter's `User.accessTokens` provider uses `auth_access_tokens`. With `access_tokens`, a
+password reset deletes all of that user's rows in the configured `tokenTable` inside the password
+transaction; the starter's protected `api` routes then reject previously issued bearer values.
+Password change and confirmed email change use the same revision policy. The example `canAccess`
+allows every account through Account Kit authentication calls. The unchanged starter login and
+`api` middleware use their own checks, so enforce suspension there separately if needed.
+`tokenExpiresIn` and `tokenAbilities` configure Account Kit token issuance, not the starter's
+direct token issuance.
+The empty `onCredentialsChangedTransaction` is appropriate only if the application holds no other
+credentials. Revoke application-owned sessions, remember-me credentials or API keys in that
+callback using its transaction when your policy requires them to end on a credential change.
+The [reset tutorial](../getting-started.md) exercises two starter tokens across a reset.
 
 ## 2. Adapt the guard
 
