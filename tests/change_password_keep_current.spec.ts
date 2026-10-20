@@ -3,7 +3,8 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { InvalidSessionError } from '../src/errors.js'
+import { InvalidSessionError, PostCommitError } from '../src/errors.js'
+import { passwordChangeRevision } from '../src/password_change_revision.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
@@ -95,6 +96,27 @@ test.group('password change keeps the current session', (group) => {
     assert.lengthOf(await kit.db.from('account_sessions'), 0)
   })
 
+  test('a follow-up failure still gives the caller the committed revision', async ({ assert }) => {
+    await insertUser(kit)
+    const { account } = service({
+      onCredentialsChanged: async () => {
+        throw new Error('observer down')
+      },
+    })
+    const mine = await signIn(account)
+    const error = await account.emailPasswordManagement
+      .changePassword({ actorId: mine.userId, ...change, keepCurrent: mine })
+      .catch((caught: unknown) => caught)
+    assert.instanceOf(error, PostCommitError)
+    const committed = passwordChangeRevision(error)
+    assert.isString(committed)
+    assert.notEqual(committed, mine.revision)
+    const kept = await account.authentication.current({ ...mine, revision: committed! })
+    assert.equal(kept.id, mine.userId)
+    assert.isUndefined(passwordChangeRevision(new PostCommitError('other')))
+    assert.isUndefined(passwordChangeRevision(new Error('other')))
+  })
+
   test('password reset still ends every session', async ({ assert }) => {
     const user = await insertUser(kit)
     const { account, recorder } = service()
@@ -167,11 +189,12 @@ test.group('password change keeps the current token', (group) => {
 test.group('managed password change keeps the caller signed in', (group) => {
   const kit = useTestApp(group)
 
-  function mount(strategy: 'session' | 'access_tokens') {
+  function mount(strategy: 'session' | 'access_tokens', overrides: Partial<AccountKitConfig> = {}) {
     const service = makeService(kit, {
       enabled: ['sessionManagement', 'emailVerification', 'emailPasswordManagement'],
       authentication: { guard: strategy === 'session' ? 'web' : 'api', strategy },
       minRequestMs: 0,
+      ...overrides,
     })
     const issued: CurrentAccountInput[] = []
     let caller: CurrentAccountInput | undefined
@@ -244,6 +267,27 @@ test.group('managed password change keeps the caller signed in', (group) => {
     as({ ...other, revision: current().revision })
     assert.equal((await call('GET /api/v1/account/sessions')).status, 401)
     assert.lengthOf(await kit.db.from('account_sessions'), 1)
+  })
+
+  test('session: a follow-up failure after commit still keeps the session signed in', async ({
+    assert,
+  }) => {
+    await insertUser(kit)
+    const { call, as, current, issued } = mount('session', {
+      onCredentialsChanged: async () => {
+        throw new Error('observer down')
+      },
+    })
+    await call('POST /api/v1/auth/login', { email: 'person@example.test', password: 'password123' })
+    const [mine] = issued
+    as(mine)
+    const failed = await call('POST /api/v1/account/password', {
+      ...change,
+      newPasswordConfirmation: change.newPassword,
+    }).catch((caught: unknown) => caught)
+    assert.notDeepEqual(failed, { status: 200, body: { changed: true } })
+    assert.notEqual(current().revision, mine.revision)
+    assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
   })
 
   test('access tokens: the calling token survives and the others are deleted', async ({
