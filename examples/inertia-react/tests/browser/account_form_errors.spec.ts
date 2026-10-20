@@ -1,15 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 test.group('account form errors', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await truncate()
-    await db.table('account_transaction_lock').insert({ id: 1, version: 0 })
-  })
+  group.each.setup(setupAccountDatabase)
 
   test('signup announces a confirmation mismatch and focuses useful feedback without losing input', async ({
     visit,
