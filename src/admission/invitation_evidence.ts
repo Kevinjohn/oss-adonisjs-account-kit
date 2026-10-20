@@ -1,7 +1,7 @@
 // Records invitation evidence inside the invitation acceptance transaction.
 import { sqlTimestamp } from '../timestamps.js'
 import type { AccountUser, Invitation, Trx } from '../types.js'
-import { readAdmissionRow, upsertAdmissionRow } from './rows.js'
+import { admissionTable, readAdmissionRow, upsertAdmissionRow } from './rows.js'
 
 type InvitationAccepted = (user: AccountUser, invitation: Invitation, trx: Trx) => Promise<void>
 
@@ -15,18 +15,25 @@ export function withInvitationEvidence(next?: InvitationAccepted): InvitationAcc
     const existing = await readAdmissionRow(trx, user.id)
     if (!existing || existing.invitation_recorded_at === null) {
       const now = sqlTimestamp(trx)
-      await upsertAdmissionRow(
-        trx,
-        user.id,
-        {
-          invitation_id: invitation.id,
-          invited_email: invitation.email,
-          invited_role: invitation.role,
-          invitation_source: 'invitation',
-          invitation_recorded_at: now,
-        },
-        now
-      )
+      const evidence = {
+        invitation_id: invitation.id,
+        invited_email: invitation.email,
+        invited_role: invitation.role,
+        invitation_source: 'invitation',
+        invitation_recorded_at: now,
+      }
+      // Only an operator invitation claims a bootstrap approval waiting for its address.
+      const attached =
+        !existing &&
+        invitation.inviterId === null &&
+        Number(
+          await trx
+            .from(admissionTable)
+            .where('bootstrap_email', invitation.email)
+            .whereNull('user_id')
+            .update({ ...evidence, user_id: user.id, bootstrap_email: null, updated_at: now })
+        ) > 0
+      if (!attached) await upsertAdmissionRow(trx, user.id, evidence, now)
     }
     if (next) await next(user, invitation, trx)
   }

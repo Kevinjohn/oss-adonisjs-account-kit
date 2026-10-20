@@ -85,6 +85,7 @@ test.group('admission runtime commands', (group) => {
       'account-kit:admission:approve',
       'account-kit:admission:revoke',
       'account-kit:admission:grant-invitation',
+      'account-kit:admission:bootstrap',
     ])
   })
 })
@@ -133,7 +134,8 @@ test.group('admission install command', () => {
       assert.lengthOf(migrations, 1)
       assert.match(migrations[0], /^\d+_account_kit_admission_create_account_admissions\.ts$/)
       const migration = await readFile(join(root, 'database', 'migrations', migrations[0]), 'utf8')
-      assert.include(migration, "table.uuid('user_id').notNullable().unique()")
+      assert.include(migration, "table.uuid('user_id').nullable().unique()")
+      assert.include(migration, "table.string('bootstrap_email', 254).nullable().unique()")
       assert.include(migration, "table.uuid('approval_actor_id').nullable()")
       assert.equal(migration.match(/inTable\("members"\)/g)?.length, 2)
       assert.notInclude(migration, '{{')

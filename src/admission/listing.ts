@@ -37,6 +37,7 @@ export async function listAdmissions(
 
   const query = deps.db
     .from(admissionTable)
+    .whereNotNull('user_id')
     .orderBy('created_at', 'asc')
     .orderBy('id', 'asc')
     .limit(limit + 1)
