@@ -3,8 +3,14 @@
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import { createLucidAdapter, defineConfig } from 'adonisjs-account-kit'
+import { withAdmissionCleanup, withInvitationEvidence } from 'adonisjs-account-kit/admission'
 import { notifications } from '#services/account_kit_notifications'
-import { authorize, canAccess, onInvitationAccepted } from '#services/account_kit_authorization'
+import {
+  authorize,
+  canAccess,
+  exportAccountData,
+  onInvitationAccepted,
+} from '#services/account_kit_authorization'
 import { registrationFullName } from '#services/registration_fields'
 import { referencePasswordLimits } from '#validators/password'
 import { allySocialProvider } from '#services/social_provider'
@@ -100,7 +106,10 @@ export default defineConfig({
     passwordChanged: (user, context) =>
       notifications.deliverCredentialNotice(context.operationId, context.operation, user.email),
   },
-  onInvitationAccepted,
+  // Records invitation evidence for admission, then grants the role, in the acceptance transaction.
+  onInvitationAccepted: withInvitationEvidence(onInvitationAccepted),
+  onAccountDeletingTransaction: withAdmissionCleanup(),
+  exportAccountData,
   onCredentialsChangedTransaction: async (user, context, trx) => {
     if (context.operation !== 'password_reset' && context.operation !== 'password_change') return
 

@@ -1,0 +1,44 @@
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  protected tableName = 'account_admissions'
+
+  async up() {
+    this.schema.createTable(this.tableName, (table) => {
+      table.increments('id')
+      // Null only on a bootstrap approval waiting for its account.
+      table
+        .integer('user_id')
+        .unsigned()
+        .nullable()
+        .unique()
+        .references('id')
+        .inTable('users')
+        .onDelete('CASCADE')
+      table.string('bootstrap_email', 254).nullable().unique()
+      table.timestamp('requested_at', { useTz: true, precision: 3 }).nullable()
+      // The consumed account_invitations id. No foreign key: acceptance deletes that row.
+      table.integer('invitation_id').nullable()
+      table.string('invited_email', 254).nullable()
+      table.string('invited_role', 64).nullable()
+      table.string('invitation_source', 16).nullable()
+      table.timestamp('invitation_recorded_at', { useTz: true, precision: 3 }).nullable()
+      table.string('approval_status', 16).nullable()
+      table
+        .integer('approval_actor_id')
+        .unsigned()
+        .nullable()
+        .references('id')
+        .inTable('users')
+        .onDelete('SET NULL')
+      table.timestamp('approval_decided_at', { useTz: true, precision: 3 }).nullable()
+      table.timestamp('created_at', { useTz: true, precision: 3 }).notNullable()
+      table.timestamp('updated_at', { useTz: true, precision: 3 }).notNullable()
+      table.index(['created_at', 'id'], 'account_admissions_created_at_id_index')
+    })
+  }
+
+  async down() {
+    this.schema.dropTable(this.tableName)
+  }
+}

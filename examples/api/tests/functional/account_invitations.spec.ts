@@ -10,6 +10,7 @@ import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics
 import { tokenFrom } from '#tests/helpers/link_tokens'
 import { responseBody } from '#tests/helpers/response_body'
 import { truncateDatabase } from '#tests/helpers/database'
+import { grantAdmittedOwner } from '#tests/helpers/admission'
 
 test.group('Account invitations', (group) => {
   group.each.setup(truncateDatabase)
@@ -26,7 +27,7 @@ test.group('Account invitations', (group) => {
       password: 'InvitePass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await db.table('role_assignments').insert({ user_id: inviter.id, role: 'owner' })
+    await grantAdmittedOwner(inviter)
     const inviteResponse = await client.post('/api/v1/account/invitations').loginAs(inviter).json({
       email: 'new-member@example.test',
       role: 'editor',

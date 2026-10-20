@@ -41,6 +41,7 @@ export default defineConfig({
           { text: 'Magic-link sign-in', link: '/magic-link' },
           { text: 'Signed-in devices', link: '/signed-in-devices' },
           { text: 'Account export and deletion', link: '/account-data' },
+          { text: 'Admission', link: '/admission' },
           { text: 'Custom user model', link: '/recipes/custom-user-model' },
           { text: 'Custom table or ID type', link: '/custom-schema' },
           { text: 'Drizzle, Prisma and SQL users', link: '/adapters' },
