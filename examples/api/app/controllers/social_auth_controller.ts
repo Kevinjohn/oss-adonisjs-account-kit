@@ -9,7 +9,7 @@ import {
 import accountKit from 'adonisjs-account-kit/services/main'
 import User from '#models/user'
 import UserTransformer from '#transformers/user_transformer'
-import { sessionGuard } from '#services/account_kit_guards'
+import { accountKitSessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 import {
   beginBrowserTransaction,
@@ -104,7 +104,7 @@ export default class SocialAuthController {
       const redeemed = await accountKit.socialAuthentication.redeemHandoff({
         code: result.handoffCode,
         verifier: browserVerifier,
-        guard: sessionGuard(ctx),
+        guard: accountKitSessionGuard(ctx),
       })
       const user = await User.findOrFail(redeemed.account.id)
       rememberLastUsedMethod(ctx, redeemed.provider)
