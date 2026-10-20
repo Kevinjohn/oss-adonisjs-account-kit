@@ -100,7 +100,7 @@ Then run the check:
      `kit.passwordReset.request({ email, clientKey })`, take the link from your notification
      callback, and complete it with `kit.passwordReset.reset({ token, password })`, as in the
      example [reset controller](../examples/api/app/controllers/password_resets_controller.ts) and
-     [reset test](../examples/api/tests/functional/auth_safety.spec.ts).
+     [reset test](../examples/api/tests/functional/bearer_revocation.spec.ts).
    - With authentication alone, restrict the account with
      `kit.authentication.changeRestriction({ userId, change })`, which updates your access-policy
      state in its transaction, then call it again to restore access. The
