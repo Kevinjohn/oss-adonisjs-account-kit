@@ -2,12 +2,12 @@
 
 This page lists what Account Kit defends against, how, and what remains the application's job. It
 describes the package defaults; each value can be changed in `config/account_kit.ts`. Each
-defence names the source that implements it and the test that pins it, so you can check the claim
+defense names the source that implements it and the test that pins it, so you can check the claim
 yourself.
 
 ## At a glance
 
-| Threat                                   | Defence                                                                             |
+| Threat                                   | Defense                                                                             |
 | ---------------------------------------- | ----------------------------------------------------------------------------------- |
 | A leaked database used to reset accounts | Links carry 40 random bytes; only a SHA-256 hash is stored.                         |
 | Old or replayed links                    | Every link is single use and expires, checked inside the write transaction.         |
@@ -203,4 +203,4 @@ Follow the private process in [SECURITY.md](../SECURITY.md).
 
 Further detail: [operations](operations.md) covers secrets, pruning and redaction,
 [production requirements](reference/production-requirements.md) cover budgets, and
-[authentication](authentication.md) covers guard and session behaviour.
+[authentication](authentication.md) covers guard and session behavior.

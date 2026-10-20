@@ -323,7 +323,7 @@ export async function sendInvitation(
 }
 
 /**
- * Insert an invitation row for a normalised email. Expired rows for the address are removed first;
+ * Insert an invitation row for a normalized email. Expired rows for the address are removed first;
  * `replacePending` also removes a live one (operator reissue). Shared by the actor and operator
  * paths; a pending invitation otherwise surfaces as InvitationPendingError.
  */

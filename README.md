@@ -133,7 +133,7 @@ Account flows are where attackers look first. What Account Kit does by default:
 - **Verifiable releases.** Published with npm provenance; run `npm audit signatures`.
   [Supply chain](docs/security.md#supply-chain)
 
-The [security model](docs/security.md) names the code and the test behind each defence, what your
+The [security model](docs/security.md) names the code and the test behind each defense, what your
 app must still do, and what is out of scope. Report vulnerabilities privately: see
 [SECURITY.md](SECURITY.md).
 
