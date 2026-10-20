@@ -2,6 +2,7 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { safeAccount } from '../authentication.js'
+import { passwordChangeRevision } from '../password_change_revision.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
 
@@ -30,18 +31,34 @@ export const emailPasswordManagementHandlers = {
     })
     return response.ok({ account: await representIssued(safeAccount(user)) })
   },
-  'account.password.change': async ({ context, kit, actorId }) => {
+  'account.password.change': async ({ context, kit, options, actorId, accountInput }) => {
     const { request, response } = context
     const { currentPassword, recentProof, newPassword } =
       await request.validateUsing(passwordChangeValidator)
     if (!kit.managedHttp.passwordAllowed(newPassword))
       return passwordPolicyError(context, 'newPassword')
-    await kit.emailPasswordManagement.changePassword({
-      actorId: actorId!,
-      currentPassword,
-      recentProof,
-      newPassword,
-    })
+    const guard = options.guard.forRequest(context)
+    const { revision } = await kit.emailPasswordManagement
+      .changePassword({
+        actorId: actorId!,
+        currentPassword,
+        recentProof,
+        newPassword,
+        keepCurrent: {
+          ...(accountInput?.sessionHandle === undefined
+            ? {}
+            : { sessionHandle: accountInput.sessionHandle }),
+          ...(accountInput?.tokenId === undefined ? {} : { tokenId: accountInput.tokenId }),
+        },
+      })
+      .catch(async (error: unknown) => {
+        // A follow-up failed after commit: keep this session on the new revision, then report it.
+        const committed = passwordChangeRevision(error)
+        if (committed !== undefined && guard.strategy === 'session')
+          await guard.refresh?.(committed)
+        throw error
+      })
+    if (guard.strategy === 'session') await guard.refresh?.(revision)
     return response.ok({ changed: true })
   },
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

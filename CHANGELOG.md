@@ -17,6 +17,14 @@ Initial public release.
   the account. `onInvitationAccepted` runs in that transaction and `invitation.accepted` is
   reported after commit.
 - Password change, verified email change and profile updates behind the current password.
+- A self-service password change can keep the caller's own sign-in (`keepCurrent`) and returns
+  the new credential revision. The managed route keeps the calling session or token, and the
+  managed session guard gains `refresh(revision)`. `passwordChangeRevision(error)` returns the
+  committed revision from a `PostCommitError`, so the caller's session survives a failed follow-up.
+- Users adapters can hash a new password before the write transaction opens (optional
+  `hashPassword` and `setPasswordHash`; `create` receives `passwordHash`). The shipped adapters
+  implement both, so a slow hash no longer holds the SQLite writer. Reset and activation completion
+  now hash before the token is checked; throttle the routes that call them.
 - Session and opaque-token login through an existing AdonisJS Auth guard, with failed-attempt
   limits and credential revocation on every credential change.
 - Optional Google and GitHub social sign-in through Ally, with safe linking, recent proof and a

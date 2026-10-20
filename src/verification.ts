@@ -12,6 +12,7 @@ import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { invitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
+import { preparePassword, storePassword } from './password_hashing.js'
 import { throttlerOf } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue } from './token_reuse.js'
@@ -194,6 +195,7 @@ export async function completeVerification(
     throw new InvalidInputError('Invalid password')
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
+  const password = await preparePassword(deps.config.users, input.password)
   const { value: claimed, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
       const { user } = await consumeUserToken<ActivationRow>(
@@ -203,7 +205,7 @@ export async function completeVerification(
         input.token,
         activationMatches
       )
-      await deps.config.users.setPassword(user.id, input.password, trx)
+      await storePassword(deps.config.users, user.id, password, trx)
       const invitationId = await activateClaim(trx, deps.config, user)
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
