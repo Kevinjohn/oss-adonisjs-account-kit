@@ -1,5 +1,7 @@
 import kit from 'adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
+import { isDeliveryFailure } from '#services/delivery_failure'
+import { accountKitSessionGuard } from '#services/session_guard'
 import { sendTokenPageHeaders } from '#services/token_page_headers'
 import { verifyEmailValidator } from '#validators/account'
 
@@ -20,9 +22,19 @@ export default class EmailVerificationsController {
    * The address owner sets the account password here, replacing the one chosen at signup, so
    * whoever registered the address cannot keep access. Every session ends, so sign in again.
    */
-  async update({ request, response, session, params }: HttpContext) {
+  async update(ctx: HttpContext) {
+    const { request, response, session, params } = ctx
     const { password } = await request.validateUsing(verifyEmailValidator)
-    await kit.emailVerification.complete({ token: params.token, password })
+    try {
+      await kit.emailVerification.complete({ token: params.token, password })
+    } catch (error) {
+      if (!isDeliveryFailure(error)) throw error
+      ctx.logger.error(
+        { event: 'email_verification_follow_up_failed' },
+        'email verification follow-up failed'
+      )
+    }
+    if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     session.flash('success', 'Email confirmed. Sign in with your new password.')
     return response.redirect().toRoute('session.create')
   }
