@@ -9,6 +9,7 @@ import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { cookies } from '#tests/helpers/cookies'
 import { tokenFrom as proofFrom } from '#tests/helpers/link_tokens'
 import { truncateDatabase } from '#tests/helpers/database'
+import { grantAdmittedOwner } from '#tests/helpers/admission'
 
 test.group('Reference session', (group) => {
   group.each.setup(truncateDatabase)
@@ -242,7 +243,7 @@ test.group('Reference session', (group) => {
       email: `session-owner-${randomUUID()}@example.test`,
       password: 'OwnerPass123!',
     })
-    await db.table('role_assignments').insert({ user_id: owner.id, role: 'owner' })
+    await grantAdmittedOwner(owner)
     const bootstrap = await client.get('/api/v1/auth/csrf')
     const login = await client
       .post('/api/v1/auth/login')

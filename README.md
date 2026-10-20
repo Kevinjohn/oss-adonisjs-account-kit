@@ -38,6 +38,8 @@ Use the ones you need; the rest stay out of the way:
 - **Signed-in devices**: list sign-ins, sign out one device, every other device, or everywhere.
 - **Account export and deletion**: a JSON download of the user's data and permanent deletion, for
   GDPR requests.
+- **Admission**: keep signed-in accounts out of your data until an allowed domain, an invitation
+  or an approval admits them.
 - **Google and GitHub sign-in** through Ally.
 - **Operator commands**: `account-kit:invite` and `account-kit:reset-link` from the shell.
 - **OpenAPI 3.1 document** for the managed routes.

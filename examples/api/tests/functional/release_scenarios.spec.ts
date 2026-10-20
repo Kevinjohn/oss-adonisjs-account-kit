@@ -6,6 +6,7 @@ import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { cookies } from '#tests/helpers/cookies'
 import { truncateDatabase } from '#tests/helpers/database'
+import { grantAdmittedOwner } from '#tests/helpers/admission'
 
 function bearerFromLogin(response: { body(): unknown }): string {
   const body = response.body()
@@ -38,7 +39,7 @@ test.group('Release scenarios', (group) => {
       password: 'OwnerPass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await db.table('role_assignments').insert({ user_id: inviter.id, role: 'owner' })
+    await grantAdmittedOwner(inviter)
 
     const sessionMode = process.env.ACCOUNT_KIT_AUTH_STRATEGY === 'session'
     let ownerCredential: { bearer?: string; cookie?: string; csrf?: string }
