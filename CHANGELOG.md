@@ -189,6 +189,7 @@ that ran a candidate build.
 
 ### Changed
 
+- Interactive setup now starts from valid saved choices, keeps applicable values when answers are blank, and explains when it falls back to safe defaults.
 - `emailVerification.complete({ token })` → `emailVerification.complete({ token, password })` (export contract) for inactive account claims; the claim replaces the earlier password and invalidates earlier credentials.
 - `GET /account-kit/verification/:token` → `POST /account-kit/verification/:token` (API example route) with password and confirmation in the body.
 - The API example's password validator maximum changes from 128 to 256 characters to match the service ceiling.
