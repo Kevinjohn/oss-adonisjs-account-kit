@@ -5,9 +5,9 @@ import { shieldCsrfState } from './config_inspection.js'
 import {
   type NativeSessionConfiguration,
   nativeSessionConfiguration,
-  selectedSessionDiagnostic,
   unwrapManagedSessionConfig,
 } from './session_config.js'
+import { selectedSessionDiagnostic } from './session_diagnostics.js'
 
 export async function planSession(
   choices: SetupChoices,
