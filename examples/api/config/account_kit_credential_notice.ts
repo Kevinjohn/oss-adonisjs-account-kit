@@ -1,8 +1,8 @@
-import type { AccountUser, Trx } from 'adonisjs-account-kit'
+import type { AccountUser, CredentialChangeContext, Trx } from 'adonisjs-account-kit'
 
 export async function onCredentialsChangedTransaction(
   user: AccountUser,
-  context: { operation: string; operationId: string },
+  context: CredentialChangeContext,
   trx: Trx
 ) {
   if (context.operation !== 'password_reset' && context.operation !== 'password_change') return
