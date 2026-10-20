@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 // The provider callback: consumes the state once, resolves the profile and settles the outcome.
 import { DateTime } from 'luxon'
 import { revision } from './authentication.js'
@@ -5,6 +6,7 @@ import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } 
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
+import { invitationAccepted, matchInvitation } from './invitation_match.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { createHandoff } from './social_handoff.js'
 import { confirmedRecipient, identity } from './social_links.js'
@@ -186,7 +188,7 @@ export async function createAccount(
     profile: { provider: SocialProviderName; subject: string; email: string },
     trx: Trx
   ) => Promise<void>
-): Promise<{ user: AccountUser; relation: SocialIdentity }> {
+): Promise<{ user: AccountUser; relation: SocialIdentity; invitationId: number | null }> {
   const registration = deps.config.registration!
   if (registration.availability === 'closed') throw new SocialTransactionError()
   if (registration.availability === 'application' && !admit) throw new SocialTransactionError()
@@ -203,11 +205,15 @@ export async function createAccount(
     },
     trx
   )
-  if (profile.emailVerified) await deps.config.users.markEmailVerified(user.id, DateTime.utc(), trx)
+  const verifiedAt = DateTime.utc()
+  if (profile.emailVerified) await deps.config.users.markEmailVerified(user.id, verifiedAt, trx)
   const relation = await createAssociation(trx, user.id, name, profile, profile.emailVerified)
+  const invitationId = profile.emailVerified
+    ? await matchInvitation(deps.config, trx, user, verifiedAt)
+    : null
   const latest = await deps.config.users.findById(user.id, trx)
   if (!latest) throw new SocialTransactionError()
-  return { user: latest, relation }
+  return { user: latest, relation, invitationId }
 }
 
 /** Consumes the state once, resolves the provider profile and returns the outcome. */
@@ -241,6 +247,7 @@ export async function socialCallback(
   }
   let linkedNotice: { user: AccountUser; relation: SocialIdentity } | undefined
   let unverified: UserId | undefined
+  let accepted: { invitationId: number; userId: UserId } | undefined
   let settled: Awaited<ReturnType<typeof settleCommitted<SocialCallbackResult>>>
   try {
     settled = await settleCommitted(
@@ -316,6 +323,8 @@ export async function socialCallback(
             }
           }
           const created = await createAccount(deps, trx, name, profile)
+          if (created.invitationId !== null)
+            accepted = { invitationId: created.invitationId, userId: created.user.id }
           if (!profile.emailVerified) {
             unverified = created.user.id
             return { status: 'new', emailVerificationRequired: true }
@@ -348,12 +357,13 @@ export async function socialCallback(
             .whereNull('confirmed_at')
             .first()
           if (!pending) throw new SocialTransactionError()
-          const userId = await completeActivationByHash(
+          const { userId, invitationId } = await completeActivationByHash(
             trx,
             deps.config,
             state.verification_hash!,
             pending.id
           )
+          if (invitationId !== null) accepted = { invitationId, userId }
           return {
             status: 'linked',
             userId,
@@ -412,6 +422,11 @@ export async function socialCallback(
     settled.fault,
     'Social callback committed but follow-up failed',
     async () => {
+      if (accepted)
+        await postCommit(
+          'Invitation follow-up failed',
+          invitationAccepted(deps.config, accepted.invitationId, accepted.userId, randomUUID())
+        )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
         await sendVerification(deps, { userId: unverified })
       }
