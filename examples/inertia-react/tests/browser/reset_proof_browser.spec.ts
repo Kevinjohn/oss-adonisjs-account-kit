@@ -1,15 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 test.group('reset proof browser journey', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await db.table('account_transaction_lock').insert({ id: 1, version: 0 })
-    return truncate
-  })
+  group.each.setup(setupAccountDatabase)
 
   test('a different signed-in account can inspect, complete, and replay an emailed reset link', async ({
     visit,
