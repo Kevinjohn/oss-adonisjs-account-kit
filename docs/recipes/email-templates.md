@@ -83,7 +83,103 @@ The callbacks and what each receives:
 ## Render without sending
 
 `renderAccountMessage(kind, { brandName, actionUrl })` returns `{ subject, text, html }`. Use it to
-preview templates or to send through a provider SDK instead of AdonisJS Mail.
+preview templates or to send through a provider SDK instead of AdonisJS Mail. Pass
+`emailLayout` third and `{ i18n }` fourth for the same layout and language as
+`createMailNotifications`.
+
+## Emails in another language
+
+The built-in emails use one site-wide language, chosen by you. Pass an
+[`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n) instance for that locale.
+Like `mail`, pass a function: it is called when each message is sent, after the i18n service
+exists.
+
+```ts
+import i18nManager from '@adonisjs/i18n/services/main'
+
+notify: createMailNotifications({
+  from: 'Acme <accounts@acme.test>',
+  brandName: 'Acme',
+  i18n: () => i18nManager.locale('fr'),
+}),
+```
+
+Each part of an email is looked up as `account_kit.emails.<kind>.<part>`, and the copy-link line as
+`account_kit.emails.copy_link`. Messages use ICU placeholders: `{brandName}`, `{provider}` and
+`{url}`. Each `subject` is the complete subject, so a translation can move or drop the brand. A
+missing key falls back to the English text, and `@adonisjs/i18n` emits its
+`i18n:missing:translation` event. Translated text is escaped like the English text. Without an
+`emailLayout`, `<html lang>` is the instance's locale. There is no per-recipient language.
+
+Copy this file to `resources/lang/<locale>/account_kit.json` and translate the values:
+
+```json
+{
+  "emails": {
+    "passwordResetProvision": {
+      "subject": "{brandName}: Reset your password",
+      "heading": "Reset your password",
+      "body": "Use the link below to set a new password. If you did not request this, you can ignore this message.",
+      "action": "Reset password"
+    },
+    "accountActivationProvision": {
+      "subject": "{brandName}: Confirm your email address",
+      "heading": "Confirm your email address",
+      "body": "Use the link below to confirm your email address.",
+      "action": "Confirm email address"
+    },
+    "invitationProvision": {
+      "subject": "{brandName}: You are invited",
+      "heading": "You are invited",
+      "body": "Use the link below to accept your invitation.",
+      "action": "Accept invitation"
+    },
+    "emailChangeProvision": {
+      "subject": "{brandName}: Confirm your new email address",
+      "heading": "Confirm your new email address",
+      "body": "Use the link below to confirm this email address.",
+      "action": "Confirm new email address"
+    },
+    "emailChanged": {
+      "subject": "{brandName}: Your email address changed",
+      "heading": "Your email address changed",
+      "body": "The email address on your account was changed. If this was unexpected, contact support immediately."
+    },
+    "passwordResetCompleted": {
+      "subject": "{brandName}: Your password was reset",
+      "heading": "Your password was reset",
+      "body": "The password on your account was reset. If this was unexpected, contact support immediately."
+    },
+    "passwordChanged": {
+      "subject": "{brandName}: Your password changed",
+      "heading": "Your password changed",
+      "body": "The password on your account was changed. If this was unexpected, contact support immediately."
+    },
+    "socialIdentityLinked": {
+      "subject": "{brandName}: A social sign-in method was linked",
+      "heading": "A social sign-in method was linked",
+      "body": "{provider} sign-in was linked to your account. If this was unexpected, contact support immediately."
+    },
+    "socialIdentityUnlinked": {
+      "subject": "{brandName}: A social sign-in method was removed",
+      "heading": "A social sign-in method was removed",
+      "body": "{provider} sign-in was removed from your account. If this was unexpected, contact support immediately."
+    },
+    "magicLinkProvision": {
+      "subject": "{brandName}: Your sign-in link",
+      "heading": "Sign in",
+      "body": "Use the link below to sign in. Open it in the browser or app where you asked for it. It works once and expires soon. If you did not ask to sign in, you can ignore this message.",
+      "action": "Sign in"
+    },
+    "accountDeleted": {
+      "subject": "{brandName}: Your account was deleted",
+      "heading": "Your account was deleted",
+      "body": "Your account and its sign-in details were deleted. If this was unexpected, contact support immediately."
+    },
+    "copy_link": "Or copy this link: {url}"
+  }
+}
+```
 
 ## Further reading
 
