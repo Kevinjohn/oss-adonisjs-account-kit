@@ -1,4 +1,5 @@
 import type { NotificationCallbacks } from './types.js'
+import type { AccountKitTranslator } from './translator.js'
 import { isSocialProviderName, socialProviderLabels } from './social_providers.js'
 
 export { createActionUrls, type ActionUrlOptions } from './action_urls.js'
@@ -40,6 +41,12 @@ export interface MailNotificationOptions {
   brandName: string
   /** Receives escaped body markup; return a complete HTML document or wrapper. */
   emailLayout?: (body: string) => string
+  /**
+   * An `@adonisjs/i18n` instance for one site-wide language, resolved when a message is sent, for
+   * example `() => i18nManager.locale('fr')`. Each part is looked up as
+   * `account_kit.emails.<kind>.<part>`, with the English text as the fallback.
+   */
+  i18n?: AccountKitTranslator | (() => AccountKitTranslator)
 }
 
 const templates: Record<
@@ -47,66 +54,68 @@ const templates: Record<
   { subject: string; heading: string; body: string; action?: string }
 > = {
   passwordResetProvision: {
-    subject: 'Reset your password',
+    subject: '{brandName}: Reset your password',
     heading: 'Reset your password',
     body: 'Use the link below to set a new password. If you did not request this, you can ignore this message.',
     action: 'Reset password',
   },
   accountActivationProvision: {
-    subject: 'Confirm your email address',
+    subject: '{brandName}: Confirm your email address',
     heading: 'Confirm your email address',
     body: 'Use the link below to confirm your email address.',
     action: 'Confirm email address',
   },
   invitationProvision: {
-    subject: 'You are invited',
+    subject: '{brandName}: You are invited',
     heading: 'You are invited',
     body: 'Use the link below to accept your invitation.',
     action: 'Accept invitation',
   },
   emailChangeProvision: {
-    subject: 'Confirm your new email address',
+    subject: '{brandName}: Confirm your new email address',
     heading: 'Confirm your new email address',
     body: 'Use the link below to confirm this email address.',
     action: 'Confirm new email address',
   },
   emailChanged: {
-    subject: 'Your email address changed',
+    subject: '{brandName}: Your email address changed',
     heading: 'Your email address changed',
     body: 'The email address on your account was changed. If this was unexpected, contact support immediately.',
   },
   passwordResetCompleted: {
-    subject: 'Your password was reset',
+    subject: '{brandName}: Your password was reset',
     heading: 'Your password was reset',
     body: 'The password on your account was reset. If this was unexpected, contact support immediately.',
   },
   passwordChanged: {
-    subject: 'Your password changed',
+    subject: '{brandName}: Your password changed',
     heading: 'Your password changed',
     body: 'The password on your account was changed. If this was unexpected, contact support immediately.',
   },
   socialIdentityLinked: {
-    subject: 'A social sign-in method was linked',
+    subject: '{brandName}: A social sign-in method was linked',
     heading: 'A social sign-in method was linked',
     body: '{provider} sign-in was linked to your account. If this was unexpected, contact support immediately.',
   },
   socialIdentityUnlinked: {
-    subject: 'A social sign-in method was removed',
+    subject: '{brandName}: A social sign-in method was removed',
     heading: 'A social sign-in method was removed',
     body: '{provider} sign-in was removed from your account. If this was unexpected, contact support immediately.',
   },
   magicLinkProvision: {
-    subject: 'Your sign-in link',
+    subject: '{brandName}: Your sign-in link',
     heading: 'Sign in',
     body: 'Use the link below to sign in. Open it in the browser or app where you asked for it. It works once and expires soon. If you did not ask to sign in, you can ignore this message.',
     action: 'Sign in',
   },
   accountDeleted: {
-    subject: 'Your account was deleted',
+    subject: '{brandName}: Your account was deleted',
     heading: 'Your account was deleted',
     body: 'Your account and its sign-in details were deleted. If this was unexpected, contact support immediately.',
   },
 }
+
+const copyLinkTemplate = 'Or copy this link: {url}'
 
 function escapeHtml(value: string): string {
   return value.replace(
@@ -117,13 +126,15 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Renders the built-in English template for one kind of account email. Use it to send through your
- * own transport with the same wording.
+ * Renders the built-in template for one kind of account email. Use it to send through your own
+ * transport with the same wording. With `i18n`, each part is looked up as
+ * `account_kit.emails.<kind>.<part>` and falls back to the English text.
  */
 export function renderAccountMessage(
   kind: AccountMessageKind,
   values: { brandName: string; actionUrl?: string; providerName?: string },
-  emailLayout?: (body: string) => string
+  emailLayout?: (body: string) => string,
+  options: { i18n?: AccountKitTranslator } = {}
 ): RenderedAccountMessage {
   const template = templates[kind]
   if (template.action && !values.actionUrl)
@@ -140,17 +151,30 @@ export function renderAccountMessage(
   }
   if (template.body.includes('{provider}') && !values.providerName)
     throw new Error(`account_kit: ${kind} requires a provider name`)
-  const messageBody = template.body.replace('{provider}', values.providerName ?? '')
-  const subject = `${values.brandName}: ${template.subject}`
-  const actionText = template.action ? `\n\n${template.action}: ${values.actionUrl}` : ''
-  const text = `${values.brandName}\n\n${template.heading}\n\n${messageBody}${actionText}\n`
-  const body = `<main><p>${escapeHtml(values.brandName)}</p><h1>${escapeHtml(template.heading)}</h1><p>${escapeHtml(messageBody)}</p>${template.action ? `<p><a href="${escapeHtml(values.actionUrl!)}">${escapeHtml(template.action)}</a></p><p>Or copy this link: ${escapeHtml(values.actionUrl!)}</p>` : ''}</main>`
+  const data = { brandName: values.brandName, provider: values.providerName, url: values.actionUrl }
+  const translate = (key: string, english: string) => {
+    // @adonisjs/i18n returns the fallback verbatim, so it must already be interpolated.
+    const fallback = english.replace(
+      /\{(brandName|provider|url)\}/g,
+      (_, name: keyof typeof data) => data[name] ?? ''
+    )
+    return options.i18n ? options.i18n.t(`account_kit.emails.${key}`, data, fallback) : fallback
+  }
+  const subject = translate(`${kind}.subject`, template.subject)
+  const heading = translate(`${kind}.heading`, template.heading)
+  const messageBody = translate(`${kind}.body`, template.body)
+  const action = template.action && translate(`${kind}.action`, template.action)
+  const copyLink = action && translate('copy_link', copyLinkTemplate)
+  const actionText = action ? `\n\n${action}: ${values.actionUrl}` : ''
+  const text = `${values.brandName}\n\n${heading}\n\n${messageBody}${actionText}\n`
+  const body = `<main><p>${escapeHtml(values.brandName)}</p><h1>${escapeHtml(heading)}</h1><p>${escapeHtml(messageBody)}</p>${action ? `<p><a href="${escapeHtml(values.actionUrl!)}">${escapeHtml(action)}</a></p><p>${escapeHtml(copyLink!)}</p>` : ''}</main>`
+  const lang = escapeHtml(options.i18n?.locale ?? 'en')
   return {
     subject,
     text,
     html: emailLayout
       ? emailLayout(body)
-      : `<!doctype html><html lang="en"><body>${body}</body></html>`,
+      : `<!doctype html><html lang="${lang}"><body>${body}</body></html>`,
   }
 }
 
@@ -196,6 +220,12 @@ export class MagicLinkProvision {
   ) {}
 }
 
+function resolveTranslator(
+  option: MailNotificationOptions['i18n']
+): AccountKitTranslator | undefined {
+  return typeof option === 'function' ? option() : option
+}
+
 async function resolveMail(option: MailNotificationOptions['mail']): Promise<AccountMailService> {
   if (typeof option === 'function') return option()
   if (option) return option
@@ -204,7 +234,7 @@ async function resolveMail(option: MailNotificationOptions['mail']): Promise<Acc
 }
 
 /**
- * Implements every notification callback with AdonisJS Mail and the built-in English templates.
+ * Implements every notification callback with AdonisJS Mail and the built-in templates.
  * Messages are queued with `sendLater`.
  */
 export function createMailNotifications(options: MailNotificationOptions): NotificationCallbacks {
@@ -224,7 +254,8 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
     const rendered = renderAccountMessage(
       kind,
       { brandName: options.brandName, actionUrl, providerName },
-      options.emailLayout
+      options.emailLayout,
+      { i18n: resolveTranslator(options.i18n) }
     )
     const mail = await resolveMail(options.mail)
     await mail.sendLater((message) => {

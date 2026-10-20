@@ -1,18 +1,33 @@
 // Interactive setup questionnaire: turns prompt answers into SetupChoices.
 import { defaultSetupChoices } from './defaults.js'
-import { featureNames, type SetupChoices } from './types.js'
+import {
+  featureNames,
+  guardStrategies,
+  mailDeliveries,
+  mailIntegrations,
+  registrationPolicies,
+  setupModes,
+  unverifiedActionNames,
+  userAdapters,
+  userIdTypes,
+  type SetupChoices,
+} from './types.js'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialProviderName } from '../types.js'
+
+function list(value: string): string[] {
+  return value
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean)
+}
 
 function selected<const T extends string>(
   value: string,
   field: string,
   options: readonly T[]
 ): T[] {
-  const names = value
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean)
+  const names = list(value)
   if (names.some((name) => !options.includes(name as T)))
     throw new Error(`${field}: choose from ${options.join(', ')}`)
   return names as T[]
@@ -46,7 +61,7 @@ export async function collectSetupChoices(
   choices.mode = answerChoice(
     await ask('Consumption mode (managed/services)'),
     'mode',
-    ['managed', 'services'],
+    setupModes,
     choices.mode
   )
   const enabledServices = await ask(
@@ -67,10 +82,7 @@ export async function collectSetupChoices(
       : selected(managedGroups.trim() || choices.features.join(','), 'managed', featureNames)
   const excluded = await ask('Managed endpoint exclusions, comma separated (optional)')
   choices.managedExcept = excluded
-    ? (excluded
-        .split(',')
-        .map((name) => name.trim())
-        .filter(Boolean) as NonNullable<SetupChoices['managedExcept']>)
+    ? (list(excluded) as NonNullable<SetupChoices['managedExcept']>)
     : []
   choices.routePrefix = (await ask('Managed route prefix (/account)')) || choices.routePrefix
   choices.user.model = (await ask('User model import (#models/user)')) || choices.user.model
@@ -78,20 +90,20 @@ export async function collectSetupChoices(
   choices.user.adapter = answerChoice(
     await ask('User adapter (lucid/custom)'),
     'user.adapter',
-    ['lucid', 'custom'],
+    userAdapters,
     choices.user.adapter
   )
   choices.user.idType = answerChoice(
     await ask('Physical id type (integer/string/uuid)'),
     'user.idType',
-    ['integer', 'string', 'uuid'],
+    userIdTypes,
     choices.user.idType
   )
   if (choices.features.includes('authentication') || choices.managed.length) {
     choices.authentication!.strategy = answerChoice(
       await ask('Existing guard strategy (session/access_tokens)'),
       'authentication.strategy',
-      ['session', 'access_tokens'],
+      guardStrategies,
       choices.authentication!.strategy
     )
     choices.authentication!.guard = (await ask('Existing guard name (web)')) || 'web'
@@ -108,10 +120,7 @@ export async function collectSetupChoices(
       choices.authentication!.token = {
         revocation: await confirmed('Token revocation configured? (yes/no)'),
         lifetime: (await ask('Token lifetime (7d)')) || '7d',
-        abilities: ((await ask('Token abilities, comma separated (*)')) || '*')
-          .split(',')
-          .map((value) => value.trim())
-          .filter(Boolean),
+        abilities: list((await ask('Token abilities, comma separated (*)')) || '*'),
       }
     }
     choices.authentication!.applicationRouteRevocation = await confirmed(
@@ -121,13 +130,13 @@ export async function collectSetupChoices(
   choices.mail.integration = answerChoice(
     await ask('Delivery integration (custom/adonisjs-mail)'),
     'mail.integration',
-    ['custom', 'adonisjs-mail'],
+    mailIntegrations,
     choices.mail.integration
   )
   choices.mail.delivery = answerChoice(
     await ask('Delivery guarantee (best-effort/durable)'),
     'mail.delivery',
-    ['best-effort', 'durable'],
+    mailDeliveries,
     choices.mail.delivery
   )
   choices.mail.durableWorkerVerified =
@@ -158,7 +167,7 @@ export async function collectSetupChoices(
   choices.policy.registration = answerChoice(
     await ask('Registration policy (open/closed/application)'),
     'policy.registration',
-    ['open', 'closed', 'application'],
+    registrationPolicies,
     choices.policy.registration
   )
   const minLength = await ask('New-password minimum length (8)')
@@ -179,7 +188,7 @@ export async function collectSetupChoices(
   choices.policy.unverifiedActions = selected(
     unverifiedActions.trim() || choices.policy.unverifiedActions.join(','),
     'policy.unverifiedActions',
-    ['logout', 'verificationResend', 'passwordReset'] as const
+    unverifiedActionNames
   )
   const registrationFields = await ask('Additional registration fields as JSON array ([] for none)')
   if (registrationFields.trim()) choices.policy.registrationFields = JSON.parse(registrationFields)

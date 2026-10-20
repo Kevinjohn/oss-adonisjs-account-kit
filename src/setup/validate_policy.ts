@@ -1,4 +1,9 @@
-import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
+import {
+  unverifiedActionNames,
+  type SetupChoices,
+  type SetupDiagnostic,
+  type SetupInspection,
+} from './types.js'
 import { diagnostic } from './shared.js'
 
 /** Password, registration, callback and unverified-account policy. */
@@ -141,7 +146,7 @@ export function validatePolicy(
   if (choices.features.includes('registration') && !choices.features.includes('emailVerification'))
     diagnostic(diagnostics, 'features', 'Registration requires the email verification service')
   if (choices.policy.verificationRequired) {
-    for (const action of ['logout', 'verificationResend', 'passwordReset'] as const) {
+    for (const action of unverifiedActionNames) {
       if (!choices.policy.unverifiedActions.includes(action))
         diagnostic(
           diagnostics,
@@ -150,10 +155,6 @@ export function validatePolicy(
         )
     }
   }
-  if (
-    choices.policy.unverifiedActions.some(
-      (action) => !['logout', 'verificationResend', 'passwordReset'].includes(action)
-    )
-  )
+  if (choices.policy.unverifiedActions.some((action) => !unverifiedActionNames.includes(action)))
     diagnostic(diagnostics, 'policy.unverifiedActions', 'Unsupported limited action')
 }

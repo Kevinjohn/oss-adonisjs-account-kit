@@ -1,6 +1,4 @@
 // Social helpers shared by the identity, handoff and proof modules: dependencies, clock and actor.
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { DateTime } from 'luxon'
 import { currentInTransaction } from './authentication.js'
 import { SocialProofError, SocialUserNotFoundError } from './errors.js'
@@ -13,8 +11,9 @@ import type {
   SocialProviderName,
   Trx,
 } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
-export type Dependencies = { config: ResolvedConfig; db: Database; limiter: LimiterService }
+export type Dependencies = Omit<ServiceDependencies, 'throttler'>
 const MINUTES = 10
 export const expiry = (client: DialectSource) =>
   sqlTimestamp(client, DateTime.utc().plus({ minutes: MINUTES }))
