@@ -1,23 +1,14 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each browser outcome beside its assertion. */
 import { test } from '@japa/runner'
-import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import kit from 'adonisjs-account-kit/services/main'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 const password = 'OldPass123!'
 const longEmail = `${'a'.repeat(64)}@example.test`
 
 test.group('profile and email settings browser journey', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await db
-      .table('account_transaction_lock')
-      .insert({ id: 1, version: 0 })
-      .onConflict('id')
-      .ignore()
-    return truncate
-  })
+  group.each.setup(setupAccountDatabase)
 
   test('two browsers save a profile, request a pending address, and complete its proof once', async ({
     visit,
