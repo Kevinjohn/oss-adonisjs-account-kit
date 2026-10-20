@@ -217,6 +217,20 @@ test.group('setup choice validation', (group) => {
     assert.notMatch(diagnostic!.message, /first\.example\.test|second\.example\.test/)
   })
 
+  test('reports an interpolated selected origin as an action, not an error', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, '.env'),
+      'HOST=localhost\nPORT=3333\nAPP_URL=http://${HOST}:${PORT}\nFRONTEND_URL=https://app.example.test\n'
+    )
+    for (const production of [false, true]) {
+      const plan = await planSetup(choices, await inspectSetup(root), { production, env: {} })
+      const diagnostic = plan.diagnostics.find(({ field }) => field === 'mail.backendOriginEnv')
+      assert.equal(diagnostic?.severity, 'action')
+      assert.match(diagnostic!.message, /APP_URL refers to other values/)
+    }
+  })
+
   test('resolves selected social callback origins from an environment file', async ({ assert }) => {
     const { root, choices } = await fixture()
     choices.features.push('socialAuthentication', 'registration', 'emailVerification')
