@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import kit from 'adonisjs-account-kit/services/main'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 async function proofFor(owner: User) {
   const token = randomBytes(40).toString('base64url')
@@ -21,11 +21,7 @@ async function proofFor(owner: User) {
 }
 
 test.group('verification session browser journey', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await db.table('account_transaction_lock').insert({ id: 1, version: 0 })
-    return truncate
-  })
+  group.each.setup(setupAccountDatabase)
 
   for (const identity of ['same account', 'different account', 'guest']) {
     test(`${identity} can confirm an email and sign in on the first attempt`, async ({
