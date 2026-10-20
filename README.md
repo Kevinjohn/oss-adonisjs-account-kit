@@ -20,7 +20,7 @@ The account flows every AdonisJS app ends up writing by hand:
 
 - **Forgot password** with single-use, expiring links and the same response for known and unknown
   addresses.
-- **Signup and email verification**, open, closed, or behind your own admission rule.
+- **Signup and email verification**, open, closed, or behind your own signup rule.
 - **Login** with sessions or access tokens through your existing Auth guard. Changing a password or
   email signs out older sessions and tokens.
 - **Account settings**: change password, change email with confirmation, update profile.

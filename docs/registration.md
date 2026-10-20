@@ -7,8 +7,8 @@ Every configuration must include availability explicitly, even when registration
 When `enabled` is omitted, both registration and invitations are disabled; applications must
 select either capability explicitly.
 Choose `open`, `closed`, or `application`. `open` is the recommended public default. `closed` rejects creation;
-`application` lets the application own admission and call the service after its own checks. The
-package does not install a public registration route. Enable `emailVerification` and configure
+`application` lets the application own the signup decision and call the service after its own
+checks. The package does not install a public registration route. Enable `emailVerification` and configure
 `urls.emailVerification` and `notify.accountActivationProvision` to deliver activation proofs.
 
 Use `registration.mapFields(input)` to validate and select additional application profile fields.

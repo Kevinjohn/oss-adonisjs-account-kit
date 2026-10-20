@@ -8,8 +8,9 @@ callbacks, or by `createActionUrls` from configured origins only. It carries a p
 **Active account.** An account whose email address is confirmed. Routes that need it call
 `requireActive`, or use the `active` access level in managed routes. See _limited account_.
 
-**Admission.** Who may register: `registration.availability` is `open`, `closed` or
-`application` (your code decides).
+**Admission.** Whether a verified account may use the application: an allowed email domain,
+invitation evidence and approval, each optional. See [admission](admission.md). Compare
+_registration availability_.
 
 **Application-owned mode.** You write the routes and controllers and call the `AccountKit` service.
 The default. Compare _managed mode_.
@@ -66,6 +67,9 @@ notifications are notices, such as `passwordChanged`.
 
 **Recent proof.** Short-lived evidence that a user just re-entered their password, required before
 sensitive social actions on accounts without a password.
+
+**Registration availability.** Who may create an account: `registration.availability` is `open`,
+`closed` or `application` (your code decides). Compare _admission_.
 
 **Retirement.** Turning off a login method, such as password login or a social provider.
 `account-kit:retirement-impact` counts the accounts that would lose their only way in.
