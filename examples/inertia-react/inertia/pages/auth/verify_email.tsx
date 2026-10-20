@@ -1,8 +1,14 @@
 import AuthLayout from '~/layouts/auth'
+import FormErrorSummary, { focusFormErrorSummary } from '~/components/form_error_summary'
 import { Form, Link } from '@adonisjs/inertia/react'
 import { type InertiaProps } from '~/types'
 
 type Props = InertiaProps<{ token: string; valid: boolean }>
+
+const fields = [
+  { name: 'password', label: 'Password' },
+  { name: 'passwordConfirmation', label: 'Confirm password' },
+] as const
 
 export default function VerifyEmail({ token, valid, user }: Props) {
   if (!valid) {
@@ -31,9 +37,14 @@ export default function VerifyEmail({ token, valid, user }: Props) {
         Choose the password for this account. It replaces the one used at signup.
       </p>
 
-      <Form route="email_verifications.update" routeParams={{ token }}>
+      <Form
+        route="email_verifications.update"
+        routeParams={{ token }}
+        onError={focusFormErrorSummary}
+      >
         {({ errors, processing }) => (
           <div className="auth__form">
+            <FormErrorSummary errors={errors} fields={fields} />
             <div className="field">
               <label className="field__label" htmlFor="password">
                 Password
@@ -44,9 +55,14 @@ export default function VerifyEmail({ token, valid, user }: Props) {
                 type="password"
                 className="field__input"
                 autoComplete="new-password"
-                aria-invalid={errors.password ? 'true' : 'false'}
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? 'verify-password-error' : undefined}
               />
-              {errors.password && <span className="field__error">{errors.password}</span>}
+              {errors.password && (
+                <span id="verify-password-error" className="field__error">
+                  {errors.password}
+                </span>
+              )}
             </div>
 
             <div className="field">
@@ -59,10 +75,15 @@ export default function VerifyEmail({ token, valid, user }: Props) {
                 type="password"
                 className="field__input"
                 autoComplete="new-password"
-                aria-invalid={errors.passwordConfirmation ? 'true' : 'false'}
+                aria-invalid={errors.passwordConfirmation ? true : undefined}
+                aria-describedby={
+                  errors.passwordConfirmation ? 'verify-passwordConfirmation-error' : undefined
+                }
               />
               {errors.passwordConfirmation && (
-                <span className="field__error">{errors.passwordConfirmation}</span>
+                <span id="verify-passwordConfirmation-error" className="field__error">
+                  {errors.passwordConfirmation}
+                </span>
               )}
             </div>
 
