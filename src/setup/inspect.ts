@@ -33,7 +33,10 @@ const inspectedFiles = [
 ]
 
 /** Static inspection deliberately does not execute application configuration or read secret values. */
-export async function inspectSetup(applicationRoot: string): Promise<SetupInspection> {
+export async function inspectSetup(
+  applicationRoot: string,
+  options: { onInvalidSavedChoices?: (error: unknown) => void } = {}
+): Promise<SetupInspection> {
   const root = await realpath(applicationRoot)
   const files: Record<string, string> = {}
   for (const relative of inspectedFiles) {
@@ -67,7 +70,12 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
   }
   let existingChoices: SetupChoices | null = null
   if (files['config/account_kit_setup.json']) {
-    existingChoices = parseSetupChoices(JSON.parse(files['config/account_kit_setup.json']))
+    try {
+      existingChoices = parseSetupChoices(JSON.parse(files['config/account_kit_setup.json']))
+    } catch (error) {
+      if (!options.onInvalidSavedChoices) throw error
+      options.onInvalidSavedChoices(error)
+    }
   }
   const existingPrefix = existingChoices?.routePrefix ?? null
   const routeDefinitions = await staticRouteDefinitions(files['start/routes.ts'] ?? '')
