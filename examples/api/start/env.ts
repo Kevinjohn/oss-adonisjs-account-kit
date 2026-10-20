@@ -36,7 +36,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   GITHUB_CLIENT_SECRET: Env.schema.string.optional(),
   SOCIAL_CLIENT_CALLBACK_URL: Env.schema.string.optional({ format: 'url', tld: false }),
 
-  // Session
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring session package
+  |----------------------------------------------------------
+  */
   SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
 
   /*

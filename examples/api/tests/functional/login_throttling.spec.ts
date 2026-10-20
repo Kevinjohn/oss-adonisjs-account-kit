@@ -3,8 +3,7 @@ import { test } from '@japa/runner'
 import limiter from '@adonisjs/limiter/services/main'
 import User from '#models/user'
 import env from '#start/env'
-
-const responseBody = <T>(response: { body(): unknown }) => response.body() as T
+import { responseBody } from '#tests/helpers/response_body'
 
 function storedLoginKey(operation: string, value: string) {
   const secret = env.get('APP_KEY').release()

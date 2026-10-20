@@ -1,4 +1,3 @@
-import env from '#start/env'
 import User from '#models/user'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -10,6 +9,7 @@ import {
 import accountKit from 'adonisjs-account-kit/services/main'
 import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard, sessionGuard } from '#services/account_kit_guards'
+import { authStrategy } from '#services/auth_strategy'
 import {
   reportCommittedFailure,
   reportCredentialEstablishmentFailure,
@@ -38,7 +38,7 @@ export default class NewAccountController {
       }
       throw error
     }
-    const strategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
+    const strategy = authStrategy()
     const input = { email, password, clientKey: request.ip() }
     let result
     try {

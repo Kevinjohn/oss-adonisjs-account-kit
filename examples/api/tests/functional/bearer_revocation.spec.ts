@@ -8,8 +8,7 @@ import { notifications } from '#services/account_kit_notifications'
 import User from '#models/user'
 import AuthMiddleware from '#middleware/auth_middleware'
 import { ACCESS_TOKENS_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
-
-const responseBody = <T>(response: { body(): unknown }) => response.body() as T
+import { responseBody } from '#tests/helpers/response_body'
 
 test('a bearer token without the invitation ability cannot send an invitation', async ({
   client,
