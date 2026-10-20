@@ -49,8 +49,6 @@ itself.
   creation transaction, may reject, and must use the transaction for database writes. It must not
   make remote side effects, because a failed transaction may be retried.
 - Managed setup must diagnose application mode unless it has an explicit trusted extension.
-- Social invitation acceptance remains unsupported; invitations use the password-based path,
-  including when public registration is closed.
 
 ### Notifications
 
@@ -111,10 +109,15 @@ email from gaining that account after the real email owner claims it.
 
 ### Signing in with the invited address
 
-A new account whose provider-verified address holds a pending invitation accepts it in the same
-transaction: the invitation is deleted, `onInvitationAccepted` runs, and `invitation.accepted` is
-reported after commit. An unverified provider address leaves the invitation alone until the address
-is confirmed. Signing in to an existing account never accepts one. See
+These paths have different proof and account effects:
+
+| Path                                   | Credential or proof required                                                                                                                                                                                                                                                                             | Invitation and admission result                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New social account                     | A provider assertion that marks the email verified, plus registration being allowed by the shared policy. A required field mapping or `application` policy may also require `completeRegistration` and trusted server input. No invitation token or password is needed for the matching-invitation case. | If the verified address matches an unused, unexpired invitation, account creation consumes it in the same transaction and runs `onInvitationAccepted`. When `withInvitationEvidence` is installed, this records invitation evidence. Domain and approval requirements are evaluated separately, so invitation evidence alone may not admit the account. An unverified provider address leaves the invitation unused until the address is confirmed. |
+| Provider linked to an existing account | The person must authenticate the existing account and provide recent `social_link` proof to link the provider. A matching email during sign-in returns `link_required` without a credential.                                                                                                             | Linking does not accept an invitation or change admission state. An existing confirmed provider identity signing in also does not accept an invitation.                                                                                                                                                                                                                                                                                             |
+| Explicit invitation link               | The invitation token is the proof. `kit.invitations.accept` also requires a new password and any application registration fields; the API example's `POST /api/v1/auth/invitations/:token` requires `password`, `passwordConfirmation`, and `fullName`.                                                  | Acceptance consumes that invitation and runs `onInvitationAccepted`; the admission wrapper records evidence when configured. Any domain or approval requirement remains independent.                                                                                                                                                                                                                                                                |
+
+For the service contract and other address-confirmation paths, see
 [Signing in with the invited address](account-operations.md#signing-in-with-the-invited-address).
 
 ### Linking and sensitive actions require recent proof
