@@ -101,6 +101,9 @@ Initial public release.
   `AccountAdmission`, `onAdmissionEvent`, and the commands `account-kit:admission:install`,
   `account-kit:admission:approve`, `account-kit:admission:revoke` and
   `account-kit:admission:grant-invitation` (export `adonisjs-account-kit/admission/commands`).
+- `account-kit:admission:bootstrap <email> --role <role>` (#518): an operator invitation whose new
+  account lands approved, with `--cancel`. Only the invitation it issued claims the approval. The
+  `account_admissions` stub makes `user_id` nullable and adds `bootstrap_email`.
 - Admission in the example application and guide (#518): `examples/api` gates `GET /api/v1/reports`
   on invitation and approval (and domain with `ACCOUNT_KIT_ADMISSION_DOMAINS`), with status,
   request and owner decision routes; invitation and export callbacks require an admitted owner.

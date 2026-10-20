@@ -13,6 +13,8 @@ export type AdmissionReader = Trx | QueryClientContract
 export interface AdmissionRow {
   id: number
   user_id: UserId
+  /** Set only on a bootstrap approval no account holds yet; `user_id` is then null. */
+  bootstrap_email: string | null
   requested_at: unknown
   invitation_id: number | null
   invited_email: string | null

@@ -57,8 +57,8 @@ export async function applyTransition(
 }
 
 /**
- * An approver's decision. Locks the subject; the actor must exist, differ from the subject, be
- * admitted themselves and be allowed by `authorize.decide`.
+ * An approver's decision. Locks the actor and the subject; the actor must exist, differ from the
+ * subject, be admitted themselves and be allowed by `authorize.decide`.
  */
 export async function decideAdmission(
   deps: AdmissionContext,
@@ -71,7 +71,12 @@ export async function decideAdmission(
   return withAdmissionEvent(
     deps.config,
     transaction(deps.db, async (trx) => {
-      await lockUser(trx, deps.accountConfig, input.userId)
+      // Writing approval_actor_id takes a foreign-key lock on the actor's row, so two approvers
+      // deciding on each other would deadlock if each locked only its subject. Lock both in id order.
+      for (const id of [input.actorId, input.userId].sort((a, b) =>
+        String(a) < String(b) ? -1 : 1
+      ))
+        await lockUser(trx, deps.accountConfig, id)
       const subject = await users.findById(input.userId, trx)
       if (!subject) throw new UserNotFoundError()
       const actor = await users.findById(input.actorId, trx)

@@ -85,6 +85,7 @@ test.group('admission runtime commands', (group) => {
       'account-kit:admission:approve',
       'account-kit:admission:revoke',
       'account-kit:admission:grant-invitation',
+      'account-kit:admission:bootstrap',
     ])
   })
 })
@@ -128,12 +129,21 @@ test.group('admission install command', () => {
   }) => {
     const { root, run } = await fixture()
     try {
-      await run('--users-table=members', '--user-id-type=uuid')
+      const printed: string[] = []
+      const log = console.log
+      console.log = (...parts: unknown[]) => printed.push(parts.join(' '))
+      try {
+        await run('--users-table=members', '--user-id-type=uuid')
+      } finally {
+        console.log = log
+      }
+      assert.isTrue(printed.some((line) => line.includes('node ace migration:run')))
       const migrations = await readdir(join(root, 'database', 'migrations'))
       assert.lengthOf(migrations, 1)
       assert.match(migrations[0], /^\d+_account_kit_admission_create_account_admissions\.ts$/)
       const migration = await readFile(join(root, 'database', 'migrations', migrations[0]), 'utf8')
-      assert.include(migration, "table.uuid('user_id').notNullable().unique()")
+      assert.include(migration, "table.uuid('user_id').nullable().unique()")
+      assert.include(migration, "table.string('bootstrap_email', 254).nullable().unique()")
       assert.include(migration, "table.uuid('approval_actor_id').nullable()")
       assert.equal(migration.match(/inTable\("members"\)/g)?.length, 2)
       assert.notInclude(migration, '{{')
