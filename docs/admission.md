@@ -191,7 +191,8 @@ notification of any kind.
 ## Decisions
 
 `approve`, `reject` and `revoke` take `{ actorId, userId }` and run in one transaction that locks
-the subject. They are refused with:
+the actor and the subject in id order, so two approvers deciding on each other cannot deadlock.
+They are refused with:
 
 - `UserNotFoundError` for an unknown subject, `InvalidInputError('Unknown actor')` for an unknown
   actor;
