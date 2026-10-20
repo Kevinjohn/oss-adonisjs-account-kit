@@ -61,7 +61,7 @@ export default defineConfig({
     () => import('@adonisjs/auth/auth_provider'),
     () => import('#providers/api_provider'),
     () => import('@adonisjs/limiter/limiter_provider'),
-    () => import('adonisjs-account-kit/providers/account_kit_provider'),
+    () => import('adonisjs-account-kit/account_kit_provider'),
   ],
 
   /*
