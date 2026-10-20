@@ -118,7 +118,11 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   }
   if (config.onCredentialsChanged && config.onCredentialsChangedTransaction)
     throw new RuntimeException('account_kit: credential revocation hooks are mutually exclusive')
-  if (typeof config.limiterSecret !== 'string' || Buffer.byteLength(config.limiterSecret) < 32)
+  const limiterSecret =
+    typeof config.limiterSecret === 'string'
+      ? config.limiterSecret
+      : config.limiterSecret?.release?.()
+  if (typeof limiterSecret !== 'string' || Buffer.byteLength(limiterSecret) < 32)
     throw new RuntimeException(
       'account_kit: limiterSecret must be a stable shared secret of at least 32 bytes'
     )
@@ -193,6 +197,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     sessionManagement,
     accountDeletion,
     usersTable,
+    limiterSecret,
     limiterNamespace,
     authorize: {
       ...disabledAuthorize,
