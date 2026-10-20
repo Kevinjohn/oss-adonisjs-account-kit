@@ -15,6 +15,14 @@ browser app needs, each as a plain controller and React page you can copy:
 
 Emails are printed to the dev server log instead of being sent.
 
+## Explore the browser example
+
+Start with the [local run instructions](#run-it), then visit `/signup`. The screenshot shows the
+signup form's field-error summary and confirmation-password message; it is one validation state from
+the maintained app.
+
+![Signup form with a confirmation-password validation message in the Inertia React example](../../docs/assets/inertia_signup_validation.png)
+
 ## Transplant into an existing app
 
 Add the shared browser foundation once, then copy only the files for each flow you enable. These

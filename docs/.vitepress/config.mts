@@ -18,8 +18,8 @@ export default defineConfig({
     nav: [
       { text: 'Features', link: '/features' },
       { text: 'Get started', link: '/getting-started' },
-      { text: 'Recipes', link: '/recipes/access-tokens' },
-      { text: 'Reference', link: '/reference/errors' },
+      { text: 'Recipes', link: '/recipes/' },
+      { text: 'Reference', link: '/reference/' },
       { text: 'API', link: '/api/' },
     ],
     sidebar: [
@@ -27,13 +27,15 @@ export default defineConfig({
       {
         text: 'Tutorial',
         items: [
+          { text: 'Build one account API', link: '/guides/core-api' },
           { text: 'Getting started', link: '/getting-started' },
-          { text: 'See it run', link: '/recordings' },
+          { text: 'Selected recordings', link: '/recordings' },
         ],
       },
       {
         text: 'How-to guides',
         items: [
+          { text: 'All recipes', link: '/recipes/' },
           { text: 'Access tokens', link: '/recipes/access-tokens' },
           { text: 'Sessions', link: '/recipes/sessions' },
           { text: 'Inertia and React', link: '/recipes/inertia-react' },
@@ -69,6 +71,7 @@ export default defineConfig({
       {
         text: 'Reference',
         items: [
+          { text: 'Reference index', link: '/reference/' },
           { text: 'API', link: '/api/' },
           { text: 'Usage', link: '/usage' },
           { text: 'Account operations', link: '/account-operations' },
