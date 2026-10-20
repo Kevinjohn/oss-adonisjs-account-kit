@@ -3,9 +3,9 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import kit from 'adonisjs-account-kit/services/main'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 const password = 'ReplacementPass123!'
 const replayPassword = 'SecondReplacement123!'
@@ -67,11 +67,7 @@ async function page(session: HttpSession, path: string) {
 }
 
 test.group('reset proof HTTP journey', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await db.table('account_transaction_lock').insert({ id: 1, version: 0 })
-    return truncate
-  })
+  group.each.setup(setupAccountDatabase)
 
   test('a guest inspects a valid proof without consuming it and completes once', async ({
     assert,
