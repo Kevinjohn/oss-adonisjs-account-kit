@@ -5,14 +5,17 @@
 |
 | The routes file is used for defining the HTTP routes.
 |
+| The auth strategy switch exists so the test harness can run both strategies.
+| An application keeps one strategy and copies only its branch.
+|
 */
 
 import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
-import env from '#start/env'
+import { authStrategy } from '#services/auth_strategy'
 
-const strategy = env.get('ACCOUNT_KIT_AUTH_STRATEGY') ?? 'access_tokens'
+const strategy = authStrategy()
 
 router.get('/', () => {
   return { hello: 'world' }
@@ -32,8 +35,8 @@ router
         router.post('password-reset/:token', [controllers.PasswordResets, 'complete'])
         router.get('email-verification/:token', [controllers.EmailVerifications, 'inspect'])
         router.post('email-verification/:token', [controllers.EmailVerifications, 'complete'])
-        router.get('email-change/:token', [controllers.Profile, 'inspectEmailChange'])
-        router.post('email-change/:token', [controllers.Profile, 'completeEmailChange'])
+        router.get('email-change/:token', [controllers.EmailChanges, 'inspectEmailChange'])
+        router.post('email-change/:token', [controllers.EmailChanges, 'completeEmailChange'])
         router.get('invitations/:token', [controllers.Invitations, 'inspect'])
         router.post('invitations/:token', [controllers.Invitations, 'accept'])
         router

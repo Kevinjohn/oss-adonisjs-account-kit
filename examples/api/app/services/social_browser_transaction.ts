@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
 import { InvalidInputError } from 'adonisjs-account-kit'
-import { requiredString, socialStrategy } from '#services/social_request'
+import { requiredString } from '#services/social_request'
+import { authStrategy } from '#services/auth_strategy'
 
 /** The browser's PKCE verifier, kept in the session between redirect and callback. */
 export type BrowserTransaction = { state: string; verifier: string }
@@ -10,7 +11,7 @@ type BrowserContinuation = { continuation: string; verifier: string }
 const transactionKey = 'socialTransaction'
 const continuationKey = 'socialContinuation'
 
-const isBrowser = () => socialStrategy() === 'session'
+const isBrowser = () => authStrategy() === 'session'
 
 /** A fresh PKCE verifier. */
 export const pkceVerifier = () => randomBytes(32).toString('base64url')
