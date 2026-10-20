@@ -27,6 +27,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     const capture = await import('adonisjs-account-kit/testing/notifications')
     const admission = await import('adonisjs-account-kit/admission')
     const admissionProvider = await import('adonisjs-account-kit/admission/provider')
+    const admissionCommands = await import('adonisjs-account-kit/admission/commands')
     assert.isFunction(root.AccountKit)
     assert.isFunction(root.defineConfig)
     assert.isFunction(root.configure)
@@ -56,6 +57,11 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(admission.withAdmissionCleanup)
     assert.instanceOf(new admission.AdmissionDecisionError(), root.AccountKitError)
     assert.isFunction(admissionProvider.default)
+    const admissionCommandList = await admissionCommands.getMetaData()
+    assert.includeMembers(
+      admissionCommandList.map((command) => command.commandName),
+      ['account-kit:admission:approve', 'account-kit:admission:revoke']
+    )
     const built = await bootTestApp({ accountKitProvider: 'build' })
     try {
       await resetSchema(built)

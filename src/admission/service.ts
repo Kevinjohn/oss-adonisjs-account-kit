@@ -17,7 +17,16 @@ import { evaluateAdmission } from './decision.js'
 import { domainAllowed, domainOf } from './domain.js'
 import { AdmissionRequiredError } from './errors.js'
 import { readAdmissionRow } from './rows.js'
-import type { AdmissionDecision, ResolvedAdmissionConfig } from './types.js'
+import type {
+  AdmissionApprovalStatus,
+  AdmissionDecision,
+  AdmissionRecord,
+  ResolvedAdmissionConfig,
+} from './types.js'
+import { requestAdmission } from './request.js'
+import { decideAdmission } from './decisions.js'
+import { listAdmissions, type AdmissionPage } from './listing.js'
+import { operatorDecision, operatorGrantInvitation } from './operator.js'
 
 /** The dependencies the admission service is built from; the provider supplies them. */
 export interface AdmissionDependencies {
@@ -29,6 +38,9 @@ export interface AdmissionDependencies {
   config: ResolvedAdmissionConfig
 }
 
+/** What the admission operations read: everything but the account service. */
+export type AdmissionContext = Omit<AdmissionDependencies, 'kit'>
+
 /**
  * Admission: whether a verified account may use the application. Resolve it with
  * `app.container.make(AccountAdmission)`. The decision is read from the database on every call.
@@ -36,7 +48,7 @@ export interface AdmissionDependencies {
 export class AccountAdmission {
   /** The account service this module works with. */
   readonly kit: AccountKit
-  protected readonly deps: Omit<AdmissionDependencies, 'kit'>
+  protected readonly deps: AdmissionContext
 
   constructor(deps: AdmissionDependencies) {
     const { kit, ...rest } = deps
@@ -99,5 +111,53 @@ export class AccountAdmission {
     if (typeof email !== 'string') return false
     const domain = domainOf(normalizeEmail(email))
     return domain !== null && domainAllowed(domain, rule)
+  }
+
+  /**
+   * Records that the signed-in person asked for approval, so `list({ status: 'pending' })` shows
+   * them. Idempotent; emits `admission.requested` once. Refuses an unconfirmed account.
+   */
+  request(input: CurrentAccountInput): Promise<AdmissionRecord> {
+    return requestAdmission(this.deps, input)
+  }
+
+  /** Approves `userId`. The actor must be admitted, not the subject, and allowed by `decide`. */
+  approve(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
+    return decideAdmission(this.deps, input, 'approve')
+  }
+
+  /** Rejects `userId`, who has no decision yet. Same actor rules as `approve`. */
+  reject(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
+    return decideAdmission(this.deps, input, 'reject')
+  }
+
+  /** Revokes an approved `userId`. Sessions stay; the next gated request is refused. */
+  revoke(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
+    return decideAdmission(this.deps, input, 'revoke')
+  }
+
+  /** Admission records a page at a time, after `authorize.list` allows the actor. */
+  list(input: {
+    actorId: UserId
+    status?: AdmissionApprovalStatus
+    cursor?: string
+    limit?: number
+  }): Promise<AdmissionPage> {
+    return listAdmissions(this.deps, input)
+  }
+
+  /**
+   * Operator context only: callers with shell access (Ace commands). No actor, no `authorize`;
+   * never expose these methods to an HTTP request.
+   */
+  get operator() {
+    return {
+      approve: (input: { email: string }): Promise<AdmissionRecord> =>
+        operatorDecision(this.deps, input, 'approve'),
+      revoke: (input: { email: string }): Promise<AdmissionRecord> =>
+        operatorDecision(this.deps, input, 'revoke'),
+      grantInvitation: (input: { email: string; role?: string }): Promise<AdmissionRecord> =>
+        operatorGrantInvitation(this.deps, input),
+    }
   }
 }

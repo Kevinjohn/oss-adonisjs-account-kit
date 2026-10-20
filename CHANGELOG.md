@@ -93,6 +93,10 @@ Initial public release.
   `admissionMiddleware`, `withInvitationEvidence`, `withAdmissionCleanup`, the
   `account_admissions` migration stub, `AdmissionRequiredError` and `AdmissionDecisionError`.
   "Admission" now names this module; who may create an account is _registration availability_.
+- Admission decisions (#518): `request`, `approve`, `reject`, `revoke` and cursor-paged `list` on
+  `AccountAdmission`, `onAdmissionEvent`, and the commands `account-kit:admission:install`,
+  `account-kit:admission:approve`, `account-kit:admission:revoke` and
+  `account-kit:admission:grant-invitation` (export `adonisjs-account-kit/admission/commands`).
 
 <details>
 <summary>Pre-release candidate history</summary>
