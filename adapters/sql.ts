@@ -35,6 +35,8 @@ export interface SqlUsersAdapterOptions {
 }
 
 export type SqlUsersAdapter = UsersAdapter & {
+  hashPassword: NonNullable<UsersAdapter['hashPassword']>
+  setPasswordHash: NonNullable<UsersAdapter['setPasswordHash']>
   updateRegistrationData: NonNullable<UsersAdapter['updateRegistrationData']>
   delete: NonNullable<UsersAdapter['delete']>
   resolveMetadata(): Promise<UsersAdapterMetadata>
@@ -147,7 +149,8 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
         email,
         unverified_email:
           attrs.unverifiedEmail === null ? null : normalizeEmail(attrs.unverifiedEmail),
-        password: attrs.password === null ? null : await hash(attrs.password),
+        password:
+          attrs.passwordHash ?? (attrs.password === null ? null : await hash(attrs.password)),
         email_verified_at: null,
       })
       // Re-read inside the transaction rather than relying on RETURNING or an insert id.
@@ -158,6 +161,14 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
 
     async setPassword(id, password, trx) {
       await update(id, { password: await hash(password) }, trx)
+    },
+
+    async hashPassword(password) {
+      return hash(password)
+    },
+
+    async setPasswordHash(id, passwordHash, trx) {
+      await update(id, { password: passwordHash }, trx)
     },
 
     async setEmail(id, email, trx) {
