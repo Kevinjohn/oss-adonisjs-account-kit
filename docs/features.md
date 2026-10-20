@@ -18,7 +18,7 @@ Guide: [getting started](getting-started.md).
 
 ### Email verification and signup
 
-- Signup open to anyone, closed, or behind your own admission rule.
+- Signup open to anyone, closed, or behind your own signup rule.
 - Confirmation links, with a rate-limited resend.
 - New accounts stay inactive until the address is confirmed.
 

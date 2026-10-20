@@ -45,7 +45,7 @@ itself.
 
 - A configured `mapFields` requires a continuation and runs even when its input is undefined.
 - In application mode, server code must call `completeRegistration` with a trusted
-  `admit(profile,trx)` callback after its own admission decision. The callback runs inside the
+  `admit(profile,trx)` callback after its own signup decision. The callback runs inside the
   creation transaction, may reject, and must use the transaction for database writes. It must not
   make remote side effects, because a failed transaction may be retried.
 - Managed setup must diagnose application mode unless it has an explicit trusted extension.

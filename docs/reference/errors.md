@@ -99,6 +99,24 @@ An application that also uses the managed routes keeps one `errors.json` for bot
 | `SocialProofError`                        | `E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID`           |    403 | A sensitive social action lacks a valid recent authentication proof.                                                 | Ask the user to re-enter their password, then retry.                                                           |
 | `LastLoginMethodError`                    | `E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD`       |    409 | Unlinking would leave the account without any way to sign in.                                                        | Ask the user to set a password or link another provider first.                                                 |
 
+## Admission errors
+
+The optional [admission module](../admission.md) adds two errors. They extend `AccountKitError`,
+so `accountErrorResponse` maps them, but they are exported only from
+`adonisjs-account-kit/admission`:
+
+```ts
+import { AdmissionDecisionError, AdmissionRequiredError } from 'adonisjs-account-kit/admission'
+```
+
+| Error                    | Code                               | Status | When                                                                         | What to do                                                                                     |
+| ------------------------ | ---------------------------------- | -----: | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `AdmissionRequiredError` | `E_ACCOUNT_KIT_ADMISSION_REQUIRED` |    403 | The admission gate refused a person who is not admitted. Carries `decision`. | Add `decision` to the body and show what is missing; keep the admission status page reachable. |
+| `AdmissionDecisionError` | `E_ACCOUNT_KIT_ADMISSION_DECISION` |    409 | An approve, reject or revoke that the current approval state does not allow. | Reload the admission list and show the current state.                                          |
+
+Their translation keys are `errors.E_ACCOUNT_KIT_ADMISSION_REQUIRED` and
+`errors.E_ACCOUNT_KIT_ADMISSION_DECISION`, with the English message `Account request rejected`.
+
 ## Stability
 
 Error `code` values are public API from the first public release. This covers the codes in the

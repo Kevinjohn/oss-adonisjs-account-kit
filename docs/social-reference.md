@@ -39,9 +39,9 @@ loopback URLs.
 - The example's `registration.mapFields` requires an application-collected full name. Provider name
   and email are never passed through that mapper as trusted registration data.
 - Applications with `registration.availability: 'application'` must make their own server-side
-  admission decision and call `completeRegistration` with a trusted `admit` callback.
+  signup decision and call `completeRegistration` with a trusted `admit` callback.
 - Closed registration still permits already linked identities to sign in.
-- Social invitation admission is not enabled here.
+- Social invitation acceptance is not enabled here.
 
 ## How it works
 

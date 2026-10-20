@@ -108,7 +108,7 @@ The package creates the inactive account and hashed activation proof together. M
 `RegistrationEmailAlreadyRegisteredError` to the same email-field validation response for every
 existing account state. If link delivery or a post-commit observer fails, the account has already
 committed; return the documented recovery guidance and do not retry registration as if it rolled
-back. The [registration guide](registration.md) documents the capability and its admission modes.
+back. The [registration guide](registration.md) documents the capability and its availability modes.
 
 ### Keep HTTP policy in the application
 

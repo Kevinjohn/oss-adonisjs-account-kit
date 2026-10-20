@@ -87,7 +87,7 @@ there once users can sign in.
 
 The generated config also enables `registration` with `availability: 'open'`. Nobody can sign up
 through Account Kit until you add a signup route; before you do, set `availability` to `closed`,
-or to `application` for your own admission rule. See [registration](registration.md).
+or to `application` for your own signup rule. See [registration](registration.md).
 
 ## 4. Check the installation
 
