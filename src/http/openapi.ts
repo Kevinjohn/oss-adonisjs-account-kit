@@ -6,7 +6,7 @@ import type {
   ReplaceableRequestEndpoint,
 } from './openapi_types.js'
 import type { ManagedRouteRegistration } from './route_registration.js'
-import type { ManagedCapability, ManagedEndpointName, ManagedRoute } from './routes.js'
+import type { ManagedCapability, ManagedRoute } from './routes.js'
 
 export interface ManagedOpenApiInput extends ManagedOpenApiOptions {
   /** From `managedRouteRegistration(router)` after the routes are registered. */
@@ -46,13 +46,6 @@ const replaceable: Record<ReplaceableRequestEndpoint, keyof ManagedRouteRegistra
     'account.profile.update': 'profile',
   }
 
-/** Operations that authenticate the caller for `link` and `reauth` intents. */
-const optionallyAuthenticated = new Set<ManagedEndpointName>([
-  'auth.oauth.redirect',
-  'auth.oauth.callback',
-  'auth.oauth.complete',
-])
-
 const proofHeaders = {
   'Cache-Control': { $ref: '#/components/headers/NoStore' },
   'Referrer-Policy': { $ref: '#/components/headers/NoReferrer' },
@@ -83,16 +76,13 @@ function pathParameters(route: ManagedRoute, providers: readonly string[]): Json
 }
 
 function security(route: ManagedRoute, strategy: ManagedRouteRegistration['strategy']) {
+  const schemas = managedEndpointSchemas[route.name]
   if (strategy === 'session') {
     if (route.method !== 'GET') return [{ sessionCookie: [], csrfToken: [] }]
-    return route.access === 'public' && route.name !== 'auth.oauth.callback'
-      ? []
-      : [{ sessionCookie: [] }]
+    return route.access === 'public' && !schemas.providerCallback ? [] : [{ sessionCookie: [] }]
   }
   if (route.access !== 'public') return [{ bearerToken: [] }]
-  return optionallyAuthenticated.has(route.name) && route.name !== 'auth.oauth.callback'
-    ? [{}, { bearerToken: [] }]
-    : []
+  return schemas.optionalAuth && !schemas.providerCallback ? [{}, { bearerToken: [] }] : []
 }
 
 function errorResponse(description: string, json: JsonSchema, headers: JsonSchema): JsonSchema {
@@ -110,15 +100,14 @@ function errorResponses(route: ManagedRoute, hasInput: boolean, conflict: boolea
   const headers = route.proof ? proofHeaders : {}
   const error = (description: string, json: JsonSchema = ref('ManagedErrorBody')) =>
     errorResponse(description, json, headers)
+  const schemas = managedEndpointSchemas[route.name]
   const authenticates =
-    route.access !== 'public' ||
-    route.name === 'auth.login' ||
-    optionallyAuthenticated.has(route.name)
+    route.access !== 'public' || Boolean(schemas.authenticates || schemas.optionalAuth)
   const responses: Record<string, JsonSchema> = {}
   if (route.proof)
     responses[400] = error('The link, proof or social flow state is invalid or expired.')
   if (authenticates) responses[401] = error('Authentication failed.')
-  if (authenticates || route.name === 'auth.signup')
+  if (authenticates || schemas.forbidden)
     responses[403] = error('Forbidden, or email verification is required.')
   if (route.path.includes(':id') || (route.proof && route.capability === 'socialAuthentication'))
     responses[404] = error('Not found.')
@@ -139,14 +128,15 @@ function successResponses(
   route: ManagedRoute,
   strategy: ManagedRouteRegistration['strategy']
 ): Record<string, JsonSchema> {
-  const declared = managedEndpointSchemas[route.name].success(strategy)
+  const schemas = managedEndpointSchemas[route.name]
+  const declared = schemas.success(strategy)
   const headers = route.proof
     ? proofHeaders
-    : route.name === 'auth.csrf'
+    : schemas.noStore
       ? { 'Cache-Control': proofHeaders['Cache-Control'] }
       : undefined
   const responses: Record<string, JsonSchema> = {}
-  const committed = route.method !== 'GET' || route.name === 'auth.oauth.callback'
+  const committed = route.method !== 'GET' || Boolean(schemas.providerCallback)
   for (const [status, response] of Object.entries(declared)) {
     const schema =
       committed && status === '202' && response.schema

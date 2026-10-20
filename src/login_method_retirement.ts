@@ -1,11 +1,11 @@
 // Login-method retirement impact: counts accounts that would lose every way to sign in.
-import type { Database } from '@adonisjs/lucid/database'
 import { userMetadata } from './db.js'
 import { isSocialProviderName } from './social_providers.js'
-import type { ResolvedConfig, SocialProviderName, UserId } from './types.js'
+import type { SocialProviderName, UserId } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export async function retirementImpact(
-  deps: { config: ResolvedConfig; db: Database },
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: {
     passwordLogin: boolean
     providers?: readonly SocialProviderName[]

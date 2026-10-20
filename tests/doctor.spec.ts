@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
-import { Kernel, ListLoader } from '@adonisjs/core/ace'
 import AccountKitDoctor from '../commands/doctor.js'
 import { defineConfig } from '../src/config.js'
 import { runDoctor, type DoctorInput } from '../src/doctor.js'
+import { aceKernel } from './helpers/ace_kernel.js'
 import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
@@ -130,8 +130,7 @@ test.group('account-kit:doctor', (group) => {
       'account_kit',
       defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
     )
-    const kernel = new Kernel(kit.app)
-    kernel.addLoader(new ListLoader([AccountKitDoctor]))
+    const { kernel } = aceKernel(kit, [AccountKitDoctor])
     const successes: string[] = []
     const errors: string[] = []
     kernel.ui.logger.success = (message) => {
