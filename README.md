@@ -1,11 +1,11 @@
 # Account Kit for AdonisJS
 
 [![checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml)
-[![npm](https://img.shields.io/npm/v/adonisjs-account-kit)](https://www.npmjs.com/package/adonisjs-account-kit)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-orange)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
-[![Coverage 92%](https://img.shields.io/badge/coverage-92%25-brightgreen)](CONTRIBUTING.md#checks)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkevinjohn.github.io%2Foss-adonisjs-account-kit%2Fbadges%2Fcoverage.json)](CONTRIBUTING.md#checks)
 
 Password reset, email verification, invitations and account settings for AdonisJS 7, with the
 security details handled. You keep your user model, your routes and your policies.
