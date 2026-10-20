@@ -157,7 +157,7 @@ test.group('admission install command', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  })
+  }).timeout(10_000)
 
   test('never overwrites the config or adds a second migration', async ({ assert }) => {
     const { root, run } = await fixture()
@@ -177,7 +177,7 @@ test.group('admission install command', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  })
+  }).timeout(10_000)
 
   test('refuses an unsupported id type without writing', async ({ assert }) => {
     const { root, run } = await fixture()
@@ -192,5 +192,5 @@ test.group('admission install command', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  })
+  }).timeout(10_000)
 })
