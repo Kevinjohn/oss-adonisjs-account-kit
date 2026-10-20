@@ -5,6 +5,7 @@ import {
   PostCommitError,
   ThrottledError,
 } from './errors.js'
+import type { AccountKitTranslator } from './translator.js'
 
 /**
  * A safe HTTP response for an Account Kit error: status, headers such as `Retry-After`, and a
@@ -19,17 +20,25 @@ export interface AccountErrorResponse {
   body: { code: string; message: string; committed?: true }
 }
 
-/** Central application error mapping. Causes are kept for private logging, never returned here. */
-export function accountErrorResponse(error: unknown): AccountErrorResponse | null {
+/**
+ * Central application error mapping. Causes are kept for private logging, never returned here.
+ * With `i18n`, the message is looked up as `errors.<code>`, with the English message as the
+ * fallback.
+ */
+export function accountErrorResponse(
+  error: unknown,
+  options: { i18n?: AccountKitTranslator } = {}
+): AccountErrorResponse | null {
   if (!(error instanceof AccountKitError)) return null
   const managed =
     error instanceof InvitationNotFoundError || error instanceof InvitationManagementDeniedError
   const code = managed ? InvitationNotFoundError.code : error.code
-  const message = managed
+  const fallbackMessage = managed
     ? 'Invitation not found'
     : error.status >= 500
       ? 'Account operation failed'
       : 'Account request rejected'
+  const message = options.i18n?.t(`errors.${code}`, {}, fallbackMessage) ?? fallbackMessage
   return {
     status: managed ? 404 : error.status,
     headers:

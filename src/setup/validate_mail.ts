@@ -1,4 +1,11 @@
-import type { SetupChoices, SetupDiagnostic, SetupFeature, SetupInspection } from './types.js'
+import {
+  mailDeliveries,
+  mailIntegrations,
+  type SetupChoices,
+  type SetupDiagnostic,
+  type SetupFeature,
+  type SetupInspection,
+} from './types.js'
 import { createActionUrls } from '../notifications.js'
 import { emailDestinations, hasEmailFlow, envName, diagnostic, validateOrigin } from './shared.js'
 
@@ -11,9 +18,9 @@ export function validateMail(
   env: NodeJS.ProcessEnv
 ) {
   const emailEnabled = hasEmailFlow(choices)
-  if (emailEnabled && !['adonisjs-mail', 'custom'].includes(choices.mail.integration))
+  if (emailEnabled && !mailIntegrations.includes(choices.mail.integration))
     diagnostic(diagnostics, 'mail.integration', 'Choose adonisjs-mail or custom')
-  if (emailEnabled && !['best-effort', 'durable'].includes(choices.mail.delivery))
+  if (emailEnabled && !mailDeliveries.includes(choices.mail.delivery))
     diagnostic(diagnostics, 'mail.delivery', 'Choose best-effort or durable')
   for (const field of ['senderEnv', 'transportEnv'] as const) {
     const name = choices.mail[field]

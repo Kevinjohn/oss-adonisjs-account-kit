@@ -20,7 +20,7 @@ export default class PasswordResetsController {
     }
     // The same message for known and unknown addresses.
     session.flash('success', 'If an account exists for that address, we have sent a reset link.')
-    response.redirect().back()
+    return response.redirect().back()
   }
 
   /**
@@ -37,6 +37,6 @@ export default class PasswordResetsController {
     const { password } = await request.validateUsing(resetPasswordValidator)
     await kit.passwordReset.reset({ token: params.token, password })
     session.flash('success', 'Your password has been reset. Sign in with the new password.')
-    response.redirect().toRoute('session.create')
+    return response.redirect().toRoute('session.create')
   }
 }
