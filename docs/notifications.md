@@ -60,7 +60,11 @@ An email contains a browser link. The application supplies that browser landing 
 password-entry or confirmation form. The page calls the relevant backend operation; the mail
 link itself does not complete a reset or confirmation. An API-only development install may copy
 proofs from an explicitly configured local capture transport and call the backend operation
-manually. Production readiness requires real destinations for all enabled action flows.
+manually. The API example's captured callbacks, dispatcher, and outbox are deterministic
+test/demo fixtures, not a production transport or worker: receiver idempotency is kept in memory,
+the dispatcher stops at the first failed row, and it has no backoff or safe concurrent claims.
+The [API copy maps](../examples/api/README.md#copy-maps) mark these files at the copy decision.
+Production readiness requires a real transport and destinations for all enabled action flows.
 
 `backendOrigin` is the public backend URL; `appFrontendUrl` is the public browser URL. Both may
 contain a base path, which is preserved. Destinations are relative paths below
