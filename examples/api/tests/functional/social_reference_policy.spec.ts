@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
+import limiter from '@adonisjs/limiter/services/main'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
@@ -190,5 +191,8 @@ test.group('Social reference', (group) => {
       .json({ password: 'WrongPass123!', purpose: 'social_link' })
     assert.equal(limitedProof.status(), 429)
     assert.isString(limitedProof.header('retry-after'))
-  }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
+  })
+    .setup(() => limiter.clear(['memory']))
+    .teardown(() => limiter.clear(['memory']))
+    .skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 })
