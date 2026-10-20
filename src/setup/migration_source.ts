@@ -1,22 +1,17 @@
 import { readFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { migrationSchema } from '../../configure.js'
+import { stubsRoot } from '../../stubs/main.js'
 import type { SetupChoices } from './types.js'
 
 export async function migrationContent(name: string, choices: SetupChoices): Promise<string> {
-  let directory = dirname(fileURLToPath(import.meta.url))
-  let stub: string | undefined
-  for (let depth = 0; depth < 3; depth++) {
-    try {
-      stub = await readFile(join(directory, 'stubs/migrations', `${name}.stub`), 'utf8')
-      break
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    }
-    directory = dirname(directory)
+  let stub: string
+  try {
+    stub = await readFile(join(stubsRoot, 'migrations', `${name}.stub`), 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    throw new Error(`Account Kit migration template ${name} is missing`)
   }
-  if (stub === undefined) throw new Error(`Account Kit migration template ${name} is missing`)
   const schema = migrationSchema(choices.user.table, choices.user.idType)
   return stub
     .replace(/^\{\{\{ exports\([^\n]+\n\n/, '')

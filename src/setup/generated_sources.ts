@@ -238,7 +238,7 @@ export function accountConfigSource(choices: SetupChoices): string {
     `  registration: { availability: ${JSON.stringify(choices.policy.registration)}${choices.policy.registrationFields.length ? ', mapFields: mapRegistrationFields' : ''} },`,
     `  passwordPolicy: ${JSON.stringify(choices.policy.password)},`,
     ...(emailEnabled ? [`  delivery: ${JSON.stringify(choices.mail.delivery)},`] : []),
-    "  limiterSecret: env.get('APP_KEY').release(),",
+    "  limiterSecret: env.get('APP_KEY'),",
     ...(choices.authentication
       ? [
           '  authentication: {',

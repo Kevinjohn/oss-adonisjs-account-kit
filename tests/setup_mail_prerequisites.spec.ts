@@ -217,4 +217,61 @@ test.group('setup mail prerequisites', () => {
       }
     })
   })
+
+  test('authentication-only service setup leaves email delivery not applicable', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      choices.mode = 'services'
+      choices.features = ['authentication']
+      choices.managed = []
+      choices.policy.registration = 'closed'
+      choices.policy.verificationRequired = false
+      choices.authentication!.applicationRouteRevocation = true
+      delete state.files['config/mail.ts']
+      delete state.files['app/services/account_kit_notifications.ts']
+      state.installedPackages = state.installedPackages.filter((name) => name !== '@adonisjs/mail')
+      delete state.installedVersions['@adonisjs/mail']
+      const plan = await planSetup(choices, state)
+      const config = plan.changes.find(({ path }) => path === 'config/account_kit.ts')!.content
+      assert.equal(plan.pillars.mail, 'not applicable: no email capability selected')
+      assert.equal(plan.readiness.delivery, 'not applicable')
+      assert.notInclude(config, 'createActionUrls')
+      assert.notInclude(config, 'accountKitNotifications')
+      assert.notInclude(config, 'createMailNotifications')
+      assert.include(config, '  urls: {},')
+      assert.include(config, '  notify: {},')
+      assert.isFalse(
+        plan.diagnostics.some(
+          ({ field }) =>
+            field.startsWith('mail.') ||
+            field === 'config/mail.ts' ||
+            field === 'dependencies.@adonisjs/mail'
+        )
+      )
+      assert.notInclude(
+        plan.changes.find(({ path }) => path === 'adonisrc.ts')?.content ?? '',
+        '@adonisjs/mail/mail_provider'
+      )
+      assert.notInclude(
+        plan.changes.find(({ path }) => path === '.env.account-kit.example')!.content,
+        choices.mail.frontendOriginEnv
+      )
+    })
+  })
+
+  test('callback files alone do not certify external configuration', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'policy.callbacks'
+      )
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'mail.callbacks'
+      )
+      assert.isFalse(plan.readiness.externalConfigured)
+    })
+  })
 })

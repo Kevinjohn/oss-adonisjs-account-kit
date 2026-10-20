@@ -3,8 +3,10 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
+  protected tableName = 'social_sensitive_proofs'
+
   async up() {
-    this.schema.createTable('social_sensitive_proofs', (table) => {
+    this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table.string('hash', 64).notNullable().unique()
       {{{ migration.userIdColumn }}}.notNullable().references('id').inTable({{{ migration.usersTable }}}).onDelete('CASCADE')
@@ -17,6 +19,6 @@ export default class extends BaseSchema {
   }
 
   async down() {
-    this.schema.dropTable('social_sensitive_proofs')
+    this.schema.dropTable(this.tableName)
   }
 }

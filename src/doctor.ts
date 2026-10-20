@@ -1,5 +1,6 @@
 import type { Database } from '@adonisjs/lucid/database'
 import { userMetadata } from './db.js'
+import { packageTables } from './package_tables.js'
 import type { Capability, ResolvedConfig } from './types.js'
 
 export interface DoctorCheck {
@@ -19,21 +20,24 @@ export interface DoctorInput {
 
 // Each proof flow clears the other kind of recovery token, so each needs both tables.
 const capabilityTables: Record<Capability, string[]> = {
-  passwordReset: ['password_reset_tokens', 'email_verification_tokens'],
-  emailVerification: ['email_verification_tokens', 'password_reset_tokens'],
-  registration: ['email_verification_tokens', 'password_reset_tokens'],
-  emailPasswordManagement: ['email_verification_tokens', 'password_reset_tokens'],
-  invitations: ['account_invitations'],
+  passwordReset: [packageTables.passwordResetTokens, packageTables.emailVerificationTokens],
+  emailVerification: [packageTables.emailVerificationTokens, packageTables.passwordResetTokens],
+  registration: [packageTables.emailVerificationTokens, packageTables.passwordResetTokens],
+  emailPasswordManagement: [
+    packageTables.emailVerificationTokens,
+    packageTables.passwordResetTokens,
+  ],
+  invitations: [packageTables.accountInvitations],
   dataExport: [],
   accountDeletion: [],
   socialAuthentication: [
-    'social_identities',
-    'social_transactions',
-    'social_sensitive_proofs',
-    'social_handoff_codes',
+    packageTables.socialIdentities,
+    packageTables.socialTransactions,
+    packageTables.socialSensitiveProofs,
+    packageTables.socialHandoffCodes,
   ],
-  magicLinkLogin: ['login_link_tokens'],
-  sessionManagement: ['account_sessions'],
+  magicLinkLogin: [packageTables.loginLinkTokens],
+  sessionManagement: [packageTables.accountSessions],
 }
 
 const migrationFix = 'Run `node ace configure adonisjs-account-kit`, then `node ace migration:run`'
@@ -62,11 +66,12 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
-  if (db.connection().dialect.name === 'better-sqlite3') required.add('account_transaction_lock')
+  if (db.connection().dialect.name === 'better-sqlite3')
+    required.add(packageTables.accountTransactionLock)
   // Every credential change clears sign-in links, whether or not magic links are enabled.
-  required.add('login_link_tokens')
+  required.add(packageTables.loginLinkTokens)
   // Every credential change clears the sign-in registry, whether or not it is enabled.
-  if (config.authentication) required.add('account_sessions')
+  if (config.authentication) required.add(packageTables.accountSessions)
   const missing: string[] = []
   for (const table of required)
     if (!(await db.connection().schema.hasTable(table))) missing.push(table)

@@ -1,8 +1,10 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
+  protected tableName = 'social_transactions'
+
   async up() {
-    this.schema.createTable('social_transactions', (table) => {
+    this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table.string('hash', 64).notNullable().unique()
       table.string('provider', 64).notNullable()
@@ -31,6 +33,6 @@ export default class extends BaseSchema {
   }
 
   async down() {
-    this.schema.dropTable('social_transactions')
+    this.schema.dropTable(this.tableName)
   }
 }

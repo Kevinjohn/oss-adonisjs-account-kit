@@ -1,4 +1,5 @@
 import type { DateTime } from 'luxon'
+import type { Secret } from '@adonisjs/core/helpers'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import type { socialProviderNames } from './social_providers.js'
 import type { sensitivePurposes, socialIntents } from './social_enums.js'
@@ -320,10 +321,10 @@ export interface AccountKitConfig {
   /** The name of the unique email constraint, for a custom adapter. */
   emailConstraint?: string
   /**
-   * A stable secret of at least 32 bytes, normally `APP_KEY`. Limiter keys are HMACs of it, so the
-   * store never holds an email or IP.
+   * A stable secret of at least 32 bytes, normally `env.get('APP_KEY')`. Limiter keys are HMACs of
+   * it, so the store never holds an email or IP.
    */
-  limiterSecret: string
+  limiterSecret: Secret<string> | string
   /** Separates limiter keys for apps sharing a store. Default `default`. */
   limiterNamespace?: string
   /**
@@ -366,7 +367,7 @@ export interface AccountKitConfig {
   sessionManagement?: SessionManagementConfig
   /**
    * Application data for the account export. Runs inside the export transaction; return a
-   * JSON-serialisable value. Its result becomes the export's `application` section.
+   * JSON-serializable value. Its result becomes the export's `application` section.
    */
   exportAccountData?: (user: AccountUser, trx: Trx) => Promise<unknown>
   /**
@@ -637,6 +638,7 @@ export interface ResolvedConfig extends Omit<
   | 'delivery'
   | 'onInvitationAccepted'
   | 'usersTable'
+  | 'limiterSecret'
   | 'limiterNamespace'
   | 'expiresIn'
   | 'throttle'
@@ -654,6 +656,7 @@ export interface ResolvedConfig extends Omit<
   delivery: 'best-effort' | 'durable' | 'capture'
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   usersTable: string
+  limiterSecret: string
   limiterNamespace: string
   expiresIn: Required<NonNullable<AccountKitConfig['expiresIn']>>
   throttle: ThrottleBudget
