@@ -5,6 +5,7 @@ import { transaction } from './db.js'
 import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
+import { preparePassword, storePassword } from './password_hashing.js'
 import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
@@ -20,6 +21,7 @@ export async function changePassword(
 
   await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()
+  const password = await preparePassword(deps.config.users, input.newPassword)
   const { value: user, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
       const actor = await confirmActor(
@@ -30,7 +32,7 @@ export async function changePassword(
         input.recentProof,
         'password_change'
       )
-      await deps.config.users.setPassword(actor.id, input.newPassword, trx)
+      await storePassword(deps.config.users, actor.id, password, trx)
       if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
         await deps.config.users.setUnverifiedEmail(actor.id, null, trx)
       await clearRecoveryTokens(trx, actor.id, [

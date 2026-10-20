@@ -39,6 +39,12 @@ export interface LucidAdapterOptions<Model extends LucidModelRow = LucidModelRow
   mapRegistrationData?: (data: unknown, user: Model) => void | Promise<void>
   /** Checks a password against the stored hash. Defaults to the AdonisJS hash service. */
   verifyPassword?: (hashedPassword: string, password: string) => Promise<boolean>
+  /**
+   * Hashes a new password before Account Kit opens its write transaction. Defaults to the AdonisJS
+   * hash service, unless `verifyPassword` is set alone: then the model's own hook hashes inside
+   * the transaction, as before.
+   */
+  hashPassword?: (password: string) => Promise<string>
 }
 
 /** The fields Account Kit passes when it creates a user through the Lucid adapter. */
@@ -46,6 +52,7 @@ export type LucidCreateAttributes = {
   email: string
   unverifiedEmail: string | null
   password: string | null
+  passwordHash?: string
   registrationData?: unknown
 }
 
@@ -175,6 +182,26 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     await user.save()
   }
 
+  // A ready hash is written with a query, not the model, so the model's hashing hook never sees it.
+  const writeHash = async (id: UserId, passwordHash: string, trx: Trx): Promise<void> => {
+    const User = await model()
+    const update = (
+      User.query as unknown as (options: { client: Trx }) => {
+        where(column: string, value: unknown): { update(values: object): Promise<unknown> }
+      }
+    ).call(User, { client: trx })
+    await update.where('id', id).update({ password: passwordHash })
+  }
+
+  const hashPassword =
+    options.hashPassword ??
+    (options.verifyPassword
+      ? undefined
+      : async (password: string): Promise<string> => {
+          const { default: hash } = await import('@adonisjs/core/services/hash')
+          return hash.make(password)
+        })
+
   const adapter: LucidUsersAdapter = {
     async resolveMetadata() {
       return resolveMetadata()
@@ -218,10 +245,14 @@ export function createLucidAdapter<Model extends LucidModelRow>(
       user.email = normalizeEmail(attrs.email)
       user.unverifiedEmail =
         attrs.unverifiedEmail === null ? null : normalizeEmail(attrs.unverifiedEmail)
-      user.password = attrs.password
+      user.password = attrs.passwordHash === undefined ? attrs.password : null
       user.emailVerifiedAt = null
       user.useTransaction(trx)
       await user.save()
+      if (attrs.passwordHash !== undefined) {
+        await writeHash(user.id, attrs.passwordHash, trx)
+        user.password = attrs.passwordHash
+      }
       return toAccountUser(user)
     },
 
@@ -230,6 +261,15 @@ export function createLucidAdapter<Model extends LucidModelRow>(
         user.password = password
       })
     },
+
+    ...(hashPassword
+      ? {
+          hashPassword,
+          async setPasswordHash(id: UserId, passwordHash: string, trx: Trx) {
+            await writeHash(id, passwordHash, trx)
+          },
+        }
+      : {}),
 
     async setEmail(id, email, trx) {
       await updateUser(id, trx, (user) => {

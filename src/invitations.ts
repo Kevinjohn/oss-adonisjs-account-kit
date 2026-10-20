@@ -23,6 +23,7 @@ import {
 } from './errors.js'
 import { throttlerOf } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
+import { passwordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
 import { requireUser } from './actor_confirmation.js'
@@ -172,6 +173,7 @@ export async function acceptInvitation(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
   const operationId = randomUUID()
+  const password = await preparePassword(deps.config.users, input.password)
 
   let result: { user: AccountUser; invitationId: number }
   let fault: PostCommitError | undefined
@@ -193,7 +195,7 @@ export async function acceptInvitation(
           {
             email: row.email,
             unverifiedEmail: null,
-            password: input.password,
+            ...passwordAttributes(password),
             registrationData,
           },
           trx
