@@ -353,7 +353,7 @@ test.group('managed existing-guard adapters', () => {
     assert.deepEqual(await adapter.current(ctx), { userId: 42, revision: 'revision-2' })
     await adapter.forRequest(ctx).refresh!(null)
     assert.deepEqual(await adapter.current(ctx), { userId: 42, revision: null })
-    assert.deepEqual(actions, ['regenerate', 'login'])
+    assert.deepEqual(actions, ['regenerate', 'login', 'regenerate', 'regenerate'])
     await adapter.forRequest(ctx).terminate()
     assert.deepEqual(actions.slice(-3), ['logout', 'clear', 'regenerate'])
   })
