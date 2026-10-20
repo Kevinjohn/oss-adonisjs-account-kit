@@ -28,6 +28,7 @@
     ".": "./build/index.js",
     "./types": "./build/src/types.js",
     "./errors": "./build/src/errors.js",
+    "./account_kit_provider": "./build/providers/account_kit_provider.js",
     "./providers/account_kit_provider": "./build/providers/account_kit_provider.js",
     "./adapters/lucid": "./build/adapters/lucid.js",
     "./adapters/sql": "./build/adapters/sql.js",

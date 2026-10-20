@@ -100,10 +100,7 @@ test('configures the package idempotently without replacing application-owned fi
       ]
     )
     const firstRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')
-    assert.equal(
-      firstRcContents.match(/adonisjs-account-kit\/providers\/account_kit_provider/g)?.length,
-      1
-    )
+    assert.equal(firstRcContents.match(/adonisjs-account-kit\/account_kit_provider/g)?.length, 1)
 
     const generatedFiles = await Promise.all(
       migrationFiles.map(async (filename) => [
@@ -136,10 +133,7 @@ test('configures the package idempotently without replacing application-owned fi
     const secondEnv = await readFile(envPath, 'utf8')
     assert.equal(secondEnv, firstEnv)
     const secondRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')
-    assert.equal(
-      secondRcContents.match(/adonisjs-account-kit\/providers\/account_kit_provider/g)?.length,
-      1
-    )
+    assert.equal(secondRcContents.match(/adonisjs-account-kit\/account_kit_provider/g)?.length, 1)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -150,6 +144,7 @@ function fakeCommand(root: string, parsedFlags: Record<string, string>) {
     migrations: [] as Array<Record<string, unknown>>,
     envValidations: 0,
     errors: [] as string[],
+    providers: [] as string[],
   }
   const codemods = {
     overwriteExisting: true,
@@ -160,7 +155,12 @@ function fakeCommand(root: string, parsedFlags: Record<string, string>) {
     async updateRcFile(
       update: (rcFile: { addProvider(name: string): void; addCommand(name: string): void }) => void
     ) {
-      update({ addProvider() {}, addCommand() {} })
+      update({
+        addProvider(name) {
+          calls.providers.push(name)
+        },
+        addCommand() {},
+      })
     },
     async defineEnvValidations() {
       calls.envValidations++
@@ -231,6 +231,28 @@ test('configure reports invalid schema flags with exit code 1 and generates noth
     assert.deepEqual(calls.errors, [message])
     assert.lengthOf(calls.migrations, 0)
     assert.equal(calls.envValidations, 0)
+  }
+})
+
+test('configure registers the root provider export and keeps a registered legacy path', async ({
+  assert,
+}) => {
+  const root = await mkdtemp(join(tmpdir(), 'account-kit-provider-path-'))
+  try {
+    await mkdir(join(root, 'database', 'migrations'), { recursive: true })
+    const fresh = fakeCommand(root, {})
+    await configure(fresh.command as unknown as Configure)
+    assert.deepEqual(fresh.calls.providers, ['adonisjs-account-kit/account_kit_provider'])
+
+    await writeFile(
+      join(root, 'adonisrc.ts'),
+      "export default { providers: [() => import('adonisjs-account-kit/providers/account_kit_provider')] }\n"
+    )
+    const existing = fakeCommand(root, {})
+    await configure(existing.command as unknown as Configure)
+    assert.deepEqual(existing.calls.providers, [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
   }
 })
 
