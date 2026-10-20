@@ -7,6 +7,8 @@ import {
   type SocialProviderName,
 } from 'adonisjs-account-kit'
 import accountKit from 'adonisjs-account-kit/services/main'
+import User from '#models/user'
+import UserTransformer from '#transformers/user_transformer'
 import { sessionGuard } from '#services/account_kit_guards'
 import { rememberLastUsedMethod } from '#services/last_used_method'
 import {
@@ -104,8 +106,9 @@ export default class SocialAuthController {
         verifier: browserVerifier,
         guard: sessionGuard(ctx),
       })
+      const user = await User.findOrFail(redeemed.account.id)
       rememberLastUsedMethod(ctx, redeemed.provider)
-      return ctx.response.ok({ status: result.status, account: redeemed.account })
+      return ctx.serialize({ status: result.status, user: UserTransformer.transform(user) })
     }
     return ctx.response.ok(result)
   }
