@@ -29,6 +29,7 @@ test.group('admission bootstrap', (group) => {
     inviterId,
     expiresAt: DateTime.utc().plus({ days: 1 }),
     createdAt: DateTime.utc(),
+    updatedAt: DateTime.utc(),
   })
 
   test('the accepted link lands the new account admitted', async ({ assert }) => {
