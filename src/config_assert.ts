@@ -1,9 +1,10 @@
 // Shared guard for config sections that must be plain objects.
+import { RuntimeException } from '@adonisjs/core/exceptions'
 
 /**
  * Throws `account_kit: <name> must be an object` unless the value is a non-null, non-array object.
  */
 export function assertPlainObject(value: unknown, name: string): asserts value is object {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new Error(`account_kit: ${name} must be an object`)
+    throw new RuntimeException(`account_kit: ${name} must be an object`)
 }

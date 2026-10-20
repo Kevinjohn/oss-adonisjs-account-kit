@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 import { isSqlIdentifier } from './src/sql_identifier.js'
@@ -26,9 +27,9 @@ export type UserIdType = (typeof userIdTypes)[number]
 /** Metadata for newly generated migrations; existing application files are never rewritten. */
 export function migrationSchema(usersTable = 'users', userIdType: UserIdType = 'integer') {
   if (!isSqlIdentifier(usersTable))
-    throw new Error('account_kit: users-table must be a plain SQL identifier')
+    throw new RuntimeException('account_kit: users-table must be a plain SQL identifier')
   if (!userIdTypes.includes(userIdType))
-    throw new Error('account_kit: user-id-type must be integer, string or uuid')
+    throw new RuntimeException('account_kit: user-id-type must be integer, string or uuid')
   const column = (name: string) =>
     userIdType === 'integer'
       ? `table.integer('${name}').unsigned()`
