@@ -59,6 +59,26 @@ permission or disabled state. The `role` is opaque application data; use
 `onInvitationAccepted(user, invitation, trx)` for required membership or role writes in the
 acceptance transaction. Closed ordinary registration does not disable invitation acceptance.
 
+### Signing in with the invited address
+
+An invited person may never open the link: the email is late, or they click "Sign in with Google"
+first. When core first confirms control of an address that holds an unused, unexpired invitation,
+it accepts that invitation the way the link would. That happens in two places:
+
+- a new social account whose provider reports the address as verified;
+- account activation (`emailVerification.complete`, or a social confirmation), which also covers a
+  password registration and an unverified provider address.
+
+In the same transaction, the invitation is deleted and `onInvitationAccepted(user, invitation, trx)`
+runs. After commit, `invitation.accepted` is reported with the same fields as for the link. If the
+callback throws, the new account or the activation is rolled back and the invitation stays. A
+missing or expired invitation changes nothing. The emailed link then answers `InvalidTokenError`,
+because the invitation was already accepted by signing in.
+
+An existing account never accepts an invitation, and changing the account's email to an invited
+address does not accept it either. The `invitations` capability must be enabled. Social sign-up must
+also be allowed by `registration.availability`, and `admit` still runs first.
+
 ## Files and migrations
 
 `src/password_reset.ts`, `src/verification.ts`, and `src/credentials.ts` implement proof
