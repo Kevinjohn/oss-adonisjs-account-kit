@@ -62,10 +62,16 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     }
     // The structured decision says which requirement is unmet, so the client can explain it.
     if (error instanceof AdmissionRequiredError) {
-      return ctx.response.status(403).send({
-        errors: [{ code: AdmissionRequiredError.code, message: 'Admission is required' }],
-        decision: error.decision,
-      })
+      return accountError(
+        ctx,
+        403,
+        AdmissionRequiredError.code,
+        'Admission is required',
+        undefined,
+        {
+          decision: error.decision,
+        }
+      )
     }
     const mapped = accountErrorResponse(error)
     if (mapped) {
