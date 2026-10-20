@@ -8,6 +8,8 @@ Initial public release.
 
 ### Added
 
+- Account forms in the Inertia example announce validation errors, focus a field summary, and use
+  readable field names; the reset recipe includes labeled inputs and matching error keys.
 - The Inertia example accepts password-reset links during an existing session, signs out after a
   successful reset, ends the current browser session before redirecting from completed email
   verification, and describes invalid, used, or expired proof links accurately.
