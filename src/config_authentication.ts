@@ -1,6 +1,7 @@
 // Validates and defaults the authentication option.
 import { DateTime } from 'luxon'
 import { budget } from './config_budget.js'
+import { assertPlainObject } from './config_assert.js'
 import { isSqlIdentifier } from './sql_identifier.js'
 import { expiresAt } from './ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
@@ -11,8 +12,7 @@ export function resolveAuthentication(
   let authentication: ResolvedAuthenticationConfig | undefined
   if (config.authentication !== undefined) {
     const auth = config.authentication
-    if (!auth || typeof auth !== 'object' || Array.isArray(auth))
-      throw new Error('account_kit: authentication must be an object')
+    assertPlainObject(auth, 'authentication')
     if (auth.strategy !== 'session' && auth.strategy !== 'access_tokens')
       throw new Error('account_kit: authentication.strategy must be session or access_tokens')
     if (typeof auth.guard !== 'string' || auth.guard.trim() === '')

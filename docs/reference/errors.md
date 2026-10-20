@@ -59,4 +59,24 @@ original error yourself.
 | `SocialProofError`                        | `E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID`           |    403 | A sensitive social action lacks a valid recent authentication proof.                                                 | Ask the user to re-enter their password, then retry.                                                           |
 | `LastLoginMethodError`                    | `E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD`       |    409 | Unlinking would leave the account without any way to sign in.                                                        | Ask the user to set a password or link another provider first.                                                 |
 
+## Stability
+
+Error `code` values are public API from the first public release. This covers the codes in the
+catalogue above and the managed-route codes in the `errors.json` block in
+[managed HTTP](../managed-http.md). A code is changed or removed only as a breaking change listed
+in the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md).
+Before 1.0 that can happen in a minor release, and it is still listed as breaking.
+
+`message` text can change in any release. Never key on it.
+
+## Translating on the client
+
+SPA and mobile clients that translate on their side should key translations on `code`, not
+`message`. The full lists are the catalogue above and the `errors.json` block in
+[managed HTTP](../managed-http.md). Every package code starts with `E_`.
+
+Request-validation errors come from VineJS and are keyed on the rule and field instead: `rule` and
+`field` in JSON, `code` and `source.pointer` in JSON:API. There, `code` is the rule name, such as
+`required`, never an `E_` code.
+
 Related: the [security model](../security.md) explains why several of these errors are generic.

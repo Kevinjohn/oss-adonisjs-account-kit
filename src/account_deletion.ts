@@ -1,17 +1,16 @@
 // Account deletion: re-authenticate, run the application hook, delete every package row, then
 // the user row, all in one transaction under the user lock.
 import { randomUUID } from 'node:crypto'
-import type { Database } from '@adonisjs/lucid/database'
-import type { LimiterService } from '@adonisjs/limiter/types'
 import { confirmActor } from './actor_confirmation.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { throttlerOf, type Throttler } from './throttle.js'
+import { throttlerOf } from './throttle.js'
 import { deleteUserRows } from './user_rows.js'
-import type { AccountDataInput, DeletedAccount, ResolvedConfig } from './types.js'
+import type { AccountDataInput, DeletedAccount } from './types.js'
+import type { ServiceDependencies } from './service_dependencies.js'
 
 export async function deleteAccount(
-  deps: { config: ResolvedConfig; db: Database; limiter: LimiterService; throttler?: Throttler },
+  deps: ServiceDependencies,
   input: AccountDataInput
 ): Promise<void> {
   const { config } = deps
