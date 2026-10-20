@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import type { Authenticators } from '@adonisjs/auth/types'
-import env from '#start/env'
+import { selectedGuardName } from '#services/auth_strategy'
 
 /**
  * Auth middleware is used authenticate HTTP requests and deny
@@ -15,8 +15,7 @@ export default class AuthMiddleware {
       guards?: (keyof Authenticators)[]
     } = {}
   ) {
-    const selectedGuard = env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' ? 'web' : 'api'
-    await ctx.auth.authenticateUsing(options.guards ?? [selectedGuard])
+    await ctx.auth.authenticateUsing(options.guards ?? [selectedGuardName()])
     return next()
   }
 }

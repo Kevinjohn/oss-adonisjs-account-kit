@@ -1,20 +1,18 @@
 import { test } from '@japa/runner'
-import { Kernel, ListLoader } from '@adonisjs/core/ace'
+import { Kernel } from '@adonisjs/core/ace'
 import InviteAccount from '../commands/invite.js'
 import ResetLink from '../commands/reset_link.js'
 import * as commandLoader from '../commands/main.js'
 import { AccountKit } from '../src/account_kit.js'
 import type { AccountKitConfig } from '../src/types.js'
+import { aceKernel } from './helpers/ace_kernel.js'
 import { useTestApp, type TestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
 
 function kernelFor(kit: TestApp, overrides: Partial<AccountKitConfig> = {}) {
   const service = makeService(kit, overrides)
   kit.app.container.bindValue(AccountKit, service.account)
-  const kernel = new Kernel(kit.app)
-  kernel.addLoader(new ListLoader([InviteAccount, ResetLink]))
-  kernel.ui.switchMode('raw')
-  const logs = () => kernel.ui.logger.getLogs() as Array<{ message: string; stream: string }>
+  const { kernel, logs } = aceKernel(kit, [InviteAccount, ResetLink])
   const stdout = () => logs().filter((entry) => entry.stream === 'stdout')
   const stderr = () => logs().filter((entry) => entry.stream === 'stderr')
   return { kernel, service, stdout, stderr }

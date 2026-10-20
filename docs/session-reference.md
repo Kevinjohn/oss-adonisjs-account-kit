@@ -23,7 +23,7 @@ Package password reset, password change, confirmed-email change, and restriction
 
 ## Files
 
-`app/controllers/session_controller.ts` adapts the existing guard and exposes CSRF bootstrap. `app/middleware/account_access_middleware.ts` and `app/middleware/verified_account_middleware.ts` gate application-owned and package-backed routes. `config/auth.ts`, `config/session.ts`, `config/shield.ts`, and `config/cors.ts` show the guard, cookie, CSRF, and origin settings. `examples/api/tests/functional/authentication_session.spec.ts` exercises browser authentication and revocation on an application-owned route. `examples/api/tests/functional/reference_session.spec.ts` checks login failure consistency, activation, pending email change, and invitation lifecycle through installed HTTP.
+`app/controllers/session_controller.ts` adapts the existing guard and exposes CSRF bootstrap. `app/middleware/account_access_middleware.ts` and `app/middleware/verified_account_middleware.ts` gate application-owned and package-backed routes. `config/auth.ts`, `config/session.ts`, `config/shield.ts`, and `config/cors.ts` show the guard, cookie, CSRF, and origin settings. `examples/api/tests/functional/session_guard_races.spec.ts` exercises browser authentication and revocation on an application-owned route. `examples/api/tests/functional/reference_session.spec.ts` checks login failure consistency, activation, pending email change, and invitation lifecycle through installed HTTP.
 
 ## Before deployment
 

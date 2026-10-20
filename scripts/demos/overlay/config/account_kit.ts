@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   registration: { availability: 'open' },
   authentication: { strategy: 'access_tokens', guard: 'api' },
-  limiterSecret: env.get('APP_KEY').release(),
+  limiterSecret: env.get('APP_KEY'),
   authorize: {
     invite: async () => true,
     manageInvitation: async () => true,

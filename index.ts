@@ -1,10 +1,8 @@
-import { fileURLToPath } from 'node:url'
-
 export { configure } from './configure.js'
-/** The package's stub directory, for `node ace configure`. */
-export const stubsRoot = fileURLToPath(new URL('./stubs/', import.meta.url))
+export { stubsRoot } from './stubs/main.js'
 export * from './src/types.js'
 export * from './src/errors.js'
+export * as errors from './src/errors.js'
 export type { sensitivePurposes, socialIntents } from './src/social_enums.js'
 export type { socialProviderNames } from './src/social_providers.js'
 export { AccountKit, defineConfig } from './src/account_kit.js'
@@ -20,6 +18,7 @@ export type {
 } from './adapters/lucid.js'
 export { accountErrorResponse } from './src/error_response.js'
 export type { AccountErrorResponse } from './src/error_response.js'
+export type { AccountKitTranslator } from './src/translator.js'
 export type { PruneInput, PruneCounts } from './src/maintenance.js'
 export { createLogNotifications } from './src/log_notifications.js'
 export type { LogNotificationOptions, MessageLogger } from './src/log_notifications.js'
