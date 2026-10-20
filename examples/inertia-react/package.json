@@ -95,7 +95,7 @@
   },
   "overrides": {
     "eslint-plugin-react": {
-      "eslint": "$eslint"
+      "eslint": "^10.11.0"
     }
   },
   "allowScripts": {
