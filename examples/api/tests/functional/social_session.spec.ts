@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { setSocialFixture } from '#services/social_provider_fixture'
+import { setSocialFixture } from '#tests/helpers/social_provider_fixture'
 import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'
 import { cookies as rawCookies } from '#tests/helpers/cookies'
 import { truncateDatabase } from '#tests/helpers/database'
@@ -96,6 +96,17 @@ test.group('Social session', (group) => {
     assert.equal(complete.status(), 200, JSON.stringify(complete.body()))
     assert.notProperty(complete.body(), 'handoffCode')
     assert.notProperty(complete.body(), 'token')
+    const completed = (complete.body() as unknown as { data: { status: string; user: object } })
+      .data
+    assert.equal(completed.status, 'new')
+    assert.deepEqual(Object.keys(completed.user).sort(), [
+      'createdAt',
+      'email',
+      'fullName',
+      'id',
+      'initials',
+      'updatedAt',
+    ])
     const cookie = rawCookies(complete)
     assert.isNotEmpty(cookie)
     const profile = await client.get('/api/v1/account/profile').header('cookie', cookie)

@@ -1,5 +1,5 @@
-import { readFile, readdir, lstat, realpath } from 'node:fs/promises'
-import { safeSetupPath } from './safe_path.js'
+import { readdir, lstat, realpath } from 'node:fs/promises'
+import { readRegularFile, safeSetupPath } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { inspectGuards } from './guard_inspection.js'
@@ -32,24 +32,12 @@ const inspectedFiles = [
   '.env.account-kit.example',
 ]
 
-async function readOptional(root: string, relative: string): Promise<string | null> {
-  const path = await safeSetupPath(root, relative)
-  try {
-    const stat = await lstat(path)
-    if (!stat.isFile()) throw new Error(`Setup cannot inspect non-regular file ${relative}`)
-    return await readFile(path, 'utf8')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
-    throw error
-  }
-}
-
 /** Static inspection deliberately does not execute application configuration or read secret values. */
 export async function inspectSetup(applicationRoot: string): Promise<SetupInspection> {
   const root = await realpath(applicationRoot)
   const files: Record<string, string> = {}
   for (const relative of inspectedFiles) {
-    const value = await readOptional(root, relative)
+    const value = await readRegularFile(root, relative)
     if (value !== null) files[relative] = value
   }
   const packageJson = JSON.parse(files['package.json'] ?? '{}') as {
@@ -74,7 +62,7 @@ export async function inspectSetup(applicationRoot: string): Promise<SetupInspec
   }
   for (const name of migrationNames.filter((filename) => filename.includes('_account_kit_'))) {
     const relative = `database/migrations/${name}`
-    const value = await readOptional(root, relative)
+    const value = await readRegularFile(root, relative)
     if (value !== null) files[relative] = value
   }
   let existingChoices: SetupChoices | null = null

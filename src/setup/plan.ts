@@ -39,11 +39,15 @@ export async function planSetup(
     retirementImpact?: SetupPlan['retirementImpact']
     retirementMaintenanceWindow?: boolean
     runtimeInventoryUnavailable?: boolean
+    /** Deployment values read for readiness and callback URLs; defaults to `process.env`. */
+    env?: NodeJS.ProcessEnv
   } = {}
 ): Promise<SetupPlan> {
   choices = parseSetupChoices(choices)
+  const env = options.env ?? process.env
   const diagnostics = validate(choices, state, {
     production: options.production ?? false,
+    env,
     retirementImpact: options.retirementImpact ?? null,
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
@@ -161,7 +165,7 @@ export async function planSetup(
     ...(choices.managed.length ? ['@adonisjs/core/providers/vinejs_provider'] : []),
     '@adonisjs/lucid/database_provider',
     '@adonisjs/limiter/limiter_provider',
-    'adonisjs-account-kit/providers/account_kit_provider',
+    'adonisjs-account-kit/account_kit_provider',
     ...(choices.managed.length ? ['@adonisjs/auth/auth_provider'] : []),
     ...(choices.social.status === 'enabled' ? ['@adonisjs/ally/ally_provider'] : []),
     ...(choices.authentication?.strategy === 'session' && choices.managed.length
@@ -251,5 +255,6 @@ export async function planSetup(
     endpoints,
     endpointLocations,
     missingPackages,
+    env,
   })
 }

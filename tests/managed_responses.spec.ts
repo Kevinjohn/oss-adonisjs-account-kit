@@ -6,6 +6,7 @@ import {
   InvalidInputError,
   IdentityNotConfirmedError,
   InvalidTokenError,
+  InvitationManagementDeniedError,
   PostCommitError,
   ThrottledError,
 } from '../src/errors.js'
@@ -163,6 +164,17 @@ test.group('managed HTTP responses', () => {
             message: 'Current identity proof could not be confirmed.',
           },
         ],
+      },
+    })
+  })
+
+  test('hides denied invitation management as a missing invitation', ({ assert }) => {
+    assert.deepEqual(managedErrorResponse(new InvitationManagementDeniedError()), {
+      status: 404,
+      headers: { Vary: 'Accept' },
+      contentType: 'application/json',
+      body: {
+        errors: [{ code: 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND', message: 'Invitation not found.' }],
       },
     })
   })

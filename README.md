@@ -86,16 +86,12 @@ export default class HttpExceptionHandler extends ExceptionHandler {
 [Keep HTTP policy in the application](docs/application-owned-integration.md#keep-http-policy-in-the-application)
 explains the status codes and the `committed` marker.
 
-There are two ways to install. Pick one per app:
+`node ace add` gives you a starter config. You write the controllers, or mount the
+[managed JSON routes](docs/managed-http.md) yourself. Start with
+[getting started](docs/getting-started.md).
 
-- **`node ace add`** (above) gives you a starter config. You write the controllers, or mount the
-  [managed JSON routes](docs/managed-http.md) yourself. Start with
-  [getting started](docs/getting-started.md).
-- **`node ace account-kit:setup`** asks about your guard, mail and signup policy, then writes the
-  config, guard adapter, middleware and managed route file for you. Install the package with
-  `npm install adonisjs-account-kit` instead of `node ace add`; setup reports every file
-  `node ace add` already wrote as a conflict and will not apply. See
-  [guided setup](docs/setup.md).
+To have the config, guard adapter, middleware and managed route file generated from your answers
+instead, follow [guided setup](docs/setup.md) in place of `node ace add adonisjs-account-kit`.
 
 Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite, PostgreSQL or MySQL, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`.
@@ -137,7 +133,7 @@ Account flows are where attackers look first. What Account Kit does by default:
 - **Verifiable releases.** Published with npm provenance; run `npm audit signatures`.
   [Supply chain](docs/security.md#supply-chain)
 
-The [security model](docs/security.md) names the code and the test behind each defence, what your
+The [security model](docs/security.md) names the code and the test behind each defense, what your
 app must still do, and what is out of scope. Report vulnerabilities privately: see
 [SECURITY.md](SECURITY.md).
 

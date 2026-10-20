@@ -7,7 +7,12 @@ import { notifications } from '#services/account_kit_notifications'
 import { authorize, canAccess, onInvitationAccepted } from '#services/account_kit_authorization'
 import { registrationFullName } from '#services/registration_fields'
 import { referencePasswordLimits } from '#validators/password'
-import { socialProvider } from '#services/social_provider'
+import { allySocialProvider } from '#services/social_provider'
+
+// Tests swap Ally for a deterministic fixture; production never loads test code.
+const socialProvider = app.inTest
+  ? (await import('#tests/helpers/social_provider_fixture')).fixtureProvider
+  : allySocialProvider
 
 const normalizeBaseUrl = (value: string) => (value.endsWith('/') ? value : `${value}/`)
 const appUrl = normalizeBaseUrl(env.get('APP_URL'))
@@ -57,7 +62,7 @@ export default defineConfig({
     ...(authStrategy === 'access_tokens' ? { tokenExpiresIn: '1d', tokenAbilities: ['*'] } : {}),
     canAccess,
   },
-  limiterSecret: env.get('APP_KEY').release(),
+  limiterSecret: env.get('APP_KEY'),
   // The functional suite sends many requests from one client; production keeps the package
   // default of five requests per 15 minutes.
   ...(app.inTest ? { throttle: { requests: 100, duration: '15m' } } : {}),
