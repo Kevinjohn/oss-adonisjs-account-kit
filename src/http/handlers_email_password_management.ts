@@ -30,18 +30,26 @@ export const emailPasswordManagementHandlers = {
     })
     return response.ok({ account: await representIssued(safeAccount(user)) })
   },
-  'account.password.change': async ({ context, kit, actorId }) => {
+  'account.password.change': async ({ context, kit, options, actorId, accountInput }) => {
     const { request, response } = context
     const { currentPassword, recentProof, newPassword } =
       await request.validateUsing(passwordChangeValidator)
     if (!kit.managedHttp.passwordAllowed(newPassword))
       return passwordPolicyError(context, 'newPassword')
-    await kit.emailPasswordManagement.changePassword({
+    const { revision } = await kit.emailPasswordManagement.changePassword({
       actorId: actorId!,
       currentPassword,
       recentProof,
       newPassword,
+      keepCurrent: {
+        ...(accountInput?.sessionHandle === undefined
+          ? {}
+          : { sessionHandle: accountInput.sessionHandle }),
+        ...(accountInput?.tokenId === undefined ? {} : { tokenId: accountInput.tokenId }),
+      },
     })
+    const guard = options.guard.forRequest(context)
+    if (guard.strategy === 'session') await guard.refresh?.(revision)
     return response.ok({ changed: true })
   },
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

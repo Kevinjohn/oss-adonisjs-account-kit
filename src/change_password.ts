@@ -1,6 +1,6 @@
 // Password change: confirms the actor, sets the new password and ends older credentials.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged } from './authentication.js'
+import { credentialsChanged, revision } from './authentication.js'
 import { transaction } from './db.js'
 import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
@@ -14,13 +14,13 @@ import type { ServiceDependencies } from './service_dependencies.js'
 export async function changePassword(
   deps: ServiceDependencies,
   input: ChangePasswordInput
-): Promise<void> {
+): Promise<{ revision: string | null }> {
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid new password')
 
   await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()
-  const { value: user, fault } = await settleCommitted(
+  const { value: changed, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
       const actor = await confirmActor(
         deps.config,
@@ -38,14 +38,18 @@ export async function changePassword(
         'email_verification_tokens',
       ])
       const reloaded = await requireUser(deps.config, actor.id, trx)
-      await credentialsChanged(trx, deps.config, reloaded, {
-        operation: 'password_change',
-        operationId,
-        userId: reloaded.id,
-      })
-      return reloaded
+      await credentialsChanged(
+        trx,
+        deps.config,
+        reloaded,
+        { operation: 'password_change', operationId, userId: reloaded.id },
+        input.keepCurrent
+      )
+      const stamp = deps.config.authentication ? await revision(trx, deps.config, actor.id) : null
+      return { user: reloaded, revision: stamp }
     })
   )
+  const user = changed.user
 
   const context = { operation: 'password_change' as const, operationId, userId: user.id }
   await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
@@ -57,4 +61,5 @@ export async function changePassword(
         deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
     )
   )
+  return { revision: changed.revision }
 }
