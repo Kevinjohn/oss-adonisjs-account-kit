@@ -33,7 +33,7 @@ stores the revision it signed in with, and older sessions are rejected on their 
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 
-export function sessionGuard(ctx: HttpContext) {
+export function accountKitSessionGuard(ctx: HttpContext) {
   const guard = ctx.auth.use('web')
   return {
     strategy: 'session' as const,
@@ -59,7 +59,7 @@ export function sessionGuard(ctx: HttpContext) {
 const kit = await app.container.make(AccountKit)
 const result = await kit.authentication.login(
   { email, password, clientKey: ctx.request.ip() },
-  sessionGuard(ctx)
+  accountKitSessionGuard(ctx)
 )
 ```
 

@@ -37,6 +37,10 @@ test.group('authentication configuration', () => {
       [{ strategy: 'session', guard: ['web', 'api'] }, 'guard must name an existing guard'],
       [{ strategy: 'session', guard: 'web', canAccess: true }, 'canAccess must be a function'],
       [
+        { strategy: 'session', guard: 'web', clientLimit: [] },
+        'authentication.clientLimit must be an object',
+      ],
+      [
         { strategy: 'session', guard: 'web', clientLimit: { requests: 0, duration: '1m' } },
         'clientLimit.requests',
       ],
