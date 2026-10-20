@@ -110,6 +110,32 @@ test.group('setup social providers', (group) => {
     assert.equal(mount.match(/except:/g)?.length, 1)
   })
 
+  test('social callback prerequisites and readiness read the environment passed to planning', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features = ['authentication', 'registration', 'socialAuthentication']
+    choices.managed = ['socialAuthentication']
+    choices.social = {
+      status: 'enabled',
+      providers: ['github'],
+      callbackOriginEnv: 'ACCOUNT_SOCIAL_PASSED_ORIGIN',
+      callbackPath: '/account/auth/oauth/{provider}/callback',
+      credentials: {
+        github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },
+      },
+    }
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      timestamp: 1234,
+      env: { ACCOUNT_SOCIAL_PASSED_ORIGIN: 'https://passed.example' },
+    })
+    assert.include(
+      plan.prerequisites.join(' '),
+      'Register github callback https://passed.example/account/auth/oauth/github/callback'
+    )
+    assert.isFalse(plan.diagnostics.some(({ field }) => field === 'social.callbackOriginEnv'))
+  })
+
   test('selected social setup rejects missing or invalid installed Ally version metadata', async ({
     assert,
   }) => {

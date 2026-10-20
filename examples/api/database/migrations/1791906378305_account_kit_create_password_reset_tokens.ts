@@ -1,8 +1,10 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
+  protected tableName = 'password_reset_tokens'
+
   async up() {
-    this.schema.createTable('password_reset_tokens', (table) => {
+    this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table
         .integer('tokenable_id')
@@ -20,6 +22,6 @@ export default class extends BaseSchema {
   }
 
   async down() {
-    this.schema.dropTable('password_reset_tokens')
+    this.schema.dropTable(this.tableName)
   }
 }
