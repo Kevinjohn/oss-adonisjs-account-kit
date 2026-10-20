@@ -1,7 +1,8 @@
 # Getting started
 
-This tutorial adds password reset to an AdonisJS 7 API starter using its existing opaque `api`
-guard and `auth_access_tokens` table. It covers credential revocation and HTTP input validation.
+This focused tutorial adds password reset to an AdonisJS 7 API starter using its existing opaque
+`api` guard and `auth_access_tokens` table. For signup through protected access, settings, and
+reset in one namespace, start with the [complete core API walkthrough](guides/core-api.md).
 
 ## Before you start
 
@@ -271,6 +272,8 @@ notice fails after commit, the controller still reports the successful password 
   and [error reference](reference/errors.md).
 - Send real email: [notifications](notifications.md) and
   [custom email templates](recipes/email-templates.md).
-- Add login, verification and invitations: the [recipes](README.md#how-to-guides).
+- Add signup, verification, login and protected settings with the
+  [complete core API walkthrough](guides/core-api.md); use the [recipes](README.md#how-to-guides)
+  for individual flows and invitations.
 - Prefer not to write controllers? Mount the [managed JSON routes](managed-http.md).
 - Test your flows: [testing](recipes/testing.md).
