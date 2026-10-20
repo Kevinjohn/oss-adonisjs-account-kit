@@ -22,14 +22,14 @@ export function withInvitationEvidence(next?: InvitationAccepted): InvitationAcc
         invitation_source: 'invitation',
         invitation_recorded_at: now,
       }
-      // Only an operator invitation claims a bootstrap approval waiting for its address.
+      // Only the invitation the bootstrap issued claims the approval waiting for its address.
       const attached =
         !existing &&
-        invitation.inviterId === null &&
         Number(
           await trx
             .from(admissionTable)
             .where('bootstrap_email', invitation.email)
+            .where('invitation_id', invitation.id)
             .whereNull('user_id')
             .update({ ...evidence, user_id: user.id, bootstrap_email: null, updated_at: now })
         ) > 0

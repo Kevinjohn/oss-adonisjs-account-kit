@@ -17,8 +17,9 @@ function requireEmail(value: unknown): string {
 
 /**
  * Write an approval for `email` that no account holds yet, then issue an operator invitation and
- * return it with its printed link. A second bootstrap for the address replaces the approval. When
- * the invitation cannot be issued, the approval is removed again.
+ * return it with its printed link. A second bootstrap for the address replaces the approval. The
+ * approval records the invitation's id, so only that invitation claims it. When the invitation
+ * cannot be issued, this call's approval is removed again.
  */
 export async function operatorBootstrap(
   kit: AccountKit,
@@ -30,7 +31,7 @@ export async function operatorBootstrap(
   if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
     throw new InvalidInputError('Invalid role')
   if (await deps.accountConfig.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
-  await transaction(deps.db, async (trx) => {
+  const rowId = await transaction(deps.db, async (trx) => {
     const now = sqlTimestamp(trx)
     await trx.from(admissionTable).where('bootstrap_email', email).whereNull('user_id').delete()
     await trx.table(admissionTable).insert({
@@ -42,11 +43,23 @@ export async function operatorBootstrap(
       created_at: now,
       updated_at: now,
     })
+    // The address is unique, so the waiting row read back inside this transaction is this call's.
+    const row = await trx
+      .from(admissionTable)
+      .where('bootstrap_email', email)
+      .whereNull('user_id')
+      .select('id')
+      .first()
+    return row.id as number
   })
+  // A concurrent bootstrap may replace this row, so both writes below touch only this row.
+  const own = () => deps.db.from(admissionTable).where('id', rowId).whereNull('user_id')
   try {
-    return await kit.operator.invite({ email, role: input.role, deliver: 'print' })
+    const issued = await kit.operator.invite({ email, role: input.role, deliver: 'print' })
+    await own().update({ invitation_id: issued.invitation.id })
+    return issued
   } catch (error) {
-    await cancelBootstrap(deps, email)
+    await own().delete()
     throw error
   }
 }
