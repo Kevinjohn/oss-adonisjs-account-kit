@@ -1290,7 +1290,7 @@ packages:
     hasBin: true
 
   adonisjs-account-kit@file:vendor/adonisjs-account-kit.tgz:
-    resolution: {integrity: sha512-F20QJj/U2Jxx5UL+iujzgVwrZeNaJxHQD3OTamDJho5BHofQHXb6Fw0Z8XbE73TVLVKMm6EGbzo6F22eZLQSrg==, tarball: file:vendor/adonisjs-account-kit.tgz}
+    resolution: {integrity: sha512-GurIxoczP3TxNT7ymHBcg5y7Eq2XoC3wQIJHkGvYLqG41J9sNLLtTsenJgFfwteUIINARGc5DNbRXSXKmfcH6A==, tarball: file:vendor/adonisjs-account-kit.tgz}
     version: 0.0.0
     engines: {node: '>=24.0.0'}
     peerDependencies:
