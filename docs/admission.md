@@ -270,8 +270,10 @@ one command, before the account exists:
 - When that invitation is accepted, or matched when the address first signs in,
   `withInvitationEvidence` attaches the approval to the new account. The account lands admitted:
   evidence `source: 'invitation'` and approval `actorId: null`.
-- Only an operator invitation attaches it. An invitation a member sends to the same address does
-  not.
+- Only the invitation the bootstrap issued attaches it: the approval records that invitation's id.
+  Another invitation to the same address does not, including one whose inviter was deleted.
+- If the invitation cannot be issued, the command removes the approval it wrote and leaves any
+  later bootstrap's approval in place.
 - A second bootstrap for the address replaces the approval and the invitation. `--cancel` deletes
   the approval.
 - `list` and decisions never show an approval that waits for its account.

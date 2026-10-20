@@ -98,8 +98,8 @@ Initial public release.
   `account-kit:admission:approve`, `account-kit:admission:revoke` and
   `account-kit:admission:grant-invitation` (export `adonisjs-account-kit/admission/commands`).
 - `account-kit:admission:bootstrap <email> --role <role>` (#518): an operator invitation whose new
-  account lands approved, with `--cancel`. The `account_admissions` stub makes `user_id` nullable
-  and adds `bootstrap_email`.
+  account lands approved, with `--cancel`. Only the invitation it issued claims the approval. The
+  `account_admissions` stub makes `user_id` nullable and adds `bootstrap_email`.
 
 <details>
 <summary>Pre-release candidate history</summary>
