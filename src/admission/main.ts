@@ -2,6 +2,7 @@
 export { defineAdmission } from './config.js'
 export { AccountAdmission } from './service.js'
 export type { AdmissionDependencies } from './service.js'
+export type { AdmissionPage } from './listing.js'
 export { admissionMiddleware } from './middleware.js'
 export { withInvitationEvidence } from './invitation_evidence.js'
 export { withAdmissionCleanup } from './cleanup.js'

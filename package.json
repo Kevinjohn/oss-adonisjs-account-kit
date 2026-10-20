@@ -41,7 +41,8 @@
     "./ally": "./build/src/ally_social_provider.js",
     "./commands": "./build/commands/main.js",
     "./admission": "./build/src/admission/main.js",
-    "./admission/provider": "./build/src/admission/provider.js"
+    "./admission/provider": "./build/src/admission/provider.js",
+    "./admission/commands": "./build/src/admission/commands/main.js"
   },
   "scripts": {
     "copy:templates": "copyfiles \"stubs/**/*.stub\" --up=\"1\" build",
@@ -178,7 +179,9 @@
       "./commands/operator_output.ts",
       "./commands/openapi.ts",
       "./src/admission/main.ts",
-      "./src/admission/provider.ts"
+      "./src/admission/provider.ts",
+      "./src/admission/commands/main.ts",
+      "./commands/admission_install.ts"
     ],
     "outDir": "./build",
     "clean": true,
