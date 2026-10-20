@@ -5,6 +5,8 @@ import env from '#start/env'
 import { createLucidAdapter, defineConfig } from 'adonisjs-account-kit'
 import { withAdmissionCleanup, withInvitationEvidence } from 'adonisjs-account-kit/admission'
 import { notifications } from '#services/account_kit_notifications'
+import { createNotify } from './account_kit_notifications.js'
+import { onCredentialsChangedTransaction } from './account_kit_credential_notice.js'
 import {
   authorize,
   canAccess,
@@ -29,6 +31,8 @@ const accountUrl = (path: string, token: string) =>
 if (env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' && env.get('SESSION_DRIVER') === 'cookie') {
   throw new Error('account_kit: session authentication requires a server-side session store')
 }
+
+const notify = createNotify(accountUrl)
 
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
@@ -79,47 +83,11 @@ export default defineConfig({
     invitation: (token) => accountUrl('invitations', token),
     emailChange: (token) => accountUrl('email-change', token),
   },
-  notify: {
-    socialIdentityLinked: async (user) => {
-      await notifications.send('socialLinked', user.email, 'Social identity linked')
-    },
-    socialIdentityUnlinked: async (user) => {
-      await notifications.send('socialUnlinked', user.email, 'Social identity unlinked')
-    },
-    passwordResetProvision: (user, url) => notifications.send('recovery', user.email, url),
-    accountActivationProvision: (user, url) =>
-      notifications.send(
-        'verification',
-        user.unverifiedEmail ?? user.email,
-        user.hasPassword
-          ? url
-          : accountUrl('social-verification', new URL(url).pathname.split('/').at(-1)!)
-      ),
-    invitationProvision: (invitation, url) =>
-      notifications.send('invitation', invitation.email, url),
-    emailChangeProvision: (_user, newEmail, url) =>
-      notifications.send('emailChangeConfirm', newEmail, url),
-    emailChanged: (previousEmail, user) =>
-      notifications.send('emailChanged', previousEmail, user.email),
-    passwordResetCompleted: (user, context) =>
-      notifications.deliverCredentialNotice(context.operationId, context.operation, user.email),
-    passwordChanged: (user, context) =>
-      notifications.deliverCredentialNotice(context.operationId, context.operation, user.email),
-  },
+  notify,
   // Records invitation evidence for admission, then grants the role, in the acceptance transaction.
   onInvitationAccepted: withInvitationEvidence(onInvitationAccepted),
   onAccountDeletingTransaction: withAdmissionCleanup(),
   exportAccountData,
-  onCredentialsChangedTransaction: async (user, context, trx) => {
-    if (context.operation !== 'password_reset' && context.operation !== 'password_change') return
-
-    await trx.table('account_kit_outbox').insert({
-      user_id: user.id,
-      operation: context.operation,
-      operation_id: context.operationId,
-      recipient_email: user.email,
-      created_at: new Date(),
-    })
-  },
+  onCredentialsChangedTransaction,
   onLifecycleEvent: async (event) => notifications.recordLifecycle(event),
 })
