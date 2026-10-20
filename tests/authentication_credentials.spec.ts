@@ -129,9 +129,6 @@ test.group('authentication contract', (group) => {
     )
   })
 
-  for (const {} of ['session', 'access_tokens'] as const) {
-  }
-
   test('a credential change during provisional session establishment cannot return a usable session', async ({
     assert,
   }) => {
