@@ -1,5 +1,3 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
-
 import { test } from '@japa/runner'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { transaction } from '../src/db.js'
