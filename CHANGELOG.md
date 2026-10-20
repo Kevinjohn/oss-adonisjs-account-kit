@@ -12,6 +12,10 @@ Initial public release.
   admission and trusted mapping of extra profile fields.
 - Invitations with role, authorization callbacks, resend, revoke, cursor-paged listing and
   separate actor and recipient rate limits.
+- An invitation is accepted when its address is first confirmed without the link: a new social
+  account with a provider-verified address, account activation, or a password reset that confirms
+  the account. `onInvitationAccepted` runs in that transaction and `invitation.accepted` is
+  reported after commit.
 - Password change, verified email change and profile updates behind the current password.
 - Session and opaque-token login through an existing AdonisJS Auth guard, with failed-attempt
   limits and credential revocation on every credential change.

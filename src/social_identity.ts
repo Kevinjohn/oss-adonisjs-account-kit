@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto'
 import { lockUser, transaction, isUserEmailUniqueViolation } from './db.js'
 import { revision } from './authentication.js'
-import { finishCommitted, settleCommitted } from './effects.js'
+import { finishCommitted, postCommit, settleCommitted } from './effects.js'
+import { invitationAccepted } from './invitation_match.js'
 import { isEmailShaped } from './email.js'
 import { createHandoff, redeemSocialHandoff } from './social_handoff.js'
 import { consumeSocialSensitiveProof, proveSocialPassword } from './social_proofs.js'
@@ -151,6 +153,7 @@ export function socialIdentityService(deps: Dependencies) {
       ) => Promise<void>
     }): Promise<SocialCallbackResult> {
       let unverified: UserId | undefined
+      let accepted: { invitationId: number; userId: UserId } | undefined
       let settled: Awaited<ReturnType<typeof settleCommitted<SocialCallbackResult>>>
       try {
         settled = await settleCommitted(
@@ -180,6 +183,8 @@ export function socialIdentityService(deps: Dependencies) {
               input.registrationData,
               input.admit
             )
+            if (created.invitationId !== null)
+              accepted = { invitationId: created.invitationId, userId: created.user.id }
             if (!profile.emailVerified) {
               unverified = created.user.id
               return { status: 'new' as const, emailVerificationRequired: true as const }
@@ -207,6 +212,11 @@ export function socialIdentityService(deps: Dependencies) {
         settled.fault,
         'Social registration committed but follow-up failed',
         async () => {
+          if (accepted)
+            await postCommit(
+              'Invitation follow-up failed',
+              invitationAccepted(deps.config, accepted.invitationId, accepted.userId, randomUUID())
+            )
           if (unverified && deps.config.enabled.includes('emailVerification')) {
             await sendVerification(deps, { userId: unverified })
           }
