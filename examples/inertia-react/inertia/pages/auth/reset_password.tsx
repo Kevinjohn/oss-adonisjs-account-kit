@@ -1,8 +1,14 @@
 import AuthLayout from '~/layouts/auth'
+import FormErrorSummary, { focusFormErrorSummary } from '~/components/form_error_summary'
 import { Form, Link } from '@adonisjs/inertia/react'
 import { type InertiaProps } from '~/types'
 
 type Props = InertiaProps<{ token: string; valid: boolean }>
+
+const fields = [
+  { name: 'password', label: 'New password' },
+  { name: 'passwordConfirmation', label: 'Confirm new password' },
+] as const
 
 export default function ResetPassword({ token, valid, user }: Props) {
   if (!valid) {
@@ -47,9 +53,10 @@ export default function ResetPassword({ token, valid, user }: Props) {
         Any current session will end. Sign in with the new password after resetting it.
       </p>
 
-      <Form route="password_resets.update" routeParams={{ token }}>
+      <Form route="password_resets.update" routeParams={{ token }} onError={focusFormErrorSummary}>
         {({ errors, processing }) => (
           <div className="auth__form">
+            <FormErrorSummary errors={errors} fields={fields} />
             <div className="field">
               <label className="field__label" htmlFor="password">
                 New password
@@ -60,9 +67,14 @@ export default function ResetPassword({ token, valid, user }: Props) {
                 type="password"
                 className="field__input"
                 autoComplete="new-password"
-                aria-invalid={errors.password ? 'true' : 'false'}
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? 'reset-password-error' : undefined}
               />
-              {errors.password && <span className="field__error">{errors.password}</span>}
+              {errors.password && (
+                <span id="reset-password-error" className="field__error">
+                  {errors.password}
+                </span>
+              )}
             </div>
 
             <div className="field">
@@ -75,10 +87,15 @@ export default function ResetPassword({ token, valid, user }: Props) {
                 type="password"
                 className="field__input"
                 autoComplete="new-password"
-                aria-invalid={errors.passwordConfirmation ? 'true' : 'false'}
+                aria-invalid={errors.passwordConfirmation ? true : undefined}
+                aria-describedby={
+                  errors.passwordConfirmation ? 'reset-passwordConfirmation-error' : undefined
+                }
               />
               {errors.passwordConfirmation && (
-                <span className="field__error">{errors.passwordConfirmation}</span>
+                <span id="reset-passwordConfirmation-error" className="field__error">
+                  {errors.passwordConfirmation}
+                </span>
               )}
             </div>
 
