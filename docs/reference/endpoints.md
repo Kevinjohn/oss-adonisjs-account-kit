@@ -5,6 +5,10 @@
 mounted, and `except` removes individual endpoints by name. Setup and guard requirements are in
 [managed HTTP](../managed-http.md).
 
+The [core API walkthrough](../guides/core-api.md) uses application-owned `/api/v1` routes, so
+its `auth/request-password-reset` and `account/password` paths are chosen by that application rather
+than by this managed route table.
+
 Access levels:
 
 - **public**: no credential required. Proof routes take the token from the link.
