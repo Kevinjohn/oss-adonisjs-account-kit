@@ -276,9 +276,15 @@ one command, before the account exists:
 - If the invitation cannot be issued, the command removes the approval it wrote and leaves any
   later bootstrap's approval in place.
 - A second bootstrap for the address replaces the approval and the invitation. `--cancel` deletes
-  the approval.
+  the approval only; it does not revoke the invitation. The invitation can still be accepted and
+  invoke the application's `onInvitationAccepted` callback, including its role or membership
+  writes. To prevent both effects, revoke the invitation separately with
+  `kit.invitations.revoke({ actorId, invitationId })` (see the [invitation service operations](usage.md#capabilities))
+  or the [managed HTTP `account.invitation.revoke` route](managed-http.md#how-it-works), when the
+  actor is authorized by the application.
 - `list` and decisions never show an approval that waits for its account.
-- Nothing prunes these rows. Cancel the ones you no longer want.
+- Nothing prunes these rows. Cancel waiting approval and revoke its invitation separately when you
+  want to remove both outcomes.
 
 The address must still be on an allowed domain when that requirement is on. The two-command path
 above keeps working.
@@ -296,6 +302,10 @@ above keeps working.
 
 `examples/api` runs admission with invitation and approval on, and domain on when
 `ACCOUNT_KIT_ADMISSION_DOMAINS` (comma-separated) is set:
+
+The [API example README](../examples/api/README.md#admission-routes) maps its status, request,
+owner-list, and decision endpoints to their controller, validator, route gates, and application
+authorization policy.
 
 | File                                              | Holds                                                                                                                          |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
