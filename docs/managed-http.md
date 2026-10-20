@@ -39,6 +39,70 @@ Import it at the end of `start/routes.ts`:
 import './account_kit_routes.js'
 ```
 
+### Prepare before the first reset request
+
+Mounting the routes does not configure email. The generated `notify` callbacks intentionally throw
+until the application chooses a delivery method. Configure the callback before exercising password
+reset, and keep the generated `APP_KEY` stable. Set a fixed local `APP_URL`, for example
+`http://localhost:3333`, and apply the generated schema before starting the request flow:
+
+```sh
+node ace migration:run
+```
+
+This applies Account Kit's user columns and `password_reset_tokens` table, along with any selected
+limiter migration. Follow the install and migration steps in [Getting started](getting-started.md)
+to install the limiter integration and generate the schema before running migrations.
+The generated `urls.passwordReset` uses `{APP_URL}/account-kit/recovery/:token`; it names the link
+destination, but Account Kit does not generate a browser page there. For a browser flow, point it
+to a page owned by your application and have that page POST the token and password fields to the
+managed completion route.
+
+For a local API walkthrough, replace the generated `notify` block with the maintained development
+log callback before starting the server:
+
+```ts
+import { createLogNotifications } from 'adonisjs-account-kit'
+
+notify: createLogNotifications({ brandName: 'My App', environment: 'development' }),
+onCredentialsChangedTransaction: async () => {},
+```
+
+See the [development-mail recipe](recipes/development-mail.md) for the full generated-config
+edit. The generated `onCredentialsChangedTransaction` throws until replaced. Account Kit already
+deletes its managed access tokens transactionally for an `access_tokens` guard, or advances the
+session revision for a `session` guard. For this walkthrough, the no-op above is appropriate when
+those are the only credentials the application issues; extend the callback if the application has
+other credentials to revoke. See the [access-token](recipes/access-tokens.md) and
+[session](recipes/sessions.md) guides for those policies. The log entry contains a live bearer
+proof; use it only in a private development log.
+
+Use an email address belonging to a test account in the selected local database. Unknown addresses
+receive the same `202` response but do not produce a message. With the local logger configured,
+request a reset:
+
+```sh
+curl -i -X POST http://localhost:3333/api/auth/password-reset \
+  -H 'content-type: application/json' \
+  -d '{"email":"person@example.test"}'
+```
+
+The response is a generic `202` acknowledgement for privacy; it does not confirm that the callback
+ran or that a recipient received a message. Copy the token from the private local log entry and
+complete the proof through the managed route:
+
+```sh
+curl -i -X POST "http://localhost:3333/api/auth/password-reset/${TOKEN}" \
+  -H 'content-type: application/json' \
+  -d '{"password":"a-new-test-password","passwordConfirmation":"a-new-test-password"}'
+```
+
+The completion response is `200 {"reset":true}`. If the request was acknowledged but no local
+message appeared, check that the generated throwing callback was replaced, `APP_URL` and
+`urls.passwordReset` point to the intended local origin and page, and the AdonisJS logger is
+visible. For production, configure the application's real Mail transport and verified sender and
+verify delivery through that transport; see [Account notifications](notifications.md).
+
 `node ace list:routes` now shows `POST /api/auth/login`, `POST /api/auth/password-reset` and the
 other endpoints for those groups. Add groups to `enabled` as you turn on more capabilities; the
 [endpoint reference](reference/endpoints.md) lists them. Emailed links still come from `urls` in
