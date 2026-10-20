@@ -7,7 +7,7 @@ harass anyone in issues, pull requests, discussions or any other project space.
 
 ## Reporting
 
-Report unacceptable behaviour privately to the maintainer at
+Report unacceptable behavior privately to the maintainer at
 [cve@kevinjohngallagher.com](mailto:cve@kevinjohngallagher.com), the private address also used for
 security reports. Reports are read only by the maintainer and kept confidential.
 
