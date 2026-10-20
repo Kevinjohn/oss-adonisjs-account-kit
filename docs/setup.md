@@ -74,7 +74,9 @@ package adds nullable account and verification columns to that table and makes `
 it does not create the users table or infer verification state for existing rows. See the
 [identity creation guide](identity-creation.md) for the expected fields and the owner checklist for
 existing accounts. Rows with `unverified_email = null` are treated as active, so decide how legacy
-verification state should be represented before enabling account flows.
+verification state should be represented before enabling account flows. The migration leaves
+`email_verified_at` null on existing rows; set it where the address is already trusted, or domain
+admission treats those accounts as unconfirmed.
 
 The first apply leaves the managed routes switched off. Keep
 `authentication.applicationRouteRevocation` false for it:
