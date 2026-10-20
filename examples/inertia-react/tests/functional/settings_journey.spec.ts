@@ -1,9 +1,9 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each HTTP response beside its assertion. */
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import kit from 'adonisjs-account-kit/services/main'
+import { setupAccountDatabase } from '../helpers/account_database.js'
 
 const origin = process.env.APP_URL!
 const currentPassword = 'OldPass123!'
@@ -59,15 +59,7 @@ class BrowserSession {
 }
 
 test.group('profile and email settings HTTP journey', (group) => {
-  group.each.setup(async () => {
-    const truncate = await testUtils.db().truncate()
-    await db
-      .table('account_transaction_lock')
-      .insert({ id: 1, version: 0 })
-      .onConflict('id')
-      .ignore()
-    return truncate
-  })
+  group.each.setup(setupAccountDatabase)
 
   test('settings bind reads and profile writes to the signed-in owner', async ({ assert }) => {
     const owner = await User.create({
