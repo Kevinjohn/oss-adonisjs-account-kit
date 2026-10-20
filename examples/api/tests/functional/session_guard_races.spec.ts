@@ -454,6 +454,9 @@ test.group('Session guard races', (group) => {
       .get('/api/v1/account/profile')
       .header('cookie', rawCookies(change) || sessions[0])
     assert.equal(kept.status(), 200)
+    // The kept session moved to a new id, so a copy of its old cookie is signed out.
+    const copied = await client.get('/api/v1/account/profile').header('cookie', sessions[0])
+    assert.equal(copied.status(), 401)
     const other = await client.get('/api/v1/account/profile').header('cookie', sessions[1])
     assert.equal(other.status(), 401)
   }).skip(!isSessionStrategy, SESSION_ONLY)
