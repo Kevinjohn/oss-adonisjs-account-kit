@@ -50,8 +50,8 @@ Reference: [usage](usage.md).
 
 ### Included with every flow
 
-- **Emails** for AdonisJS Mail, with English templates, or your own templates. See
-  [notifications](notifications.md).
+- **Emails** for AdonisJS Mail, with English templates you can translate with `@adonisjs/i18n`,
+  or your own templates. See [notifications](notifications.md).
 - **Rate limits** through `@adonisjs/limiter`. Limiter keys are HMAC digests, so the store never
   holds an email address or IP. See [production requirements](reference/production-requirements.md#limiter-secret-and-budgets).
 - **Your routes or ours.** Call the service from your own controllers, or mount the
@@ -75,7 +75,7 @@ Turn on: `enabled: [..., 'magicLinkLogin']`. Guide: [magic-link sign-in](magic-l
 
 ### Signed-in devices and sign out everywhere
 
-Users see where they are signed in and end sessions they do not recognise.
+Users see where they are signed in and end sessions they do not recognize.
 
 - List sign-ins, with a label, when each started and when it was last used.
 - Sign out one device, every other device, or everywhere.

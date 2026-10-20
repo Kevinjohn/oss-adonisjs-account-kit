@@ -35,8 +35,8 @@ router
         router.post('password-reset/:token', [controllers.PasswordResets, 'complete'])
         router.get('email-verification/:token', [controllers.EmailVerifications, 'inspect'])
         router.post('email-verification/:token', [controllers.EmailVerifications, 'complete'])
-        router.get('email-change/:token', [controllers.Profile, 'inspectEmailChange'])
-        router.post('email-change/:token', [controllers.Profile, 'completeEmailChange'])
+        router.get('email-change/:token', [controllers.EmailChanges, 'inspectEmailChange'])
+        router.post('email-change/:token', [controllers.EmailChanges, 'completeEmailChange'])
         router.get('invitations/:token', [controllers.Invitations, 'inspect'])
         router.post('invitations/:token', [controllers.Invitations, 'accept'])
         router
