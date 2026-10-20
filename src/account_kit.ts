@@ -244,7 +244,7 @@ export class AccountKit {
    */
   readonly emailPasswordManagement = {
     /** Changes the password, ends older sessions and tokens, and sends the changed notice. */
-    changePassword: (input: ChangePasswordInput): Promise<void> =>
+    changePassword: (input: ChangePasswordInput): Promise<{ revision: string | null }> =>
       this.enabled('emailPasswordManagement', () => changePassword(this.deps, input)),
     /**
      * Emails a confirmation link to the new address. The email changes only when it is confirmed.

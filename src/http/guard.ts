@@ -185,6 +185,9 @@ export function createManagedGuard<User>(
             ctx.session.clear()
             ctx.session.regenerate()
           },
+          async refresh(revision) {
+            ctx.session.put(revisionKey, revision ?? '')
+          },
         }
       },
     }
