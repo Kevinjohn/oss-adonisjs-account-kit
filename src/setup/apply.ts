@@ -1,37 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import {
-  link,
-  lstat,
-  mkdir,
-  open,
-  readFile,
-  realpath,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from 'node:fs/promises'
+import { link, mkdir, open, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { SetupFileChange, SetupPlan } from './types.js'
-import { safeSetupPath } from './safe_path.js'
-
-async function currentFile(path: string): Promise<string | null> {
-  try {
-    const fileStat = await lstat(path)
-    if (!fileStat.isFile()) throw new Error(`Setup refuses non-regular file ${path}`)
-    return await readFile(path, 'utf8')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
-    throw error
-  }
-}
+import { readRegularFile, safeSetupPath } from './safe_path.js'
 
 async function assertNoConflict(
   root: string,
   change: SetupFileChange
 ): Promise<'create' | 'update' | 'unchanged'> {
-  const path = await safeSetupPath(root, change.path)
-  const existing = await currentFile(path)
+  const existing = await readRegularFile(root, change.path)
   if (existing === null) {
     if (change.action === 'update')
       throw new Error(`Setup conflict at ${change.path}: application file disappeared`)

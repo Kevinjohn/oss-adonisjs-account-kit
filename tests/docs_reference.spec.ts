@@ -51,3 +51,21 @@ test('the endpoint reference lists every managed route', async ({ assert }) => {
   assert.isAbove(routes.length, 0)
   assert.deepEqual(missing, [])
 })
+
+test('every documented error code starts with E_, unlike a validation rule', async ({ assert }) => {
+  const managed = await read('docs/managed-http.md')
+  const block = managed
+    .split('resources/lang/<locale>/errors.json')[1]
+    ?.match(/```json\n([\s\S]*?)```/)
+  const codes = [
+    ...Object.values(errors)
+      .filter((value) => typeof value === 'function')
+      .map((value) => value.code),
+    ...Object.keys(JSON.parse(block![1])),
+  ]
+  assert.isAbove(codes.length, 0)
+  assert.deepEqual(
+    codes.filter((code) => !code.startsWith('E_')),
+    []
+  )
+})

@@ -1,7 +1,12 @@
 /** Managed handlers for the password reset capability: request, link inspection and completion. */
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { invalidProof, passwordPolicyError, reportCommittedFailure } from './response_helpers.js'
+import {
+  invalidProof,
+  passwordPolicyError,
+  reportCommittedFailure,
+  translate,
+} from './response_helpers.js'
 import { newPasswordValidator, passwordResetRequestValidator } from './validators.js'
 
 export const passwordResetHandlers = {
@@ -13,7 +18,13 @@ export const passwordResetHandlers = {
     } catch (error) {
       if (!reportCommittedFailure(context, route.name, error)) throw error
     }
-    return response.accepted({ message: 'If the account exists, instructions will be sent.' })
+    return response.accepted({
+      message: translate(
+        context,
+        'account_kit.password_reset_requested',
+        'If the account exists, instructions will be sent.'
+      ),
+    })
   },
   'auth.passwordReset.inspect': async ({ context, kit, options }) =>
     (await kit.passwordReset.inspect({ token: context.params.token }))
