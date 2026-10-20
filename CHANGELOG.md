@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Improve account example contrast, keyboard focus, page landmarks, reduced motion, and narrow-screen layout.
 - Recover the Inertia example signup flow when account creation commits but notification or initial sign-in fails.
 
 Initial public release.
