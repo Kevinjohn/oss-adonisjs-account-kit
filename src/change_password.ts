@@ -5,6 +5,7 @@ import { transaction } from './db.js'
 import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
+import { rememberPasswordChangeRevision } from './password_change_revision.js'
 import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
@@ -52,14 +53,20 @@ export async function changePassword(
   const user = changed.user
 
   const context = { operation: 'password_change' as const, operationId, userId: user.id }
-  await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
-    afterCommit(
-      'Credentials changed but a follow-up failed',
-      () => deps.config.onCredentialsChanged?.(user, context),
-      () => deps.config.notify.passwordChanged(user, context),
-      () =>
-        deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
+  try {
+    await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
+      afterCommit(
+        'Credentials changed but a follow-up failed',
+        () => deps.config.onCredentialsChanged?.(user, context),
+        () => deps.config.notify.passwordChanged(user, context),
+        () =>
+          deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
+      )
     )
-  )
+  } catch (error) {
+    // The change committed: the caller still needs the revision to keep its own session.
+    rememberPasswordChangeRevision(error, changed.revision)
+    throw error
+  }
   return { revision: changed.revision }
 }
