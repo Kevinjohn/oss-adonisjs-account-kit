@@ -45,7 +45,7 @@ itself.
 
 - A configured `mapFields` requires a continuation and runs even when its input is undefined.
 - In application mode, server code must call `completeRegistration` with a trusted
-  `admit(profile,trx)` callback after its own admission decision. The callback runs inside the
+  `admit(profile,trx)` callback after its own signup decision. The callback runs inside the
   creation transaction, may reject, and must use the transaction for database writes. It must not
   make remote side effects, because a failed transaction may be retried.
 - Managed setup must diagnose application mode unless it has an explicit trusted extension.
@@ -108,6 +108,14 @@ revocation.
 
 This prevents an attacker who controls a provider account but supplied somebody else's unverified
 email from gaining that account after the real email owner claims it.
+
+### Signing in with the invited address
+
+A new account whose provider-verified address holds a pending invitation accepts it in the same
+transaction: the invitation is deleted, `onInvitationAccepted` runs, and `invitation.accepted` is
+reported after commit. An unverified provider address leaves the invitation alone until the address
+is confirmed. Signing in to an existing account never accepts one. See
+[Signing in with the invited address](account-operations.md#signing-in-with-the-invited-address).
 
 ### Linking and sensitive actions require recent proof
 

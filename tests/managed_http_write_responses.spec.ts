@@ -95,7 +95,7 @@ test.group('managed HTTP dispatch', () => {
       },
       emailPasswordManagement: {
         updateProfile: async () => user,
-        changePassword: async () => {},
+        changePassword: async () => ({ revision: null }),
       },
       emailVerification: { send: async () => 'sent' },
       invitations: {

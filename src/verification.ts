@@ -10,6 +10,7 @@ import { DateTime } from 'luxon'
 import { consumeUserToken, consumeUserTokenHash, lockUser, transaction } from './db.js'
 import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
+import { invitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
 import { throttlerOf } from './throttle.js'
@@ -63,14 +64,20 @@ export async function inspectVerification(
   return user !== null && activationMatches(proof, user)
 }
 
-/** Shared activation effects; caller must hold the account lock and have consumed email proof. */
+/**
+ * Shared activation effects; caller must hold the account lock and have consumed email proof.
+ * Returns the id of the invitation the confirmed address consumed, if any.
+ */
 async function activateClaim(
   trx: Trx,
   config: ResolvedConfig,
-  userId: UserId,
+  user: AccountUser,
   confirmedSocialIdentityId?: number
-): Promise<void> {
-  await config.users.markEmailVerified(userId, DateTime.utc(), trx)
+): Promise<number | null> {
+  const userId = user.id
+  const now = DateTime.utc()
+  await config.users.markEmailVerified(userId, now, trx)
+  const invitationId = await matchInvitation(config, trx, user, now)
   await clearRecoveryTokens(trx, userId, ['password_reset_tokens'])
   if (config.enabled.includes('socialAuthentication')) {
     await clearPendingSocialIdentities(trx, userId, confirmedSocialIdentityId)
@@ -83,6 +90,7 @@ async function activateClaim(
         .update({ confirmed_at: sqlTimestamp(trx) })
     await clearSocialTransactions(trx, userId)
   }
+  return invitationId
 }
 
 /** Consume email ownership proof under the user lock. Only a matched provider can be confirmed. */
@@ -91,7 +99,7 @@ export async function completeActivationByHash(
   config: ResolvedConfig,
   tokenHash: string,
   confirmedSocialIdentityId?: number
-): Promise<UserId> {
+): Promise<{ userId: UserId; invitationId: number | null }> {
   const { user } = await consumeUserTokenHash<ActivationRow>(
     trx,
     config,
@@ -99,8 +107,8 @@ export async function completeActivationByHash(
     tokenHash,
     activationMatches
   )
-  await activateClaim(trx, config, user.id, confirmedSocialIdentityId)
-  return user.id
+  const invitationId = await activateClaim(trx, config, user, confirmedSocialIdentityId)
+  return { userId: user.id, invitationId }
 }
 
 export async function sendVerification(
@@ -188,7 +196,7 @@ export async function completeVerification(
   if (!isTokenShaped(input.token)) throw new InvalidTokenError()
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
-  const { value: outcome, fault } = await settleCommitted(
+  const { value: claimed, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
       const { user } = await consumeUserToken<ActivationRow>(
         trx,
@@ -198,7 +206,7 @@ export async function completeVerification(
         activationMatches
       )
       await storePassword(deps.config.users, user.id, password, trx)
-      await activateClaim(trx, deps.config, user.id)
+      const invitationId = await activateClaim(trx, deps.config, user)
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await credentialsChanged(trx, deps.config, reloaded, {
@@ -206,9 +214,10 @@ export async function completeVerification(
         operationId,
         userId: user.id,
       })
-      return reloaded
+      return { user: reloaded, invitationId }
     })
   )
+  const outcome = claimed.user
   await finishCommitted(fault, 'Verification committed but follow-up failed', () =>
     postCommit('Verification follow-up failed', [
       {
@@ -225,6 +234,7 @@ export async function completeVerification(
         userId: outcome.id,
         operationId,
       }),
+      ...invitationAccepted(deps.config, claimed.invitationId, outcome.id, operationId),
     ])
   )
   return 'verified'
