@@ -5,9 +5,20 @@ import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
 import SetupAccountKit from '../commands/setup.js'
+import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { inspectSetup } from '../src/setup/inspect.js'
+import { collectSetupChoices } from '../src/setup/prompts.js'
+import type { SetupChoices } from '../src/setup/types.js'
 import { retirementIgnitor } from './helpers/retirement_ignitor.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+
+function collectFromSavedChoices(
+  ask: (question: string) => Promise<string>,
+  log: (message: string) => void,
+  initialChoices?: SetupChoices
+) {
+  return collectSetupChoices(ask, log, initialChoices)
+}
 
 test.group('setup Ace command', (group) => {
   registerSetupTeardown(group)
@@ -31,6 +42,192 @@ test.group('setup Ace command', (group) => {
     await ignitor.ace().handle(['account-kit:setup', `--input=${input}`])
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
     await ignitor.ace().handle(['account-kit:setup', `--input=${input}`, '--apply'])
+    assert.deepEqual(
+      JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
+      choices
+    )
+  })
+
+  test('interactive Ace reconfiguration seeds prompts from saved choices', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const saved = structuredClone(choices)
+    saved.user.table = 'account_members'
+    saved.user.idType = 'uuid'
+    saved.authentication = {
+      strategy: 'access_tokens',
+      guard: 'api',
+      applicationRouteRevocation: true,
+      token: { revocation: true, lifetime: '30d', abilities: ['account:read'] },
+    }
+    saved.mail.delivery = 'durable'
+    saved.mail.destinations.passwordReset = 'members/recover'
+    saved.policy.password.minLength = 14
+    await writeFile(join(root, 'config/account_kit_setup.json'), `${JSON.stringify(saved)}\n`)
+
+    let receivedSeed: SetupChoices | undefined
+    let promptedChoices: SetupChoices | undefined
+    class ScriptedSetup extends SetupAccountKit {
+      override async interactiveChoices(
+        _askOverride?: (question: string) => Promise<string>,
+        initialChoices?: SetupChoices
+      ) {
+        receivedSeed = initialChoices
+        promptedChoices = await collectFromSavedChoices(
+          async (question) => (question.startsWith('New-password minimum length') ? '16' : ''),
+          () => {},
+          initialChoices
+        )
+        return promptedChoices
+      }
+    }
+    const ignitor = new IgnitorFactory()
+      .withCoreProviders()
+      .withCoreConfig()
+      .merge({
+        rcFileContents: {
+          providers: [],
+          commands: [async () => new ListLoader([ScriptedSetup])],
+        },
+      })
+      .create(pathToFileURL(`${root}/`))
+
+    const previousExitCode = process.exitCode
+    try {
+      await ignitor.ace().handle(['account-kit:setup'])
+    } finally {
+      process.exitCode = previousExitCode
+    }
+
+    assert.deepEqual(receivedSeed, saved)
+    assert.equal(promptedChoices?.policy.password.minLength, 16)
+    assert.equal(promptedChoices?.user.table, 'account_members')
+    assert.equal(promptedChoices?.user.idType, 'uuid')
+    assert.equal(promptedChoices?.authentication?.strategy, 'access_tokens')
+    assert.equal(promptedChoices?.authentication?.token?.lifetime, '30d')
+    assert.equal(promptedChoices?.mail.delivery, 'durable')
+    assert.equal(promptedChoices?.mail.destinations.passwordReset, 'members/recover')
+    assert.deepEqual(
+      JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
+      saved
+    )
+  })
+
+  test('--check reads saved choices without prompting or writing', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(join(root, 'config/account_kit_setup.json'), `${JSON.stringify(choices)}\n`)
+    let prompted = false
+    class NoPromptSetup extends SetupAccountKit {
+      override async interactiveChoices() {
+        prompted = true
+        throw new Error('--check must not start the interactive wizard')
+      }
+    }
+    const ignitor = new IgnitorFactory()
+      .withCoreProviders()
+      .withCoreConfig()
+      .merge({
+        rcFileContents: {
+          providers: [],
+          commands: [async () => new ListLoader([NoPromptSetup])],
+        },
+      })
+      .create(pathToFileURL(`${root}/`))
+
+    const previousExitCode = process.exitCode
+    try {
+      await ignitor.ace().handle(['account-kit:setup', '--check'])
+    } finally {
+      process.exitCode = previousExitCode
+    }
+
+    assert.isFalse(prompted)
+    assert.deepEqual(
+      JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
+      choices
+    )
+  })
+
+  test('explicit input choices take precedence over saved choices without prompting', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const saved = structuredClone(choices)
+    saved.policy.password.minLength = 14
+    await writeFile(join(root, 'config/account_kit_setup.json'), `${JSON.stringify(saved)}\n`)
+    const input = join(root, 'reconfigure.json')
+    choices.policy.password.minLength = 12
+    await writeFile(input, `${JSON.stringify(choices)}\n`)
+
+    const ignitor = retirementIgnitor(root, async () => ({
+      inspectedAccounts: 0,
+      affectedAccounts: 0,
+      checkedAt: new Date().toISOString(),
+      currentPasswordLogin: true,
+      currentProviders: [],
+    }))
+
+    const previousExitCode = process.exitCode
+    try {
+      await ignitor.ace().handle(['account-kit:setup', `--input=${input}`, '--apply'])
+    } finally {
+      process.exitCode = previousExitCode
+    }
+
+    assert.deepEqual(
+      JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
+      choices
+    )
+  })
+
+  test('malformed saved choices fall back to defaults for interactive setup', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(join(root, 'config/account_kit_setup.json'), '{ malformed json')
+    let receivedSeed: SetupChoices | undefined
+    let promptedChoices: SetupChoices | undefined
+    class ScriptedSetup extends SetupAccountKit {
+      override async interactiveChoices(
+        _askOverride?: (question: string) => Promise<string>,
+        initialChoices?: SetupChoices
+      ) {
+        receivedSeed = initialChoices
+        promptedChoices = await collectFromSavedChoices(
+          async () => '',
+          () => {},
+          initialChoices
+        )
+        return promptedChoices
+      }
+    }
+    const ignitor = new IgnitorFactory()
+      .withCoreProviders()
+      .withCoreConfig()
+      .merge({
+        rcFileContents: {
+          providers: [],
+          commands: [async () => new ListLoader([ScriptedSetup])],
+        },
+      })
+      .create(pathToFileURL(`${root}/`))
+
+    const previousExitCode = process.exitCode
+    try {
+      await ignitor.ace().handle(['account-kit:setup'])
+    } finally {
+      process.exitCode = previousExitCode
+    }
+
+    assert.isUndefined(receivedSeed)
+    assert.deepEqual(promptedChoices, defaultSetupChoices())
+
+    const input = join(root, 'recovered.json')
+    await writeFile(input, `${JSON.stringify(choices)}\n`)
+    try {
+      await ignitor.ace().handle(['account-kit:setup', `--input=${input}`, '--apply'])
+    } finally {
+      process.exitCode = previousExitCode
+    }
     assert.deepEqual(
       JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
       choices
