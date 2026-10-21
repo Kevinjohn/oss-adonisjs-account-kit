@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add a runnable Inertia Vue account example with verified access, settings, recovery and accessible form feedback.
+- Add focused existing-application recipes for reset, verified access, configured mail, custom fields and selective managed endpoint replacement.
 
 - Document a shared account-journey acceptance contract and distinguish example implementation from verification evidence.
 
