@@ -32,3 +32,10 @@ test('API example README runs its suite with the host and limiter store the test
     []
   )
 })
+
+test('API example env template is in the form generate:key writes back', async ({ assert }) => {
+  // EnvEditor joins lines with "\n" and adds no final newline; a committed one shows as a diff
+  // after the README setup.
+  const template = await readFile(`${exampleRoot}.env.example`, 'utf8')
+  assert.isFalse(template.endsWith('\n'))
+})
