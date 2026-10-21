@@ -33,9 +33,14 @@ test('API example README runs its suite with the host and limiter store the test
   )
 })
 
-test('API example env template is in the form generate:key writes back', async ({ assert }) => {
+test('example env templates are in the form generate:key writes back', async ({ assert }) => {
   // EnvEditor joins lines with "\n" and adds no final newline; a committed one shows as a diff
   // after the README setup.
-  const template = await readFile(`${exampleRoot}.env.example`, 'utf8')
-  assert.isFalse(template.endsWith('\n'))
+  for (const example of ['api', 'hypermedia', 'inertia-react', 'inertia-vue']) {
+    const template = await readFile(
+      fileURLToPath(new URL(`../examples/${example}/.env.example`, import.meta.url)),
+      'utf8'
+    )
+    assert.isFalse(template.endsWith('\n'), example)
+  }
 })
