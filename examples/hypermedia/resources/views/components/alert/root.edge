@@ -1,15 +1,13 @@
 @let(variant = $props.get('variant') || 'success')
-@inject({ variant, autoDismiss: $props.get('autoDismiss') })
+@inject({ variant })
 @let(classes = ['alert', `alert--${variant}`])
 
 <div {{
   $props
-    .except(['variant', 'autoDismiss'])
+    .except(['variant'])
     .merge({
       role: 'alert',
       class: classes,
-      'x-data': 'alert',
-      'x-show': 'isVisible',
     })
     .toAttrs()
 }}>
