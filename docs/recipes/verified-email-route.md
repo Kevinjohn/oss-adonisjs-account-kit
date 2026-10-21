@@ -16,8 +16,16 @@ the package's verification and credential-revision columns. Add or reuse these f
 - `start/kernel.ts` to register the named middleware.
 - `start/routes.ts` to place the check after the native `auth` middleware.
 
-This recipe is API-only and has no session dependency. Its `accountInput` helper reads only the
-selected `api` access-token guard:
+For a stateless API app, keep only the API guard in `config/auth.ts`. The official API starter
+includes optional Session support; remove it from this app with `pnpm remove @adonisjs/session`,
+remove the Session command and provider from `adonisrc.ts`, remove its middleware from
+`start/kernel.ts`, and delete `config/session.ts` and `SESSION_DRIVER` from `.env` and
+`start/env.ts`. Remove `sessionApiClient` from `tests/bootstrap.ts` if the app has that test plugin.
+Keep body parsing before Auth initialization in the router stack, and apply `auth()` before
+`verifiedAccount()` on the route. These changes leave the helper and route independent of Session.
+
+This recipe's helper and middleware have no session dependency. In an API app, `accountInput` reads
+only the selected `api` access-token guard:
 
 ```ts
 // app/services/account_input.ts
@@ -100,16 +108,28 @@ integration. Keep messages and any guest redirect in the application; Account Ki
 error codes and the verification decision. See [AdonisJS Auth middleware](https://docs.adonisjs.com/guides/auth/introduction)
 and the [authentication reference](../authentication.md) for the selected guard setup.
 
-The disposable acceptance app used the repository's `examples/api` reference app at source revision
-`ae42132` and was prepared with `pnpm test:consumer -- --database=sqlite --prepare-only`. It ran
-Node `v24.21.0`, AdonisJS Core
-`7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, and Account Kit `0.0.0` against SQLite;
-the prepared app uses pnpm `10.21.0` (the packaging workspace uses pnpm `11.23.0`).
+The disposable acceptance app was scaffolded with
+`pnpm create adonisjs@3.4.0 /private/tmp/recipe-api-sessionfree --kit=api --pkg=pnpm` from the
+official `adonisjs/starter-kits` API starter (revision
+`46d235932e3eb6472a16b740fa0b47b5f69fc6fc`). It used Node `v24.21.0`, pnpm `11.23.0`, AdonisJS
+Core `7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, SQLite `better-sqlite3` `13.0.3`, and
+Account Kit `0.0.0` from a local package archive built at source revision
+`d97d95d165fd5a2b8fac58262e92dba67db07d0d`. Setup used
+`pnpm add <local-archive>`, `node ace add @adonisjs/limiter` with the database store,
+`node ace add adonisjs-account-kit`, `pnpm remove @adonisjs/session`, and
+`node ace migration:run`. The generated account configuration selected the `api` token guard and
+verification capability. The app manifest, `adonisrc.ts`, `config/auth.ts`, `start/kernel.ts`,
+`config/session.ts`, `.env`, and test bootstrap contained no active Session package, guard, provider,
+middleware, configuration, environment variable, or test plugin.
 
-A temporary disposable-app HTTP test named `recipe_verified_email_route.spec.ts` mounted the route
-with `auth()` followed by `verifiedAccount()` and passed with
-`pnpm exec node ace test --files=recipe_verified_email_route.spec.ts`:
-guest 401, unverified account 403, verified account 200. Removing `verifiedAccount()` changed the
-unverified result to 200; restoring it returned the test green. This checks the API guard and
-middleware only, not a browser redirect or localized frontend message. See the
-[example acceptance record](../guides/example-acceptance.md).
+The disposable app copied the helper and middleware above, registered `verifiedAccount()` in
+`start/kernel.ts`, and mounted a protected `GET /api/v1/reports` route with `auth()` first. Under
+`pnpm typecheck` and `pnpm exec node ace test --files=recipe_verified_email_route.spec.ts`, the test
+passed 1/1: a guest received 401, an authenticated unverified user received 403, and an authenticated
+verified user received 200. Users and tokens were created in the disposable SQLite database; the
+route reached its handler only for the verified account. Removing `verifiedAccount()` changed the
+unverified result from 403 to 200; restoring it returned the test green. An earlier `examples/api`
+fixture check is not used as Session-free evidence because that reference app retains optional
+browser-strategy code.
+This verifies the API guard and route middleware, not browser redirects or localized frontend
+messages. See the [example acceptance record](../guides/example-acceptance.md).
