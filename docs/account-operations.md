@@ -58,6 +58,9 @@ password-based and consumes the invitation once. It does not recheck the inviter
 permission or disabled state. The `role` is opaque application data; use
 `onInvitationAccepted(user, invitation, trx)` for required membership or role writes in the
 acceptance transaction. Closed ordinary registration does not disable invitation acceptance.
+For workspace membership, the application must also scope invitation listing in its own database
+query. The [workspace invitation recipe](recipes/multi-tenant.md) shows the exact managed-route
+replacement and keeps creation and management permissions bound to the selected workspace.
 
 ### Signing in with the invited address
 

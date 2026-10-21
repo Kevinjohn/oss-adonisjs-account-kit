@@ -47,6 +47,11 @@ callbacks can be overridden by spreading the maintained set first. The mail inte
 message content and transport calls, while the application owns the sender identity and Mail
 transport. `emailLayout` wraps escaped package content; treat that callback as trusted
 application code. `brandName`, `from`, and `emailLayout` do not affect token issuance.
+
+For local development, [replace the generated throwing callbacks with the log recipe](recipes/development-mail.md).
+That renders a live proof into the application's private log and does not send email or establish
+recipient delivery. Production requires the application's configured real Mail transport and a
+verified sender.
 The exported `*Provision` classes hold action-link values for the maintained callbacks; they
 are not AdonisJS `BaseMail` subclasses. Pass callbacks returned by `createMailNotifications`
 to Account Kit rather than passing those values directly to `mail.sendLater`.
@@ -55,7 +60,11 @@ An email contains a browser link. The application supplies that browser landing 
 password-entry or confirmation form. The page calls the relevant backend operation; the mail
 link itself does not complete a reset or confirmation. An API-only development install may copy
 proofs from an explicitly configured local capture transport and call the backend operation
-manually. Production readiness requires real destinations for all enabled action flows.
+manually. The API example's captured callbacks, dispatcher, and outbox are deterministic
+test/demo fixtures, not a production transport or worker: receiver idempotency is kept in memory,
+the dispatcher stops at the first failed row, and it has no backoff or safe concurrent claims.
+The [API copy maps](../examples/api/README.md#copy-maps) mark these files at the copy decision.
+Production readiness requires a real transport and destinations for all enabled action flows.
 
 `backendOrigin` is the public backend URL; `appFrontendUrl` is the public browser URL. Both may
 contain a base path, which is preserved. Destinations are relative paths below
@@ -81,9 +90,12 @@ system, choose `best-effort`; this is allowed in production and the report says 
 
 ## How it works
 
-The maintained templates cover password reset, account activation, invitation and email-change
-links, plus password-reset, password-change, email-change, social-link and social-unlink security notices. Each message has
-an HTML heading, descriptive link text, and a plain-text version containing the full URL.
+The maintained templates cover password-reset, activation, invitation, email-change and magic-link
+links, plus password-reset, password-change, email-change, social-link and social-unlink security
+notices and an account-deletion confirmation. Each message has an HTML heading, descriptive link text
+when it has an action, and a plain-text version containing the full URL when applicable. The
+[custom email callback reference](recipes/email-templates.md) lists every callback, recipient and
+operation timing.
 Dynamic text and URLs are HTML escaped. `createMailNotifications` calls AdonisJS Mail's
 `sendLater`, after the account operation has committed. It does not install a queue or outbox.
 Social notices name Google or GitHub and go only to the account address confirmed at the time
@@ -99,8 +111,14 @@ as `DeliveryError`; credential notice or other post-commit follow-up failure is 
 `PostCommitError` with `committed: true`. Both can follow a committed account change, so never
 blindly repeat a non-repeatable mutation. A transport failure _after_ `sendLater` accepts the
 message is observable through the application's Mail transport or worker logs, not a later
-Account Kit exception. Password-reset request HTTP handlers must suppress delivery status and
-return the same acknowledgement for known and unknown addresses.
+Account Kit exception. Password-reset request HTTP handlers return the same generic `202`
+acknowledgement for known and unknown addresses, even when delivery fails after commit. This privacy
+response is not evidence that the notification callback ran or the message reached a recipient. If
+a local request is acknowledged without a log entry, check that the generated callback was
+replaced, the configured `urls.passwordReset` destination is correct, and the application logger
+is visible, and the address belongs to an account in the selected local database. Unknown addresses
+receive the same acknowledgement without a message. In production, check the configured transport and its worker or provider status;
+`sendLater` acceptance alone does not prove delivery.
 With Mail's default in-memory messenger, a later transport failure emits the
 `queued:mail:error` event. Subscribe in the application and record a private, redacted failure
 with an operation correlation ID where available; queue acceptance alone cannot prove recipient

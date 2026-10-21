@@ -14,6 +14,7 @@ import { validateAuthentication } from './validate_authentication.js'
 import { validatePolicy } from './validate_policy.js'
 import { validateMail } from './validate_mail.js'
 import { validateSocial } from './validate_social.js'
+import type { SelectedSetupOrigins } from './diagnostics.js'
 
 export type RetirementOptions = {
   retirementImpact: SetupPlan['retirementImpact']
@@ -25,10 +26,11 @@ export type ValidateOptions = RetirementOptions & {
   production: boolean
   /** Deployment values read for readiness; defaults to `process.env`. */
   env?: NodeJS.ProcessEnv
+  selectedOrigins?: SelectedSetupOrigins
 }
 
 export function validate(choices: SetupChoices, state: SetupInspection, options: ValidateOptions) {
-  const { production, env = process.env } = options
+  const { production, env = process.env, selectedOrigins } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
   if (!setupModes.includes(choices.mode))
@@ -97,8 +99,8 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     diagnostic(diagnostics, 'user.adapter', 'Provide #services/account_kit_users before activation')
   validateAuthentication(diagnostics, choices, state, production)
   validatePolicy(diagnostics, choices, state)
-  validateMail(diagnostics, choices, state, production, env)
-  validateSocial(diagnostics, choices, state, production, env)
+  validateMail(diagnostics, choices, state, production, env, selectedOrigins)
+  validateSocial(diagnostics, choices, state, production, env, selectedOrigins)
   retirementDiagnostics(diagnostics, choices, state, options)
   if (state.existingPrefix && state.existingPrefix !== choices.routePrefix)
     diagnostic(

@@ -6,6 +6,20 @@ guard, so set that up first with the [sessions recipe](sessions.md).
 The [Inertia React example app](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/examples/inertia-react/README.md) puts this recipe together
 with signup, email confirmation and password change in the official starter kit.
 
+For profile and email settings, copy the example's authenticated `settings/profile` and
+`settings/email` routes and its public `confirm-email/:token` GET/POST pair. The profile controller
+passes only the signed-in user's ID, current password, and validated `fullName` to
+`emailPasswordManagement.updateProfile`. An email request uses `requestEmailChange`; the confirmed
+address remains active while the new address is pending. The confirmation GET calls
+`inspectEmailChange` without using the proof, and the POST calls `completeEmailChange`, ends the
+current browser session, and redirects to sign-in. Cancel a pending address through
+`updateProfile({ actorId, currentPassword, email: currentEmail })`; the service also invalidates
+its proof. Keep the profile and email settings routes behind authentication, and do not accept a
+user ID from form data as authority. Show generic copy when an address cannot be used.
+The example blocks email-change requests until the current address is confirmed, because the
+service immediately changes an inactive account's address. Direct unconfirmed users to the
+dashboard's verification resend action; this is an application policy, not a service restriction.
+
 This recipe covers forgot password. Verification, invitations and email change follow the same
 pattern: a form posts to a controller, the link in the email opens a page, and that page posts the
 token back.
@@ -35,11 +49,10 @@ urls: {
 
 ```ts
 // app/controllers/password_resets_controller.ts
-import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
 import vine from '@vinejs/vine'
+import accountKit from 'adonisjs-account-kit/services/main'
 import {
-  AccountKit,
   DeliveryError,
   InvalidTokenError,
   PostCommitError,
@@ -48,7 +61,10 @@ import {
 
 const emailValidator = vine.compile(vine.object({ email: vine.string().email() }))
 const passwordValidator = vine.compile(
-  vine.object({ password: vine.string().minLength(8).maxLength(256).confirmed() })
+  vine.object({
+    password: vine.string().minLength(8).maxLength(32),
+    passwordConfirmation: vine.string().sameAs('password'),
+  })
 )
 
 export default class PasswordResetsController {
@@ -58,9 +74,8 @@ export default class PasswordResetsController {
 
   async store({ request, response, session, logger }: HttpContext) {
     const { email } = await request.validateUsing(emailValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      await kit.passwordReset.request({ email, clientKey: request.ip() })
+      await accountKit.passwordReset.request({ email, clientKey: request.ip() })
     } catch (error) {
       if (error instanceof ThrottledError) {
         session.flash('error', 'Too many attempts. Try again later.')
@@ -78,16 +93,14 @@ export default class PasswordResetsController {
     // Keeps the token out of the Referer sent to other sites; same-origin still lets form errors
     // redirect back to this page.
     response.header('Referrer-Policy', 'same-origin')
-    const kit = await app.container.make(AccountKit)
-    const valid = await kit.passwordReset.inspect({ token: params.token })
+    const valid = await accountKit.passwordReset.inspect({ token: params.token })
     return inertia.render('auth/reset_password', { token: params.token, valid })
   }
 
   async update({ request, response, session, params, logger }: HttpContext) {
     const { password } = await request.validateUsing(passwordValidator)
-    const kit = await app.container.make(AccountKit)
     try {
-      await kit.passwordReset.reset({ token: params.token, password })
+      await accountKit.passwordReset.reset({ token: params.token, password })
     } catch (error) {
       if (error instanceof InvalidTokenError) {
         session.flash('error', 'This link is invalid or has expired.')
@@ -103,7 +116,13 @@ export default class PasswordResetsController {
 }
 ```
 
-`inspect` checks the link without using it up, so the page can show "this link has expired"
+The example keeps the starter's 32-character ceiling for new passwords. Account Kit accepts new
+passwords up to 256 UTF-16 code units by default; an application may choose a stricter
+`passwordPolicy` and matching validator. Login does not apply that new-password policy, so existing
+passwords up to the service's 256-unit ceiling remain usable. Keep the same new-password limit on
+signup, reset and password-change forms.
+
+`inspect` checks the link without using it up, so the page can show that a link cannot be used
 before the user types a new password.
 
 ## Pages
@@ -136,26 +155,42 @@ export default function ForgotPassword() {
 import { useForm, Link } from '@inertiajs/react'
 
 export default function ResetPassword({ token, valid }: { token: string; valid: boolean }) {
-  const form = useForm({ password: '', password_confirmation: '' })
+  const form = useForm({ password: '', passwordConfirmation: '' })
   if (!valid)
     return (
       <p>
-        This link is invalid or has expired. <Link href="/forgot-password">Request a new one</Link>.
+        This link may be invalid, already used, or expired.{' '}
+        <Link href="/forgot-password">Request a new one</Link>.
       </p>
     )
   return (
     <form onSubmit={(event) => (event.preventDefault(), form.post(`/reset-password/${token}`))}>
+      <label htmlFor="password">New password</label>
       <input
+        id="password"
+        name="password"
         type="password"
         value={form.data.password}
         onChange={(e) => form.setData('password', e.target.value)}
+        aria-invalid={form.errors.password ? true : undefined}
+        aria-describedby={form.errors.password ? 'password-error' : undefined}
       />
+      {form.errors.password && <p id="password-error">{form.errors.password}</p>}
+      <label htmlFor="passwordConfirmation">Confirm new password</label>
       <input
+        id="passwordConfirmation"
+        name="passwordConfirmation"
         type="password"
-        value={form.data.password_confirmation}
-        onChange={(e) => form.setData('password_confirmation', e.target.value)}
+        value={form.data.passwordConfirmation}
+        onChange={(e) => form.setData('passwordConfirmation', e.target.value)}
+        aria-invalid={form.errors.passwordConfirmation ? true : undefined}
+        aria-describedby={
+          form.errors.passwordConfirmation ? 'password-confirmation-error' : undefined
+        }
       />
-      {form.errors.password && <p>{form.errors.password}</p>}
+      {form.errors.passwordConfirmation && (
+        <p id="password-confirmation-error">{form.errors.passwordConfirmation}</p>
+      )}
       <button disabled={form.processing}>Set new password</button>
     </form>
   )

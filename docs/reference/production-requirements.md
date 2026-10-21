@@ -7,8 +7,8 @@ Supported versions, required stores and default limiter budgets. For the procedu
 
 Production support is limited to the tested points and declared peer ranges in
 [compatibility](../compatibility.md). Account Kit requires Node.js 24 or later, AdonisJS Core 7,
-Lucid 22.4.2 or later in the 22.x line, Limiter 3, and Luxon 3. PostgreSQL, MySQL 8.4 and SQLite are
-supported with the schema and connection requirements listed there. Use the same database and
+Lucid 22.4.2 or later in the 22.x line, Limiter 3, and Luxon 3. PostgreSQL and SQLite are
+supported, and MySQL 8.4 is experimental, with the schema and connection requirements listed there. Use the same database and
 schema across application instances.
 
 The setup command needs the optional TypeScript parser to inspect application source: TypeScript

@@ -157,6 +157,40 @@ belong to application/provider configuration. A selected provider marked `approv
 production handshake guarantee; handle provider credential rotation only after its separate
 integration and verification are complete.
 
+### Recover from committed notification or observer failures
+
+`DeliveryError` identifies a committed delivery-path failure and does not add a `committed` field
+to the mapped error body. `PostCommitError` identifies a failed post-commit observer or follow-up
+and maps with `committed: true`; it can also include a notification callback when that callback
+runs as an observer. For example, reset-link delivery can produce `DeliveryError`, while reset
+completion and password-change notification callbacks run as post-commit observers and can produce
+`PostCommitError`. Handle either at the operation boundary: record only a redacted operation name
+and failure kind, then return that operation's normal success or partial-success response. Do not
+repeat a mutation because its follow-up failed. Other package-defined errors extend
+`AccountKitError`; database and application callback errors may propagate unchanged and should
+continue through normal application reporting.
+
+The API example's `account_kit_outbox` stores password-reset-completion and password-change notices
+only. It does not persist password-reset link-provision delivery. Its notice rows have retry state
+and an operation ID; signup verification, invitations, email changes and other notifications do
+not create outbox rows. A failed reset-link delivery receives the same generic acknowledgement as
+any reset request; the person can submit another generic password-reset request to get a new link.
+Do not direct operators to inspect the outbox for reset-link delivery or imply that it preserves
+that delivery intent. Add application-owned durable delivery where other notices need retries.
+
+For a committed signup failure, first check that the account exists. The person can sign in with
+the password they chose to obtain the limited inactive-account access, then request another
+verification link. If they cannot sign in, use the generic password-reset route; it can recover
+access without revealing whether an address is registered. Do not repeat signup, which would hit
+the duplicate-email path.
+
+For a failed invitation-send follow-up, check whether the invitation is still pending, find it in
+the invitation list and resend that invitation. For a failed invitation-acceptance follow-up, check
+whether acceptance committed: the invitation may already be consumed and its account created. Have
+that person sign in or use password reset; do not repeat acceptance or create another invitation
+as a substitute for checking the result. Keep reset and resend responses generic wherever the
+public flow hides account or invitation state.
+
 ### Diagnostics and redaction
 
 Proof URLs contain bearer credentials in their path and must be redacted from request paths and
