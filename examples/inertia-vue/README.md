@@ -13,8 +13,8 @@ source because the matching package release is not published yet:
 ```sh
 nvm use
 pnpm install --frozen-lockfile
-pnpm kit:pack
 cd examples/inertia-vue
+pnpm kit:pack
 pnpm install
 cp .env.example .env
 node ace generate:key
