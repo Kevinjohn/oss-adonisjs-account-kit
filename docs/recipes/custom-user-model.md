@@ -73,6 +73,19 @@ const updated = await accountKit.emailPasswordManagement.updateProfile({
 })
 ```
 
+Keep the existing route protected by authentication and the application's current-account policy:
+
+```ts
+router
+  .patch('/api/v1/account/profile', [ProfileController, 'update'])
+  .use(middleware.auth())
+  .use(middleware.accountAccess())
+```
+
+For browser routes, retain the application's CSRF middleware as well. `accountAccess()` allows a
+signed-in but not-yet-verified account to update its profile while still checking current credentials
+and application access policy.
+
 Keep the existing `fullName` mapping if the application already accepts it. In the Lucid adapter,
 assign only recognized fields that are present; profile updates can supply `displayName` without
 resending `fullName`:
@@ -153,17 +166,21 @@ plain SQL, write an adapter that satisfies the [custom adapter](custom-adapter.m
 
 ## Disposable acceptance
 
-The disposable API app was prepared from `examples/api` at starter revision `ae42132` with
-`pnpm test:consumer -- --database=sqlite --prepare-only`. It ran Node `v24.21.0`, AdonisJS Core
+The disposable API app used the repository's `examples/api` reference app at source revision
+`ae42132` and was prepared with `pnpm test:consumer -- --database=sqlite --prepare-only`. It ran
+Node `v24.21.0`, AdonisJS Core
 `7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, and Account Kit `0.0.0` against SQLite;
 the prepared app uses pnpm `10.21.0` (the packaging workspace uses pnpm `11.23.0`).
 
 The app added nullable `display_name` in a migration and regenerated `database/schema.ts` with
-`pnpm exec node ace migration:run --force`. The disposable test passed with
-`pnpm exec node ace test --files=tests/functional/recipe_custom_user_field.spec.ts`, and
-`pnpm run typecheck` passed: a trimmed value persisted, wrong-type input returned a Vine
-`displayName` field error without changing storage, and direct mapper input containing `isAdmin`
-was rejected. An HTTP request's extra unknown key was accepted only alongside a valid field and
-was not assigned. Removing the mapper allowlist made its direct rejection assertion fail; restoring
-it passed. Blank/overlength values reached Account Kit's generic invalid-input response in this run,
+`pnpm exec node ace migration:run --force`. Temporary disposable-app tests named
+`recipe_custom_field.spec.ts` and `account_profile_email.spec.ts` passed with
+`pnpm exec node ace test --files=recipe_custom_field.spec.ts --files=account_profile_email.spec.ts`;
+`CI=true pnpm typecheck` also passed. The custom-field test persisted a trimmed value, returned
+a Vine `displayName` field error for wrong-type input without changing storage, ignored an extra
+HTTP `isAdmin` property, and the existing email-change test still passed. A second temporary
+disposable-app test named `recipe_custom_user_field.spec.ts` passed with
+`pnpm exec node ace test --files=recipe_custom_user_field.spec.ts`; it verified direct mapper
+rejection for `isAdmin`. Removing the mapper allowlist made that assertion fail, and restoring it
+passed. Blank/overlength values reached Account Kit's generic invalid-input response in those runs,
 and no signup field was added. See the [example acceptance record](../guides/example-acceptance.md).
