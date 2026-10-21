@@ -26,3 +26,24 @@ test('examples that pack the local archive can run kit:pack before their first i
   }
   assert.deepEqual(blocked, [])
 })
+
+test('examples that pack the local archive do not install it with a frozen lockfile', async ({
+  assert,
+}) => {
+  const frozen: string[] = []
+  for (const entry of await readdir(examplesRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const directory = join(examplesRoot, entry.name)
+    const manifest = await readFile(join(directory, 'package.json'), 'utf8').catch(() => undefined)
+    if (!manifest || !JSON.parse(manifest).scripts?.['kit:pack']) continue
+    const readme = await readFile(join(directory, 'README.md'), 'utf8')
+    // The root install is frozen; the archive's integrity changes with every local build.
+    for (const line of readme.split('\n'))
+      if (
+        /^pnpm\b.*\binstall\b.*--frozen-lockfile/.test(line.trim()) &&
+        line.trim() !== 'pnpm install --frozen-lockfile'
+      )
+        frozen.push(`${entry.name}: ${line.trim()}`)
+  }
+  assert.deepEqual(frozen, [])
+})
