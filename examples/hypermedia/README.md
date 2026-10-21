@@ -142,5 +142,31 @@ pnpm test
 
 The browser suite uses isolated SQLite and in-memory proof capture. It demonstrates callback
 dispatch and link contents, not SMTP delivery or arrival in a recipient inbox. PostgreSQL is not
-configured for this standalone example. Record the exact passing suites and any desktop/narrow
-browser inspection performed alongside changes; implementation alone is not browser evidence.
+configured for this standalone example.
+
+For the recorded Node 24.21.0 and pnpm 11.23.0 run, the root frozen install, package build,
+contributor archive pack and example frozen install all passed. A fresh `.env.example` setup
+generated a local key and migrated SQLite; the migration scan found all seven tables, including
+the server-side `sessions` and `login_link_tokens` tables. The example `lint`, `typecheck`,
+`build` and `test` scripts passed. The suite reported eight tests: one safe-old-input unit test and
+seven native browser journeys. A separate database-session run passed the saved-cookie logout
+replay journey using:
+
+```sh
+SESSION_DRIVER=database PORT=3342 APP_URL=http://localhost:3342 \
+  pnpm exec node ace test --suites browser \
+  --tests 'profile, email change, password change, and logout follow session policy'
+```
+
+That run used Account Kit package `0.0.0` (unpublished), built from source revision
+`4ba9c79a5754eb0ec462e792446658fe1549e79e`. The generated contributor archive SHA-256 was
+`24d8fb1b0693338b41e51b25ddeaabc2a06ca70ea46747d4073bf584b2730c99`; it is local verification
+evidence, not a published consumer release.
+
+The HTTP smoke check returned 200 for `/`, `/signup`, `/login`, `/forgot-password`, and invalid
+verification, reset and email-confirmation proof pages. Browser inspection at 1440×900 and
+375×812 found readable forms without horizontal overflow. A mismatched password confirmation
+kept the safe name and email, cleared both password fields, focused the invalid confirmation field,
+and allowed keyboard navigation to continue to submit. The safe-input regression passed; no
+unsafe mutation result is claimed. The app prints development proof links instead of sending mail,
+so this run does not verify SMTP delivery or inbox arrival.
