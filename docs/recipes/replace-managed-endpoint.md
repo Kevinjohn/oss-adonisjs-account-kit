@@ -61,6 +61,8 @@ revision and application restriction policy. This profile read is a `limited` ro
 Project only public fields from the authenticated user; do not serialize the model wholesale:
 
 ```ts
+import type { HttpContext } from '@adonisjs/core/http'
+
 export default class AccountProfileController {
   async show({ auth }: HttpContext) {
     const user = auth.use('api').getUserOrFail()
@@ -107,5 +109,8 @@ HTTP test `recipe_replace_managed_endpoint.spec.ts` passed with
 the custom projection worked, managed reset revoked the saved bearer on that actual route, and a
 new login worked. Removing credential-revision advancement and retaining tokens changed the
 protected response from 401 to 200; restoring the package and rerunning passed. This checks API
-routes, not a browser or external delivery. See the
+routes, not a browser or external delivery. The complete `AccountProfileController` snippet above,
+including its `HttpContext` type import, was copied verbatim into
+`app/controllers/account_profile_controller.ts` in that disposable app and passed
+`pnpm typecheck` under Node `v24.21.0`. See the
 [example acceptance record](../guides/example-acceptance.md).
