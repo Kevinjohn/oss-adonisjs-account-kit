@@ -119,8 +119,8 @@ Account Kit `0.0.0` from a local package archive built at source revision
 `node ace add adonisjs-account-kit`, `pnpm remove @adonisjs/session`, and
 `node ace migration:run`. The generated account configuration selected the `api` token guard and
 verification capability. The app manifest, `adonisrc.ts`, `config/auth.ts`, `start/kernel.ts`,
-`config/session.ts`, `.env`, and test bootstrap contained no active Session package, guard, provider,
-middleware, configuration, environment variable, or test plugin. The archive used for this check
+`config/session.ts`, `.env`, and test bootstrap had no direct Session dependency or active Session
+guard, provider, middleware, configuration, environment variable, or test plugin. The archive used for this check
 had SHA-256 `008f3a3ad34797969d71465bfe0618be6c2cf2b222aa0d0ebe632a2b56782573`.
 
 The disposable app copied the helper and middleware above, registered `verifiedAccount()` in
