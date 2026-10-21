@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
 import { inspectAccountAccess } from './account_access_inspection.js'
+import { requireAuthentication } from './authentication_config.js'
+import { safeAccount } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { normalizeEmail } from './email.js'
 import { throttlerOf } from './throttle.js'
@@ -18,7 +20,6 @@ import { waitForFloor } from './timing.js'
 import { hashToken } from './tokens.js'
 import { retirementImpact } from './login_method_retirement.js'
 import {
-  CapabilityDisabledError,
   InvalidCredentialsError,
   InvalidSessionError,
   ThrottledError,
@@ -32,8 +33,6 @@ import type {
   CurrentAccount,
   CurrentAccountInput,
   PasswordLoginInput,
-  ResolvedAuthenticationConfig,
-  ResolvedConfig,
   SocialProviderName,
   Trx,
   UserId,
@@ -41,27 +40,8 @@ import type {
 import type { ServiceDependencies } from './service_dependencies.js'
 
 export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
-
-/** The authentication settings, or `CapabilityDisabledError` when authentication is off. */
-export function requireAuthentication(config: ResolvedConfig): ResolvedAuthenticationConfig {
-  if (!config.authentication) throw new CapabilityDisabledError('Authentication is disabled')
-  return config.authentication
-}
-
-/** An account is active unless its only address is still unconfirmed. */
-export function isActiveAccount(user: AccountUser): boolean {
-  return user.unverifiedEmail !== user.email
-}
-
-export function safeAccount(user: AccountUser): CurrentAccount {
-  return {
-    id: user.id,
-    email: user.email,
-    unverifiedEmail: user.unverifiedEmail,
-    hasPassword: user.hasPassword,
-    active: isActiveAccount(user),
-  }
-}
+export { isActiveAccount, safeAccount } from './account_projection.js'
+export { requireAuthentication } from './authentication_config.js'
 
 export async function currentInTransaction(
   deps: Pick<ServiceDependencies, 'config'>,
@@ -208,7 +188,10 @@ export function authenticationService(deps: ServiceDependencies) {
      * Eligibility and credential revision of one account, read under its lock, without a credential
      * for it. Not authentication: authorise the caller first. Never call it from an Account Kit
      * callback or while your own transaction holds that account's row; it opens its own transaction
-     * and waits for any in-progress change to the same account.
+     * and waits for any in-progress change to the same account. Adapters and `canAccess` must be
+     * read-only through the supplied transaction and safe to retry. Missing, restricted and (when
+     * required) inactive accounts share `AccountAccessDeniedError`. A `PostCommitError` discards
+     * the snapshot; retry is safe under that dependency contract.
      */
     inspectAccountAccess(input: AccountAccessInput): Promise<AccountAccessSnapshot> {
       return inspectAccountAccess(deps, input)

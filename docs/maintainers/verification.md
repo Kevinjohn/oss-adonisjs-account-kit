@@ -1,6 +1,13 @@
 # Candidate verification
 
-Validation uses Node 24 and pnpm. Local checks are authoritative; the repository workflows remain manual and were not dispatched.
+Validation uses Node 24 and pnpm. Dated candidate records below identify the revisions and
+configurations tested; historical totals do not describe the latest candidate. Check each pull
+request for its current automated workflow results.
+
+## Historical pre-inspection summary
+
+The following summary is retained from earlier verification and is not the account-inspection
+candidate result. See [Account access inspection](#account-access-inspection) for its dated evidence.
 
 The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 221
 SQLite tests, 221 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
@@ -55,6 +62,142 @@ The fresh API consumer also removes the fixture's admission provider, command lo
 include `examples/api/tests/functional/admission.spec.ts` for both strategies, then run that spec again with
 `ACCOUNT_KIT_ADMISSION_DOMAINS=example.test` for the domain case. The service-only consumer does
 not install admission.
+
+### Account access inspection
+
+Recorded 21 October 2026 for #600 and #607–#611. The integration candidate at
+`b9816045a5c46d77681ac13ac37942b47e379b43` contains the four prerequisite changes below,
+based on `main` at `628361e42756101585fa9ef69769b489a27aabd1`.
+
+| Issue | Pull request                                                           | Source commit                              |
+| ----- | ---------------------------------------------------------------------- | ------------------------------------------ |
+| #607  | [#612](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/612) | `d00b91b11648361d8ce22caeb24c5fb0d6715bda` |
+| #608  | [#613](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/613) | `23f1d64b415ecefa41e3bda13305bbecd4582b90` |
+| #609  | [#614](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/614) | `c695d295713df7d57093a515d89a25584f11be5c` |
+| #610  | [#615](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/615) | `855136a5c72ab17a99dde13a604ebfff27a165ec` |
+
+These PRs remain open and unmerged for the requested delivery. This records candidate integration
+evidence, not verification of a merged `main`. After approved merges, rerun the final gate from
+`main` and record its resulting SHA. Merge order: #612, #613, then #614 and #615 independently,
+then the delivery PR for #611. There is no version bump, no publication.
+
+The common gate ran as one fail-fast script with Node 24.21.0 pinned for all child commands,
+pnpm 11.23.0 and PostgreSQL 16.15. Every command below exited 0.
+
+| Command                      | Result                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm lint`                  | Passed                                                                                |
+| `pnpm typecheck`             | Passed                                                                                |
+| `pnpm build`                 | Passed                                                                                |
+| `pnpm quick:test`            | 1,081 passed; two PostgreSQL-only skips                                               |
+| `pnpm test:built-exports`    | Two passed, including inspection denial and error-class identity across built exports |
+| `pnpm test:pg-service`       | 61 passed                                                                             |
+| `DB_PORT=55432 pnpm test:pg` | 1,080 passed; three SQLite-only skips                                                 |
+| `pnpm docs:build`            | Passed                                                                                |
+
+Each prerequisite PR also records its own full gate and focused checks. #608 passes the
+documentation-link checks; #610's two focused concurrency tests pass on both databases.
+#609 covers the SQLite cleanup fault as well as a PostgreSQL deferred-constraint COMMIT rejection.
+The initial gate did not run MySQL. A follow-up on source-equivalent head
+`345c5f76daec3da76c390fc32350709a1a8c2c33` ran `DB_PORT=33307 pnpm test:mysql`
+on native MySQL 8.4.13: 1,077 passed and five dialect-specific tests skipped. The disposable
+server used UTC and was stopped afterward. MySQL remains experimental because it is not in
+the per-change CI matrix.
+
+Installed consumers both compiled with `skipLibCheck: false` and booted the service. They verify
+the public inspection types and method, the denial export, and `InvalidInputError` before a
+transaction can reach the intentionally absent account schema. Auth, Session, Shield, Tuyau,
+Mail and Ally packages are absent in both installations. SQLite reports 3.53.2.
+
+The consumer sequence passed in one script, with PostgreSQL stopped through an exit trap:
+
+```sh
+pnpm test:consumer -- --mode=service-only --database=sqlite
+DB_PORT=55436 pnpm pg:start
+createdb -h 127.0.0.1 -p 55436 -U account_kit account_kit_consumer
+DB_PORT=55436 pnpm test:consumer -- --mode=service-only --database=postgres
+DB_PORT=55436 pnpm pg:stop
+```
+
+Both runs packed `adonisjs-account-kit-0.0.0.tgz` from candidate
+`b9816045a5c46d77681ac13ac37942b47e379b43`. Their evidence files report successful installation,
+compilation and startup; the archive bytes were independently checked against each recorded digest.
+
+| Consumer   | Candidate SHA-256                                                  |
+| ---------- | ------------------------------------------------------------------ |
+| SQLite     | `b7cb3b7ddd1b645c0ea35f04b315d0635ad4b868be47fe6771639b0ca06c299b` |
+| PostgreSQL | `b7cb3b7ddd1b645c0ea35f04b315d0635ad4b868be47fe6771639b0ca06c299b` |
+
+The prerequisite PR descriptions record these mutation results. Every mutation was restored;
+each failure was checked against its named test rather than an empty test run or loading failure.
+
+| Mutation                                          | Evidence                                                                                                                                  |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Denial status 403 → 404                           | The dedicated denial-identity unit test and error-reference catalog test fail                                                             |
+| Accept empty-string user IDs                      | The user-ID domain test fails                                                                                                             |
+| Remove adapter/witness ID comparison              | Test 13, different-account substitution, fails                                                                                            |
+| Replace strict boolean validation with `!allowed` | Test 9 fails, including an isolated numeric `1` case                                                                                      |
+| Allow an undefined persisted revision             | The undefined-column revision unit test fails                                                                                             |
+| Remove dependency-denial wrapping                 | Test 10, operational dependency failures with their causes, fails                                                                         |
+| Read input ID again after awaiting                | Test 19, copied input getters, fails                                                                                                      |
+| Require authentication before input validation    | Test 17, invalid input with disabled authentication, fails                                                                                |
+| Remove adapter-ID validation                      | Test 14, malformed adapter ID, fails                                                                                                      |
+| Hard-code the users table                         | Test 20, custom members table, fails                                                                                                      |
+| Advance credentials during inspection             | All four INS-06 read-only snapshot tests fail                                                                                             |
+| Touch the limiter during inspection               | Typecheck passes; all four INS-06 tests fail with `limiter touched`                                                                       |
+| Remove witness `.forUpdate()`                     | PostgreSQL's reader-lock probe test fails because `55P03` is absent; both SQLite tests still pass under its transaction-start writer lock |
+
+The changelog includes `AccountAccessDeniedError` and
+`authentication.inspectAccountAccess`. These archives are consumable candidate artifacts; no
+package version was changed and nothing was published to the package registry.
+
+#### Review corrections and MySQL follow-up: 21 October 2026
+
+The revised source candidate `5b8bceb80408849e9561d06cc8b8e7fbef72024a` supersedes the
+initial candidate above. The responsibility split was committed separately and passed the full
+required package gate at `9ae5b9b2fcd7f2b5a0e58b33b343f697727b99b3` before subsequent changes.
+Projection and configuration guards now have focused modules, with original exports preserved;
+core inspection, schema compatibility and effects/failure suites have separate files. No inspection
+behavior or test assertions were removed. The subsequent independent assembled review closed all
+reported findings, including error/retry guidance, historical evidence labels, API comments,
+changelog adjacency and concurrency evidence.
+
+The final candidate passed the following checks with Node 24.21.0 and pnpm 11.23.0:
+
+| Check                                       | Result                                                         |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| `pnpm lint`, `pnpm typecheck`, `pnpm build` | Passed                                                         |
+| `pnpm quick:test`                           | 1,081 passed; two skipped                                      |
+| `pnpm test:built-exports`                   | Two passed                                                     |
+| `pnpm test:pg-service`                      | 61 passed                                                      |
+| `DB_PORT=55438 pnpm test:pg`                | 1,080 passed; three skipped; PostgreSQL 16.15                  |
+| `DB_PORT=33307 pnpm test:mysql`             | 1,077 passed; five skipped; native MySQL 8.4.13                |
+| `pnpm docs:build`                           | Passed                                                         |
+| Service-only installed consumer, SQLite     | Install, full declaration checking and compiled startup passed |
+| Service-only installed consumer, PostgreSQL | Install, full declaration checking and compiled startup passed |
+
+Both concurrency scenarios also passed as focused tests on SQLite, PostgreSQL and MySQL.
+For both row-lock engines they observe the actual waiting and blocking connections in both lock
+orders, rather than counting unrelated cluster locks or merely checking an unsettled promise.
+The native NOWAIT/update probes and before/after snapshot assertions remain in place.
+Removing the witness row lock made the MySQL lock-ownership assertion fail as expected;
+injecting an early inspection failure surfaced its original error in 0.98 seconds rather than
+hanging on a callback barrier. Both probes restored the original source afterward.
+
+Both fresh installed consumers used this source candidate, required `skipLibCheck: false`,
+and verified that optional backend authentication integrations were absent. The actual archive
+bytes were independently checked against the recorded SHA-256 values:
+
+| Consumer   | Candidate archive SHA-256                                          |
+| ---------- | ------------------------------------------------------------------ |
+| SQLite     | `01ee8259fefe17391763f72251523f0955ae7df2f872a31a4890068f877f91ab` |
+| PostgreSQL | `01ee8259fefe17391763f72251523f0955ae7df2f872a31a4890068f877f91ab` |
+
+MySQL was tested with UTC database connections while the test process used `America/New_York`.
+Its experimental status is unchanged: it is still outside the per-change CI matrix. Disposable
+MySQL and PostgreSQL servers were stopped after their checks. These are pre-merge candidate
+results; the merged-main gate remains a delivery step after approved merges. The follow-up
+verification-record commit changes documentation only.
 
 ### Vocabulary alignment: 15 October 2026
 
@@ -175,6 +318,12 @@ brew install mysql@8.4
 "$(brew --prefix mysql@8.4)/bin/mysql" -uroot -h127.0.0.1 -P33306 -e 'create database account_kit_test'
 pnpm test:mysql
 ```
+
+The concurrency tests identify the actual waiting and blocking connections using
+`performance_schema.data_lock_waits`, `performance_schema.data_locks` and
+`performance_schema.threads`. The test account needs SELECT access to these diagnostic tables;
+the default disposable root account has it. These permissions are test-only; application
+inspection does not query Performance Schema.
 
 The packed-consumer checks stay on SQLite and PostgreSQL; the MySQL evidence is this suite.
 
