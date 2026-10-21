@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import {
+  AccountAccessDeniedError,
   AccountKitError,
   AuthorizationError,
   DeliveryError,
@@ -14,6 +15,17 @@ import {
 } from '../../src/errors.js'
 
 test.group('account kit errors', () => {
+  test('inspection denial has one generic public identity without an authorization cause', ({
+    assert,
+  }) => {
+    const error = new AccountAccessDeniedError()
+    assert.equal(error.code, 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED')
+    assert.equal(error.status, 403)
+    assert.equal(error.message, 'Account access denied')
+    assert.instanceOf(error, AccountKitError)
+    assert.notInstanceOf(error, AuthorizationError)
+    assert.isUndefined(error.cause)
+  })
   test('exposes stable class names and codes, retry timing, and causes', async ({ assert }) => {
     const errorTypes = [
       InvalidInputError,
