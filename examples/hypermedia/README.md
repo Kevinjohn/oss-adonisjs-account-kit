@@ -144,12 +144,15 @@ The browser suite uses isolated SQLite and in-memory proof capture. It demonstra
 dispatch and link contents, not SMTP delivery or arrival in a recipient inbox. PostgreSQL is not
 configured for this standalone example.
 
-For the recorded Node 24.21.0 and pnpm 11.23.0 run, the root frozen install, package build,
-contributor archive pack and example frozen install all passed. A fresh `.env.example` setup
+The latest app verification used revision `232a72b126b4d238b6883240d141753adf793829` for
+persistent alert feedback with Node 24.21.0 and pnpm 11.23.0. The root frozen install, package
+build, contributor archive pack and example frozen install passed. A fresh `.env.example` setup
 generated a local key and migrated SQLite; the migration scan found all seven tables, including
 the server-side `sessions` and `login_link_tokens` tables. The example `lint`, `typecheck`,
-`build` and `test` scripts passed. The suite reported eight tests: one safe-old-input unit test and
-seven native browser journeys. A separate database-session run passed the saved-cookie logout
+`build` and `test` scripts passed. The suite reported nine tests: one safe-old-input unit test and
+eight native browser journeys. Without JavaScript, a failed login displayed its error and the
+password-reset flow displayed its generic confirmation. With JavaScript enabled, the login error
+remained visible after 5.1 seconds. A separate database-session run passed the saved-cookie logout
 replay journey using:
 
 ```sh
