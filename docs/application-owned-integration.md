@@ -20,8 +20,9 @@ and responses this guide summarizes.
 Configure the user adapter, enabled capabilities, registration availability, password policy,
 authorization and notification callbacks in `config/account_kit.ts` with `defineConfig`. The API
 example uses a lazy Lucid user adapter and explicitly maps validated registration data; it never
-spreads request fields onto the user model. Match application validators to the shared 8–256
-UTF-16-unit service password bounds and any configured `passwordPolicy`. See the
+spreads request fields onto the user model. Account Kit accepts new passwords from 8 to 256
+UTF-16 code units by default. Applications may choose a stricter `passwordPolicy` and matching
+validators for new passwords; login remains compatible with existing credentials. See the
 [example configuration](../examples/api/config/account_kit.ts), [registration guide](registration.md),
 and [service configuration guide](usage.md#configuration) for options and defaults. For maintained
 mail, use `createActionUrls` with fixed public backend and frontend origins and
@@ -45,6 +46,13 @@ fixture owns them under `/api/v1`:
 The fixture selects either the existing `web` session guard or `api` access-token guard through
 `ACCOUNT_KIT_AUTH_STRATEGY`.
 
+For the single opaque-token API path, use the example's [copy maps](../examples/api/README.md#copy-maps)
+to choose the minimum files and keep each route's guard in front of its handler. The package
+provides account operations and migrations; the application owns its route definitions, request
+validators, response language, enabled capabilities, access rules, role definitions, and callback
+policy. Copy the matching application files and adapt those decisions to your schema and policy;
+the example's test helpers and captured delivery fixtures are not application runtime features.
+
 For browser sessions, the reference cookie uses `SameSite=Lax`, so this setup is intended for a
 same-site browser deployment. A CORS origin allowlist alone does not enable cross-site cookies; do
 not infer that a cross-site browser deployment is supported from CORS configuration.
@@ -57,6 +65,9 @@ import { AccountKit } from 'adonisjs-account-kit'
 
 const kit = await app.container.make(AccountKit)
 ```
+
+This shows provider and container resolution explicitly. For ordinary controller examples, the
+short default service import is `import accountKit from 'adonisjs-account-kit/services/main'`.
 
 Keep each route's middleware and capability selection explicit. Apply the selected authentication
 integration before loading an actor, and apply verified-account or application authorization checks
@@ -77,9 +88,11 @@ For example, validate a password change and derive its actor from the authentica
 calling the service:
 
 ```ts
+import accountKit from 'adonisjs-account-kit/services/main'
+
 const actor = await auth.getUserOrFail()
 const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
-const kit = await app.container.make(AccountKit)
+const kit = accountKit
 
 let revision: string | null
 try {
@@ -221,8 +234,12 @@ controllers. The [service usage guide](usage.md) lists public operations and the
 The application owns its routes, controllers, validators, exception handler, authentication
 middleware, user model, and notification delivery. Configure adds the package provider,
 `config/account_kit.ts`, and package migrations when those files are absent. The
-[API consumer fixture](../examples/api) shows these files together. Package setup does not register
-the fixture's HTTP routes; resolving `AccountKit` only provides its services.
+[API consumer fixture's copy maps](../examples/api/README.md#copy-maps) show the source-to-destination
+files for each flow. The `authorize`, `admissionAuthorize`, registration field mapping, and
+validator examples are application policy to adapt. Test-only notification capture and the sample
+dispatcher/outbox are called out separately; use [notification guidance](notifications.md) for a
+production mail transport or durable worker. Package setup does not register the fixture's HTTP
+routes; resolving `AccountKit` only provides its services.
 
 ## Before deployment
 
@@ -239,10 +256,11 @@ the fixture's HTTP routes; resolving `AccountKit` only provides its services.
    application-owned worker.
 5. Exercise the enabled lifecycle against the installed package and selected database. Keep the
    frontend, public origins, mail transport, and deployment configuration in application scope.
-   For managed setup, the command validates selected mail-origin values from its process
-   environment. Pass the selected origin variables to the setup command or verify the application's
-   loaded values separately; setup does not load `.env` for these origin checks. A remaining origin
-   diagnostic is not evidence that the application failed to load its runtime environment.
+   For managed setup, the command resolves selected mail-origin values from the process environment
+   first, then from the selected Adonis environment-file paths, and validates those direct
+   assignments. It reads only the selected origin values; it does not load the application's full
+   runtime environment. Values in a selected environment file do not need to be passed separately.
+   A remaining origin diagnostic means a selected value was missing, invalid, or insecure.
 
 ### Developer evaluation protocol
 

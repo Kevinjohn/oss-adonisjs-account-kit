@@ -66,19 +66,28 @@ notify: {
 
 Reading `mail` inside the callback is safe: by the time a message is sent, the service exists.
 
-The callbacks and what each receives:
+The callbacks, recipient and operation timing:
 
-| Callback                     | Arguments             | Send to                              |
-| ---------------------------- | --------------------- | ------------------------------------ |
-| `passwordResetProvision`     | `user, url`           | `user.email`                         |
-| `accountActivationProvision` | `user, url`           | `user.unverifiedEmail ?? user.email` |
-| `invitationProvision`        | `invitation, url`     | `invitation.email`                   |
-| `emailChangeProvision`       | `user, newEmail, url` | `newEmail`                           |
-| `emailChanged`               | `previousEmail, user` | `previousEmail`                      |
-| `passwordResetCompleted`     | `user, context`       | `user.email`                         |
-| `passwordChanged`            | `user, context`       | `user.email`                         |
-| `socialIdentityLinked`       | `user, identity`      | `user.email`                         |
-| `socialIdentityUnlinked`     | `user, identity`      | `user.email`                         |
+| Callback                     | Arguments                                   | Send to                              | Called after                                                                                                   |
+| ---------------------------- | ------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `passwordResetProvision`     | `user, url`                                 | `user.email`                         | The reset token is committed.                                                                                  |
+| `accountActivationProvision` | `user, url`                                 | `user.unverifiedEmail ?? user.email` | An activation token is committed for registration, verification resend, or an inactive account's email change. |
+| `invitationProvision`        | `invitation, url`                           | `invitation.email`                   | An invitation is created or resent.                                                                            |
+| `emailChangeProvision`       | `user, newEmail, url`                       | `newEmail`                           | An email-change token is committed for a confirmed account.                                                    |
+| `emailChanged`               | `previousEmail, user`                       | `previousEmail`                      | The confirmed email change commits.                                                                            |
+| `passwordResetCompleted`     | `user, context`                             | `user.email`                         | The password reset commits. `context.operation` is `password_reset`.                                           |
+| `passwordChanged`            | `user, context`                             | `user.email`                         | The password change commits. `context.operation` is `password_change`.                                         |
+| `socialIdentityLinked`       | `user, identity` (`SocialIdentity`)         | `user.email`                         | The provider identity is linked; sent only when the account has a confirmed email.                             |
+| `socialIdentityUnlinked`     | `user, identity` (`SocialIdentity`)         | `user.email`                         | The provider identity is unlinked; sent only when the account has a confirmed email.                           |
+| `magicLinkProvision`         | `user, url`                                 | `user.email`                         | The client-bound, one-use sign-in token is committed.                                                          |
+| `accountDeleted`             | `account` (`DeletedAccount`: `id`, `email`) | `account.email`                      | Account deletion commits; the user row is already gone, so use the supplied historical address.                |
+
+All callbacks run after the account transaction commits. `context` is a `CredentialChangeContext`
+with `operation`, `operationId` and `userId`. The magic-link proof is bound to the requesting
+client, is single-use and expires. These callbacks do not place a durable delivery intent in the
+account transaction. If delivery must survive process or transport failure, persist the intent in
+an application-owned transaction and process it with an application worker; see
+[Notifications](../notifications.md).
 
 ## Render without sending
 

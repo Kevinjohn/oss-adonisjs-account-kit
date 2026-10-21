@@ -1,5 +1,6 @@
 import AppLayout from '~/layouts/app'
 import Section from '~/components/section'
+import FormErrorSummary, { focusFormErrorSummary } from '~/components/form_error_summary'
 import SettingsLayout from '~/layouts/settings'
 import { Form } from '@adonisjs/inertia/react'
 
@@ -15,9 +16,10 @@ export default function Password() {
       title="Password"
       description="Changing your password signs you out on every other device."
     >
-      <Form route="passwords.update" resetOnSuccess>
+      <Form route="passwords.update" resetOnSuccess onError={focusFormErrorSummary}>
         {({ errors, processing }) => (
           <div className="auth__form">
+            <FormErrorSummary errors={errors} fields={fields} />
             {fields.map(({ name, label, autoComplete }) => (
               <div className="field" key={name}>
                 <label className="field__label" htmlFor={name}>
@@ -29,9 +31,14 @@ export default function Password() {
                   type="password"
                   className="field__input"
                   autoComplete={autoComplete}
-                  aria-invalid={errors[name] ? 'true' : 'false'}
+                  aria-invalid={errors[name] ? true : undefined}
+                  aria-describedby={errors[name] ? `settings-${name}-error` : undefined}
                 />
-                {errors[name] && <span className="field__error">{errors[name]}</span>}
+                {errors[name] && (
+                  <span id={`settings-${name}-error`} className="field__error">
+                    {errors[name]}
+                  </span>
+                )}
               </div>
             ))}
 

@@ -63,7 +63,7 @@
     "pg:stop": "bash bin/pg.sh stop",
     "test:pg": "bash bin/pg.sh test",
     "test:mysql": "cross-env DB_CLIENT=mysql2 TZ=America/New_York pnpm quick:test",
-    "test:pg-service": "node --test scripts/test_pg_service.mjs"
+    "test:pg-service": "node --test --test-concurrency=1 scripts/test_pg_service.mjs scripts/tests/pg_service_process_safety.spec.mjs scripts/tests/pg_service_inputs.spec.mjs"
   },
   "keywords": [
     "adonisjs",

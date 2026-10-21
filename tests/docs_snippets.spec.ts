@@ -16,7 +16,7 @@ async function controllerSnippets(): Promise<{ document: string; code: string }[
 
 // The shared idiom: return the normal response and log, because the change already committed.
 const committed =
-  /if \(!\(error instanceof DeliveryError \|\| error instanceof PostCommitError\)\) throw error/g
+  /if \(!\(error instanceof DeliveryError \|\| error instanceof PostCommitError\)\)\s+(?:throw error|return knownError\()/g
 
 test('password reset snippets give the normal response when a notification fails', async ({
   assert,
