@@ -37,13 +37,17 @@ this.schema.alterTable('users', (table) => {
 })
 ```
 
-Add the application-owned VineJS rule and include it in the profile-update validator:
+Add the application-owned VineJS rule to the existing profile-update validator. Retain its
+optional `email` and `fullName` rules and their existing imports so this change does not remove
+profile updates the route already supports:
 
 ```ts
 export const displayName = () => vine.string().trim().minLength(1).maxLength(80)
 
 export const profileUpdateValidator = vine.create({
   currentPassword: vine.string().minLength(1),
+  email: email().optional(),
+  fullName: fullName().optional(),
   displayName: displayName().optional(),
 })
 ```
