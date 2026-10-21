@@ -6,7 +6,7 @@ import {
   createLucidAdapter,
   defineConfig,
 } from 'adonisjs-account-kit'
-import { accountKitNotifications } from '#services/account_kit_notifications'
+import { accountKitNotify } from '#services/account_kit_notifications'
 
 const environment = app.inProduction ? 'production' : app.inTest ? 'test' : 'development'
 
@@ -69,7 +69,7 @@ export default defineConfig({
    * Before deploying, add @adonisjs/mail and switch to createMailNotifications.
    */
   notify: app.inTest
-    ? accountKitNotifications.notify
+    ? accountKitNotify
     : createLogNotifications({ brandName: 'Account Kit Example', environment }),
   /**
    * A no-op on purpose: session login checks the credential revision on every request, so older

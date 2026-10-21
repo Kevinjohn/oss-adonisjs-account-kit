@@ -18,9 +18,13 @@ export default class ProfileController {
         registrationData: { fullName },
       })
     } catch (error) {
-      if (!(error instanceof errors.InvalidCredentialsError)) throw error
+      if (
+        !(error instanceof errors.InvalidCredentialsError) &&
+        !(error instanceof errors.IdentityNotConfirmedError)
+      )
+        throw error
       ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
-      ctx.session.flash('old', { fullName })
+      ctx.session.flashOnly(['fullName'])
       return ctx.response.redirect().back()
     }
     ctx.session.flash('success', 'Your profile has been updated.')

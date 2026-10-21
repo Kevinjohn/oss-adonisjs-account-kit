@@ -1,21 +1,32 @@
 @layouts.app({ title: 'Profile settings' })
   @page()
     <h1>Profile settings</h1>
-    <p>Change the name shown on your account. Your account ID always comes from the signed-in session.</p>
+    <p>
+      Change the name shown on your account. Your account ID always comes from the signed-in session.
+    </p>
     @form({ route: 'profile.update', method: 'POST', class: 'auth__form' })
       @field.root({ name: 'fullName' })
         @!field.label({ text: 'Full name' })
-        @!input.control({ autocomplete: 'name', value: old('fullName') || fullName || '' })
+        @!input.control({
+          autocomplete: 'name',
+          value: old('fullName') || fullName || '',
+        })
         @!field.error()
       @end
+
       <p>Current email: {{ email }}</p>
       @field.root({ name: 'currentPassword' })
         @!field.label({ text: 'Current password' })
-        @!input.control({ type: 'password', autocomplete: 'current-password', required: true })
+        @!input.control({
+          type: 'password',
+          autocomplete: 'current-password',
+          required: true,
+        })
         @!field.error()
       @end
       @!button({ text: 'Save profile', type: 'submit' })
     @end
-    @link({ route: 'dashboard' })Back to dashboard@end
+
+    <a href="{{ urlFor('dashboard') }}">Back to dashboard</a>
   @end
 @end

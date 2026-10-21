@@ -26,7 +26,7 @@ export default class SessionController {
         'error',
         'The email or password is incorrect. Check your details and try again.'
       )
-      ctx.session.flash('old', { email })
+      ctx.session.flashOnly(['email'])
       return ctx.response.redirect().back()
     }
     ctx.session.flash(

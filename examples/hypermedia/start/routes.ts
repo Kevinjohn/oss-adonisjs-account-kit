@@ -49,4 +49,5 @@ router
 
 router
   .get('account', [controllers.Dashboard, 'protected'])
+  .as('account')
   .use([middleware.auth(), middleware.verified()])

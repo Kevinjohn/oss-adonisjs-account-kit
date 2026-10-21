@@ -3,9 +3,8 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
-import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
-import { SessionCollection } from '@adonisjs/session'
+import { Session } from '@adonisjs/session'
 import User from '#models/user'
 import { accountKitNotifications } from '#services/account_kit_notifications'
 import { setupAccountDatabase } from '#tests/helpers/account_database'
@@ -131,18 +130,26 @@ test.group('native account journeys', (group) => {
     await page.getByLabel('Email').fill('taylor@example.test')
     await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
     await page.getByLabel('Confirm password').fill('different-password')
+    const sessionPrototype = Session.prototype as unknown as {
+      flash: (this: Session, key: string, value: unknown) => void
+    }
+    const originalFlash = sessionPrototype.flash
+    let flashedInput: unknown
+    sessionPrototype.flash = function (key, value) {
+      if (key === 'input') flashedInput = value
+      return originalFlash.call(this, key, value)
+    }
     const postResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' && new URL(response.url()).pathname === '/signup'
     )
-    await page.getByRole('button', { name: 'Create account' }).click()
-    await postResponse
-    const sessionId = (await page.context().cookies()).find(
-      (cookie) => cookie.name === 'adonis-session'
-    )?.value
-    assert.isString(sessionId)
-    const sessions = await app.container.make(SessionCollection)
-    const oldInput = JSON.stringify(await sessions.get(sessionId!))
+    try {
+      await page.getByRole('button', { name: 'Create account' }).click()
+      await postResponse
+    } finally {
+      sessionPrototype.flash = originalFlash
+    }
+    const oldInput = JSON.stringify(flashedInput)
     assert.include(oldInput, 'Taylor Example')
     assert.include(oldInput, 'taylor@example.test')
     assert.notInclude(oldInput, 'SignupPass123!')
@@ -164,7 +171,7 @@ test.group('native account journeys', (group) => {
     assert.isAtMost(narrowSubmit!.x + narrowSubmit!.width, 375)
     await page.keyboard.press('Tab')
     assert.equal(await page.locator(':focus').getAttribute('type'), 'submit')
-    await page.locator('input[name="_csrf"]').waitFor()
+    await page.locator('input[name="_csrf"]').waitFor({ state: 'attached' })
     const invalidCsrf = await page.request.post(`${origin}/signup`, {
       data: {
         fullName: 'No CSRF',
@@ -174,7 +181,8 @@ test.group('native account journeys', (group) => {
       },
       maxRedirects: 0,
     })
-    assert.equal(invalidCsrf.status(), 403)
+    assert.equal(invalidCsrf.status(), 302)
+    assert.equal(invalidCsrf.headers().location, '/')
     assert.isNull(await User.findBy('email', 'no-csrf@example.test'))
 
     await page.goto('/login')
@@ -201,7 +209,15 @@ test.group('native account journeys', (group) => {
       emailVerifiedAt: DateTime.now(),
       unverifiedEmail: null,
     })
+    const emailOwner = await User.create({
+      fullName: 'Email Owner',
+      email: 'email-owner@example.test',
+      password: 'EmailOwnerPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
     const otherContext = await browser.newContext({ baseURL: origin })
+    const emailContext = await browser.newContext({ baseURL: origin })
     try {
       const primary = await visit('/login')
       await primary.getByLabel('Email').fill(user.email)
@@ -210,10 +226,15 @@ test.group('native account journeys', (group) => {
       await primary.getByRole('heading', { name: 'Your account' }).waitFor()
 
       const otherSession = await otherContext.visit('/login')
-      await otherSession.getByLabel('Email').fill(user.email)
-      await otherSession.getByLabel('Password').fill('OldPassword123!')
+      await otherSession.getByLabel('Email').fill(emailOwner.email)
+      await otherSession.getByLabel('Password').fill('EmailOwnerPassword123!')
       await otherSession.getByRole('button', { name: 'Sign in' }).click()
       await otherSession.getByRole('heading', { name: 'Your account' }).waitFor()
+      const emailPrimary = await emailContext.visit('/login')
+      await emailPrimary.getByLabel('Email').fill(emailOwner.email)
+      await emailPrimary.getByLabel('Password').fill('EmailOwnerPassword123!')
+      await emailPrimary.getByRole('button', { name: 'Sign in' }).click()
+      await emailPrimary.getByRole('heading', { name: 'Your account' }).waitFor()
 
       await primary.goto('/settings/profile')
       await primary.getByLabel('Full name').fill('  Morgan Updated  ')
@@ -236,32 +257,42 @@ test.group('native account journeys', (group) => {
         emailVerifiedAt: DateTime.now(),
         unverifiedEmail: null,
       })
-      await primary.goto('/settings/email')
-      await primary.getByLabel('New email').fill(existing.email)
-      await primary.getByLabel('Current password').fill('OldPassword123!')
-      await primary.getByRole('button', { name: 'Request email change' }).click()
-      await primary.getByText('This address cannot be used. Try another address.').waitFor()
-      assert.equal(await primary.getByLabel('New email').inputValue(), existing.email)
-      await primary.getByLabel('New email').fill('morgan.new@example.test')
-      await primary.getByLabel('Current password').fill('OldPassword123!')
-      await primary.getByRole('button', { name: 'Request email change' }).click()
-      await primary.getByText(/Your current email stays active until you confirm it/).waitFor()
-      assert.equal((await User.findByOrFail('id', user.id)).email, user.email)
+      await emailPrimary.goto('/settings/email')
+      await emailPrimary.getByLabel('New email').fill(existing.email)
+      await emailPrimary.getByLabel('Current password').fill('EmailOwnerPassword123!')
+      await emailPrimary.getByRole('button', { name: 'Request email change' }).click()
+      await emailPrimary.getByText('This address cannot be used. Try another address.').waitFor()
+      assert.equal(await emailPrimary.getByLabel('New email').inputValue(), existing.email)
+      await emailPrimary.getByLabel('New email').fill('email-owner.new@example.test')
+      await emailPrimary.getByLabel('Current password').fill('wrong-password')
+      await emailPrimary.getByRole('button', { name: 'Request email change' }).click()
+      await emailPrimary
+        .getByText('Your current password is incorrect. Check it and try again.')
+        .waitFor()
+      assert.equal(
+        await emailPrimary.getByLabel('New email').inputValue(),
+        'email-owner.new@example.test'
+      )
+      assert.equal(await emailPrimary.getByLabel('Current password').inputValue(), '')
+      await emailPrimary.getByLabel('Current password').fill('EmailOwnerPassword123!')
+      await emailPrimary.getByRole('button', { name: 'Request email change' }).click()
+      await emailPrimary.getByText(/Your current email stays active until you confirm it/).waitFor()
+      assert.equal((await User.findByOrFail('id', emailOwner.id)).email, emailOwner.email)
 
-      await primary.goto('/settings/email')
-      await primary.getByLabel('Current password').fill('OldPassword123!')
-      await primary.getByRole('button', { name: 'Cancel pending change' }).click()
-      await primary.getByText('The pending email change was canceled.').waitFor()
-      assert.equal((await User.findByOrFail('id', user.id)).unverifiedEmail, user.email)
+      await emailPrimary.goto('/settings/email')
+      await emailPrimary.getByLabel('Current password').fill('EmailOwnerPassword123!')
+      await emailPrimary.getByRole('button', { name: 'Cancel pending change' }).click()
+      await emailPrimary.getByText('The pending email change was canceled.').waitFor()
+      assert.isNull((await User.findByOrFail('id', emailOwner.id)).unverifiedEmail)
 
-      await primary.goto('/settings/email')
-      await primary.getByLabel('New email').fill('morgan.new@example.test')
-      await primary.getByLabel('Current password').fill('OldPassword123!')
-      await primary.getByRole('button', { name: 'Request email change' }).click()
-      await primary.getByText(/Your current email stays active until you confirm it/).waitFor()
+      await emailPrimary.goto('/settings/email')
+      await emailPrimary.getByLabel('New email').fill('email-owner.new@example.test')
+      await emailPrimary.getByLabel('Current password').fill('EmailOwnerPassword123!')
+      await emailPrimary.getByRole('button', { name: 'Request email change' }).click()
+      await emailPrimary.getByText(/Your current email stays active until you confirm it/).waitFor()
       const emailToken = accountKitNotifications.tokenFor(
         'emailChangeProvision',
-        'morgan.new@example.test'
+        'email-owner.new@example.test'
       )
       const emailProof = `/confirm-email/${encodeURIComponent(emailToken)}`
       const visitor = await User.create({
@@ -280,45 +311,82 @@ test.group('native account journeys', (group) => {
       await inspection.goto(`${origin}${emailProof}`)
       await inspection.getByRole('heading', { name: 'Confirm your new email' }).waitFor()
       await otherSession.goto('/dashboard')
-      await otherSession.getByText('Signed in as morgan@example.test.').waitFor()
+      await otherSession.getByText('Signed in as email-owner@example.test.').waitFor()
       await inspection.goto(`${origin}${emailProof}`)
       await inspection.getByRole('button', { name: 'Confirm email change' }).click()
+      await inspection.getByText('Welcome to the power of a Hypermedia app.').waitFor()
+      await inspection.goto('/dashboard')
       await inspection.getByRole('heading', { name: 'Your account' }).waitFor()
       await inspection.getByText('Signed in as visitor@example.test.').waitFor()
       await inspection.goto('/account')
       await inspection.getByRole('heading', { name: 'Protected account page' }).waitFor()
-      assert.equal((await User.findByOrFail('id', user.id)).email, 'morgan.new@example.test')
+      assert.equal(
+        (await User.findByOrFail('id', emailOwner.id)).email,
+        'email-owner.new@example.test'
+      )
       await otherSession.goto('/account')
       await otherSession.getByRole('heading', { name: 'Sign in' }).waitFor()
+      await emailPrimary.goto('/account')
+      await emailPrimary.getByRole('heading', { name: 'Sign in' }).waitFor()
 
       const passwordContext = await browser.newContext({ baseURL: origin })
       const otherPasswordSession = await passwordContext.visit('/login')
-      await otherPasswordSession.getByLabel('Email').fill('morgan.new@example.test')
+      await otherPasswordSession.getByLabel('Email').fill(user.email)
       await otherPasswordSession.getByLabel('Password').fill('OldPassword123!')
       await otherPasswordSession.getByRole('button', { name: 'Sign in' }).click()
       await otherPasswordSession.getByRole('heading', { name: 'Your account' }).waitFor()
 
-      await primary.goto('/login')
-      await primary.getByLabel('Email').fill('morgan.new@example.test')
-      await primary.getByLabel('Password').fill('OldPassword123!')
-      await primary.getByRole('button', { name: 'Sign in' }).click()
-      await primary.getByRole('heading', { name: 'Your account' }).waitFor()
-      await primary.goto('/settings/password')
-      await primary.getByLabel('Current password').fill('OldPassword123!')
-      await primary.getByLabel('New password').fill('NewPassword123!')
-      await primary.getByLabel('Confirm new password').fill('NewPassword123!')
-      await primary.getByRole('button', { name: 'Change password' }).click()
-      await primary.getByText('Password changed. Other sessions have been signed out.').waitFor()
-      assert.isNotNull(await User.verifyCredentials('morgan.new@example.test', 'NewPassword123!'))
+      const passwordPrimaryContext = await browser.newContext({ baseURL: origin })
+      const passwordPrimary = await passwordPrimaryContext.visit('/login')
+      await passwordPrimary.getByLabel('Email').fill(user.email)
+      await passwordPrimary.getByLabel('Password').fill('OldPassword123!')
+      await passwordPrimary.getByRole('button', { name: 'Sign in' }).click()
+      await passwordPrimary.getByRole('heading', { name: 'Your account' }).waitFor()
+      await passwordPrimary.goto('/settings/password')
+      await passwordPrimary.getByLabel('Current password').fill('wrong-password')
+      await passwordPrimary.getByLabel('New password', { exact: true }).fill('NewPassword123!')
+      await passwordPrimary.getByLabel('Confirm new password').fill('NewPassword123!')
+      await passwordPrimary.getByRole('button', { name: 'Change password' }).click()
+      await passwordPrimary
+        .getByText('Your current password is incorrect. Check it and try again.')
+        .waitFor()
+      assert.equal(await passwordPrimary.getByLabel('Current password').inputValue(), '')
+      await passwordPrimary.getByLabel('Current password').fill('OldPassword123!')
+      await passwordPrimary.getByLabel('New password', { exact: true }).fill('NewPassword123!')
+      await passwordPrimary.getByLabel('Confirm new password').fill('NewPassword123!')
+      await passwordPrimary.getByRole('button', { name: 'Change password' }).click()
+      await passwordPrimary
+        .getByText('Password changed. Other sessions have been signed out.')
+        .waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
       await otherPasswordSession.goto('/account')
       await otherPasswordSession.getByRole('heading', { name: 'Sign in' }).waitFor()
-      await primary.getByRole('button', { name: 'Log out' }).click()
-      await primary.getByRole('heading', { name: 'Sign in' }).waitFor()
-      assert.equal(new URL(primary.url()).pathname, '/login')
+      const newEmailContext = await browser.newContext({ baseURL: origin })
+      const newEmailLogin = await newEmailContext.visit('/login')
+      await newEmailLogin.getByLabel('Email').fill('email-owner.new@example.test')
+      await newEmailLogin.getByLabel('Password').fill('EmailOwnerPassword123!')
+      await newEmailLogin.getByRole('button', { name: 'Sign in' }).click()
+      await newEmailLogin.getByRole('heading', { name: 'Your account' }).waitFor()
+      const savedSessionCookie = (await passwordPrimary.context().cookies()).find(
+        (cookie) => cookie.name === 'adonis-session'
+      )
+      assert.isDefined(savedSessionCookie)
+      const replayContext = await browser.newContext({ baseURL: origin })
+      await replayContext.addCookies([savedSessionCookie!])
+      await passwordPrimary.getByRole('button', { name: 'Log out' }).click()
+      await passwordPrimary.getByRole('heading', { name: 'Sign in' }).waitFor()
+      assert.equal(new URL(passwordPrimary.url()).pathname, '/login')
+      const replay = await replayContext.visit('/account')
+      await replay.getByRole('heading', { name: 'Sign in' }).waitFor()
+      await replayContext.close()
       await passwordContext.close()
+      await passwordPrimaryContext.close()
+      await newEmailContext.close()
       await visitorContext.close()
+      await emailContext.close()
     } finally {
       await otherContext.close()
+      await emailContext.close()
     }
   })
 
@@ -377,6 +445,10 @@ test.group('native account journeys', (group) => {
       const user = await User.findByOrFail('email', 'recovery@example.test')
       assert.isNotNull(user)
       assert.isNull(user.emailVerifiedAt)
+      await db
+        .from('email_verification_tokens')
+        .where('tokenable_id', user.id)
+        .update({ created_at: DateTime.now().minus({ minutes: 2 }).toSQL() })
       accountKitNotifications.notify.accountActivationProvision = notify
       await page.getByRole('button', { name: 'Send a fresh verification link' }).click()
       await page.getByText(/A fresh verification link was sent/).waitFor()

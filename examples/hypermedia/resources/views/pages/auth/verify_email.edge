@@ -1,22 +1,39 @@
 @layouts.auth()
   <h1 class="auth__title">Confirm your email</h1>
   @if(valid)
-    <p class="auth__sub">Choose a password to activate the account. This replaces the password selected at signup.</p>
-    @form({ route: 'email_verifications.update', routeParams: { token }, method: 'POST', class: 'auth__form' })
+    <p class="auth__sub">
+      Choose a password to activate the account. This replaces the password selected at signup.
+    </p>
+    @form({
+      route: 'email_verifications.update',
+      routeParams: { token },
+      method: 'POST',
+      class: 'auth__form',
+    })
       @field.root({ name: 'password' })
         @!field.label({ text: 'Choose a password' })
-        @!input.control({ type: 'password', autocomplete: 'new-password', required: true })
+        @!input.control({
+          type: 'password',
+          autocomplete: 'new-password',
+          required: true,
+        })
         @!field.error()
       @end
       @field.root({ name: 'passwordConfirmation' })
         @!field.label({ text: 'Confirm password' })
-        @!input.control({ type: 'password', autocomplete: 'new-password', required: true })
+        @!input.control({
+          type: 'password',
+          autocomplete: 'new-password',
+          required: true,
+        })
         @!field.error()
       @end
       @!button({ text: 'Confirm email', type: 'submit', block: true })
     @end
   @else
-    <p class="auth__sub">This link is invalid, already used, or expired. Sign in to request a fresh verification link.</p>
-    @link({ route: 'session.create', class: 'il' })Sign in@end
+    <p class="auth__sub">
+      This link is invalid, already used, or expired. Sign in to request a fresh verification link.
+    </p>
+    <a href="{{ urlFor('session.create') }}" class="il">Sign in</a>
   @end
 @end

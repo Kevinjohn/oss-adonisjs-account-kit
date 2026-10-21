@@ -19,7 +19,11 @@ export default class PasswordsController {
         newPassword: password,
       })
     } catch (error) {
-      if (!(error instanceof errors.InvalidCredentialsError)) throw error
+      if (
+        !(error instanceof errors.InvalidCredentialsError) &&
+        !(error instanceof errors.IdentityNotConfirmedError)
+      )
+        throw error
       ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
       return ctx.response.redirect().back()
     }
