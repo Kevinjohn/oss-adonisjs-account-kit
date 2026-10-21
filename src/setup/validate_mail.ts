@@ -8,6 +8,7 @@ import {
 } from './types.js'
 import { createActionUrls } from '../notifications.js'
 import { emailDestinations, hasEmailFlow, envName, diagnostic, validateOrigin } from './shared.js'
+import type { SelectedSetupOrigins } from './diagnostics.js'
 
 /** Mail integration, environment references, destinations and origins for email flows. */
 export function validateMail(
@@ -15,7 +16,8 @@ export function validateMail(
   choices: SetupChoices,
   state: SetupInspection,
   production: boolean,
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  selectedOrigins?: SelectedSetupOrigins
 ) {
   const emailEnabled = hasEmailFlow(choices)
   if (emailEnabled && !mailIntegrations.includes(choices.mail.integration))
@@ -117,14 +119,18 @@ export function validateMail(
       'mail.backendOriginEnv',
       choices.mail.backendOriginEnv,
       production,
-      env
+      env,
+      selectedOrigins?.values[choices.mail.backendOriginEnv],
+      selectedOrigins?.errors[choices.mail.backendOriginEnv]
     )
     validateOrigin(
       diagnostics,
       'mail.frontendOriginEnv',
       choices.mail.frontendOriginEnv,
       production,
-      env
+      env,
+      selectedOrigins?.values[choices.mail.frontendOriginEnv],
+      selectedOrigins?.errors[choices.mail.frontendOriginEnv]
     )
   }
   if (emailEnabled && choices.mail.delivery === 'durable' && !choices.mail.durableWorkerVerified)
