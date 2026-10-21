@@ -88,12 +88,14 @@ and application access policy.
 
 Keep the existing `fullName` mapping if the application already accepts it. In the Lucid adapter,
 assign only recognized fields that are present; profile updates can supply `displayName` without
-resending `fullName`:
+resending `fullName`, while a new account still requires it:
 
 ```ts
 const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
     const fields = data as { fullName?: string; displayName?: string }
+    if (!user.$isPersisted && fields.fullName === undefined)
+      throw new InvalidInputError('A full name is required to create an account')
     if (fields.fullName !== undefined) user.fullName = fields.fullName
     if (fields.displayName !== undefined) user.displayName = fields.displayName
   },
@@ -133,7 +135,8 @@ registration: {
 
 Import `InvalidInputError` from `adonisjs-account-kit`. Keep the application's signup validator
 responsible for requiring its existing `fullName`. The service mapper independently rejects
-unrecognized keys and invalid values from non-HTTP callers. The adapter never mass-assigns a
+unrecognized keys and invalid values from non-HTTP callers, and the adapter rejects a new account
+without `fullName`, which managed signup, invitation and social registration can otherwise send. The adapter never mass-assigns a
 request object; map only fields owned by the application.
 
 ## Verify errors and persistence
