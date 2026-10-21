@@ -2,7 +2,7 @@ import Alpine from 'alpinejs'
 
 Alpine.data('alert', function () {
   return {
-    isVisible: false,
+    isVisible: true,
     dismiss() {
       this.isVisible = false
     },
