@@ -42,6 +42,7 @@ export default class EmailChangesController {
       }
       if (error instanceof errors.EmailAlreadyRegisteredError) {
         ctx.session.flash('error', 'This address cannot be used. Try another address.')
+        ctx.session.flash('old', { email })
         return ctx.response.redirect().back()
       }
       if (!isDeliveryFailure(error)) throw error
