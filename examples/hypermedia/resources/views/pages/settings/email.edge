@@ -1,0 +1,55 @@
+@layouts.app({ title: 'Email settings' })
+  @page()
+    <h1>Email settings</h1>
+    <p>Current email: <strong>{{ email }}</strong></p>
+    @if(pendingEmail)
+      <p>
+        A change to
+        <strong>{{ pendingEmail }}</strong>
+        is waiting for confirmation. Your current address remains active.
+      </p>
+      @form({ route: 'email_changes.cancel', method: 'POST', class: 'auth__form' })
+        @field.root({ name: 'cancelCurrentPassword' })
+          @!field.label({ text: 'Current password' })
+          @!input.control({
+            type: 'password',
+            autocomplete: 'current-password',
+            required: true,
+          })
+          @!field.error()
+        @end
+        @!button({ text: 'Cancel pending change', type: 'submit' })
+      @end
+    @elseif(canRequestChange)
+      @form({ route: 'email_changes.store', method: 'POST', class: 'auth__form' })
+        @field.root({ name: 'email' })
+          @!field.label({ text: 'New email' })
+          @!input.control({
+            type: 'email',
+            autocomplete: 'email',
+            value: old('email'),
+            required: true,
+          })
+          @!field.error()
+        @end
+        @field.root({ name: 'currentPassword' })
+          @!field.label({ text: 'Current password' })
+          @!input.control({
+            type: 'password',
+            autocomplete: 'current-password',
+            required: true,
+          })
+          @!field.error()
+        @end
+        @!button({ text: 'Request email change', type: 'submit' })
+      @end
+    @else
+      <p>Confirm your current email address before requesting a change.</p>
+      @form({ route: 'email_verifications.store', method: 'POST' })
+        @!button({ text: 'Send verification link', type: 'submit' })
+      @end
+    @end
+
+    <a href="{{ urlFor('dashboard') }}">Back to dashboard</a>
+  @end
+@end
