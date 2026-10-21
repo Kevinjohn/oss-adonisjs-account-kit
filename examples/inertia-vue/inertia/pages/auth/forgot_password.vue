@@ -12,6 +12,7 @@ const fields = [{ name: 'email', label: 'Email' }]
   <Form
     v-slot="{ errors, processing }"
     route="password_resets.store"
+    v-bind="{ novalidate: true }"
     reset-on-success
     @error="focusFormErrorSummary"
     ><div class="auth__form">

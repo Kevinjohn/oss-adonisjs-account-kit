@@ -69,7 +69,8 @@ Forms submit through Inertia. Vine validation errors remain associated with labe
 in a focusable alert, and move keyboard focus to that summary. Password fields clear after form
 errors and success; ordinary invalid fields remain in the Inertia form. Plain HTML validation
 flashes only the non-secret signup name and email fields. Inertia validation requests do not flash
-submitted input into the server-side session. Success and recovery messages are announced after
+submitted input into the server-side session. Vue forms send field validation to Vine instead of
+stopping at native browser constraints. Success and recovery messages are announced after
 redirects. Route tokens use the Vue `Form` component's `params` prop, and `aria-invalid` is present
 only while a field has an error.
 

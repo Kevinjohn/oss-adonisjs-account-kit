@@ -20,6 +20,7 @@ const fields = [
     <Form
       v-slot="{ errors, processing }"
       route="profile.update"
+      v-bind="{ novalidate: true }"
       :reset-on-error="['currentPassword']"
       :reset-on-success="['currentPassword']"
       @error="focusFormErrorSummary"
