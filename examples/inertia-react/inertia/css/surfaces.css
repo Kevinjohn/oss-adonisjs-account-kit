@@ -473,10 +473,6 @@
   color: var(--ink);
   background: color-mix(in oklab, var(--ink) 6%, var(--card));
 }
-.sidebar-layout__item:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-}
 .sidebar-layout__content {
   min-width: 0;
 }

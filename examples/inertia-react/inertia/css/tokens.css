@@ -13,14 +13,14 @@
   --ink: #0a0a0b;
   --ink-2: #2a2c30;
   --muted: #6b6f76;
-  --subtle: #a4a8af;
+  --subtle: #676b73;
   --line: #ededee;
   --line-2: #dddfe2;
   --btn: #0a0a0b;
   --btn-fg: #ffffff;
-  --ring: rgba(10, 10, 11, 0.13);
   --field: #ffffff;
   --ok: #18794e;
+  --error: #c0392b;
 
   --r: 8px;
   --r-lg: 14px;
@@ -33,14 +33,14 @@
   --ink: #ededee;
   --ink-2: #c4c6ca;
   --muted: #8b8f97;
-  --subtle: #585c64;
+  --subtle: #9b9fa7;
   --line: #1e1f23;
   --line-2: #2c2e33;
   --btn: #ededee;
   --btn-fg: #0a0a0b;
-  --ring: rgba(237, 237, 238, 0.14);
   --field: #0c0c0f;
   --ok: #3ecf8e;
+  --error: #e0685c;
   color-scheme: dark;
 }
 
@@ -75,6 +75,10 @@ button {
 }
 input {
   font: inherit;
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 ::selection {
   background: var(--ink);
