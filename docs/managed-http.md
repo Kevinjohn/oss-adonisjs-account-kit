@@ -254,6 +254,7 @@ Copy this file to `resources/lang/<locale>/errors.json` and translate the values
   "E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED": "The account request conflicts with an existing account.",
   "E_ACCOUNT_KIT_THROTTLED": "Too many requests.",
   "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected.",
+  "E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED": "Account request rejected.",
   "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected.",
   "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected.",
   "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected.",

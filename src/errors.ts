@@ -60,6 +60,14 @@ export class InvitationManagementDeniedError extends AuthorizationError {
   static code = 'E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED'
   static status = 404
 }
+/** Account inspection denied: the account is missing, restricted, or inactive when active was required. */
+export class AccountAccessDeniedError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED'
+  static status = 403
+  constructor() {
+    super('Account access denied')
+  }
+}
 /** The invitation does not exist or is no longer pending. */
 export class InvitationNotFoundError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND'
