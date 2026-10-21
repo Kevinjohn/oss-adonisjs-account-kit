@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a native Edge account example with public proof flows, verified access and revocable database sessions.
 - Add focused existing-application recipes for reset, verified access, configured mail, custom fields and selective managed endpoint replacement.
 - Add a runnable Inertia Vue account example with verified access, settings, recovery and accessible form feedback.
 
