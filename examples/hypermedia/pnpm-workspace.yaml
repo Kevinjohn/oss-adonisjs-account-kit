@@ -11,3 +11,5 @@ minimumReleaseAgeExclude:
   - '@poppinss/utils@7.1.1'
 onlyBuiltDependencies:
   - better-sqlite3
+# kit:pack creates the vendor tarball the install needs, so scripts must run before the first install.
+verifyDepsBeforeRun: false

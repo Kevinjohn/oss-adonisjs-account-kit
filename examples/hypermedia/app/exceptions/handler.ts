@@ -1,6 +1,7 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
+import { errors as shieldErrors } from '@adonisjs/shield'
 
 const SAFE_OLD_INPUT_FIELDS = ['fullName', 'email'] as const
 
@@ -48,6 +49,15 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
+    // Shield's own handler re-flashes every field except snake_case password names, which would
+    // store this app's camelCase password fields in the session.
+    if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN && ctx.session) {
+      const message = error.getResponseMessage(error, ctx)
+      ctx.session.flash('input', safeOldInput(ctx.request))
+      ctx.session.flash('error', message)
+      ctx.session.flashErrors({ [error.code]: message })
+      return ctx.response.redirect().back()
+    }
     return super.handle(error, ctx)
   }
 

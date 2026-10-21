@@ -172,15 +172,30 @@ test.group('native account journeys', (group) => {
     await page.keyboard.press('Tab')
     assert.equal(await page.locator(':focus').getAttribute('type'), 'submit')
     await page.locator('input[name="_csrf"]').waitFor({ state: 'attached' })
-    const invalidCsrf = await page.request.post(`${origin}/signup`, {
-      data: {
-        fullName: 'No CSRF',
-        email: 'no-csrf@example.test',
-        password: 'SignupPass123!',
-        passwordConfirmation: 'SignupPass123!',
-      },
-      maxRedirects: 0,
-    })
+    // Read what each session is about to store, whichever Session method wrote it.
+    const committing = Session.prototype as unknown as { commit: (this: Session) => Promise<void> }
+    const originalCommit = committing.commit
+    const csrfFlashes: string[] = []
+    committing.commit = function () {
+      csrfFlashes.push(JSON.stringify(this.responseFlashMessages.all()))
+      return originalCommit.call(this)
+    }
+    let invalidCsrf: Awaited<ReturnType<typeof page.request.post>>
+    try {
+      invalidCsrf = await page.request.post(`${origin}/signup`, {
+        data: {
+          fullName: 'No CSRF',
+          email: 'no-csrf@example.test',
+          password: 'SignupPass123!',
+          passwordConfirmation: 'SignupPass123!',
+        },
+        maxRedirects: 0,
+      })
+    } finally {
+      committing.commit = originalCommit
+    }
+    assert.include(csrfFlashes.join(), 'no-csrf@example.test')
+    assert.notInclude(csrfFlashes.join(), 'SignupPass123!')
     assert.equal(invalidCsrf.status(), 302)
     assert.equal(invalidCsrf.headers().location, '/')
     assert.isNull(await User.findBy('email', 'no-csrf@example.test'))
@@ -497,6 +512,45 @@ test.group('native account journeys', (group) => {
       assert.isNotNull((await User.findByOrFail('id', user.id)).emailVerifiedAt)
     } finally {
       accountKitNotifications.notify.accountActivationProvision = notify
+    }
+  })
+
+  test('committed password change survives notification failure and keeps this session', async ({
+    visit,
+    assert,
+  }) => {
+    const user = await User.create({
+      fullName: 'Notice Example',
+      email: 'notice@example.test',
+      password: 'OldPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const notify = accountKitNotifications.notify.passwordChanged
+    accountKitNotifications.notify.passwordChanged = async () => {
+      throw new errors.DeliveryError('test delivery failure')
+    }
+    try {
+      const page = await visit('/login')
+      await page.getByLabel('Email').fill(user.email)
+      await page.getByLabel('Password').fill('OldPassword123!')
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.getByRole('heading', { name: 'Your account' }).waitFor()
+      await page.goto('/settings/password')
+      await page.getByLabel('Current password').fill('OldPassword123!')
+      await page.getByLabel('New password', { exact: true }).fill('NewPassword123!')
+      await page.getByLabel('Confirm new password').fill('NewPassword123!')
+      await page.getByRole('button', { name: 'Change password' }).click()
+      await page
+        .getByText(
+          'Password changed. Other sessions have been signed out. We could not send the confirmation email.'
+        )
+        .waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      await page.goto('/account')
+      await page.getByRole('heading', { name: 'Protected account page' }).waitFor()
+    } finally {
+      accountKitNotifications.notify.passwordChanged = notify
     }
   })
 
