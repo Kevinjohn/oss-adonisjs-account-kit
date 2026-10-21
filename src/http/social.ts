@@ -18,13 +18,10 @@ import {
   socialBeginValidator,
   socialCallbackValidator,
   socialConfirmationValidator,
-  socialPasswordProofValidator,
   socialRegistrationValidator,
   socialTokenValidator,
-  socialUnlinkValidator,
 } from './validators.js'
 import { rememberManagedMethod } from './last_used_method.js'
-import { positiveId } from './positive_id.js'
 import {
   forgetSessionState,
   rememberSessionState,
@@ -32,7 +29,10 @@ import {
   type SessionSocialState,
 } from './social_session_state.js'
 import { newVerifier } from './pkce_verifier.js'
-import { optionalSession } from './session_access.js'
+import {
+  managedSocialAccountHandlers,
+  type SocialHandler,
+} from './managed_social_account_handlers.js'
 
 export { rememberManagedMethod } from './last_used_method.js'
 
@@ -58,20 +58,6 @@ function providerName(value: string, enabled: readonly SocialProviderName[]): So
   if (!isSocialProviderName(value) || !enabled.includes(value))
     throw new InvalidInputError('Unsupported social provider')
   return value
-}
-
-function safeIdentity(identity: {
-  id: number
-  provider: SocialProviderName
-  email: string | null
-  emailVerified: boolean
-}) {
-  return {
-    id: identity.id,
-    provider: identity.provider,
-    email: identity.email,
-    emailVerified: identity.emailVerified,
-  }
 }
 
 function safeResult(result: SocialCallbackResult): Record<string, unknown> {
@@ -122,17 +108,6 @@ async function finishHandoff<Credential>(
   return response.ok(safeResult(result))
 }
 
-interface SocialRequest<Credential> {
-  name: ManagedEndpointName
-  context: HttpContext
-  social: AccountKit['socialAuthentication']
-  guard: ManagedGuard<Credential>
-  extension: ManagedSocialExtension
-  methodsEnabled: boolean
-}
-
-type SocialHandler = <Credential>(request: SocialRequest<Credential>) => Promise<unknown>
-
 const oauthCallback: SocialHandler = async ({
   name,
   context,
@@ -178,18 +153,7 @@ const oauthCallback: SocialHandler = async ({
 }
 
 const socialHandlers = {
-  'auth.methods': async ({ context, extension }) => {
-    const stored = optionalSession(context)?.get('accountKit.social.lastUsedMethod')
-    const hinted = extension.lastUsedMethod ? await extension.lastUsedMethod(context) : stored
-    const lastUsedMethod =
-      hinted === 'password' || extension.providers.includes(hinted as SocialProviderName)
-        ? hinted
-        : null
-    return context.response.ok({
-      providers: extension.providers,
-      lastUsedMethod,
-    })
-  },
+  ...managedSocialAccountHandlers,
   'auth.oauth.redirect': async ({ context, social, guard, extension }) => {
     const { request, response, params } = context
     const provider = providerName(params.provider, extension.providers)
@@ -262,30 +226,6 @@ const socialHandlers = {
       account: result.account,
       token: guard.publicCredential!(result.credential),
     })
-  },
-  'account.socialProof.password': async ({ context, social, guard }) => {
-    const input = await context.request.validateUsing(socialPasswordProofValidator)
-    if (!isSensitivePurpose(input.purpose))
-      throw new InvalidInputError('Invalid social proof purpose')
-    const proof = await social.provePassword({
-      current: await guard.current(context),
-      password: input.password,
-      purpose: input.purpose as SensitivePurpose,
-    })
-    return context.response.ok({ proof })
-  },
-  'account.socialIdentities.list': async ({ context, social, guard }) => {
-    const identities = await social.list({ current: await guard.current(context) })
-    return context.response.ok({ identities: identities.map(safeIdentity) })
-  },
-  'account.socialIdentities.unlink': async ({ context, social, guard }) => {
-    const input = await context.request.validateUsing(socialUnlinkValidator)
-    await social.unlink({
-      current: await guard.current(context),
-      identityId: positiveId(context.params.id, 'identity'),
-      proof: input.proof,
-    })
-    return context.response.noContent()
   },
 } satisfies Partial<Record<ManagedEndpointName, SocialHandler>>
 
