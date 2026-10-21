@@ -7,17 +7,41 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class AccountAdmissionSchema extends BaseModel {
+  static $columns = ['approvalActorId', 'approvalDecidedAt', 'approvalStatus', 'bootstrapEmail', 'createdAt', 'id', 'invitationId', 'invitationRecordedAt', 'invitationSource', 'invitedEmail', 'invitedRole', 'requestedAt', 'updatedAt', 'userId'] as const
+  $columns = AccountAdmissionSchema.$columns
+  @column()
+  declare approvalActorId: number | null
+  @column.dateTime()
+  declare approvalDecidedAt: DateTime | null
+  @column()
+  declare approvalStatus: string | null
+  @column()
+  declare bootstrapEmail: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare invitationId: number | null
+  @column.dateTime()
+  declare invitationRecordedAt: DateTime | null
+  @column()
+  declare invitationSource: string | null
+  @column()
+  declare invitedEmail: string | null
+  @column()
+  declare invitedRole: string | null
+  @column.dateTime()
+  declare requestedAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare userId: number | null
+}
+
 export class AccountInvitationSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'email',
-    'expiresAt',
-    'id',
-    'inviterId',
-    'role',
-    'tokenHash',
-    'updatedAt',
-  ] as const
+  static $columns = ['createdAt', 'email', 'expiresAt', 'id', 'inviterId', 'role', 'tokenHash', 'updatedAt'] as const
   $columns = AccountInvitationSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -38,17 +62,7 @@ export class AccountInvitationSchema extends BaseModel {
 }
 
 export class AccountKitOutboxSchema extends BaseModel {
-  static $columns = [
-    'attempts',
-    'createdAt',
-    'id',
-    'lastError',
-    'operation',
-    'operationId',
-    'recipientEmail',
-    'sentAt',
-    'userId',
-  ] as const
+  static $columns = ['attempts', 'createdAt', 'id', 'lastError', 'operation', 'operationId', 'recipientEmail', 'sentAt', 'userId'] as const
   $columns = AccountKitOutboxSchema.$columns
   @column()
   declare attempts: number
@@ -70,6 +84,25 @@ export class AccountKitOutboxSchema extends BaseModel {
   declare userId: number
 }
 
+export class AccountSessionSchema extends BaseModel {
+  static $columns = ['createdAt', 'expiresAt', 'handleHash', 'id', 'label', 'lastSeenAt', 'userId'] as const
+  $columns = AccountSessionSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare handleHash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare label: string | null
+  @column.dateTime()
+  declare lastSeenAt: DateTime
+  @column()
+  declare userId: number
+}
+
 export class AccountTransactionLockSchema extends BaseModel {
   static $columns = ['id', 'version'] as const
   $columns = AccountTransactionLockSchema.$columns
@@ -80,18 +113,7 @@ export class AccountTransactionLockSchema extends BaseModel {
 }
 
 export class AuthAccessTokenSchema extends BaseModel {
-  static $columns = [
-    'abilities',
-    'createdAt',
-    'expiresAt',
-    'hash',
-    'id',
-    'lastUsedAt',
-    'name',
-    'tokenableId',
-    'type',
-    'updatedAt',
-  ] as const
+  static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
   $columns = AuthAccessTokenSchema.$columns
   @column()
   declare abilities: string
@@ -116,16 +138,7 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class EmailVerificationTokenSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'currentEmail',
-    'email',
-    'expiresAt',
-    'hash',
-    'id',
-    'purpose',
-    'tokenableId',
-  ] as const
+  static $columns = ['createdAt', 'currentEmail', 'email', 'expiresAt', 'hash', 'id', 'purpose', 'tokenableId'] as const
   $columns = EmailVerificationTokenSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -141,6 +154,25 @@ export class EmailVerificationTokenSchema extends BaseModel {
   declare id: number
   @column()
   declare purpose: string
+  @column()
+  declare tokenableId: number
+}
+
+export class LoginLinkTokenSchema extends BaseModel {
+  static $columns = ['clientChallenge', 'createdAt', 'email', 'expiresAt', 'hash', 'id', 'tokenableId'] as const
+  $columns = LoginLinkTokenSchema.$columns
+  @column()
+  declare clientChallenge: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
   @column()
   declare tokenableId: number
 }
@@ -184,24 +216,47 @@ export class RoleAssignmentSchema extends BaseModel {
   declare userId: number
 }
 
+export class SessionSchema extends BaseModel {
+  static $columns = ['data', 'expiresAt', 'id', 'userId'] as const
+  $columns = SessionSchema.$columns
+  @column()
+  declare data: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare userId: string | null
+}
+
+export class SocialHandoffCodeSchema extends BaseModel {
+  static $columns = ['clientChallenge', 'createdAt', 'credentialRevision', 'expiresAt', 'hash', 'id', 'socialIdentityId', 'userId'] as const
+  $columns = SocialHandoffCodeSchema.$columns
+  @column()
+  declare clientChallenge: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare credentialRevision: string | null
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare socialIdentityId: number
+  @column()
+  declare userId: number
+}
+
 export class SocialIdentitySchema extends BaseModel {
-  static $columns = [
-    'avatarUrl',
-    'createdAt',
-    'email',
-    'emailVerified',
-    'id',
-    'meta',
-    'name',
-    'nickname',
-    'provider',
-    'providerUserId',
-    'updatedAt',
-    'userId',
-  ] as const
+  static $columns = ['avatarUrl', 'confirmedAt', 'createdAt', 'email', 'emailVerified', 'id', 'meta', 'name', 'nickname', 'provider', 'providerUserId', 'updatedAt', 'userId'] as const
   $columns = SocialIdentitySchema.$columns
   @column()
   declare avatarUrl: string | null
+  @column.dateTime()
+  declare confirmedAt: DateTime | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
@@ -226,23 +281,73 @@ export class SocialIdentitySchema extends BaseModel {
   declare userId: number
 }
 
-export class UserSchema extends BaseModel {
-  static $columns = [
-    'credentialsChangedAt',
-    'createdAt',
-    'email',
-    'emailVerifiedAt',
-    'fullName',
-    'id',
-    'password',
-    'unverifiedEmail',
-    'updatedAt',
-  ] as const
-  $columns = UserSchema.$columns
-  @column.dateTime()
-  declare credentialsChangedAt: DateTime | null
+export class SocialSensitiveProofSchema extends BaseModel {
+  static $columns = ['createdAt', 'credentialRevision', 'expiresAt', 'hash', 'id', 'purpose', 'userId'] as const
+  $columns = SocialSensitiveProofSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
+  @column()
+  declare credentialRevision: string | null
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare purpose: string
+  @column()
+  declare userId: number
+}
+
+export class SocialTransactionSchema extends BaseModel {
+  static $columns = ['avatarUrl', 'clientChallenge', 'createdAt', 'credentialRevision', 'email', 'emailVerified', 'expiresAt', 'hash', 'id', 'intent', 'name', 'nickname', 'proofHash', 'provider', 'providerUserId', 'purpose', 'userId', 'verificationHash'] as const
+  $columns = SocialTransactionSchema.$columns
+  @column()
+  declare avatarUrl: string | null
+  @column()
+  declare clientChallenge: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare credentialRevision: string | null
+  @column()
+  declare email: string | null
+  @column()
+  declare emailVerified: boolean | null
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare intent: string
+  @column()
+  declare name: string | null
+  @column()
+  declare nickname: string | null
+  @column()
+  declare proofHash: string | null
+  @column()
+  declare provider: string
+  @column()
+  declare providerUserId: string | null
+  @column()
+  declare purpose: string | null
+  @column()
+  declare userId: number | null
+  @column()
+  declare verificationHash: string | null
+}
+
+export class UserSchema extends BaseModel {
+  static $columns = ['createdAt', 'credentialsChangedAt', 'email', 'emailVerifiedAt', 'fullName', 'id', 'password', 'unverifiedEmail', 'updatedAt'] as const
+  $columns = UserSchema.$columns
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime()
+  declare credentialsChangedAt: DateTime | null
   @column()
   declare email: string
   @column.dateTime()

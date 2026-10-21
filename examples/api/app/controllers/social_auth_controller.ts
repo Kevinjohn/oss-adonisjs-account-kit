@@ -1,5 +1,3 @@
-/* eslint-disable @unicorn/no-await-expression-member -- Keep each short HTTP action next to its service operation. */
-
 import type { HttpContext } from '@adonisjs/core/http'
 import {
   InvalidInputError,
