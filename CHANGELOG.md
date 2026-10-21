@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a native Edge account example with public proof flows, verified access and revocable database sessions.
+
 - Document a shared account-journey acceptance contract and distinguish example implementation from verification evidence.
 
 - Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
