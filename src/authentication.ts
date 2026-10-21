@@ -188,7 +188,10 @@ export function authenticationService(deps: ServiceDependencies) {
      * Eligibility and credential revision of one account, read under its lock, without a credential
      * for it. Not authentication: authorise the caller first. Never call it from an Account Kit
      * callback or while your own transaction holds that account's row; it opens its own transaction
-     * and waits for any in-progress change to the same account.
+     * and waits for any in-progress change to the same account. Adapters and `canAccess` must be
+     * read-only through the supplied transaction and safe to retry. Missing, restricted and (when
+     * required) inactive accounts share `AccountAccessDeniedError`. A `PostCommitError` discards
+     * the snapshot; retry is safe under that dependency contract.
      */
     inspectAccountAccess(input: AccountAccessInput): Promise<AccountAccessSnapshot> {
       return inspectAccountAccess(deps, input)

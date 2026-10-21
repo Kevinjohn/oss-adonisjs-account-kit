@@ -1,6 +1,13 @@
 # Candidate verification
 
-Validation uses Node 24 and pnpm. Local checks are authoritative; the repository workflows remain manual and were not dispatched.
+Validation uses Node 24 and pnpm. Dated candidate records below identify the revisions and
+configurations tested; historical totals do not describe the latest candidate. Check each pull
+request for its current automated workflow results.
+
+## Historical pre-inspection summary
+
+The following summary is retained from earlier verification and is not the account-inspection
+candidate result. See [Account access inspection](#account-access-inspection) for its dated evidence.
 
 The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 221
 SQLite tests, 221 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
@@ -91,7 +98,11 @@ pnpm 11.23.0 and PostgreSQL 16.15. Every command below exited 0.
 Each prerequisite PR also records its own full gate and focused checks. #608 passes the
 documentation-link checks; #610's two focused concurrency tests pass on both databases.
 #609 covers the SQLite cleanup fault as well as a PostgreSQL deferred-constraint COMMIT rejection.
-`test:mysql: not run, no server`.
+The initial gate did not run MySQL. A follow-up on source-equivalent head
+`345c5f76daec3da76c390fc32350709a1a8c2c33` ran `DB_PORT=33307 pnpm test:mysql`
+on native MySQL 8.4.13: 1,077 passed and five dialect-specific tests skipped. The disposable
+server used UTC and was stopped afterward. MySQL remains experimental because it is not in
+the per-change CI matrix.
 
 Installed consumers both compiled with `skipLibCheck: false` and booted the service. They verify
 the public inspection types and method, the denial export, and `InvalidInputError` before a
@@ -259,6 +270,12 @@ brew install mysql@8.4
 "$(brew --prefix mysql@8.4)/bin/mysql" -uroot -h127.0.0.1 -P33306 -e 'create database account_kit_test'
 pnpm test:mysql
 ```
+
+The concurrency tests identify the actual waiting and blocking connections using
+`performance_schema.data_lock_waits`, `performance_schema.data_locks` and
+`performance_schema.threads`. The test account needs SELECT access to these diagnostic tables;
+the default disposable root account has it. These permissions are test-only; application
+inspection does not query Performance Schema.
 
 The packed-consumer checks stay on SQLite and PostgreSQL; the MySQL evidence is this suite.
 
