@@ -196,6 +196,42 @@ test.group('native account journeys', (group) => {
     assert.equal(await page.getByLabel('Password').inputValue(), '')
   })
 
+  test('failure and recovery feedback work without JavaScript and errors persist with JavaScript', async ({
+    browser,
+    visit,
+    assert,
+  }) => {
+    const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+    const errorMessage = 'The email or password is incorrect. Check your details and try again.'
+    const resetMessage = 'If an account exists for that address, we have sent a reset link.'
+
+    try {
+      const page = await context.visit('/login')
+      await page.getByLabel('Email').fill('unknown@example.test')
+      await page.getByLabel('Password').fill('UnknownPass123!')
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.getByText(errorMessage).waitFor()
+      assert.isTrue(await page.getByText(errorMessage).isVisible())
+      await page.getByRole('link', { name: 'Forgot your password?' }).click()
+      await page.getByRole('heading', { name: 'Reset your password' }).waitFor()
+      await page.getByLabel('Email').fill('unknown@example.test')
+      await page.getByRole('button', { name: 'Send reset link' }).click()
+      await page.getByText(resetMessage).waitFor()
+      assert.isTrue(await page.getByText(resetMessage).isVisible())
+    } finally {
+      await context.close()
+    }
+
+    const javascriptPage = await visit('/login')
+    await javascriptPage.getByLabel('Email').fill('unknown@example.test')
+    await javascriptPage.getByLabel('Password').fill('UnknownPass123!')
+    await javascriptPage.getByRole('button', { name: 'Sign in' }).click()
+    const javascriptError = javascriptPage.getByText(errorMessage)
+    await javascriptError.waitFor()
+    await javascriptPage.waitForTimeout(5100)
+    assert.isTrue(await javascriptError.isVisible())
+  })
+
   test('profile, email change, password change, and logout follow session policy', async ({
     browser,
     visit,
