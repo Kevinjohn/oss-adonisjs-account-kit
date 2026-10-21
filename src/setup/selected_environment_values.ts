@@ -5,6 +5,14 @@ import { createInterface } from 'node:readline'
 import { parseEnv } from 'node:util'
 import { EnvLoader } from '@adonisjs/core/env'
 import { safeSetupPath } from './safe_path.js'
+
+/** A selected assignment refers to other values, so reading it would mean evaluating it. */
+export class IndirectEnvironmentValueError extends Error {
+  constructor() {
+    super('Selected environment assignment must be a direct value')
+  }
+}
+
 function hasClosingQuote(text: string, quote: string): boolean {
   for (let index = 0; index < text.length; index++) {
     if (text[index] === '\\') {
@@ -16,11 +24,12 @@ function hasClosingQuote(text: string, quote: string): boolean {
   return false
 }
 
-/** Resolve one selected enum without loading an application's other environment values. */
-export async function resolveSelectedEnvironment(
+async function resolveEnvironmentValue(
   root: string,
   variable: string,
-  env: NodeJS.ProcessEnv = process.env
+  env: NodeJS.ProcessEnv,
+  validate: (value: string | null) => boolean,
+  expected: string
 ): Promise<string | null> {
   if (Object.hasOwn(env, variable)) return env[variable] ?? null
   for (const candidate of new EnvLoader(root).getPaths()) {
@@ -38,7 +47,7 @@ export async function resolveSelectedEnvironment(
     const lines = createInterface({ input: stream, crlfDelay: Infinity })
     let value: string | null = null
     let found = false
-    let multilineQuote: '"' | "'" | null = null
+    let multilineQuote: '"' | "'" | '`' | null = null
     try {
       for await (const line of lines) {
         if (multilineQuote) {
@@ -47,25 +56,23 @@ export async function resolveSelectedEnvironment(
           if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
           continue
         }
-        const quotedAssignment = /^\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*\s*=\s*(['"])/.exec(line)
+        const quotedAssignment = /^\s*(?:export\s+)?[A-Za-z_][A-Za-z0-9_]*\s*=\s*(['"`])/.exec(line)
         if (quotedAssignment) {
           const rest = line.slice(quotedAssignment[0].length)
           if (!hasClosingQuote(rest, quotedAssignment[1]))
-            multilineQuote = quotedAssignment[1] as '"' | "'"
+            multilineQuote = quotedAssignment[1] as '"' | "'" | '`'
         }
         if (!new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line)) continue
         if (found || !new RegExp(`^\\s*(?:export\\s+)?${variable}\\s*=`).test(line))
           throw new Error('Selected environment assignment is ambiguous')
         found = true
-        if (line.includes('$') || line.includes('`'))
-          throw new Error('Selected environment assignment must be a direct value')
+        if (line.includes('$') || line.includes('`')) throw new IndirectEnvironmentValueError()
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
           throw new Error('Selected environment assignment is malformed')
         }
-        if (!value || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(value))
-          throw new Error('Selected environment value must be a direct name')
+        if (!validate(value)) throw new Error(`Selected environment value must be ${expected}`)
       }
     } finally {
       lines.close()
@@ -74,4 +81,28 @@ export async function resolveSelectedEnvironment(
     if (found) return value
   }
   return null
+}
+
+/** Resolve one selected enum without loading an application's other environment values. */
+export function resolveSelectedEnvironment(
+  root: string,
+  variable: string,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<string | null> {
+  return resolveEnvironmentValue(
+    root,
+    variable,
+    env,
+    (value) => Boolean(value && /^[A-Za-z_][A-Za-z0-9_]*$/.test(value)),
+    'a direct name'
+  )
+}
+
+/** Resolve one selected scalar without loading an application's other environment values. */
+export function resolveSelectedEnvironmentValue(
+  root: string,
+  variable: string,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<string | null> {
+  return resolveEnvironmentValue(root, variable, env, (value) => value !== null, 'a direct value')
 }

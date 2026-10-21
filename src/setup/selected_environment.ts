@@ -2,7 +2,11 @@ import type * as TypeScript from 'typescript'
 import { exactCall, safeEnvGetter, type SetupSource } from './ts_source.js'
 import { resolveSelectedEnvironment } from './selected_environment_values.js'
 
-export { resolveSelectedEnvironment } from './selected_environment_values.js'
+export {
+  IndirectEnvironmentValueError,
+  resolveSelectedEnvironment,
+  resolveSelectedEnvironmentValue,
+} from './selected_environment_values.js'
 
 /**
  * Resolve the name chosen by `env.get('NAME')` or `env.get('NAME', 'fallback')`.

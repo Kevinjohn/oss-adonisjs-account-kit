@@ -1,15 +1,14 @@
 import Page from '~/components/page'
 import { type ReactNode } from 'react'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, Mail, UserRound } from 'lucide-react'
 import NavLink, { type NavItem } from '~/components/nav_link'
 
-/**
- * The pages of the settings area, listed in the sidebar. Register a route
- * for each page and add it here, for example:
- *
- * `{ label: 'Profile', route: 'settings.profile', icon: User }`
- */
-const items: NavItem[] = [{ label: 'Password', route: 'passwords.edit', icon: KeyRound }]
+/** The pages of the settings area, listed in the sidebar. */
+const items: NavItem[] = [
+  { label: 'Profile', route: 'profile.edit', icon: UserRound },
+  { label: 'Email', route: 'email_changes.edit', icon: Mail },
+  { label: 'Password', route: 'passwords.edit', icon: KeyRound },
+]
 
 /**
  * Renders the settings heading, a sidebar of links and a card holding the

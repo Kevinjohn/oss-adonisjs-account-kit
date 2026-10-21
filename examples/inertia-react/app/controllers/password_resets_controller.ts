@@ -1,6 +1,7 @@
 import kit from 'adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import { isDeliveryFailure } from '#services/delivery_failure'
+import { accountKitSessionGuard } from '#services/session_guard'
 import { sendTokenPageHeaders } from '#services/token_page_headers'
 import { forgotPasswordValidator, resetPasswordValidator } from '#validators/account'
 
@@ -24,8 +25,7 @@ export default class PasswordResetsController {
   }
 
   /**
-   * Checks the link without using it up, so an expired link is reported before the user types
-   * a new password.
+   * Checks the link without consuming it or changing the current browser session.
    */
   async edit({ inertia, params, response }: HttpContext) {
     sendTokenPageHeaders(response)
@@ -33,9 +33,19 @@ export default class PasswordResetsController {
     return inertia.render('auth/reset_password', { token: params.token, valid })
   }
 
-  async update({ request, response, session, params }: HttpContext) {
+  async update(ctx: HttpContext) {
+    const { request, response, session, params } = ctx
     const { password } = await request.validateUsing(resetPasswordValidator)
-    await kit.passwordReset.reset({ token: params.token, password })
+    try {
+      await kit.passwordReset.reset({ token: params.token, password })
+    } catch (error) {
+      if (!isDeliveryFailure(error)) throw error
+      ctx.logger.error(
+        { event: 'password_reset_follow_up_failed' },
+        'password reset follow-up failed'
+      )
+    }
+    if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     session.flash('success', 'Your password has been reset. Sign in with the new password.')
     return response.redirect().toRoute('session.create')
   }

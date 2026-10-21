@@ -114,6 +114,138 @@ test.group('setup choice validation', (group) => {
     }
   })
 
+  test('resolves selected mail origins from the application environment file', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, '.env'),
+      'APP_URL=https://accounts.example.test\nFRONTEND_URL=https://app.example.test\n'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      production: true,
+      env: {},
+    })
+    assert.notInclude(
+      plan.diagnostics
+        .filter(({ field }) => field.startsWith('mail.'))
+        .map(({ message }) => message),
+      'APP_URL must be set before readiness can pass'
+    )
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'mail.backendOriginEnv'
+    )
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'mail.frontendOriginEnv'
+    )
+  })
+
+  test('resolves named alternate mail origins and preserves process precedence', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.mail.backendOriginEnv = 'ACCOUNT_BACKEND_ORIGIN'
+    await writeFile(
+      join(root, '.env'),
+      'ACCOUNT_BACKEND_ORIGIN=http://file.example.test\nFRONTEND_URL=https://app.example.test\n'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      production: true,
+      env: { ACCOUNT_BACKEND_ORIGIN: 'https://process.example.test' },
+    })
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'mail.backendOriginEnv'
+    )
+  })
+
+  test('rejects insecure production origins found only in an environment file', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, '.env'),
+      'APP_URL=http://accounts.example.test\nFRONTEND_URL=https://app.example.test\n'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      production: true,
+      env: {},
+    })
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, severity, message }) =>
+          field === 'mail.backendOriginEnv' && severity === 'error' && /HTTPS/i.test(message)
+      )
+    )
+    assert.notInclude(JSON.stringify(plan.diagnostics), 'accounts.example.test')
+  })
+
+  test('reports an absent selected origin as an action diagnostic', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const plan = await planSetup(choices, await inspectSetup(root), { env: {} })
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, severity, message }) =>
+          field === 'mail.backendOriginEnv' &&
+          severity === 'action' &&
+          /APP_URL must be set/.test(message)
+      )
+    )
+  })
+
+  test('explains when a selected origin cannot be inspected safely', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, '.env'),
+      'APP_URL=https://first.example.test\nAPP_URL=https://second.example.test\n'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root), { env: {} })
+    const diagnostic = plan.diagnostics.find(({ field }) => field === 'mail.backendOriginEnv')
+    assert.isDefined(diagnostic)
+    assert.match(diagnostic!.message, /could not be inspected safely.*ambiguous/i)
+    assert.notMatch(diagnostic!.message, /first\.example\.test|second\.example\.test/)
+  })
+
+  test('reports an interpolated selected origin as an action, not an error', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, '.env'),
+      'HOST=localhost\nPORT=3333\nAPP_URL=http://${HOST}:${PORT}\nFRONTEND_URL=https://app.example.test\n'
+    )
+    for (const production of [false, true]) {
+      const plan = await planSetup(choices, await inspectSetup(root), { production, env: {} })
+      const diagnostic = plan.diagnostics.find(({ field }) => field === 'mail.backendOriginEnv')
+      assert.equal(diagnostic?.severity, 'action')
+      assert.match(diagnostic!.message, /APP_URL refers to other values/)
+    }
+  })
+
+  test('resolves selected social callback origins from an environment file', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    choices.features.push('socialAuthentication', 'registration', 'emailVerification')
+    choices.policy.registration = 'open'
+    choices.social = {
+      status: 'enabled',
+      providers: ['google'],
+      callbackOriginEnv: 'SOCIAL_CALLBACK_ORIGIN',
+      callbackPath: '/account-kit/auth/oauth/{provider}/callback',
+      credentials: {
+        google: { clientIdEnv: 'GOOGLE_CLIENT_ID', clientSecretEnv: 'GOOGLE_CLIENT_SECRET' },
+      },
+    }
+    await writeFile(
+      join(root, '.env'),
+      'APP_URL=https://accounts.example.test\nFRONTEND_URL=https://app.example.test\nSOCIAL_CALLBACK_ORIGIN=https://social.example.test\n'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root), { env: {} })
+    assert.notInclude(
+      plan.diagnostics.map(({ field }) => field),
+      'social.callbackOriginEnv'
+    )
+  })
+
   test('stops on an existing managed prefix and rejects hidden JSON fields', async ({ assert }) => {
     const { root, choices } = await fixture()
     await writeFile(
