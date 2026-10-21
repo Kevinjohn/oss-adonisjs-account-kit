@@ -1,0 +1,86 @@
+/* ==========================================================================
+   AdonisJS Starter Kit
+   Tokens are the only thing you need to touch to re-theme.
+   ========================================================================== */
+
+:root {
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+
+  --paper: #f5f5f6;
+  --card: #ffffff;
+  --ink: #0a0a0b;
+  --ink-2: #2a2c30;
+  --muted: #6b6f76;
+  --subtle: #676b73;
+  --line: #ededee;
+  --line-2: #dddfe2;
+  --btn: #0a0a0b;
+  --btn-fg: #ffffff;
+  --field: #ffffff;
+  --ok: #18794e;
+  --error: #c0392b;
+
+  --r: 8px;
+  --r-lg: 14px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --paper: #08080a;
+  --card: #111114;
+  --ink: #ededee;
+  --ink-2: #c4c6ca;
+  --muted: #8b8f97;
+  --subtle: #9b9fa7;
+  --line: #1e1f23;
+  --line-2: #2c2e33;
+  --btn: #ededee;
+  --btn-fg: #0a0a0b;
+  --field: #0c0c0f;
+  --ok: #3ecf8e;
+  --error: #e0685c;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+input {
+  font: inherit;
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
