@@ -17,7 +17,12 @@ const fields = [
     title="Profile"
     description="Your name saves immediately. Confirm with your current password."
   >
-    <Form v-slot="{ errors, processing }" route="profile.update" @error="focusFormErrorSummary"
+    <Form
+      v-slot="{ errors, processing }"
+      route="profile.update"
+      :reset-on-error="['currentPassword']"
+      :reset-on-success="['currentPassword']"
+      @error="focusFormErrorSummary"
       ><div class="auth__form">
         <ErrorSummary :errors="errors" :fields="fields" />
         <div class="field">

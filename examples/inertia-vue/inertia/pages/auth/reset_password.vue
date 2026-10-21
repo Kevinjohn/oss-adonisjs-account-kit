@@ -24,6 +24,8 @@ const fields = [
       v-slot="{ errors, processing }"
       route="password_resets.update"
       :params="{ token }"
+      :reset-on-error="['password', 'passwordConfirmation']"
+      :reset-on-success="['password', 'passwordConfirmation']"
       @error="focusFormErrorSummary"
       ><div class="auth__form">
         <ErrorSummary :errors="errors" :fields="fields" />

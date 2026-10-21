@@ -14,7 +14,12 @@ const fields = [
 <template>
   <h1 class="auth__title">Create your account</h1>
   <p class="auth__sub">Start building with the starter kit.</p>
-  <Form v-slot="{ errors, processing }" route="new_account.store" @error="focusFormErrorSummary"
+  <Form
+    v-slot="{ errors, processing }"
+    route="new_account.store"
+    :reset-on-error="['password', 'passwordConfirmation']"
+    :reset-on-success="['password', 'passwordConfirmation']"
+    @error="focusFormErrorSummary"
     ><div class="auth__form">
       <ErrorSummary :errors="errors" :fields="fields" />
       <div class="field">

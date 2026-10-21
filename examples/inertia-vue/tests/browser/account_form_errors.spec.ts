@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
@@ -7,11 +8,55 @@ import { setupAccountDatabase } from '../helpers/account_database.js'
 test.group('account form errors', (group) => {
   group.each.setup(setupAccountDatabase)
 
+  test('plain HTML validation flashes safe signup input but no camelCase password fields', async ({
+    browser,
+    assert,
+  }) => {
+    const context = await browser.newContext({ baseURL: process.env.APP_URL })
+    try {
+      await context.initiateSession()
+      await context.request.get('/signup')
+      const cookies = await context.cookies()
+      const csrfCookie = cookies.find((cookie) => cookie.name === 'XSRF-TOKEN')
+      assert.exists(csrfCookie)
+
+      const response = await context.request.post('/signup', {
+        form: {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.test',
+          password: 'SensitivePass123!',
+          passwordConfirmation: 'DifferentPass123!',
+        },
+        headers: {
+          'x-xsrf-token': decodeURIComponent(csrfCookie!.value),
+          'referer': new URL('/signup', process.env.APP_URL).href,
+        },
+      })
+
+      assert.equal(response.status(), 302)
+      const flash = await context.getFlashMessages()
+      assert.deepEqual(flash.input, { fullName: 'Ada Lovelace', email: 'ada@example.test' })
+      assert.notInclude(JSON.stringify(flash), 'SensitivePass123!')
+      assert.notInclude(JSON.stringify(flash), 'DifferentPass123!')
+    } finally {
+      await context.close()
+    }
+  })
+
   test('signup announces a confirmation mismatch and focuses useful feedback without losing input', async ({
     visit,
     assert,
   }) => {
     const page = await visit('/signup')
+    await page.setViewportSize({ width: 1440, height: 900 })
+    assert.isAtMost(
+      await page.evaluate(
+        () =>
+          (globalThis as unknown as { document: { documentElement: { scrollWidth: number } } })
+            .document.documentElement.scrollWidth
+      ),
+      await page.evaluate(() => (globalThis as unknown as { innerWidth: number }).innerWidth)
+    )
     await page.getByLabel('Full name').fill('Ada Lovelace')
     await page.getByLabel('Email').fill('ada@example.test')
     await page.getByLabel('Password', { exact: true }).fill('Password123!')
@@ -50,6 +95,18 @@ test.group('account form errors', (group) => {
     )
     assert.equal(await page.getByLabel('Full name').inputValue(), 'Ada Lovelace')
     assert.equal(await page.getByLabel('Email').inputValue(), 'ada@example.test')
+    assert.equal(await page.getByLabel('Password', { exact: true }).inputValue(), '')
+    assert.equal(await confirmation.inputValue(), '')
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    assert.isAtMost(
+      await page.evaluate(
+        () =>
+          (globalThis as unknown as { document: { documentElement: { scrollWidth: number } } })
+            .document.documentElement.scrollWidth
+      ),
+      await page.evaluate(() => (globalThis as unknown as { innerWidth: number }).innerWidth)
+    )
 
     await page.keyboard.press('Tab')
     const summaryLink = summary.getByRole('link', { name: 'Confirm password' })
@@ -90,7 +147,7 @@ test.group('account form errors', (group) => {
     )
   })
 
-  test('reset associates its confirmation error and preserves the entered password', async ({
+  test('reset clears password fields after error and associates the confirmation message', async ({
     visit,
     assert,
   }) => {
@@ -140,9 +197,43 @@ test.group('account form errors', (group) => {
       await page.locator('#reset-passwordConfirmation-error').innerText(),
       'passwordConfirmation'
     )
-    assert.equal(
-      await page.getByLabel('New password', { exact: true }).inputValue(),
-      'Replacement123!'
+    assert.equal(await page.getByLabel('New password', { exact: true }).inputValue(), '')
+    assert.equal(await confirmation.inputValue(), '')
+  })
+
+  test('profile errors clear the password while preserving the edited name', async ({
+    visit,
+    assert,
+  }) => {
+    const user = await User.create({
+      fullName: 'Profile User',
+      email: 'profile@example.test',
+      password: 'OldPass123!',
+      emailVerifiedAt: DateTime.now(),
+    })
+    const page = await visit('/login')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByLabel('Password').fill('OldPass123!')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+    await page.goto('/settings/profile')
+    await page.setViewportSize({ width: 375, height: 812 })
+    assert.isAtMost(
+      await page.evaluate(
+        () =>
+          (globalThis as unknown as { document: { documentElement: { scrollWidth: number } } })
+            .document.documentElement.scrollWidth
+      ),
+      await page.evaluate(() => (globalThis as unknown as { innerWidth: number }).innerWidth)
     )
+
+    const invalidName = 'A'.repeat(256)
+    await page.getByLabel('Full name').fill(invalidName)
+    await page.getByLabel('Current password').fill('SensitivePass123!')
+    await page.getByRole('button', { name: 'Save profile' }).click()
+    await page.getByRole('alert').waitFor()
+
+    assert.equal(await page.getByLabel('Full name').inputValue(), invalidName)
+    assert.equal(await page.getByLabel('Current password').inputValue(), '')
   })
 })
