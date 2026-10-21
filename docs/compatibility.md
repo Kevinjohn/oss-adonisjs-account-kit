@@ -25,7 +25,8 @@ dialect; the package does not declare them as runtime peers.
 ## Database expectations
 
 SQLite and PostgreSQL 16 are supported. MySQL 8.4 (through `mysql2`) is experimental: the suite
-passes on it, but CI does not run it on every change. The generated schema uses integer user IDs by default; run
+passes on it, but CI does not run it on every change. Account access inspection was verified on
+native MySQL 8.4.13; see the dated [verification record](maintainers/verification.md#account-access-inspection). The generated schema uses integer user IDs by default; run
 configure with `--user-id-type=string` or `--user-id-type=uuid` when appropriate. Match the generated
 foreign-key column types to the application schema and inspect all migrations before running them.
 The package requires a unique email constraint and normalized lowercase storage. PostgreSQL
