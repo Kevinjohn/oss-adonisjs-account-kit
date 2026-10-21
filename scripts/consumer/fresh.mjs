@@ -1,5 +1,5 @@
 // Fresh install: configure the reference app from the packed archive and run its suites.
-import { copyFile, cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { format, resolveConfig } from 'prettier'
 import {
@@ -10,6 +10,7 @@ import {
   packageMigrations,
 } from './consumer_app.mjs'
 import { digest, expectFailure, hashFiles, run } from './harness.mjs'
+import { copyFixture } from './fixture.mjs'
 import { resetExclusivePostgresSchema } from './postgres.mjs'
 import { fixtureRoot, prepareOnly, tempRoot, userIdType, usersTable } from './settings.mjs'
 
@@ -32,10 +33,7 @@ async function checkGeneratedStyle(appRoot, env) {
 
 export async function runFresh(candidate, runName) {
   const appRoot = join(tempRoot, runName)
-  await cp(fixtureRoot, appRoot, {
-    recursive: true,
-    filter: (path) => !path.includes('/node_modules/'),
-  })
+  await copyFixture(fixtureRoot, appRoot)
   await mkdir(join(appRoot, 'tmp'), { recursive: true })
   const env = {
     ...databaseEnvironment(appRoot),

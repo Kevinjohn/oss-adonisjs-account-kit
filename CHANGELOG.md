@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
+- Keep local databases, secrets and installed artifacts out of fresh packed-consumer checks.
 
 - Organize adoption instructions by application stack and new or existing application, with focused recipe entry points.
 - Add a native Edge account example with public proof flows, verified access and revocable database sessions.
