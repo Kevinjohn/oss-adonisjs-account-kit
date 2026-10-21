@@ -178,21 +178,26 @@ The adapters hash passwords themselves; there is no model hook to do it. They im
 
 ### Registration data
 
-`mapRegistrationData(data, context)` validates untrusted registration data and returns extra
-columns to write, keyed by physical column name. `context` is `{ operation: 'create' }` or
-`{ operation: 'update', id }`.
+`registration.mapFields(input)` is responsible for selecting and validating application fields
+before they reach an adapter. The adapter's `mapRegistrationData(data, context)` receives that
+trusted result and maps it to extra columns to write, keyed by physical column name. It is a
+persistence mapping, not request validation or field-error handling. `context` is
+`{ operation: 'create' }` or `{ operation: 'update', id }`.
 
 ```ts
 createDrizzleAdapter(users, {
-  mapRegistrationData: async (data) => {
-    const { fullName } = await registrationValidator.validate(data)
+  mapRegistrationData(data) {
+    const { fullName } = data as { fullName: string }
     return { full_name: fullName }
   },
 })
 ```
 
-It may not set `id`, `email`, `unverified_email`, `password`, `email_verified_at`,
-`credentials_changed_at` or `role`, and every key must be a plain SQL identifier. Either throws.
+Use the same `fullName` returned by `registration.mapFields` in the [registration guide](registration.md).
+The adapter still rejects protected columns such as `id`, `email`, `unverified_email`, `password`,
+`email_verified_at`, `credentials_changed_at` and `role`; every returned key must be a plain SQL
+identifier. These checks protect persistence and are not a substitute for the application's normal
+input-validation and field-error path.
 
 ## Proving an adapter
 

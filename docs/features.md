@@ -1,9 +1,8 @@
 # Features
 
-Account Kit has two layers. The core features are the account flows almost every AdonisJS app
-needs. The additional features are opt-in: the account features are off until you
-add them to `enabled` in `config/account_kit.ts`, and the rest are commands and adapters you use
-only if you need them.
+Account Kit provides common account flows and additional capabilities. Additional flows are
+opt-in; their guides describe the setup each one needs. Commands, OpenAPI generation, and user
+adapters are integration tools, not additional account flows to enable.
 
 ## Core features
 
@@ -86,12 +85,15 @@ Turn on: `enabled: [..., 'sessionManagement']`. Guide: [signed-in devices](signe
 
 ### Account export and deletion
 
-The two account rights the GDPR asks for.
+Helpers for exporting account data and closing an account.
 
-- Export: a JSON download of the account data Account Kit holds, merged with your app's data.
-- Deletion: removes the user and every row Account Kit owns, with a hook to delete or anonymise
-  your own rows in the same transaction, and a confirmation email.
+- Export: a JSON download of package-held account data merged with data your application supplies.
+- Deletion: removes the user and Account Kit-owned rows, with a hook for your application to delete
+  or anonymise its own rows in the same transaction, and a confirmation email.
 - Both require the user to re-enter their password or prove a recent sign-in.
+
+These helpers do not determine which data your application must export, retain, or delete under
+applicable requirements.
 
 Turn on: `enabled: [..., 'dataExport', 'accountDeletion']`. Guide:
 [account export and deletion](account-data.md).
@@ -141,25 +143,30 @@ package, and a contract test suite checks any adapter you write yourself. Guide:
 
 ### Databases
 
-Tested on SQLite and PostgreSQL 16. MySQL 8.4 is experimental. See [compatibility](compatibility.md).
+Tested on SQLite and PostgreSQL 16. MySQL 8.4 is experimental. See the
+[database compatibility matrix](compatibility.md) for the supported versions and verification notes.
 
 ## Features at a glance
 
-| Operation               | Service API                                  | Managed route                           | Email sent                                  | Rate limit                    |
+| Operation               | Service API                                  | Managed route (after configured prefix) | Email sent                                  | Rate limit                    |
 | ----------------------- | -------------------------------------------- | --------------------------------------- | ------------------------------------------- | ----------------------------- |
-| Request password reset  | `passwordReset.request`                      | `POST /auth/password-reset`             | `passwordResetProvision`                    | Per client and per address    |
-| Complete password reset | `passwordReset.reset`                        | `POST /auth/password-reset/:token`      | `passwordResetCompleted`                    | Per client (managed route)    |
-| Sign up                 | `registration.register`                      | `POST /auth/signup`                     | `accountActivationProvision`                | Per client (managed route)    |
-| Resend verification     | `emailVerification.send`                     | `POST /account/email-verification/send` | `accountActivationProvision`                | Per user                      |
-| Confirm email           | `emailVerification.complete`                 | `POST /auth/email-verification/:token`  | none                                        | Per client (managed route)    |
-| Log in                  | `authentication.login`                       | `POST /auth/login`                      | none                                        | Per client and per identity   |
-| Request sign-in link    | `magicLink.request`                          | `POST /auth/magic-link`                 | `magicLinkProvision`                        | Per client and per address    |
-| Sign in by link         | `magicLink.complete`                         | `POST /auth/magic-link/:token`          | none                                        | Per client (managed route)    |
-| Change password         | `emailPasswordManagement.changePassword`     | `POST /account/password`                | `passwordChanged`                           | Per user                      |
-| Change email            | `emailPasswordManagement.requestEmailChange` | `PATCH /account/profile`                | `emailChangeProvision`, then `emailChanged` | Per user                      |
-| Invite                  | `invitations.send`                           | `POST /account/invitations`             | `invitationProvision`                       | Per inviter and per recipient |
-| Accept invitation       | `invitations.accept`                         | `POST /auth/invitations/:token`         | none                                        | Per client (managed route)    |
-| Export account data     | `accountData.export`                         | `POST /account/export`                  | none                                        | Per user                      |
-| Delete account          | `accountData.delete`                         | `DELETE /account`                       | `accountDeleted`                            | Per user                      |
+| Request password reset  | `passwordReset.request`                      | `POST auth/password-reset`              | `passwordResetProvision`                    | Per client and per address    |
+| Complete password reset | `passwordReset.reset`                        | `POST auth/password-reset/:token`       | `passwordResetCompleted`                    | Per client (managed route)    |
+| Sign up                 | `registration.register`                      | `POST auth/signup`                      | `accountActivationProvision`                | Per client (managed route)    |
+| Resend verification     | `emailVerification.send`                     | `POST account/email-verification/send`  | `accountActivationProvision`                | Per user                      |
+| Confirm email           | `emailVerification.complete`                 | `POST auth/email-verification/:token`   | none                                        | Per client (managed route)    |
+| Log in                  | `authentication.login`                       | `POST auth/login`                       | none                                        | Per client and per identity   |
+| Request sign-in link    | `magicLink.request`                          | `POST auth/magic-link`                  | `magicLinkProvision`                        | Per client and per address    |
+| Sign in by link         | `magicLink.complete`                         | `POST auth/magic-link/:token`           | none                                        | Per client (managed route)    |
+| Change password         | `emailPasswordManagement.changePassword`     | `POST account/password`                 | `passwordChanged`                           | Per user                      |
+| Change email            | `emailPasswordManagement.requestEmailChange` | `PATCH account/profile`                 | `emailChangeProvision`, then `emailChanged` | Per user                      |
+| Invite                  | `invitations.send`                           | `POST account/invitations`              | `invitationProvision`                       | Per inviter and per recipient |
+| Accept invitation       | `invitations.accept`                         | `POST auth/invitations/:token`          | none                                        | Per client (managed route)    |
+| Export account data     | `accountData.export`                         | `POST account/export`                   | none                                        | Per user                      |
+| Delete account          | `accountData.delete`                         | `DELETE account`                        | `accountDeleted`                            | Per user                      |
 
-The full lists are in [usage](usage.md) and the [endpoint reference](reference/endpoints.md).
+The managed-route paths are relative to the prefix configured with `registerManagedRoutes`. For
+example, with `prefix: '/api/v1'`, `POST auth/password-reset` is `POST /api/v1/auth/password-reset`.
+The `account-kit:prune` command and public `PruneCounts` result retain the legacy key `recovery`
+for expired password-reset tokens. The full route lists are in [usage](usage.md) and the
+[endpoint reference](reference/endpoints.md).
