@@ -264,14 +264,29 @@ test.group('native account journeys', (group) => {
         'morgan.new@example.test'
       )
       const emailProof = `/confirm-email/${encodeURIComponent(emailToken)}`
-      const inspection = await otherContext.newPage()
+      const visitor = await User.create({
+        fullName: 'Independent Visitor',
+        email: 'visitor@example.test',
+        password: 'VisitorPassword123!',
+        emailVerifiedAt: DateTime.now(),
+        unverifiedEmail: null,
+      })
+      const visitorContext = await browser.newContext({ baseURL: origin })
+      const inspection = await visitorContext.visit('/login')
+      await inspection.getByLabel('Email').fill(visitor.email)
+      await inspection.getByLabel('Password').fill('VisitorPassword123!')
+      await inspection.getByRole('button', { name: 'Sign in' }).click()
+      await inspection.getByRole('heading', { name: 'Your account' }).waitFor()
       await inspection.goto(`${origin}${emailProof}`)
       await inspection.getByRole('heading', { name: 'Confirm your new email' }).waitFor()
       await otherSession.goto('/dashboard')
       await otherSession.getByText('Signed in as morgan@example.test.').waitFor()
       await inspection.goto(`${origin}${emailProof}`)
       await inspection.getByRole('button', { name: 'Confirm email change' }).click()
-      await inspection.getByRole('heading', { name: 'Sign in' }).waitFor()
+      await inspection.getByRole('heading', { name: 'Your account' }).waitFor()
+      await inspection.getByText('Signed in as visitor@example.test.').waitFor()
+      await inspection.goto('/account')
+      await inspection.getByRole('heading', { name: 'Protected account page' }).waitFor()
       assert.equal((await User.findByOrFail('id', user.id)).email, 'morgan.new@example.test')
       await otherSession.goto('/account')
       await otherSession.getByRole('heading', { name: 'Sign in' }).waitFor()
@@ -301,7 +316,7 @@ test.group('native account journeys', (group) => {
       await primary.getByRole('heading', { name: 'Sign in' }).waitFor()
       assert.equal(new URL(primary.url()).pathname, '/login')
       await passwordContext.close()
-      await inspection.close()
+      await visitorContext.close()
     } finally {
       await otherContext.close()
     }

@@ -95,7 +95,8 @@ The starter's `@form` component inserts Shield's CSRF field for state-changing m
 validation redirects back with an input error bag; field components associate messages with the
 input and focus the first invalid field. Controller success and recoverable service outcomes use
 session flash messages and redirects. Views use English application-owned text; no locale or
-translation loader is shipped.
+translation loader is shipped. This signup form requires a trimmed full name of 1–255 characters;
+the app's registration adapter still maps a missing name to `null` for callers outside this form.
 
 `SessionRevisionMiddleware` checks each signed-in session against Account Kit's current credential
 revision. Password reset and email confirmation revoke sessions for the changed account. A password change

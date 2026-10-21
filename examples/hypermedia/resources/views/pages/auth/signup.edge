@@ -4,7 +4,7 @@
   @form({ route: 'new_account.store', method: 'POST', class: 'auth__form' })
     @field.root({ name: 'fullName' })
       @!field.label({ text: 'Full name' })
-      @!input.control({ autocomplete: 'name', value: old('fullName') })
+      @!input.control({ autocomplete: 'name', value: old('fullName'), required: true })
       @!field.error()
     @end
     @field.root({ name: 'email' })
