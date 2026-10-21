@@ -1,0 +1,21 @@
+@layouts.auth()
+  <h1 class="auth__title">Confirm your new email</h1>
+  @if(valid)
+    <p class="auth__sub">
+      Confirming changes the address on your account and ends all existing sessions.
+    </p>
+    @form({
+      route: 'email_changes.complete',
+      routeParams: { token },
+      method: 'POST',
+      class: 'auth__form',
+    })
+      @!button({ text: 'Confirm email change', type: 'submit', block: true })
+    @end
+  @else
+    <p class="auth__sub">
+      This link is invalid, already used, or expired. Sign in to request another change.
+    </p>
+    <a href="{{ urlFor('session.create') }}" class="il">Sign in</a>
+  @end
+@end
