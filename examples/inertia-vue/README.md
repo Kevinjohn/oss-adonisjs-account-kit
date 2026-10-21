@@ -120,21 +120,32 @@ recipient inbox. The tested starter source is
 [`adonisjs/starter-kits/inertia-vue` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue).
 This example was based on Account Kit source `ae42132e6182690f7a91d4119a97dee98d66ce25`.
 
-On Node 24, `PORT=3341 APP_URL=http://localhost:3341 pnpm test` passed all 35 Japa unit,
-functional and browser tests; `pnpm build`, `pnpm lint` and `pnpm typecheck` passed. Browser tests
+With Node `24.21.0` and pnpm `11.23.0` explicitly selected, `PORT=3341
+APP_URL=http://localhost:3341 pnpm test` passed all 35 Japa unit, functional and browser tests;
+`pnpm lint`, `pnpm typecheck` and `pnpm build` also passed with that runtime. Browser tests
 checked signup at 1440×900 and 375×812, profile at 375×812, and email settings at widths 320, 768,
 1024 and 1440 pixels; these checks found no horizontal overflow. Keyboard coverage submits signup
 and reset errors with Enter, focuses the error summary, follows its field link with Tab and Enter,
-and verifies secret fields clear while ordinary signup input remains.
-Settings journeys cover current-password rejection, profile edits, email confirmation, password
-renewal and session revocation. The safe-input regression confirms plain HTML validation retains
-only the signup name and email in session flash data. Guard and secret-reset mutations each made
-their representative browser test fail, then the changed files were restored byte-for-byte. The
-unsafe mutation that would flash all request input was not executed. These checks do not cover a
-recipient inbox or PostgreSQL.
+and verifies secret fields clear while ordinary signup input remains. Settings journeys cover
+current-password rejection, profile edits, email confirmation, password renewal and session
+revocation. The safe-input regression confirms plain HTML validation retains only the signup name
+and email in session flash data. With Node `24.21.0`, guard and secret-reset mutations each made their
+representative browser test fail, then the changed files were restored byte-for-byte. The unsafe
+mutation that would flash all request input was not executed. These checks do not cover a recipient
+inbox or PostgreSQL.
 
-The contributor archive used for this evidence declares package version `0.0.0` and has SHA-256
+The archive used for the 35-test run declared package version `0.0.0` and had SHA-256
 `24d8fb1b0693338b41e51b25ddeaabc2a06ca70ea46747d4073bf584b2730c99`.
+
+A fresh checkout made from tracked source at commit `369ac0fbe87ef372895ac5190396adde7d1b5969`
+verified the documented contributor setup with Node `24.21.0` and pnpm `11.23.0`: frozen root
+install, `cd examples/inertia-vue`, `pnpm kit:pack`, example install, environment copy, app-key
+generation, codegen and SQLite migrations all completed. The freshly packed package is version
+`0.0.0` with SHA-256
+`064cb1ac65e03e2299ead312d6f0d9263806ba74193937f3dbf99812a795edff`. With the server running on
+port `3343`, a browser GET to `/signup` rendered the signup form. The browser reported a missing
+`/favicon.ico` (404); the app page itself rendered. The 35-test suite was not repeated in this fresh
+checkout, and setup verification does not cover recipient email delivery or PostgreSQL.
 
 See the shared [example acceptance contract](../../docs/guides/example-acceptance.md) for the
 journey boundaries and cross-example evidence record.
