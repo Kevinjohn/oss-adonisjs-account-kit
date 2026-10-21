@@ -46,3 +46,11 @@ test('proof page snippets keep the token out of the Referer', async ({ assert })
     .map(({ document }) => document)
   assert.deepEqual(leaking, [])
 })
+
+test('the development mail recipe shows the log capture other pages link it for', async ({
+  assert,
+}) => {
+  const source = await readFile(join(repoRoot, 'docs/recipes/development-mail.md'), 'utf8')
+  const snippets = [...source.matchAll(/```ts\n([\s\S]*?)```/g)].map(([, code]) => code)
+  assert.isTrue(snippets.some((code) => code.includes('createLogNotifications(')))
+})
