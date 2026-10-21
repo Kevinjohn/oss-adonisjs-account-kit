@@ -32,6 +32,8 @@ const cancelFields = [{ name: 'cancelCurrentPassword', label: 'Current password'
       v-if="canRequestChange"
       v-slot="{ errors, processing }"
       route="email_changes.store"
+      :reset-on-error="['currentPassword']"
+      :reset-on-success="['currentPassword']"
       @error="focusFormErrorSummary"
       ><div class="auth__form">
         <ErrorSummary :errors="errors" :fields="requestFields" />
@@ -74,6 +76,8 @@ const cancelFields = [{ name: 'cancelCurrentPassword', label: 'Current password'
       v-if="pendingEmail"
       v-slot="{ errors, processing }"
       route="email_changes.cancel"
+      :reset-on-error="['cancelCurrentPassword']"
+      :reset-on-success="['cancelCurrentPassword']"
       @error="focusFormErrorSummary"
       ><div class="auth__form">
         <p>Cancel the pending change with your current password.</p>

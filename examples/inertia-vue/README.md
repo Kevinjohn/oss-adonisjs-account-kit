@@ -66,11 +66,12 @@ version, refresh `pnpm-lock.yaml`, and document the frozen consumer install here
 - Logout is a protected POST and ends the current session.
 
 Forms submit through Inertia. Vine validation errors remain associated with labels, are summarized
-in a focusable alert, and move keyboard focus to that summary. Password fields are not retained;
-ordinary invalid fields are preserved by the Inertia form. Success and recovery messages are
-announced after redirects. Route tokens use the Vue `Form` component's `params` prop, and
-`aria-invalid` is present only while a field has an error. Inertia validation requests do not flash
-submitted input into the server-side session; this applies to the Vue form requests exercised here.
+in a focusable alert, and move keyboard focus to that summary. Password fields clear after form
+errors and success; ordinary invalid fields remain in the Inertia form. Plain HTML validation
+flashes only the non-secret signup name and email fields. Inertia validation requests do not flash
+submitted input into the server-side session. Success and recovery messages are announced after
+redirects. Route tokens use the Vue `Form` component's `params` prop, and `aria-invalid` is present
+only while a field has an error.
 
 ## What differs from the official Vue starter
 

@@ -12,7 +12,13 @@ const fields = [
 <template>
   <h1 class="auth__title">Welcome back</h1>
   <p class="auth__sub">Sign in to your account.</p>
-  <Form v-slot="{ errors, processing }" route="session.store" @error="focusFormErrorSummary">
+  <Form
+    v-slot="{ errors, processing }"
+    route="session.store"
+    :reset-on-error="['password']"
+    :reset-on-success="['password']"
+    @error="focusFormErrorSummary"
+  >
     <div class="auth__form">
       <ErrorSummary :errors="errors" :fields="fields" />
       <div class="field">
