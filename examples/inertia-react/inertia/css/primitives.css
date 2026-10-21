@@ -31,10 +31,6 @@
     color 0.15s,
     scale 0.15s;
 }
-.btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
-}
 .btn:active:not(:disabled) {
   scale: 0.96;
 }
@@ -105,9 +101,7 @@
   color: var(--subtle);
 }
 .field__input:focus {
-  outline: none;
   border-color: var(--ink);
-  box-shadow: 0 0 0 3px var(--ring);
 }
 .field__input:-webkit-autofill,
 .field__input:-webkit-autofill:hover,

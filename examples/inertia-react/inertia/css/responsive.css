@@ -28,3 +28,42 @@
     padding: 20px;
   }
 }
+
+@media (max-width: 420px) {
+  .lrow {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .lrow__desc {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn:active:not(:disabled),
+  .iconbtn:active,
+  .themetoggle__icon,
+  .lrow:hover .lrow__arrow,
+  .pile:hover .tile {
+    scale: none !important;
+    rotate: none !important;
+    transform: none !important;
+    translate: none !important;
+  }
+
+  .lrow:hover {
+    padding-left: 2px;
+  }
+
+  .pile:hover .tile {
+    margin-left: -8px;
+  }
+}
