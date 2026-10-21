@@ -817,7 +817,7 @@ input {
 }
 
 /* ==========================================================================
-   Flash alerts (toast-style card, server-rendered, Alpine.js animated)
+   Persistent flash alerts (server-rendered)
    ========================================================================== */
 .flash-container {
   position: fixed;
@@ -846,9 +846,6 @@ input {
     0 10px 30px -12px rgba(10, 10, 11, 0.18);
   padding: 16px 18px;
   pointer-events: auto;
-  transition:
-    transform 0.18s ease,
-    opacity 0.18s ease;
 }
 :root[data-theme='dark'] .alert {
   box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6);

@@ -196,49 +196,40 @@ test.group('native account journeys', (group) => {
     assert.equal(await page.getByLabel('Password').inputValue(), '')
   })
 
-  test('flash alerts and password recovery stay available without JavaScript', async ({
+  test('failure and recovery feedback work without JavaScript and errors persist with JavaScript', async ({
     browser,
+    visit,
     assert,
   }) => {
     const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
-    const sessionPrototype = Session.prototype as unknown as {
-      flash: (this: Session, key: string, value: unknown) => void
-    }
-    const originalFlash = sessionPrototype.flash
     const errorMessage = 'The email or password is incorrect. Check your details and try again.'
-    const recoveryMessage = 'Password recovery is available if you cannot sign in.'
+    const resetMessage = 'If an account exists for that address, we have sent a reset link.'
 
     try {
-      // Compose recovery guidance with a real login failure to exercise both rendered alert styles.
-      sessionPrototype.flash = function (key, value) {
-        if (key === 'error' && value === errorMessage) {
-          originalFlash.call(this, 'success', recoveryMessage)
-        }
-        return originalFlash.call(this, key, value)
-      }
-
       const page = await context.visit('/login')
       await page.getByLabel('Email').fill('unknown@example.test')
       await page.getByLabel('Password').fill('UnknownPass123!')
       await page.getByRole('button', { name: 'Sign in' }).click()
       await page.getByText(errorMessage).waitFor()
-      await page.getByText(recoveryMessage).waitFor()
-      assert.equal(await page.getByRole('alert').count(), 2)
       assert.isTrue(await page.getByText(errorMessage).isVisible())
-      assert.isTrue(await page.getByText(recoveryMessage).isVisible())
-
-      sessionPrototype.flash = originalFlash
       await page.getByRole('link', { name: 'Forgot your password?' }).click()
       await page.getByRole('heading', { name: 'Reset your password' }).waitFor()
       await page.getByLabel('Email').fill('unknown@example.test')
       await page.getByRole('button', { name: 'Send reset link' }).click()
-      const resetMessage = 'If an account exists for that address, we have sent a reset link.'
       await page.getByText(resetMessage).waitFor()
       assert.isTrue(await page.getByText(resetMessage).isVisible())
     } finally {
-      sessionPrototype.flash = originalFlash
       await context.close()
     }
+
+    const javascriptPage = await visit('/login')
+    await javascriptPage.getByLabel('Email').fill('unknown@example.test')
+    await javascriptPage.getByLabel('Password').fill('UnknownPass123!')
+    await javascriptPage.getByRole('button', { name: 'Sign in' }).click()
+    const javascriptError = javascriptPage.getByText(errorMessage)
+    await javascriptError.waitFor()
+    await javascriptPage.waitForTimeout(5100)
+    assert.isTrue(await javascriptError.isVisible())
   })
 
   test('profile, email change, password change, and logout follow session policy', async ({

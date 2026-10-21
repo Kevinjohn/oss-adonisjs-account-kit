@@ -1,22 +1,5 @@
 import Alpine from 'alpinejs'
 
-Alpine.data('alert', function () {
-  return {
-    isVisible: true,
-    dismiss() {
-      this.isVisible = false
-    },
-    init() {
-      setTimeout(() => {
-        this.isVisible = true
-      }, 80)
-      setTimeout(() => {
-        this.dismiss()
-      }, 5000)
-    },
-  }
-})
-
 Alpine.data('themeToggle', function () {
   return {
     theme: 'light',
