@@ -14,7 +14,7 @@ export async function isOwner(userId: number | string, trx?: Trx): Promise<boole
 }
 
 /** An admitted owner: the authority for invitations and admission decisions. */
-async function isAdmittedOwner(userId: number | string, trx?: Trx): Promise<boolean> {
+export async function isAdmittedOwner(userId: number | string, trx?: Trx): Promise<boolean> {
   return (await isAdmitted(userId, trx)) && isOwner(userId, trx)
 }
 

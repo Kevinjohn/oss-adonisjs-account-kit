@@ -133,6 +133,9 @@ from an Account Kit callback or while holding that account's row: it opens its o
 transaction and would wait on itself. A `PostCommitError` means the snapshot was discarded;
 a retry is safe.
 
+See the [worked account access inspection recipe](recipes/account-access-inspection.md) for a
+caller-authorized application flow with generic denial handling and revision comparison.
+
 ### Protected requests
 
 The selected guard authenticates a request first. Then call
