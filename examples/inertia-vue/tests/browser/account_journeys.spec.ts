@@ -44,6 +44,7 @@ test.group('composed account browser journeys', (group) => {
       // The dashboard is limited access; this real application page requires confirmed email.
       await page.goto('/account')
       assert.equal(new URL(page.url()).pathname, '/dashboard')
+      await page.getByText('Confirm your email address before opening this page.').waitFor()
       assert.include(
         await page.locator('body').innerText(),
         'Confirm your email address before opening this page.'
@@ -65,6 +66,7 @@ test.group('composed account browser journeys', (group) => {
       await page.getByRole('button', { name: 'Sign in' }).click()
       await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       const confirmed = await page.goto('/account')
+      await page.getByRole('heading', { name: 'Your account is confirmed' }).waitFor()
       assert.equal(confirmed?.status(), 200)
       assert.include(await page.locator('body').innerText(), 'Your account is confirmed')
       await page.goto('/settings/email')

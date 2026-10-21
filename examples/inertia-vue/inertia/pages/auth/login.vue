@@ -24,7 +24,7 @@ const fields = [
           type="email"
           autocomplete="username"
           required
-          :aria-invalid="!!errors.email"
+          :aria-invalid="errors.email ? 'true' : undefined"
           :aria-describedby="errors.email ? 'email-error' : undefined"
         /><span v-if="errors.email" id="email-error" class="field__error">{{ errors.email }}</span>
       </div>
@@ -37,7 +37,7 @@ const fields = [
           type="password"
           autocomplete="current-password"
           required
-          :aria-invalid="!!errors.password"
+          :aria-invalid="errors.password ? 'true' : undefined"
           :aria-describedby="errors.password ? 'password-error' : undefined"
         /><span v-if="errors.password" id="password-error" class="field__error">{{
           errors.password

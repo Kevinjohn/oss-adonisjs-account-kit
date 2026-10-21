@@ -68,7 +68,9 @@ version, refresh `pnpm-lock.yaml`, and document the frozen consumer install here
 Forms submit through Inertia. Vine validation errors remain associated with labels, are summarized
 in a focusable alert, and move keyboard focus to that summary. Password fields are not retained;
 ordinary invalid fields are preserved by the Inertia form. Success and recovery messages are
-announced after redirects.
+announced after redirects. Route tokens use the Vue `Form` component's `params` prop, and
+`aria-invalid` is present only while a field has an error. Inertia validation requests do not flash
+submitted input into the server-side session; this applies to the Vue form requests exercised here.
 
 ## What differs from the official Vue starter
 

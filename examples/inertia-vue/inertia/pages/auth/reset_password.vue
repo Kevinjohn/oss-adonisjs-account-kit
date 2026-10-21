@@ -23,7 +23,7 @@ const fields = [
     <Form
       v-slot="{ errors, processing }"
       route="password_resets.update"
-      :route-params="{ token }"
+      :params="{ token }"
       @error="focusFormErrorSummary"
       ><div class="auth__form">
         <ErrorSummary :errors="errors" :fields="fields" />
@@ -36,9 +36,9 @@ const fields = [
             type="password"
             autocomplete="new-password"
             required
-            :aria-invalid="!!errors.password"
-            :aria-describedby="errors.password ? 'password-error' : undefined"
-          /><span v-if="errors.password" id="password-error" class="field__error">{{
+            :aria-invalid="errors.password ? 'true' : undefined"
+            :aria-describedby="errors.password ? 'reset-password-error' : undefined"
+          /><span v-if="errors.password" id="reset-password-error" class="field__error">{{
             errors.password
           }}</span>
         </div>
@@ -51,11 +51,16 @@ const fields = [
             type="password"
             autocomplete="new-password"
             required
-            :aria-invalid="!!errors.passwordConfirmation"
-            :aria-describedby="errors.passwordConfirmation ? 'confirm-error' : undefined"
-          /><span v-if="errors.passwordConfirmation" id="confirm-error" class="field__error">{{
-            errors.passwordConfirmation
-          }}</span>
+            :aria-invalid="errors.passwordConfirmation ? 'true' : undefined"
+            :aria-describedby="
+              errors.passwordConfirmation ? 'reset-passwordConfirmation-error' : undefined
+            "
+          /><span
+            v-if="errors.passwordConfirmation"
+            id="reset-passwordConfirmation-error"
+            class="field__error"
+            >{{ errors.passwordConfirmation }}</span
+          >
         </div>
         <button class="btn btn--primary btn--block" type="submit" :disabled="processing">
           {{ processing ? 'One moment…' : 'Reset password' }}

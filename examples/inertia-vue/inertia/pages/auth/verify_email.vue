@@ -25,7 +25,7 @@ const fields = [
     <Form
       v-slot="{ errors, processing }"
       route="email_verifications.update"
-      :route-params="{ token }"
+      :params="{ token }"
       @error="focusFormErrorSummary"
       ><div class="auth__form">
         <ErrorSummary :errors="errors" :fields="fields" />
@@ -38,7 +38,7 @@ const fields = [
             type="password"
             autocomplete="new-password"
             required
-            :aria-invalid="!!errors.password"
+            :aria-invalid="errors.password ? 'true' : undefined"
             :aria-describedby="errors.password ? 'password-error' : undefined"
           /><span v-if="errors.password" id="password-error" class="field__error">{{
             errors.password
@@ -53,7 +53,7 @@ const fields = [
             type="password"
             autocomplete="new-password"
             required
-            :aria-invalid="!!errors.passwordConfirmation"
+            :aria-invalid="errors.passwordConfirmation ? 'true' : undefined"
             :aria-describedby="errors.passwordConfirmation ? 'confirm-error' : undefined"
           /><span v-if="errors.passwordConfirmation" id="confirm-error" class="field__error">{{
             errors.passwordConfirmation

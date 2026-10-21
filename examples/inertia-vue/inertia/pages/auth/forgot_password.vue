@@ -25,7 +25,7 @@ const fields = [{ name: 'email', label: 'Email' }]
           type="email"
           autocomplete="username"
           required
-          :aria-invalid="!!errors.email"
+          :aria-invalid="errors.email ? 'true' : undefined"
           :aria-describedby="errors.email ? 'email-error' : undefined"
         /><span v-if="errors.email" id="email-error" class="field__error">{{ errors.email }}</span>
       </div>

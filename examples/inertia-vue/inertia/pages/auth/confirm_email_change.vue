@@ -16,7 +16,7 @@ defineProps<{ token: string; valid: boolean }>()
       Confirming changes your sign-in address and ends current sessions. Sign in again with the new
       address.
     </p>
-    <Form v-slot="{ processing }" route="email_changes.complete" :route-params="{ token }"
+    <Form v-slot="{ processing }" route="email_changes.complete" :params="{ token }"
       ><button class="btn btn--primary btn--block" type="submit" :disabled="processing">
         {{ processing ? 'One moment…' : 'Confirm email change' }}
       </button></Form

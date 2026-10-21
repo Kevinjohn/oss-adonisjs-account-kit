@@ -30,7 +30,7 @@ const fields = [
             type="password"
             autocomplete="current-password"
             required
-            :aria-invalid="!!errors.currentPassword"
+            :aria-invalid="errors.currentPassword ? 'true' : undefined"
             :aria-describedby="errors.currentPassword ? 'current-error' : undefined"
           /><span v-if="errors.currentPassword" id="current-error" class="field__error">{{
             errors.currentPassword
@@ -45,7 +45,7 @@ const fields = [
             type="password"
             autocomplete="new-password"
             required
-            :aria-invalid="!!errors.password"
+            :aria-invalid="errors.password ? 'true' : undefined"
             :aria-describedby="errors.password ? 'password-error' : undefined"
           /><span v-if="errors.password" id="password-error" class="field__error">{{
             errors.password
@@ -60,7 +60,7 @@ const fields = [
             type="password"
             autocomplete="new-password"
             required
-            :aria-invalid="!!errors.passwordConfirmation"
+            :aria-invalid="errors.passwordConfirmation ? 'true' : undefined"
             :aria-describedby="errors.passwordConfirmation ? 'confirm-error' : undefined"
           /><span v-if="errors.passwordConfirmation" id="confirm-error" class="field__error">{{
             errors.passwordConfirmation

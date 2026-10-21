@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 const page = usePage()
 const messages = computed(() => {
-  const flash = page.props.flash as { success?: string; error?: string } | undefined
+  const flash = page.flash as { success?: string; error?: string } | undefined
   return [
     { kind: 'success', text: flash?.success },
     { kind: 'error', text: flash?.error },
