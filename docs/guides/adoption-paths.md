@@ -54,3 +54,24 @@ Within an API path choose [application-owned controllers](../application-owned-i
 when you own HTTP behavior, or [managed JSON routes](../managed-http.md) for selected package
 endpoints. [Guided setup](../setup.md) can generate integration files for either choice. Browser
 examples call services from their own controllers; managed JSON is not a prerequisite for a form.
+
+## Checked adoption routes
+
+The new-application route was exercised from a fresh tracked Vue checkout at
+`369ac0fbe87ef372895ac5190396adde7d1b5969`: root install, contributor pack, example install,
+environment/key, code generation, migrations and browser startup on Node 24.21.0/pnpm 11.23.0.
+The [Vue evidence record](../../examples/inertia-vue/README.md#checks-and-evidence) distinguishes
+that archive and setup from its full account-journey suite. Manual signup inspection at 1440×900
+and 375×812 checked useful-input retention, empty password fields and keyboard error recovery.
+
+The existing-application route was exercised by adding [reset alongside an existing API login](../recipes/password-reset-existing-login.md)
+in a disposable app: its saved token was rejected on the original protected profile after reset,
+and a fresh login succeeded. The [verified-route recipe](../recipes/verified-email-route.md#verify-all-three-states)
+separately records the minimal API starter install and guest/unverified/verified outcomes without
+a direct Session dependency or active Session integration. These are selected executable routes,
+not proof that every possible application can copy every stack without adaptation.
+
+The rendered selector, navigation and exact example/transplant anchors were inspected at desktop
+and narrow widths. The narrow comparison table scrolls horizontally. Repository link, reference,
+snippet and cited-test checks and the documentation build complement that inspection; they do not
+establish recipient email delivery or a published-package install.
