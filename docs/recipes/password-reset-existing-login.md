@@ -9,7 +9,8 @@ configuration unchanged.
 ## Starting point
 
 Start with the AdonisJS 7 API starter, Node 24, pnpm, its existing `User.accessTokens` provider,
-and login route. Install Account Kit and run the generated migrations:
+and login route. This recipe assumes Account Kit is installed and configured. With a published
+package version installed, add its configuration and migrations with:
 
 ```sh
 node ace add adonisjs-account-kit
@@ -19,6 +20,11 @@ node ace migration:run
 The setup command adds the Lucid adapter and account configuration. Keep your existing login route,
 auth middleware and token provider. The migration adds Account Kit's account columns and reset
 proof table to the selected users table.
+
+The current repository snapshot has no matching published package release. To prepare the same
+kind of disposable app from this checkout, run `pnpm test:consumer -- --database=sqlite
+--prepare-only` at the repository root. It installs a local packed archive into a disposable copy
+of `examples/api`; this is a contributor verification path, not a published installation.
 
 ## Configure and mount only password reset
 
@@ -131,13 +137,15 @@ wording remain owned by the application. The [reset controller](../../examples/a
 [core API walkthrough](../guides/core-api.md) show the request, inspection, completion and
 revocation boundaries in a runnable API app.
 
-The disposable acceptance app was prepared from `examples/api` at starter revision `ae42132` with
+The disposable acceptance app used the repository's `examples/api` reference app at source revision
+`ae42132` and was prepared with
 `pnpm test:consumer -- --database=sqlite --prepare-only`. It ran Node `v24.21.0`, AdonisJS Core
 `7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, and Account Kit `0.0.0` against SQLite;
 the prepared app uses pnpm `10.21.0` (the packaging workspace uses pnpm `11.23.0`).
 
-A disposable HTTP test mounted only `passwordReset` at `/account-kit` and passed with
-`pnpm exec node ace test --files=tests/functional/recipe_add_password_reset.spec.ts`: known and
+A temporary disposable-app HTTP test named `recipe_add_password_reset.spec.ts` mounted only
+`passwordReset` at `/account-kit` and passed with
+`pnpm exec node ace test --files=recipe_add_password_reset.spec.ts`: known and
 unknown requests returned the same 202, reset completion succeeded, the pre-reset bearer received
 401 on the starter's existing protected profile route, and the existing login rejected the old
 password and accepted the new one. Removing credential-revision advancement and retaining tokens

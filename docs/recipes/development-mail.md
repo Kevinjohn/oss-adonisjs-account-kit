@@ -8,6 +8,7 @@ worker and failure policy.
 ## Starting point and files
 
 Use an AdonisJS 7 app on Node 24 with Account Kit configured and a local password-reset flow.
+Keep its existing Auth guard, route middleware and, for browser stacks, CSRF middleware unchanged.
 Add `@adonisjs/mail` 10 with the SMTP transport if the app does not already have it:
 
 ```sh
@@ -83,4 +84,35 @@ recipe with the configured SMTP catcher; for recipient delivery, verify the appl
 provider and worker outside the local fixture. The application's existing i18n policy owns
 user-facing language; Account Kit does not select a locale.
 
-See the [example acceptance record](../guides/example-acceptance.md) for the tested starter versions, exact disposable changes, commands, results and limits.
+## Disposable acceptance
+
+The disposable API app used the repository's `examples/api` reference app at source revision
+`ae42132` and was prepared with `pnpm test:consumer -- --database=sqlite --prepare-only`. It ran
+Node `v24.21.0`, AdonisJS Core `7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, Account Kit
+`0.0.0`, and SQLite. The app added AdonisJS Mail `10.4.0` with:
+
+```sh
+pnpm add @adonisjs/mail@10.4.0
+node ace add @adonisjs/mail --transports=smtp
+```
+
+It changed
+`config/account_kit.ts` to `createMailNotifications`, and pointed `config/mail.ts` and `.env` at a
+loopback-only SMTP capture service on `127.0.0.1:1025`. With `pnpm dev`, a known reset request
+returned generic `202` and produced a captured message; an unknown address returned the same `202`
+and produced no message. The captured proof was inspected and completed against SQLite. This proves
+local rendering and configured SMTP dispatch, not provider acceptance or recipient delivery.
+The exercised HTTP operations were `POST /api/v1/auth/password-reset` for a known and an unknown
+fictional address, `GET /api/v1/auth/password-reset/:token`, and `POST` to that proof path with the
+new password and confirmation.
+
+A second disposable run set SMTP to `127.0.0.1:1027` with no listener and added a temporary
+`queued:mail:error` event logger in `start/routes.ts`. `pnpm dev` served a fictional signup with
+`POST /api/v1/auth/signup` and HTTP `200`; Mail later emitted the event for `mailerName: 'smtp'`,
+and `POST /api/v1/auth/login` for the same fictional account returned `200`. The account therefore
+remained usable after the asynchronous transport failure. This did not test a worker retry or prove
+recipient delivery; the app needs an explicit retry policy for later queue errors. The temporary
+event logger and captured tests were not committed as repository test files.
+
+See the [example acceptance record](../guides/example-acceptance.md) for the starter/package
+versions and shared acceptance boundaries.

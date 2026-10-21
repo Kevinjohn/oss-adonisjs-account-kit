@@ -16,11 +16,21 @@ the package's verification and credential-revision columns. Add or reuse these f
 - `start/kernel.ts` to register the named middleware.
 - `start/routes.ts` to place the check after the native `auth` middleware.
 
-The reference API app's
-[account input](../../examples/api/app/services/account_input.ts),
-[verified-account middleware](../../examples/api/app/middleware/verified_account_middleware.ts),
-[kernel registration](../../examples/api/start/kernel.ts), and
-[route order](../../examples/api/start/routes.ts) are the matching implementation.
+This recipe is API-only and has no session dependency. Its `accountInput` helper reads only the
+selected `api` access-token guard:
+
+```ts
+// app/services/account_input.ts
+import type { HttpContext } from '@adonisjs/core/http'
+
+export function accountInput(ctx: HttpContext) {
+  const user = ctx.auth.use('api').getUserOrFail()
+  return { userId: user.id, tokenId: user.currentAccessToken?.identifier?.toString() }
+}
+```
+
+The verified middleware uses that input. Register both named middlewares in `start/kernel.ts`;
+keep Adonis Auth initialization in the router stack as in the API app:
 
 ## Add the gate after authentication
 
@@ -42,9 +52,23 @@ export default class VerifiedAccountMiddleware {
 }
 ```
 
-Register the lazy middleware in `start/kernel.ts`, then apply the gates in this order:
+```ts
+// start/kernel.ts
+import router from '@adonisjs/core/services/router'
+
+export const middleware = router.named({
+  auth: () => import('#middleware/auth_middleware'),
+  verifiedAccount: () => import('#middleware/verified_account_middleware'),
+})
+```
+
+The `auth_middleware` must authenticate the API guard, for example with
+`ctx.auth.authenticateUsing(['api'])`. Apply the gates in this order:
 
 ```ts
+import router from '@adonisjs/core/services/router'
+import { middleware } from '#start/kernel'
+
 router
   .get('/api/v1/reports', [ReportsController, 'index'])
   .use(middleware.auth())
@@ -76,13 +100,15 @@ integration. Keep messages and any guest redirect in the application; Account Ki
 error codes and the verification decision. See [AdonisJS Auth middleware](https://docs.adonisjs.com/guides/auth/introduction)
 and the [authentication reference](../authentication.md) for the selected guard setup.
 
-The disposable acceptance app was prepared from `examples/api` at starter revision `ae42132` with
-`pnpm test:consumer -- --database=sqlite --prepare-only`. It ran Node `v24.21.0`, AdonisJS Core
+The disposable acceptance app used the repository's `examples/api` reference app at source revision
+`ae42132` and was prepared with `pnpm test:consumer -- --database=sqlite --prepare-only`. It ran
+Node `v24.21.0`, AdonisJS Core
 `7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, and Account Kit `0.0.0` against SQLite;
 the prepared app uses pnpm `10.21.0` (the packaging workspace uses pnpm `11.23.0`).
 
-A disposable HTTP test mounted the route with native `auth()` followed by `verifiedAccount()` and
-passed with `pnpm exec node ace test --files=tests/functional/recipe_verified_email_route.spec.ts`:
+A temporary disposable-app HTTP test named `recipe_verified_email_route.spec.ts` mounted the route
+with `auth()` followed by `verifiedAccount()` and passed with
+`pnpm exec node ace test --files=recipe_verified_email_route.spec.ts`:
 guest 401, unverified account 403, verified account 200. Removing `verifiedAccount()` changed the
 unverified result to 200; restoring it returned the test green. This checks the API guard and
 middleware only, not a browser redirect or localized frontend message. See the
