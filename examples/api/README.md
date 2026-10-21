@@ -229,3 +229,8 @@ Use the repository's `test:consumer` script to run it. PostgreSQL runs require t
 scenario.
 The `compatibility/` folder is an input for this harness, not part of the application: it is a
 separate minimum-version consumer.
+
+## Shared acceptance criteria
+
+See the [example account journey acceptance guide](../../docs/guides/example-acceptance.md) for
+the common baseline, application-policy differences, recorded coverage and remaining gaps.
