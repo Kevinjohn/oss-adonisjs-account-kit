@@ -1,0 +1,88 @@
+# Example account journey acceptance
+
+Use this contract when evaluating or changing a reference application. A passing service test does
+not establish that a browser form works. An implemented page does not establish that it was tested.
+The application owns its user model, validation, authorization, language, delivery callbacks and
+session policy; Account Kit owns proof consumption and credential-revision guarantees.
+
+## Common journey
+
+Run with two independent signed-in clients and a disposable address. Capture development proof
+messages locally; never include live proofs, passwords or customer data in published evidence.
+
+| Step                  | Observable success                                                                                                                               | Failure and recovery boundary                                                                                                                                                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signup                | One account is created; explain whether it is signed in and awaiting verification.                                                               | Invalid fields identify corrective action. Duplicate addresses do not disclose account existence. If creation committed before mail/login failed, preserve the account and offer sign-in/resend; do not submit registration again.            |
+| Verify email          | Inspecting the proof changes no identity. Completion consumes it once and confirms the address.                                                  | Public proof routes work for guests and a different signed-in account. Invalid, used and expired proofs offer a fresh request. Completion applies the documented current-session policy, including committed follow-up failures.              |
+| Login                 | Valid current credentials establish the selected native guard identity.                                                                          | Invalid credentials have generic feedback. Session revision is recorded; credentials from before a completed reset/email change fail.                                                                                                         |
+| Protected application | A genuine application route accepts the confirmed owner.                                                                                         | A guest is rejected or redirected to login. An authenticated unverified account cannot enter a route whose policy requires verification. A limited dashboard may remain accessible if explicitly documented.                                  |
+| Profile               | Valid allowlisted fields update only the signed-in owner.                                                                                        | Missing/wrong current-password proof and invalid fields leave persistence unchanged; submitted user IDs cannot select another owner.                                                                                                          |
+| Password settings     | New password works; the documented current credential remains usable, while another pre-existing credential fails on its next protected request. | Wrong proof/mismatched confirmation changes nothing. A committed notification failure must not imply that the old password still works.                                                                                                       |
+| Email settings        | Request leaves the old address active until POST confirmation; new address works after completion.                                               | Cancellation invalidates its proof. Inspection preserves the current identity. Completion/replay and a different signed-in account behave safely; old credentials are rejected on a real protected route.                                     |
+| Reset                 | Known and unknown addresses receive the same acknowledgement. The proof changes the password once.                                               | Proof GET is non-mutating and public even when signed in. Invalid/used/expired proofs offer recovery. Completion ends old credentials, including the submitting browser according to application policy; test rejection on a protected route. |
+| Logout                | Current guard credential ends and protected access is rejected.                                                                                  | Logout uses a state-changing protected request with the stack's CSRF policy; another client's outcome follows the documented guard policy.                                                                                                    |
+
+For ordinary validation failures preserve useful non-secret input, associate errors with labels,
+announce errors and provide keyboard focus recovery. Handle password retention deliberately and
+document it. Check desktop and narrow layouts, pending submission and success feedback.
+
+## Stack-native results
+
+- **Inertia React/Vue:** forms submit through Inertia, server validation becomes form errors,
+  successful mutations redirect, and page props/flash supply status. Inspect rendered browser
+  behavior as well as HTTP responses.
+- **Hypermedia/Edge:** native forms include CSRF; validation redirects with flashed errors and
+  useful old input, and success follows POST/redirect/GET. The baseline works without JavaScript.
+- **API:** requests carry the selected guard credential and receive JSON status/error envelopes.
+  Generic reset acknowledgements, validation errors and invalid proofs are JSON results. HTTP
+  evidence does not imply frontend, keyboard, layout or recipient-email coverage.
+
+Do not require every example to expose identical endpoint names or to adopt identical admission
+policy. State where limited access is allowed, when verified email is required, and whether the
+current credential is retained or ended after each operation.
+
+## Recorded coverage
+
+Baseline source: `ae42132e6182690f7a91d4119a97dee98d66ce25`, including merged React settings
+[#588](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/588), composed browser evidence
+[#589](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/589), and API walkthrough
+[#590](https://github.com/Kevinjohn/oss-adonisjs-account-kit/pull/590). Existing evidence is retained;
+this guide does not claim a new run of unchanged checks. React #589 recorded Node 24, pnpm,
+SQLite and 33/33 tests in two complete runs, production build, desktop 1440×900 and narrow
+320×700 visual inspection. API #590 recorded Node 24, pnpm 11.23, SQLite and one copied-starter
+HTTP integration test, with a caller-retention mutation check. Both used local notification capture.
+
+| Example                                         | Implemented                                                                                                                                            | Automated HTTP coverage                                                                                                                                                                                                                                                                                                                                                                                                  | Browser coverage                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Manual checks and limits                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [React](../../examples/inertia-react/README.md) | Full baseline; signed-in dashboard is limited access, verified access is exercised by a test-only protected route.                                     | [Settings](../../examples/inertia-react/tests/functional/settings_journey.spec.ts), [reset journey](../../examples/inertia-react/tests/functional/reset_proof_journey.spec.ts), [reset routes](../../examples/inertia-react/tests/functional/reset_proof_routes.spec.ts).                                                                                                                                                | [Composed journeys](../../examples/inertia-react/tests/browser/account_journeys.spec.ts), [signup recovery](../../examples/inertia-react/tests/browser/signup_recovery.spec.ts), [signed-in reset](../../examples/inertia-react/tests/browser/reset_proof_browser.spec.ts), [verification sessions](../../examples/inertia-react/tests/browser/verification_session_browser.spec.ts), [form errors](../../examples/inertia-react/tests/browser/account_form_errors.spec.ts). | Prior PR evidence applies to its named revisions; no new broad manual sweep is claimed here. No recipient mail delivery or PostgreSQL example coverage. |
+| [API](../../examples/api/README.md)             | Baseline operations through application-owned JSON routes, with the duplicate-signup disclosure gap below; optional integrations exceed this baseline. | Named `account_signup_login`, `account_email_verification`, `account_password_reset`, `account_password_change`, `account_profile_email` suites in [functional tests](../../examples/api/tests/functional); [bearer revocation](../../examples/api/tests/functional/bearer_revocation.spec.ts). The [core walkthrough](core-api.md#6-add-a-focused-integration-test) separately exercises a copied opaque-token starter. | None claimed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                | JSON/captured-notification evidence does not prove a browser UI or recipient delivery.                                                                  |
+| Vue                                             | Planned until its runnable application and evidence are delivered.                                                                                     | Planned.                                                                                                                                                                                                                                                                                                                                                                                                                 | Planned.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | No verification claim.                                                                                                                                  |
+| Hypermedia/Edge                                 | Planned until its runnable application and evidence are delivered.                                                                                     | Planned.                                                                                                                                                                                                                                                                                                                                                                                                                 | Planned.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | No verification claim.                                                                                                                                  |
+
+The existing examples require Node 24 and AdonisJS 7; use their committed pnpm lockfiles and
+README commands for exact dependency versions. React tests isolate a `better-sqlite3` test database
+and memory session/limiter stores. The API fixture supports selected SQLite/PostgreSQL checks;
+record the actual database for each run rather than transferring the package database claim to an
+example. Development notification callbacks/capture demonstrate callback dispatch and proof
+contents, not a worker deployment, SMTP delivery or arrival in a recipient inbox.
+
+## Updating the record
+
+For each changed example record the source commit, Node/pnpm/package/starter/database versions,
+commands, named test results, browser viewport/keyboard checks and notification mode in its README.
+Separate implemented, HTTP-tested, browser-tested, manually checked and planned work. Link precise
+evidence; do not infer expiry coverage from replay coverage, or credential revocation from a
+successful mutation response. Missing boundaries remain explicit follow-up acceptance work.
+
+## Focused follow-up acceptance work
+
+- **API duplicate signup:** the current application validator returns “The email has already been
+  taken” for duplicate addresses, including restricted users. This does not meet the common
+  non-disclosure expectation. Change application-owned duplicate validation/response handling and
+  update `account_signup_login.spec.ts` and `signup_safety.spec.ts` to assert generic duplicate
+  behavior without account enumeration; preserve useful feedback for malformed input. This guide
+  records the gap and does not change runtime behavior.
+- **Unrecorded boundaries:** the existing evidence does not establish every proof-expiry case,
+  recipient mail delivery, or all manual layout checks. Add focused example tests/checks for a
+  changed boundary before marking that boundary verified; use the per-example record above rather
+  than inheriting package-level coverage.
