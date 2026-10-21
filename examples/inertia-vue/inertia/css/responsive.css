@@ -1,0 +1,69 @@
+@media (max-width: 880px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+  .auth__aside {
+    display: none;
+  }
+  .prose-card {
+    padding: 34px 28px 20px;
+  }
+  .pc-lead {
+    font-size: 30px;
+  }
+}
+@media (max-width: 720px) {
+  .page {
+    padding: 28px 16px 48px;
+  }
+  .sidebar-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .sidebar-layout__nav {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+  .panel {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 420px) {
+  .lrow {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .lrow__desc {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .btn:active:not(:disabled),
+  .iconbtn:active,
+  .themetoggle__icon,
+  .lrow:hover .lrow__arrow,
+  .pile:hover .tile {
+    scale: none !important;
+    rotate: none !important;
+    transform: none !important;
+    translate: none !important;
+  }
+
+  .lrow:hover {
+    padding-left: 2px;
+  }
+
+  .pile:hover .tile {
+    margin-left: -8px;
+  }
+}
