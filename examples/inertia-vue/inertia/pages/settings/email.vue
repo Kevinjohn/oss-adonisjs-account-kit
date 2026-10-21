@@ -44,7 +44,7 @@ const cancelFields = [{ name: 'cancelCurrentPassword', label: 'Current password'
             type="email"
             autocomplete="email"
             required
-            :aria-invalid="!!errors.email"
+            :aria-invalid="errors.email ? 'true' : undefined"
             :aria-describedby="errors.email ? 'email-error' : undefined"
           /><span v-if="errors.email" id="email-error" class="field__error">{{
             errors.email
@@ -59,7 +59,7 @@ const cancelFields = [{ name: 'cancelCurrentPassword', label: 'Current password'
             type="password"
             autocomplete="current-password"
             required
-            :aria-invalid="!!errors.currentPassword"
+            :aria-invalid="errors.currentPassword ? 'true' : undefined"
             :aria-describedby="errors.currentPassword ? 'proof-error' : undefined"
           /><span v-if="errors.currentPassword" id="proof-error" class="field__error">{{
             errors.currentPassword
@@ -87,7 +87,7 @@ const cancelFields = [{ name: 'cancelCurrentPassword', label: 'Current password'
             type="password"
             autocomplete="current-password"
             required
-            :aria-invalid="!!errors.cancelCurrentPassword"
+            :aria-invalid="errors.cancelCurrentPassword ? 'true' : undefined"
             :aria-describedby="errors.cancelCurrentPassword ? 'cancel-error' : undefined"
           /><span v-if="errors.cancelCurrentPassword" id="cancel-error" class="field__error">{{
             errors.cancelCurrentPassword

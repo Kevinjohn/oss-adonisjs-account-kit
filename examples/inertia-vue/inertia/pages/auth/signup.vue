@@ -25,9 +25,9 @@ const fields = [
           name="fullName"
           autocomplete="name"
           required
-          :aria-invalid="!!errors.fullName"
-          :aria-describedby="errors.fullName ? 'name-error' : undefined"
-        /><span v-if="errors.fullName" id="name-error" class="field__error">{{
+          :aria-invalid="errors.fullName ? 'true' : undefined"
+          :aria-describedby="errors.fullName ? 'signup-fullName-error' : undefined"
+        /><span v-if="errors.fullName" id="signup-fullName-error" class="field__error">{{
           errors.fullName
         }}</span>
       </div>
@@ -40,9 +40,11 @@ const fields = [
           type="email"
           autocomplete="email"
           required
-          :aria-invalid="!!errors.email"
-          :aria-describedby="errors.email ? 'email-error' : undefined"
-        /><span v-if="errors.email" id="email-error" class="field__error">{{ errors.email }}</span>
+          :aria-invalid="errors.email ? 'true' : undefined"
+          :aria-describedby="errors.email ? 'signup-email-error' : undefined"
+        /><span v-if="errors.email" id="signup-email-error" class="field__error">{{
+          errors.email
+        }}</span>
       </div>
       <div class="field">
         <label class="field__label" for="password">Password</label
@@ -53,9 +55,9 @@ const fields = [
           type="password"
           autocomplete="new-password"
           required
-          :aria-invalid="!!errors.password"
-          :aria-describedby="errors.password ? 'password-error' : undefined"
-        /><span v-if="errors.password" id="password-error" class="field__error">{{
+          :aria-invalid="errors.password ? 'true' : undefined"
+          :aria-describedby="errors.password ? 'signup-password-error' : undefined"
+        /><span v-if="errors.password" id="signup-password-error" class="field__error">{{
           errors.password
         }}</span>
       </div>
@@ -68,11 +70,16 @@ const fields = [
           type="password"
           autocomplete="new-password"
           required
-          :aria-invalid="!!errors.passwordConfirmation"
-          :aria-describedby="errors.passwordConfirmation ? 'confirm-error' : undefined"
-        /><span v-if="errors.passwordConfirmation" id="confirm-error" class="field__error">{{
-          errors.passwordConfirmation
-        }}</span>
+          :aria-invalid="errors.passwordConfirmation ? 'true' : undefined"
+          :aria-describedby="
+            errors.passwordConfirmation ? 'signup-passwordConfirmation-error' : undefined
+          "
+        /><span
+          v-if="errors.passwordConfirmation"
+          id="signup-passwordConfirmation-error"
+          class="field__error"
+          >{{ errors.passwordConfirmation }}</span
+        >
       </div>
       <button class="btn btn--primary btn--block" type="submit" :disabled="processing">
         {{ processing ? 'One moment…' : 'Create account' }}

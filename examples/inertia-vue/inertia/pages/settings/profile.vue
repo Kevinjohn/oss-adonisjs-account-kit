@@ -29,7 +29,7 @@ const fields = [
             autocomplete="name"
             :value="profile.fullName ?? ''"
             required
-            :aria-invalid="!!errors.fullName"
+            :aria-invalid="errors.fullName ? 'true' : undefined"
             :aria-describedby="errors.fullName ? 'name-error' : undefined"
           /><span v-if="errors.fullName" id="name-error" class="field__error">{{
             errors.fullName
@@ -47,7 +47,7 @@ const fields = [
             type="password"
             autocomplete="current-password"
             required
-            :aria-invalid="!!errors.currentPassword"
+            :aria-invalid="errors.currentPassword ? 'true' : undefined"
             :aria-describedby="errors.currentPassword ? 'proof-error' : undefined"
           /><span v-if="errors.currentPassword" id="proof-error" class="field__error">{{
             errors.currentPassword
