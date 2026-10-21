@@ -5,6 +5,32 @@ with the AdonisJS Mail service already configured by your application. Account K
 message templates and calls `sendLater`; the application selects the sender, transport, queue,
 worker and failure policy.
 
+## Log messages during local development
+
+Before Mail is configured, print account emails, links included, to the application log instead
+of sending them:
+
+```ts
+// config/account_kit.ts
+import app from '@adonisjs/core/services/app'
+import { createLogNotifications, createMailNotifications } from 'adonisjs-account-kit'
+
+notify: app.inProduction
+  ? createMailNotifications({ from: 'accounts@acme.test', brandName: 'Acme' })
+  : createLogNotifications({ brandName: 'Acme', environment: app.inTest ? 'test' : 'development' }),
+```
+
+Messages go to the AdonisJS logger. To send them elsewhere, pass `logger`: either an object with
+an `info(message)` method, or a function returning one. Use a function for AdonisJS services,
+because config files load before services exist.
+
+`createLogNotifications` replaces the generated throwing callbacks and renders the message and
+proof URL into the local log; it does not configure AdonisJS Mail, contact a recipient, or prove
+delivery. Set a fixed development `APP_URL` and point `urls.passwordReset` at the local page or
+route that will consume the proof. These values come from application configuration, not the
+request's `Host` header. It throws when `environment` is `'production'`, because logged links are
+live credentials; keep development logs private.
+
 ## Starting point and files
 
 Use an AdonisJS 7 app on Node 24 with Account Kit configured and a local password-reset flow.
