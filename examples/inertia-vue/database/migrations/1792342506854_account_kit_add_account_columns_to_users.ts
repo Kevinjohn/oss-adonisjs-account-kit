@@ -1,0 +1,31 @@
+import { BaseSchema } from '@adonisjs/lucid/schema'
+
+export default class extends BaseSchema {
+  async up() {
+    this.schema.alterTable('users', (table) => {
+      table.timestamp('email_verified_at', { useTz: true, precision: 3 }).nullable()
+      table.string('unverified_email', 254).nullable()
+      // Milliseconds: two credential changes within one second must give different revisions.
+      table.timestamp('credentials_changed_at', { useTz: true, precision: 3 }).nullable()
+    })
+    if (this.db.dialect.name === 'better-sqlite3') {
+      this.defer(async (db) => {
+        await db
+          .rawQuery('ALTER TABLE "' + 'users' + '" ALTER COLUMN password DROP NOT NULL')
+          .exec()
+      })
+    } else {
+      this.schema.alterTable('users', (table) => {
+        table.string('password').nullable().alter()
+      })
+    }
+  }
+
+  async down() {
+    this.schema.alterTable('users', (table) => {
+      table.dropColumn('credentials_changed_at')
+      table.dropColumn('unverified_email')
+      table.dropColumn('email_verified_at')
+    })
+  }
+}
