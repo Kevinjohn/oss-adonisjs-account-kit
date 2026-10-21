@@ -7,9 +7,15 @@ on:
     paths:
       - 'docs/**'
       - 'index.ts'
+      - 'configure.ts'
       - 'src/**'
       - 'http/**'
+      - 'adapters/**'
+      - 'commands/**'
+      - 'providers/**'
+      - 'services/**'
       - 'testing/**'
+      - 'tests/**'
       - 'typedoc.json'
       - '.github/workflows/docs.yml'
 
@@ -34,6 +40,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm docs:build
+      # The README coverage badge reads this file through the shields.io endpoint badge.
+      - run: pnpm exec c8 --reporter=json-summary pnpm quick:test
+      - name: Coverage badge
+        run: |
+          mkdir -p docs/.vitepress/dist/badges
+          node scripts/coverage_badge.mjs coverage/coverage-summary.json > docs/.vitepress/dist/badges/coverage.json
       - uses: actions/upload-pages-artifact@v5
         with:
           path: docs/.vitepress/dist
