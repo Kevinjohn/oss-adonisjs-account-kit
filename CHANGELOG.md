@@ -4,6 +4,12 @@
 
 - Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
 
+- Organize adoption instructions by application stack and new or existing application, with focused recipe entry points.
+- Add a runnable Inertia Vue account example with verified access, settings, recovery and accessible form feedback.
+- Add focused existing-application recipes for reset, verified access, configured mail, custom fields and selective managed endpoint replacement.
+
+- Add a native Edge account example with public proof flows, verified access and revocable database sessions.
+
 - Document a shared account-journey acceptance contract and distinguish example implementation from verification evidence.
 
 - Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.

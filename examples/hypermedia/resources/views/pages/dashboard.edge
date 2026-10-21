@@ -1,0 +1,21 @@
+@layouts.app({ title: 'Dashboard' })
+  @page()
+    <h1>Your account</h1>
+    <p>Signed in as <strong>{{ user.email }}</strong>.</p>
+    @if(verified)
+      <p>Email confirmed. <a href="{{ urlFor('account') }}">Open the protected account page</a>.</p>
+    @else
+      <p>Your account has limited access until you confirm your email address.</p>
+      @form({ route: 'email_verifications.store', method: 'POST' })
+        @!button({ text: 'Send a fresh verification link', type: 'submit' })
+      @end
+    @end
+
+    <h2>Account settings</h2>
+    <ul>
+      <li><a href="{{ urlFor('profile.edit') }}">Edit profile</a></li>
+      <li><a href="{{ urlFor('passwords.edit') }}">Change password</a></li>
+      <li><a href="{{ urlFor('email_changes.edit') }}">Change email</a></li>
+    </ul>
+  @end
+@end
