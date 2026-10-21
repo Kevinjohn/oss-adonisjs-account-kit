@@ -19,6 +19,7 @@ import FlashMessages from '~/components/flash_messages.vue'
   <nav class="subnav" aria-label="Primary">
     <div class="subnav__inner">
       <Link href="/dashboard" class="subnav__item">Dashboard</Link>
+      <Link href="/account" class="subnav__item">Protected app</Link>
       <Link href="/settings/profile" class="subnav__item">Settings</Link>
     </div>
   </nav>

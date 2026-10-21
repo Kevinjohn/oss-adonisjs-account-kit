@@ -26,7 +26,7 @@ test.group('composed account browser journeys', (group) => {
     }
     try {
       const page = await visit('/signup')
-      await page.goto('/__test__/confirmed-account')
+      await page.goto('/account')
       await page.waitForURL('**/login')
       assert.equal(new URL(page.url()).pathname, '/login')
       await page.goto('/signup')
@@ -41,11 +41,13 @@ test.group('composed account browser journeys', (group) => {
       assert.isNull(pending.emailVerifiedAt)
       assert.equal(pending.unverifiedEmail, email)
 
-      // The dashboard is available to signed-in accounts; the test-only route checks the
-      // application's stronger active-account policy with the real session revision.
-      const unconfirmed = await page.goto('/__test__/confirmed-account')
-      assert.equal(unconfirmed?.status(), 403)
-      assert.include(await page.locator('body').innerText(), 'verification_required')
+      // The dashboard is limited access; this real application page requires confirmed email.
+      await page.goto('/account')
+      assert.equal(new URL(page.url()).pathname, '/dashboard')
+      assert.include(
+        await page.locator('body').innerText(),
+        'Confirm your email address before opening this page.'
+      )
       await page.goto('/settings/email')
       await page.getByText('Confirm your current address before requesting a new one.').waitFor()
       assert.equal(await page.getByRole('button', { name: 'Request change' }).count(), 0)
@@ -62,12 +64,14 @@ test.group('composed account browser journeys', (group) => {
       await page.getByLabel('Password').fill('ConfirmedPass123!')
       await page.getByRole('button', { name: 'Sign in' }).click()
       await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
-      const confirmed = await page.goto('/__test__/confirmed-account')
+      const confirmed = await page.goto('/account')
       assert.equal(confirmed?.status(), 200)
-      assert.include(await page.locator('body').innerText(), `"userId":${pending.id}`)
+      assert.include(await page.locator('body').innerText(), 'Your account is confirmed')
       await page.goto('/settings/email')
       await page.getByRole('button', { name: 'Request change' }).waitFor()
       await page.getByRole('button', { name: 'Log out' }).click()
+      await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
+      await page.goto('/account')
       await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
       await page.goto('/settings/email')
       await page.getByRole('heading', { name: 'Welcome back' }).waitFor()

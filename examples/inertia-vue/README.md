@@ -49,9 +49,10 @@ version, refresh `pnpm-lock.yaml`, and document the frozen consumer install here
 - Verification links are public and inspected without changing the current browser identity.
   Completion consumes the proof, confirms the address and ends the browser session. Invalid, used
   and expired links direct the user back to sign in and request a new verification message.
-- The dashboard is signed-in limited access. Applications can protect sensitive pages with
-  `kit.authentication.requireActive`; `tests/browser/account_journeys.spec.ts` exercises that
-  verified-account boundary on a test-only route.
+- The dashboard is signed-in limited access. The `/account` page is a real verified-only route;
+  its middleware uses `kit.authentication.requireActive` and sends unverified accounts back to the
+  dashboard with a recovery message. The browser journey tests guest, unverified, verified and
+  logged-out access on this route.
 - Password reset requests return the same acknowledgement for known and unknown addresses. Proof
   inspection is read-only; completion changes the password once and ends every session, including
   the current browser. Invalid, used or expired links can be replaced from the reset request page.
@@ -83,12 +84,12 @@ runtime are not included.
 To add a flow to an existing AdonisJS Vue/Inertia application, adapt the following cohesive files
 from this example rather than replacing the existing frontend foundation:
 
-| Flow                            | Server files                                                                                                                            | Vue page and route                                                                    |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Signup and login                | `app/controllers/new_account_controller.ts`, `session_controller.ts`, `app/validators/user.ts`, `app/services/session_guard.ts`         | `inertia/pages/auth/signup.vue`, `login.vue`; guest routes in `start/routes.ts`       |
-| Verification                    | `app/controllers/email_verifications_controller.ts`, `app/validators/account.ts`, `app/services/token_page_headers.ts`                  | `inertia/pages/auth/verify_email.vue`; verification notice on dashboard               |
-| Password reset                  | `app/controllers/password_resets_controller.ts`, `app/validators/account.ts`                                                            | `inertia/pages/auth/forgot_password.vue`, `reset_password.vue`                        |
-| Profile/password/email settings | `profile_controller.ts`, `passwords_controller.ts`, `email_changes_controller.ts`, related validators, `session_revision_middleware.ts` | `inertia/pages/settings/*.vue`, `auth/confirm_email_change.vue`; authenticated routes |
+| Flow                              | Server files                                                                                                                                                                                     | Vue page and route                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Signup and login                  | `app/controllers/new_account_controller.ts`, `session_controller.ts`, `app/validators/user.ts`, `app/services/session_guard.ts`                                                                  | `inertia/pages/auth/signup.vue`, `login.vue`; guest routes in `start/routes.ts`                         |
+| Verification and protected access | `email_verifications_controller.ts`, `app/validators/account.ts`, `app/services/token_page_headers.ts`, `app/middleware/verified_account_middleware.ts`, `app/controllers/account_controller.ts` | `inertia/pages/auth/verify_email.vue`, `inertia/pages/account.vue`; verified route in `start/routes.ts` |
+| Password reset                    | `app/controllers/password_resets_controller.ts`, `app/validators/account.ts`                                                                                                                     | `inertia/pages/auth/forgot_password.vue`, `reset_password.vue`                                          |
+| Profile/password/email settings   | `profile_controller.ts`, `passwords_controller.ts`, `email_changes_controller.ts`, related validators, `session_revision_middleware.ts`                                                          | `inertia/pages/settings/*.vue`, `auth/confirm_email_change.vue`; authenticated routes                   |
 
 Also adapt `config/account_kit.ts`, the `User` model and migrations, `start/kernel.ts`, exception
 handler, shared Inertia props and your application's own layouts. Keep your existing user fields,

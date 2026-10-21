@@ -41,6 +41,13 @@ router.post('confirm-email/:token', [controllers.EmailChanges, 'complete'])
 
 router
   .group(() => {
+    router.get('account', [controllers.Account, 'show'])
+  })
+  .use(middleware.auth())
+  .use(middleware.verifiedAccount())
+
+router
+  .group(() => {
     router.on('/dashboard').renderInertia('dashboard', {}).as('dashboard')
     router.post('logout', [controllers.Session, 'destroy'])
     router.post('email-verification', [controllers.EmailVerifications, 'store'])
