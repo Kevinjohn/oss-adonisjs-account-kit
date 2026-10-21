@@ -1,9 +1,8 @@
 # Features
 
-Account Kit has two layers. The core features are the account flows almost every AdonisJS app
-needs. The additional features are opt-in: the account features are off until you
-add them to `enabled` in `config/account_kit.ts`, and the rest are commands and adapters you use
-only if you need them.
+Account Kit provides common account flows and additional capabilities. Additional flows are
+opt-in; their guides describe the setup each one needs. Commands, OpenAPI generation, and user
+adapters are integration tools, not additional account flows to enable.
 
 ## Core features
 
@@ -86,12 +85,15 @@ Turn on: `enabled: [..., 'sessionManagement']`. Guide: [signed-in devices](signe
 
 ### Account export and deletion
 
-The two account rights the GDPR asks for.
+Helpers for exporting account data and closing an account.
 
-- Export: a JSON download of the account data Account Kit holds, merged with your app's data.
-- Deletion: removes the user and every row Account Kit owns, with a hook to delete or anonymise
-  your own rows in the same transaction, and a confirmation email.
+- Export: a JSON download of package-held account data merged with data your application supplies.
+- Deletion: removes the user and Account Kit-owned rows, with a hook for your application to delete
+  or anonymise its own rows in the same transaction, and a confirmation email.
 - Both require the user to re-enter their password or prove a recent sign-in.
+
+These helpers do not determine which data your application must export, retain, or delete under
+applicable requirements.
 
 Turn on: `enabled: [..., 'dataExport', 'accountDeletion']`. Guide:
 [account export and deletion](account-data.md).
@@ -141,7 +143,8 @@ package, and a contract test suite checks any adapter you write yourself. Guide:
 
 ### Databases
 
-Tested on SQLite, PostgreSQL 16 and MySQL 8.4. See [compatibility](compatibility.md).
+Tested on SQLite, PostgreSQL 16 and MySQL 8.4. See the [database compatibility matrix](compatibility.md)
+for the supported versions and verification notes.
 
 ## Features at a glance
 
