@@ -311,3 +311,8 @@ installing there. If startup reports missing environment values or a database ta
 
 See [Inertia and React](../../docs/recipes/inertia-react.md) and
 [browser login with sessions](../../docs/recipes/sessions.md) for the reasoning behind each step.
+
+## Shared acceptance criteria
+
+See the [example account journey acceptance guide](../../docs/guides/example-acceptance.md) for
+the common baseline, application-policy differences, recorded coverage and remaining gaps.
