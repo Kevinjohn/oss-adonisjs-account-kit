@@ -1,5 +1,6 @@
 import { assert } from '@japa/assert'
 import app from '@adonisjs/core/services/app'
+import db from '@adonisjs/lucid/services/db'
 import type { Config } from '@japa/runner/types'
 import { pluginAdonisJS } from '@japa/plugin-adonisjs'
 import { dbAssertions } from '@adonisjs/lucid/plugins/db'
@@ -38,7 +39,35 @@ export const plugins: Config['plugins'] = [
  */
 export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
   setup: [
-    () => {
+    async () => {
+      // Keep destructive test truncation away from the application's development database.
+      const connectionName = db.config.connection
+      if (connectionName !== 'sqlite') {
+        throw new Error('The example test database must use the sqlite connection')
+      }
+
+      const sqliteConfig = db.config.connections[connectionName]
+      if (sqliteConfig.client !== 'better-sqlite3') {
+        throw new Error('The example test database must use better-sqlite3')
+      }
+
+      const testFilename = app.tmpPath('test.sqlite3')
+      const testSqliteConfig = {
+        ...sqliteConfig,
+        connection: {
+          ...sqliteConfig.connection,
+          filename: testFilename,
+        },
+      }
+
+      if (db.manager.isConnected(connectionName)) {
+        await db.manager.close(connectionName)
+      }
+      db.manager.patch(connectionName, testSqliteConfig)
+      if (db.manager.get(connectionName)?.config !== testSqliteConfig) {
+        throw new Error(`Failed to isolate the ${connectionName} test database`)
+      }
+
       // Register before any suite starts the shared HTTP server. Functional suites run before
       // browser suites in a full run, so browser-suite setup would register this route too late.
       router
