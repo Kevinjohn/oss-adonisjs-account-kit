@@ -27,7 +27,12 @@ export async function collectSocialChoices(
     choices.features = choices.features.filter((feature) => feature !== 'socialAuthentication')
     choices.managed = choices.managed.filter((feature) => feature !== 'socialAuthentication')
   } else if (social || (socialEnabled && previous)) {
-    const providers = social ? social.split(',').map((name) => name.trim()) : previous!.providers
+    const providers = social
+      ? social
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean)
+      : previous!.providers
     if (providers.some((name) => !isSocialProviderName(name)))
       throw new Error('social.providers: choose from google, github')
     choices.social = {
