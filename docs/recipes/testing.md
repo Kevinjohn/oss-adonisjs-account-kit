@@ -26,22 +26,31 @@ notify: app.inTest
 
 ## Follow a link in a test
 
+The API example mounts its authentication routes under `/api/v1`.
+
 ```ts
 import { test } from '@japa/runner'
+import User from '#models/user'
 import { accountMail } from '#tests/helpers/account_mail'
 
 test.group('password reset', (group) => {
   group.each.setup(() => accountMail.clear())
 
   test('resets a password from the emailed link', async ({ client }) => {
-    await client.post('/account-kit/recovery').json({ email: 'someone@example.com' })
+    const user = await User.create({
+      fullName: 'Test User',
+      email: 'someone@example.com',
+      password: 'StartPass123!',
+    })
+    const request = await client.post('/api/v1/auth/password-reset').json({ email: user.email })
+    request.assertStatus(202)
 
-    const token = accountMail.tokenFor('passwordResetProvision', 'someone@example.com')
+    const token = accountMail.tokenFor('passwordResetProvision', user.email)
     const response = await client
-      .post(`/account-kit/recovery/${token}`)
-      .json({ password: 'a-new-long-password' })
+      .post(`/api/v1/auth/password-reset/${token}`)
+      .json({ password: 'NewPass123!', passwordConfirmation: 'NewPass123!' })
 
-    response.assertStatus(200)
+    response.assertStatus(202)
   })
 })
 ```
@@ -58,7 +67,7 @@ The capture API:
 
 ## Rate limits in tests
 
-Many requests from one client hit the default budget of five recovery requests per 15 minutes.
+Many requests from one client hit the default budget of five password-reset requests per 15 minutes.
 Raise it in tests only:
 
 ```ts
