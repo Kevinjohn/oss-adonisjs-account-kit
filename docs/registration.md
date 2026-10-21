@@ -11,12 +11,22 @@ Choose `open`, `closed`, or `application`. `open` is the recommended public defa
 checks. The package does not install a public registration route. Enable `emailVerification` and configure
 `urls.emailVerification` and `notify.accountActivationProvision` to deliver activation proofs.
 
-Use `registration.mapFields(input)` to validate and select additional application profile fields.
-When configured, the mapping runs even if `registrationData` is omitted, so it can require profile
-fields. Without a mapping, only omitted `registrationData` is accepted. The mapping returns a plain object
-whose keys cannot control IDs, email, passwords, verification state, or roles. The trusted users
-adapter receives only the mapped object; it must decide how to write those fields. The API example
-validates `fullName` and maps only that field.
+Keep request validation and field-error responses in the application's HTTP layer. For example, the
+API example validates `fullName`, `email`, and `password` with its signup validator before calling
+`registration.register`. Return those validation failures through the app's normal validation path;
+do not use a users-adapter mapping error as a form-validation response. Translate a duplicate-email
+service error to the application's `email` field error separately.
+
+`registration.mapFields(input)` is the service-level boundary for extra profile data: it selects and
+validates the allowed application fields and returns a plain object. When configured, it runs even
+if `registrationData` is omitted, so it can require profile fields. Without a mapping, only omitted
+`registrationData` is accepted. The returned keys cannot control IDs, email, passwords, verification
+state, or roles. For the same `fullName` example, the controller passes `{ fullName }` as
+`registrationData`, and `mapFields` returns `{ fullName: fullName.trim() }`.
+
+The users adapter receives that trusted result and maps it to the model properties or physical
+columns used by the application. This persistence mapping does not repeat request validation or
+choose the form's error response. See [users adapters](adapters.md#registration-data) for examples.
 
 `passwordPolicy` governs newly established passwords. Its defaults are `minLength: 8`,
 `maxLength: null`, `letters: false`, `mixedCase: false`, `numbers: false`, `symbols: false`, and

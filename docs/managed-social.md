@@ -31,7 +31,10 @@ Guard requirements:
 - If registration is `application`, exclude `auth.oauth.registration` until a trusted server
   `extensions.social.admit(profile, trx)` callback applies the application's creation policy
   inside the service transaction.
-- Invitation acceptance remains the password-based workflow.
+- The explicit invitation link remains password-based. A new social account can also consume a
+  matching invitation automatically when its provider-verified email matches the invitation and
+  the registration policy allows account creation. Linking a provider to an existing account does
+  not accept an invitation. See the [social invitation outcomes](social-authentication.md#signing-in-with-the-invited-address).
 - Standard Ally adapters do not attest fresh provider authentication; a new OAuth code, account
   selection, callback time, or token issuance time is insufficient.
 

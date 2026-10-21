@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 
-test('packs public documentation and examples without private planning documents', async ({
+test('packs the build and top-level documents, not docs, examples or planning documents', async ({
   assert,
 }) => {
   const root = await mkdtemp(join(tmpdir(), 'account-kit-packaging-'))
@@ -21,14 +21,10 @@ test('packs public documentation and examples without private planning documents
       })
     )
     await writeFile(join(root, '.gitignore'), await readFile(join(repoRoot, '.gitignore')))
-    const publicFiles = [
-      'build/index.js',
+    const publicFiles = ['build/index.js', 'README-AGENTS.md', 'CHANGELOG.md']
+    const privateFiles = [
       'docs/usage.md',
       'examples/api/README.md',
-      'README-AGENTS.md',
-      'CHANGELOG.md',
-    ]
-    const privateFiles = [
       'PLAN-private.md',
       'docs/PRD-private.md',
       'docs/reviews/private-review.md',

@@ -1,4 +1,27 @@
-import vine from '@vinejs/vine'
+import vine, { SimpleMessagesProvider } from '@vinejs/vine'
+
+// Only the account forms use this application's English copy.
+export const accountMessages = new SimpleMessagesProvider(
+  {
+    'required': '{{ field }} is required.',
+    'email': 'Enter a valid email address.',
+    'unique': 'This email address is already in use.',
+    'minLength': '{{ field }} must be at least {{ min }} characters.',
+    'maxLength': '{{ field }} must be {{ max }} characters or fewer.',
+    'email.required': 'Enter your email address.',
+    'password.required': 'Enter your password.',
+    'currentPassword.required': 'Enter your current password.',
+    'passwordConfirmation.required': 'Confirm your password.',
+    'passwordConfirmation.sameAs': 'Confirm password must match Password.',
+  },
+  {
+    fullName: 'Full name',
+    email: 'Email',
+    password: 'Password',
+    currentPassword: 'Current password',
+    passwordConfirmation: 'Confirm password',
+  }
+)
 
 /**
  * Shared rules for email and password.
@@ -20,6 +43,7 @@ export const signupValidator = vine.create({
   password: password(),
   passwordConfirmation: password().sameAs('password'),
 })
+signupValidator.messagesProvider = accountMessages
 
 /**
  * Validator to use before validating user credentials
@@ -29,3 +53,4 @@ export const loginValidator = vine.create({
   email: email(),
   password: vine.string(),
 })
+loginValidator.messagesProvider = accountMessages
