@@ -172,15 +172,30 @@ test.group('native account journeys', (group) => {
     await page.keyboard.press('Tab')
     assert.equal(await page.locator(':focus').getAttribute('type'), 'submit')
     await page.locator('input[name="_csrf"]').waitFor({ state: 'attached' })
-    const invalidCsrf = await page.request.post(`${origin}/signup`, {
-      data: {
-        fullName: 'No CSRF',
-        email: 'no-csrf@example.test',
-        password: 'SignupPass123!',
-        passwordConfirmation: 'SignupPass123!',
-      },
-      maxRedirects: 0,
-    })
+    // Read what each session is about to store, whichever Session method wrote it.
+    const committing = Session.prototype as unknown as { commit: (this: Session) => Promise<void> }
+    const originalCommit = committing.commit
+    const csrfFlashes: string[] = []
+    committing.commit = function () {
+      csrfFlashes.push(JSON.stringify(this.responseFlashMessages.all()))
+      return originalCommit.call(this)
+    }
+    let invalidCsrf: Awaited<ReturnType<typeof page.request.post>>
+    try {
+      invalidCsrf = await page.request.post(`${origin}/signup`, {
+        data: {
+          fullName: 'No CSRF',
+          email: 'no-csrf@example.test',
+          password: 'SignupPass123!',
+          passwordConfirmation: 'SignupPass123!',
+        },
+        maxRedirects: 0,
+      })
+    } finally {
+      committing.commit = originalCommit
+    }
+    assert.include(csrfFlashes.join(), 'no-csrf@example.test')
+    assert.notInclude(csrfFlashes.join(), 'SignupPass123!')
     assert.equal(invalidCsrf.status(), 302)
     assert.equal(invalidCsrf.headers().location, '/')
     assert.isNull(await User.findBy('email', 'no-csrf@example.test'))
