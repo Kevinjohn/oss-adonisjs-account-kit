@@ -70,7 +70,9 @@ and POST it with the chosen password and confirmation. Then POST the credentials
 The archive is ignored under `examples/api/vendor/`. The root install supplies the package build
 tools. Build and pack from the repository root before installing the example because its local
 package dependency points at that archive. Once the example is installed, `pnpm kit:pack` refreshes
-the archive after source changes. Keep the generated archive out of Git.
+the archive after source changes. Run `pnpm install` again in the example after each re-pack to
+install the new archive and update its integrity entry; this refresh install cannot use
+`--frozen-lockfile`. Keep the generated archive out of Git.
 
 ## Copy maps
 
