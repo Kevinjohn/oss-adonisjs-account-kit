@@ -3,6 +3,9 @@
 How Account Kit signs people in through your existing AdonisJS Auth guard, and how it signs out
 old sessions and tokens when credentials change.
 
+For one complete application-owned opaque-token path using the API starter, follow
+[Build one account API](guides/core-api.md) first.
+
 ## Configuration
 
 Set `authentication` in `defineConfig` to one supported strategy and the name of an **existing** AdonisJS Auth guard. The package does not install or replace a guard. Use one managed route group with either `session` or `access_tokens`; two managed groups over the same accounts are unsupported.

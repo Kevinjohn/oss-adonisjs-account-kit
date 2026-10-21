@@ -1,73 +1,39 @@
 # Account Kit documentation
 
-- [Features](features.md): the core account flows and the opt-in extras.
+## Choose an integration
+
+- [Call services from your own controllers](application-owned-integration.md) to keep your routes,
+  validation, and authorization in your application.
+- [Mount managed JSON routes](managed-http.md) when you want the package's HTTP endpoints under your
+  chosen prefix.
+- [Use guided setup](setup.md) to preview and generate selected integration files after installing
+  the package.
+- [Explore the Inertia React browser example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/examples/inertia-react)
+  for the maintained browser implementation and transplant map.
 
 ## Tutorial
 
-- [Getting started](getting-started.md): install, migrate, and send your first password reset.
-- [See it run](recordings.md): short terminal recordings of each feature.
+- [Build one account API](guides/core-api.md): the recommended complete API-starter path from signup
+  and ownership proof through protected settings and reset.
+- [Getting started](getting-started.md): focused install and password-reset tutorial.
+- [See it run](recordings.md): selected terminal recordings of account flows.
 
 ## How-to guides
 
-Authentication
-
-- [API-only login with access tokens](recipes/access-tokens.md)
-- [Browser login with sessions](recipes/sessions.md)
-- [Inertia and React](recipes/inertia-react.md)
-- [Google and GitHub sign-in with Ally](recipes/social-login.md)
-- [Magic-link sign-in](magic-link.md)
-- [Signed-in devices](signed-in-devices.md)
-- [Account export and deletion](account-data.md)
-- [Admission](admission.md): domain, invitation and approval requirements for application data.
-
-Users and data
-
-- [Custom user model](recipes/custom-user-model.md)
-- [Custom user table or ID type](custom-schema.md)
-- [Drizzle, Prisma and plain SQL users](adapters.md)
-- [Custom users adapter](recipes/custom-adapter.md)
-- [Multi-tenant applications](recipes/multi-tenant.md)
-
-Email
-
-- [Custom email templates](recipes/email-templates.md)
-- [Development mail](recipes/development-mail.md)
-
-Operations and quality
-
-- [Testing your account flows](recipes/testing.md)
-- [Audit log](recipes/audit-log.md)
-- [Guided setup with `account-kit:setup`](setup.md)
-- [Operations](operations.md): deploy, prune, operator commands, secret rotation and redaction.
-
-Integration modes
-
-- [Application-owned routes](application-owned-integration.md)
-- [Managed JSON routes](managed-http.md)
-- [Managed social routes](managed-social.md)
-- [Application-owned social routes](social-reference.md)
+Browse the [recipes index](recipes/index.md) for authentication, user data, email, operations, and
+quality guides. It links directly to every topic.
 
 ## Reference
 
-- [API reference](https://kevinjohn.github.io/oss-adonisjs-account-kit/api/): every export,
-  generated from the source.
-- [Usage](usage.md): configuration, capabilities and operation signatures.
-- [Account operations](account-operations.md)
-- [Errors](reference/errors.md)
-- [Managed endpoints](reference/endpoints.md)
-- [Setup choices](reference/setup-choices.md): the six pillars and the files setup writes.
-- [OpenAPI document](openapi.md): an OpenAPI 3.1 file for the mounted managed routes.
-- [Notifications](notifications.md)
-- [Production requirements](reference/production-requirements.md): versions, stores and limiter
-  budgets.
-- [Compatibility](compatibility.md): tested versions.
-- [Glossary](glossary.md)
+Browse the [reference index](reference/index.md) for configuration, service operations, endpoints,
+errors, production requirements, and compatibility details.
 
 ## Explanation
 
+- [Features](features.md): core account flows and additional capabilities.
 - [Security model](security.md)
-- [How setup works](how-setup-works.md): preview, recovery and readiness.
-- [Production boundaries](production-boundaries.md): readiness, delivery and credential lifecycle.
+- [How setup works](how-setup-works.md): preview, recovery, and readiness.
+- [Production boundaries](production-boundaries.md): readiness, delivery, and credential lifecycle.
 - [Authentication integration](authentication.md)
 - [Identity creation](identity-creation.md)
 - [Registration](registration.md)

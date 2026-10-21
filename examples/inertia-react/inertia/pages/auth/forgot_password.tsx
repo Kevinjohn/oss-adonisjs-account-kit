@@ -1,5 +1,8 @@
 import AuthLayout from '~/layouts/auth'
+import FormErrorSummary, { focusFormErrorSummary } from '~/components/form_error_summary'
 import { Form, Link } from '@adonisjs/inertia/react'
+
+const fields = [{ name: 'email', label: 'Email' }] as const
 
 export default function ForgotPassword() {
   return (
@@ -7,9 +10,10 @@ export default function ForgotPassword() {
       <h1 className="auth__title">Forgot your password?</h1>
       <p className="auth__sub">Enter your email and we will send you a reset link.</p>
 
-      <Form route="password_resets.store" resetOnSuccess>
+      <Form route="password_resets.store" resetOnSuccess onError={focusFormErrorSummary}>
         {({ errors, processing }) => (
           <div className="auth__form">
+            <FormErrorSummary errors={errors} fields={fields} />
             <div className="field">
               <label className="field__label" htmlFor="email">
                 Email
@@ -21,9 +25,14 @@ export default function ForgotPassword() {
                 className="field__input"
                 autoComplete="username"
                 placeholder="you@example.com"
-                aria-invalid={errors.email ? 'true' : 'false'}
+                aria-invalid={errors.email ? true : undefined}
+                aria-describedby={errors.email ? 'forgot-email-error' : undefined}
               />
-              {errors.email && <span className="field__error">{errors.email}</span>}
+              {errors.email && (
+                <span id="forgot-email-error" className="field__error">
+                  {errors.email}
+                </span>
+              )}
             </div>
 
             <button type="submit" className="btn btn--primary btn--block" disabled={processing}>
