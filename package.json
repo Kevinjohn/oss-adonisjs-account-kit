@@ -8,17 +8,8 @@
   "type": "module",
   "files": [
     "build",
-    "docs",
-    "examples/api",
     "!build/bin",
     "!build/tests",
-    "!docs/reviews/**",
-    "!docs/maintainers/**",
-    "!docs/.vitepress/**",
-    "!docs/api/**",
-    "!docs/assets/**",
-    "!docs/PRD*.md",
-    "!PLAN*.md",
     "README-AGENTS.md",
     "SECURITY.md",
     "CHANGELOG.md"
