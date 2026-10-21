@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Organize adoption instructions by application stack and new or existing application, with focused recipe entry points.
+
 - Document a shared account-journey acceptance contract and distinguish example implementation from verification evidence.
 
 - Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
