@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a runnable Inertia Vue account example with verified access, settings, recovery and accessible form feedback.
+
 - Document a shared account-journey acceptance contract and distinguish example implementation from verification evidence.
 
 - Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
