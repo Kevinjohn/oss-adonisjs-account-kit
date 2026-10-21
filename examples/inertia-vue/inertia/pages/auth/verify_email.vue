@@ -26,6 +26,7 @@ const fields = [
       v-slot="{ errors, processing }"
       route="email_verifications.update"
       :params="{ token }"
+      v-bind="{ novalidate: true }"
       :reset-on-error="['password', 'passwordConfirmation']"
       :reset-on-success="['password', 'passwordConfirmation']"
       @error="focusFormErrorSummary"

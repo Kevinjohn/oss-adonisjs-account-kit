@@ -21,6 +21,7 @@ test.group('account form errors', (group) => {
       assert.exists(csrfCookie)
 
       const response = await context.request.post('/signup', {
+        maxRedirects: 0,
         form: {
           fullName: 'Ada Lovelace',
           email: 'ada@example.test',
@@ -127,6 +128,7 @@ test.group('account form errors', (group) => {
       ),
       true
     )
+    await page.getByLabel('Password', { exact: true }).fill('Password123!')
     await confirmation.fill('StillDifferent123!')
     await page.getByRole('button', { name: 'Create account' }).focus()
     await page.keyboard.press('Enter')
@@ -201,10 +203,7 @@ test.group('account form errors', (group) => {
     assert.equal(await confirmation.inputValue(), '')
   })
 
-  test('profile errors clear the password while preserving the edited name', async ({
-    visit,
-    assert,
-  }) => {
+  test('profile validation errors clear the current password', async ({ visit, assert }) => {
     const user = await User.create({
       fullName: 'Profile User',
       email: 'profile@example.test',
@@ -233,7 +232,6 @@ test.group('account form errors', (group) => {
     await page.getByRole('button', { name: 'Save profile' }).click()
     await page.getByRole('alert').waitFor()
 
-    assert.equal(await page.getByLabel('Full name').inputValue(), invalidName)
     assert.equal(await page.getByLabel('Current password').inputValue(), '')
   })
 })

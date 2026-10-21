@@ -17,6 +17,7 @@ const fields = [
   <Form
     v-slot="{ errors, processing }"
     route="new_account.store"
+    v-bind="{ novalidate: true }"
     :reset-on-error="['password', 'passwordConfirmation']"
     :reset-on-success="['password', 'passwordConfirmation']"
     @error="focusFormErrorSummary"
