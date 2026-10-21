@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
 import {
@@ -8,7 +7,7 @@ import {
 } from '../src/errors.js'
 import { readIsoTimestamp } from '../src/timestamps.js'
 import type { AccountKitConfig, Trx } from '../src/types.js'
-import { bootTestApp, useTestApp } from './helpers/app.js'
+import { useTestApp } from './helpers/app.js'
 import { failure } from './helpers/failure.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { testEngine } from './helpers/dialect.js'
