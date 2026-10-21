@@ -2,10 +2,19 @@
 
 ## Unreleased
 
+- Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
+- Recover the Inertia example signup flow when account creation commits but notification or initial sign-in fails.
+- Improve account example contrast, keyboard focus, page landmarks, reduced motion, and narrow-screen layout.
+
 Initial public release.
 
 ### Added
 
+- Account forms in the Inertia example announce validation errors, focus a field summary, and use
+  readable field names; the reset recipe includes labeled inputs and matching error keys.
+- The Inertia example accepts password-reset links during an existing session, signs out after a
+  successful reset, ends the current browser session before redirecting from completed email
+  verification, and describes invalid, used, or expired proof links accurately.
 - Password reset with single-use, expiring, hashed proof tokens and a generic response for unknown
   addresses.
 - Email verification and self-service registration with open, closed or application-controlled
@@ -54,6 +63,8 @@ Initial public release.
 - A Lucid users adapter and a reusable adapter contract suite for custom adapters.
 - Ace commands: `account-kit:setup`, `account-kit:prune`, `account-kit:retirement-impact` and
   `account-kit:doctor`, which checks config, limiter, `APP_URL` and database tables.
+- `account-kit:doctor` also checks deletion cleanup tables and password nullability for enabled
+  passwordless social registration, then names the callback and credential flows it did not test.
 - `createLogNotifications` prints account emails and their links to the logger during development.
 - `createMailNotifications` and `createLogNotifications` resolve the AdonisJS Mail and logger
   services when a message is sent; both `mail` and `logger` are optional.
@@ -85,8 +96,8 @@ Initial public release.
   query through the package's Lucid transaction.
 - The adapter contract checks that create, password, and registration-data writes roll back with
   the transaction, and that a password-less user never verifies.
-- Tested on SQLite, PostgreSQL 16 and MySQL 8.4. MySQL uses the `mysql2` client with
-  `timezone: 'Z'` and a UTC session time zone; see [compatibility](docs/compatibility.md).
+- Tested on SQLite and PostgreSQL 16. MySQL 8.4 is experimental and uses the `mysql2` client with
+  `timezone: 'Z'` and a UTC session time zone; see [compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/compatibility.md).
 - Generated timestamp columns have millisecond precision, so MySQL does not round expiries and
   credential revisions to the second. Existing installations keep their columns.
 - Managed route errors are translated through `@adonisjs/i18n` when the application uses it,
@@ -180,6 +191,7 @@ that ran a candidate build.
 
 ### Changed
 
+- Interactive setup now starts from valid saved choices, keeps applicable values when answers are blank, and explains when it falls back to safe defaults.
 - `emailVerification.complete({ token })` → `emailVerification.complete({ token, password })` (export contract) for inactive account claims; the claim replaces the earlier password and invalidates earlier credentials.
 - `GET /account-kit/verification/:token` → `POST /account-kit/verification/:token` (API example route) with password and confirmation in the body.
 - The API example's password validator maximum changes from 128 to 256 characters to match the service ceiling.
@@ -268,6 +280,8 @@ that ran a candidate build.
 
 ### Fixed
 
+- Setup asks only mail and destination questions required by the selected email flows.
+- Setup readiness checks resolve selected origin values from Adonis environment files while keeping process values first and reporting unsafe assignments without exposing their contents.
 - Package archives exclude private planning and review documents while retaining public docs and examples.
 - Installed-consumer upgrade checks preserve an outstanding password-reset proof through the table rename and verify one-time redemption.
 - Minimum-consumer diagnostic markers use the current password-reset and email-verification vocabulary.

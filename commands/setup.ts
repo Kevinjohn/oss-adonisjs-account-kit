@@ -33,12 +33,13 @@ export default class SetupAccountKit extends BaseCommand {
   declare retirementMaintenanceWindow: boolean
 
   async interactiveChoices(
-    askOverride?: (question: string) => Promise<string>
+    askOverride?: (question: string) => Promise<string>,
+    initialChoices?: SetupChoices
   ): Promise<SetupChoices> {
     if (!process.stdin.isTTY && !askOverride)
       throw new Error('Missing --input: provide a JSON choices file for noninteractive setup')
     const ask = askOverride ?? ((question: string) => this.prompt.ask(question))
-    return collectSetupChoices(ask, (message) => this.logger.info(message))
+    return collectSetupChoices(ask, (message) => this.logger.info(message), initialChoices)
   }
 
   /** Choices from the saved file (--check), the --input file, or the prompts. */
@@ -52,7 +53,7 @@ export default class SetupAccountKit extends BaseCommand {
       const content = await readFile(resolve(root, this.input), 'utf8')
       return parseSetupChoices(JSON.parse(content))
     }
-    return this.interactiveChoices()
+    return this.interactiveChoices(undefined, state.existingChoices ?? undefined)
   }
 
   /** Count accounts the choices would retire, through the booted read-only inventory command. */
@@ -85,7 +86,30 @@ export default class SetupAccountKit extends BaseCommand {
 
   async run(): Promise<void> {
     const root = this.app.makePath('')
-    const state = await inspectSetup(root)
+    let invalidSavedChoices = false
+    const state = await inspectSetup(
+      root,
+      !this.check
+        ? {
+            onInvalidSavedChoices: () => {
+              invalidSavedChoices = true
+            },
+          }
+        : {}
+    )
+    if (!this.check && invalidSavedChoices && this.input) {
+      this.logger.warning(
+        'Saved setup choices are invalid; using the explicit --input file. The invalid saved choices cannot provide a comparison baseline.'
+      )
+    } else if (!this.check && invalidSavedChoices) {
+      this.logger.warning(
+        'Saved setup choices are invalid; using safe defaults for this interview. Correct or remove config/account_kit_setup.json, or rerun with --input=choices.json to provide valid choices.'
+      )
+    } else if (!this.check && !this.input && state.existingInstallation && !state.existingChoices) {
+      this.logger.warning(
+        'No saved setup choices were found; using starter defaults. Provide a reviewed choices file with --input=choices.json to preserve an earlier configuration.'
+      )
+    }
     const choices = await this.loadChoices(root, state)
     const { retirementImpact, runtimeInventoryUnavailable } = state.existingChoices
       ? await this.runtimeInventory(choices)

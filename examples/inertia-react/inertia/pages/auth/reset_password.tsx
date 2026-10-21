@@ -1,22 +1,47 @@
 import AuthLayout from '~/layouts/auth'
+import FormErrorSummary, { focusFormErrorSummary } from '~/components/form_error_summary'
 import { Form, Link } from '@adonisjs/inertia/react'
 import { type InertiaProps } from '~/types'
 
 type Props = InertiaProps<{ token: string; valid: boolean }>
 
-export default function ResetPassword({ token, valid }: Props) {
+const fields = [
+  { name: 'password', label: 'New password' },
+  { name: 'passwordConfirmation', label: 'Confirm new password' },
+] as const
+
+export default function ResetPassword({ token, valid, user }: Props) {
   if (!valid) {
     return (
       <>
-        <h1 className="auth__title">This link has expired</h1>
-        <p className="auth__sub">Reset links work once and expire after an hour.</p>
-        <Link
-          route="password_resets.create"
-          className="btn btn--primary btn--block"
-          style={{ marginTop: 16 }}
-        >
-          Request a new link
-        </Link>
+        <h1 className="auth__title">This link can’t be used</h1>
+        <p className="auth__sub">It may be invalid, already used, or expired.</p>
+        {user ? (
+          <>
+            <p className="auth__foot">Sign out to request a new link or sign in with a password.</p>
+            <Form route="session.destroy">
+              <button type="submit" className="btn btn--primary btn--block">
+                Sign out
+              </button>
+            </Form>
+          </>
+        ) : (
+          <>
+            <Link
+              route="password_resets.create"
+              className="btn btn--primary btn--block"
+              style={{ marginTop: 16 }}
+            >
+              Request a new link
+            </Link>
+            <p className="auth__foot">
+              Already have a password?{' '}
+              <Link route="session.create" className="il">
+                Sign in
+              </Link>
+            </p>
+          </>
+        )}
       </>
     )
   }
@@ -24,11 +49,14 @@ export default function ResetPassword({ token, valid }: Props) {
   return (
     <>
       <h1 className="auth__title">Choose a new password</h1>
-      <p className="auth__sub">You will sign in with it from now on.</p>
+      <p className="auth__sub">
+        Any current session will end. Sign in with the new password after resetting it.
+      </p>
 
-      <Form route="password_resets.update" routeParams={{ token }}>
+      <Form route="password_resets.update" routeParams={{ token }} onError={focusFormErrorSummary}>
         {({ errors, processing }) => (
           <div className="auth__form">
+            <FormErrorSummary errors={errors} fields={fields} />
             <div className="field">
               <label className="field__label" htmlFor="password">
                 New password
@@ -39,9 +67,14 @@ export default function ResetPassword({ token, valid }: Props) {
                 type="password"
                 className="field__input"
                 autoComplete="new-password"
-                aria-invalid={errors.password ? 'true' : 'false'}
+                aria-invalid={errors.password ? true : undefined}
+                aria-describedby={errors.password ? 'reset-password-error' : undefined}
               />
-              {errors.password && <span className="field__error">{errors.password}</span>}
+              {errors.password && (
+                <span id="reset-password-error" className="field__error">
+                  {errors.password}
+                </span>
+              )}
             </div>
 
             <div className="field">
@@ -54,10 +87,15 @@ export default function ResetPassword({ token, valid }: Props) {
                 type="password"
                 className="field__input"
                 autoComplete="new-password"
-                aria-invalid={errors.passwordConfirmation ? 'true' : 'false'}
+                aria-invalid={errors.passwordConfirmation ? true : undefined}
+                aria-describedby={
+                  errors.passwordConfirmation ? 'reset-passwordConfirmation-error' : undefined
+                }
               />
               {errors.passwordConfirmation && (
-                <span className="field__error">{errors.passwordConfirmation}</span>
+                <span id="reset-passwordConfirmation-error" className="field__error">
+                  {errors.passwordConfirmation}
+                </span>
               )}
             </div>
 
