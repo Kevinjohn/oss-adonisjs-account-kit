@@ -332,6 +332,23 @@ test.group('setup prompt values', () => {
     assert.deepEqual(parseSetupChoices(choices), choices)
   })
 
+  test('social provider lists ignore empty comma-separated values', async ({ assert }) => {
+    for (const input of ['google,', 'google,,github']) {
+      const saved = savedNonDefaultChoices()
+      const choices = await collectFromSavedChoices(
+        async (question) => (question.startsWith('Social providers to prepare') ? input : ''),
+        () => {},
+        saved
+      )
+
+      assert.deepInclude(choices.social, {
+        status: 'enabled',
+        providers: input === 'google,' ? ['google'] : ['google', 'github'],
+      })
+      assert.deepEqual(parseSetupChoices(choices), choices)
+    }
+  })
+
   test('interactive provider selection does not duplicate an already selected social group', async ({
     assert,
   }) => {
