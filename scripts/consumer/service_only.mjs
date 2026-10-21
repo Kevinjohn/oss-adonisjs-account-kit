@@ -48,6 +48,8 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { AccountKit, defineConfig, type UsersAdapter } from 'adonisjs-account-kit'
+import type { AccountAccessInput, AccountAccessSnapshot } from 'adonisjs-account-kit/types'
+import { AccountAccessDeniedError, InvalidInputError } from 'adonisjs-account-kit/errors'
 
 const require = createRequire(import.meta.url)
 for (const name of ['@adonisjs/auth', '@adonisjs/session', '@adonisjs/shield', '@tuyau/core', '@adonisjs/mail', '@adonisjs/ally']) {
@@ -87,11 +89,17 @@ try {
     registration: { availability: 'open' },
     limiterSecret: 'service_only_consumer_secret_32_bytes',
     users,
+    authentication: { strategy: 'session', guard: 'web' },
     urls: { emailVerification: (token) => 'https://example.test/activate/' + token },
     notify: { accountActivationProvision: async () => {} },
   }))
   const service: AccountKit = await app.container.make(AccountKit)
   if (await service.emailVerification.send({ userId: 1 }) !== 'already_verified') throw new Error('Service did not boot')
+  const inspect: (input: AccountAccessInput) => Promise<AccountAccessSnapshot> =
+    (input) => service.authentication.inspectAccountAccess(input)
+  if (AccountAccessDeniedError.code !== 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED') throw new Error('Denial export missing')
+  try { await inspect({ userId: '', requireActive: true }); throw new Error('Inspection accepted invalid input') }
+  catch (error) { if (!(error instanceof InvalidInputError)) throw error }
   console.log('Compiled service-only startup passed; backend-only dependencies absent')
 } finally {
   await ignitor.terminate()

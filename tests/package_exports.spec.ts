@@ -68,12 +68,24 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
       await built.limiter.clear()
       built.app.config.set(
         'account_kit',
-        root.defineConfig(makeConfig({ users: makeUsersAdapter(built.db, built.hash) }))
+        root.defineConfig(
+          makeConfig({
+            users: makeUsersAdapter(built.db, built.hash),
+            authentication: { strategy: 'session', guard: 'web' },
+          })
+        )
       )
       const first = await built.app.container.make(root.AccountKit)
       const second = await built.app.container.make(root.AccountKit)
       assert.equal(first, second)
       assert.instanceOf(first, root.AccountKit)
+      assert.isFunction(errors.AccountAccessDeniedError)
+      assert.equal(root.AccountAccessDeniedError, errors.AccountAccessDeniedError)
+      assert.equal(root.errors.AccountAccessDeniedError, errors.AccountAccessDeniedError)
+      await assert.rejects(
+        () => first.authentication.inspectAccountAccess({ userId: 999999, requireActive: true }),
+        errors.AccountAccessDeniedError
+      )
       const service = await import('adonisjs-account-kit/services/main')
       assert.equal(service.default, first)
 
