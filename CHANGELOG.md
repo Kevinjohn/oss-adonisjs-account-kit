@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- Leave the API and hypermedia examples unchanged after their documented setup, and clear an unused lint directive in the API example.
 - Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
 - Keep local databases, secrets and installed artifacts out of fresh packed-consumer checks.
 
+- Leave the API and hypermedia examples unchanged after their documented setup, and clear an unused lint directive in the API example.
 - Organize adoption instructions by application stack and new or existing application, with focused recipe entry points.
 - Add a native Edge account example with public proof flows, verified access and revocable database sessions.
 - Add focused existing-application recipes for reset, verified access, configured mail, custom fields and selective managed endpoint replacement.
