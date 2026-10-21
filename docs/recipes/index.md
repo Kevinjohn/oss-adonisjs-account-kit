@@ -10,6 +10,7 @@ preserve the starting application's working login and selected guard:
 
 - [Add reset to an existing API login](password-reset-existing-login.md).
 - [Require verified email on an application route](verified-email-route.md).
+- [Inspect another account's access](account-access-inspection.md).
 - [Send account mail through AdonisJS Mail](development-mail.md).
 - [Add an application-specific user field](custom-user-model.md).
 - [Replace one managed endpoint](replace-managed-endpoint.md).
