@@ -10,13 +10,36 @@
 Password reset, email verification, invitations and account settings for AdonisJS 7, with the
 security details handled. You keep your user model, your routes and your policies.
 
+For example, a controller can request a reset without learning whether the address is registered:
+
+```ts
+await kit.passwordReset.request({ email, clientKey: ctx.request.ip() })
+```
+
 ![A password reset in a new AdonisJS app: the doctor passes, a reset request returns the generic response, the dev server log prints the email, the link resets the password once and is rejected the second time](docs/assets/demo.svg)
 
-See every feature run in [short terminal recordings](docs/recordings.md).
+Watch selected flows in [short terminal recordings](docs/recordings.md).
+
+## Choose a path
+
+Choose how Account Kit should fit into your app before installing it or generating files:
+
+- **Keep your own controllers and routes:** call the service API and keep HTTP validation, access
+  policy, and response handling in your application. The recommended
+  [complete API walkthrough](docs/guides/core-api.md) builds signup, protected settings, and reset.
+- **Use managed JSON routes:** mount the package routes under your chosen prefix and keep your
+  application's authentication and authorization policy. See [managed HTTP](docs/managed-http.md).
+- **Generate an integration:** use [guided setup](docs/setup.md) to inspect and generate selected
+  configuration, middleware, and route files. It is an alternative to writing those files by hand.
+- **Explore a browser app:** the maintained [Inertia React example](examples/inertia-react/README.md)
+  demonstrates its implemented signup, verification, password, profile, and email screens. Email
+  is printed to the development server log.
+
+![Signup form with a confirmation-password validation message in the Inertia React example](docs/assets/inertia_signup_validation.png)
 
 ## What you get
 
-The account flows every AdonisJS app ends up writing by hand:
+Common account flows for AdonisJS applications:
 
 - **Forgot password** with single-use, expiring links and the same response for known and unknown
   addresses.
@@ -26,18 +49,19 @@ The account flows every AdonisJS app ends up writing by hand:
 - **Account settings**: change password, change email with confirmation, update profile.
 - **Invitations** with roles, resend and revoke.
 
-Each flow comes with its emails, rate limits and test helpers. Call it from your own controllers, or mount
-the managed JSON routes.
+Account Kit includes notification templates, rate limits for sensitive operations, and helpers for
+testing account flows. Call its services from your controllers, or mount the managed JSON routes.
 
 ## Additional features
 
-Use the ones you need; the rest stay out of the way:
+Additional account flows are opt-in; enable only those your application uses. The commands, OpenAPI
+generator, and ORM adapters are available for the integrations you choose:
 
 - **Magic-link sign-in**: a one-use email link that only works in the browser or app that asked
   for it.
 - **Signed-in devices**: list sign-ins, sign out one device, every other device, or everywhere.
-- **Account export and deletion**: a JSON download of the user's data and permanent deletion, for
-  GDPR requests.
+- **Account export and deletion**: export package-held data with application-supplied data and
+  remove the account and package-owned rows. These helpers do not determine your legal obligations.
 - **Admission**: keep signed-in accounts out of your data until an allowed domain, an invitation
   or an approval admits them.
 - **Google and GitHub sign-in** through Ally.
@@ -57,13 +81,16 @@ node ace account-kit:doctor
 ```
 
 `node ace add` writes `config/account_kit.ts`, generates the migrations and registers the provider
-and commands. The doctor checks the config, limiter, `APP_URL` and database:
+and commands. The doctor checks the config, limiter, `APP_URL`, required package tables and user
+columns. It also checks that the password column permits `NULL` when selected social registration
+can create an account without a password:
 
 ![account-kit:doctor output with every check passing](docs/assets/doctor.svg)
 
-The generated `notify` callbacks throw until you choose how to send email, and the doctor cannot
-run them; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
-sets them up.
+Green installation checks end with an **Unverified** summary. Doctor does not send mail, invoke
+callbacks, check application policy, or prove credential revocation. Follow its smoke-test prompt
+with a disposable account; the [getting started tutorial](docs/getting-started.md#3-print-emails-to-the-terminal)
+sets up development notifications.
 
 Account Kit errors carry a `status` and `code` but do not render themselves. Map them in
 `app/exceptions/handler.ts` with `accountErrorResponse`, which returns a safe status, headers
@@ -95,8 +122,9 @@ explains the status codes and the `committed` marker.
 To have the config, guard adapter, middleware and managed route file generated from your answers
 instead, follow [guided setup](docs/setup.md) in place of `node ace add adonisjs-account-kit`.
 
-Requirements: Node.js 24+, AdonisJS 7 with Lucid on SQLite or PostgreSQL (MySQL is experimental), `@adonisjs/limiter`, a stable `APP_KEY` of at
-least 32 characters and an `APP_URL`.
+Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
+least 32 characters and an `APP_URL`. See [database compatibility](docs/compatibility.md) for the
+tested SQLite and PostgreSQL versions; MySQL is experimental.
 
 ## How it fits together
 
@@ -132,8 +160,8 @@ Account flows are where attackers look first. What Account Kit does by default:
   [Links in emails](docs/security.md#links-in-emails)
 - **No half-finished changes.** Each operation runs in one transaction with the user row locked.
   [Transactions](docs/security.md#transactions-and-races)
-- **Verifiable releases.** Published with npm provenance; run `npm audit signatures`.
-  [Supply chain](docs/security.md#supply-chain)
+- **Verifiable releases.** Published with npm provenance. [Supply chain](docs/security.md#supply-chain)
+  explains release verification.
 
 The [security model](docs/security.md) names the code and the test behind each defense, what your
 app must still do, and what is out of scope. Report vulnerabilities privately: see
@@ -189,11 +217,10 @@ See [users adapters](docs/adapters.md) and [custom adapter](docs/recipes/custom-
 ## Documentation
 
 - [Getting started](docs/getting-started.md)
-- [Inertia React example app](examples/inertia-react/README.md): the starter kit with signup,
-  email confirmation, forgot password and change password
-- [Recipes](docs/README.md#how-to-guides): tokens, sessions, Inertia, social sign-in, email
-  templates, multi-tenant and more
-- [Reference](docs/README.md#reference): configuration, errors, endpoints, glossary
+- [Recipes](docs/recipes/index.md): integration guides for sessions, tokens, Inertia, adapters,
+  email, testing, and multi-tenant apps
+- [Reference](docs/reference/index.md): configuration, operations, errors, endpoints, and
+  compatibility
 - [Security model](docs/security.md)
 - [Changelog](CHANGELOG.md)
 

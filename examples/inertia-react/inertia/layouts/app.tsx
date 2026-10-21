@@ -32,7 +32,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <nav className="subnav">
+      <nav className="subnav" aria-label="Primary">
         <div className="subnav__inner">
           {nav.map(({ label, route, icon: Icon }) => (
             <NavLink key={label} route={route} className="subnav__item">
@@ -43,7 +43,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </nav>
 
-      <div className="app-main">{children}</div>
+      <main className="app-main">{children}</main>
       <FlashToasts />
     </>
   )
