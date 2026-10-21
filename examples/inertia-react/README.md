@@ -235,12 +235,16 @@ code are fixtures or unrelated features; copy them only if your application need
 
 ## Run it
 
-From the repository root, use Node.js 24 and pnpm 11.23.0:
+The current source package manifest is `0.0.0`; there is no matching public npm release and
+repository tag for a consumer install yet. The published-package path is blocked on that release.
+This contributor path builds an archive from the current repository and does not establish a
+released-package install. Use Node.js 24 and pnpm 11.23.0 from the repository root:
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm build
+pnpm pack --out examples/inertia-react/vendor/adonisjs-account-kit.tgz
 cd examples/inertia-react
-pnpm kit:pack
 pnpm install
 cp .env.example .env
 node ace generate:key
@@ -250,18 +254,34 @@ pnpm dev
 ```
 
 Open http://localhost:3333/signup, create an account, then copy the verification link from the
-server log.
+server log. Use the link once, sign in, then visit the dashboard and password settings. The
+development logger exposes the proof URL in the local terminal; it does not send email or prove
+recipient delivery.
 
-The root install provides the build tools that `kit:pack` uses to build Account Kit. Packing creates
+The root install provides the build tools to build Account Kit. Packing creates
 `vendor/adonisjs-account-kit.tgz`, which is ignored by Git. The committed example lockfile pins every
-other dependency.
+other dependency. After installing the example once, `pnpm kit:pack` refreshes the archive after
+source changes. Run `pnpm install` again in the example after each re-pack to install the new archive
+and update its integrity entry; this refresh install cannot use `--frozen-lockfile`.
 
 The archive contains the built package and `CHANGELOG.md`, so its checksum changes whenever the
 source or the changelog changes. That is why the example install omits `--frozen-lockfile`: it keeps the locked versions and
 rewrites only the archive's integrity line in `pnpm-lock.yaml`. Commit that line only when you
-refresh the lockfile for a dependency change; keep the generated `vendor/` archive ignored. Once the
-package is on npm, replace the `adonisjs-account-kit` dependency with the published version and skip
-packing.
+refresh the lockfile for a dependency change; keep the generated `vendor/` archive ignored. The
+normal consumer path will use an exact published package version and its matching lockfile, and will
+skip packing after that release exists. Do not describe this archive install as the consumer path.
+
+### Expected result and common startup issues
+
+The server listens at <http://localhost:3333>. A successful signup reaches the dashboard and prints
+the verification link to the server log. Confirm the address, then check that the dashboard reports
+the verified state; change the password from settings and verify that the current session stays
+signed in. These steps exercise the example's account flow, not email delivery to an inbox.
+
+If `kit:pack` cannot find the root build tools, run the frozen root install first. If package
+installation cannot find `vendor/adonisjs-account-kit.tgz`, pack from the example directory before
+installing there. If startup reports missing environment values or a database table, copy
+`.env.example`, generate `APP_KEY`, and run the migrations before starting the server.
 
 ## What was added to the starter kit
 

@@ -12,6 +12,10 @@ tmp/*
 # Frontend assets compiled code
 public/assets
 
+# Packed Account Kit build, see README. The lockfile records the archive contents.
+vendor
+.adonisjs
+
 # Build tools specific
 npm-debug.log
 yarn-error.log
