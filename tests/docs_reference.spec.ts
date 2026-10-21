@@ -24,6 +24,16 @@ test('the error reference lists every exported error with its code and status', 
   assert.deepEqual(missing, [])
 })
 
+test('committed-failure errors tell the reader to report the committed outcome', async ({
+  assert,
+}) => {
+  const reference = await read('docs/reference/errors.md')
+  for (const name of ['PostCommitError', 'DeliveryError']) {
+    const line = reference.split('\n').find((candidate) => candidate.startsWith(`| \`${name}\` `))
+    assert.match(line ?? '', /report its committed outcome/i, name)
+  }
+})
+
 test('the endpoint reference lists every managed route', async ({ assert }) => {
   // Prettier pads table cells, so compare rows with single spaces.
   const source = await read('docs/reference/endpoints.md')
