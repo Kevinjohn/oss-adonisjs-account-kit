@@ -133,8 +133,18 @@ their representative browser test fail, then the changed files were restored byt
 unsafe mutation that would flash all request input was not executed. These checks do not cover a
 recipient inbox or PostgreSQL.
 
-The contributor archive used for this evidence declares package version `0.0.0` and has SHA-256
+The archive used for the 35-test run declared package version `0.0.0` and had SHA-256
 `24d8fb1b0693338b41e51b25ddeaabc2a06ca70ea46747d4073bf584b2730c99`.
+
+A fresh checkout made from tracked source at commit `369ac0fbe87ef372895ac5190396adde7d1b5969`
+verified the documented contributor setup with Node `24.21.0` and pnpm `11.23.0`: frozen root
+install, `cd examples/inertia-vue`, `pnpm kit:pack`, example install, environment copy, app-key
+generation, codegen and SQLite migrations all completed. The freshly packed package is version
+`0.0.0` with SHA-256
+`064cb1ac65e03e2299ead312d6f0d9263806ba74193937f3dbf99812a795edff`. With the server running on
+port `3343`, a browser GET to `/signup` rendered the signup form. The browser reported a missing
+`/favicon.ico` (404); the app page itself rendered. The 35-test suite was not repeated in this fresh
+checkout, and setup verification does not cover recipient email delivery or PostgreSQL.
 
 See the shared [example acceptance contract](../../docs/guides/example-acceptance.md) for the
 journey boundaries and cross-example evidence record.
