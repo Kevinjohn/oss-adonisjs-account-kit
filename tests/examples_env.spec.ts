@@ -19,3 +19,16 @@ test('API example env template lists exactly the variables its env schema valida
 
   assert.sameMembers(templateKeys, schemaKeys)
 })
+
+test('API example README runs its suite with the host and limiter store the tests expect', async ({
+  assert,
+}) => {
+  const readme = await readFile(`${exampleRoot}README.md`, 'utf8')
+  // login_throttling.spec.ts reads limiter keys for 127.0.0.1 and clears the memory store.
+  const runs = [...readme.matchAll(/`([^`]*\bpnpm test)`/g)].map(([, command]) => command)
+  assert.isAbove(runs.length, 0)
+  assert.deepEqual(
+    runs.filter((command) => !command.startsWith('HOST=127.0.0.1 LIMITER_STORE=memory ')),
+    []
+  )
+})

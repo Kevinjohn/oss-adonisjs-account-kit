@@ -1,4 +1,5 @@
 .adonisjs
 node_modules
 build
+pnpm-lock.yaml
 database/schema.ts

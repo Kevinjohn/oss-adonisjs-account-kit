@@ -2,6 +2,9 @@
   "name": "account-kit-api-example",
   "version": "0.0.0",
   "private": true,
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "type": "module",
   "license": "MIT",
   "exports": {
@@ -9,6 +12,7 @@
     "./registry": "./.adonisjs/client/registry/index.ts"
   },
   "scripts": {
+    "kit:pack": "pnpm --dir ../.. build && pnpm --dir ../.. pack --out examples/api/vendor/adonisjs-account-kit.tgz",
     "start": "node bin/server.js",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
@@ -73,7 +77,14 @@
     "better-sqlite3": "^12.11.1",
     "luxon": "^3.7.2",
     "pg": "^8.23.1",
-    "reflect-metadata": "^0.2.2"
+    "reflect-metadata": "^0.2.2",
+    "adonisjs-account-kit": "file:vendor/adonisjs-account-kit.tgz"
+  },
+  "allowScripts": {
+    "@swc/core": true,
+    "better-sqlite3": true,
+    "esbuild": true,
+    "fsevents": true
   },
   "hotHook": {
     "boundaries": [
