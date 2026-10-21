@@ -256,8 +256,8 @@ The root install provides the build tools that `kit:pack` uses to build Account 
 `vendor/adonisjs-account-kit.tgz`, which is ignored by Git. The committed example lockfile pins every
 other dependency.
 
-The archive also contains the package's `docs/` and `CHANGELOG.md`, so its checksum changes with most
-commits. That is why the example install omits `--frozen-lockfile`: it keeps the locked versions and
+The archive contains the built package and `CHANGELOG.md`, so its checksum changes whenever the
+source or the changelog changes. That is why the example install omits `--frozen-lockfile`: it keeps the locked versions and
 rewrites only the archive's integrity line in `pnpm-lock.yaml`. Commit that line only when you
 refresh the lockfile for a dependency change; keep the generated `vendor/` archive ignored. Once the
 package is on npm, replace the `adonisjs-account-kit` dependency with the published version and skip

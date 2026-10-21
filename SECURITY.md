@@ -29,6 +29,6 @@ npm audit signatures
 
 ## Security model
 
-[docs/security.md](docs/security.md) describes what Account Kit defends against and what remains
+[docs/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/security.md) describes what Account Kit defends against and what remains
 the application's responsibility. The dependency audit assessment is in
-[compatibility](docs/compatibility.md#dependency-audit-assessment).
+[compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/compatibility.md#dependency-audit-assessment).
