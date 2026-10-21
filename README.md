@@ -124,7 +124,7 @@ instead, follow [guided setup](docs/setup.md) in place of `node ace add adonisjs
 
 Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`. See [database compatibility](docs/compatibility.md) for the
-tested SQLite, PostgreSQL and MySQL versions.
+tested SQLite and PostgreSQL versions; MySQL is experimental.
 
 ## How it fits together
 

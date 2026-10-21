@@ -12,7 +12,7 @@ Use it when all of these hold:
 - AdonisJS 7 on Node.js 24 or later.
 - Users sign in with an email address (password, magic link or Google/GitHub through Ally).
 - The application already has, or will have, its own users table and model.
-- The database is SQLite, PostgreSQL or MySQL.
+- The database is SQLite or PostgreSQL. MySQL support is experimental.
 
 Do not use it for two-factor authentication or passkeys (AdonisJS Plus covers those), for
 username-only accounts, or as an identity provider for other applications.
