@@ -77,7 +77,12 @@ test.group('application account access inspection', (group) => {
     if (!refreshed) return
     assert.notEqual(refreshed.revision, first.revision)
 
-    await db.table('role_assignments').insert({ user_id: target.id, role: 'disabled' })
+    await accountKit.authentication.changeRestriction({
+      userId: target.id,
+      change: async (_account, trx) => {
+        await trx.table('role_assignments').insert({ user_id: target.id, role: 'disabled' })
+      },
+    })
     assert.isNull(await inspectAccountForOwner(owner, target.id))
   })
 
@@ -132,15 +137,22 @@ test.group('application account access inspection', (group) => {
     } as unknown as AccountKit
     app.container.swap(AccountKit, () => fakeAccountKit)
 
-    let actual: unknown
+    let inspectionError: unknown
+    let comparisonError: unknown
     try {
       await inspectAccountForOwner(owner, target.id)
     } catch (error) {
-      actual = error
+      inspectionError = error
+    }
+    try {
+      await compareAccountRevisionForOwner(owner, target.id, null)
+    } catch (error) {
+      comparisonError = error
     } finally {
       app.container.restore(AccountKit)
     }
 
-    assert.equal(actual, failure)
+    assert.equal(inspectionError, failure)
+    assert.equal(comparisonError, failure)
   })
 })
