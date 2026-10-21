@@ -29,9 +29,9 @@ The pack command creates the ignored local archive at
 `examples/hypermedia/vendor/adonisjs-account-kit.tgz`. It is built from the checked-out source.
 After a clean checkout, repeat the pack command before installing the example. The archive
 contains the built package and `CHANGELOG.md`, so its checksum changes whenever either changes.
-The example install therefore omits `--frozen-lockfile`: it keeps the locked versions and rewrites
-only the archive's integrity line in `pnpm-lock.yaml`. Commit that line only when refreshing the
-lockfile for a dependency change. Do not substitute
+The example install therefore omits `--frozen-lockfile`: it keeps the locked versions and records
+the local archive's integrity in `pnpm-lock.yaml`. Leave that local lockfile change uncommitted
+unless you are refreshing the lockfile for a dependency change. Do not substitute
 this archive for the published consumer path: the registry currently has no matching release.
 
 Then configure the app and run its database migrations:
