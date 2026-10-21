@@ -120,7 +120,21 @@ recipient inbox. The tested starter source is
 [`adonisjs/starter-kits/inertia-vue` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue).
 This example was based on Account Kit source `ae42132e6182690f7a91d4119a97dee98d66ce25`.
 
+On Node 24, `PORT=3341 APP_URL=http://localhost:3341 pnpm test` passed all 35 Japa unit,
+functional and browser tests; `pnpm build`, `pnpm lint` and `pnpm typecheck` passed. Browser tests
+checked signup at 1440×900 and 375×812, profile at 375×812, and email settings at widths 320, 768,
+1024 and 1440 pixels; these checks found no horizontal overflow. Keyboard coverage submits signup
+and reset errors with Enter, focuses the error summary, follows its field link with Tab and Enter,
+and verifies secret fields clear while ordinary signup input remains.
+Settings journeys cover current-password rejection, profile edits, email confirmation, password
+renewal and session revocation. The safe-input regression confirms plain HTML validation retains
+only the signup name and email in session flash data. Guard and secret-reset mutations each made
+their representative browser test fail, then the changed files were restored byte-for-byte. The
+unsafe mutation that would flash all request input was not executed. These checks do not cover a
+recipient inbox or PostgreSQL.
+
+The contributor archive used for this evidence declares package version `0.0.0` and has SHA-256
+`24d8fb1b0693338b41e51b25ddeaabc2a06ca70ea46747d4073bf584b2730c99`.
+
 See the shared [example acceptance contract](../../docs/guides/example-acceptance.md) for the
-journey boundaries and cross-example evidence record. The run-specific commands, database, browser
-sizes and keyboard checks are recorded with this change; no recipient email or PostgreSQL coverage
-is implied.
+journey boundaries and cross-example evidence record.
