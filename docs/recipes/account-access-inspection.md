@@ -89,8 +89,16 @@ integrity-protected in the cookie rather than stored server-side. If your applic
 a database-backed session or another protected store, retain the same actor-and-target binding.
 Keep this value out of request bodies, query strings, hidden fields, and other untrusted client
 state. A protected cookie can be replayed; the revision check detects account changes but does not
-make this context single-use. On the next request, resolve the same target and actor again,
-authorize again, then compare the captured revision with a fresh inspection before continuing:
+make this context single-use.
+
+Session state only reaches the next request when the client returns the session cookie. A
+bearer-token client that sends only `Authorization: Bearer` starts a new session on every request,
+so the comparison below always answers "Inspect the account again". For such clients, store the
+captured revision server-side instead, for example in an application table or cache entry keyed
+by actor and target, and read it back with the same checks.
+
+On the next request, resolve the same target and actor again, authorize again, then compare the
+captured revision with a fresh inspection before continuing:
 
 ```ts
 import User from '#models/user'
