@@ -1,0 +1,16 @@
+{
+  "extends": "@adonisjs/tsconfig/tsconfig.client.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "paths": {
+      "~/*": ["./*"],
+      "@generated/*": ["../.adonisjs/client/*"]
+    }
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.vue",
+    "../.adonisjs/client/**/*.ts",
+    "../.adonisjs/server/**/*.ts"
+  ]
+}
