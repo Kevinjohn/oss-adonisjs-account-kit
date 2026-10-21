@@ -111,6 +111,28 @@ Every credential change advances `credentials_changed_at`, and older credentials
 These guarantees apply across instances sharing the same database and, for sessions, a shared
 session store.
 
+### Inspecting another account
+
+`authentication.inspectAccountAccess({ userId, requireActive }): Promise<AccountAccessSnapshot>`
+reads eligibility and credential revision without a credential for that account. It is not
+authentication: authorise the caller first, and never expose a route without that check.
+
+Unknown accounts, denied `canAccess`, and unconfirmed addresses when `requireActive` is true
+share `AccountAccessDeniedError`, without a reason. Denial timing differs by cause; an HTTP
+caller owns any timing floor. An id the database cannot compare with its key column fails as
+an error, not a denial.
+
+`revision` is null before the first credential change, otherwise the same string `current`
+validates. The consumer owns revision comparison. The adapter and `canAccess` must only read
+through the supplied transaction and tolerate its retries.
+
+The snapshot is a point in time; nothing stays held after it returns. It waits for any
+in-progress change to the same account, so keep `change` callbacks short. Application-owned
+restriction writes must use `changeRestriction` for this guarantee. Never call inspection
+from an Account Kit callback or while holding that account's row: it opens its own
+transaction and would wait on itself. A `PostCommitError` means the snapshot was discarded;
+a retry is safe.
+
 ### Protected requests
 
 The selected guard authenticates a request first. Then call
