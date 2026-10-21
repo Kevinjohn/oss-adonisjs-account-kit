@@ -66,7 +66,7 @@ Open `http://localhost:3342` and follow these steps:
    signs in again with the new password; other sessions are rejected on their next request.
 6. Open **Email settings**, enter a new address and current password. The old address remains
    active while confirmation is pending. Copy the email-change link from the server output and
-   submit its confirmation form. Existing sessions end; sign in with the new email.
+   submit its confirmation form. Sessions for that account end; sign in with the new email.
 7. Sign out, choose **Forgot your password?**, and submit an address. The acknowledgement is the
    same for known and unknown addresses. Use the reset URL from the server output, choose a new
    password and submit. Existing sessions end. A consumed link cannot be reused.
@@ -98,7 +98,7 @@ session flash messages and redirects. Views use English application-owned text; 
 translation loader is shipped.
 
 `SessionRevisionMiddleware` checks each signed-in session against Account Kit's current credential
-revision. Password reset and email confirmation revoke existing sessions. A password change
+revision. Password reset and email confirmation revoke sessions for the changed account. A password change
 reauthenticates the current browser with the new password while other sessions fail on their next
 request. An email change keeps the old email and current session until the new address is confirmed.
 Proof inspection is GET-only and does not consume a token or switch the current identity. Proof
