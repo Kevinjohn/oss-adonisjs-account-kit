@@ -1,15 +1,14 @@
 # Account Kit documentation
 
-## Choose an integration
+## Choose your stack and starting point
 
-- [Call services from your own controllers](application-owned-integration.md) to keep your routes,
-  validation, and authorization in your application.
-- [Mount managed JSON routes](managed-http.md) when you want the package's HTTP endpoints under your
-  chosen prefix.
-- [Use guided setup](setup.md) to preview and generate selected integration files after installing
-  the package.
-- [Explore the Inertia React browser example](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/examples/inertia-react)
-  for the maintained browser implementation and transplant map.
+Start with [React, Vue, Hypermedia/Edge or API](guides/adoption-paths.md), then choose a new
+application or an existing application. The selector states which runnable paths are verified,
+what your application owns, and when to use an example, focused recipe or reference.
+
+For an existing login, [add one capability](recipes/index.md#add-one-capability-to-an-existing-application)
+without replacing the rest of your authentication. Compare example behavior with the
+[shared account journey acceptance guide](guides/example-acceptance.md).
 
 ## Tutorial
 

@@ -22,18 +22,21 @@ Watch selected flows in [short terminal recordings](docs/recordings.md).
 
 ## Choose a path
 
-Choose how Account Kit should fit into your app before installing it or generating files:
+Choose your stack and whether you are starting a new application or adding one account capability
+to an existing login. The [stack and starting-point guide](docs/guides/adoption-paths.md) leads to
+the exact prerequisites, runnable journeys and focused copy maps.
 
-- **Keep your own controllers and routes:** call the service API and keep HTTP validation, access
-  policy, and response handling in your application. The recommended
-  [complete API walkthrough](docs/guides/core-api.md) builds signup, protected settings, and reset.
-- **Use managed JSON routes:** mount the package routes under your chosen prefix and keep your
-  application's authentication and authorization policy. See [managed HTTP](docs/managed-http.md).
-- **Generate an integration:** use [guided setup](docs/setup.md) to inspect and generate selected
-  configuration, middleware, and route files. It is an alternative to writing those files by hand.
-- **Explore a browser app:** the maintained [Inertia React example](examples/inertia-react/README.md)
-  demonstrates its implemented signup, verification, password, profile, and email screens. Email
-  is printed to the development server log.
+| Stack           | New application                                                            | Existing application                                                                        |
+| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Inertia React   | [Run the browser example](examples/inertia-react/README.md#run-it)         | [Copy one flow](examples/inertia-react/README.md#transplant-into-an-existing-app)           |
+| Inertia Vue     | [Run the Vue example](examples/inertia-vue/README.md#requirements-and-run) | [Copy one Vue flow](examples/inertia-vue/README.md#minimum-transplant-map)                  |
+| Hypermedia/Edge | [Run the Edge example](examples/hypermedia/README.md#install-and-run)      | [Copy one Edge flow](examples/hypermedia/README.md#transplanting-into-an-existing-edge-app) |
+| API             | [Complete API starter walkthrough](docs/guides/core-api.md)                | [Add one capability](docs/recipes/index.md#add-one-capability-to-an-existing-application)   |
+
+Your app owns its Auth guard, user model, validation, authorization, language, notification
+delivery and frontend/proof pages. Account Kit owns account operations and credential lifecycle.
+Current example installation and verification limits are recorded in their READMEs and the
+[shared acceptance guide](docs/guides/example-acceptance.md).
 
 ![Signup form with a confirmation-password validation message in the Inertia React example](docs/assets/inertia_signup_validation.png)
 
