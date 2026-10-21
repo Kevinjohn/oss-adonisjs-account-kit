@@ -8,15 +8,7 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class AccountSessionSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'expiresAt',
-    'handleHash',
-    'id',
-    'label',
-    'lastSeenAt',
-    'userId',
-  ] as const
+  static $columns = ['createdAt', 'expiresAt', 'handleHash', 'id', 'label', 'lastSeenAt', 'userId'] as const
   $columns = AccountSessionSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -44,16 +36,7 @@ export class AccountTransactionLockSchema extends BaseModel {
 }
 
 export class EmailVerificationTokenSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'currentEmail',
-    'email',
-    'expiresAt',
-    'hash',
-    'id',
-    'purpose',
-    'tokenableId',
-  ] as const
+  static $columns = ['createdAt', 'currentEmail', 'email', 'expiresAt', 'hash', 'id', 'purpose', 'tokenableId'] as const
   $columns = EmailVerificationTokenSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -74,15 +57,7 @@ export class EmailVerificationTokenSchema extends BaseModel {
 }
 
 export class LoginLinkTokenSchema extends BaseModel {
-  static $columns = [
-    'clientChallenge',
-    'createdAt',
-    'email',
-    'expiresAt',
-    'hash',
-    'id',
-    'tokenableId',
-  ] as const
+  static $columns = ['clientChallenge', 'createdAt', 'email', 'expiresAt', 'hash', 'id', 'tokenableId'] as const
   $columns = LoginLinkTokenSchema.$columns
   @column()
   declare clientChallenge: string
@@ -131,17 +106,7 @@ export class SessionSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = [
-    'createdAt',
-    'credentialsChangedAt',
-    'email',
-    'emailVerifiedAt',
-    'fullName',
-    'id',
-    'password',
-    'unverifiedEmail',
-    'updatedAt',
-  ] as const
+  static $columns = ['createdAt', 'credentialsChangedAt', 'email', 'emailVerifiedAt', 'fullName', 'id', 'password', 'unverifiedEmail', 'updatedAt'] as const
   $columns = UserSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

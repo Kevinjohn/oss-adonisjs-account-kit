@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Leave the API and hypermedia examples unchanged after their documented setup, and clear an unused lint directive in the API example.
 - Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
 - Keep local databases, secrets and installed artifacts out of fresh packed-consumer checks.
 
