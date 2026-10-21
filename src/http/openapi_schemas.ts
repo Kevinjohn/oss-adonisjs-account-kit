@@ -4,11 +4,6 @@
  * Request schemas mirror `validators.ts`; cross-field rules are described in text.
  */
 import { sensitivePurposes } from '../social_enums.js'
-import type { JsonSchema } from './openapi_types.js'
-import type { ManagedEndpointName } from './routes.js'
-
-type Strategy = 'session' | 'access_tokens'
-
 export interface EndpointResponse {
   description: string
   /** Omitted for responses without a body. */
@@ -45,67 +40,31 @@ export interface EndpointSchemas {
   noStore?: true
 }
 
-export const ref = (name: string): JsonSchema => ({ $ref: `#/components/schemas/${name}` })
+import {
+  accountBody,
+  authorizationUrl,
+  body,
+  clientChallenge,
+  closed,
+  confirmed,
+  constant,
+  email,
+  nonEmpty,
+  ok,
+  password,
+  policyNote,
+  ref,
+  registrationData,
+  socialFlow,
+  string,
+  valid,
+  noContent,
+} from './openapi_primitives.js'
+export { ref } from './openapi_primitives.js'
+import type { JsonSchema } from './openapi_types.js'
+import type { ManagedEndpointName } from './routes.js'
 
-const closed = (properties: Record<string, JsonSchema>, required = Object.keys(properties)) => ({
-  type: 'object',
-  properties,
-  required,
-  additionalProperties: false,
-})
-
-const string = (extra: JsonSchema = {}): JsonSchema => ({ type: 'string', ...extra })
-const constant = (value: unknown): JsonSchema => ({ const: value })
-const email = (): JsonSchema => string({ format: 'email', maxLength: 254 })
-const password = (): JsonSchema => string({ minLength: 8, maxLength: 256 })
-const nonEmpty = (): JsonSchema => string({ minLength: 1 })
-const registrationData = (): JsonSchema => ({
-  type: 'object',
-  description: 'Application-defined fields, mapped by the application users adapter.',
-})
-
-/** Request bodies are open objects: the validators ignore unknown properties. */
-const body = (properties: Record<string, JsonSchema>, required: string[]): JsonSchema => ({
-  type: 'object',
-  properties,
-  required,
-})
-
-const confirmed = (field: string) =>
-  string({ description: `Must equal \`${field}\`. Checked by the server, not by this schema.` })
-
-const policyNote =
-  'The new password must also satisfy the configured password policy (422 `passwordPolicy`).'
-
-const accountBody = (strategy: Strategy, token: 'optional' | 'required' | 'none') =>
-  closed(
-    {
-      account: ref('IssuedAccount'),
-      ...(strategy === 'access_tokens' && token !== 'none'
-        ? { token: string({ description: 'Opaque bearer access token.' }) }
-        : {}),
-    },
-    strategy === 'access_tokens' && token === 'required' ? ['account', 'token'] : ['account']
-  )
-
-const ok = (description: string, schema?: JsonSchema) => () => ({ 200: { description, schema } })
-const valid = ok('The link is valid.', closed({ valid: constant(true) }))
-const noContent = () => ({ 204: { description: 'Done. No body.' } })
-const socialFlow = () => ({
-  200: { description: 'Social flow result.', schema: ref('SocialFlowResult') },
-})
-const authorizationUrl = ok(
-  'Provider authorisation URL for the browser to visit.',
-  closed({ authorizationUrl: string({ format: 'uri' }) })
-)
-
-const clientChallenge = (strategy: Strategy): JsonSchema =>
-  string({
-    description:
-      strategy === 'access_tokens'
-        ? 'Base64url SHA-256 of a client-held verifier (PKCE S256). Required for access tokens.'
-        : 'Ignored for session guards; the server holds the verifier.',
-  })
+type Strategy = 'session' | 'access_tokens'
 
 export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas> = {
   'auth.signup': {
@@ -500,134 +459,4 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     success: noContent,
   },
 }
-
-/** Shared component schemas; `IssuedAccount`, `Account` and `SocialProvider` are added per document. */
-export function sharedSchemas(): Record<string, JsonSchema> {
-  const userId = { type: ['integer', 'string'] }
-  const timestamp = string({ format: 'date-time' })
-  const socialStatus = { enum: ['linked', 'new'] }
-  return {
-    SafeAccount: closed({
-      id: userId,
-      email: string(),
-      unverifiedEmail: { type: ['string', 'null'] },
-      hasPassword: { type: 'boolean' },
-      active: { type: 'boolean' },
-    }),
-    ManagedCommittedSuccess: closed({ committed: constant(true) }),
-    SignIn: closed({
-      id: { type: 'integer' },
-      label: { type: ['string', 'null'] },
-      createdAt: timestamp,
-      lastSeenAt: { type: ['string', 'null'], format: 'date-time' },
-      expiresAt: { type: ['string', 'null'], format: 'date-time' },
-      current: { type: 'boolean' },
-    }),
-    AccountExport: closed(
-      {
-        format: constant('adonisjs-account-kit/export'),
-        version: constant(1),
-        generatedAt: timestamp,
-        account: closed({
-          id: userId,
-          email: string(),
-          unverifiedEmail: { type: ['string', 'null'] },
-          emailVerifiedAt: { type: ['string', 'null'], format: 'date-time' },
-          hasPassword: { type: 'boolean' },
-          credentialsChangedAt: { type: ['string', 'null'], format: 'date-time' },
-        }),
-        socialIdentities: { type: 'array', items: { type: 'object' } },
-        invitationsSent: { type: 'array', items: { type: 'object' } },
-        accessTokens: {
-          type: 'array',
-          items: { type: 'object' },
-          description: 'Present only for the access-token strategy.',
-        },
-        pending: { type: 'object' },
-        application: {
-          description: "What the application's `exportAccountData` returned, or null.",
-        },
-      },
-      [
-        'format',
-        'version',
-        'generatedAt',
-        'account',
-        'socialIdentities',
-        'invitationsSent',
-        'pending',
-        'application',
-      ]
-    ),
-    ManagedErrorBody: closed({
-      errors: {
-        type: 'array',
-        minItems: 1,
-        items: closed({ code: string(), message: string(), field: string() }, ['code', 'message']),
-      },
-    }),
-    ValidationErrorBody: closed({
-      errors: {
-        type: 'array',
-        minItems: 1,
-        items: closed(
-          {
-            field: string(),
-            rule: string(),
-            message: string(),
-            meta: { type: 'object' },
-            index: { type: 'integer' },
-          },
-          ['field', 'rule', 'message']
-        ),
-      },
-    }),
-    JsonApiErrorBody: closed({
-      errors: {
-        type: 'array',
-        minItems: 1,
-        items: {
-          oneOf: [
-            closed({ code: string(), title: string() }),
-            closed(
-              {
-                code: string(),
-                title: string(),
-                source: closed({ pointer: string() }),
-                meta: { type: 'object' },
-              },
-              ['code', 'title', 'source']
-            ),
-          ],
-        },
-      },
-    }),
-    Invitation: closed({
-      id: { type: 'integer' },
-      email: string(),
-      role: string(),
-      inviterId: { type: ['integer', 'string', 'null'] },
-      expiresAt: timestamp,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    }),
-    InvitationPage: closed({
-      items: { type: 'array', items: ref('Invitation') },
-      nextCursor: { type: ['string', 'null'] },
-    }),
-    SocialFlowResult: {
-      oneOf: [
-        closed({ status: socialStatus, account: ref('SafeAccount') }),
-        closed({
-          status: socialStatus,
-          code: string({ description: 'Handoff code for `auth/oauth/token`.' }),
-        }),
-        closed({ status: socialStatus }),
-        closed({ status: constant('new'), continuation: string() }),
-        closed({ status: constant('new'), emailVerificationRequired: constant(true) }),
-        closed({ status: constant('link_required') }),
-        closed({ status: constant('reauthenticated'), proof: string() }),
-      ],
-    },
-  }
-}
+export { sharedSchemas } from './openapi_components.js'
