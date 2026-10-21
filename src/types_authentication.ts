@@ -59,7 +59,10 @@ export interface CurrentAccount {
   active: boolean
 }
 
-/** Input for `authentication.inspectAccountAccess`. */
+/**
+ * Input for caller-authorized inspection. Adapters and policy callbacks must be read-only through
+ * the supplied transaction and safe to retry; unavailable accounts share `AccountAccessDeniedError`.
+ */
 export interface AccountAccessInput {
   /** The account to inspect. No credential for it is needed or accepted. */
   userId: UserId
@@ -67,7 +70,10 @@ export interface AccountAccessInput {
   requireActive: boolean
 }
 
-/** One coherent read of an account's eligibility and credential revision. */
+/**
+ * One point-in-time read of account eligibility and credential revision, not lasting authorization.
+ * A `PostCommitError` discards this result; retry is safe under the inspection dependency contract.
+ */
 export interface AccountAccessSnapshot {
   account: CurrentAccount
   /** The canonical UTC revision, or null before the first credential change. */

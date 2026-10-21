@@ -1,6 +1,13 @@
 # Candidate verification
 
-Validation uses Node 24 and pnpm. Local checks are authoritative; the repository workflows remain manual and were not dispatched.
+Validation uses Node 24 and pnpm. Dated candidate records below identify the revisions and
+configurations tested; historical totals do not describe the latest candidate. Check each pull
+request for its current automated workflow results.
+
+## Historical pre-inspection summary
+
+The following summary is retained from earlier verification and is not the account-inspection
+candidate result. See [Account access inspection](#account-access-inspection) for its dated evidence.
 
 The local package gate on Node 24.21.0 and pnpm 11.23.0 passes lint, typechecking, build, 221
 SQLite tests, 221 PostgreSQL 16.15 tests and four built-export tests. Coverage includes real Lucid
@@ -91,7 +98,11 @@ pnpm 11.23.0 and PostgreSQL 16.15. Every command below exited 0.
 Each prerequisite PR also records its own full gate and focused checks. #608 passes the
 documentation-link checks; #610's two focused concurrency tests pass on both databases.
 #609 covers the SQLite cleanup fault as well as a PostgreSQL deferred-constraint COMMIT rejection.
-`test:mysql: not run, no server`.
+The initial gate did not run MySQL. A follow-up on source-equivalent head
+`345c5f76daec3da76c390fc32350709a1a8c2c33` ran `DB_PORT=33307 pnpm test:mysql`
+on native MySQL 8.4.13: 1,077 passed and five dialect-specific tests skipped. The disposable
+server used UTC and was stopped afterward. MySQL remains experimental because it is not in
+the per-change CI matrix.
 
 Installed consumers both compiled with `skipLibCheck: false` and booted the service. They verify
 the public inspection types and method, the denial export, and `InvalidInputError` before a
@@ -139,6 +150,54 @@ each failure was checked against its named test rather than an empty test run or
 The changelog includes `AccountAccessDeniedError` and
 `authentication.inspectAccountAccess`. These archives are consumable candidate artifacts; no
 package version was changed and nothing was published to the package registry.
+
+#### Review corrections and MySQL follow-up: 21 October 2026
+
+The revised source candidate `5b8bceb80408849e9561d06cc8b8e7fbef72024a` supersedes the
+initial candidate above. The responsibility split was committed separately and passed the full
+required package gate at `9ae5b9b2fcd7f2b5a0e58b33b343f697727b99b3` before subsequent changes.
+Projection and configuration guards now have focused modules, with original exports preserved;
+core inspection, schema compatibility and effects/failure suites have separate files. No inspection
+behavior or test assertions were removed. The subsequent independent assembled review closed all
+reported findings, including error/retry guidance, historical evidence labels, API comments,
+changelog adjacency and concurrency evidence.
+
+The final candidate passed the following checks with Node 24.21.0 and pnpm 11.23.0:
+
+| Check                                       | Result                                                         |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| `pnpm lint`, `pnpm typecheck`, `pnpm build` | Passed                                                         |
+| `pnpm quick:test`                           | 1,081 passed; two skipped                                      |
+| `pnpm test:built-exports`                   | Two passed                                                     |
+| `pnpm test:pg-service`                      | 61 passed                                                      |
+| `DB_PORT=55438 pnpm test:pg`                | 1,080 passed; three skipped; PostgreSQL 16.15                  |
+| `DB_PORT=33307 pnpm test:mysql`             | 1,077 passed; five skipped; native MySQL 8.4.13                |
+| `pnpm docs:build`                           | Passed                                                         |
+| Service-only installed consumer, SQLite     | Install, full declaration checking and compiled startup passed |
+| Service-only installed consumer, PostgreSQL | Install, full declaration checking and compiled startup passed |
+
+Both concurrency scenarios also passed as focused tests on SQLite, PostgreSQL and MySQL.
+For both row-lock engines they observe the actual waiting and blocking connections in both lock
+orders, rather than counting unrelated cluster locks or merely checking an unsettled promise.
+The native NOWAIT/update probes and before/after snapshot assertions remain in place.
+Removing the witness row lock made the MySQL lock-ownership assertion fail as expected;
+injecting an early inspection failure surfaced its original error in 0.98 seconds rather than
+hanging on a callback barrier. Both probes restored the original source afterward.
+
+Both fresh installed consumers used this source candidate, required `skipLibCheck: false`,
+and verified that optional backend authentication integrations were absent. The actual archive
+bytes were independently checked against the recorded SHA-256 values:
+
+| Consumer   | Candidate archive SHA-256                                          |
+| ---------- | ------------------------------------------------------------------ |
+| SQLite     | `01ee8259fefe17391763f72251523f0955ae7df2f872a31a4890068f877f91ab` |
+| PostgreSQL | `01ee8259fefe17391763f72251523f0955ae7df2f872a31a4890068f877f91ab` |
+
+MySQL was tested with UTC database connections while the test process used `America/New_York`.
+Its experimental status is unchanged: it is still outside the per-change CI matrix. Disposable
+MySQL and PostgreSQL servers were stopped after their checks. These are pre-merge candidate
+results; the merged-main gate remains a delivery step after approved merges. The follow-up
+verification-record commit changes documentation only.
 
 ### Vocabulary alignment: 15 October 2026
 
@@ -259,6 +318,12 @@ brew install mysql@8.4
 "$(brew --prefix mysql@8.4)/bin/mysql" -uroot -h127.0.0.1 -P33306 -e 'create database account_kit_test'
 pnpm test:mysql
 ```
+
+The concurrency tests identify the actual waiting and blocking connections using
+`performance_schema.data_lock_waits`, `performance_schema.data_locks` and
+`performance_schema.threads`. The test account needs SELECT access to these diagnostic tables;
+the default disposable root account has it. These permissions are test-only; application
+inspection does not query Performance Schema.
 
 The packed-consumer checks stay on SQLite and PostgreSQL; the MySQL evidence is this suite.
 

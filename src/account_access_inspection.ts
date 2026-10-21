@@ -1,7 +1,8 @@
 // Account access inspection: eligibility and credential revision of one account, read under its lock, with no credential for it.
 import { transaction, userMetadata } from './db.js'
 import { readIsoTimestamp } from './timestamps.js'
-import { safeAccount, requireAuthentication } from './authentication.js'
+import { requireAuthentication } from './authentication_config.js'
+import { safeAccount } from './account_projection.js'
 import { isUserId } from './user_id.js'
 import { AccountAccessDeniedError, InvalidInputError } from './errors.js'
 import type { AccountAccessInput, AccountAccessSnapshot } from './types.js'
