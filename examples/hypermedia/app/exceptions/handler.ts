@@ -2,6 +2,20 @@ import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 
+const SAFE_OLD_INPUT_FIELDS = ['fullName', 'email'] as const
+
+export function safeOldInput(request: HttpContext['request']) {
+  const body = request.all()
+  const oldInput: Record<string, string> = {}
+
+  for (const field of SAFE_OLD_INPUT_FIELDS) {
+    const value = body[field]
+    if (typeof value === 'string' && value.length <= 320) oldInput[field] = value
+  }
+
+  return oldInput
+}
+
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
    * In debug mode, the exception handler will display verbose errors
@@ -35,6 +49,17 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    */
   async handle(error: unknown, ctx: HttpContext) {
     return super.handle(error, ctx)
+  }
+
+  async renderValidationErrorAsHTML(
+    error: Parameters<ExceptionHandler['renderValidationErrorAsHTML']>[0],
+    ctx: HttpContext
+  ) {
+    if (!ctx.session) return super.renderValidationErrorAsHTML(error, ctx)
+
+    ctx.session.flashValidationErrors(error, false)
+    ctx.session.flash('old', safeOldInput(ctx.request))
+    ctx.response.redirect('back', true)
   }
 
   /**
