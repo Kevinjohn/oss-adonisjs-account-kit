@@ -52,9 +52,11 @@ pnpm dev
 The API listens at <http://localhost:3333>; `GET /` returns `{"hello":"world"}`. The `.env.example`
 uses SQLite, and `node ace generate:key` fills the local `APP_KEY`. Its OAuth values are inert
 placeholders so the core flow can boot without provider accounts; replace them before using social
-sign-in. To exercise the routes, run
-`pnpm test` here or use the repository's `pnpm test:consumer` from the root; those suites verify the
-signup, email verification, login, and account API flows over HTTP.
+sign-in. To exercise the routes, run `HOST=127.0.0.1 LIMITER_STORE=memory pnpm test` here or use
+the repository's `pnpm test:consumer` from the root; those suites verify the signup, email
+verification, login, and account API flows over HTTP. The suites expect the loopback address and
+in-memory limiter that `test:consumer` sets, so the development `.env` values alone fail the login
+throttling test.
 
 In development, the example prints proof links to the server log and keeps its in-memory capture
 for tests. This makes the HTTP journey inspectable locally; it does not send email or prove
