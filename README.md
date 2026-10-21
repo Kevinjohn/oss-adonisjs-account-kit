@@ -26,12 +26,12 @@ Choose your stack and whether you are starting a new application or adding one a
 to an existing login. The [stack and starting-point guide](docs/guides/adoption-paths.md) leads to
 the exact prerequisites, runnable journeys and focused copy maps.
 
-| Stack           | New application                                                    | Existing application                                                                      |
-| --------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Inertia React   | [Run the browser example](examples/inertia-react/README.md#run-it) | [Copy one flow](examples/inertia-react/README.md#transplant-into-an-existing-app)         |
-| Inertia Vue     | Runnable path being verified                                       | [Application-owned services](docs/application-owned-integration.md)                       |
-| Hypermedia/Edge | Runnable path being verified                                       | [Session integration](docs/recipes/sessions.md)                                           |
-| API             | [Complete API starter walkthrough](docs/guides/core-api.md)        | [Add one capability](docs/recipes/index.md#add-one-capability-to-an-existing-application) |
+| Stack           | New application                                                            | Existing application                                                                        |
+| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Inertia React   | [Run the browser example](examples/inertia-react/README.md#run-it)         | [Copy one flow](examples/inertia-react/README.md#transplant-into-an-existing-app)           |
+| Inertia Vue     | [Run the Vue example](examples/inertia-vue/README.md#requirements-and-run) | [Copy one Vue flow](examples/inertia-vue/README.md#minimum-transplant-map)                  |
+| Hypermedia/Edge | [Run the Edge example](examples/hypermedia/README.md#install-and-run)      | [Copy one Edge flow](examples/hypermedia/README.md#transplanting-into-an-existing-edge-app) |
+| API             | [Complete API starter walkthrough](docs/guides/core-api.md)                | [Add one capability](docs/recipes/index.md#add-one-capability-to-an-existing-application)   |
 
 Your app owns its Auth guard, user model, validation, authorization, language, notification
 delivery and frontend/proof pages. Account Kit owns account operations and credential lifecycle.
