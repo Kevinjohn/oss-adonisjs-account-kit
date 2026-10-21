@@ -10,6 +10,8 @@ browser app needs, each as a plain controller and React page you can copy:
 | Log in and out        | `/login`                                     | `app/controllers/session_controller.ts`             |
 | Forgot password       | `/forgot-password`, `/reset-password/:token` | `app/controllers/password_resets_controller.ts`     |
 | Change password       | `/settings/password`                         | `app/controllers/passwords_controller.ts`           |
+| Edit profile          | `/settings/profile`                          | `app/controllers/profile_controller.ts`             |
+| Change email          | `/settings/email`, `/confirm-email/:token`   | `app/controllers/email_changes_controller.ts`       |
 
 Emails are printed to the dev server log instead of being sent.
 
@@ -180,6 +182,43 @@ links point to the reviewed example source so you can compare each file while ad
   devices are rejected.
 - Focused check: change the password while signed in, confirm this browser remains signed in, and
   confirm a second pre-existing browser session is rejected.
+
+**Profile settings**
+
+- Adapt [`profile_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/app/controllers/profile_controller.ts),
+  [`profile.ts` validator](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/app/validators/profile.ts), and
+  [`settings/profile.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/inertia/pages/settings/profile.tsx).
+  Add GET/POST `/settings/profile` inside the authenticated group in
+  [`start/routes.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/start/routes.ts), and add Profile to
+  [`settings.tsx` navigation](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/inertia/layouts/settings.tsx).
+  The controller reads the signed-in user, validates only `fullName` and current password, and
+  passes the authenticated ID to `updateProfile`; the name saves immediately. Keep the shared
+  account form error summary and the app's `registration.mapFields`/adapter mapping for `fullName`.
+- Focused check: save a name with the current password in one browser; a missing or wrong password
+  leaves it unchanged, and another account's profile cannot be targeted by form data.
+
+**Email settings**
+
+- Adapt [`email_changes_controller.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/app/controllers/email_changes_controller.ts),
+  [`email_change.ts` validators](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/app/validators/email_change.ts),
+  [`settings/email.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/inertia/pages/settings/email.tsx), and
+  [`auth/confirm_email_change.tsx`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/3ca4874577a7c806817e20a90c76d0b362e498fa/examples/inertia-react/inertia/pages/auth/confirm_email_change.tsx).
+  Add authenticated GET/POST `/settings/email` and POST `/settings/email/cancel`, plus public
+  GET/POST `/confirm-email/:token` as shown in the pinned routes. Set the `emailChange` action URL
+  destination to `confirm-email`, enable `emailPasswordManagement` and `emailVerification`, and keep
+  the shared revision middleware, proof-page headers, session guard, and delivery-failure helper.
+  Add Email to the settings navigation.
+- The example accepts requests only after the current address is confirmed. This app policy keeps
+  an active account's address usable until the new owner confirms the link; Account Kit itself
+  immediately changes an inactive account's address. The request needs the current password;
+  submitting the current address is rejected in this form, while the separate cancellation form
+  uses `updateProfile` with that address and fresh password proof. Inspection is a read-only GET,
+  completion is POST and ends the current browser session. Use generic copy for address conflicts
+  and invalid, used, or expired links. Do not derive the actor from a submitted user ID.
+- Focused check: request a change, cancel it and verify the first proof no longer works; request
+  again, inspect in another signed-in browser without changing its identity, complete once, and
+  confirm both sessions end. The owner signs in with the new address; the other account keeps its
+  own sign-in address.
 
 Forms, route authorization, account policy, and English text are application decisions. Adapt the
 shared form summary, flash renderer, user transformer, middleware, and layouts to the existing
