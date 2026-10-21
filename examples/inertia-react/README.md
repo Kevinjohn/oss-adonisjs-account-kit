@@ -261,7 +261,8 @@ recipient delivery.
 The root install provides the build tools to build Account Kit. Packing creates
 `vendor/adonisjs-account-kit.tgz`, which is ignored by Git. The committed example lockfile pins every
 other dependency. After installing the example once, `pnpm kit:pack` refreshes the archive after
-source changes.
+source changes. Run `pnpm install` again in the example after each re-pack to install the new archive
+and update its integrity entry; this refresh install cannot use `--frozen-lockfile`.
 
 The archive contains the built package and `CHANGELOG.md`, so its checksum changes whenever the
 source or the changelog changes. That is why the example install omits `--frozen-lockfile`: it keeps the locked versions and
