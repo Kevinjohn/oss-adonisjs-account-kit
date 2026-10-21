@@ -515,6 +515,45 @@ test.group('native account journeys', (group) => {
     }
   })
 
+  test('committed password change survives notification failure and keeps this session', async ({
+    visit,
+    assert,
+  }) => {
+    const user = await User.create({
+      fullName: 'Notice Example',
+      email: 'notice@example.test',
+      password: 'OldPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const notify = accountKitNotifications.notify.passwordChanged
+    accountKitNotifications.notify.passwordChanged = async () => {
+      throw new errors.DeliveryError('test delivery failure')
+    }
+    try {
+      const page = await visit('/login')
+      await page.getByLabel('Email').fill(user.email)
+      await page.getByLabel('Password').fill('OldPassword123!')
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.getByRole('heading', { name: 'Your account' }).waitFor()
+      await page.goto('/settings/password')
+      await page.getByLabel('Current password').fill('OldPassword123!')
+      await page.getByLabel('New password', { exact: true }).fill('NewPassword123!')
+      await page.getByLabel('Confirm new password').fill('NewPassword123!')
+      await page.getByRole('button', { name: 'Change password' }).click()
+      await page
+        .getByText(
+          'Password changed. Other sessions have been signed out. We could not send the confirmation email.'
+        )
+        .waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      await page.goto('/account')
+      await page.getByRole('heading', { name: 'Protected account page' }).waitFor()
+    } finally {
+      accountKitNotifications.notify.passwordChanged = notify
+    }
+  })
+
   test('expired verification proof is rejected separately from replay', async ({
     visit,
     assert,
