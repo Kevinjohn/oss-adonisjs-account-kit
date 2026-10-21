@@ -20,3 +20,7 @@ indent_style = space
 
 [*.md]
 trim_trailing_whitespace = false
+
+# node ace generate:key rewrites this file without a final newline
+[.env.example]
+insert_final_newline = false
