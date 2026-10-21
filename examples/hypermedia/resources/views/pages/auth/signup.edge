@@ -1,0 +1,49 @@
+@layouts.auth()
+  <h1 class="auth__title">Create your account</h1>
+  <p class="auth__sub">Create an account, then confirm that you own the email address.</p>
+  @form({ route: 'new_account.store', method: 'POST', class: 'auth__form' })
+    @field.root({ name: 'fullName' })
+      @!field.label({ text: 'Full name' })
+      @!input.control({ autocomplete: 'name', value: old('fullName'), required: true })
+      @!field.error()
+    @end
+    @field.root({ name: 'email' })
+      @!field.label({ text: 'Email' })
+      @!input.control({
+        type: 'email',
+        autocomplete: 'email',
+        value: old('email'),
+      })
+      @!field.error()
+    @end
+    @field.root({ name: 'password' })
+      @!field.label({ text: 'Password' })
+      @!input.control({
+        type: 'password',
+        autocomplete: 'new-password',
+        required: true,
+      })
+      @!field.error()
+    @end
+    @field.root({ name: 'passwordConfirmation' })
+      @!field.label({ text: 'Confirm password' })
+      @!input.control({
+        type: 'password',
+        autocomplete: 'new-password',
+        required: true,
+      })
+      @!field.error()
+    @end
+    @!button({
+      text: 'Create account',
+      type: 'submit',
+      block: true,
+      style: 'margin-top: 4px;',
+    })
+  @end
+
+  <p class="auth__foot">
+    Already registered?
+    <a href="{{ urlFor('session.create') }}" class="il">Sign in</a>
+  </p>
+@end
