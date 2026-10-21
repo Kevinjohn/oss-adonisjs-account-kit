@@ -131,12 +131,13 @@ export class DeliveryError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_DELIVERY'
 }
 /**
- * The database change committed, then a notification or hook failed. Has `committed: true`; do not
- * repeat the operation.
+ * The transaction committed, then a follow-up failed. Do not repeat a committed mutation.
+ * Read-only account inspection returns no snapshot; retry is safe when its dependencies satisfy
+ * the documented read-only, retry-safe contract.
  */
 export class PostCommitError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_POST_COMMIT'
-  /** Always true: the account change is saved and must not be repeated. */
+  /** Always true: the transaction committed; an inspection snapshot may still be discarded. */
   readonly committed = true
 }
 /** An operation was called for a capability that is not in `enabled`. */
