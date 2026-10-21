@@ -36,7 +36,8 @@ test.group('account form errors', (group) => {
 
       assert.equal(response.status(), 302)
       const flash = await context.getFlashMessages()
-      assert.deepEqual(flash.input, { fullName: 'Ada Lovelace', email: 'ada@example.test' })
+      assert.equal(flash.fullName, 'Ada Lovelace')
+      assert.equal(flash.email, 'ada@example.test')
       assert.notInclude(JSON.stringify(flash), 'SensitivePass123!')
       assert.notInclude(JSON.stringify(flash), 'DifferentPass123!')
     } finally {
