@@ -25,7 +25,7 @@ export default class EmailChangesController {
     }
     if (email === user.email) {
       ctx.session.flash('error', 'Enter a different address from your current email.')
-      ctx.session.flash('old', { email })
+      ctx.session.flashOnly(['email'])
       return ctx.response.redirect().back()
     }
     try {
@@ -35,14 +35,17 @@ export default class EmailChangesController {
         newEmail: email,
       })
     } catch (error) {
-      if (error instanceof errors.InvalidCredentialsError) {
+      if (
+        error instanceof errors.InvalidCredentialsError ||
+        error instanceof errors.IdentityNotConfirmedError
+      ) {
         ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
-        ctx.session.flash('old', { email })
+        ctx.session.flashOnly(['email'])
         return ctx.response.redirect().back()
       }
       if (error instanceof errors.EmailAlreadyRegisteredError) {
         ctx.session.flash('error', 'This address cannot be used. Try another address.')
-        ctx.session.flash('old', { email })
+        ctx.session.flashOnly(['email'])
         return ctx.response.redirect().back()
       }
       if (!isDeliveryFailure(error)) throw error
@@ -73,7 +76,11 @@ export default class EmailChangesController {
         email: user.email,
       })
     } catch (error) {
-      if (!(error instanceof errors.InvalidCredentialsError)) throw error
+      if (
+        !(error instanceof errors.InvalidCredentialsError) &&
+        !(error instanceof errors.IdentityNotConfirmedError)
+      )
+        throw error
       ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')
       return ctx.response.redirect().back()
     }

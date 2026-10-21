@@ -73,6 +73,33 @@ export class EmailVerificationTokenSchema extends BaseModel {
   declare tokenableId: number
 }
 
+export class LoginLinkTokenSchema extends BaseModel {
+  static $columns = [
+    'clientChallenge',
+    'createdAt',
+    'email',
+    'expiresAt',
+    'hash',
+    'id',
+    'tokenableId',
+  ] as const
+  $columns = LoginLinkTokenSchema.$columns
+  @column()
+  declare clientChallenge: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column()
+  declare email: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column()
+  declare hash: string
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare tokenableId: number
+}
+
 export class PasswordResetTokenSchema extends BaseModel {
   static $columns = ['createdAt', 'email', 'expiresAt', 'hash', 'id', 'tokenableId'] as const
   $columns = PasswordResetTokenSchema.$columns
@@ -88,6 +115,19 @@ export class PasswordResetTokenSchema extends BaseModel {
   declare id: number
   @column()
   declare tokenableId: number
+}
+
+export class SessionSchema extends BaseModel {
+  static $columns = ['data', 'expiresAt', 'id', 'userId'] as const
+  $columns = SessionSchema.$columns
+  @column()
+  declare data: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare userId: string | null
 }
 
 export class UserSchema extends BaseModel {

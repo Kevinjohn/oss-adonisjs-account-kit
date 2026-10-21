@@ -42,5 +42,8 @@
     })
   @end
 
-  <p class="auth__foot">Already registered? @link({ route: 'session.create', class: 'il' })Sign in@end</p>
+  <p class="auth__foot">
+    Already registered?
+    <a href="{{ urlFor('session.create') }}" class="il">Sign in</a>
+  </p>
 @end

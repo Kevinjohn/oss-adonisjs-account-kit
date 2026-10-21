@@ -40,8 +40,10 @@ pnpm exec node ace migration:run
 PORT=3342 APP_URL=http://localhost:3342 pnpm dev
 ```
 
-The example uses SQLite at `tmp/db.sqlite3`, cookie-backed sessions and an in-memory rate limiter
-by default. `APP_KEY`, `APP_URL`, `PORT`, `HOST`, `NODE_ENV`, `LOG_LEVEL`, `SESSION_DRIVER` and
+The example uses SQLite at `tmp/db.sqlite3`, database-backed sessions and an in-memory rate limiter
+by default. Run migrations before starting the app. Server-side sessions are required for reliable
+logout: a cookie-only session can be replayed from a saved browser cookie. `APP_KEY`, `APP_URL`,
+`PORT`, `HOST`, `NODE_ENV`, `LOG_LEVEL`, `SESSION_DRIVER` and
 `LIMITER_STORE` are required environment values. Use a new application key for each deployment;
 the checked-in test key is only for tests. The app does not send real email. In development,
 verification, reset and email-change links appear in the server output. Treat those links as
@@ -79,17 +81,17 @@ and narrow viewport widths.
 
 ## Routes, controllers and templates
 
-| Form or page | Route | Controller | Edge template |
-| --- | --- | --- | --- |
-| Signup | `GET/POST /signup` | `NewAccountController` | `pages/auth/signup` |
-| Login, logout | `GET/POST /login`, `POST /logout` | `SessionController` | `pages/auth/login` |
-| Limited dashboard | `GET /dashboard` | `DashboardController` | `pages/dashboard` |
-| Verified protected page | `GET /account` | `DashboardController` | `pages/account` |
-| Verify and resend | `GET/POST /verify-email/:token`, `POST /email-verification` | `EmailVerificationsController` | `pages/auth/verify_email` |
-| Password reset | `GET/POST /forgot-password`, `GET/POST /reset-password/:token` | `PasswordResetsController` | `pages/auth/forgot_password`, `pages/auth/reset_password` |
-| Profile | `GET/POST /settings/profile` | `ProfileController` | `pages/settings/profile` |
-| Password | `GET/POST /settings/password` | `PasswordsController` | `pages/settings/password` |
-| Email | `GET/POST /settings/email`, `POST /settings/email/cancel`, `GET/POST /confirm-email/:token` | `EmailChangesController` | `pages/settings/email`, `pages/auth/confirm_email_change` |
+| Form or page            | Route                                                                                       | Controller                     | Edge template                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------- |
+| Signup                  | `GET/POST /signup`                                                                          | `NewAccountController`         | `pages/auth/signup`                                       |
+| Login, logout           | `GET/POST /login`, `POST /logout`                                                           | `SessionController`            | `pages/auth/login`                                        |
+| Limited dashboard       | `GET /dashboard`                                                                            | `DashboardController`          | `pages/dashboard`                                         |
+| Verified protected page | `GET /account`                                                                              | `DashboardController`          | `pages/account`                                           |
+| Verify and resend       | `GET/POST /verify-email/:token`, `POST /email-verification`                                 | `EmailVerificationsController` | `pages/auth/verify_email`                                 |
+| Password reset          | `GET/POST /forgot-password`, `GET/POST /reset-password/:token`                              | `PasswordResetsController`     | `pages/auth/forgot_password`, `pages/auth/reset_password` |
+| Profile                 | `GET/POST /settings/profile`                                                                | `ProfileController`            | `pages/settings/profile`                                  |
+| Password                | `GET/POST /settings/password`                                                               | `PasswordsController`          | `pages/settings/password`                                 |
+| Email                   | `GET/POST /settings/email`, `POST /settings/email/cancel`, `GET/POST /confirm-email/:token` | `EmailChangesController`       | `pages/settings/email`, `pages/auth/confirm_email_change` |
 
 The starter's `@form` component inserts Shield's CSRF field for state-changing methods. Vine
 validation redirects back with an input error bag; field components associate messages with the
@@ -101,11 +103,13 @@ the app's registration adapter still maps a missing name to `null` for callers o
 `SessionRevisionMiddleware` checks each signed-in session against Account Kit's current credential
 revision. Password reset and email confirmation revoke sessions for the changed account. A password change
 reauthenticates the current browser with the new password while other sessions fail on their next
-request. An email change keeps the old email and current session until the new address is confirmed.
+request. The database session store also makes logout invalidate the server-side session record; do
+not switch to the cookie store if saved-cookie replay must be rejected. An email change keeps the
+old email and current session until the new address is confirmed.
 Proof inspection is GET-only and does not consume a token or switch the current identity. Proof
 completion is POST-only. Invalid, consumed and expired links show recovery guidance. If signup saves
 the account but a follow-up fails, the controller preserves the account and directs the user to
-sign in and resend verification instead of trying registration again.
+wait one minute, then request a fresh verification link from the dashboard.
 
 ## Transplanting into an existing Edge app
 

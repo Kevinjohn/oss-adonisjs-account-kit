@@ -28,6 +28,11 @@
     })
   @end
 
-  <p class="auth__foot">@link({ route: 'password_resets.create', class: 'il' })Forgot your password?@end</p>
-  <p class="auth__foot">New here? @link({ route: 'new_account.create', class: 'il' })Create an account@end</p>
+  <p class="auth__foot">
+    <a href="{{ urlFor('password_resets.create') }}" class="il">Forgot your password?</a>
+  </p>
+  <p class="auth__foot">
+    New here?
+    <a href="{{ urlFor('new_account.create') }}" class="il">Create an account</a>
+  </p>
 @end

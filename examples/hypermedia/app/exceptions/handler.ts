@@ -58,7 +58,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     if (!ctx.session) return super.renderValidationErrorAsHTML(error, ctx)
 
     ctx.session.flashValidationErrors(error, false)
-    ctx.session.flash('old', safeOldInput(ctx.request))
+    ctx.session.flash('input', safeOldInput(ctx.request))
     ctx.response.redirect('back', true)
   }
 
