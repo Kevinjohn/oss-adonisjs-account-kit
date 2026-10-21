@@ -1,6 +1,6 @@
 export const nav = [
   { text: 'Features', link: '/features' },
-  { text: 'Get started', link: '/getting-started' },
+  { text: 'Get started', link: '/guides/adoption-paths' },
   { text: 'Recipes', link: '/recipes/' },
   { text: 'Reference', link: '/reference/' },
   { text: 'API', link: '/api/' },
@@ -11,6 +11,8 @@ export const sidebar = [
   {
     text: 'Tutorial',
     items: [
+      { text: 'Choose stack and starting point', link: '/guides/adoption-paths' },
+      { text: 'Example journey acceptance', link: '/guides/example-acceptance' },
       { text: 'Build one account API', link: '/guides/core-api' },
       { text: 'Getting started', link: '/getting-started' },
       { text: 'Selected recordings', link: '/recordings' },
@@ -20,6 +22,9 @@ export const sidebar = [
     text: 'How-to guides',
     items: [
       { text: 'All recipes', link: '/recipes/' },
+      { text: 'Add reset to existing login', link: '/recipes/password-reset-existing-login' },
+      { text: 'Require verified email', link: '/recipes/verified-email-route' },
+      { text: 'Replace one managed endpoint', link: '/recipes/replace-managed-endpoint' },
       { text: 'Access tokens', link: '/recipes/access-tokens' },
       { text: 'Sessions', link: '/recipes/sessions' },
       { text: 'Inertia and React', link: '/recipes/inertia-react' },

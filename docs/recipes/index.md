@@ -3,6 +3,21 @@
 Start with the [complete API walkthrough](../guides/core-api.md) for an end-to-end service
 integration. These guides cover individual choices and tasks.
 
+## Add one capability to an existing application
+
+Choose your [stack and starting point](../guides/adoption-paths.md) first. These focused tasks
+preserve the starting application's working login and selected guard:
+
+- [Add reset to an existing API login](password-reset-existing-login.md).
+- [Require verified email on an application route](verified-email-route.md).
+- [Send account mail through AdonisJS Mail](development-mail.md).
+- [Add an application-specific user field](custom-user-model.md).
+- [Replace one managed endpoint](replace-managed-endpoint.md).
+
+Each recipe names prerequisites, changed files, middleware order, expected behavior and its
+execution evidence. Use the stack variants it actually supports; a JSON response does not prove a
+browser form.
+
 ## Authentication and browser apps
 
 - [API-only login with access tokens](access-tokens.md)
