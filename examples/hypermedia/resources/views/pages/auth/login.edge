@@ -1,0 +1,33 @@
+@layouts.auth()
+  <h1 class="auth__title">Sign in</h1>
+  <p class="auth__sub">Use the email and password for your account.</p>
+  @form({ route: 'session.store', method: 'POST', class: 'auth__form' })
+    @field.root({ name: 'email' })
+      @!field.label({ text: 'Email' })
+      @!input.control({
+        type: 'email',
+        autocomplete: 'username',
+        value: old('email'),
+      })
+      @!field.error()
+    @end
+    @field.root({ name: 'password' })
+      @!field.label({ text: 'Password' })
+      @!input.control({
+        type: 'password',
+        autocomplete: 'current-password',
+        required: true,
+      })
+      @!field.error()
+    @end
+    @!button({
+      text: 'Sign in',
+      type: 'submit',
+      block: true,
+      style: 'margin-top: 4px;',
+    })
+  @end
+
+  <p class="auth__foot">@link({ route: 'password_resets.create', class: 'il' })Forgot your password?@end</p>
+  <p class="auth__foot">New here? @link({ route: 'new_account.create', class: 'il' })Create an account@end</p>
+@end
