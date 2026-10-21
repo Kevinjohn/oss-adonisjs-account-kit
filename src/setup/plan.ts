@@ -2,7 +2,7 @@ import { migrationNames } from '../../configure.js'
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { parseSetupSource } from './ts_source.js'
-import { hasEmailFlow, selectedManagedRoutes, diagnostic } from './shared.js'
+import { hasEmailFlow, selectedManagedRoutes, diagnostic, envName } from './shared.js'
 import { validate } from './validate.js'
 import { generatedEnv, migrationContent, addChange, ownedChange } from './changes.js'
 import {
@@ -24,6 +24,11 @@ import { planMail } from './plan_mail.js'
 import { planDependencies } from './plan_dependencies.js'
 import { planLimiter } from './plan_limiter.js'
 import { planSummary } from './plan_summary.js'
+import {
+  IndirectEnvironmentValueError,
+  resolveSelectedEnvironmentValue,
+} from './selected_environment.js'
+import type { SelectedSetupOrigins } from './diagnostics.js'
 
 export async function planSetup(
   choices: SetupChoices,
@@ -41,9 +46,35 @@ export async function planSetup(
 ): Promise<SetupPlan> {
   choices = parseSetupChoices(choices)
   const env = options.env ?? process.env
+  const selectedOrigins: SelectedSetupOrigins = { values: {}, errors: {} }
+  const originNames = new Set<string>()
+  if (hasEmailFlow(choices)) {
+    originNames.add(choices.mail.backendOriginEnv)
+    originNames.add(choices.mail.frontendOriginEnv)
+  }
+  if (choices.social.status === 'enabled') originNames.add(choices.social.callbackOriginEnv)
+  await Promise.all(
+    [...originNames]
+      .filter((name) => envName.test(name))
+      .map(async (name) => {
+        try {
+          selectedOrigins.values[name] = await resolveSelectedEnvironmentValue(
+            state.root,
+            name,
+            env
+          )
+        } catch (error) {
+          selectedOrigins.errors[name] = {
+            message: error instanceof Error ? error.message : 'environment value is ambiguous',
+            indirect: error instanceof IndirectEnvironmentValueError,
+          }
+        }
+      })
+  )
   const diagnostics = validate(choices, state, {
     production: options.production ?? false,
     env,
+    selectedOrigins,
     retirementImpact: options.retirementImpact ?? null,
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
