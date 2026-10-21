@@ -5,10 +5,12 @@ authorization, and user-facing messages while using Account Kit for account oper
 [example acceptance contract](../docs/guides/example-acceptance.md) before using their checks as
 evidence for an application.
 
-| Example                                      | Stack                                                | Start here                                            |
-| -------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
-| [API](api/README.md)                         | AdonisJS 7, Lucid, JSON routes, opaque access tokens | [`Build one account API`](../docs/guides/core-api.md) |
-| [Inertia and React](inertia-react/README.md) | AdonisJS 7, Inertia, React, browser sessions         | [The example README](inertia-react/README.md#run-it)  |
+| Example                                      | Stack                                                | Start here                                                       |
+| -------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| [API](api/README.md)                         | AdonisJS 7, Lucid, JSON routes, opaque access tokens | [`Build one account API`](../docs/guides/core-api.md)            |
+| [Inertia and React](inertia-react/README.md) | AdonisJS 7, Inertia, React, browser sessions         | [The example README](inertia-react/README.md#run-it)             |
+| [Inertia and Vue](inertia-vue/README.md)     | AdonisJS 7, Inertia, Vue, browser sessions           | [The example README](inertia-vue/README.md#requirements-and-run) |
+| [Hypermedia and Edge](hypermedia/README.md)  | AdonisJS 7, native forms, Edge, database sessions    | [The example README](hypermedia/README.md#install-and-run)       |
 
 ## Package availability
 
@@ -24,7 +26,7 @@ evidence.
 
 ## Contributor smoke record
 
-On 2026-10-21, both examples were installed and exercised from a clean local example setup with
+On 2026-10-21, the API and React examples were installed and exercised from a clean local example setup with
 Node.js 24.21.0, pnpm 11.23.0, and SQLite. The local archives contain package version `0.0.0`, built
 from source revision `760ec5f5715cad71aba6e326fdbf8885f7cf65ab`; both have SHA-512
 `9d3b2d53af46d869686a7dc630f2dea06ab1134edc39d6b54dd3b08cfff5df9830a31c47ceb82690c309b3c208386dced417da21066e4629d76d02bd7571a341`.
@@ -72,6 +74,11 @@ matching source release revision. That release-pinned consumer validation remain
 until those artifacts exist; do not treat the local archive or smoke runs as a published-release
 acceptance.
 
-Both applications use development notification fixtures. They do not prove SMTP delivery or
+These API and React runs use development notification fixtures. They do not prove SMTP delivery or
 arrival in a recipient inbox. The acceptance contract records the HTTP, browser, and manual checks
 for each example and the limits of that evidence.
+
+Vue and Edge have separate [Vue](inertia-vue/README.md#checks-and-evidence) and
+[Edge](hypermedia/README.md#checks-and-evidence) source, archive and execution records. Their
+verification is not inherited from the API/React smoke above. Use the
+[stack and starting-point selector](../docs/guides/adoption-paths.md) for a new or existing app.
