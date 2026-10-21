@@ -2,7 +2,6 @@ import kit from 'adonisjs-account-kit/services/main'
 import { errors } from 'adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { isDeliveryFailure } from '#services/delivery_failure'
-import { accountKitSessionGuard } from '#services/session_guard'
 import { sendTokenPageHeaders } from '#services/token_page_headers'
 import { cancelEmailChangeValidator, requestEmailChangeValidator } from '#validators/email_change'
 
@@ -104,7 +103,6 @@ export default class EmailChangesController {
         'Email change committed but a follow-up failed'
       )
     }
-    if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     ctx.session.flash('success', 'Email changed. Sign in with your new address.')
     return ctx.response.redirect().toRoute('session.create')
   }
