@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
+import { inspectAccountAccess } from './account_access_inspection.js'
 import { lockUser, transaction } from './db.js'
 import { normalizeEmail } from './email.js'
 import { throttlerOf } from './throttle.js'
@@ -24,6 +25,8 @@ import {
   UnverifiedEmailError,
 } from './errors.js'
 import type {
+  AccountAccessInput,
+  AccountAccessSnapshot,
   AccountUser,
   AuthenticationGuard,
   CurrentAccount,
@@ -199,6 +202,16 @@ export function authenticationService(deps: ServiceDependencies) {
       const account = await transaction(deps.db, (trx) => currentInTransaction(deps, input, trx))
       if (!account.active) throw new UnverifiedEmailError()
       return account
+    },
+
+    /**
+     * Eligibility and credential revision of one account, read under its lock, without a credential
+     * for it. Not authentication: authorise the caller first. Never call it from an Account Kit
+     * callback or while your own transaction holds that account's row; it opens its own transaction
+     * and waits for any in-progress change to the same account.
+     */
+    inspectAccountAccess(input: AccountAccessInput): Promise<AccountAccessSnapshot> {
+      return inspectAccountAccess(deps, input)
     },
 
     /** Pass `current` to also remove this session from the sign-in list. */
