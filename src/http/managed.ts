@@ -1,15 +1,8 @@
-import type { HttpContext, Router } from '@adonisjs/core/http'
+import type { Router } from '@adonisjs/core/http'
 import type {} from '@adonisjs/core/providers/vinejs_provider'
-import type { CurrentAccount } from '../types.js'
 import { applyMappedHeaders, managedErrorResponse } from './responses.js'
-import { applyProofHeaders } from './proof_headers.js'
 import { managedSocialHandlers } from './social.js'
-import {
-  recoveryDiagnostic,
-  reportCommittedFailure,
-  requestTranslator,
-  publicAccount,
-} from './response_helpers.js'
+import { reportCommittedFailure, requestTranslator } from './response_helpers.js'
 import { authenticationHandlers } from './handlers_authentication.js'
 import { emailPasswordManagementHandlers } from './handlers_email_password_management.js'
 import { emailVerificationHandlers } from './handlers_email_verification.js'
@@ -28,6 +21,7 @@ import {
 } from './routes.js'
 import { assertManagedRoutesOptions } from './managed_options.js'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
+import { executeManagedRequest } from './managed_execution.js'
 
 export type {
   ManagedExtensions,
@@ -50,11 +44,6 @@ function routeEntries(router: Router) {
   )
 }
 
-function responseHeaders(context: HttpContext, route: ManagedRoute): void {
-  if (!route.proof) return
-  applyProofHeaders(context.response)
-}
-
 /** One handler per endpoint: a route added to routes.ts without a handler does not compile. */
 export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...authenticationHandlers,
@@ -67,56 +56,6 @@ export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...managedSocialHandlers,
   ...sessionManagementHandlers,
   ...accountDataHandlers,
-}
-
-async function execute<Credential>(
-  route: ManagedRoute,
-  context: HttpContext,
-  options: ManagedRoutesOptions<Credential>,
-  methodsEnabled: boolean
-): Promise<unknown> {
-  responseHeaders(context, route)
-  const { request } = context
-  const csrfToken = (request as typeof request & { csrfToken?: string }).csrfToken
-  if (
-    options.guard.strategy === 'session' &&
-    (route.method !== 'GET' || route.name === 'auth.csrf') &&
-    typeof csrfToken !== 'string'
-  )
-    throw new Error('Managed session routes require Shield CSRF middleware')
-  const kit = await options.kit()
-  kit.managedHttp.assertGuard(options.guard)
-  if (route.proof) await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
-  const accountInput = route.access === 'public' ? undefined : await options.guard.current(context)
-  const account = accountInput
-    ? route.access === 'active' && options.verificationRequired !== false
-      ? await kit.authentication.requireActive(accountInput)
-      : await kit.authentication.current(accountInput)
-    : undefined
-  const actorId = account?.id
-  const represent = (value: CurrentAccount) =>
-    options.extensions?.representAccount?.(value, context) ?? publicAccount(value)
-  const representIssued = async (value: CurrentAccount) => {
-    try {
-      return await represent(value)
-    } catch {
-      recoveryDiagnostic(context, route.name, 'representation_failed')
-      return publicAccount(value)
-    }
-  }
-  return managedHandlers[route.name]({
-    route,
-    context,
-    options,
-    kit,
-    csrfToken,
-    accountInput,
-    account,
-    actorId,
-    methodsEnabled,
-    represent,
-    representIssued,
-  })
 }
 
 /** Explicitly register one selected managed route group. Never called by the package root. */
@@ -143,7 +82,13 @@ export function registerManagedRoutes<Credential>(
     router
       .route(route.path, [route.method], async (context) => {
         try {
-          return await execute(route, context, options, methodsEnabled)
+          return await executeManagedRequest(
+            route,
+            context,
+            options,
+            methodsEnabled,
+            managedHandlers
+          )
         } catch (error) {
           if (
             (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
