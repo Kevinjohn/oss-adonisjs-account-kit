@@ -59,6 +59,21 @@ export interface CurrentAccount {
   active: boolean
 }
 
+/** Input for `authentication.inspectAccountAccess`. */
+export interface AccountAccessInput {
+  /** The account to inspect. No credential for it is needed or accepted. */
+  userId: UserId
+  /** When true, an account whose address is still unconfirmed is denied. */
+  requireActive: boolean
+}
+
+/** One coherent read of an account's eligibility and credential revision. */
+export interface AccountAccessSnapshot {
+  account: CurrentAccount
+  /** The canonical UTC revision, or null before the first credential change. */
+  revision: string | null
+}
+
 /** Identifies the signed-in credential so Account Kit can check it is still valid. */
 export interface CurrentAccountInput {
   /** The id your guard authenticated. */

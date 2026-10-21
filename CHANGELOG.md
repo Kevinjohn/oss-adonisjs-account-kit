@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `authentication.inspectAccountAccess` for reading an account's eligibility and credential revision without a credential for it.
+
 - Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
 - Keep local databases, secrets and installed artifacts out of fresh packed-consumer checks.
 - Add `AccountAccessDeniedError` for the account inspection operation.
