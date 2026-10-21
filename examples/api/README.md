@@ -27,6 +27,51 @@ These deterministic fixtures keep receiver idempotency in memory, stop at the fi
 and have no backoff or safe concurrent claims. Use [notification guidance](../../docs/notifications.md)
 for production mail and workers.
 
+## Run it
+
+The source package manifest is `0.0.0`; there is no matching public npm release and repository tag
+for a consumer install yet. The published-package path is blocked on that release. This contributor
+path builds an archive from the current repository and does not establish a released-package
+install.
+
+Use Node.js 24 and pnpm 11.23.0. From the repository root:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm pack --out examples/api/vendor/adonisjs-account-kit.tgz
+cd examples/api
+pnpm install
+cp .env.example .env
+node ace generate:key
+node ace codegen
+node ace migration:run
+pnpm dev
+```
+
+The API listens at <http://localhost:3333>; `GET /` returns `{"hello":"world"}`. The `.env.example`
+uses SQLite, and `node ace generate:key` fills the local `APP_KEY`. Its OAuth values are inert
+placeholders so the core flow can boot without provider accounts; replace them before using social
+sign-in. To exercise the routes, run
+`pnpm test` here or use the repository's `pnpm test:consumer` from the root; those suites verify the
+signup, email verification, login, and account API flows over HTTP.
+
+In development, the example prints proof links to the server log and keeps its in-memory capture
+for tests. This makes the HTTP journey inspectable locally; it does not send email or prove
+recipient delivery. The production path deliberately does not print proof links. Use a configured
+transport in an application.
+
+For a short HTTP smoke, submit a signup with `fullName`, `email`, `password`, and
+`passwordConfirmation` to `POST /api/v1/auth/signup`. Copy the verification URL from the server log
+and POST it with the chosen password and confirmation. Then POST the credentials to
+`/api/v1/auth/login` and use the returned bearer token for `GET /api/v1/account/profile`. The
+[core API walkthrough](../../docs/guides/core-api.md) explains the same guard and proof boundaries.
+
+The archive is ignored under `examples/api/vendor/`. The root install supplies the package build
+tools. Build and pack from the repository root before installing the example because its local
+package dependency points at that archive. Once the example is installed, `pnpm kit:pack` refreshes
+the archive after source changes. Keep the generated archive out of Git.
+
 ## Copy maps
 
 The source directory is `examples/api/`; each source path below maps to the same destination path
