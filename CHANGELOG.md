@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
+
 - Document a shared account-journey acceptance contract and distinguish example implementation from verification evidence.
 
 - Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
