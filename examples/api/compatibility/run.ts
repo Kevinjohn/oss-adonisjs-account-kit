@@ -1,18 +1,11 @@
 import assert from 'node:assert/strict'
-import { performance } from 'node:perf_hooks'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { Encryption } from '@adonisjs/core/encryption'
 import { defineConfig as defineHashConfig, drivers } from '@adonisjs/core/hash'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { DateTime } from 'luxon'
-import {
-  AccountKit,
-  createLucidAdapter,
-  defineConfig,
-  InvalidTokenError,
-  PostCommitError,
-} from 'adonisjs-account-kit'
+import { AccountKit, createLucidAdapter, defineConfig, PostCommitError } from 'adonisjs-account-kit'
 import type { AccountUser, Invitation, Trx } from 'adonisjs-account-kit'
 import {
   databaseClient,
@@ -22,6 +15,8 @@ import {
   sqliteConnection,
 } from './connection.js'
 import { createSchema } from './schema.js'
+import { runInvitationContention } from './invitation_contention.js'
+import { runSqliteContention } from './sqlite_contention.js'
 
 const factory = new IgnitorFactory()
   .withCoreProviders()
@@ -172,42 +167,7 @@ try {
   assert.equal(metadata.table, process.env.ACCOUNT_KIT_USERS_TABLE ?? 'users')
   assert.equal(foundOwner?.id, profile.id)
 
-  if (databaseName === 'sqlite') {
-    const writer = new NativeSqlite('compatibility.sqlite')
-    writer.pragma('busy_timeout = 0')
-    writer.exec('BEGIN IMMEDIATE')
-    let busyLockAttempts = 0
-    const sqliteClient = db.connection().getWriteClient().client
-    const countBusyLockAttempt = (query: { sql?: string }) => {
-      if (/^update account_transaction_lock/i.test(query.sql ?? '')) busyLockAttempts += 1
-    }
-    sqliteClient.on('query', countBusyLockAttempt)
-    const startedAt = performance.now()
-    const releaseWriter = setTimeout(() => {
-      if (writer.inTransaction) writer.exec('COMMIT')
-      writer.close()
-    }, 60)
-    try {
-      await account.passwordReset.request({
-        email: profile.email,
-        clientKey: 'sqlite-retry-client',
-      })
-    } finally {
-      clearTimeout(releaseWriter)
-      if (writer.inTransaction) writer.exec('COMMIT')
-      writer.close()
-      sqliteClient.off('query', countBusyLockAttempt)
-    }
-    const elapsedMs = Math.round(performance.now() - startedAt)
-    assert.ok(busyLockAttempts >= 2, `expected a busy lock retry, observed ${busyLockAttempts}`)
-    assert.ok(
-      elapsedMs >= 40,
-      `expected the writer lock to delay the operation, observed ${elapsedMs}ms`
-    )
-    console.log(
-      `MINIMUM_SQLITE_RETRY_SMOKE ${JSON.stringify({ elapsedMs, busyLockAttempts, lockReleasedAfterMs: 60 })}`
-    )
-  }
+  await runSqliteContention({ account, db, profile, NativeSqlite, databaseName })
 
   await account.passwordReset.request({ email: profile.email, clientKey: 'consumer-client' })
   console.log('MINIMUM_STAGE password-reset-requested')
@@ -324,41 +284,15 @@ try {
     console.log('MINIMUM_STAGE deferred-commit-verified')
   }
 
-  const startedAt = performance.now()
-  const invitation = await account.invitations.send({
-    actorId: profile.id,
-    email: 'invited@example.test',
-    role: 'member',
+  await runInvitationContention({
+    account,
+    db,
+    profile,
+    User,
+    databaseName,
+    tokenFromUrl,
+    notifications,
   })
-  console.log('MINIMUM_STAGE invitation-sent')
-  assert.ok(invitation.id > 0)
-  const invitationToken = tokenFromUrl(notifications.invitationUrl)
-  const accepts = await Promise.allSettled([
-    account.invitations.accept({
-      token: invitationToken,
-      password: 'InvitedPass123!',
-      registrationData: { fullName: 'Invited Member' },
-    }),
-    account.invitations.accept({
-      token: invitationToken,
-      password: 'InvitedPass123!',
-      registrationData: { fullName: 'Invited Member' },
-    }),
-  ])
-  console.log('MINIMUM_STAGE contention-complete')
-  const elapsedMs = Math.round(performance.now() - startedAt)
-  assert.equal(accepts.filter((result) => result.status === 'fulfilled').length, 1)
-  const rejected = accepts.find((result) => result.status === 'rejected')
-  assert.equal(rejected?.status, 'rejected')
-  assert.ok(rejected?.status === 'rejected' && rejected.reason instanceof InvalidTokenError)
-  const invited = await User.findByOrFail('email', 'invited@example.test')
-  const invitedName = invited.fullName
-  assert.equal(invitedName, 'Invited Member')
-  const roleAssignmentCount = await db.from('role_assignments').count('* as count').first()
-  assert.equal(Number(roleAssignmentCount.count), 1)
-  console.log(
-    `MINIMUM_CONTENTION_SMOKE ${JSON.stringify({ database: databaseName, elapsedMs, fulfilled: 1, rejected: 1 })}`
-  )
   console.log(
     `MINIMUM_TRANSACTION_SEMANTICS ${JSON.stringify({ database: databaseName, rollback: true, postCommit: true, deferredCommit: true, locking: true, sqliteBusyRetry: databaseName === 'sqlite' })}`
   )
