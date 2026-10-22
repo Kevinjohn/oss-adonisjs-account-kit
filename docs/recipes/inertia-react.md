@@ -5,12 +5,12 @@ and styling. Add only password reset. “Keep your login” includes adapting it
 capture a credential revision; an unchanged session login cannot revoke older sessions.
 
 First complete the mandatory [existing-application checklist](../guides/password-reset-existing-app.md),
-including the [README installation instructions](../../README.md#installation), required peers,
+including the [README installation instructions](../../README.md#install), required peers,
 Limiter setup and every generated migration. The setup schema is shared across capabilities;
 `enabled: ['passwordReset']` does not generate a reset-only schema. See the
 [session integration](sessions.md) for the guard contract.
 
-The [hand-edit patch](patches/inertia-react-password-reset.patch) applies after configure to the
+The [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/d4940c3a05a450464c86da570c5b90e352803119/docs/recipes/patches/inertia-react-password-reset.patch) applies after configure to the
 [pinned starter](../maintainers/verification.md#starter-baselines). It supplies
 application controllers, validators, pages and session wiring; it contains no generated migration,
 generated schema, dependency entry, lockfile or archive. Its handwritten `sessions` migration
@@ -81,6 +81,20 @@ in the acceptance spec also send the real browser's CSRF token. New passwords us
 proof or changes the browser identity. On successful reset, the current signed-in browser is
 terminated and redirected to login; other sessions fail on their next protected request.
 
+The proof-page controller keeps inspection separate from completion:
+
+```ts
+import type { HttpContext } from '@adonisjs/core/http'
+import kit from 'adonisjs-account-kit/services/main'
+
+async function edit({ inertia, params, response }: HttpContext) {
+  response.header('Cache-Control', 'no-store')
+  response.header('Referrer-Policy', 'same-origin')
+  const valid = await kit.passwordReset.inspect({ token: params.token })
+  return inertia.render('auth/reset_password', { token: params.token, valid })
+}
+```
+
 ### Failed-submission password policy
 
 Keep both password fields in the mounted reset form after a confirmation error, so the user can
@@ -116,29 +130,76 @@ old and new passwords through `/login`.
 
 ## Clean application check
 
-Implementation is prepared; the full React harness and reference suite results are pending.
-Do not treat the API harness evidence as React acceptance.
+**22 October 2026 — fresh P6 and P7 passed.** The harness scaffolded the pinned official React
+starter, proved native login with its original cookie store, installed the supplied archive,
+configured dependencies, applied the hand edits, migrated to the application-owned database
+session store, generated the client route registry, built the app, and ran the browser spec.
 
-From the repository root, use the pinned-starter harness with a supplied archive:
+| Field                                    | Recorded evidence                                                                                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Fresh harness source                     | `3a2831b6713473e3894147c0e29bd1fb614502dc` (clean working tree)                                                                                              |
+| Final assertion-order source             | `23564cf82539a37a981e2766bafce8fff83aae9f`; checked by the retained P7 replay                                                                                |
+| Package archive source                   | `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf`                                                                                                                   |
+| Archive SHA-256                          | `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                                           |
+| Creator / starter                        | `create-adonisjs` `3.4.0`; official `inertia-react` starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                       |
+| Starter baseline / configured checkpoint | `1c59e0e4ad54c9909555879312767420915de632` / `dff9f1e85c6872ad911b6a52e4ba44645214b97e`                                                                      |
+| Starter lockfile SHA-256                 | `2cfe6653de580f91d8900002bff44da5cc40a15c42691560a5ba22921a6232fd`                                                                                           |
+| Runtime / package manager                | Node `24.21.0`; pnpm `11.23.0`                                                                                                                               |
+| Installed framework                      | Core `7.6.0`; Inertia `5.0.4`; Session `8.3.0`; Shield `9.0.0`; React `19.3.1`; Inertia React `3.9.1`; Japa browser client `2.3.0`                           |
+| Database / sessions                      | SQLite `3.53.4` in the retained application's `tmp/db.sqlite3`; native cookie store for the untouched baseline, database store after applying the recipe     |
+| Notification mode                        | Local in-process callback capture; no recipient delivery                                                                                                     |
+| Fresh P6                                 | Acceptance browser spec: 1/1 passed, 6 seconds total                                                                                                         |
+| P7 mutation                              | Omitted revision advancement in the installed package; explicit assertion failed, expected `/login`, received `/dashboard`, 5 seconds                        |
+| P7 restoration                           | Copied exact implementation bytes from the same archive; identical replay command passed 1/1 in 5 seconds                                                    |
+| Reference app                            | Full `pnpm test`: 33/33 passed in 14 seconds, including the changed journey and both-field retention checks                                                  |
+| Scoped checks                            | Actual application build, typecheck and lint passed; reference typecheck and lint passed; four documentation suites passed 13/13; documentation build passed |
+
+The [acceptance spec](../../examples/inertia-react/tests/recipes/inertia-react-password-reset.spec.ts)
+ran `React reset recipe preserves failed submissions and revokes both native sessions`. The final
+assertion-order change reports an unexpected native redirect immediately after the protected
+navigation; it preserves the credential requirement. The same final spec failed under mutation
+and passed after restoration. The archive digest remained unchanged.
+
+From the repository root, the fresh run used:
 
 ```sh
 pnpm test:recipe -- --recipe=inertia-react-password-reset \
-  --candidate-tarball=<archive-path> --candidate-revision=<source-commit>
+  --candidate-tarball=<archive-path> \
+  --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
-The harness checks the original login with the native cookie store before installing Account Kit.
-After applying the patch and handwritten session migration, it switches to `SESSION_DRIVER=database`
-and retains that setting for the printed replay command. The copied spec runs in the browser suite
-with the starter's existing Chromium tooling; no second browser platform is added.
+The harness created the application with:
 
-For the mutation check, remove `credentials_changed_at` advancement in the installed package's
-`advanceCredentialRevision` implementation, rerun the retained command, and require a protected
-old-session assertion to fail. Restore exact bytes from the supplied archive and rerun to green.
-The final record must include source revision, archive digest, starter baseline and lock digest,
-Node/pnpm/AdonisJS/database versions, exact commands, named results and mutation/restoration results.
+```sh
+pnpm create adonisjs@3.4.0 <directory> \
+  --kit=github:adonisjs/starter-kits/inertia-react#46d235932e3eb6472a16b740fa0b47b5f69fc6fc \
+  --pkg=pnpm
+```
 
-The prepared application uses the pinned React starter at
-`46d235932e3eb6472a16b740fa0b47b5f69fc6fc`, with original login evidence recorded in the
-[starter verification record](../maintainers/verification.md). Planned coverage is local SQLite,
-Chromium and local notification capture. No recipient delivery, PostgreSQL, other browser engine,
-manual viewport or keyboard sign-off is claimed.
+It recorded the baseline with `git init`, `git add -A` and `git commit -m starter`. Its evidence
+JSON retains the generated manifest, lock digest, generated-file inventory, command outputs,
+configured checkpoint and exact retained replay command. The generated manifest requested Core
+`^7.5.2`, Auth `^10.1.0`, Inertia `^5.0.1`, Lucid `^22.4.2`, React `^19.3.0` and Inertia React
+`^3.7.1`; the lock digest above identifies the resolved dependency set.
+
+The copied acceptance file ran in the fresh application's browser suite through `pnpm test` with
+that file selected. Node 24 was enforced for the script and its children. The retained private
+settings use `NODE_ENV=test`, UTC, a loopback host with an allocated port and matching `APP_URL`,
+a generated development `APP_KEY`, `SESSION_DRIVER=database` and `LIMITER_STORE=memory`. Run the
+printed Node executable and `rerun.mjs` command to reproduce these settings; a bare test command
+with a different environment does not reproduce the record.
+
+For P7, the installed package's `advanceCredentialRevision` implementation had only its
+`credentials_changed_at` update removed. An original session then survived its native
+protected request, and the explicit redirect assertion detected the failure. Restoration read
+the exact JavaScript member from the supplied archive, without rebuilding or repacking; the same
+replay command returned to green. Session cleanup and all other application policy stayed intact.
+
+The reference app ran `pnpm test` from `examples/inertia-react` using the same archive. Its
+[composed journey](../../examples/inertia-react/tests/browser/account_journeys.spec.ts) and
+[form-error checks](../../examples/inertia-react/tests/browser/account_form_errors.spec.ts) verify
+the existing application's routes and retention policy independently of the fresh recipe app.
+
+Limits: local SQLite, Chromium and local notification capture. No recipient delivery,
+PostgreSQL, other browser engine, manual viewport or keyboard sign-off is claimed. See the
+[evidence format](../guides/example-acceptance.md#updating-the-record).
