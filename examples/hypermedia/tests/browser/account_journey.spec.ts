@@ -4,6 +4,7 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { createHash, randomBytes } from 'node:crypto'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import { Session } from '@adonisjs/session'
 import User from '#models/user'
 import { accountKitNotifications } from '#services/account_kit_notifications'
@@ -14,7 +15,11 @@ import kit from 'adonisjs-account-kit/services/main'
 const origin = process.env.APP_URL!
 
 test.group('native account journeys', (group) => {
-  group.each.setup(setupAccountDatabase)
+  group.each.setup(async () => {
+    const cleanup = await setupAccountDatabase()
+    await limiter.clear(['memory'])
+    return cleanup
+  })
 
   test('signup stays limited until one-use email confirmation, then opens protected access', async ({
     visit,
@@ -76,6 +81,7 @@ test.group('native account journeys', (group) => {
       unverifiedEmail: null,
     })
     const secondContext = await browser.newContext({ baseURL: origin })
+    const consumedProofContext = await browser.newContext({ baseURL: origin })
     try {
       const requester = await visit('/forgot-password')
       await requester.getByLabel('Email').fill(user.email)
@@ -112,6 +118,8 @@ test.group('native account journeys', (group) => {
       await secondSession.goto('/dashboard')
       await secondSession.getByText('Signed in as morgan@example.test.').waitFor()
 
+      const consumedProofPage = await consumedProofContext.visit(resetPath)
+      await consumedProofPage.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await secondSession.goto(resetPath)
       await secondSession.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await requester.goto(resetPath)
@@ -127,12 +135,19 @@ test.group('native account journeys', (group) => {
         .select('password')
         .where('id', user.id)
         .first())!.password
-      await secondSession.getByLabel('New password').fill('AnotherPassword123!')
-      await secondSession.getByLabel('Confirm password').fill('AnotherPassword123!')
-      await secondSession.getByRole('button', { name: 'Reset password' }).click()
-      await secondSession
-        .getByText(/This reset link is invalid, already used, or expired/)
-        .waitFor()
+      await consumedProofPage.getByLabel('New password').fill('AnotherPassword123!')
+      await consumedProofPage.getByLabel('Confirm password').fill('AnotherPassword123!')
+      await consumedProofPage.getByRole('button', { name: 'Reset password' }).click()
+      const consumedFeedback = await consumedProofPage.locator('body').innerText()
+      assert.include(
+        consumedFeedback,
+        'This reset link is invalid, already used, or expired. Request a fresh link.'
+      )
+      assert.isTrue(
+        await consumedProofPage
+          .getByText('This reset link is invalid, already used, or expired. Request a fresh link.')
+          .isVisible()
+      )
       assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
       assert.equal(
         (await db.from('users').select('password').where('id', user.id).first())!.password,
@@ -164,6 +179,7 @@ test.group('native account journeys', (group) => {
       await requester.getByText('Signed in as morgan@example.test.').waitFor()
     } finally {
       await secondContext.close()
+      await consumedProofContext.close()
     }
   })
 
@@ -219,12 +235,12 @@ test.group('native account journeys', (group) => {
       await page.getByLabel('New password').fill('ReplacementPass123!')
       await page.getByLabel('Confirm password').fill('ReplacementPass123!')
       await page.getByRole('button', { name: 'Reset password' }).click()
-      await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
-      assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
       assert.equal(
         (await db.from('users').select('password').where('id', user.id).first())!.password,
         originalHash
       )
+      await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
       assert.isNotNull(
         await db
           .from('password_reset_tokens')
@@ -304,9 +320,17 @@ test.group('native account journeys', (group) => {
     await page.goto('/forgot-password')
     await page.getByLabel('Email').fill(user.email)
     await page.getByRole('button', { name: 'Send reset link' }).click()
-    await page
-      .getByText('If an account exists for that address, we have sent a reset link.')
-      .waitFor()
+    const replacementAcknowledgement = await page.locator('body').innerText()
+    assert.include(
+      replacementAcknowledgement,
+      'If an account exists for that address, we have sent a reset link.',
+      `Unexpected replacement request response at ${page.url()}`
+    )
+    assert.isTrue(
+      await page
+        .getByText('If an account exists for that address, we have sent a reset link.')
+        .isVisible()
+    )
     const replacementToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
 
     await page.goto(`/reset-password/${encodeURIComponent(firstToken)}`)
@@ -441,7 +465,8 @@ test.group('native account journeys', (group) => {
       await page.getByRole('heading', { name: 'Reset your password' }).waitFor()
       await page.getByLabel('Email').fill('unknown@example.test')
       await page.getByRole('button', { name: 'Send reset link' }).click()
-      await page.getByText(resetMessage).waitFor()
+      const resetFeedback = await page.locator('body').innerText()
+      assert.include(resetFeedback, resetMessage, `Unexpected reset response at ${page.url()}`)
       assert.isTrue(await page.getByText(resetMessage).isVisible())
     } finally {
       await context.close()

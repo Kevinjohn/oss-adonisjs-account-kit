@@ -1,15 +1,27 @@
+/* eslint-disable @unicorn/filename-case -- The recipe harness requires the filename to match its selector. */
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
+import testUtils from '@adonisjs/core/services/test_utils'
 import User from '#models/user'
 import { accountKitNotifications } from '#services/account_kit_notifications'
-import { setupAccountDatabase } from '#tests/helpers/account_database'
 
 const origin = process.env.APP_URL!
 
 test.group('existing Edge application password reset', (group) => {
-  group.each.setup(setupAccountDatabase)
+  group.each.setup(async () => {
+    const cleanup = await testUtils.db().truncate()
+    await cleanup()
+    await db
+      .table('account_transaction_lock')
+      .insert({ id: 1, version: 0 })
+      .onConflict('id')
+      .ignore()
+    await limiter.clear(['memory'])
+    return cleanup
+  })
 
   test('the native signup auto-login keeps access to its protected dashboard', async ({
     browser,
@@ -169,6 +181,10 @@ test.group('existing Edge application password reset', (group) => {
         await page.getByLabel('New password').fill('ReplacementPass123!')
         await page.getByLabel('Confirm password').fill('ReplacementPass123!')
         await page.getByRole('button', { name: 'Reset password' }).click()
+        assert.equal(
+          (await db.from('users').select('password').where('id', user.id).first())!.password,
+          originalHash
+        )
         await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
         assert.equal(
           (await db.from('users').select('password').where('id', user.id).first())!.password,
@@ -224,7 +240,8 @@ test.group('existing Edge application password reset', (group) => {
         .locator('.field')
         .filter({ has: page.getByLabel('Confirm password') })
       await confirmationField.locator('.field__error').waitFor()
-      assert.isNotEmpty((await confirmationField.locator('.field__error').innerText()).trim())
+      const confirmationError = await confirmationField.locator('.field__error').innerText()
+      assert.isNotEmpty(confirmationError.trim())
       assert.equal(await page.getByLabel('New password').inputValue(), '')
       assert.equal(await page.getByLabel('Confirm password').inputValue(), '')
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
