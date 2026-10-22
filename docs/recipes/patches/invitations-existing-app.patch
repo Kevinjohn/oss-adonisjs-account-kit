@@ -12,7 +12,7 @@ index ca0e76fa..e2b05b1f 100644
     */
 -  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
 +  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration', 'invitations'],
- 
+
 @@ -39,3 +42,11 @@ export default defineConfig({
     */
 -  registration: { availability: 'open' },
@@ -25,7 +25,7 @@ index ca0e76fa..e2b05b1f 100644
 +      return { fullName: fullName.trim() }
 +    },
 +  },
- 
+
 @@ -50,5 +61,3 @@ export default defineConfig({
    authorize: {
 -    invite: async () => false,
@@ -167,7 +167,7 @@ index 29fc17f6..842570bb 100644
 @@ -12,2 +12,3 @@ import router from '@adonisjs/core/services/router'
  import { controllers } from '#generated/controllers'
 +import './invitation_routes.js'
- 
+
 diff --git a/start/invitation_routes.ts b/start/invitation_routes.ts
 new file mode 100644
 --- /dev/null
