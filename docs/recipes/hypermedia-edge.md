@@ -155,3 +155,10 @@ the original bytes. The same command then passed 1/1 in 991 ms. The candidate ar
 never changed. These tests capture notifications in process and prove link generation and
 application behavior; they do not establish recipient delivery, PostgreSQL behavior, or a new
 manual viewport and keyboard inspection.
+
+The shared P7 check was also run after the green P6 result in retained scaffold
+`account-kit-recipe-cK1p2i`, using the printed command above. Bypassing only its installed expiry
+predicate produced 3 passing tests and one explicit password-hash assertion failure in 4 seconds.
+Restoring the exact archive member and checking its digest returned that same command to 4/4
+passing in 4 seconds. The reference-example expiry check and this retained-scaffold check both
+used the unchanged candidate archive recorded above.
