@@ -22,9 +22,10 @@ const recipeKits = {
   'invitations-existing-app': 'api',
   'inertia-react-password-reset': 'inertia-react',
   'inertia-vue-password-reset': 'inertia-vue',
+  'hypermedia-password-reset': 'hypermedia',
 }
 const kit = Object.hasOwn(recipeKits, recipe) ? recipeKits[recipe] : undefined
-const browserRecipe = kit === 'inertia-react' || kit === 'inertia-vue'
+const browserRecipe = kit === 'inertia-react' || kit === 'inertia-vue' || kit === 'hypermedia'
 if (!kit) throw new Error(`Unknown recipe: ${recipe}`)
 if (database !== 'sqlite') throw new Error('This recipe currently supports --database=sqlite only')
 if (Boolean(candidateInput) !== Boolean(candidateRevision)) {
@@ -251,7 +252,7 @@ try {
     !/connection:\s*'sqlite'/.test(databaseConfig) ||
     !/filename:\s*app\.tmpPath\('db\.sqlite3'\)/.test(databaseConfig)
   ) {
-    throw new Error("Pinned API starter must use SQLite at app.tmpPath('db.sqlite3')")
+    throw new Error(`Pinned ${kit} starter must use SQLite at app.tmpPath('db.sqlite3')`)
   }
   evidence.databasePath = join(appRoot, 'tmp/db.sqlite3')
 
@@ -330,11 +331,13 @@ test('original starter login reaches its protected profile', async ({ client, as
   } else {
     run('pnpm', ['add', '-D', '@japa/api-client@^3.2.1'])
   }
+  // Edge loads its generated controller registry while evaluating routes during migration setup.
+  if (kit === 'hypermedia') run('pnpm', ['exec', 'node', 'ace', 'codegen'])
   run('pnpm', ['exec', 'node', 'ace', 'migration:run', '--force'])
   if (browserRecipe) {
     // Build indexes pages/controllers, but it does not regenerate the typed client route
     // registry. New Inertia Forms need that registry before their pages can render.
-    run('pnpm', ['exec', 'node', 'ace', 'codegen'])
+    if (kit !== 'hypermedia') run('pnpm', ['exec', 'node', 'ace', 'codegen'])
     run('pnpm', ['build'])
   }
   const routes = run('pnpm', ['exec', 'node', 'ace', 'list:routes'])
