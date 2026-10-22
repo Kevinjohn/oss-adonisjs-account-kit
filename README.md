@@ -20,21 +20,23 @@ await kit.passwordReset.request({ email, clientKey: ctx.request.ip() })
 
 Watch selected flows in [short terminal recordings](docs/recordings.md).
 
-## Choose a path
+## Choose your stack and starting point
 
-Choose your stack and whether you are starting a new application or adding one account capability
-to an existing login. The [stack and starting-point guide](docs/guides/adoption-paths.md) leads to
-the exact prerequisites, runnable journeys and focused copy maps.
+For an existing application, [keep your working login and add password reset](docs/guides/password-reset-existing-app.md)
+first. The [stack and starting-point guide](docs/guides/adoption-paths.md) gives the prerequisites
+and exact recipe for each stack. See the [annotated API starter diff](docs/guides/password-reset-starter-diff.md)
+for a file-by-file example; the complete new-application walkthroughs are secondary paths.
 
-| Stack           | New application                                                            | Existing application                                                                        |
-| --------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Inertia React   | [Run the browser example](examples/inertia-react/README.md#run-it)         | [Copy one flow](examples/inertia-react/README.md#transplant-into-an-existing-app)           |
-| Inertia Vue     | [Run the Vue example](examples/inertia-vue/README.md#requirements-and-run) | [Copy one Vue flow](examples/inertia-vue/README.md#minimum-transplant-map)                  |
-| Hypermedia/Edge | [Run the Edge example](examples/hypermedia/README.md#install-and-run)      | [Copy one Edge flow](examples/hypermedia/README.md#transplanting-into-an-existing-edge-app) |
-| API             | [Complete API starter walkthrough](docs/guides/core-api.md)                | [Add one capability](docs/recipes/index.md#add-one-capability-to-an-existing-application)   |
+| Stack           | Existing application                                                            | New application (secondary path)                                           |
+| --------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Inertia React   | [Add reset to an existing login](docs/recipes/inertia-react.md)                 | [Run the browser example](examples/inertia-react/README.md#run-it)         |
+| Inertia Vue     | [Add reset to an existing login](docs/recipes/inertia-vue.md)                   | [Run the Vue example](examples/inertia-vue/README.md#requirements-and-run) |
+| Hypermedia/Edge | [Add reset to an existing login](docs/recipes/hypermedia-edge.md)               | [Run the Edge example](examples/hypermedia/README.md#install-and-run)      |
+| API             | [Add reset to an existing login](docs/recipes/password-reset-existing-login.md) | [Complete API starter walkthrough](docs/guides/core-api.md)                |
 
-See [package and application responsibilities](docs/guides/password-reset-existing-app.md#package-and-application-responsibilities)
-for the reset integration boundary and required guard wiring.
+The reset guide keeps the application's login route, user model and guard, while documenting the
+required login-controller revision update, revision-check middleware and server-side sessions for
+session stacks: [package and application responsibilities](docs/guides/password-reset-existing-app.md#package-and-application-responsibilities).
 Current example installation and verification limits are recorded in their READMEs and the
 [shared acceptance guide](docs/guides/example-acceptance.md).
 
