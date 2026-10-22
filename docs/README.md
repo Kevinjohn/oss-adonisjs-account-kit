@@ -7,9 +7,9 @@ to keep your working login and add password reset. The [stack and starting-point
 gives the exact recipe for React, Vue, Hypermedia/Edge and API. The [annotated API starter diff](guides/password-reset-starter-diff.md)
 shows the file-by-file changes; the complete new-application examples are secondary paths.
 
-The reset guide preserves the application's login route, user model and guard, and documents the
-required login-controller revision update, revision-check middleware and server-side sessions for
-session stacks. Compare the examples with the
+The reset guide preserves the application's login route, user model and guard. Session stacks also
+need a login-controller revision update, revision-check middleware and a server-side session store;
+the API recipe uses bearer-token revocation without a session adapter. Compare the examples with the
 [shared account journey acceptance guide](guides/example-acceptance.md).
 
 ## Tutorial

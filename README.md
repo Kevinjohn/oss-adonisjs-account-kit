@@ -34,9 +34,10 @@ for a file-by-file example; the complete new-application walkthroughs are second
 | Hypermedia/Edge | [Add reset to an existing login](docs/recipes/hypermedia-edge.md)               | [Run the Edge example](examples/hypermedia/README.md#install-and-run)      |
 | API             | [Add reset to an existing login](docs/recipes/password-reset-existing-login.md) | [Complete API starter walkthrough](docs/guides/core-api.md)                |
 
-The reset guide keeps the application's login route, user model and guard, while documenting the
-required login-controller revision update, revision-check middleware and server-side sessions for
-session stacks: [package and application responsibilities](docs/guides/password-reset-existing-app.md#package-and-application-responsibilities).
+The reset guide keeps the application's login route, user model and guard. Session stacks also
+need a login-controller revision update, revision-check middleware and a server-side session store;
+the API recipe uses bearer-token revocation without a session adapter. See
+[package and application responsibilities](docs/guides/password-reset-existing-app.md#package-and-application-responsibilities).
 Current example installation and verification limits are recorded in their READMEs and the
 [shared acceptance guide](docs/guides/example-acceptance.md).
 
