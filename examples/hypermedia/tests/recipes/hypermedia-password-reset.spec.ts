@@ -266,12 +266,25 @@ test.group('existing Edge application password reset', (group) => {
       await page.goto(`/reset-password/${encodeURIComponent(replacement)}`)
       await page.getByLabel('New password').fill('ReplacementPass123!')
       await page.getByLabel('Confirm password').fill('DifferentPass123!')
+      const validationResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname.startsWith('/reset-password/')
+      )
       await page.getByRole('button', { name: 'Reset password' }).click()
+      const response = await validationResponse
+      assert.equal(response.headers()['cache-control'], 'no-store')
+      assert.equal(response.headers()['referrer-policy'], 'no-referrer')
       const confirmationField = page
         .locator('.field')
         .filter({ has: page.getByLabel('Confirm password') })
-      await confirmationField.locator('.field__error').waitFor()
-      const confirmationError = await confirmationField.locator('.field__error').innerText()
+      const confirmationErrorLocator = confirmationField.locator('.field__error')
+      const responseBody = await page.locator('body').innerText()
+      assert.isTrue(
+        await confirmationErrorLocator.isVisible(),
+        `Expected visible confirmation error after ${response.status()} ${response.url()}; page ${page.url()} contained: ${responseBody}`
+      )
+      const confirmationError = await confirmationErrorLocator.innerText()
       assert.isNotEmpty(confirmationError.trim())
       assert.equal(await page.getByLabel('New password').inputValue(), '')
       assert.equal(await page.getByLabel('Confirm password').inputValue(), '')
