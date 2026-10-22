@@ -129,13 +129,15 @@ test.group('Inertia Vue password reset recipe', (group) => {
       assert.equal(await first.getByLabel('Confirm new password').inputValue(), '')
       await assertOldCredentialsAndSessionsUnchanged()
 
+      await first.goto(replacementProofPath)
+      await first.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await first.getByLabel('New password', { exact: true }).fill(replacementPassword)
       await first.getByLabel('Confirm new password').fill(replacementPassword)
       await first.getByRole('button', { name: 'Reset password' }).click()
       await first.getByRole('heading', { name: 'Welcome back' }).waitFor()
       for (const page of [first, second]) {
         await page.goto('/dashboard')
-        await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
+        assert.equal(new URL(page.url()).pathname, '/login')
       }
 
       await first.goto('/login')
@@ -143,6 +145,7 @@ test.group('Inertia Vue password reset recipe', (group) => {
       await first.getByLabel('Password').fill(originalPassword)
       await first.getByRole('button', { name: 'Sign in' }).click()
       await first.getByText('Invalid email or password.').waitFor()
+      assert.equal(new URL(first.url()).pathname, '/login')
       await assert.rejects(() => User.verifyCredentials(email, originalPassword))
 
       await first.getByLabel('Email').fill(email)
