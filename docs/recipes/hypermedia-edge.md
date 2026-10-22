@@ -45,6 +45,8 @@ server middleware matches only `/reset-password/:token` and sets `Cache-Control:
 `Referrer-Policy: no-referrer` before body parsing and CSRF checks, so malformed requests and error
 responses carry the same privacy headers. The completion POST validates the new password twice,
 calls `kit.passwordReset.reset`, and uses POST/redirect/GET for both success and recoverable failure.
+Validation failures flash field errors without password input and return explicitly to the encoded
+reset URL: `no-referrer` deliberately removes the header that a default redirect-back would need.
 
 The starter's alert component normally uses `x-cloak`, which hides reset acknowledgements until
 Alpine runs. Remove that cloak while keeping its `x-show` behavior so server-rendered success and
@@ -91,14 +93,65 @@ pnpm test:recipe -- --recipe=hypermedia-password-reset
 
 ## Clean application check
 
-P3 evidence is recorded after the pinned starter recipe passes. The check uses the pinned official
-Hypermedia starter, AdonisJS 7, SQLite and local in-process notification capture. It does not send
-email or verify PostgreSQL. The source revision, candidate archive digest, starter commit and
-lockfile digest, exact commands, test result and retained scaffold path are included in the
-acceptance record produced by `pnpm test:recipe`.
+Verified on 22 October 2026. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/64cf1a2dc17dd2b3b52e9b43a0ced6398e180668/docs/recipes/patches/hypermedia-password-reset.patch)
+after configuration; the [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
+uses the pinned starter's native login, dashboard, forms and CSRF protection. The scaffold command is:
 
-For P7, bypass the expiry comparison in the package installed under
-`examples/hypermedia/node_modules/adonisjs-account-kit/build/session_registry-*.js`, then run the
-expired-proof browser test. It must fail immediately because the stored password hash changes.
-Restore the installed package from the original vendor archive, verify its SHA-256 is unchanged,
-and rerun the browser test to green before recording the mutation result.
+```sh
+pnpm create adonisjs@3.4.0 <dir> --kit=github:adonisjs/starter-kits/hypermedia#46d235932e3eb6472a16b740fa0b47b5f69fc6fc --pkg=pnpm
+```
+
+The generated manifest uses `@adonisjs/core` `^7.5.2`, `@adonisjs/auth` `^10.1.0`,
+`@adonisjs/lucid` `^22.4.2`, `@adonisjs/session` `^8.1.0`, `@adonisjs/shield` `^9.0.0`,
+`@vinejs/vine` `^4.4.0`, `edge.js` `^6.5.1`, `@japa/browser-client` `^2.3.0`, and
+`@japa/runner` `^5.3.0`. See the [complete pinned starter manifest](https://github.com/adonisjs/starter-kits/blob/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/hypermedia/package.json).
+Its pre-install lockfile SHA-256 was
+`15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea`. Manual Git initialization
+produced starter commit `4e5f3b4379e0d2f0b945281a8b7fb073260fdb7e`; the original native-login
+check passed 1/1 in 328 ms before Account Kit installation. Configuration was recorded at
+`f5e67a9b6b0adb3686b69a049d6b4ec1879707ef` before the patch was applied.
+
+At clean source revision `64cf1a2dc17dd2b3b52e9b43a0ced6398e180668`, the fresh recipe passed
+4/4 in 4 seconds. It checked signup auto-login, two native pre-reset sessions, protected-route
+rejection of both old sessions, old-password rejection and new-password login. The failure cases
+checked malformed, expired, consumed, mismatched and replaced proofs; the malformed/expired cases
+preserved both account hashes and the exact expired and valid proof rows. JavaScript was disabled
+for these recipe journeys. The mismatch response also carried both privacy headers and returned a
+visible field error with both password inputs cleared.
+
+The run used Node 24.21.0, pnpm 11.23.0, AdonisJS Core 7.6.0 and SQLite 3.53.4. The installed
+package was an unpublished development archive, version 0.1.1, built from
+`402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf`, SHA-256
+`fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`. The archive digest was
+unchanged after the run. Released archive installation is described in the
+[root instructions](../../README.md#install). The exact recipe command was:
+
+```sh
+pnpm test:recipe -- --recipe=hypermedia-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
+```
+
+Retained evidence and command outputs are in
+`/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-cK1p2i/evidence.json`.
+The printed command preserves the harness's test environment when repeating the spec:
+
+```sh
+"/Users/kevinjohngallagher/.nvm/versions/node/v24.21.0/bin/node" "/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-cK1p2i/rerun.mjs"
+```
+
+The reference example at source `bce6c05f5ba663f4bfda284d3fd12c5226bb4433` passed
+`pnpm test` 13/13 in 14 seconds, plus `pnpm lint`, `pnpm typecheck` and `pnpm build`.
+For P7, only the installed reference-example package under
+`examples/hypermedia/node_modules/adonisjs-account-kit/build/session_registry-*.js` was changed:
+the expiry predicate and its corresponding binding were temporarily removed from the SQLite
+proof-consumption query. Running the following command from `examples/hypermedia` failed 1/1
+in 778 ms on an explicit password-hash mismatch after the expired POST:
+
+```sh
+pnpm test --files=account_journey.spec.ts --tests='malformed and expired reset POSTs are rejected without changing credentials or proof state'
+```
+
+The original vendor archive was reinstalled; its digest and installed member were checked against
+the original bytes. The same command then passed 1/1 in 991 ms. The candidate archive itself was
+never changed. These tests capture notifications in process and prove link generation and
+application behavior; they do not establish recipient delivery, PostgreSQL behavior, or a new
+manual viewport and keyboard inspection.
