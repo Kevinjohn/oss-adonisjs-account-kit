@@ -166,27 +166,31 @@ credential revocation.
 
 ## Clean application check
 
-**Preliminary manual check, 22 October 2026.** This is a focused installed-application HTTP check;
-it has not yet been run through the complete recipe harness. Full P6 acceptance and the P7 dual
-mutation/restoration check remain pending. This record must be completed before declaring the
-recipe accepted.
+**22 October 2026 — P6 and P7 passed.** The default harness built and packed the clean source
+revision below, scaffolded the pinned official API starter, proved its original login and
+protected profile before installing Account Kit, then applied the hand-edit patch and ran the
+committed acceptance spec. A second harness run scaffolded another fresh starter and installed
+the same supplied archive; its command record contains no build or pack step.
 
-| Field                                    | Preliminary evidence                                                                                                                                         |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Package source revision                  | `124c7790730477c974529e11460b728b96deee1e`                                                                                                                   |
-| Archive SHA-256                          | `38fd950b08990a95b780d3077ad65f3a98bb898cb858b7b2f9eaabaae236a3d2`                                                                                           |
-| Creator / starter                        | `create-adonisjs` `3.4.0`; official API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                                   |
-| Starter baseline / configured checkpoint | `145270d13bcc5da1022c2b02540ea7e61f34d7b7` / `077b92131c6eb4417c0116b9317a078ba974b652`                                                                      |
-| Starter lockfile SHA-256                 | `8e460c40eb5f4434146cc653c565892d2581d4a29e8f1f1756a4bb500f1f3d0d`                                                                                           |
-| Runtime / package manager                | Node `24.21.0`; pnpm `11.23.0`                                                                                                                               |
-| Installed packages                       | Core `7.6.0`; Auth `10.1.0`; Lucid `22.4.2`; Limiter `3.0.1`; Vine `4.4.0`                                                                                   |
-| Database                                 | Disposable local SQLite `3.53.4`; `better-sqlite3` `13.0.3`                                                                                                  |
-| Notification mode                        | Local in-process callback capture; development recipe uses log notifications                                                                                 |
-| Focused result                           | `the original login and both bearer credentials obey the complete reset lifecycle`: 1/1 passed in 2 seconds                                                  |
-| Other checks                             | Installed application's `pnpm typecheck` and `pnpm lint` passed after migrations and formatting generated output; route listing showed three reset endpoints |
-| Full harness / mutation                  | Pending; no P6 or P7 result claimed                                                                                                                          |
+| Field                                                 | Recorded evidence                                                                                                                              |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Package source revision                               | `71ad70ba249d4192dbc336ca0db6ceda1ec20d8f` (clean working tree)                                                                                |
+| Archive                                               | `adonisjs-account-kit-0.1.1.tgz`                                                                                                               |
+| Archive SHA-256                                       | `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                             |
+| Creator / starter                                     | `create-adonisjs` `3.4.0`; official API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                     |
+| Default run baseline / configured checkpoint          | `156f1ab7f9ad7b9d880017d1873813c91a2fd594` / `fef828c1196d6804ed3aacb5d83586e674833372`                                                        |
+| Supplied-archive run baseline / configured checkpoint | `c769f5b33e5e4a8a3149fedc767307a5fc422308` / `b3a444a9234c9c92b310262798ae7abfe76959ab`                                                        |
+| Starter lockfile SHA-256, both runs                   | `813bdffb59b9aad2e8cf7aedc26614fd6a2418be76b26c85f9897fa46d7470ad`                                                                             |
+| Runtime / package manager                             | Node `24.21.0`; pnpm `11.23.0`                                                                                                                 |
+| Installed packages                                    | Core `7.6.0`; Auth `10.1.0`; Lucid `22.4.2`; Limiter `3.0.1`; Vine `4.4.0`                                                                     |
+| Database                                              | Disposable local SQLite `3.53.4`; `better-sqlite3` `13.0.3`; each starter uses its own `tmp/db.sqlite3`                                        |
+| Notification mode                                     | Local in-process callback capture; development recipe uses log notifications                                                                   |
+| P6 default / supplied-archive results                 | `the original login and both bearer credentials obey the complete reset lifecycle`: 1/1 passed in 2 seconds in each fresh application          |
+| P7 mutated result                                     | Removed revision advancement and skipped access-token deletion: assertion failed in 1 second, expected protected profile `401`, received `200` |
+| P7 restored result                                    | Restored exact implementation bytes from the same archive: the same retained replay command passed 1/1 in 2 seconds                            |
+| Archive integrity                                     | SHA-256 unchanged after both P6 runs and after P7 restoration                                                                                  |
 
-The starter was created outside the repository with:
+Each starter was created outside the repository with:
 
 ```sh
 pnpm create adonisjs@3.4.0 <directory> \
@@ -194,20 +198,45 @@ pnpm create adonisjs@3.4.0 <directory> \
   --pkg=pnpm
 ```
 
-The creator did not initialize Git; the baseline was recorded with `git init`, `git add -A` and
-`git commit -m starter`. Its original login and protected profile were exercised before Account
-Kit installation. The focused check then used a separate clone of the configured checkpoint with
-the hand edits applied. From that application's directory, the spec command was:
+The creator did not initialize Git; the harness recorded each baseline with `git init`,
+`git add -A` and `git commit -m starter`. Its evidence JSON retains the generated manifest,
+resolved dependency versions in the lockfile, generated-file inventory, command outputs,
+post-configure checkpoint, local database path and exact replay command. The generated starter
+manifest requested Core `^7.5.2`, Auth `^10.1.0`, Lucid `^22.4.2`, Vine `^4.4.0` and
+`better-sqlite3` `^13.0.3`; the lockfile digest above identifies the installed dependency set.
+
+From the repository root, the recorded default command was:
 
 ```sh
-pnpm test --files=api-password-reset.spec.ts
+pnpm test:recipe -- --recipe=api-password-reset
 ```
 
-The local test invocation enforced Node 24 and used `NODE_ENV=test`, `TZ=UTC`, `HOST=127.0.0.1`,
-`PORT=41234`, `APP_URL=http://127.0.0.1:41234`, `SESSION_DRIVER=memory`, `LIMITER_STORE=memory`,
-`LOG_LEVEL=silent` and a generated development `APP_KEY`. The final harness record will retain
-these settings privately and print its reproducible replay command instead of relying on local
-shell settings.
+The supplied-archive command used the archive retained by that run:
+
+```sh
+pnpm test:recipe -- --recipe=api-password-reset \
+  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
+  --candidate-revision=71ad70ba249d4192dbc336ca0db6ceda1ec20d8f
+```
+
+Both ran with Node 24 enforced for the repository script and its child processes. The harness
+selected the committed recipe spec, copied it into the fresh application's functional suite and
+ran `pnpm test` with that copied file selected. Its private environment record preserves
+`NODE_ENV=test`, `TZ=UTC`, loopback host and an allocated port, matching `APP_URL`,
+`SESSION_DRIVER=memory`, `LIMITER_STORE=memory`, `LOG_LEVEL=silent` and a generated development
+`APP_KEY`. For P7, the printed replay command invoked the retained `rerun.mjs` with the recorded
+Node executable and those same settings.
+
+The mutation changed both the `credentials_changed_at` update and access-token deletion in the
+installed `advanceCredentialRevision` implementation. Its failure occurred at the real protected
+profile assertion. Restoring the implementation by copying its original bytes from the same
+archive, without repacking, restored the green result. The mutation therefore demonstrates that
+the spec detects credentials surviving reset, rather than relying only on reset success or row
+counts.
+
+An earlier focused manual check also passed the lifecycle spec and the installed application's
+`pnpm typecheck` and `pnpm lint` after migrations and formatting generated output. The final P6
+route listing independently showed exactly three reset endpoints beneath `/account-kit`.
 
 This API recipe supplies no frontend password form; production proof links must target an
 application-owned reset form instead of the local JSON inspection URL.

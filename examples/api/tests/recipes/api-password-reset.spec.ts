@@ -45,6 +45,7 @@ test.group('API password reset recipe', () => {
           )
         }
       }
+      assert.notEqual(tokens[0], tokens[1])
       await credentialsHaveStatus(200)
       await user.refresh()
       let savedHash = user.password
@@ -120,6 +121,7 @@ test.group('API password reset recipe', () => {
         assert.equal(response.status(), 200)
         tokens.push((response.body() as { data: { token: string } }).data.token)
       }
+      assert.notEqual(tokens[0], tokens[1])
       await user.refresh()
       savedHash = user.password
       assert.equal((await submit(replacement)).status(), 400)
