@@ -61,7 +61,7 @@ async function run() {
     try {
       await app?.terminate()
     } finally {
-      if (process.connected) process.disconnect()
+      if (process.connected) process.disconnect?.()
     }
   }
 }
