@@ -5,7 +5,8 @@ import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import { sentInvitations } from '#services/invitation_delivery'
+
+type RecipeDelivery = { sentInvitations: string[] }
 
 type Snapshot = { accounts: unknown[]; access: unknown[] }
 
@@ -32,6 +33,9 @@ test.group('existing app invitations', (group) => {
   group.teardown(truncateRecipeDatabase)
 
   test('enforces owner policy and one-time acceptance', async ({ client, assert }) => {
+    // This service is supplied by the recipe patch, not the reference app.
+    const deliveryModule = '#services/invitation_delivery'
+    const { sentInvitations } = (await import(deliveryModule)) as RecipeDelivery
     sentInvitations.length = 0
     const owner = await User.create({
       fullName: 'Application Owner',
