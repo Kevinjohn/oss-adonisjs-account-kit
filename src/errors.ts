@@ -211,6 +211,14 @@ export class SocialProofError extends AccountKitError {
     super('Invalid recent authentication proof')
   }
 }
+/** `socialAuthentication.acceptLink` refused to link this provider account. */
+export class SocialLinkRefusedError extends AccountKitError {
+  static code = 'E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED'
+  static status = 403
+  constructor() {
+    super('Social link refused')
+  }
+}
 /** Unlinking would leave the account without any way to sign in. */
 export class LastLoginMethodError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD'

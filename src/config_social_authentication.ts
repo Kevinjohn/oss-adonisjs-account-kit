@@ -16,6 +16,8 @@ export function validateSocialAuthentication(
     throw new RuntimeException(
       'account_kit: socialAuthentication requires providers, registration and authentication'
     )
+  if (social.acceptLink !== undefined && typeof social.acceptLink !== 'function')
+    throw new RuntimeException('account_kit: socialAuthentication.acceptLink must be a function')
   const names = Object.keys(social.providers)
   if (names.length === 0 || names.some((name) => !isSocialProviderName(name)))
     throw new RuntimeException('account_kit: socialAuthentication supports google and github only')

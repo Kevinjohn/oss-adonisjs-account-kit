@@ -132,6 +132,27 @@ For the service contract and other address-confirmation paths, see
   cannot transfer an identity already linked elsewhere. An application can also supply a fresh
   proof directly to the callback when it has an authenticated completion channel.
 - No recent proof goes into a provider URL.
+- An optional `socialAuthentication.acceptLink(user, profile)` refuses a provider account before
+  it is linked. `profile` is `{ provider, subject, email, emailVerified }`; `email` may be `null`.
+  It runs after the proof and duplicate-identity checks, inside the link transaction and under the
+  user lock, and receives the locked, authenticated user but no transaction. Throw
+  `SocialLinkRefusedError` to refuse: the link is rolled back, no notice is sent, and the proof and
+  state can be used again. Any other error also rolls back and reaches the caller unchanged.
+- `acceptLink` must decide from its arguments only. A database read can wait on SQLite's single
+  pool connection, and the callback may run more than once on a SQLite retry, so it must not write
+  or make remote side effects. It is not called for login, registration, confirmation or reauth.
+
+```ts
+import { SocialLinkRefusedError } from 'adonisjs-account-kit'
+
+socialAuthentication: {
+  providers: { google: googleProvider },
+  async acceptLink(user, profile) {
+    if (!profile.emailVerified || profile.email !== user.email)
+      throw new SocialLinkRefusedError()
+  },
+}
+```
 
 **Listing and unlinking**
 
