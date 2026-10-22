@@ -81,3 +81,11 @@ pnpm test:recipe -- --recipe=invitations-existing-app \
 ```
 
 The harness then ran `pnpm test --files=invitations-existing-app.spec.ts` in the retained scaffold. A repeatability replay ran the same command against that scaffold after truncating its test database before and after the spec; it passed 1/1. The result covers SQLite and local callback capture only; it does not establish email delivery, PostgreSQL behavior, or browser coverage.
+
+For P7, the installed package’s invitation-send authorization check was temporarily bypassed
+while the route’s token-ability check stayed enabled. The same retained replay failed explicitly
+when an actor without the owner role received `201` instead of `403` (1 failed, 94 ms total).
+The implementation was restored from the exact JavaScript member of the supplied archive,
+and the identical replay passed 1/1 (114.14 ms test, 146 ms total). The archive digest was unchanged.
+To repeat this mutation, bypass only the package check that calls `authorize.invite` during send,
+run the harness-printed replay command, restore the original archive bytes, and rerun to green.
