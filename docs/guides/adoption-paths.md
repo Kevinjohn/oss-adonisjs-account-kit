@@ -1,16 +1,21 @@
 # Choose your stack and starting point
 
-Account Kit supplies account operations. Your application supplies its Auth guard and user model,
-request validation, authorization, notification delivery, and browser/proof pages. Decide which
-stack and starting point you have before installing or copying files. All executable paths require
-Node 24 and pnpm; the [compatibility page](../compatibility.md) describes supported databases.
+For an existing application, keep the working login route and add password reset first. The
+[reset-only integration guide](password-reset-existing-app.md) is the shared prerequisite: the
+route, user model and guard stay in place. Session stacks also require a login-controller update
+that stores the credential revision, revision-check middleware, and a server-side session store such
+as database or Redis. The API recipe uses bearer-token revocation without a session adapter. The
+[annotated API starter diff](password-reset-starter-diff.md) shows the changes in context. Account
+Kit supplies account operations; the application supplies request validation,
+authorization, notification delivery and browser/proof pages. All executable paths require Node 24
+and pnpm; the [compatibility page](../compatibility.md) describes supported databases.
 
-| Your stack      | Start a new application                                                                                                                   | Add to an existing application                                                                                                                                                                                              |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Inertia React   | Run the [React example](../../examples/inertia-react/README.md#run-it), then follow its signup, verification, settings and reset journey. | Use the [React transplant map](../../examples/inertia-react/README.md#transplant-into-an-existing-app): add its shared browser foundation once, then select one flow.                                                       |
-| Inertia Vue     | Run the [Vue example](../../examples/inertia-vue/README.md#requirements-and-run) through its complete account journey.                    | Use the [Vue minimum transplant map](../../examples/inertia-vue/README.md#minimum-transplant-map) and select a flow after its shared foundation.                                                                            |
-| Hypermedia/Edge | Run the [Edge example](../../examples/hypermedia/README.md#install-and-run) with native forms, CSRF and development proof links.          | Use the [Edge transplant map](../../examples/hypermedia/README.md#transplanting-into-an-existing-edge-app), preserving middleware order and session policy.                                                                 |
-| API             | Follow [Build one account API](core-api.md) from the official AdonisJS 7 API starter.                                                     | Keep existing login and add [one focused task](../recipes/index.md#add-one-capability-to-an-existing-application), or use the [API copy maps](../../examples/api/README.md#copy-maps) for selected application-owned flows. |
+| Your stack      | Add password reset to an existing application                           | Start a new application (secondary path)                                                                                         |
+| --------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Inertia React   | [Use the React reset recipe](../recipes/inertia-react.md)               | Run the [React example](../../examples/inertia-react/README.md#run-it) through its complete account journey.                     |
+| Inertia Vue     | [Use the Vue reset recipe](../recipes/inertia-vue.md)                   | Run the [Vue example](../../examples/inertia-vue/README.md#requirements-and-run) through its complete account journey.           |
+| Hypermedia/Edge | [Use the Edge reset recipe](../recipes/hypermedia-edge.md)              | Run the [Edge example](../../examples/hypermedia/README.md#install-and-run) with native forms, CSRF and development proof links. |
+| API             | [Use the API reset recipe](../recipes/password-reset-existing-login.md) | Follow [Build one account API](core-api.md) from the official AdonisJS 7 API starter.                                            |
 
 The current examples use a separately documented contributor archive path. A normal exact-version
 published install remains dependent on a matching package release; do not substitute an archive
@@ -55,23 +60,24 @@ when you own HTTP behavior, or [managed JSON routes](../managed-http.md) for sel
 endpoints. [Guided setup](../setup.md) can generate integration files for either choice. Browser
 examples call services from their own controllers; managed JSON is not a prerequisite for a form.
 
-## Checked adoption routes
+## Adoption evidence
 
-The new-application route was exercised from a fresh tracked Vue checkout at
-`369ac0fbe87ef372895ac5190396adde7d1b5969`: root install, contributor pack, example install,
-environment/key, code generation, migrations and browser startup on Node 24.21.0/pnpm 11.23.0.
-The [Vue evidence record](../../examples/inertia-vue/README.md#checks-and-evidence) distinguishes
-that archive and setup from its full account-journey suite. Manual signup inspection at 1440×900
-and 375×812 checked useful-input retention, empty password fields and keyboard error recovery.
+The recipes carry their own P3 records: [API reset](../recipes/password-reset-existing-login.md#clean-application-check),
+[React reset](../recipes/inertia-react.md#clean-application-check),
+[Vue reset](../recipes/inertia-vue.md#clean-application-check),
+[Hypermedia/Edge reset](../recipes/hypermedia-edge.md#clean-application-check) and
+[invitations](../recipes/invitations-existing-app.md#clean-application-check). The browser-stack
+records document their session-store and credential-revocation checks. The shared
+[evidence contract](example-acceptance.md#updating-the-record) explains what each record can claim.
 
-The existing-application route was exercised by adding [reset alongside an existing API login](../recipes/password-reset-existing-login.md)
-in a disposable app: its saved token was rejected on the original protected profile after reset,
-and a fresh login succeeded. The [verified-route recipe](../recipes/verified-email-route.md#verify-all-three-states)
-separately records the minimal API starter install and guest/unverified/verified outcomes without
-a direct Session dependency or active Session integration. These are selected executable routes,
-not proof that every possible application can copy every stack without adaptation.
+## Historical manual checks (21 October 2026)
 
-The rendered selector, navigation and exact example/transplant anchors were inspected at desktop
-and narrow widths. The narrow comparison table scrolls horizontally. Repository link, reference,
-snippet and cited-test checks and the documentation build complement that inspection; they do not
-establish recipient email delivery or a published-package install.
+At Vue example source revision `369ac0fbe87ef372895ac5190396adde7d1b5969`, a fresh tracked checkout
+was installed, configured, migrated and opened in a browser on Node 24.21.0/pnpm 11.23.0. Manual
+signup inspection at 1440×900 and 375×812 checked useful-input retention, empty password fields and
+keyboard error recovery. The guide recorded those observations in commit
+`2ae97e7f5629369548f155f4d30f2f6cc25e87e5` on 21 October 2026. That guide commit also recorded an API
+reset exercise and desktop/narrow selector inspection; their application and rendered-page source
+revisions were not recorded. The verified-route recipe separately recorded guest, unverified and
+verified outcomes. These are historical observations; the current recipe records above state the
+database, browser, notification and delivery limits for their own runs.

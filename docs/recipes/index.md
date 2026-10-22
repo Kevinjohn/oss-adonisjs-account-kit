@@ -1,7 +1,8 @@
 # Recipes and how-to guides
 
-Start with the [complete API walkthrough](../guides/core-api.md) for an end-to-end service
-integration. These guides cover individual choices and tasks.
+For an existing application, start with the [reset-only integration guide](../guides/password-reset-existing-app.md)
+and choose the recipe for your stack. The [complete API walkthrough](../guides/core-api.md) is the
+secondary path for a new application.
 
 ## Add one capability to an existing application
 
@@ -9,6 +10,10 @@ Choose your [stack and starting point](../guides/adoption-paths.md) first. These
 preserve the starting application's working login and selected guard:
 
 - [Add reset to an existing API login](password-reset-existing-login.md).
+- [Add reset to an existing Inertia React login](inertia-react.md).
+- [Add reset to an existing Inertia Vue login](inertia-vue.md).
+- [Add reset to an existing Hypermedia/Edge login](hypermedia-edge.md).
+- [Add invitations to an existing application](invitations-existing-app.md).
 - [Require verified email on an application route](verified-email-route.md).
 - [Inspect another account's access](account-access-inspection.md).
 - [Send account mail through AdonisJS Mail](development-mail.md).
@@ -23,7 +28,6 @@ browser form.
 
 - [API-only login with access tokens](access-tokens.md)
 - [Browser login with sessions](sessions.md)
-- [Inertia and React](inertia-react.md)
 - [Google and GitHub sign-in with Ally](social-login.md)
 - [Magic-link sign-in](../magic-link.md)
 - [Signed-in devices](../signed-in-devices.md)

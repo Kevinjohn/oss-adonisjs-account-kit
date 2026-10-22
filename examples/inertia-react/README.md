@@ -325,3 +325,5 @@ See [Inertia and React](../../docs/recipes/inertia-react.md) and
 
 See the [example account journey acceptance guide](../../docs/guides/example-acceptance.md) for
 the common baseline, application-policy differences, recorded coverage and remaining gaps.
+
+See the [existing-login password reset recipe](../../docs/recipes/inertia-react.md).
