@@ -26,8 +26,17 @@ if (Boolean(candidateInput) !== Boolean(candidateRevision)) {
 const patch = join(root, 'docs/recipes/patches', `${recipe}.patch`)
 const spec = join(root, 'examples/api/tests/recipes', `${recipe}.spec.ts`)
 // Validate the committed inputs before downloading or creating anything.
-const patchText = await readFile(patch, 'utf8')
-await readFile(spec)
+let patchText
+try {
+  patchText = await readFile(patch, 'utf8')
+  await readFile(spec)
+} catch (error) {
+  if (error.code === 'ENOENT')
+    throw new Error(
+      `Recipe ${recipe} is unavailable in this checkout: missing patch or acceptance spec`
+    )
+  throw error
+}
 for (const entry of patchText.matchAll(/^diff --git a\/(.+) b\/(.+)$/gm)) {
   if (
     /^(?:node_modules\/|build\/|\.adonisjs\/|vendor\/|database\/schema\.ts$)/.test(entry[2]) ||
@@ -69,13 +78,42 @@ try {
 }
 const port = String(listener.address().port)
 await new Promise((resolve) => listener.close(resolve))
-// Drop caller database settings before any starter command can load them.
-const inheritedEnv = Object.fromEntries(
-  Object.entries(process.env).filter(
-    ([name]) =>
-      !/^DB_|^DATABASE_URL$|^PG(?:HOST|PORT|USER|PASSWORD|DATABASE|SERVICE|SERVICEFILE)$/.test(name)
+// Only runtime, OS and explicitly supported package-cache settings reach child processes.
+function childEnvironment(source) {
+  const runtimeNames = new Set([
+    'PATH',
+    'HOME',
+    'TMPDIR',
+    'TMP',
+    'TEMP',
+    'LANG',
+    'LC_ALL',
+    'LC_CTYPE',
+    'TERM',
+    'CI',
+    'NO_COLOR',
+    'FORCE_COLOR',
+    'PNPM_HOME',
+    'XDG_CACHE_HOME',
+    'XDG_CONFIG_HOME',
+    'XDG_DATA_HOME',
+    'XDG_STATE_HOME',
+    'GIT_AUTHOR_NAME',
+    'GIT_AUTHOR_EMAIL',
+    'GIT_COMMITTER_NAME',
+    'GIT_COMMITTER_EMAIL',
+  ])
+  return Object.fromEntries(
+    Object.entries(source).filter(
+      ([name]) =>
+        runtimeNames.has(name) ||
+        /^pnpm_config_(?:offline|store_dir|cache_dir|verify_deps_before_run|enable_global_virtual_store)$/i.test(
+          name
+        )
+    )
   )
-)
+}
+const inheritedEnv = childEnvironment(process.env)
 const testEnvironment = {
   NODE_ENV: 'test',
   TZ: 'UTC',
@@ -99,7 +137,8 @@ await writeFile(
   rerunPath,
   `import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^DB_|^DATABASE_URL$|^PG(?:HOST|PORT|USER|PASSWORD|DATABASE|SERVICE|SERVICEFILE)$/.test(name)))
+${childEnvironment.toString()}
+const inherited = childEnvironment(process.env)
 const settings = JSON.parse(readFileSync(new URL('./test-environment.json', import.meta.url), 'utf8'))
 const result = spawnSync('pnpm', ${JSON.stringify(specCommand)}, { cwd: ${JSON.stringify(appRoot)}, env: { ...inherited, ...settings }, stdio: 'inherit' })
 if (result.error) throw result.error
