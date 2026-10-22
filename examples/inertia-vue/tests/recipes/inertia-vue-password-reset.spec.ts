@@ -38,6 +38,26 @@ test.group('Inertia Vue password reset recipe', (group) => {
 
     const secondContext = await browser.newContext({ baseURL: process.env.APP_URL })
     const requesterContext = await browser.newContext({ baseURL: process.env.APP_URL })
+    const submitProof = async (path: string) => {
+      await requesterContext.initiateSession()
+      await requesterContext.request.get(path)
+      const csrfCookie = (await requesterContext.cookies()).find(
+        (cookie) => cookie.name === 'XSRF-TOKEN'
+      )
+      assert.exists(csrfCookie)
+      const response = await requesterContext.request.post(path, {
+        maxRedirects: 0,
+        form: {
+          password: 'AnotherPassword123!',
+          passwordConfirmation: 'AnotherPassword123!',
+        },
+        headers: {
+          'x-xsrf-token': decodeURIComponent(csrfCookie!.value),
+          'referer': new URL(path, process.env.APP_URL).href,
+        },
+      })
+      assert.equal(response.status(), 302)
+    }
     try {
       const first = await visit('/login')
       const second = await secondContext.visit('/login')
@@ -64,6 +84,7 @@ test.group('Inertia Vue password reset recipe', (group) => {
 
       await first.goto('/reset-password/not-a-proof')
       await first.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
+      await submitProof('/reset-password/not-a-proof')
       await assertOldCredentialsAndSessionsUnchanged()
 
       const expiredToken = randomBytes(40).toString('base64url')
@@ -77,6 +98,7 @@ test.group('Inertia Vue password reset recipe', (group) => {
       })
       await first.goto(`/reset-password/${expiredToken}`)
       await first.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
+      await submitProof(`/reset-password/${expiredToken}`)
       await assertOldCredentialsAndSessionsUnchanged()
 
       const requester = await requesterContext.visit('/forgot-password')
@@ -89,27 +111,6 @@ test.group('Inertia Vue password reset recipe', (group) => {
         assert.isAbove(resetUrls.length, 0)
         return new URL(resetUrls.at(-1)!).pathname
       }
-      const submitProof = async (path: string) => {
-        await requesterContext.initiateSession()
-        await requesterContext.request.get(path)
-        const csrfCookie = (await requesterContext.cookies()).find(
-          (cookie) => cookie.name === 'XSRF-TOKEN'
-        )
-        assert.exists(csrfCookie)
-        const response = await requesterContext.request.post(path, {
-          maxRedirects: 0,
-          form: {
-            password: 'AnotherPassword123!',
-            passwordConfirmation: 'AnotherPassword123!',
-          },
-          headers: {
-            'x-xsrf-token': decodeURIComponent(csrfCookie!.value),
-            'referer': new URL(path, process.env.APP_URL).href,
-          },
-        })
-        assert.equal(response.status(), 302)
-      }
-
       const firstProofPath = await requestLink()
       await requester.goto('/forgot-password')
       const replacementProofPath = await requestLink()
