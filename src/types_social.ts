@@ -1,6 +1,6 @@
 import type { socialProviderNames } from './social_providers.js'
 import type { sensitivePurposes, socialIntents } from './social_enums.js'
-import type { UserId, CurrentAccountInput } from './types.js'
+import type { AccountUser, UserId, CurrentAccountInput } from './types.js'
 
 /** A supported social provider: `google` or `github`. */
 export type SocialProviderName = (typeof socialProviderNames)[number]
@@ -43,6 +43,22 @@ export interface SocialProvider {
 export interface SocialAuthenticationConfig {
   /** One adapter per enabled provider, usually from `createAllySocialProvider`. */
   providers: Partial<Record<SocialProviderName, SocialProvider>>
+  /**
+   * Refuses a provider account before it is linked to a signed-in account: throw
+   * `SocialLinkRefusedError` to refuse. Runs inside the link transaction, under the user lock,
+   * with the locked user. Decide from the arguments only: no database reads or writes and no
+   * remote side effects. It may run more than once for one callback.
+   */
+  acceptLink?(user: AccountUser, profile: SocialLinkProfile): Promise<void>
+}
+
+/** The provider account a signed-in user is about to link, passed to `acceptLink`. */
+export interface SocialLinkProfile {
+  provider: SocialProviderName
+  /** The provider's stable, case-sensitive subject. */
+  subject: string
+  email: string | null
+  emailVerified: boolean
 }
 
 /** A provider account linked to a local user. `providerUserId` is the provider's stable subject. */

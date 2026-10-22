@@ -280,7 +280,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.oauth.callback': {
     summary: 'Provider redirect target',
     description:
-      'Session guards finish the flow here. Access-token guards accept only `login` here; other intents use the POST form.',
+      'Session guards finish the flow here. Access-token guards accept only `login` here; other intents use the POST form. A `link` refused by `acceptLink` is a 403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`.',
     query: [
       { name: 'code', description: 'Provider authorisation code.', schema: string() },
       { name: 'state', description: 'Flow state from the redirect.', schema: string() },
@@ -293,6 +293,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'auth.oauth.complete': {
     summary: 'Finish a social flow from an access-token client',
+    description: 'A `link` refused by `acceptLink` is a 403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`.',
     body: () =>
       body(
         {

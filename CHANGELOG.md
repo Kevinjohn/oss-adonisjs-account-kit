@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add `socialAuthentication.acceptLink` so an application can refuse a provider account before it is linked, with `SocialLinkRefusedError` (403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`).
 - Add `authentication.inspectAccountAccess` and its generic `AccountAccessDeniedError` for reading an account's eligibility and credential revision without a credential for it.
 - Document example distribution prerequisites and expose API proof links only in development for contributor smoke checks.
 - Keep local databases, secrets and installed artifacts out of fresh packed-consumer checks.
