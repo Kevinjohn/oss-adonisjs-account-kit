@@ -18,9 +18,9 @@ Keep both database matrix jobs, Node 24, pnpm, lint, typecheck, tests, build and
 
 ## Upgrade and rollback
 
-No released install exists. Before the first alpha the migration stubs were squashed to create
-the final schema directly, so a database created by an earlier unreleased build has no in-place
-upgrade path: reset it and run the current migrations.
+0.1.0 is the first alpha, distributed as a GitHub release tarball. Before it the migration stubs
+were squashed to create the final schema directly, so a database created by an earlier unreleased
+build has no in-place upgrade path: reset it and run the current migrations.
 
 Back up deployed application config and migrations. Install the candidate, reconfigure without overwriting owned files, and apply any new package migration before serving traffic. Rehearse the application-owned registration mapping and credential policy before accepting traffic.
 
