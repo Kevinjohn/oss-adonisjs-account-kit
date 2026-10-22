@@ -33,8 +33,8 @@ links point to the reviewed example source so you can compare each file while ad
 - **Dependencies and registration:** Add `adonisjs-account-kit` and `@adonisjs/limiter` to your
   existing AdonisJS 7 Inertia React app. Keep its existing `@adonisjs/auth`, `@adonisjs/session`,
   `@adonisjs/shield`, `@adonisjs/lucid`, `@adonisjs/inertia`, and `@vinejs/vine` integrations.
-  Add the limiter first with `node ace add @adonisjs/limiter`, then add Account Kit with
-  `node ace add adonisjs-account-kit`. The latter registers its provider and commands and generates
+  Follow the [root install instructions](../../README.md#install) for the limiter, GitHub release
+  archive and configuration. Configuration registers the provider and commands and generates
   the base config and migrations; preserve existing entries in
   [`adonisrc.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/adonisrc.ts).
 - **User adapter and application policy:** Adapt
@@ -235,10 +235,9 @@ code are fixtures or unrelated features; copy them only if your application need
 
 ## Run it
 
-The current source package manifest is `0.0.0`; there is no matching public npm release and
-repository tag for a consumer install yet. The published-package path is blocked on that release.
-This contributor path builds an archive from the current repository and does not establish a
-released-package install. Use Node.js 24 and pnpm 11.23.0 from the repository root:
+For the available GitHub release archive, follow the [root install instructions](../../README.md#install).
+npm publication is still pending. This contributor path builds the current checkout and does not
+establish a released-package install. Use Node.js 24 and pnpm 11.23.0 from the repository root:
 
 ```sh
 pnpm install --frozen-lockfile
