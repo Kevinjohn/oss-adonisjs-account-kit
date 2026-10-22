@@ -157,7 +157,7 @@ describe installing released archives. The exact recipe command was:
 pnpm test:recipe -- --recipe=inertia-vue-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
-The reference browser suite passed 35/35 in 13 seconds, including the composed reset journey. For P7,
+The full Vue application suite (unit, functional and browser) passed 35/35 in 13 seconds, including the composed reset journey. For P7,
 an installed-vendor-only mutation that preserved the old credential revision made the prior recipe
 spec fail in 3 seconds: the existing session still reached `/dashboard` instead of redirecting to
 `/login`. That negative run preceded the malformed and expired POST assertions added to the final
