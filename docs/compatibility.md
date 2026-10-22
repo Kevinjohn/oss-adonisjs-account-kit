@@ -1,7 +1,8 @@
 # Compatibility and validation
 
-This is an unpublished `0.0.0` candidate. The table records concrete tested points and declared
-peer ranges separately; testing one point does not verify every version in a range.
+Account Kit is available as a GitHub release archive; follow the [install instructions](../README.md#install).
+It is not yet published to npm. The table records concrete tested points and declared peer ranges
+separately; testing one point does not verify every version in a range.
 
 | Component             | Tested point | Declared support                             |
 | --------------------- | ------------ | -------------------------------------------- |

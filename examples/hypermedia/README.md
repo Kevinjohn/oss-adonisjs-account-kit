@@ -12,9 +12,9 @@ flows and application policy to that starter.
 
 ## Install and run
 
-Use Node 24 and pnpm 11.23.0, as pinned in the repository. A published Account Kit version is not
-available yet. The normal consumer install below is therefore release-blocked; the contributor
-pack is for local development and verification only.
+Use Node 24 and pnpm 11.23.0, as pinned in the repository. For the available GitHub release archive,
+follow the [root install instructions](../../README.md#install); npm publication is still pending.
+The contributor pack below is for local development and verification.
 
 From the repository root:
 
@@ -32,7 +32,7 @@ contains the built package and `CHANGELOG.md`, so its checksum changes whenever 
 The example install therefore omits `--frozen-lockfile`: it keeps the locked versions and records
 the local archive's integrity in `pnpm-lock.yaml`. Leave that local lockfile change uncommitted
 unless you are refreshing the lockfile for a dependency change. Do not substitute
-this archive for the published consumer path: the registry currently has no matching release.
+this archive for a released-consumer check; use the GitHub release archive linked above.
 
 Then configure the app and run its database migrations:
 

@@ -7,11 +7,12 @@ model.
 
 ## Before you start
 
-Setup is the alternative to `node ace add adonisjs-account-kit`, not a step after it. If
+Setup replaces the configuration step in the [root install instructions](../README.md#install). If
 `config/account_kit.ts` or the package migrations already exist, setup marks each of them as a
 conflict and `--apply` writes nothing.
 
-1. Install the package without configuring it: `pnpm add adonisjs-account-kit`.
+1. Install the GitHub release archive using the [root install instructions](../README.md#install),
+   stopping before `node ace configure` and migrations. npm publication is still pending.
 2. Add `() => import('adonisjs-account-kit/commands')` to the `commands` array in `adonisrc.ts`.
 3. Install TypeScript 5.9.3 or newer 5.x, or 6.0.3 or newer 6.x, if the app does not have it:
    `pnpm add -D typescript@^5.9.3`. Setup reads your config files with it instead of running
