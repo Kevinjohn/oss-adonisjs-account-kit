@@ -4,6 +4,220 @@ Validation uses Node 24 and pnpm. Dated candidate records below identify the rev
 configurations tested; historical totals do not describe the latest candidate. Check each pull
 request for its current automated workflow results.
 
+## Second alpha 0.2.0 candidate
+
+Recorded 22 October 2026 for #642, after the #632 final evidence pass and #641 navigation work.
+The required source, distribution, recipe and reference-example commands passed against one
+archive. This is local candidate verification; merge, publication, manual checks outside the
+automated suites and a fresh advertised-install smoke after publication remain owner actions.
+
+### Identity and execution boundaries
+
+- Package: `adonisjs-account-kit@0.2.0`. Version and changelog were committed before packing.
+- Archive: `/private/tmp/account-kit-642-candidate/adonisjs-account-kit-0.2.0.tgz`.
+- Archive source (A): `1ef240c72c4445482baf8f30b806b9128550d811`.
+- SHA-256: `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. It was packed once and was not replaced.
+- Corrected test-source integration (B): `3babfbf3dc9bfa25aa2fccc8615b087bb5a4f26c`, incorporating the #636
+  recipe-spec import correction `4f5023f6baf319f2fe180ea5fcda91ae0668851f`.
+  Only the acceptance spec changed after A; it is outside the package archive. Later documentation
+  commits record these results and do not change package runtime or templates.
+- Runtime: Node `24.21.0`, pnpm `11.23.0`. Root dependencies: AdonisJS Core `7.6.0`,
+  Lucid `22.4.2`, Assembler `8.5.2`, Session `8.1.0`, Limiter `3.0.1`, TypeScript `5.9.3`,
+  `better-sqlite3` `12.11.1` (SQLite `3.53.2`) and `pg` `8.23.1`.
+- PostgreSQL: local `16.15`, port `55432`. `pnpm test:pg` owned its cluster lifecycle;
+  a separate `pnpm pg:start` / `pnpm pg:stop` bracketed the sequential PostgreSQL consumers.
+- Full command output and per-command JSON records are retained under
+  `/private/tmp/account-kit-642-results/`. A table record key names both `<key>.log` and
+  `<key>.json`; each JSON includes the command, working directory, start/end time, source and
+  candidate revisions, exit status, runtime and archive hashes before and after execution.
+  The digest in each row is the unchanged archive checked with that result.
+
+The initial API `pnpm typecheck` exited 2 because the invitation acceptance spec statically imported
+`#services/invitation_delivery`, a service supplied only by the transplant patch. The first fresh
+SQLite consumer also exited 1 on that typecheck. Their records remain `example_api_typecheck` and
+`consumer_fresh_sqlite`, both at A with the same unchanged digest above. The owning #636 fix loads
+the patch-supplied capture inside the test through an explicitly typed runtime import. No test
+exclusion or reference-app service was added. Independent review found no further findings; API
+lint/typecheck/build/tests, a new fresh consumer and fresh invitation transplant then passed at B.
+
+### Source checks
+
+Each row ran the corresponding repository script (`pnpm lint`, `pnpm typecheck`, `pnpm build`,
+`pnpm quick:test`, `pnpm test:built-exports`, `pnpm test:built-setup`, `pnpm test:pg-service`,
+`pnpm test:pg`, `pnpm test:adapter`, and `pnpm docs:build`). SQLite checks explicitly selected
+`DB_CLIENT=better-sqlite3`.
+
+| Output record        | Source | Outcome                                            | Archive SHA-256, unchanged                                         |
+| -------------------- | ------ | -------------------------------------------------- | ------------------------------------------------------------------ |
+| `lint`               | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `typecheck`          | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `build`              | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `quick_test`         | A      | 1,090 passed, 2 PostgreSQL-only skips; 32s; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `test_built-exports` | A      | 2 passed; 144ms; exit 0                            | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `test_built-setup`   | A      | 11 passed; 531ms; exit 0                           | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `test_pg-service`    | A      | 61 passed, no skips; 80.9s; exit 0                 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `test_pg`            | A      | 1,089 passed, 3 SQLite-only skips; 33s; exit 0     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `test_adapter`       | A      | 8 passed; 225ms; exit 0                            | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `docs_build`         | A      | Passed; 4.20s; exit 0                              | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+
+The SQLite skips cover PostgreSQL COMMIT rejection and UUID canonicalization. PostgreSQL skips
+cover SQLite cleanup failure, corrupt-revision storage and integer token timestamps. The service
+checks exercise their own PostgreSQL service lifecycle. The docs build reports its existing large
+bundle warning; it exits successfully.
+
+### Packed consumers and fresh recipe transplants
+
+These commands used the same two candidate arguments, without asking either harness to pack:
+
+```sh
+candidate=/private/tmp/account-kit-642-candidate/adonisjs-account-kit-0.2.0.tgz
+revision=1ef240c72c4445482baf8f30b806b9128550d811
+pnpm test:consumer -- --database=sqlite --candidate-tarball="$candidate" --candidate-revision="$revision"
+pnpm test:consumer -- --database=postgres --candidate-tarball="$candidate" --candidate-revision="$revision"
+pnpm test:consumer -- --database=sqlite --candidate-tarball="$candidate" --candidate-revision="$revision" --mode=minimum --compatibility=minimum
+pnpm test:consumer -- --database=postgres --candidate-tarball="$candidate" --candidate-revision="$revision" --mode=minimum --compatibility=minimum
+pnpm test:consumer -- --database=sqlite --candidate-tarball="$candidate" --candidate-revision="$revision" --mode=service-only
+pnpm test:consumer -- --database=postgres --candidate-tarball="$candidate" --candidate-revision="$revision" --mode=service-only
+pnpm test:recipe -- --recipe=api-password-reset --candidate-tarball="$candidate" --candidate-revision="$revision"
+pnpm test:recipe -- --recipe=invitations-existing-app --candidate-tarball="$candidate" --candidate-revision="$revision"
+pnpm test:recipe -- --recipe=inertia-react-password-reset --candidate-tarball="$candidate" --candidate-revision="$revision"
+pnpm test:recipe -- --recipe=inertia-vue-password-reset --candidate-tarball="$candidate" --candidate-revision="$revision"
+pnpm test:recipe -- --recipe=hypermedia-password-reset --candidate-tarball="$candidate" --candidate-revision="$revision"
+```
+
+| Output record                                    | Source | Outcome                                                                   | Archive SHA-256, unchanged                                         |
+| ------------------------------------------------ | ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `consumer_fresh_sqlite_recipe_import_fix`        | B      | Harness passed; exit 0                                                    | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `consumer_fresh_postgres`                        | B      | Harness passed; exit 0                                                    | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `consumer_minimum_sqlite_recipe_import_fix`      | B      | Harness passed; exit 0                                                    | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `consumer_minimum_postgres`                      | B      | Harness passed; exit 0                                                    | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `consumer_service-only_sqlite_recipe_import_fix` | B      | Harness passed; exit 0                                                    | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `consumer_service-only_postgres`                 | B      | Harness passed; exit 0                                                    | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_api-password-reset`                      | A      | Fresh pinned starter, original login and recipe acceptance passed; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_invitations-existing-app`                | B      | Fresh pinned starter, original login and recipe acceptance passed; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_inertia-react-password-reset`            | A      | Fresh pinned starter, original login and recipe acceptance passed; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_inertia-vue-password-reset`              | B      | Fresh pinned starter, original login and recipe acceptance passed; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_hypermedia-password-reset`               | B      | Fresh pinned starter, original login and recipe acceptance passed; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+
+The full fresh-mode consumers exercise generated configuration, migration idempotency, bearer-token and
+server-side session integration, admission and release scenarios. Their intentional rejection of
+cookie-only session storage is a passing negative check. Minimum mode verifies the declared peer
+floor; service-only mode checks compiled service declarations and boot without optional integration
+packages. Consumer fixtures are separate from the pinned official recipe starters.
+
+All five recipes used `pnpm create adonisjs@3.4.0` and official starter revision
+`46d235932e3eb6472a16b740fa0b47b5f69fc6fc`. API reset and invitations use the `api` kit;
+React, Vue and Edge use `inertia-react`, `inertia-vue` and `hypermedia`. Their native login check
+runs before package configuration. The retained evidence records the original baseline commit,
+lock digest, configured patch baseline, route inventory, package versions and exact rerun command.
+Recipe database engine: SQLite `3.53.4`; Core `7.6.0`. Browser recipes exercise Chromium.
+
+- `consumer_fresh_sqlite_recipe_import_fix`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-consumer-vbMlYS/evidence.json`; Core 7.6.0, SQLite 3.53.2.
+- `consumer_fresh_postgres`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-consumer-XJrFLj/evidence.json`; Core 7.6.0, PostgreSQL 16.15 (Homebrew).
+- `consumer_minimum_sqlite_recipe_import_fix`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-consumer-LOZkVC/evidence.json`; Core 7.0.0, SQLite 3.53.2.
+- `consumer_minimum_postgres`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-consumer-it5BcV/evidence.json`; Core 7.0.0, PostgreSQL 16.15 (Homebrew).
+- `consumer_service-only_sqlite_recipe_import_fix`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-consumer-pZEPEe/evidence.json`; Isolated compiled service startup passed; optional integrations absent.
+- `consumer_service-only_postgres`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-consumer-VFmmvb/evidence.json`; Isolated compiled service startup passed; optional integrations absent.
+- `recipe_api-password-reset`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-KHKPbs/evidence.json`; baseline `e0ccfa1f40f55edee74aba931640644a1c6715d2`, configured `99f5d749733ccef10e563eee5987ca9b93509def`; Tests 1 passed (1); Tests 1 passed (1).
+- `recipe_invitations-existing-app`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-MmApqI/evidence.json`; baseline `71e6a3e754b6ced1e8f9483b5cdf16259c4cc270`, configured `4cde48b7b282bf94f94f49feac762e7dba93eca7`; Tests 1 passed (1); Tests 1 passed (1).
+- `recipe_inertia-react-password-reset`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-0fIPsv/evidence.json`; baseline `65647d4c5c364f8a3c7d946ff19cb4651976f3d8`, configured `a7d12741311c27e590b0cad87efebb195ecacc0f`; Tests 1 passed (1); Tests 1 passed (1).
+- `recipe_inertia-vue-password-reset`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-zI0W9e/evidence.json`; baseline `6adcef04f16f619ab5cc54fef4ddda663880b14c`, configured `2c404edb0a05a85e219effa774de413409d0aa7c`; Tests 1 passed (1); Tests 1 passed (1).
+- `recipe_hypermedia-password-reset`: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-wrk9pZ/evidence.json`; baseline `ebbec8da18986beece8c48caff25dcec3c4f05d4`, configured `b09fe6f4b8351fad26bcd395f7eda323d72d4d52`; Tests 1 passed (1); Tests 4 passed (4).
+
+The API and invitation recipes capture links locally and make HTTP assertions; they do not prove
+recipient delivery or a browser journey. The browser recipes add actual password-reset, validation,
+replay, expiry and prior-session checks, including Edge without JavaScript. They do not establish
+PostgreSQL recipe behavior, viewport coverage, keyboard accessibility or production mail delivery.
+Earlier recipe mutation checks and accepted client-types/monorepo assessments remain dated evidence
+in their recipe and example records; these runs do not replace or broaden those claims.
+
+### Reference examples using the same vendor archive
+
+The archive above was copied unchanged to each example's `vendor/adonisjs-account-kit.tgz`.
+Each app ran `pnpm install`, `pnpm exec node ace generate:key`, `pnpm exec node ace codegen`,
+and `pnpm exec node ace migration:run --force`, followed by its own `pnpm lint`,
+`pnpm typecheck`, `pnpm build` and `pnpm test`. The local `.env` files came from the app's
+template with isolated loopback ports, memory limiter storage and generated keys. They are ignored.
+Install-time lockfile changes needed for the vendor candidate were local validation state and were
+restored before committing; generated schemas/indexes, databases, browser output and vendor archives
+are not part of this change. The JSON records also verify each vendor copy's digest after its step.
+
+| Example | Core / Assembler / Session | SQLite driver / TypeScript | Other integration         |
+| ------- | -------------------------- | -------------------------- | ------------------------- |
+| API     | 7.6.0 / 8.6.0 / 8.3.0      | 12.11.1 / 6.0.3            | Tuyau 1.2.3               |
+| React   | 7.6.0 / 8.6.0 / 8.3.0      | 13.0.3 / 6.0.3             | React 19.3.1, Tuyau 1.2.3 |
+| Vue     | 7.6.0 / 8.6.0 / 8.3.0      | 13.0.3 / 6.0.3             | Vue 3.5.44, Tuyau 1.2.3   |
+| Edge    | 7.5.2 / 8.5.2 / 8.1.0      | 13.0.3 / 6.0.3             | Edge-rendered forms       |
+
+All four use Lucid `22.4.2`, Auth `10.1.0`, Limiter `3.0.1`, Shield `9.0.0` and package `0.2.0`.
+API SQLite is `3.53.2`; the three rendered apps use SQLite `3.53.4`.
+
+| Output record                             | Source | Outcome                                            | Archive SHA-256, unchanged                                         |
+| ----------------------------------------- | ------ | -------------------------------------------------- | ------------------------------------------------------------------ |
+| `example_api_install`                     | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_generate-key`                | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_codegen`                     | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_migrate`                     | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_lint_recipe_import_fix`      | B      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_typecheck_recipe_import_fix` | B      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_build_recipe_import_fix`     | B      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_api_test_recipe_import_fix`      | B      | 51 passed, 19 strategy-specific skips; 19s; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_install`           | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_generate-key`      | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_codegen`           | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_migrate`           | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_lint`              | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_typecheck`         | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_build`             | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-react_test`              | A      | 33 passed; 14s; exit 0                             | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_install`             | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_generate-key`        | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_codegen`             | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_migrate`             | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_lint`                | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_typecheck`           | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_build`               | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_inertia-vue_test`                | A      | 35 passed; 14s; exit 0                             | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_install`              | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_generate-key`         | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_codegen`              | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_migrate`              | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_lint`                 | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_typecheck`            | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_build`                | A      | Passed; exit 0                                     | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_test`                 | A      | 13 passed; 15s; exit 0                             | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+
+The API reference result selects its bearer-token strategy. Session-specific tests are skipped there
+and are exercised separately by the fresh consumer's session suite on both databases. A local
+receiver and durable outbox restart regression are exercised by the consumer suites; no claim of
+exactly-once delivery or a real external provider is made.
+
+### Upgrade impact and final handoff
+
+The actual published `0.1.1` archive has SHA-256
+`38fd950b08990a95b780d3077ad65f3a98bb898cb858b7b2f9eaabaae236a3d2`.
+Its 313 `package/build/` files are byte-identical to this candidate, including 14 `.stub` files
+(two configuration templates and twelve migration templates). Source comparison against the
+`0.1.1` tag also found no changes in runtime, adapters, commands, providers, services, HTTP,
+testing, configuration or migration stubs. This documentation/adoption alpha introduces no new
+generated package configuration or database migration. Existing app-owned mappings and policies
+remain authoritative; see the [release gate](release-gate.md#upgrade-and-rollback).
+
+The archive still has SHA-256 `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` after all required runs.
+The first final-documentation check (`docs_checks_final_record`) found one incorrect heading anchor
+(12 passed, 1 failed). Correcting the anchor produced the results below at B with the pending
+documentation edits; all archive digests remained unchanged. No tests were removed.
+
+| Output record              | Outcome                                   | Archive SHA-256, unchanged                                         |
+| -------------------------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| `docs_checks_final_anchor` | 13 passed; 290ms; exit 0                  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `format_final_anchor`      | Scoped Prettier check passed; exit 0      | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `docs_build_final_anchor`  | Documentation build passed; 4.40s; exit 0 | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+
+Scoped formatting covers the four #642-owned files. The historical verification sections are
+byte-for-byte unchanged. Publication and the post-publication advertised install smoke remain
+separate owner actions.
+
 ## Historical pre-inspection summary
 
 The following summary is retained from earlier verification and is not the account-inspection
