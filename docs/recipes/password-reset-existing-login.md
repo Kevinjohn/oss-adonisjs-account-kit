@@ -115,40 +115,105 @@ package does not generate that page.
 
 ## Verify the reset and revocation
 
-Run migrations against a disposable database, start the app, sign in through the existing login,
-and keep its bearer token. Request reset for a known and an unknown address; both must return the
-same generic `202` acknowledgement. Copy the proof from your private development capture, GET the
-proof route once or more to confirm inspection does not consume it, then POST the new password and
-confirmation. The managed completion route returns `200 {"reset":true}`. The reset changes the stored
-password and deletes every access-token row for that account.
+Use the committed [acceptance spec](../../examples/api/tests/recipes/api-password-reset.spec.ts)
+and [hand-edit patch](patches/api-password-reset.patch). From the repository root, run:
 
-The decisive revocation check is a request to a real route protected by the starter's normal auth
-middleware using the saved pre-reset bearer value: it must now return `401`. Verify the new
-password through the existing login route. A successful reset response alone does not prove that
-the old credential ended. If the request is acknowledged but no proof is captured, check the
-account exists in the selected database and that the generated throwing notification callback was
-replaced.
+```sh
+pnpm test:recipe -- --recipe=api-password-reset --database=sqlite
+```
 
-The API starter uses the `api` guard and JSON responses. For a browser session app, follow the
-[session recipe](sessions.md) and [managed HTTP session requirements](../managed-http.md); for
-frontends, use their own form and field-error presentation. Application validation and public
-wording remain owned by the application. The [reset controller](../../examples/api/app/controllers/password_resets_controller.ts),
-[reset HTTP suite](../../examples/api/tests/functional/account_password_reset.spec.ts), and
-[core API walkthrough](../guides/core-api.md) show the request, inspection, completion and
-revocation boundaries in a runnable API app.
+For a previously packed candidate, supply both flags; the harness installs that archive without
+building or packing another one:
 
-The disposable acceptance app used the repository's `examples/api` reference app at source revision
-`ae42132` and was prepared with
-`pnpm test:consumer -- --database=sqlite --prepare-only`. It ran Node `v24.21.0`, AdonisJS Core
-`7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, and Account Kit `0.0.0` against SQLite;
-the prepared app uses pnpm `10.21.0` (the packaging workspace uses pnpm `11.23.0`).
+```sh
+pnpm test:recipe -- --recipe=api-password-reset --database=sqlite \
+  --candidate-tarball=/absolute/path/adonisjs-account-kit.tgz \
+  --candidate-revision=<source-commit>
+```
 
-A temporary disposable-app HTTP test named `recipe_add_password_reset.spec.ts` mounted only
-`passwordReset` at `/account-kit` and passed with
-`pnpm exec node ace test --files=recipe_add_password_reset.spec.ts`: known and
-unknown requests returned the same 202, reset completion succeeded, the pre-reset bearer received
-401 on the starter's existing protected profile route, and the existing login rejected the old
-password and accepted the new one. Removing credential-revision advancement and retaining tokens
-made the protected request return 200; restoring the package and rerunning passed. This checks the
-API route lifecycle, not a browser form or external mail delivery. See the
-[example acceptance record](../guides/example-acceptance.md).
+The harness creates the pinned official API starter, commits its baseline, and proves the original
+login can reach `/api/v1/account/profile` before installing Account Kit. It configures Limiter
+with its supported database store, selects the runtime memory store for this test, configures
+Account Kit, captures the generated-file inventory, and records a second checkpoint. The patch
+contains only application hand edits against that post-configure checkpoint. It excludes generated
+migrations, generated schema, dependencies, the lockfile and the archive.
+
+The harness copies the spec into `tests/functional/api-password-reset.spec.ts` and runs
+`pnpm test --files=api-password-reset.spec.ts`. It prints the retained application, evidence JSON
+and an exact replay command. The replay wrapper retains the generated local test environment and
+Node executable, and removes inherited external database settings. Run the printed command from
+any directory when checking a mutation; running the bare spec command with different environment
+settings does not reproduce the recorded run.
+
+The spec checks the following observable behavior:
+
+- Two credentials obtained through `/api/v1/auth/login` each reach the original protected profile.
+- Known and unknown reset requests receive the same generic `202` acknowledgement.
+- Two GET inspections of a valid proof succeed without consuming it.
+- Malformed, expired and mismatched submissions preserve the stored password hash and both
+  credentials. The expired fixture inserts a proof row with a past `expires_at`.
+- Replacing a live proof makes that proof fail without changing the password or either credential;
+  its replacement completes successfully.
+- Completion makes both earlier credentials receive `401` on the original protected profile,
+  rejects the old password through the original login, and accepts the new password there.
+- Replaying the consumed proof preserves the new hash and two newly issued working credentials.
+- `node ace list:routes` exposes only the three reset endpoints beneath `/account-kit`.
+
+For the mutation check, locate `advanceCredentialRevision` in the installed package's
+`node_modules/adonisjs-account-kit/build/` JavaScript (the packed build uses a chunk filename).
+Remove its `credentials_changed_at` update **and** skip its access-token deletion. Run the printed replay command and require an assertion failure
+when an earlier credential still reaches the protected profile. Restore the installed archive and
+rerun the same command to green. A success response or a token-row count alone does not prove
+credential revocation.
+
+## Clean application check
+
+**Preliminary manual check, 22 October 2026.** This is a focused installed-application HTTP check;
+it has not yet been run through the complete recipe harness. Full P6 acceptance and the P7 dual
+mutation/restoration check remain pending. This record must be completed before declaring the
+recipe accepted.
+
+| Field                                    | Preliminary evidence                                                                                                                                         |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Package source revision                  | `124c7790730477c974529e11460b728b96deee1e`                                                                                                                   |
+| Archive SHA-256                          | `38fd950b08990a95b780d3077ad65f3a98bb898cb858b7b2f9eaabaae236a3d2`                                                                                           |
+| Creator / starter                        | `create-adonisjs` `3.4.0`; official API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                                   |
+| Starter baseline / configured checkpoint | `145270d13bcc5da1022c2b02540ea7e61f34d7b7` / `077b92131c6eb4417c0116b9317a078ba974b652`                                                                      |
+| Starter lockfile SHA-256                 | `8e460c40eb5f4434146cc653c565892d2581d4a29e8f1f1756a4bb500f1f3d0d`                                                                                           |
+| Runtime / package manager                | Node `24.21.0`; pnpm `11.23.0`                                                                                                                               |
+| Installed packages                       | Core `7.6.0`; Auth `10.1.0`; Lucid `22.4.2`; Limiter `3.0.1`; Vine `4.4.0`                                                                                   |
+| Database                                 | Disposable local SQLite `3.53.4`; `better-sqlite3` `13.0.3`                                                                                                  |
+| Notification mode                        | Local in-process callback capture; development recipe uses log notifications                                                                                 |
+| Focused result                           | `the original login and both bearer credentials obey the complete reset lifecycle`: 1/1 passed in 2 seconds                                                  |
+| Other checks                             | Installed application's `pnpm typecheck` and `pnpm lint` passed after migrations and formatting generated output; route listing showed three reset endpoints |
+| Full harness / mutation                  | Pending; no P6 or P7 result claimed                                                                                                                          |
+
+The starter was created outside the repository with:
+
+```sh
+pnpm create adonisjs@3.4.0 <directory> \
+  --kit=github:adonisjs/starter-kits/api#46d235932e3eb6472a16b740fa0b47b5f69fc6fc \
+  --pkg=pnpm
+```
+
+The creator did not initialize Git; the baseline was recorded with `git init`, `git add -A` and
+`git commit -m starter`. Its original login and protected profile were exercised before Account
+Kit installation. The focused check then used a separate clone of the configured checkpoint with
+the hand edits applied. From that application's directory, the spec command was:
+
+```sh
+pnpm test --files=api-password-reset.spec.ts
+```
+
+The local test invocation enforced Node 24 and used `NODE_ENV=test`, `TZ=UTC`, `HOST=127.0.0.1`,
+`PORT=41234`, `APP_URL=http://127.0.0.1:41234`, `SESSION_DRIVER=memory`, `LIMITER_STORE=memory`,
+`LOG_LEVEL=silent` and a generated development `APP_KEY`. The final harness record will retain
+these settings privately and print its reproducible replay command instead of relying on local
+shell settings.
+
+This API recipe supplies no frontend password form; production proof links must target an
+application-owned reset form instead of the local JSON inspection URL.
+
+Limits: local SQLite and local notification capture only; no recipient delivery, PostgreSQL,
+browser form, viewport or keyboard acceptance is claimed. See the
+[example evidence format](../guides/example-acceptance.md#updating-the-record).
