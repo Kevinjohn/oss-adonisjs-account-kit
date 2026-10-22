@@ -117,6 +117,8 @@ wait one minute, then request a fresh verification link from the dashboard.
 
 ## Transplanting into an existing Edge app
 
+Follow the [password reset recipe](../../docs/recipes/hypermedia-edge.md) to add recovery to a clean starter.
+
 Copy the minimum relevant pieces and adapt names to the host app:
 
 - `config/account_kit.ts`, the limiter configuration, provider registration in `adonisrc.ts`, and
