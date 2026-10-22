@@ -12,17 +12,17 @@ The acceptance callback inserts the invitation's permitted role for the newly cr
 
 ## File and copy map
 
-| Change                                              | Source in this recipe | Purpose                                                                                                                    |
-| --------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `database/migrations/*_create_app_user_roles.ts`    | Patch                 | Stores application-owned account roles.                                                                                    |
-| `app/services/invitation_authorization.ts`          | Patch                 | Reads owner roles and implements the invitation policy.                                                                    |
-| `app/services/invitation_delivery.ts`               | Patch                 | Captures invitation links for the acceptance test; replace it with the application's mailer.                               |
-| `app/controllers/invitations_controller.ts`         | Patch                 | Checks token ability and implements invitation send, inspect, and accept actions.                                          |
-| `start/routes.ts`                                   | Patch                 | Mounts the application's invitation routes beside its existing API routes.                                                 |
-| `config/account_kit.ts`                             | Patch                 | Enables invitations and maps the required `fullName` profile field alongside authorization, delivery, and role assignment. |
-| `tests/functional/invitations-existing-app.spec.ts` | Acceptance spec       | Exercises policy, acceptance, and replay against the scaffold.                                                             |
+| Change                                              | Source in this recipe | Purpose                                                                                                                                                                                           |
+| --------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database/migrations/*_create_app_user_roles.ts`    | Patch                 | Stores application-owned account roles.                                                                                                                                                           |
+| `app/services/invitation_authorization.ts`          | Patch                 | Reads owner roles and implements the invitation policy.                                                                                                                                           |
+| `app/services/invitation_delivery.ts`               | Patch                 | Captures invitation links for the acceptance test; replace it with the application's mailer.                                                                                                      |
+| `app/controllers/invitations_controller.ts`         | Patch                 | Checks token ability and implements invitation send, inspect, and accept actions.                                                                                                                 |
+| `start/routes.ts`                                   | Patch                 | Mounts the application's invitation routes beside its existing API routes.                                                                                                                        |
+| `config/account_kit.ts`                             | Patch                 | Enables invitations and validates `fullName` in `registration.mapFields` and assigns it to the Lucid model through `mapRegistrationData`, alongside authorization, delivery, and role assignment. |
+| `tests/functional/invitations-existing-app.spec.ts` | Acceptance spec       | Exercises policy, acceptance, and replay against the scaffold.                                                                                                                                    |
 
-Keep the `owner` role assignment inside the application's trusted provisioning process. Copy the migration, policy, controller, routes, and acceptance callback as a unit. Adapt `registration.mapFields` to validate the profile fields your existing user model requires, preserving any other application registration fields. Replace only the local delivery callback with the application's mail transport. The acceptance test and local capture service are development evidence, not a delivery provider.
+Keep the `owner` role assignment inside the application's trusted provisioning process. Copy the migration, policy, controller, routes, and acceptance callback as a unit. Adapt `registration.mapFields` to validate the profile fields your existing user model requires, then map those fields onto the Lucid model with `mapRegistrationData`; preserve any other application registration fields. Replace only the local delivery callback with the application's mail transport. The acceptance test and local capture service are development evidence, not a delivery provider.
 
 ## Failure and recovery evidence
 

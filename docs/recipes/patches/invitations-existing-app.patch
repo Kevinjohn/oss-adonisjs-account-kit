@@ -87,7 +87,7 @@ index 0000000..5ca1830
 +  sentInvitations.push(url)
 +}
 diff --git a/config/account_kit.ts b/config/account_kit.ts
-index 9214431..f2eaeda 100644
+index 9214431..c242bc9 100644
 --- a/config/account_kit.ts
 +++ b/config/account_kit.ts
 @@ -1,4 +1,7 @@
@@ -98,7 +98,36 @@ index 9214431..f2eaeda 100644
  import {
    createLucidAdapter,
    defineConfig,
-@@ -32,12 +35,20 @@ export default defineConfig({
+@@ -14,10 +17,24 @@ const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('
+ const accountUrl = (path: string, token: string) =>
+   new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
+
+-const users = createLucidAdapter(async () => {
+-  const { default: User } = await import('#models/user')
+-  return User
+-})
++const users = createLucidAdapter(
++  async () => {
++    const { default: User } = await import('#models/user')
++    return User
++  },
++  {
++    mapRegistrationData(data, user) {
++      if (!data || typeof data !== 'object' || Array.isArray(data)) {
++        throw new InvalidInputError('Invalid invitation profile fields')
++      }
++      const fullName = Reflect.get(data, 'fullName')
++      if (typeof fullName !== 'string') {
++        throw new InvalidInputError('A full name is required')
++      }
++      user.fullName = fullName
++    },
++  }
++)
+
+ const notConfigured = (method: string) => async () => {
+   throw new Error('account_kit: configure notify.' + method)
+@@ -32,12 +49,20 @@ export default defineConfig({
    /**
     * Account flows the application exposes.
     */
@@ -121,7 +150,7 @@ index 9214431..f2eaeda 100644
 
    /**
     * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
-@@ -48,9 +59,7 @@ export default defineConfig({
+@@ -48,9 +73,7 @@ export default defineConfig({
     * Who may send, manage and list invitations. Everything is denied until you decide.
     */
    authorize: {
@@ -132,7 +161,7 @@ index 9214431..f2eaeda 100644
    },
 
    /**
-@@ -59,7 +68,7 @@ export default defineConfig({
+@@ -59,7 +82,7 @@ export default defineConfig({
    urls: {
      passwordReset: (token) => accountUrl('recovery', token),
      emailVerification: (token) => accountUrl('verification', token),
@@ -141,7 +170,7 @@ index 9214431..f2eaeda 100644
      emailChange: (token) => accountUrl('email-change', token),
    },
 
-@@ -69,7 +78,7 @@ export default defineConfig({
+@@ -69,7 +92,7 @@ export default defineConfig({
    notify: {
      passwordResetProvision: notConfigured('passwordResetProvision'),
      accountActivationProvision: notConfigured('accountActivationProvision'),
@@ -150,7 +179,7 @@ index 9214431..f2eaeda 100644
      emailChangeProvision: notConfigured('emailChangeProvision'),
      emailChanged: notConfigured('emailChanged'),
      passwordResetCompleted: notConfigured('passwordResetCompleted'),
-@@ -87,7 +96,7 @@ export default defineConfig({
+@@ -87,7 +110,7 @@ export default defineConfig({
    /**
     * Grants the invited role inside the acceptance transaction.
     */
