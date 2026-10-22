@@ -4356,7 +4356,7 @@
           "socialAuthentication"
         ],
         "summary": "Provider redirect target",
-        "description": "Session guards finish the flow here. Access-token guards accept only `login` here; other intents use the POST form.",
+        "description": "Session guards finish the flow here. Access-token guards accept only `login` here; other intents use the POST form. A `link` refused by `acceptLink` is a 403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`.",
         "security": [],
         "parameters": [
           {
@@ -4656,6 +4656,7 @@
           "socialAuthentication"
         ],
         "summary": "Finish a social flow from an access-token client",
+        "description": "A `link` refused by `acceptLink` is a 403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`.",
         "security": [
           {},
           {
