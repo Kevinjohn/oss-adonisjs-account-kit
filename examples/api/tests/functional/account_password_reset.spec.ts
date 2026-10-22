@@ -281,10 +281,10 @@ test.group('Account password reset', (group) => {
       workers.push(restartedWorker)
       assert.notEqual(restartedWorker.child.pid, interruptedWorker.child.pid)
       await restartedWorker.waitFor('ready')
-      const retriedDelivery = await restartedWorker.waitFor('delivery_accepted')
-      assert.equal(retriedDelivery.operationId, pendingOutbox.operation_id)
       const completion = await restartedWorker.waitFor('completed')
       assert.equal(completion.delivered, 1)
+      const retriedDelivery = await restartedWorker.waitFor('delivery_accepted')
+      assert.equal(retriedDelivery.operationId, pendingOutbox.operation_id)
       assert.equal((await restartedWorker.waitForExit()).code, 0)
 
       const deliveredOutbox = await db
