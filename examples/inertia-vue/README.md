@@ -7,8 +7,9 @@ proof consumption and credential revisions.
 
 ## Requirements and run
 
-Use Node.js 24 and pnpm 11.23.0 from the repository root. The contributor workflow packs the local
-source because the matching package release is not published yet:
+Use Node.js 24 and pnpm 11.23.0 from the repository root. The contributor workflow below packs the
+local checkout. For the available GitHub release archive, follow the
+[root install instructions](../../README.md#install); npm publication is still pending:
 
 ```sh
 nvm use
@@ -36,10 +37,10 @@ integrity. Commit a lockfile refresh only when dependencies change.
 
 ### Consumer install status
 
-The consumer path is blocked on publication of the matching Account Kit release. The registry
-package currently returns 404 and there is no matching GitHub release/tag, so this example does not
-invent a version. Once published, replace the local archive dependency with the exact released
-version, refresh `pnpm-lock.yaml`, and document the frozen consumer install here.
+The GitHub release archive is available through the [root install instructions](../../README.md#install).
+For a released-consumer check, replace the local archive dependency with that release archive and
+refresh `pnpm-lock.yaml`. The local packing workflow above verifies the checkout; it does not prove
+installation of the released bytes. npm publication is still pending.
 
 ## Account journey and policy
 

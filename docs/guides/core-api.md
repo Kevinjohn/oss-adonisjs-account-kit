@@ -12,33 +12,20 @@ Use fictional accounts and a disposable local database while following it. The s
 
 ## 1. Create the app and install Account Kit
 
-Use Node 24 and pnpm. A matching published package release is not yet available, so the
-following contributor evaluation uses an archive built from this repository. It is not a frozen
-published-consumer install. In a local checkout of Account Kit, build the archive first:
-
-```sh
-pnpm install --frozen-lockfile
-pnpm build
-pnpm pack --pack-destination /absolute/path/to/account-kit-archives
-```
-
-Use a separate directory for the disposable API application. Replace the archive path below with
-the actual archive emitted by `pnpm pack` (the current development version is `0.0.0`):
+Use Node 24 and pnpm. Create the disposable API application in a separate directory:
 
 ```sh
 pnpm create adonisjs@latest my-app --kit=api --pkg=pnpm
 cd my-app
-pnpm add /absolute/path/to/account-kit-archives/adonisjs-account-kit-0.0.0.tgz
-node ace add @adonisjs/limiter
-node ace add adonisjs-account-kit
-node ace migration:run
 ```
 
-Installing the archive before `node ace add` lets Ace configure the locally installed package
-without trying to fetch an unavailable registry release. The [verified-route recipe](../recipes/verified-email-route.md#verify-all-three-states)
-records a fresh official API starter using this installation sequence; the rest of this tutorial
-retains its separately recorded HTTP journey evidence. When a matching release exists, use its
-exact version and committed consumer lockfile instead of presenting this archive as published.
+Follow the [root install instructions](../../README.md#install) to install the GitHub release
+archive, configure Account Kit and run migrations. npm publication is still pending. For
+contributor evaluation of unreleased changes, build and pack the checkout, install that local
+archive instead, then run `node ace configure adonisjs-account-kit`. Record the source revision
+and archive digest separately from released-consumer evidence. The
+[verified-route recipe](../recipes/verified-email-route.md#verify-all-three-states) retains its
+dated local-archive check; the rest of this tutorial has separately recorded HTTP journey evidence.
 
 Choose the limiter's `database` store when prompted. Keep the starter's `api` guard, Lucid
 `User.accessTokens` provider, and `auth_access_tokens` migration. Set a stable `APP_KEY` and
