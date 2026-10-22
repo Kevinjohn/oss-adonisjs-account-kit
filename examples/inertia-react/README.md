@@ -1,7 +1,7 @@
 # Inertia and React example
 
 The AdonisJS 7 Inertia React starter kit with Account Kit added. It shows the account flows a
-browser app needs, each as a plain controller and React page you can copy:
+browser app needs, each as a plain controller and React page you can copy.
 
 The supported starting point is the pinned official Inertia React starter at
 [`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-react).
