@@ -1,7 +1,7 @@
 # Account Kit for AdonisJS
 
 [![checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml)
-[![Status: alpha](https://img.shields.io/badge/status-alpha-orange)](CHANGELOG.md)
+[![Release: alpha](https://img.shields.io/github/v/release/Kevinjohn/oss-adonisjs-account-kit?include_prereleases&label=alpha&color=orange)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
@@ -76,14 +76,21 @@ generator, and ORM adapters are available for the integrations you choose:
 
 ## Install
 
+Account Kit is in alpha and not yet on npm. Install the packed release from
+[GitHub releases](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases):
+
 ```sh
 node ace add @adonisjs/limiter
-node ace add adonisjs-account-kit
+npm install https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.0/adonisjs-account-kit-0.1.0.tgz
+node ace configure adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor
 ```
 
-`node ace add` writes `config/account_kit.ts`, generates the migrations and registers the provider
+Use `pnpm add` or `yarn add` with the same URL if that is your package manager. Once the package is
+on npm, `node ace add adonisjs-account-kit` replaces the install and configure steps.
+
+`node ace configure` writes `config/account_kit.ts`, generates the migrations and registers the provider
 and commands. The doctor checks the config, limiter, `APP_URL`, required package tables and user
 columns. It also checks that the password column permits `NULL` when selected social registration
 can create an account without a password:
@@ -123,7 +130,7 @@ explains the status codes and the `committed` marker.
 [getting started](docs/getting-started.md).
 
 To have the config, guard adapter, middleware and managed route file generated from your answers
-instead, follow [guided setup](docs/setup.md) in place of `node ace add adonisjs-account-kit`.
+instead, follow [guided setup](docs/setup.md) in place of `node ace configure adonisjs-account-kit`.
 
 Requirements: Node.js 24+, AdonisJS 7 with Lucid, `@adonisjs/limiter`, a stable `APP_KEY` of at
 least 32 characters and an `APP_URL`. See [database compatibility](docs/compatibility.md) for the
@@ -163,8 +170,8 @@ Account flows are where attackers look first. What Account Kit does by default:
   [Links in emails](docs/security.md#links-in-emails)
 - **No half-finished changes.** Each operation runs in one transaction with the user row locked.
   [Transactions](docs/security.md#transactions-and-races)
-- **Verifiable releases.** Published with npm provenance. [Supply chain](docs/security.md#supply-chain)
-  explains release verification.
+- **Verifiable releases.** npm releases will carry provenance; alpha tarballs are attached to tagged
+  GitHub releases. [Supply chain](docs/security.md#supply-chain) explains release verification.
 
 The [security model](docs/security.md) names the code and the test behind each defense, what your
 app must still do, and what is out of scope. Report vulnerabilities privately: see
