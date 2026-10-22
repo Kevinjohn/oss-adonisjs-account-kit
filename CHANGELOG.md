@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 - 2026-10-22
+
+Initial public alpha. Distributed as a GitHub release tarball; not yet published to npm.
 
 - Add `socialAuthentication.acceptLink` so an application can refuse a provider account before it is linked, with `SocialLinkRefusedError` (403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`).
 - Add `authentication.inspectAccountAccess` and its generic `AccountAccessDeniedError` for reading an account's eligibility and credential revision without a credential for it.
@@ -18,8 +20,6 @@
 - Add profile and pending-email settings with explicit email-change confirmation to the Inertia example.
 - Recover the Inertia example signup flow when account creation commits but notification or initial sign-in fails.
 - Improve account example contrast, keyboard focus, page landmarks, reduced motion, and narrow-screen layout.
-
-Initial public release.
 
 ### Added
 
