@@ -7,6 +7,7 @@ import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { dispatchAccountKitOutbox } from '#services/account_kit_outbox'
 import { captureFollowUpDiagnostics } from '#tests/helpers/follow_up_diagnostics'
+import { startOutboxWorkerProcess } from '#tests/helpers/outbox_worker_process'
 import { tokenFrom } from '#tests/helpers/link_tokens'
 import { truncateDatabase } from '#tests/helpers/database'
 
@@ -222,5 +223,78 @@ test.group('Account password reset', (group) => {
       notifications.events.filter((event) => event.value === pendingOutbox.operation_id).length,
       1
     )
+  })
+
+  test('the credential notice outbox recovers after a worker process restarts', async ({
+    client,
+    assert,
+  }) => {
+    notifications.reset()
+    const recoveryUser = await User.create({
+      fullName: 'Restart Recovery User',
+      email: 'restart-recovery@example.test',
+      password: 'StartPass123!',
+    })
+    const recoveryRequest = await client
+      .post('/api/v1/auth/password-reset')
+      .json({ email: recoveryUser.email })
+    assert.equal(recoveryRequest.status(), 202)
+    const recoveryToken = tokenFrom(
+      notifications.events.filter((event) => event.kind === 'recovery').at(-1)!.value
+    )
+    const recoveryPath = `/api/v1/auth/password-reset/${encodeURIComponent(recoveryToken)}`
+    assert.equal(
+      (
+        await client.post(recoveryPath).json({
+          password: 'RecoveredPass123!',
+          passwordConfirmation: 'RecoveredPass123!',
+        })
+      ).status(),
+      202
+    )
+
+    const pendingOutbox = await db
+      .from('account_kit_outbox')
+      .where('user_id', recoveryUser.id)
+      .where('operation', 'password_reset')
+      .firstOrFail()
+    assert.isNull(pendingOutbox.sent_at)
+    const workers = []
+
+    try {
+      const interruptedWorker = startOutboxWorkerProcess('interrupt_after_delivery')
+      workers.push(interruptedWorker)
+      await interruptedWorker.waitFor('ready')
+      const firstDelivery = await interruptedWorker.waitFor('delivery_accepted')
+      assert.equal(firstDelivery.operationId, pendingOutbox.operation_id)
+
+      const pendingAfterInterruption = await db
+        .from('account_kit_outbox')
+        .where('id', pendingOutbox.id)
+        .firstOrFail()
+      assert.isNull(pendingAfterInterruption.sent_at)
+      assert.equal(pendingAfterInterruption.attempts, 0)
+      await interruptedWorker.kill()
+      assert.equal((await interruptedWorker.waitForExit()).signal, 'SIGKILL')
+
+      const restartedWorker = startOutboxWorkerProcess('complete')
+      workers.push(restartedWorker)
+      assert.notEqual(restartedWorker.child.pid, interruptedWorker.child.pid)
+      await restartedWorker.waitFor('ready')
+      const retriedDelivery = await restartedWorker.waitFor('delivery_accepted')
+      assert.equal(retriedDelivery.operationId, pendingOutbox.operation_id)
+      const completion = await restartedWorker.waitFor('completed')
+      assert.equal(completion.delivered, 1)
+      assert.equal((await restartedWorker.waitForExit()).code, 0)
+
+      const deliveredOutbox = await db
+        .from('account_kit_outbox')
+        .where('id', pendingOutbox.id)
+        .firstOrFail()
+      assert.isNotNull(deliveredOutbox.sent_at)
+      assert.equal(deliveredOutbox.operation_id, pendingOutbox.operation_id)
+    } finally {
+      await Promise.all(workers.map((worker) => worker.kill()))
+    }
   })
 })
