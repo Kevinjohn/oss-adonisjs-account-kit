@@ -2,7 +2,7 @@
 
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import db from '@adonisjs/lucid/services/db'
 import { Session } from '@adonisjs/session'
 import User from '#models/user'
@@ -62,7 +62,7 @@ test.group('native account journeys', (group) => {
     assert.isFalse((await User.findByOrFail('id', user.id)).emailVerifiedAt === null)
   })
 
-  test('reset acknowledgement is generic and reset proof revokes other sessions', async ({
+  test('reset acknowledgement is generic and revokes both old sessions through the original login', async ({
     browser,
     visit,
     assert,
@@ -95,15 +95,25 @@ test.group('native account journeys', (group) => {
 
       const resetToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
       const resetPath = `/reset-password/${encodeURIComponent(resetToken)}`
-      const oldSession = await secondContext.visit('/login')
-      await oldSession.getByLabel('Email').fill(user.email)
-      await oldSession.getByLabel('Password').fill('OldPassword123!')
-      await oldSession.getByRole('button', { name: 'Sign in' }).click()
-      await oldSession.getByRole('heading', { name: 'Your account' }).waitFor()
-      await oldSession.goto(resetPath)
-      await oldSession.getByRole('heading', { name: 'Choose a new password' }).waitFor()
-      await oldSession.goto('/dashboard')
-      await oldSession.getByText('Signed in as morgan@example.test.').waitFor()
+      const firstSession = requester
+      await firstSession.goto('/login')
+      await firstSession.getByLabel('Email').fill(user.email)
+      await firstSession.getByLabel('Password').fill('OldPassword123!')
+      await firstSession.getByRole('button', { name: 'Sign in' }).click()
+      await firstSession.getByRole('heading', { name: 'Your account' }).waitFor()
+      await firstSession.goto('/dashboard')
+      await firstSession.getByText('Signed in as morgan@example.test.').waitFor()
+
+      const secondSession = await secondContext.visit('/login')
+      await secondSession.getByLabel('Email').fill(user.email)
+      await secondSession.getByLabel('Password').fill('OldPassword123!')
+      await secondSession.getByRole('button', { name: 'Sign in' }).click()
+      await secondSession.getByRole('heading', { name: 'Your account' }).waitFor()
+      await secondSession.goto('/dashboard')
+      await secondSession.getByText('Signed in as morgan@example.test.').waitFor()
+
+      await secondSession.goto(resetPath)
+      await secondSession.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await requester.goto(resetPath)
       await requester.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       assert.isNotNull(await User.findByOrFail('id', user.id))
@@ -111,14 +121,214 @@ test.group('native account journeys', (group) => {
       await requester.getByLabel('Confirm password').fill('NewPassword123!')
       await requester.getByRole('button', { name: 'Reset password' }).click()
       await requester.getByRole('heading', { name: 'Sign in' }).waitFor()
-      await oldSession.goto('/account')
-      await oldSession.getByRole('heading', { name: 'Sign in' }).waitFor()
+
+      const newPasswordHash = (await db
+        .from('users')
+        .select('password')
+        .where('id', user.id)
+        .first())!.password
+      await secondSession.getByLabel('New password').fill('AnotherPassword123!')
+      await secondSession.getByLabel('Confirm password').fill('AnotherPassword123!')
+      await secondSession.getByRole('button', { name: 'Reset password' }).click()
+      await secondSession
+        .getByText(/This reset link is invalid, already used, or expired/)
+        .waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      assert.equal(
+        (await db.from('users').select('password').where('id', user.id).first())!.password,
+        newPasswordHash
+      )
+
+      for (const client of [firstSession, secondSession]) {
+        await client.goto('/dashboard')
+        await client.getByRole('heading', { name: 'Sign in' }).waitFor()
+      }
+
       await requester.goto(resetPath)
       await requester.getByText(/invalid, already used, or expired/).waitFor()
       assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+
+      await requester.goto('/login')
+      await requester.getByLabel('Email').fill(user.email)
+      await requester.getByLabel('Password').fill('OldPassword123!')
+      await requester.getByRole('button', { name: 'Sign in' }).click()
+      await requester.waitForURL('**/login')
+      assert.include(
+        await requester.locator('body').innerText(),
+        'The email or password is incorrect. Check your details and try again.'
+      )
+      await requester.getByLabel('Password').fill('NewPassword123!')
+      await requester.getByRole('button', { name: 'Sign in' }).click()
+      await requester.getByRole('heading', { name: 'Your account' }).waitFor()
+      await requester.goto('/dashboard')
+      await requester.getByText('Signed in as morgan@example.test.').waitFor()
     } finally {
       await secondContext.close()
     }
+  })
+
+  test('malformed and expired reset POSTs are rejected without changing credentials or proof state', async ({
+    visit,
+    assert,
+  }) => {
+    accountKitNotifications.clear()
+    const user = await User.create({
+      fullName: 'Expired Reset',
+      email: 'expired-reset@example.test',
+      password: 'OldPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const token = randomBytes(40).toString('base64url')
+    const expiredHash = createHash('sha256').update(token).digest('hex')
+    const now = new Date()
+    await db.table('password_reset_tokens').insert({
+      tokenable_id: user.id,
+      email: user.email,
+      hash: expiredHash,
+      expires_at: new Date(now.getTime() - 60_000).toISOString(),
+      created_at: new Date(now.getTime() - 120_000).toISOString(),
+    })
+    const formOwner = await User.create({
+      fullName: 'Reset Form Owner',
+      email: 'reset-form-owner@example.test',
+      password: 'OldPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+
+    const originalHash = (await db.from('users').select('password').where('id', user.id).first())!
+      .password
+    const page = await visit('/forgot-password')
+    await page.getByLabel('Email').fill(formOwner.email)
+    await page.getByRole('button', { name: 'Send reset link' }).click()
+    await page
+      .getByText('If an account exists for that address, we have sent a reset link.')
+      .waitFor()
+    const validToken = accountKitNotifications.tokenFor('passwordResetProvision', formOwner.email)
+
+    for (const rejectedToken of ['not-a-proof', token]) {
+      await page.goto(`/reset-password/${encodeURIComponent(validToken)}`)
+      await page.getByRole('heading', { name: 'Choose a new password' }).waitFor()
+      await page
+        .locator('form')
+        .evaluate(
+          (form, action) => form.setAttribute('action', action),
+          `/reset-password/${encodeURIComponent(rejectedToken)}`
+        )
+      await page.getByLabel('New password').fill('ReplacementPass123!')
+      await page.getByLabel('Confirm password').fill('ReplacementPass123!')
+      await page.getByRole('button', { name: 'Reset password' }).click()
+      await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
+      assert.equal(
+        (await db.from('users').select('password').where('id', user.id).first())!.password,
+        originalHash
+      )
+      assert.isNotNull(
+        await db
+          .from('password_reset_tokens')
+          .where('tokenable_id', user.id)
+          .where('hash', expiredHash)
+          .first()
+      )
+    }
+  })
+
+  test('a mismatched reset submission clears password fields and preserves the current password', async ({
+    browser,
+    assert,
+  }) => {
+    accountKitNotifications.clear()
+    const user = await User.create({
+      fullName: 'Mismatch Reset',
+      email: 'mismatch-reset@example.test',
+      password: 'OldPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const originalHash = (await db.from('users').select('password').where('id', user.id).first())!
+      .password
+    const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+    try {
+      const requester = await context.visit('/forgot-password')
+      await requester.getByLabel('Email').fill(user.email)
+      await requester.getByRole('button', { name: 'Send reset link' }).click()
+      await requester
+        .getByText('If an account exists for that address, we have sent a reset link.')
+        .waitFor()
+      const token = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+      await requester.goto(`/reset-password/${encodeURIComponent(token)}`)
+      await requester.getByRole('heading', { name: 'Choose a new password' }).waitFor()
+      await requester.getByLabel('New password').fill('ReplacementPass123!')
+      await requester.getByLabel('Confirm password').fill('DifferentPass123!')
+      await requester.getByRole('button', { name: 'Reset password' }).click()
+      await requester.getByText('Confirm password must match Password.').waitFor()
+      assert.equal(await requester.getByLabel('New password').inputValue(), '')
+      assert.equal(await requester.getByLabel('Confirm password').inputValue(), '')
+      assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
+      assert.equal(
+        (await db.from('users').select('password').where('id', user.id).first())!.password,
+        originalHash
+      )
+      assert.isNotNull(
+        await db.from('password_reset_tokens').where('tokenable_id', user.id).first()
+      )
+    } finally {
+      await context.close()
+    }
+  })
+
+  test('requesting a replacement reset link invalidates the first without changing credentials', async ({
+    visit,
+    assert,
+  }) => {
+    accountKitNotifications.clear()
+    const user = await User.create({
+      fullName: 'Replacement Reset',
+      email: 'replacement-reset@example.test',
+      password: 'OldPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const originalHash = (await db.from('users').select('password').where('id', user.id).first())!
+      .password
+    const page = await visit('/forgot-password')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByRole('button', { name: 'Send reset link' }).click()
+    await page
+      .getByText('If an account exists for that address, we have sent a reset link.')
+      .waitFor()
+    const firstToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+
+    await page.goto('/forgot-password')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByRole('button', { name: 'Send reset link' }).click()
+    await page
+      .getByText('If an account exists for that address, we have sent a reset link.')
+      .waitFor()
+    const replacementToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+
+    await page.goto(`/reset-password/${encodeURIComponent(firstToken)}`)
+    await page.getByText(/This link is invalid, already used, or expired/).waitFor()
+    await page.goto(`/reset-password/${encodeURIComponent(replacementToken)}`)
+    await page.getByRole('heading', { name: 'Choose a new password' }).waitFor()
+    await page
+      .locator('form')
+      .evaluate(
+        (form, action) => form.setAttribute('action', action),
+        `/reset-password/${encodeURIComponent(firstToken)}`
+      )
+    await page.getByLabel('New password').fill('ReplacementPass123!')
+    await page.getByLabel('Confirm password').fill('ReplacementPass123!')
+    await page.getByRole('button', { name: 'Reset password' }).click()
+    await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
+    assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
+    assert.equal(
+      (await db.from('users').select('password').where('id', user.id).first())!.password,
+      originalHash
+    )
+    assert.isNotNull(await db.from('password_reset_tokens').where('tokenable_id', user.id).first())
   })
 
   test('validation retains safe fields, clears secrets, and focuses an error', async ({

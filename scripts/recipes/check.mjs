@@ -17,14 +17,22 @@ const database = option('database', 'sqlite')
 const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
 const candidateRevision = option('candidate-revision', process.env.CANDIDATE_REVISION)
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Node 24 is required')
-const apiRecipes = new Set(['api-password-reset', 'invitations-existing-app'])
-if (!apiRecipes.has(recipe)) throw new Error(`Unknown recipe: ${recipe}`)
+const recipeKits = {
+  'api-password-reset': 'api',
+  'invitations-existing-app': 'api',
+  'inertia-react-password-reset': 'inertia-react',
+  'inertia-vue-password-reset': 'inertia-vue',
+  'hypermedia-password-reset': 'hypermedia',
+}
+const kit = Object.hasOwn(recipeKits, recipe) ? recipeKits[recipe] : undefined
+const browserRecipe = kit === 'inertia-react' || kit === 'inertia-vue' || kit === 'hypermedia'
+if (!kit) throw new Error(`Unknown recipe: ${recipe}`)
 if (database !== 'sqlite') throw new Error('This recipe currently supports --database=sqlite only')
 if (Boolean(candidateInput) !== Boolean(candidateRevision)) {
   throw new Error('--candidate-tarball and --candidate-revision must be supplied together')
 }
 const patch = join(root, 'docs/recipes/patches', `${recipe}.patch`)
-const spec = join(root, 'examples/api/tests/recipes', `${recipe}.spec.ts`)
+const spec = join(root, `examples/${kit}/tests/recipes`, `${recipe}.spec.ts`)
 // Validate the committed inputs before downloading or creating anything.
 let patchText
 try {
@@ -50,6 +58,31 @@ for (const entry of patchText.matchAll(/^diff --git a\/(.+) b\/(.+)$/gm)) {
 const retained = await mkdtemp(join(tmpdir(), 'account-kit-recipe-'))
 const appRoot = join(retained, 'app')
 const specCommand = ['test', `--files=${recipe}.spec.ts`]
+const browserBootstrapPath = join(appRoot, 'tests/bootstrap.ts')
+const vueBrowserBootstrap = (source) => {
+  if (source.includes("from '@japa/browser-client'")) return source
+  const pluginImports = `import { browserClient } from '@japa/browser-client'
+import { authBrowserClient } from '@adonisjs/auth/plugins/browser_client'
+import { sessionBrowserClient } from '@adonisjs/session/plugins/browser_client'
+`
+  const importsAnchor = "import testUtils from '@adonisjs/core/services/test_utils'\n"
+  const pluginsAnchor =
+    "export const plugins: Config['plugins'] = [assert(), pluginAdonisJS(app), dbAssertions(app)]"
+  if (!source.includes(importsAnchor) || !source.includes(pluginsAnchor)) {
+    throw new Error('Pinned Vue starter test bootstrap no longer matches the browser-client setup')
+  }
+  return source.replace(importsAnchor, `${importsAnchor}${pluginImports}`).replace(
+    pluginsAnchor,
+    `export const plugins: Config['plugins'] = [
+  assert(),
+  pluginAdonisJS(app),
+  dbAssertions(app),
+  browserClient({ runInSuites: ['browser'] }),
+  sessionBrowserClient(app),
+  authBrowserClient(app),
+]`
+  )
+}
 const evidence = {
   recipe,
   database,
@@ -122,7 +155,7 @@ const testEnvironment = {
   LOG_LEVEL: 'silent',
   APP_URL: `http://127.0.0.1:${port}`,
   APP_KEY: randomBytes(32).toString('hex'),
-  SESSION_DRIVER: 'memory',
+  SESSION_DRIVER: browserRecipe ? 'cookie' : 'memory',
   LIMITER_STORE: 'memory',
   DB_CONNECTION: 'sqlite',
   PATH: process.env.PATH,
@@ -199,7 +232,7 @@ try {
       'create',
       'adonisjs@3.4.0',
       appRoot,
-      `--kit=github:adonisjs/starter-kits/api#${evidence.starterRevision}`,
+      `--kit=github:adonisjs/starter-kits/${kit}#${evidence.starterRevision}`,
       '--pkg=pnpm',
     ],
     retained
@@ -219,17 +252,35 @@ try {
     !/connection:\s*'sqlite'/.test(databaseConfig) ||
     !/filename:\s*app\.tmpPath\('db\.sqlite3'\)/.test(databaseConfig)
   ) {
-    throw new Error("Pinned API starter must use SQLite at app.tmpPath('db.sqlite3')")
+    throw new Error(`Pinned ${kit} starter must use SQLite at app.tmpPath('db.sqlite3')`)
   }
   evidence.databasePath = join(appRoot, 'tmp/db.sqlite3')
 
   // P1 proves the application's original login before Account Kit is installed.
   run('pnpm', ['exec', 'node', 'ace', 'migration:run', '--force'])
-  const baselineSpec = join(appRoot, 'tests/functional/recipe_starter_login.spec.ts')
+  const baselineSpec = join(
+    appRoot,
+    browserRecipe
+      ? 'tests/browser/recipe_starter_login.spec.ts'
+      : 'tests/functional/recipe_starter_login.spec.ts'
+  )
   await mkdir(dirname(baselineSpec), { recursive: true })
   await writeFile(
     baselineSpec,
-    `import { test } from '@japa/runner'
+    browserRecipe
+      ? `import { test } from '@japa/runner'
+import User from '#models/user'
+test('original starter login reaches its protected dashboard', async ({ visit, assert }) => {
+  await User.create({ fullName: 'Starter Owner', email: 'starter@example.test', password: 'OriginalPass123!' })
+  const page = await visit('/login')
+  await page.getByLabel('Email', { exact: true }).fill('starter@example.test')
+  await page.getByLabel('Password', { exact: true }).fill('OriginalPass123!')
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await page.waitForURL('**/dashboard')
+  assert.equal((await page.goto('/dashboard'))?.status(), 200)
+})
+`
+      : `import { test } from '@japa/runner'
 import User from '#models/user'
 test('original starter login reaches its protected profile', async ({ client, assert }) => {
   const user = await User.create({ fullName: 'Starter Owner', email: 'starter@example.test', password: 'OriginalPass123!' })
@@ -242,7 +293,17 @@ test('original starter login reaches its protected profile', async ({ client, as
 })
 `
   )
-  run('pnpm', ['test', '--files=recipe_starter_login.spec.ts'])
+  let originalBootstrap
+  if (kit === 'inertia-vue') {
+    originalBootstrap = await readFile(browserBootstrapPath, 'utf8')
+    await writeFile(browserBootstrapPath, vueBrowserBootstrap(originalBootstrap))
+  }
+  try {
+    if (browserRecipe) run('pnpm', ['build'])
+    run('pnpm', ['test', '--files=recipe_starter_login.spec.ts'])
+  } finally {
+    if (originalBootstrap !== undefined) await writeFile(browserBootstrapPath, originalBootstrap)
+  }
   await rm(baselineSpec)
   run('pnpm', ['add', candidate, '@adonisjs/limiter@^3.0.0'])
   // Limiter's configurator supports database/redis; tests select its runtime memory store.
@@ -254,9 +315,29 @@ test('original starter login reaches its protected profile', async ({ client, as
   evidence.patchBaseline = run('git', ['rev-parse', 'HEAD']).trim()
   run('git', ['apply', '--check', patch])
   run('git', ['apply', patch])
-  await copyFile(spec, join(appRoot, 'tests/functional', `${recipe}.spec.ts`))
-  run('pnpm', ['add', '-D', '@japa/api-client@^3.2.1'])
+  const suiteDirectory = join(appRoot, 'tests', browserRecipe ? 'browser' : 'functional')
+  await mkdir(suiteDirectory, { recursive: true })
+  await copyFile(spec, join(suiteDirectory, `${recipe}.spec.ts`))
+  if (browserRecipe) {
+    testEnvironment.SESSION_DRIVER = 'database'
+    env.SESSION_DRIVER = 'database'
+    await writeFile(join(retained, 'test-environment.json'), JSON.stringify(testEnvironment), {
+      mode: 0o600,
+    })
+    if (kit === 'inertia-vue') {
+      const bootstrap = await readFile(browserBootstrapPath, 'utf8')
+      await writeFile(browserBootstrapPath, vueBrowserBootstrap(bootstrap))
+    }
+  } else {
+    run('pnpm', ['add', '-D', '@japa/api-client@^3.2.1'])
+  }
   run('pnpm', ['exec', 'node', 'ace', 'migration:run', '--force'])
+  if (browserRecipe) {
+    // Build indexes pages/controllers, but it does not regenerate the typed client route
+    // registry. New Inertia Forms need that registry before their pages can render.
+    run('pnpm', ['exec', 'node', 'ace', 'codegen'])
+    run('pnpm', ['build'])
+  }
   const routes = run('pnpm', ['exec', 'node', 'ace', 'list:routes'])
   evidence.routes = routes
   if (recipe === 'api-password-reset') {
@@ -291,6 +372,8 @@ test('original starter login reaches its protected profile', async ({ client, as
   console.log(`Retained scaffold: ${appRoot}`)
   console.log(`Spec command: ${evidence.specCommand}`)
   console.log(
-    'Limits: SQLite and local notification capture; no recipient delivery or browser coverage.'
+    browserRecipe
+      ? 'Limits: SQLite, Chromium browser journey and local notification capture; no recipient delivery or PostgreSQL coverage.'
+      : 'Limits: SQLite and local notification capture; no recipient delivery or browser coverage.'
   )
 }
