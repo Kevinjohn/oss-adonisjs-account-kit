@@ -136,7 +136,7 @@ Account Kit, captures the generated-file inventory, and records a second checkpo
 contains only application hand edits against that post-configure checkpoint. It excludes generated
 migrations, generated schema, dependencies, the lockfile and the archive.
 
-The harness copies the spec into `tests/functional/api-password-reset.spec.ts` and runs
+The harness copies the spec into the disposable app’s functional suite and runs
 `pnpm test --files=api-password-reset.spec.ts`. It prints the retained application, evidence JSON
 and an exact replay command. The replay wrapper retains the generated local test environment and
 Node executable, and removes inherited external database settings. Run the printed command from
