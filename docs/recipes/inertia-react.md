@@ -70,6 +70,11 @@ before deploying. The acceptance spec replaces those callbacks with local captur
 The login page gains one forgot-password link. The starter Inertia middleware already shares
 validation errors and flash messages, so its existing toast and theme remain in place.
 
+After adding the routes and pages, run `pnpm exec node ace codegen` before `pnpm build`.
+The build indexes controllers and pages, while the explicit codegen command also regenerates
+the typed client route registry used by Inertia forms. A stale registry cannot resolve the new
+reset form's route even when the backend route listing is correct.
+
 Shield stays enabled. Forms use the native Inertia/Shield CSRF integration; direct failure POSTs
 in the acceptance spec also send the real browser's CSRF token. New passwords use the starter's
 8–32-character validation, with confirmation matched server-side. Inspection never consumes the
