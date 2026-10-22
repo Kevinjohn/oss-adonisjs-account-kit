@@ -1,4 +1,4 @@
-import { configProvider } from '@adonisjs/core/config'
+import { configProvider } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { ConfigProvider } from '@adonisjs/core/types'
 
