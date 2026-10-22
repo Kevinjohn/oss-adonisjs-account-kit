@@ -111,6 +111,14 @@ test.group('existing app invitations', (group) => {
     assert.equal(inspected.status(), 200)
     assert.equal(inspected.header('cache-control'), 'no-store')
     assert.equal(inspected.header('referrer-policy'), 'no-referrer')
+
+    const beforeMalformed = await snapshot()
+    const malformed = await client.post(invitationPath).unsafeJson('{"password":')
+    assert.equal(malformed.status(), 400)
+    assert.equal(malformed.header('cache-control'), 'no-store')
+    assert.equal(malformed.header('referrer-policy'), 'no-referrer')
+    assert.deepEqual(await snapshot(), beforeMalformed)
+
     const accepted = await client.post(invitationPath).json({
       password: 'InvitedPass123!',
       passwordConfirmation: 'InvitedPass123!',
