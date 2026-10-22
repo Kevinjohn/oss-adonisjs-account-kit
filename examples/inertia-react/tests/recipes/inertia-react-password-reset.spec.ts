@@ -153,8 +153,8 @@ test('React reset recipe preserves failed submissions and revokes both native se
     await guest.waitForURL('**/login')
     for (const page of [first, second]) {
       await page.goto('/dashboard')
-      await page.waitForURL('**/login')
       assert.equal(new URL(page.url()).pathname, '/login')
+      await page.waitForURL('**/login')
     }
     await signIn(first, owner.email, oldPassword)
     await first.getByText('Invalid email or password.', { exact: true }).waitFor()
