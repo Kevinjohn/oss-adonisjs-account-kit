@@ -2,10 +2,11 @@
 
 For an existing application, keep the working login route and add password reset first. The
 [reset-only integration guide](password-reset-existing-app.md) is the shared prerequisite: the
-route, user model and guard stay in place, while the login controller must store the credential
-revision and revision-check middleware must enforce it. Session stacks also require a server-side
-session store. The [annotated API starter diff](password-reset-starter-diff.md) shows the changes
-in context. Account Kit supplies account operations; the application supplies request validation,
+route, user model and guard stay in place. Session stacks also require a login-controller update
+that stores the credential revision, revision-check middleware, and a server-side session store such
+as database or Redis. The API recipe uses bearer-token revocation without a session adapter. The
+[annotated API starter diff](password-reset-starter-diff.md) shows the changes in context. Account
+Kit supplies account operations; the application supplies request validation,
 authorization, notification delivery and browser/proof pages. All executable paths require Node 24
 and pnpm; the [compatibility page](../compatibility.md) describes supported databases.
 
@@ -71,13 +72,12 @@ records document their session-store and credential-revocation checks. The share
 
 ## Historical manual checks (21 October 2026)
 
-At source revision `2ae97e7f5629369548f155f4d30f2f6cc25e87e5`, a fresh tracked Vue checkout was
-installed, configured, migrated and opened in a browser on Node 24.21.0/pnpm 11.23.0. Manual signup
-inspection at 1440×900 and 375×812 checked useful-input retention, empty password fields and keyboard
-error recovery. At that revision, a disposable API application also added reset alongside its
-existing login; its saved token was rejected on the original protected profile after reset, and a
-fresh login succeeded. The verified-route recipe separately recorded guest, unverified and verified
-outcomes. The selector, navigation, example anchors and transplant anchors were inspected at desktop
-and narrow widths, where the comparison table scrolled horizontally. These observations describe
-that revision only; the current recipe records above state the database, browser, notification and
-delivery limits for their own runs.
+At Vue example source revision `369ac0fbe87ef372895ac5190396adde7d1b5969`, a fresh tracked checkout
+was installed, configured, migrated and opened in a browser on Node 24.21.0/pnpm 11.23.0. Manual
+signup inspection at 1440×900 and 375×812 checked useful-input retention, empty password fields and
+keyboard error recovery. The guide recorded those observations in commit
+`2ae97e7f5629369548f155f4d30f2f6cc25e87e5` on 21 October 2026. That guide commit also recorded an API
+reset exercise and desktop/narrow selector inspection; their application and rendered-page source
+revisions were not recorded. The verified-route recipe separately recorded guest, unverified and
+verified outcomes. These are historical observations; the current recipe records above state the
+database, browser, notification and delivery limits for their own runs.
