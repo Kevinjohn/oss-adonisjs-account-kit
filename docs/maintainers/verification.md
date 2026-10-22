@@ -403,9 +403,17 @@ receiver, so restart recovery does not establish exactly-once delivery.
 | Invitation                   | [`invitations_acceptance.spec.ts`](../../tests/invitations_acceptance.spec.ts): `the generated invitation hook setup error rolls back user creation and token consumption`                                                                                                                                           | [`invitations_acceptance.spec.ts`](../../tests/invitations_acceptance.spec.ts): `emits the accepted event once after a committed cleanup fault`; API revocation diagnostics: [`account_invitations.spec.ts`](../../examples/api/tests/functional/account_invitations.spec.ts), `invitations over HTTP enforce roles, single acceptance, resend, and revocation`                                                                                                                                                                                    | Not applicable; invitations use post-commit callbacks and do not use the credential-notice dispatcher.                                                                                                                                                                                                                                                                                                                                                     |
 | API credential-notice outbox | [`run.ts`](../../examples/api/compatibility/run.ts): the minimum-compatibility `rollback-verified` assertion checks the reset proof remains usable and no outbox row remains after the credential transaction hook throws. This is a consumer-script assertion, not a named Japa test.                               | [`account_password_reset.spec.ts`](../../examples/api/tests/functional/account_password_reset.spec.ts): `password reset over HTTP hides unknown accounts, consumes tokens once, and retries the outbox` checks that a failed post-commit password notice leaves the committed outbox row pending with zero dispatcher attempts.                                                                                                                                                                                                                    | [`account_password_reset.spec.ts`](../../examples/api/tests/functional/account_password_reset.spec.ts): `the credential notice outbox recovers after a worker process restarts` kills the first worker after delivery acceptance and before `sent_at`; a fresh worker retries the same `operation_id` and marks the row sent. Each process has its own in-memory receiver, so duplicate delivery is possible and exactly-once delivery is not established. |
 
-The latest-compatible API consumer suite passed on SQLite and PostgreSQL 16.15 at package
-revision `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` (51 passed, 19 skipped on each database).
-The restart case passed in 908.9 ms on SQLite and 944.51 ms on PostgreSQL.
+The latest-compatible API consumer suite, using test source revision
+`8e491486d47523eafbd99f3c242be35eed70fe87` and package archive revision
+`402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` (SHA-256
+`fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`), passed on SQLite and
+PostgreSQL 16.15 (51 passed, 19 skipped on each database). The runs used Node 24.21.0 and pnpm
+11.23.0. The restart case passed in 908.9 ms on SQLite and 944.51 ms on PostgreSQL.
+
+A disposable SQLite mutation changed the pending-row query to return no rows after worker one was
+interrupted. The restarted-worker assertion failed as expected (`delivered` was 0 instead of 1).
+The mutation and test fixture were restored byte-for-byte; the focused test then passed 2/2 in 3 s,
+with the restart case completing in 880.53 ms.
 
 ## Mutation evidence
 
@@ -418,11 +426,6 @@ password notices, independent post-commit effects, pruning expiry rechecks, cent
 row locking and SQLite writer locking. Every run produced an expected regression failure. Each
 source file was restored byte-for-byte before integrated verification. These runs used disposable
 fixtures; they do not claim mutation coverage for unchanged historical guards.
-
-The API process-restart check also passed a disposable negative mutation: after worker one was
-interrupted, the pending-row query was changed to return no rows. The restarted-worker assertion
-failed as expected (`delivered` was 0 instead of 1); the dispatcher source and test fixture were
-restored byte-for-byte afterward.
 
 ## Delivery boundaries
 
