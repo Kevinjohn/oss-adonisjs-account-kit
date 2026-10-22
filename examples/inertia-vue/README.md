@@ -48,6 +48,9 @@ installation of the released bytes. npm publication is still pending.
 
 ## Account journey and policy
 
+The reset integration steps for an existing Vue/Inertia application are documented in the
+[Inertia Vue password-reset recipe](../../docs/recipes/inertia-vue.md).
+
 - Signup creates one account and signs it in with limited access while the email is unverified. A
   committed signup whose verification delivery fails keeps the account; the user signs in and uses
   the dashboard resend action instead of submitting signup again.
