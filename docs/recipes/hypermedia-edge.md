@@ -70,7 +70,8 @@ behavior in the application; Account Kit supplies the proof and credential opera
 Every row below posts a form or submits the corresponding failed request and checks that the stored
 password hash is unchanged. The malformed and expired cases are submitted using the CSRF token from
 a valid native reset form, so they exercise the POST action in an ordinary no-JavaScript browser
-context.
+context in the clean-starter recipe spec. The table names the corresponding reference-example
+tests; the clean-starter spec supplies the JavaScript-disabled malformed/expired POST coverage.
 
 | Failure                 | Browser test                                                                                 | Expected result                                                                    |
 | ----------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -162,3 +163,34 @@ predicate produced 3 passing tests and one explicit password-hash assertion fail
 Restoring the exact archive member and checking its digest returned that same command to 4/4
 passing in 4 seconds. The reference-example expiry check and this retained-scaffold check both
 used the unchanged candidate archive recorded above.
+
+### Failure-state correction — 23 October 2026
+
+Source `6eb25e782712622caf3bb73ffbbd885685c26e32` adds live native-session checks before and
+after malformed, expired, mismatched, replaced and consumed proof rejection. Mismatch and
+replacement cases compare the exact stored password hash and replacement proof row, selected by
+its SHA-256 hash. Consumed-proof replay uses a separately preloaded form, then verifies that a
+session established with the new password still reaches the protected dashboard. The two original
+sessions must already have been rejected before this replay check.
+
+The fresh `pnpm test:recipe -- --recipe=hypermedia-password-reset` run passed 4/4 with JavaScript
+disabled. Its P1 baseline is `46b5eee2a85b468d67592e99b910ce815294e29f`, configured checkpoint
+`07f861ece93e9df6d3268ea028ab62ccc71e000e`, and lockfile SHA-256
+`15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea`. Creator, starter, runtime,
+database and archive versions/digests match the record above. The retained record is
+`/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-Tq2stW/evidence.json`;
+its printed rerun command invokes that directory's `rerun.mjs` with Node 24.21.0.
+
+The first strengthened recipe run exposed a test-fixture problem: checking the revoked session
+also invalidated the CSRF state in its preloaded form. Giving consumed-proof replay an independent
+browser context corrected the fixture; the final fresh run above includes this correction. No
+application handler or package code was changed.
+
+The final reference application's `pnpm test` passed 13/13 after these assertion changes. For the
+required expiry mutation, removing only the installed expiry predicate and binding caused the
+reference suite's expired POST hash assertion to fail (12 passed, 1 failed, 15 seconds). Reinstalling
+the complete verified vendor archive restored its original member bytes; the lockfile checksum
+refresh was local validation state and the tracked lockfile was restored. In the fresh retained
+scaffold the same mutation caused the corresponding hash assertion to fail (3 passed, 1 failed,
+4 seconds); restoring the exact archive member returned the four tests to green. Neither archive
+was modified. SQLite, Chromium and local callback capture remain the evidence limits.
