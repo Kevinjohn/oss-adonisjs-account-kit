@@ -117,6 +117,7 @@ English messages for `resources/lang/<locale>/errors.json`:
   "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected",
   "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected",
   "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected",
+  "E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED": "Account request rejected",
   "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected"
 }
 ```
@@ -153,6 +154,7 @@ An application that also uses the managed routes keeps one `errors.json` for bot
 | `SocialEmailMissingError`                 | `E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING`           |    422 | The provider did not return an email address.                                                                                                                | Ask the user to make an email visible at the provider, or register with email.                                                                                             |
 | `SocialUserNotFoundError`                 | `E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND`          |    404 | No account is linked to this provider identity.                                                                                                              | Offer registration or linking from a signed-in account.                                                                                                                    |
 | `SocialProofError`                        | `E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID`           |    403 | A sensitive social action lacks a valid recent authentication proof.                                                                                         | Ask the user to re-enter their password, then retry.                                                                                                                       |
+| `SocialLinkRefusedError`                  | `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`            |    403 | `socialAuthentication.acceptLink` refused to link this provider account.                                                                                     | Explain the application rule the provider account must meet.                                                                                                               |
 | `LastLoginMethodError`                    | `E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD`       |    409 | Unlinking would leave the account without any way to sign in.                                                                                                | Ask the user to set a password or link another provider first.                                                                                                             |
 
 ## Admission errors

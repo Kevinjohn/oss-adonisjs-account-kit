@@ -264,6 +264,7 @@ Copy this file to `resources/lang/<locale>/errors.json` and translate the values
   "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected.",
   "E_ACCOUNT_KIT_OPERATION_FAILED": "Account operation failed."
 }

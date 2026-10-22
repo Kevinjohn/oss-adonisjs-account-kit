@@ -312,6 +312,12 @@ export async function socialCallback(
           .where('provider_user_id', profile.subject)
           .first()
         if (existing) throw new SocialIdentityAlreadyLinkedError()
+        await deps.config.socialAuthentication!.acceptLink?.(user, {
+          provider: name,
+          subject: profile.subject,
+          email: profile.email,
+          emailVerified: profile.emailVerified,
+        })
         const relation = await createAssociation(trx, user.id, name, profile, true)
         linkedNotice = { user, relation }
         return { status: 'linked', userId: user.id }
