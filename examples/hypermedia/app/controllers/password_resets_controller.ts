@@ -1,5 +1,6 @@
 import kit from 'adonisjs-account-kit/services/main'
 import { errors } from 'adonisjs-account-kit'
+import { errors as vineErrors } from '@vinejs/vine'
 import type { HttpContext } from '@adonisjs/core/http'
 import { isDeliveryFailure } from '#services/delivery_failure'
 import { sendTokenPageHeaders } from '#services/token_page_headers'
@@ -35,7 +36,17 @@ export default class PasswordResetsController {
   }
 
   async update(ctx: HttpContext) {
-    const { password } = await ctx.request.validateUsing(resetPasswordValidator)
+    let password: string
+    try {
+      const validated = await ctx.request.validateUsing(resetPasswordValidator)
+      password = validated.password
+    } catch (error) {
+      if (!(error instanceof vineErrors.E_VALIDATION_ERROR)) throw error
+      ctx.session.flashValidationErrors(error, false)
+      return ctx.response
+        .redirect()
+        .toPath(`/reset-password/${encodeURIComponent(ctx.params.token)}`)
+    }
     try {
       await kit.passwordReset.reset({ token: ctx.params.token, password })
     } catch (error) {
