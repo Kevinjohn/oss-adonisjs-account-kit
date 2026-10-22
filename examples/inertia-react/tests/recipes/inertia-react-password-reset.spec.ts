@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import type { BasePage } from '@japa/browser-client'
 import app from '@adonisjs/core/services/app'
+import { MessageBuilder } from '@adonisjs/core/helpers'
 import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
 import { captureNotifications } from 'adonisjs-account-kit/testing/notifications'
@@ -111,6 +112,43 @@ test('React reset recipe preserves failed submissions and revokes both native se
     await guest.getByRole('alert').waitFor()
     assert.equal(await guest.getByLabel('New password', { exact: true }).inputValue(), newPassword)
     assert.equal(await guest.getByLabel('Confirm new password').inputValue(), 'DifferentPass123!')
+    await unchanged()
+
+    // Ordinary HTML submissions must not persist either password in session flash.
+    const nativeConfirmation = `NativeConfirmation-${randomUUID()}`
+    const csrf = (await guest.context().cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')
+    assert.exists(csrf)
+    await limiter.clear(['memory'])
+    const beforeSessions = new Map(
+      (await db.from('sessions').select('id', 'data')).map((row) => [row.id, row.data])
+    )
+    const nativeFailure = await guest.request.post(new URL(path, process.env.APP_URL).href, {
+      form: { password: newPassword, passwordConfirmation: nativeConfirmation },
+      headers: {
+        'accept': 'text/html',
+        'x-xsrf-token': decodeURIComponent(csrf!.value),
+        'referer': new URL(path, process.env.APP_URL).href,
+      },
+      maxRedirects: 0,
+    })
+    assert.equal(nativeFailure.status(), 302)
+    const sessions = await db.from('sessions').select('id', 'data')
+    assert.isAtLeast(sessions.length, 2)
+    let nativeValidationObserved = false
+    for (const row of sessions) {
+      const values = new MessageBuilder().verify(row.data, row.id)
+      assert.isNotNull(values)
+      const persisted = JSON.stringify(values)
+      assert.notInclude(persisted, newPassword)
+      assert.notInclude(persisted, nativeConfirmation)
+      if (beforeSessions.get(row.id) !== row.data && persisted.includes('passwordConfirmation')) {
+        nativeValidationObserved = true
+      }
+    }
+    assert.isTrue(nativeValidationObserved)
+    await guest.goto(path)
+    assert.equal(await guest.getByLabel('New password', { exact: true }).inputValue(), '')
+    assert.equal(await guest.getByLabel('Confirm new password').inputValue(), '')
     await unchanged()
 
     await guest.goto('/reset-password/not-a-proof')
