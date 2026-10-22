@@ -56,6 +56,7 @@ test.group('existing Edge application password reset', (group) => {
     })
     const firstContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
     const secondContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+    const consumedContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
     try {
       const requester = await firstContext.visit('/forgot-password')
       await requester.getByLabel('Email').fill(user.email)
@@ -76,7 +77,7 @@ test.group('existing Edge application password reset', (group) => {
         await login.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       }
 
-      const secondSession = await secondContext.visit(resetPath)
+      const secondSession = await consumedContext.visit(resetPath)
       await secondSession.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await requester.goto(resetPath)
       await requester.getByLabel('New password').fill('NewPassword123!')
@@ -137,6 +138,7 @@ test.group('existing Edge application password reset', (group) => {
     } finally {
       await firstContext.close()
       await secondContext.close()
+      await consumedContext.close()
     }
   })
 
