@@ -374,6 +374,14 @@ and retryable outbox delivery. The exact-floor consumer independently typechecks
 package API and exercises rollback, deferred commit failure, post-commit failure and concurrent
 acceptance on both databases. See [compatibility](../compatibility.md) for the distinct dependency sets.
 
+The exact-floor consumer also loads every public entry point and boots Ace with the package
+command collections registered to run `migration:run --force`, the same path a consumer's
+`node ace` takes. On 22 October 2026 the SQLite floor run passed with Core 7.0.0, assembler
+8.0.0, Lucid 22.4.2, limiter 3.0.0 and Luxon 3.0.0 after `configProvider` moved to the root
+`@adonisjs/core` import. Restoring the `@adonisjs/core/config` import in the installed archive made
+both the entry-point and Ace steps fail with the consumer's original `SyntaxError`; the subpath
+exports `configProvider` only from Core 7.5.1. The repository lint rule rejects that import.
+
 For a prebuilt immutable candidate, supply `--candidate-tarball=PATH --candidate-revision=REV`.
 Schema variants use `--mode=fresh --user-id-type=string` (or `uuid`) with
 `--users-table=account_users`. The harness records a representative contention measurement; this

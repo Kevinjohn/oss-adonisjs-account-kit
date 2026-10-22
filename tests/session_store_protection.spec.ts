@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { configProvider } from '@adonisjs/core/config'
+import { configProvider } from '@adonisjs/core'
 import { defineConfig, SessionCollection, stores } from '@adonisjs/session'
 import type { ResolvedSessionConfig } from '@adonisjs/session/types'
 import { createManagedGuard } from '../src/http/guard.js'
