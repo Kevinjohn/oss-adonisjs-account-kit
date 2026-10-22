@@ -205,6 +205,12 @@ test.group('native account journeys', (group) => {
       expires_at: new Date(now.getTime() - 60_000).toISOString(),
       created_at: new Date(now.getTime() - 120_000).toISOString(),
     })
+    const expiredProof = await db
+      .from('password_reset_tokens')
+      .where('tokenable_id', user.id)
+      .where('hash', expiredHash)
+      .first()
+    assert.isNotNull(expiredProof)
     const formOwner = await User.create({
       fullName: 'Reset Form Owner',
       email: 'reset-form-owner@example.test',
@@ -215,6 +221,11 @@ test.group('native account journeys', (group) => {
 
     const originalHash = (await db.from('users').select('password').where('id', user.id).first())!
       .password
+    const formOwnerHash = (await db
+      .from('users')
+      .select('password')
+      .where('id', formOwner.id)
+      .first())!.password
     const page = await visit('/forgot-password')
     await page.getByLabel('Email').fill(formOwner.email)
     await page.getByRole('button', { name: 'Send reset link' }).click()
@@ -222,6 +233,13 @@ test.group('native account journeys', (group) => {
       .getByText('If an account exists for that address, we have sent a reset link.')
       .waitFor()
     const validToken = accountKitNotifications.tokenFor('passwordResetProvision', formOwner.email)
+    const validHash = createHash('sha256').update(validToken).digest('hex')
+    const validProof = await db
+      .from('password_reset_tokens')
+      .where('tokenable_id', formOwner.id)
+      .where('hash', validHash)
+      .first()
+    assert.isNotNull(validProof)
 
     for (const rejectedToken of ['not-a-proof', token]) {
       await page.goto(`/reset-password/${encodeURIComponent(validToken)}`)
@@ -239,14 +257,27 @@ test.group('native account journeys', (group) => {
         (await db.from('users').select('password').where('id', user.id).first())!.password,
         originalHash
       )
+      assert.equal(
+        (await db.from('users').select('password').where('id', formOwner.id).first())!.password,
+        formOwnerHash
+      )
       await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
-      assert.isNotNull(
+      assert.deepEqual(
         await db
           .from('password_reset_tokens')
           .where('tokenable_id', user.id)
           .where('hash', expiredHash)
-          .first()
+          .first(),
+        expiredProof
+      )
+      assert.deepEqual(
+        await db
+          .from('password_reset_tokens')
+          .where('tokenable_id', formOwner.id)
+          .where('hash', validHash)
+          .first(),
+        validProof
       )
     }
   })
