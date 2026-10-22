@@ -331,11 +331,13 @@ test('original starter login reaches its protected profile', async ({ client, as
   } else {
     run('pnpm', ['add', '-D', '@japa/api-client@^3.2.1'])
   }
+  // Edge loads its generated controller registry while evaluating routes during migration setup.
+  if (kit === 'hypermedia') run('pnpm', ['exec', 'node', 'ace', 'codegen'])
   run('pnpm', ['exec', 'node', 'ace', 'migration:run', '--force'])
   if (browserRecipe) {
     // Build indexes pages/controllers, but it does not regenerate the typed client route
     // registry. New Inertia Forms need that registry before their pages can render.
-    run('pnpm', ['exec', 'node', 'ace', 'codegen'])
+    if (kit !== 'hypermedia') run('pnpm', ['exec', 'node', 'ace', 'codegen'])
     run('pnpm', ['build'])
   }
   const routes = run('pnpm', ['exec', 'node', 'ace', 'list:routes'])
