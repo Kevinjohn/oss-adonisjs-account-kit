@@ -1,7 +1,11 @@
 # Inertia and React example
 
 The AdonisJS 7 Inertia React starter kit with Account Kit added. It shows the account flows a
-browser app needs, each as a plain controller and React page you can copy:
+browser app needs, each as a plain controller and React page you can copy.
+
+The supported starting point is the pinned official Inertia React starter at
+[`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-react).
+The app keeps the starter's session guard and requires a server-side session store.
 
 | Flow                  | Pages                                        | Controller                                          |
 | --------------------- | -------------------------------------------- | --------------------------------------------------- |
@@ -310,6 +314,12 @@ installing there. If startup reports missing environment values or a database ta
 
 See [Inertia and React](../../docs/recipes/inertia-react.md) and
 [browser login with sessions](../../docs/recipes/sessions.md) for the reasoning behind each step.
+
+## Checks and evidence
+
+| Implemented                                                                                                                                                         | Automated HTTP                                                                                                                                                                                                                                                                                  | Browser                                                                                                                                                                                                                                                                                                                                                                                                                  | Manual checks and limits                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signup, verification, login, reset, profile, password and email settings, and session revision handling are implemented as application-owned controllers and pages. | Named functional suites: [settings journey](tests/functional/settings_journey.spec.ts), [reset journey](tests/functional/reset_proof_journey.spec.ts), and [reset routes](tests/functional/reset_proof_routes.spec.ts). These links identify suites; they do not claim a new recipe run passed. | Named browser suites: [account journeys](tests/browser/account_journeys.spec.ts), [signup recovery](tests/browser/signup_recovery.spec.ts), [reset proof](tests/browser/reset_proof_browser.spec.ts), [verification sessions](tests/browser/verification_session_browser.spec.ts), [form errors](tests/browser/account_form_errors.spec.ts), and [profile/email settings](tests/browser/profile_email_settings.spec.ts). | Browser tests use local notification capture; they do not prove recipient delivery or PostgreSQL coverage. No clean-starter recipe result is claimed here; the password-reset recipe P3 record is pending its future recipe PR. See the [acceptance guide](../../docs/guides/example-acceptance.md) for dated evidence and limits. |
 
 ## Shared acceptance criteria
 
