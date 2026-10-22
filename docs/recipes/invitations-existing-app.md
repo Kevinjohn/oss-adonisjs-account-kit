@@ -1,6 +1,6 @@
 # Add invitations to an existing API application
 
-This recipe adds one invitation flow to an existing AdonisJS API application. It keeps the application's user model, bearer guard, and login endpoint. The application owns the role table, owner policy, invitation routes, and mail delivery. The example uses an API bearer token; a session application should preserve its session guard and add the same policy to its authenticated routes.
+This recipe adds one invitation flow to an existing AdonisJS API application that uses bearer access tokens. It keeps the application's user model, bearer guard, and login endpoint. The application owns the role table, owner policy, invitation routes, and mail delivery. Session-based authorization is out of scope; do not use this bearer ability check unchanged with a session guard.
 
 Install Account Kit using the [README installation instructions](../../README.md#install), then configure it with `node ace configure adonisjs-account-kit`. Follow the shared [existing-application guide](../guides/password-reset-existing-app.md) for the package setup and generated-file review.
 
