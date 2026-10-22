@@ -1,6 +1,8 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each browser result beside its assertion. */
 import { test } from '@japa/runner'
+import { createHash, randomBytes } from 'node:crypto'
 import User from '#models/user'
+import db from '@adonisjs/lucid/services/db'
 import kit from 'adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 
@@ -89,6 +91,7 @@ test.group('composed account browser journeys', (group) => {
   }) => {
     const email = 'journey-reset@example.test'
     const owner = await User.create({ fullName: 'Reset Journey', email, password: 'OldPass123!' })
+    const originalPasswordHash = owner.password
     const notify = notifications()
     const original = notify.passwordResetProvision
     let resetUrl: string | undefined
@@ -106,6 +109,40 @@ test.group('composed account browser journeys', (group) => {
         await page.getByRole('button', { name: 'Sign in' }).click()
         await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       }
+      for (const page of [current, previous]) {
+        const protectedPage = await page.goto('/dashboard')
+        assert.equal(protectedPage?.status(), 200)
+        await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      }
+
+      const assertOriginalCredentialsUnchanged = async () => {
+        await owner.refresh()
+        assert.equal(owner.password, originalPasswordHash)
+        assert.equal((await User.verifyCredentials(email, 'OldPass123!')).id, owner.id)
+        for (const page of [current, previous]) {
+          const protectedPage = await page.goto('/dashboard')
+          assert.equal(protectedPage?.status(), 200)
+          await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+        }
+      }
+
+      await current.goto('/reset-password/not-a-proof')
+      await current.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
+      await assertOriginalCredentialsUnchanged()
+
+      const expiredToken = randomBytes(40).toString('base64url')
+      const now = new Date()
+      await db.table('password_reset_tokens').insert({
+        tokenable_id: owner.id,
+        email: owner.email,
+        hash: createHash('sha256').update(expiredToken).digest('hex'),
+        created_at: new Date(now.getTime() - 7200000).toISOString(),
+        expires_at: new Date(now.getTime() - 3600000).toISOString(),
+      })
+      await current.goto(`/reset-password/${expiredToken}`)
+      await current.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
+      await assertOriginalCredentialsUnchanged()
+
       const guest = await guestContext.visit('/forgot-password')
       await guest.getByLabel('Email').fill(email)
       await guest.getByRole('button', { name: 'Send reset link' }).click()
@@ -113,8 +150,21 @@ test.group('composed account browser journeys', (group) => {
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
       assert.isString(resetUrl)
-
+      const firstProofPath = new URL(resetUrl!).pathname
+      await guest.goto('/forgot-password')
+      await guest.getByLabel('Email').fill(email)
+      await guest.getByRole('button', { name: 'Send reset link' }).click()
+      await guest
+        .getByText('If an account exists for that address, we have sent a reset link.')
+        .waitFor()
+      assert.isString(resetUrl)
       const proofPath = new URL(resetUrl!).pathname
+      assert.notEqual(proofPath, firstProofPath)
+
+      await current.goto(firstProofPath)
+      await current.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
+      await assertOriginalCredentialsUnchanged()
+
       await current.goto(proofPath)
       await current.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await current.goto('/settings/profile')
@@ -126,18 +176,31 @@ test.group('composed account browser journeys', (group) => {
       await current.getByLabel('Confirm new password').fill('ReplacementPass123!')
       await current.getByRole('button', { name: 'Reset password' }).click()
       await current.getByRole('heading', { name: 'Welcome back' }).waitFor()
-      await previous.goto('/dashboard')
-      await previous.getByRole('heading', { name: 'Welcome back' }).waitFor()
+      for (const page of [current, previous]) {
+        await page.goto('/dashboard')
+        await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
+      }
+
+      await current.goto('/login')
+      await current.getByLabel('Email').fill(email)
+      await current.getByLabel('Password').fill('OldPass123!')
+      await current.getByRole('button', { name: 'Sign in' }).click()
+      await current.getByText('Invalid email or password.').waitFor()
+      await assert.rejects(() => User.verifyCredentials(email, 'OldPass123!'))
+
+      await current.getByLabel('Email').fill(email)
+      await current.getByLabel('Password').fill('ReplacementPass123!')
+      await current.getByRole('button', { name: 'Sign in' }).click()
+      await current.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      const replacementHash = (await User.findOrFail(owner.id)).password
+
       await current.goto(proofPath)
       await current.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
       await current.getByRole('link', { name: 'Request a new link' }).waitFor()
       const authenticated = await User.verifyCredentials(email, 'ReplacementPass123!')
       assert.equal(authenticated.id, owner.id)
-      await current.goto('/login')
-      await current.getByLabel('Email').fill(email)
-      await current.getByLabel('Password').fill('ReplacementPass123!')
-      await current.getByRole('button', { name: 'Sign in' }).click()
-      await current.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      await owner.refresh()
+      assert.equal(owner.password, replacementHash)
     } finally {
       notify.passwordResetProvision = original
       await guestContext.close()

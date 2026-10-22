@@ -159,6 +159,7 @@ test.group('account form errors', (group) => {
       email: 'reset@example.test',
       password: 'OldPass123!',
     })
+    const originalPasswordHash = user.password
     const token = randomBytes(40).toString('base64url')
     const now = new Date()
     await db.table('password_reset_tokens').insert({
@@ -202,6 +203,11 @@ test.group('account form errors', (group) => {
     )
     assert.equal(await page.getByLabel('New password', { exact: true }).inputValue(), '')
     assert.equal(await confirmation.inputValue(), '')
+    await user.refresh()
+    assert.equal(user.password, originalPasswordHash)
+    const authenticated = await User.verifyCredentials(user.email, 'OldPass123!')
+    assert.equal(authenticated.id, user.id)
+    await assert.rejects(() => User.verifyCredentials(user.email, 'Replacement123!'))
   })
 
   test('profile validation errors clear the current password', async ({ visit, assert }) => {
