@@ -19,8 +19,9 @@ automated suites and a fresh advertised-install smoke after publication remain o
 - SHA-256: `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. It was packed once and was not replaced.
 - Corrected test-source integration (B): `3babfbf3dc9bfa25aa2fccc8615b087bb5a4f26c`, incorporating the #636
   recipe-spec import correction `4f5023f6baf319f2fe180ea5fcda91ae0668851f`.
-  Only the acceptance spec changed after A; it is outside the package archive. Later documentation
-  commits record these results and do not change package runtime or templates.
+  At B, only the acceptance spec had changed after A; it is outside the package archive.
+  The integrated correction record below identifies later documentation, patch and spec changes;
+  package runtime and templates remain unchanged.
 - Runtime: Node `24.21.0`, pnpm `11.23.0`. Root dependencies: AdonisJS Core `7.6.0`,
   Lucid `22.4.2`, Assembler `8.5.2`, Session `8.1.0`, Limiter `3.0.1`, TypeScript `5.9.3`,
   `better-sqlite3` `12.11.1` (SQLite `3.53.2`) and `pg` `8.23.1`.
@@ -217,6 +218,58 @@ documentation edits; all archive digests remained unchanged. No tests were remov
 Scoped formatting covers the four #642-owned files. The historical verification sections are
 byte-for-byte unchanged. Publication and the post-publication advertised install smoke remain
 separate owner actions.
+
+### Integrated review corrections — 23 October 2026
+
+The later integration at `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` includes the corrected
+evidence wording (#632), invitation copy map (#636), React native-form validation-secret
+protection (#633), Vue consumed-proof session checks (#634), and Edge active-session and exact
+replacement-proof assertions (#635). These changes affect documentation, transplant patches and
+acceptance specs. The package runtime inputs, version and templates still have no diff from
+archive source A, so the candidate was not repacked.
+
+The following reruns use the same immutable archive and Node 24.21.0/pnpm 11.23.0. Each output
+record retains the exact command and digest before and after execution; the Edge example records
+also verify the unchanged vendor-copy digest.
+
+| Output record                                            | Test-source revision                       | Outcome | Archive SHA-256, unchanged                                         |
+| -------------------------------------------------------- | ------------------------------------------ | ------- | ------------------------------------------------------------------ |
+| `lint_review_corrections`                                | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `typecheck_review_corrections`                           | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_lint_review_corrections`             | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_typecheck_review_corrections`        | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_build_review_corrections`            | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `example_hypermedia_test_review_corrections`             | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_inertia-react-password-reset_review_corrections` | `b976d33c3428989b648b006de1f4e756bf9a79ca` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_inertia-vue-password-reset_review_corrections`   | `633517159529d3009402ab3f8a8ad372f559a631` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_hypermedia-password-reset_review_corrections`    | `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` | Exit 0  | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+
+The Edge reference suite passed 13/13; its lint, typecheck and build also passed. Fresh React and
+Vue recipes each passed 1/1 and Edge passed 4/4, with native-login baselines and application
+builds. Each recipe command above was repeated with its same `--candidate-tarball` and
+`--candidate-revision` arguments; the newer records supersede the earlier recipe assertions.
+Their retained evidence files are:
+
+- React: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-lsPnJc/evidence.json`.
+- Vue: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-Rwd86e/evidence.json`.
+- Edge: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-selext/evidence.json`.
+
+The native starter baselines, configured checkpoints and lockfile digests are in those P6
+records. Creator 3.4.0, official starter revision
+`46d235932e3eb6472a16b740fa0b47b5f69fc6fc`, Core 7.6.0 and recipe SQLite 3.53.4 remain
+unchanged. The original package checks, six compatibility consumers, API/invitation recipes,
+example installation steps and unchanged React/Vue application suites remain valid dated
+evidence; they were not all repeated for these documentation and acceptance-spec corrections.
+The new Edge run replaces its previous reference-suite evidence. Child recipe records retain
+their mandatory mutation failures and restoration results. Local callback capture and Chromium
+remain the browser-test limits; no recipient delivery, PostgreSQL browser coverage or new manual
+inspection is claimed.
+
+Delivery review remains separate from these automated results. The existing PRs were opened
+before the requested independent reviews; a later review cannot establish that historical
+sequence. #628 also remains held for its ownership conflict. Those programme conditions are
+unresolved and are not certified by this candidate record. No merge, package publication or
+release has occurred.
 
 ## Historical pre-inspection summary
 
