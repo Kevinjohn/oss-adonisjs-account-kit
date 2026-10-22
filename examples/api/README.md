@@ -29,10 +29,9 @@ for production mail and workers.
 
 ## Run it
 
-The source package manifest is `0.0.0`; there is no matching public npm release and repository tag
-for a consumer install yet. The published-package path is blocked on that release. This contributor
-path builds an archive from the current repository and does not establish a released-package
-install.
+For the available GitHub release archive, follow the [root install instructions](../../README.md#install).
+npm publication is still pending. The contributor path below builds the current checkout and
+does not establish a released-package install.
 
 Use Node.js 24 and pnpm 11.23.0. From the repository root:
 

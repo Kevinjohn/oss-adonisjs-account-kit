@@ -33,8 +33,8 @@ the exact prerequisites, runnable journeys and focused copy maps.
 | Hypermedia/Edge | [Run the Edge example](examples/hypermedia/README.md#install-and-run)      | [Copy one Edge flow](examples/hypermedia/README.md#transplanting-into-an-existing-edge-app) |
 | API             | [Complete API starter walkthrough](docs/guides/core-api.md)                | [Add one capability](docs/recipes/index.md#add-one-capability-to-an-existing-application)   |
 
-Your app owns its Auth guard, user model, validation, authorization, language, notification
-delivery and frontend/proof pages. Account Kit owns account operations and credential lifecycle.
+See [package and application responsibilities](docs/guides/password-reset-existing-app.md#package-and-application-responsibilities)
+for the reset integration boundary and required guard wiring.
 Current example installation and verification limits are recorded in their READMEs and the
 [shared acceptance guide](docs/guides/example-acceptance.md).
 
