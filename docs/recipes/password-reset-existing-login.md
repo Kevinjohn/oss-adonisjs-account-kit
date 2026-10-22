@@ -114,7 +114,7 @@ package does not generate that page.
 ## Verify the reset and revocation
 
 Use the committed [acceptance spec](../../examples/api/tests/recipes/api-password-reset.spec.ts)
-and [hand-edit patch](patches/api-password-reset.patch). From the repository root, run:
+and [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf/docs/recipes/patches/api-password-reset.patch). From the repository root, run:
 
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset --database=sqlite
@@ -169,17 +169,17 @@ credential revocation.
 **22 October 2026 — P6 and P7 passed.** The default harness built and packed the clean source
 revision below, scaffolded the pinned official API starter, proved its original login and
 protected profile before installing Account Kit, then applied the hand-edit patch and ran the
-committed acceptance spec. A second harness run scaffolded another fresh starter and installed
-the same supplied archive; its command record contains no build or pack step.
+committed acceptance spec, including distinct values for both native bearer credential pairs.
+A second harness run scaffolded another fresh starter and installed the same supplied archive; its command record contains no build or pack step.
 
 | Field                                                 | Recorded evidence                                                                                                                              |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Package source revision                               | `71ad70ba249d4192dbc336ca0db6ceda1ec20d8f` (clean working tree)                                                                                |
+| Package source revision                               | `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` (clean working tree)                                                                                |
 | Archive                                               | `adonisjs-account-kit-0.1.1.tgz`                                                                                                               |
 | Archive SHA-256                                       | `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                             |
 | Creator / starter                                     | `create-adonisjs` `3.4.0`; official API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                     |
-| Default run baseline / configured checkpoint          | `156f1ab7f9ad7b9d880017d1873813c91a2fd594` / `fef828c1196d6804ed3aacb5d83586e674833372`                                                        |
-| Supplied-archive run baseline / configured checkpoint | `c769f5b33e5e4a8a3149fedc767307a5fc422308` / `b3a444a9234c9c92b310262798ae7abfe76959ab`                                                        |
+| Default run baseline / configured checkpoint          | `c1f74eadf5c11fb2f3bdb15e5063b39460ec7c62` / `909e473c899720eaea6c9cf0581baaecff0f142a`                                                        |
+| Supplied-archive run baseline / configured checkpoint | `8fbc401f94c31d25148245571e49773665a2a9fd` / `09dacfb2d666d6c05bfd5cb4de36aab41c47d74b`                                                        |
 | Starter lockfile SHA-256, both runs                   | `813bdffb59b9aad2e8cf7aedc26614fd6a2418be76b26c85f9897fa46d7470ad`                                                                             |
 | Runtime / package manager                             | Node `24.21.0`; pnpm `11.23.0`                                                                                                                 |
 | Installed packages                                    | Core `7.6.0`; Auth `10.1.0`; Lucid `22.4.2`; Limiter `3.0.1`; Vine `4.4.0`                                                                     |
@@ -216,7 +216,7 @@ The supplied-archive command used the archive retained by that run:
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset \
   --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
-  --candidate-revision=71ad70ba249d4192dbc336ca0db6ceda1ec20d8f
+  --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
 Both ran with Node 24 enforced for the repository script and its child processes. The harness
