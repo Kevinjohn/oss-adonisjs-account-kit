@@ -20,8 +20,16 @@ date with you once a fix is ready.
 
 ## Verifying a release
 
-Releases are published from GitHub Actions with npm provenance. To check that an installed copy was
-built from this repository:
+Alpha releases are packed by a maintainer and attached to the tagged
+[GitHub release](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases), whose notes give
+the archive's SHA-256. Check a downloaded archive before installing it:
+
+```sh
+shasum -a 256 adonisjs-account-kit-0.1.0.tgz
+```
+
+npm releases will be published from GitHub Actions with npm provenance. To check that an installed
+copy was built from this repository:
 
 ```sh
 npm audit signatures
