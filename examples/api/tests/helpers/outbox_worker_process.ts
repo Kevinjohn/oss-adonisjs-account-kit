@@ -13,7 +13,10 @@ type WorkerExit = { code: number | null; signal: NodeJS.Signals | null }
 type Waiter = {
   resolve(message: OutboxWorkerMessage): void
   reject(error: Error): void
+  timer: NodeJS.Timeout
 }
+
+const FAILURE_DEADLINE_MS = 10_000
 
 export type OutboxWorkerProcess = {
   child: ChildProcess
@@ -33,8 +36,18 @@ export function startOutboxWorkerProcess(mode: WorkerMode): OutboxWorkerProcess 
   const messageWaiters = new Map<WorkerMessageType, Waiter[]>()
   let stderr = ''
   let workerError: Error | undefined
+  let processError: Error | undefined
   let exit: WorkerExit | undefined
   let resolveExit: ((value: WorkerExit) => void) | undefined
+  let rejectExit: ((error: Error) => void) | undefined
+  let exitTimer: NodeJS.Timeout | undefined
+
+  function rejectWaiters(error: Error) {
+    for (const [type, waiters] of messageWaiters) {
+      for (const waiter of waiters) waiter.reject(error)
+      messageWaiters.delete(type)
+    }
+  }
 
   child.stderr?.on('data', (chunk: Buffer) => {
     stderr += chunk.toString()
@@ -43,10 +56,7 @@ export function startOutboxWorkerProcess(mode: WorkerMode): OutboxWorkerProcess 
     const message = value as OutboxWorkerMessage
     if (message.type === 'error') {
       workerError = new Error(message.message)
-      for (const waiters of messageWaiters.values()) {
-        for (const waiter of waiters) waiter.reject(workerError)
-      }
-      messageWaiters.clear()
+      rejectWaiters(workerError)
       return
     }
 
@@ -54,15 +64,22 @@ export function startOutboxWorkerProcess(mode: WorkerMode): OutboxWorkerProcess 
     if (waiter) waiter.resolve(message)
     else pendingMessages.push(message)
   })
+  child.on('error', (error) => {
+    processError = new Error(`Worker process failed: ${error.message}${stderr}`)
+    workerError = processError
+    rejectWaiters(workerError)
+    if (exitTimer) clearTimeout(exitTimer)
+    rejectExit?.(processError)
+    resolveExit = undefined
+    rejectExit = undefined
+  })
   child.on('exit', (code, signal) => {
     exit = { code, signal }
+    if (exitTimer) clearTimeout(exitTimer)
     resolveExit?.(exit)
-    for (const waiters of messageWaiters.values()) {
-      for (const waiter of waiters) {
-        waiter.reject(workerError ?? new Error(`Worker exited before sending a message: ${stderr}`))
-      }
-    }
-    messageWaiters.clear()
+    resolveExit = undefined
+    rejectExit = undefined
+    rejectWaiters(workerError ?? new Error(`Worker exited before sending a message: ${stderr}`))
   })
 
   const worker: OutboxWorkerProcess = {
@@ -75,19 +92,39 @@ export function startOutboxWorkerProcess(mode: WorkerMode): OutboxWorkerProcess 
         )
       if (workerError) return Promise.reject(workerError)
       if (exit) return Promise.reject(new Error(`Worker exited before ${type}: ${stderr}`))
-      return new Promise((resolve, reject) => {
+      return new Promise<Extract<OutboxWorkerMessage, { type: T }>>((resolve, reject) => {
         const waiters = messageWaiters.get(type) ?? []
-        waiters.push({
-          resolve: (message) => resolve(message as Extract<OutboxWorkerMessage, { type: T }>),
-          reject,
-        })
+        const waiter: Waiter = {
+          resolve: (message) => {
+            clearTimeout(waiter.timer)
+            resolve(message as Extract<OutboxWorkerMessage, { type: T }>)
+          },
+          reject: (error) => {
+            clearTimeout(waiter.timer)
+            reject(error)
+          },
+          timer: setTimeout(() => {
+            const remaining = messageWaiters.get(type)?.filter((entry) => entry !== waiter) ?? []
+            if (remaining.length) messageWaiters.set(type, remaining)
+            else messageWaiters.delete(type)
+            waiter.reject(new Error(`Timed out waiting for worker message ${type}: ${stderr}`))
+          }, FAILURE_DEADLINE_MS),
+        }
+        waiters.push(waiter)
         messageWaiters.set(type, waiters)
       })
     },
     waitForExit() {
       if (exit) return Promise.resolve(exit)
-      return new Promise((resolve) => {
+      if (processError) return Promise.reject(processError)
+      return new Promise((resolve, reject) => {
         resolveExit = resolve
+        rejectExit = reject
+        exitTimer = setTimeout(() => {
+          resolveExit = undefined
+          rejectExit = undefined
+          reject(new Error(`Timed out waiting for worker exit: ${stderr}`))
+        }, FAILURE_DEADLINE_MS)
       })
     },
     async kill() {
