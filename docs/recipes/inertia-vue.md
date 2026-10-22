@@ -121,8 +121,18 @@ generation, not inbox delivery or PostgreSQL behavior.
 The native `/login` form passed before Account Kit installation: its original credentials opened the
 protected `/dashboard`, which also returned successfully on a second direct request. In the fresh P6
 scaffold, `pnpm test --files=recipe_starter_login.spec.ts` passed 1/1 (444 ms). The pinned official
-starter revision is `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`, created with `create-adonisjs` 3.4.0.
-Its pre-install lockfile SHA-256 was
+starter revision is `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`. Its P1 scaffold command was:
+
+```sh
+pnpm create adonisjs@3.4.0 <dir> --kit=github:adonisjs/starter-kits/inertia-vue#46d235932e3eb6472a16b740fa0b47b5f69fc6fc --pkg=pnpm
+```
+
+The generated starter manifest used these relevant ranges: `@adonisjs/auth` `^10.1.0`,
+`@adonisjs/core` `^7.5.2`, `@adonisjs/inertia` `^5.0.1`, `@adonisjs/lucid` `^22.4.2`,
+`@adonisjs/session` `^8.1.0`, `@adonisjs/shield` `^9.0.0`, `@inertiajs/core` and `@inertiajs/vue3`
+`^3.7.1`, `vue` `^3.5.43`, `@japa/browser-client` `^2.3.0`, and `@japa/runner` `^5.3.0`. See the
+[pinned official Vue starter manifest](https://github.com/adonisjs/starter-kits/blob/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue/package.json)
+for the complete generated dependency ranges. Its pre-install lockfile SHA-256 was
 `1361cab418a9cd17746e6b0deb372505a013575d6adf8fb5eb6c851366939fc3`; the clean starter commit was
 `ae2ee4c73b8b668161435e8d74d853707bdc3a7f` after manual Git initialization because the creator does
 not initialize a repository. Account Kit was configured at checkpoint
@@ -137,9 +147,11 @@ rejection, old-password login failure and new-password login success. The retain
 `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-XI5BdN/evidence.json`.
 
 The check used Node 24.21.0, pnpm 11.23.0, AdonisJS Core 7.6.0 and SQLite 3.53.4. It installed the
-unchanged candidate archive from the [root install instructions](../../README.md#install), built at
-`402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` with SHA-256
-`fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`. The exact recipe command was:
+unchanged development candidate archive built from source revision
+`402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf`, SHA-256
+`fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`. This candidate is a local
+development pack, not a published release; the [root install instructions](../../README.md#install)
+describe installing released archives. The exact recipe command was:
 
 ```sh
 pnpm test:recipe -- --recipe=inertia-vue-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
@@ -149,7 +161,12 @@ The reference browser suite passed 35/35 in 13 seconds, including the composed r
 an installed-vendor-only mutation that preserved the old credential revision made the prior recipe
 spec fail in 3 seconds: the existing session still reached `/dashboard` instead of redirecting to
 `/login`. That negative run preceded the malformed and expired POST assertions added to the final
-spec. The original archive member was restored byte-for-byte; rerunning
-`pnpm test --files=inertia-vue-password-reset.spec.ts` with the final spec passed 1/1 in 4 seconds.
+spec. The original archive member was restored byte-for-byte; the final spec passed 1/1 in 4 seconds
+when rerun with the harness-printed command and retained test environment:
+
+```sh
+"/Users/kevinjohngallagher/.nvm/versions/node/v24.21.0/bin/node" "/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-gpaGD9/rerun.mjs"
+```
+
 Notifications were captured by an in-process callback; this verifies link generation, not delivery
 to an inbox. These checks use SQLite and do not establish PostgreSQL behavior.
