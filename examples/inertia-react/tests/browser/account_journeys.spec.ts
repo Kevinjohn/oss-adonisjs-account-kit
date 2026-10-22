@@ -82,7 +82,7 @@ test.group('composed account browser journeys', (group) => {
     assert,
   }) => {
     const email = 'journey-reset@example.test'
-    const owner = await User.create({ fullName: 'Reset Journey', email, password: 'OldPass123!' })
+    await User.create({ fullName: 'Reset Journey', email, password: 'OldPass123!' })
     const notify = notifications()
     const original = notify.passwordResetProvision
     let resetUrl: string | undefined
@@ -99,6 +99,7 @@ test.group('composed account browser journeys', (group) => {
         await page.getByLabel('Password').fill('OldPass123!')
         await page.getByRole('button', { name: 'Sign in' }).click()
         await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+        assert.equal((await page.goto('/dashboard'))?.status(), 200)
       }
       const guest = await guestContext.visit('/forgot-password')
       await guest.getByLabel('Email').fill(email)
@@ -125,8 +126,16 @@ test.group('composed account browser journeys', (group) => {
       await current.goto(proofPath)
       await current.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
       await current.getByRole('link', { name: 'Request a new link' }).waitFor()
-      const authenticated = await User.verifyCredentials(email, 'ReplacementPass123!')
-      assert.equal(authenticated.id, owner.id)
+      await current.goto('/dashboard')
+      await current.getByRole('heading', { name: 'Welcome back' }).waitFor()
+      await current.goto('/login')
+      await current.getByLabel('Email').fill(email)
+      await current.getByLabel('Password').fill('OldPass123!')
+      await current.getByRole('button', { name: 'Sign in' }).click()
+      await current.getByText('Invalid email or password.', { exact: true }).waitFor()
+      await current.getByRole('heading', { name: 'Welcome back' }).waitFor()
+      await current.goto('/dashboard')
+      await current.getByRole('heading', { name: 'Welcome back' }).waitFor()
       await current.goto('/login')
       await current.getByLabel('Email').fill(email)
       await current.getByLabel('Password').fill('ReplacementPass123!')
