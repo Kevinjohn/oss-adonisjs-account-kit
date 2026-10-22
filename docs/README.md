@@ -2,12 +2,14 @@
 
 ## Choose your stack and starting point
 
-Start with [React, Vue, Hypermedia/Edge or API](guides/adoption-paths.md), then choose a new
-application or an existing application. The selector states which runnable paths are verified,
-what your application owns, and when to use an example, focused recipe or reference.
+For an existing application, start with [the reset-only integration guide](guides/password-reset-existing-app.md)
+to keep your working login and add password reset. The [stack and starting-point selector](guides/adoption-paths.md)
+gives the exact recipe for React, Vue, Hypermedia/Edge and API. The [annotated API starter diff](guides/password-reset-starter-diff.md)
+shows the file-by-file changes; the complete new-application examples are secondary paths.
 
-For an existing login, [add one capability](recipes/index.md#add-one-capability-to-an-existing-application)
-without replacing the rest of your authentication. Compare example behavior with the
+The reset guide preserves the application's login route, user model and guard, and documents the
+required login-controller revision update, revision-check middleware and server-side sessions for
+session stacks. Compare the examples with the
 [shared account journey acceptance guide](guides/example-acceptance.md).
 
 ## Tutorial
