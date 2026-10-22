@@ -1,112 +1,6 @@
-diff --git a/config/account_kit.ts b/config/account_kit.ts
-index ca0e76fa..e2b05b1f 100644
---- a/config/account_kit.ts
-+++ b/config/account_kit.ts
-@@ -1,2 +1,5 @@
- import env from '#start/env'
-+import { deliverInvitation } from '#services/invitation_delivery'
-+import { authorizeInvitations } from '#services/invitation_authorization'
-+import { InvalidInputError } from 'adonisjs-account-kit'
- import {
-@@ -34,3 +37,3 @@ export default defineConfig({
-    */
--  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
-+  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration', 'invitations'],
-
-@@ -39,3 +42,11 @@ export default defineConfig({
-    */
--  registration: { availability: 'open' },
-+  registration: {
-+    availability: 'open',
-+    mapFields(data) {
-+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new InvalidInputError('Invalid invitation profile fields')
-+      const fullName = Reflect.get(data, 'fullName')
-+      if (typeof fullName !== 'string' || !fullName.trim()) throw new InvalidInputError('A full name is required')
-+      return { fullName: fullName.trim() }
-+    },
-+  },
-
-@@ -50,5 +61,3 @@ export default defineConfig({
-   authorize: {
--    invite: async () => false,
--    manageInvitation: async () => false,
--    listInvitations: async () => false,
-+    ...authorizeInvitations,
-   },
-@@ -61,3 +70,3 @@ export default defineConfig({
-     emailVerification: (token) => accountUrl('verification', token),
--    invitation: (token) => accountUrl('invitation', token),
-+    invitation: (token) => new URL('api/v1/auth/invitations/' + encodeURIComponent(token), env.get('APP_URL')).toString(),
-     emailChange: (token) => accountUrl('email-change', token),
-@@ -71,3 +80,3 @@ export default defineConfig({
-     accountActivationProvision: notConfigured('accountActivationProvision'),
--    invitationProvision: notConfigured('invitationProvision'),
-+    invitationProvision: deliverInvitation,
-     emailChangeProvision: notConfigured('emailChangeProvision'),
-@@ -89,5 +98,6 @@ export default defineConfig({
-    */
--  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
--    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
-+  onInvitationAccepted: async (user: AccountUser, invitation: Invitation, trx: Trx) => {
-+    await trx.table('app_user_roles').insert({ user_id: user.id, role: invitation.role })
-   },
- })
-+
-diff --git a/database/migrations/1792695000000_create_app_user_roles.ts b/database/migrations/1792695000000_create_app_user_roles.ts
-new file mode 100644
---- /dev/null
-+++ b/database/migrations/1792695000000_create_app_user_roles.ts
-@@ -0,0 +1,18 @@
-+import { BaseSchema } from '@adonisjs/lucid/schema'
-+
-+export default class extends BaseSchema {
-+  protected tableName = 'app_user_roles'
-+
-+  async up() {
-+    this.schema.createTable(this.tableName, (table) => {
-+      table.increments('id')
-+      table.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE')
-+      table.string('role').notNullable()
-+      table.unique(['user_id', 'role'])
-+    })
-+  }
-+
-+  async down() {
-+    this.schema.dropTable(this.tableName)
-+  }
-+}
-diff --git a/app/services/invitation_authorization.ts b/app/services/invitation_authorization.ts
-new file mode 100644
---- /dev/null
-+++ b/app/services/invitation_authorization.ts
-@@ -0,0 +1,14 @@
-+import db from '@adonisjs/lucid/services/db'
-+import type { Trx } from 'adonisjs-account-kit'
-+import type { AuthorizationCallbacks } from 'adonisjs-account-kit/types'
-+
-+async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
-+  const query = trx ? trx.from('app_user_roles') : db.from('app_user_roles')
-+  return Boolean(await query.where('user_id', userId).where('role', 'owner').first())
-+}
-+
-+export const authorizeInvitations: AuthorizationCallbacks = {
-+  invite: async (actor, role, context) => role !== 'owner' && isOwner(actor.id, context?.trx),
-+  manageInvitation: async (actor, _invitation, context) => isOwner(actor.id, context?.trx),
-+  listInvitations: async (actor, context) => isOwner(actor.id, context?.trx),
-+}
-diff --git a/app/services/invitation_delivery.ts b/app/services/invitation_delivery.ts
-new file mode 100644
---- /dev/null
-+++ b/app/services/invitation_delivery.ts
-@@ -0,0 +1,6 @@
-+/** Local link capture for the recipe check; replace with the application's mail transport. */
-+export const sentInvitations: string[] = []
-+
-+export async function deliverInvitation(_invitation: unknown, url: string) {
-+  sentInvitations.push(url)
-+}
 diff --git a/app/controllers/invitations_controller.ts b/app/controllers/invitations_controller.ts
 new file mode 100644
+index 0000000..7afb281
 --- /dev/null
 +++ b/app/controllers/invitations_controller.ts
 @@ -0,0 +1,50 @@
@@ -160,16 +54,140 @@ new file mode 100644
 +    }
 +  }
 +}
-diff --git a/start/routes.ts b/start/routes.ts
-index 29fc17f6..842570bb 100644
---- a/start/routes.ts
-+++ b/start/routes.ts
-@@ -12,2 +12,3 @@ import router from '@adonisjs/core/services/router'
- import { controllers } from '#generated/controllers'
-+import './invitation_routes.js'
+diff --git a/app/services/invitation_authorization.ts b/app/services/invitation_authorization.ts
+new file mode 100644
+index 0000000..b51935e
+--- /dev/null
++++ b/app/services/invitation_authorization.ts
+@@ -0,0 +1,14 @@
++import db from '@adonisjs/lucid/services/db'
++import type { Trx } from 'adonisjs-account-kit'
++import type { AuthorizationCallbacks } from 'adonisjs-account-kit/types'
++
++async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
++  const query = trx ? trx.from('app_user_roles') : db.from('app_user_roles')
++  return Boolean(await query.where('user_id', userId).where('role', 'owner').first())
++}
++
++export const authorizeInvitations: AuthorizationCallbacks = {
++  invite: async (actor, role, context) => role !== 'owner' && isOwner(actor.id, context?.trx),
++  manageInvitation: async (actor, _invitation, context) => isOwner(actor.id, context?.trx),
++  listInvitations: async (actor, context) => isOwner(actor.id, context?.trx),
++}
+diff --git a/app/services/invitation_delivery.ts b/app/services/invitation_delivery.ts
+new file mode 100644
+index 0000000..5ca1830
+--- /dev/null
++++ b/app/services/invitation_delivery.ts
+@@ -0,0 +1,6 @@
++/** Local link capture for the recipe check; replace with the application's mail transport. */
++export const sentInvitations: string[] = []
++
++export async function deliverInvitation(_invitation: unknown, url: string) {
++  sentInvitations.push(url)
++}
+diff --git a/config/account_kit.ts b/config/account_kit.ts
+index 9214431..f2eaeda 100644
+--- a/config/account_kit.ts
++++ b/config/account_kit.ts
+@@ -1,4 +1,7 @@
+ import env from '#start/env'
++import { deliverInvitation } from '#services/invitation_delivery'
++import { authorizeInvitations } from '#services/invitation_authorization'
++import { InvalidInputError } from 'adonisjs-account-kit'
+ import {
+   createLucidAdapter,
+   defineConfig,
+@@ -32,12 +35,20 @@ export default defineConfig({
+   /**
+    * Account flows the application exposes.
+    */
+-  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
++  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration', 'invitations'],
 
+   /**
+    * Choose admission in the application before exposing a public signup route.
+    */
+-  registration: { availability: 'open' },
++  registration: {
++    availability: 'open',
++    mapFields(data) {
++      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new InvalidInputError('Invalid invitation profile fields')
++      const fullName = Reflect.get(data, 'fullName')
++      if (typeof fullName !== 'string' || !fullName.trim()) throw new InvalidInputError('A full name is required')
++      return { fullName: fullName.trim() }
++    },
++  },
+
+   /**
+    * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
+@@ -48,9 +59,7 @@ export default defineConfig({
+    * Who may send, manage and list invitations. Everything is denied until you decide.
+    */
+   authorize: {
+-    invite: async () => false,
+-    manageInvitation: async () => false,
+-    listInvitations: async () => false,
++    ...authorizeInvitations,
+   },
+
+   /**
+@@ -59,7 +68,7 @@ export default defineConfig({
+   urls: {
+     passwordReset: (token) => accountUrl('recovery', token),
+     emailVerification: (token) => accountUrl('verification', token),
+-    invitation: (token) => accountUrl('invitation', token),
++    invitation: (token) => new URL('api/v1/auth/invitations/' + encodeURIComponent(token), env.get('APP_URL')).toString(),
+     emailChange: (token) => accountUrl('email-change', token),
+   },
+
+@@ -69,7 +78,7 @@ export default defineConfig({
+   notify: {
+     passwordResetProvision: notConfigured('passwordResetProvision'),
+     accountActivationProvision: notConfigured('accountActivationProvision'),
+-    invitationProvision: notConfigured('invitationProvision'),
++    invitationProvision: deliverInvitation,
+     emailChangeProvision: notConfigured('emailChangeProvision'),
+     emailChanged: notConfigured('emailChanged'),
+     passwordResetCompleted: notConfigured('passwordResetCompleted'),
+@@ -87,7 +96,7 @@ export default defineConfig({
+   /**
+    * Grants the invited role inside the acceptance transaction.
+    */
+-  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
+-    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
++  onInvitationAccepted: async (user: AccountUser, invitation: Invitation, trx: Trx) => {
++    await trx.table('app_user_roles').insert({ user_id: user.id, role: invitation.role })
+   },
+ })
+\ No newline at end of file
+diff --git a/database/migrations/1792695000000_create_app_user_roles.ts b/database/migrations/1792695000000_create_app_user_roles.ts
+new file mode 100644
+index 0000000..48b5c63
+--- /dev/null
++++ b/database/migrations/1792695000000_create_app_user_roles.ts
+@@ -0,0 +1,18 @@
++import { BaseSchema } from '@adonisjs/lucid/schema'
++
++export default class extends BaseSchema {
++  protected tableName = 'app_user_roles'
++
++  async up() {
++    this.schema.createTable(this.tableName, (table) => {
++      table.increments('id')
++      table.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE')
++      table.string('role').notNullable()
++      table.unique(['user_id', 'role'])
++    })
++  }
++
++  async down() {
++    this.schema.dropTable(this.tableName)
++  }
++}
 diff --git a/start/invitation_routes.ts b/start/invitation_routes.ts
 new file mode 100644
+index 0000000..20b2dd1
 --- /dev/null
 +++ b/start/invitation_routes.ts
 @@ -0,0 +1,8 @@
@@ -181,3 +199,15 @@ new file mode 100644
 +  .use(middleware.auth())
 +router.get('/api/v1/auth/invitations/:token', [() => import('#controllers/invitations_controller'), 'inspect'])
 +router.post('/api/v1/auth/invitations/:token', [() => import('#controllers/invitations_controller'), 'accept'])
+diff --git a/start/routes.ts b/start/routes.ts
+index 29fc17f..842570b 100644
+--- a/start/routes.ts
++++ b/start/routes.ts
+@@ -10,6 +10,7 @@
+ import { middleware } from '#start/kernel'
+ import router from '@adonisjs/core/services/router'
+ import { controllers } from '#generated/controllers'
++import './invitation_routes.js'
+
+ router.get('/', () => {
+   return { hello: 'world' }
