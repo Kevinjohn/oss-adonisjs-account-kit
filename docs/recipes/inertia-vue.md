@@ -88,8 +88,8 @@ Adapt only the files needed for your application:
 | Reset URL and notification callback                        | `config/account_kit.ts`                                                                                                                                         |
 | Use a server-side session store                            | `.env.example`, `config/session.ts`, app-owned `sessions` migration                                                                                             |
 
-The committed [recipe patch](patches/inertia-vue-password-reset.patch) is the application-owned
-change set used by the clean-starter check. The accompanying browser spec is
+The committed [recipe patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/adoption/vue-reset-recipe/docs/recipes/patches/inertia-vue-password-reset.patch)
+is the application-owned change set used by the clean-starter check. The accompanying browser spec is
 [`inertia-vue-password-reset.spec.ts`](../../examples/inertia-vue/tests/recipes/inertia-vue-password-reset.spec.ts).
 
 | Failure or invariant                                                                                          | Browser evidence                                                                                                                                                                         |
@@ -118,13 +118,38 @@ generation, not inbox delivery or PostgreSQL behavior.
 
 ## Clean application check
 
-The P1 login proof passed before package installation: the native `/login` form established a
-session, and the protected `/dashboard` page loaded both after login and on a second direct request.
-The baseline is starter commit `27ccef05198e15a784d42e5c968a39c68c5f8731`, generated from official
-starter revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc` with `create-adonisjs` 3.4.0 using the
-pinned D2 command in the verification record. Its `pnpm-lock.yaml` SHA-256 is
-`758adec76940f6069bf43c0a7856f44f4af76ed247c4af723527a2ad187be2e4`.
+The native `/login` form passed before Account Kit installation: its original credentials opened the
+protected `/dashboard`, which also returned successfully on a second direct request. In the fresh P6
+scaffold, `pnpm test --files=recipe_starter_login.spec.ts` passed 1/1 (444 ms). The pinned official
+starter revision is `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`, created with `create-adonisjs` 3.4.0.
+Its pre-install lockfile SHA-256 was
+`1361cab418a9cd17746e6b0deb372505a013575d6adf8fb5eb6c851366939fc3`; the clean starter commit was
+`ae2ee4c73b8b668161435e8d74d853707bdc3a7f` after manual Git initialization because the creator does
+not initialize a repository. Account Kit was configured at checkpoint
+`40e070424d6bda22579a4ea8f8b242c3b770db40` before applying the committed patch. See the verification
+record for the original P1 baseline and source comparison.
 
-> P6/P7 recipe evidence is pending the Vue harness integration and its post-fix run. No clean-app
-> recipe result is claimed until that run records the archive digest, dependency versions, exact
-> commands, P9 result and mutation outcomes here.
+The fresh P6 recipe run passed 1/1 in 4 seconds at source revision
+`db679e07e31ea2fe26e91d0d977ea4a3b3600744`. It kept the original starter login and checked malformed,
+expired, replaced and consumed reset proofs with CSRF-protected POSTs, unchanged password hashes and
+two existing sessions; it also checked mismatch-field clearing, both old sessions' protected-route
+rejection, old-password login failure and new-password login success. The retained evidence is
+`/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-XI5BdN/evidence.json`.
+
+The check used Node 24.21.0, pnpm 11.23.0, AdonisJS Core 7.6.0 and SQLite 3.53.4. It installed the
+unchanged candidate archive from the [root install instructions](../../README.md#install), built at
+`402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` with SHA-256
+`fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`. The exact recipe command was:
+
+```sh
+pnpm test:recipe -- --recipe=inertia-vue-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
+```
+
+The reference browser suite passed 35/35 in 13 seconds, including the composed reset journey. For P7,
+an installed-vendor-only mutation that preserved the old credential revision made the prior recipe
+spec fail in 3 seconds: the existing session still reached `/dashboard` instead of redirecting to
+`/login`. That negative run preceded the malformed and expired POST assertions added to the final
+spec. The original archive member was restored byte-for-byte; rerunning
+`pnpm test --files=inertia-vue-password-reset.spec.ts` with the final spec passed 1/1 in 4 seconds.
+Notifications were captured by an in-process callback; this verifies link generation, not delivery
+to an inbox. These checks use SQLite and do not establish PostgreSQL behavior.
