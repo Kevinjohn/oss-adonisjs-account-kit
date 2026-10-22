@@ -1,11 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 - 2026-10-22
 
-- Import `configProvider` from the root `@adonisjs/core` export, so the command collection and
-  managed HTTP entry load on every Core 7.x; the `@adonisjs/core/config` subpath only exports it
-  from Core 7.5.1. The exact-minimum consumer now loads every entry point and runs an Ace
-  migration command on Core 7.0.0.
+- Fix `node ace` commands and the managed HTTP entry failing to load on AdonisJS Core 7.0.0 to 7.5.0; `configProvider` now comes from the root `@adonisjs/core` export.
+- The minimum-version consumer check now loads every entry point and runs `migration:run` on Core 7.0.0.
 
 ## 0.1.0 - 2026-10-22
 
