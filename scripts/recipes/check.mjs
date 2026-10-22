@@ -292,7 +292,12 @@ test('original starter login reaches its protected profile', async ({ client, as
     run('pnpm', ['add', '-D', '@japa/api-client@^3.2.1'])
   }
   run('pnpm', ['exec', 'node', 'ace', 'migration:run', '--force'])
-  if (browserRecipe) run('pnpm', ['build'])
+  if (browserRecipe) {
+    // Build indexes pages/controllers, but it does not regenerate the typed client route
+    // registry. New Inertia Forms need that registry before their pages can render.
+    run('pnpm', ['exec', 'node', 'ace', 'codegen'])
+    run('pnpm', ['build'])
+  }
   const routes = run('pnpm', ['exec', 'node', 'ace', 'list:routes'])
   evidence.routes = routes
   if (recipe === 'api-password-reset') {
