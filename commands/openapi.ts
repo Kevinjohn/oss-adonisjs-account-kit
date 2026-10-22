@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { configProvider } from '@adonisjs/core/config'
+import { configProvider } from '@adonisjs/core'
 import { generateManagedOpenApi } from '../src/http/openapi.js'
 import { managedRouteRegistration } from '../src/http/route_registration.js'
 

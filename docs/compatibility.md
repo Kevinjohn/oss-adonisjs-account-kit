@@ -14,7 +14,11 @@ peer ranges separately; testing one point does not verify every version in a ran
 | `@adonisjs/assembler` | 8.5.2        | optional peer `^8.0.0` for configure tooling |
 
 The package minimum matrix uses Core 7.0.0, assembler 8.0.0, Lucid 22.4.2, limiter 3.0.0 and
-Luxon 3.0.0. Lucid 22.0.0 fails password reset issuance on both databases because its transaction
+Luxon 3.0.0. At those floors the exact-minimum consumer loads every public entry point and boots
+Ace with the package command collections registered to run `migration:run`, because Ace imports
+every command module before the requested command runs. Core added `configProvider` to the
+`@adonisjs/core/config` subpath only in 7.5.1; the package imports it from the root
+`@adonisjs/core`, which exports it from 7.0.0, and lint rejects the subpath import. Lucid 22.0.0 fails password reset issuance on both databases because its transaction
 insert builder does not expose `onConflict`; the supported floor is therefore 22.4.2. The complete
 HTTP reference application uses the latest compatible set, including Core 7.6.0 and assembler
 8.5.2. Concrete installed-consumer outcomes are recorded in [verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md).
