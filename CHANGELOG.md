@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0 - Unreleased
+
+- Make adding password reset to an existing AdonisJS 7 login the first adoption path, with a
+  shared integration guide, ownership map and annotated API starter diff.
+- Add pinned-starter reset recipes and runnable acceptance checks for API, Inertia React,
+  Inertia Vue and Hypermedia/Edge, including failed proofs, recovery feedback and rejection of
+  both pre-existing credentials after reset.
+- Add an existing-application invitation recipe with application-owned owner authorization,
+  one-time acceptance and local proof-capture evidence.
+- Verify native Edge forms without JavaScript, explicit validation recovery with proof-page
+  privacy headers, and an inferred React route-client type fixture with safe validation errors.
+- Add regression coverage for credential-notice outbox recovery across a worker process restart,
+  including the duplicate-delivery boundary and an interruption mutation check.
+- Separate implemented behavior, automated checks, historical manual observations and limits in
+  the example records; document reuse of the API-monorepo backend without adding another app.
+
+The package runtime, generated integration templates and migrations are unchanged from 0.1.1.
+Existing installations need no new package migration or configuration change for this update.
+
 ## 0.1.1 - 2026-10-22
 
 - Fix `node ace` commands and the managed HTTP entry failing to load on AdonisJS Core 7.0.0 to 7.5.0; `configProvider` now comes from the root `@adonisjs/core` export.
