@@ -1,9 +1,9 @@
 diff --git a/app/controllers/invitations_controller.ts b/app/controllers/invitations_controller.ts
 new file mode 100644
-index 0000000..7afb281
+index 0000000..00164a1
 --- /dev/null
 +++ b/app/controllers/invitations_controller.ts
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,57 @@
 +import type { HttpContext } from '@adonisjs/core/http'
 +import vine from '@vinejs/vine'
 +import { InvalidTokenError } from 'adonisjs-account-kit'
@@ -12,6 +12,11 @@ index 0000000..7afb281
 +const sendValidator = vine.compile(
 +  vine.object({ email: vine.string().email(), role: vine.string().trim().minLength(1).maxLength(40) })
 +)
++function proofHeaders(response: HttpContext['response']) {
++  response.header('Cache-Control', 'no-store')
++  response.header('Referrer-Policy', 'no-referrer')
++}
++
 +const acceptValidator = vine.compile(
 +  vine.object({
 +    password: vine.string().minLength(8),
@@ -32,11 +37,13 @@ index 0000000..7afb281
 +  }
 +
 +  async inspect({ params, response }: HttpContext) {
++    proofHeaders(response)
 +    const invitation = await accountKit.invitations.inspect({ token: params.token })
 +    return invitation ? response.ok(invitation) : response.badRequest({ error: 'Invalid invitation.' })
 +  }
 +
 +  async accept({ params, request, response }: HttpContext) {
++    proofHeaders(response)
 +    const { password, passwordConfirmation, fullName } = await request.validateUsing(acceptValidator)
 +    if (password !== passwordConfirmation) {
 +      return response.unprocessableEntity({ error: 'Password confirmation does not match.' })
@@ -87,7 +94,7 @@ index 0000000..5ca1830
 +  sentInvitations.push(url)
 +}
 diff --git a/config/account_kit.ts b/config/account_kit.ts
-index 9214431..c242bc9 100644
+index 9214431..2ded3a9 100644
 --- a/config/account_kit.ts
 +++ b/config/account_kit.ts
 @@ -1,4 +1,7 @@
@@ -166,7 +173,7 @@ index 9214431..c242bc9 100644
      passwordReset: (token) => accountUrl('recovery', token),
      emailVerification: (token) => accountUrl('verification', token),
 -    invitation: (token) => accountUrl('invitation', token),
-+    invitation: (token) => new URL('api/v1/auth/invitations/' + encodeURIComponent(token), env.get('APP_URL')).toString(),
++    invitation: (token) => new URL('api/v1/auth/invitations/' + encodeURIComponent(token), appUrl).toString(),
      emailChange: (token) => accountUrl('email-change', token),
    },
 
