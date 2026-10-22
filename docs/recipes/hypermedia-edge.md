@@ -23,10 +23,12 @@ git status --short
 ```
 
 The configurator creates `config/account_kit.ts`, Account Kit migrations and provider registration.
-Keep those generated files out of a transplant patch. Add a migration for the starter's server-side
-`sessions` table yourself if it has none; the starter's `config/session.ts` already supports the
-database store. Set `SESSION_DRIVER=database` after applying that migration. The recipe retains
-the starter's session cookie settings and native CSRF middleware.
+Keep the generated provider and Account Kit migrations; adapt the generated config in place for the
+starter's native session guard, reset URLs and application-owned notification callbacks. The recipe
+patch does not add generated files. Add a migration for the starter's server-side `sessions` table
+yourself if it has none; the starter's `config/session.ts` already supports the database store. Set
+`SESSION_DRIVER=database` after applying that migration. The recipe retains the starter's session
+cookie settings and native CSRF middleware.
 
 ## Add reset routes and forms
 
@@ -38,10 +40,11 @@ submit ordinary browser POSTs and work with JavaScript disabled.
 
 The request controller validates the email, calls `kit.passwordReset.request`, and returns the
 same acknowledgement for known and unknown addresses. It logs delivery failures without changing
-the response. The proof GET calls `kit.passwordReset.inspect` and never consumes a token. The
-completion POST validates the new password twice, calls `kit.passwordReset.reset`, and uses
-POST/redirect/GET for both success and recoverable failure. Set a same-origin referrer policy on
-proof pages so the token is not sent as a referrer to cross-origin pages.
+the response. The proof GET calls `kit.passwordReset.inspect` and never consumes a token. A narrow
+server middleware matches only `/reset-password/:token` and sets `Cache-Control: no-store` and
+`Referrer-Policy: no-referrer` before body parsing and CSRF checks, so malformed requests and error
+responses carry the same privacy headers. The completion POST validates the new password twice,
+calls `kit.passwordReset.reset`, and uses POST/redirect/GET for both success and recoverable failure.
 
 The starter's alert component normally uses `x-cloak`, which hides reset acknowledgements until
 Alpine runs. Remove that cloak while keeping its `x-show` behavior so server-rendered success and
@@ -94,8 +97,8 @@ email or verify PostgreSQL. The source revision, candidate archive digest, start
 lockfile digest, exact commands, test result and retained scaffold path are included in the
 acceptance record produced by `pnpm test:recipe`.
 
-The expired-proof mutation check belongs to that retained scaffold: after the recipe passes, bypass
-the installed package's expiry comparison in `build/session_registry-*.js` and rerun its printed
-spec command. The expired POST must fail the test because the old password hash changes. Restore
-the installed package from the same candidate archive, verify its SHA-256 is unchanged, and rerun
-the spec to green before recording P7.
+For P7, bypass the expiry comparison in the package installed under
+`examples/hypermedia/node_modules/adonisjs-account-kit/build/session_registry-*.js`, then run the
+expired-proof browser test. It must fail immediately because the stored password hash changes.
+Restore the installed package from the original vendor archive, verify its SHA-256 is unchanged,
+and rerun the browser test to green before recording the mutation result.
