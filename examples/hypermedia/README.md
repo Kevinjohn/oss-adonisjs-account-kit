@@ -12,9 +12,9 @@ flows and application policy to that starter.
 
 ## Install and run
 
-Use Node 24 and pnpm 11.23.0, as pinned in the repository. A published Account Kit version is not
-available yet. The normal consumer install below is therefore release-blocked; the contributor
-pack is for local development and verification only.
+Use Node 24 and pnpm 11.23.0, as pinned in the repository. For the available GitHub release archive,
+follow the [root install instructions](../../README.md#install); npm publication is still pending.
+The contributor pack below is for local development and verification.
 
 From the repository root:
 
@@ -32,7 +32,7 @@ contains the built package and `CHANGELOG.md`, so its checksum changes whenever 
 The example install therefore omits `--frozen-lockfile`: it keeps the locked versions and records
 the local archive's integrity in `pnpm-lock.yaml`. Leave that local lockfile change uncommitted
 unless you are refreshing the lockfile for a dependency change. Do not substitute
-this archive for the published consumer path: the registry currently has no matching release.
+this archive for a released-consumer check; use the GitHub release archive linked above.
 
 Then configure the app and run its database migrations:
 
@@ -134,6 +134,10 @@ shared lifecycle and evidence contract, see
 [`docs/guides/example-acceptance.md`](../../docs/guides/example-acceptance.md).
 
 ## Checks and evidence
+
+| Implemented                                                                                                                                                  | Automated HTTP                                                                                                                                           | Browser                                                                                                                           | Manual checks and limits                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signup, verification, login, reset, password/profile/email settings and logout use native Edge forms, CSRF, POST/redirect/GET, and database-backed sessions. | [Native account journey](tests/browser/account_journey.spec.ts) drives the real HTTP routes and checks persistence; there is no separate JSON API suite. | The same [native account journey](tests/browser/account_journey.spec.ts) checks rendered forms, including no-JavaScript recovery. | The dated checks below apply only to their recorded source revisions. Local proof capture does not prove recipient delivery; no PostgreSQL or clean-starter recipe result is claimed. The password-reset recipe P3 record is pending its future recipe PR. |
 
 Run the example scripts with Node 24:
 

@@ -5,24 +5,21 @@ authorization, and user-facing messages while using Account Kit for account oper
 [example acceptance contract](../docs/guides/example-acceptance.md) before using their checks as
 evidence for an application.
 
-| Example                                      | Stack                                                | Start here                                                       |
-| -------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| [API](api/README.md)                         | AdonisJS 7, Lucid, JSON routes, opaque access tokens | [`Build one account API`](../docs/guides/core-api.md)            |
-| [Inertia and React](inertia-react/README.md) | AdonisJS 7, Inertia, React, browser sessions         | [The example README](inertia-react/README.md#run-it)             |
-| [Inertia and Vue](inertia-vue/README.md)     | AdonisJS 7, Inertia, Vue, browser sessions           | [The example README](inertia-vue/README.md#requirements-and-run) |
-| [Hypermedia and Edge](hypermedia/README.md)  | AdonisJS 7, native forms, Edge, database sessions    | [The example README](hypermedia/README.md#install-and-run)       |
+| Example                                      | Purpose                                                      | Supported starting point                                                                                                                                                                        | Start here                                                       |
+| -------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [API](api/README.md)                         | Compose account flows through application-owned JSON routes. | [Pinned AdonisJS API starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/api); one namespace and the opaque `api` guard.                            | [`Build one account API`](../docs/guides/core-api.md)            |
+| [Inertia and React](inertia-react/README.md) | Compose account flows in an Inertia React browser app.       | [Pinned Inertia React starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-react); session guard with a server-side session store.           | [The example README](inertia-react/README.md#run-it)             |
+| [Inertia and Vue](inertia-vue/README.md)     | Compose account flows in an Inertia Vue browser app.         | [Pinned Inertia Vue starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue); session guard with a server-side session store.               | [The example README](inertia-vue/README.md#requirements-and-run) |
+| [Hypermedia and Edge](hypermedia/README.md)  | Compose account flows with server-rendered Edge forms.       | [Pinned Hypermedia starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/hypermedia); native forms and CSRF; a server-side session store is required. | [The example README](hypermedia/README.md#install-and-run)       |
 
 ## Package availability
 
-The current package manifest has version `0.0.0`, and there is no matching public npm release and
-source tag for these examples yet. Their normal published-package install path is therefore
-unavailable. The example READMEs describe the local archive workflow for contributors separately;
-it builds Account Kit from this checkout and is not a published consumer install.
+Account Kit is available as a GitHub release archive; follow the [root install instructions](../README.md#install).
+npm publication is still pending. Use the package version and example revision recorded by the
+release when checking a released consumer.
 
-When a matching package release and repository tag are available, use the exact package version
-and example revision recorded by that release. The normal consumer setup must not build Account Kit
-from repository source. Until then, do not treat the local archive path as release-pinned consumer
-evidence.
+The example READMEs also describe the local archive workflow for contributors. It builds the
+current checkout and does not establish release-pinned consumer evidence.
 
 ## Contributor smoke record
 

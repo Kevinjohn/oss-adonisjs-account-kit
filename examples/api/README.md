@@ -9,6 +9,11 @@ with [Build one account API](../../docs/guides/core-api.md). This example also h
 admission, invitation, and social integrations. Its notification capture and sample outbox are
 demo/test fixtures; the copy row below states their limits.
 
+The supported starting point is the pinned official AdonisJS API starter at
+[`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/api).
+The API guide describes the minimal supported path; this reference app also contains optional
+integrations that are not prerequisites.
+
 ## What to copy
 
 | You want                                                                               | Look at                                                                                                                                                                                                                                                                                                      |
@@ -29,10 +34,9 @@ for production mail and workers.
 
 ## Run it
 
-The source package manifest is `0.0.0`; there is no matching public npm release and repository tag
-for a consumer install yet. The published-package path is blocked on that release. This contributor
-path builds an archive from the current repository and does not establish a released-package
-install.
+For the available GitHub release archive, follow the [root install instructions](../../README.md#install).
+npm publication is still pending. The contributor path below builds the current checkout and
+does not establish a released-package install.
 
 Use Node.js 24 and pnpm 11.23.0. From the repository root:
 
@@ -278,6 +282,12 @@ Use the repository's `test:consumer` script to run it. PostgreSQL runs require t
 scenario.
 The `compatibility/` folder is an input for this harness, not part of the application: it is a
 separate minimum-version consumer.
+
+## Checks and evidence
+
+| Implemented                                                                                                                                              | Automated HTTP                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Browser                                          | Manual checks and limits                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signup, verification, login, reset, password and profile settings, bearer revocation, and optional API integrations are implemented in this application. | Named functional suites: [signup/login](tests/functional/account_signup_login.spec.ts), [email verification](tests/functional/account_email_verification.spec.ts), [password reset](tests/functional/account_password_reset.spec.ts), [password change](tests/functional/account_password_change.spec.ts), [profile/email](tests/functional/account_profile_email.spec.ts), and [bearer revocation](tests/functional/bearer_revocation.spec.ts). These links identify suites; they do not claim a new recipe run passed. | None claimed; the API example has no browser UI. | Development notification capture does not prove recipient delivery. No PostgreSQL or clean-starter recipe result is claimed here; the password-reset recipe P3 record is pending its future recipe PR. See the [acceptance guide](../../docs/guides/example-acceptance.md) for dated coverage and limits. |
 
 ## Shared acceptance criteria
 

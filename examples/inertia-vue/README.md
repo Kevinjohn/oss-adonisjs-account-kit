@@ -5,10 +5,15 @@ account settings, password reset and logout with Account Kit. The backend owns t
 validation, authorization, English copy, delivery callback and session policy. Account Kit handles
 proof consumption and credential revisions.
 
+The supported starting point is the pinned official Inertia Vue starter at
+[`adonisjs/starter-kits` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue).
+This reference app keeps its Inertia Vue conventions and requires a server-side session store.
+
 ## Requirements and run
 
-Use Node.js 24 and pnpm 11.23.0 from the repository root. The contributor workflow packs the local
-source because the matching package release is not published yet:
+Use Node.js 24 and pnpm 11.23.0 from the repository root. The contributor workflow below packs the
+local checkout. For the available GitHub release archive, follow the
+[root install instructions](../../README.md#install); npm publication is still pending:
 
 ```sh
 nvm use
@@ -36,10 +41,10 @@ integrity. Commit a lockfile refresh only when dependencies change.
 
 ### Consumer install status
 
-The consumer path is blocked on publication of the matching Account Kit release. The registry
-package currently returns 404 and there is no matching GitHub release/tag, so this example does not
-invent a version. Once published, replace the local archive dependency with the exact released
-version, refresh `pnpm-lock.yaml`, and document the frozen consumer install here.
+The GitHub release archive is available through the [root install instructions](../../README.md#install).
+For a released-consumer check, replace the local archive dependency with that release archive and
+refresh `pnpm-lock.yaml`. The local packing workflow above verifies the checkout; it does not prove
+installation of the released bytes. npm publication is still pending.
 
 ## Account journey and policy
 
@@ -103,6 +108,10 @@ files. Choose and document which routes require verified email and whether a suc
 change keeps the current session or ends it.
 
 ## Checks and evidence
+
+| Implemented                                                                                                                                                                                        | Automated HTTP                                                                                                                                                                                                          | Browser                                                                                                                                                                                                                                                                                                                                                                                                                  | Manual checks and limits                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signup, verification, login, reset, profile, password and email settings, verified access, and session revision handling are implemented with application-owned Inertia Vue forms and controllers. | Named functional suites: [settings journey](tests/functional/settings_journey.spec.ts), [reset journey](tests/functional/reset_proof_journey.spec.ts), and [reset routes](tests/functional/reset_proof_routes.spec.ts). | Named browser suites: [account journeys](tests/browser/account_journeys.spec.ts), [signup recovery](tests/browser/signup_recovery.spec.ts), [reset proof](tests/browser/reset_proof_browser.spec.ts), [verification sessions](tests/browser/verification_session_browser.spec.ts), [form errors](tests/browser/account_form_errors.spec.ts), and [profile/email settings](tests/browser/profile_email_settings.spec.ts). | The dated checks below apply only to their recorded source revisions. Local callback capture does not prove recipient delivery; no PostgreSQL or clean-starter recipe result is claimed. The password-reset recipe P3 record is pending its future recipe PR. |
 
 Run these commands from `examples/inertia-vue` after the root package install and contributor pack:
 
