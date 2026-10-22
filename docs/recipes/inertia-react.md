@@ -1,206 +1,139 @@
-# Inertia and React
+# Add password reset to an existing Inertia React login
 
-With Inertia, your controllers call Account Kit and render React pages. Sign-in uses the session
-guard, so set that up first with the [sessions recipe](sessions.md).
+Keep the official AdonisJS 7 React starter's `/login`, `User` model, `web` guard, `/dashboard`
+and styling. Add only password reset. “Keep your login” includes adapting its controller to
+capture a credential revision; an unchanged session login cannot revoke older sessions.
 
-The [Inertia React example app](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/examples/inertia-react/README.md) puts this recipe together
-with signup, email confirmation and password change in the official starter kit.
+First complete the mandatory [existing-application checklist](../guides/password-reset-existing-app.md),
+including the [README installation instructions](../../README.md#installation), required peers,
+Limiter setup and every generated migration. The setup schema is shared across capabilities;
+`enabled: ['passwordReset']` does not generate a reset-only schema. See the
+[session integration](sessions.md) for the guard contract.
 
-For profile and email settings, copy the example's authenticated `settings/profile` and
-`settings/email` routes and its public `confirm-email/:token` GET/POST pair. The profile controller
-passes only the signed-in user's ID, current password, and validated `fullName` to
-`emailPasswordManagement.updateProfile`. An email request uses `requestEmailChange`; the confirmed
-address remains active while the new address is pending. The confirmation GET calls
-`inspectEmailChange` without using the proof, and the POST calls `completeEmailChange`, ends the
-current browser session, and redirects to sign-in. Cancel a pending address through
-`updateProfile({ actorId, currentPassword, email: currentEmail })`; the service also invalidates
-its proof. Keep the profile and email settings routes behind authentication, and do not accept a
-user ID from form data as authority. Show generic copy when an address cannot be used.
-The example blocks email-change requests until the current address is confirmed, because the
-service immediately changes an inactive account's address. Direct unconfirmed users to the
-dashboard's verification resend action; this is an application policy, not a service restriction.
+The [hand-edit patch](patches/inertia-react-password-reset.patch) applies after configure to the
+[pinned starter](../maintainers/verification.md#starter-baselines). It supplies
+application controllers, validators, pages and session wiring; it contains no generated migration,
+generated schema, dependency entry, lockfile or archive. Its handwritten `sessions` migration
+belongs to the application and is separate from Account Kit's generated session registry.
 
-This recipe covers forgot password. Verification, invitations and email change follow the same
-pattern: a form posts to a controller, the link in the email opens a page, and that page posts the
-token back.
+## Preserve the native login and enforce revocation
 
-## Routes
+Keep `app/controllers/session_controller.ts` and its routes. Its `store` still validates the
+starter's email/password form and redirects to the existing dashboard, then delegates credential
+establishment to `kit.authentication.login` with the existing `web` guard. The adapter in
+`app/services/session_guard.ts` regenerates the session, calls `web.login`, and stores the returned
+revision in `accountKitRevision`. It clears and regenerates the session on termination. The
+starter signup controller keeps its validation and `User.create`, then uses the same credential
+adapter for its automatic login, so the new revision check does not break signup.
 
-```ts
-// start/routes.ts
-const PasswordResetsController = () => import('#controllers/password_resets_controller')
+Enable only `passwordReset` and select `authentication: { strategy: 'session', guard: 'web',
+canAccess: async () => true }` in `config/account_kit.ts`; replace the permissive callback with
+the application's real restriction policy. The no-op credential callback is deliberate only
+because this application has no additional credentials. Revoke additional API keys or remember-me
+credentials transactionally if the application uses them.
 
-router.get('forgot-password', [PasswordResetsController, 'create'])
-router.post('forgot-password', [PasswordResetsController, 'store'])
-router.get('reset-password/:token', [PasswordResetsController, 'edit'])
-router.post('reset-password/:token', [PasswordResetsController, 'update'])
+**Mandatory:** set `SESSION_DRIVER=database`, apply the handwritten `sessions` migration, and run
+all generated migrations. The patch refuses the cookie store. A shared server-side store is
+required in production; this recipe exercises SQLite-backed sessions locally. Existing sessions
+without `accountKitRevision` must sign in again.
+
+The router middleware order is body parser, session, Shield, Auth initialization, native silent
+authentication, then `session_revision_middleware`. The revision middleware calls
+`kit.authentication.current` for the authenticated user, passes the saved revision (including an
+explicit null before the first change), and terminates missing/stale sessions. The native auth
+middleware subsequently redirects protected requests to `/login`. Put proof-response headers in
+the early server stack so proof failures also receive `Cache-Control: no-store` and
+`Referrer-Policy: same-origin`. Exclude proof URLs from access logs, analytics and error reports.
+
+## Controllers, pages and forms
+
+The patch adds these application-owned routes without moving the starter routes:
+
+| Method     | Path                     | Purpose                                                           |
+| ---------- | ------------------------ | ----------------------------------------------------------------- |
+| GET / POST | `/forgot-password`       | Guest form and generic request acknowledgement                    |
+| GET        | `/reset-password/:token` | Inspect without consumption and render valid/invalid proof page   |
+| POST       | `/reset-password/:token` | Validate confirmation, consume proof and redirect to native login |
+
+The forgot form is guest-only; reset inspection and completion remain public, including for a
+signed-in browser. The controller never uses submitted user IDs as authority. It catches committed
+delivery failures without claiming recipient delivery and keeps known/unknown request feedback
+identical. Invalid proof submissions return useful application flash feedback and the invalid
+page offers a fresh-link action. Throttling gets retry guidance through the exception handler.
+
+`urls.passwordReset` points to the application-owned `/reset-password/:token` page. The sample
+configuration uses development log notifications, which refuse production; connect real delivery
+before deploying. The acceptance spec replaces those callbacks with local capture.
+
+`inertia/pages/auth/forgot_password.tsx` and `reset_password.tsx` reuse `AuthLayout`, the native
+`auth__*`, `field__*` and `btn` classes, and the starter's typed Inertia `Form`/`Link` components.
+The login page gains one forgot-password link. The starter Inertia middleware already shares
+validation errors and flash messages, so its existing toast and theme remain in place.
+
+Shield stays enabled. Forms use the native Inertia/Shield CSRF integration; direct failure POSTs
+in the acceptance spec also send the real browser's CSRF token. New passwords use the starter's
+8–32-character validation, with confirmation matched server-side. Inspection never consumes the
+proof or changes the browser identity. On successful reset, the current signed-in browser is
+terminated and redirected to login; other sessions fail on their next protected request.
+
+### Failed-submission password policy
+
+Keep both password fields in the mounted reset form after a confirmation error, so the user can
+correct the confirmation without retyping the new password. Do not store either value in session,
+flash, logs, a URL or application persistence. A page navigation/reload creates empty inputs.
+The error summary receives focus, links to the invalid field, and connects field feedback using
+`aria-invalid` and `aria-describedby`. The reference app's
+[form-error spec](../../examples/inertia-react/tests/browser/account_form_errors.spec.ts) checks
+retention of both values and keyboard-accessible recovery.
+
+## Failure and credential matrix
+
+Every row is exercised by `React reset recipe preserves failed submissions and revokes both native
+sessions` in the [committed acceptance spec](../../examples/inertia-react/tests/recipes/inertia-react-password-reset.spec.ts).
+The spec signs two distinct native sessions in before reset and verifies each reaches the native
+protected dashboard. “Unchanged” means byte-identical stored hash and successful protected
+requests from both saved sessions, rather than a reset response or database token count.
+
+| Case                    | Expected behavior and assertions                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Known / unknown request | Same visible generic acknowledgement; only known account emits captured proof                                       |
+| Valid proof GET twice   | Both pages allow a new password; proof still completes later                                                        |
+| Confirmation mismatch   | Field error; both entered values retained; hash and both sessions unchanged                                         |
+| Malformed proof         | Invalid page and rejected POST; hash and both sessions unchanged                                                    |
+| Expired proof           | Insert a past-expiry proof row; invalid page and rejected POST; hash and both sessions unchanged                    |
+| Replacement link        | Inspect a fresh live proof, request replacement, reject prior proof; unchanged hash/sessions; replacement completes |
+| Consumed proof          | Invalid page and rejected replay; new hash and two fresh successful sessions unchanged                              |
+| Successful reset        | Both old sessions redirected to native login; old-password login fails; new-password login reaches dashboard        |
+
+The reference app's [composed browser journey](../../examples/inertia-react/tests/browser/account_journeys.spec.ts)
+also signs in two clients before reset, checks native redirects for each old session, and tries the
+old and new passwords through `/login`.
+
+## Clean application check
+
+Implementation is prepared; the full React harness and reference suite results are pending.
+Do not treat the API harness evidence as React acceptance.
+
+From the repository root, use the pinned-starter harness with a supplied archive:
+
+```sh
+pnpm test:recipe -- --recipe=inertia-react-password-reset \
+  --candidate-tarball=<archive-path> --candidate-revision=<source-commit>
 ```
 
-Point the reset link at the page route in `config/account_kit.ts`:
+The harness checks the original login with the native cookie store before installing Account Kit.
+After applying the patch and handwritten session migration, it switches to `SESSION_DRIVER=database`
+and retains that setting for the printed replay command. The copied spec runs in the browser suite
+with the starter's existing Chromium tooling; no second browser platform is added.
 
-```ts
-urls: {
-  passwordReset: (token) => new URL(`reset-password/${encodeURIComponent(token)}`, appUrl).toString(),
-  // ...
-},
-```
+For the mutation check, remove `credentials_changed_at` advancement in the installed package's
+`advanceCredentialRevision` implementation, rerun the retained command, and require a protected
+old-session assertion to fail. Restore exact bytes from the supplied archive and rerun to green.
+The final record must include source revision, archive digest, starter baseline and lock digest,
+Node/pnpm/AdonisJS/database versions, exact commands, named results and mutation/restoration results.
 
-## Controller
-
-```ts
-// app/controllers/password_resets_controller.ts
-import type { HttpContext } from '@adonisjs/core/http'
-import vine from '@vinejs/vine'
-import accountKit from 'adonisjs-account-kit/services/main'
-import {
-  DeliveryError,
-  InvalidTokenError,
-  PostCommitError,
-  ThrottledError,
-} from 'adonisjs-account-kit'
-
-const emailValidator = vine.compile(vine.object({ email: vine.string().email() }))
-const passwordValidator = vine.compile(
-  vine.object({
-    password: vine.string().minLength(8).maxLength(32),
-    passwordConfirmation: vine.string().sameAs('password'),
-  })
-)
-
-export default class PasswordResetsController {
-  create({ inertia }: HttpContext) {
-    return inertia.render('auth/forgot_password')
-  }
-
-  async store({ request, response, session, logger }: HttpContext) {
-    const { email } = await request.validateUsing(emailValidator)
-    try {
-      await accountKit.passwordReset.request({ email, clientKey: request.ip() })
-    } catch (error) {
-      if (error instanceof ThrottledError) {
-        session.flash('error', 'Too many attempts. Try again later.')
-        return response.redirect().back()
-      }
-      // Only known addresses get an email, so a failed send must not change the response.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ err: error }, 'password reset email failed')
-    }
-    session.flash('success', 'If the account exists, we have sent a reset link.')
-    return response.redirect().back()
-  }
-
-  async edit({ inertia, params, response }: HttpContext) {
-    // Keeps the token out of the Referer sent to other sites; same-origin still lets form errors
-    // redirect back to this page.
-    response.header('Referrer-Policy', 'same-origin')
-    const valid = await accountKit.passwordReset.inspect({ token: params.token })
-    return inertia.render('auth/reset_password', { token: params.token, valid })
-  }
-
-  async update({ request, response, session, params, logger }: HttpContext) {
-    const { password } = await request.validateUsing(passwordValidator)
-    try {
-      await accountKit.passwordReset.reset({ token: params.token, password })
-    } catch (error) {
-      if (error instanceof InvalidTokenError) {
-        session.flash('error', 'This link is invalid or has expired.')
-        return response.redirect('/forgot-password')
-      }
-      // The password has already changed; only the follow-up email failed.
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ err: error }, 'password reset notice failed')
-    }
-    session.flash('success', 'Your password has been reset. Please sign in.')
-    return response.redirect('/login')
-  }
-}
-```
-
-The example keeps the starter's 32-character ceiling for new passwords. Account Kit accepts new
-passwords up to 256 UTF-16 code units by default; an application may choose a stricter
-`passwordPolicy` and matching validator. Login does not apply that new-password policy, so existing
-passwords up to the service's 256-unit ceiling remain usable. Keep the same new-password limit on
-signup, reset and password-change forms.
-
-`inspect` checks the link without using it up, so the page can show that a link cannot be used
-before the user types a new password.
-
-## Pages
-
-```tsx
-// inertia/pages/auth/forgot_password.tsx
-import { useForm } from '@inertiajs/react'
-
-export default function ForgotPassword() {
-  const form = useForm({ email: '' })
-  return (
-    <form onSubmit={(event) => (event.preventDefault(), form.post('/forgot-password'))}>
-      <label>
-        Email
-        <input
-          type="email"
-          value={form.data.email}
-          onChange={(e) => form.setData('email', e.target.value)}
-        />
-      </label>
-      {form.errors.email && <p>{form.errors.email}</p>}
-      <button disabled={form.processing}>Send reset link</button>
-    </form>
-  )
-}
-```
-
-```tsx
-// inertia/pages/auth/reset_password.tsx
-import { useForm, Link } from '@inertiajs/react'
-
-export default function ResetPassword({ token, valid }: { token: string; valid: boolean }) {
-  const form = useForm({ password: '', passwordConfirmation: '' })
-  if (!valid)
-    return (
-      <p>
-        This link may be invalid, already used, or expired.{' '}
-        <Link href="/forgot-password">Request a new one</Link>.
-      </p>
-    )
-  return (
-    <form onSubmit={(event) => (event.preventDefault(), form.post(`/reset-password/${token}`))}>
-      <label htmlFor="password">New password</label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        value={form.data.password}
-        onChange={(e) => form.setData('password', e.target.value)}
-        aria-invalid={form.errors.password ? true : undefined}
-        aria-describedby={form.errors.password ? 'password-error' : undefined}
-      />
-      {form.errors.password && <p id="password-error">{form.errors.password}</p>}
-      <label htmlFor="passwordConfirmation">Confirm new password</label>
-      <input
-        id="passwordConfirmation"
-        name="passwordConfirmation"
-        type="password"
-        value={form.data.passwordConfirmation}
-        onChange={(e) => form.setData('passwordConfirmation', e.target.value)}
-        aria-invalid={form.errors.passwordConfirmation ? true : undefined}
-        aria-describedby={
-          form.errors.passwordConfirmation ? 'password-confirmation-error' : undefined
-        }
-      />
-      {form.errors.passwordConfirmation && (
-        <p id="password-confirmation-error">{form.errors.passwordConfirmation}</p>
-      )}
-      <button disabled={form.processing}>Set new password</button>
-    </form>
-  )
-}
-```
-
-Share the `success` and `error` flash messages with every page through your Inertia `sharedData`
-config.
-
-## Keep the token out of logs
-
-The reset page URL contains the token. Exclude `/reset-password/*` and the other proof pages from
-access logs, analytics and error reporting; see the [security model](../security.md).
+The prepared application uses the pinned React starter at
+`46d235932e3eb6472a16b740fa0b47b5f69fc6fc`, with original login evidence recorded in the
+[starter verification record](../maintainers/verification.md). Planned coverage is local SQLite,
+Chromium and local notification capture. No recipient delivery, PostgreSQL, other browser engine,
+manual viewport or keyboard sign-off is claimed.

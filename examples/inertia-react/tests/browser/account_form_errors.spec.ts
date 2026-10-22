@@ -144,5 +144,6 @@ test.group('account form errors', (group) => {
       await page.getByLabel('New password', { exact: true }).inputValue(),
       'Replacement123!'
     )
+    assert.equal(await confirmation.inputValue(), 'Different123!')
   })
 })
