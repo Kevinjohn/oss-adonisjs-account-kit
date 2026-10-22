@@ -22,7 +22,7 @@ const recipeKits = {
   'invitations-existing-app': 'api',
   'inertia-react-password-reset': 'inertia-react',
 }
-const kit = recipeKits[recipe]
+const kit = Object.hasOwn(recipeKits, recipe) ? recipeKits[recipe] : undefined
 const browserRecipe = kit === 'inertia-react'
 if (!kit) throw new Error(`Unknown recipe: ${recipe}`)
 if (database !== 'sqlite') throw new Error('This recipe currently supports --database=sqlite only')
