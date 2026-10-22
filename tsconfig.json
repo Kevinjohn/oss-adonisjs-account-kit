@@ -4,5 +4,12 @@
     "rootDir": "./",
     "outDir": "./build"
   },
-  "exclude": ["node_modules", "build", "stubs/**", "examples/**", "scripts/demos/overlay/**"]
+  "exclude": [
+    "node_modules",
+    "build",
+    "stubs/**",
+    "examples/**",
+    "docs/reviews/**",
+    "scripts/demos/overlay/**"
+  ]
 }

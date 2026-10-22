@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test:entry-points": "node --import=@poppinss/ts-exec --enable-source-maps entry_points.ts",
+    "test:ace": "node --import=@poppinss/ts-exec --enable-source-maps ace.ts",
     "test": "node --import=@poppinss/ts-exec --enable-source-maps run.ts"
   },
   "dependencies": {

@@ -15,6 +15,12 @@ export async function runMinimumCompatibility(candidate, runName) {
   const installed = await installArchive(appRoot, candidate)
   await resetExclusivePostgresSchema(appRoot)
   run('pnpm', ['run', 'typecheck'], appRoot, env)
+  run('pnpm', ['run', 'test:entry-points'], appRoot, env)
+  run('pnpm', ['run', 'test:ace'], appRoot, env)
   run('pnpm', ['run', 'test'], appRoot, env)
-  return { appRoot, installed, scenario: 'minimal exact-floor runtime semantics' }
+  return {
+    appRoot,
+    installed,
+    scenario: 'minimal exact-floor entry points, Ace command loading and runtime semantics',
+  }
 }

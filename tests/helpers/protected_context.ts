@@ -1,4 +1,4 @@
-import { configProvider } from '@adonisjs/core/config'
+import { configProvider } from '@adonisjs/core'
 import { protectManagedSessionConfig } from '../../src/http/session_store_protection.js'
 
 export class ServerStore {}
