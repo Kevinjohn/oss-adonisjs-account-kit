@@ -26,7 +26,8 @@ the limiter asks for a storage layer, choose `database`; it adds a `rate_limits`
 step 2 runs:
 
 Follow the [root install instructions](../README.md#install) for the available GitHub release
-archive and configuration commands. npm publication is still pending. Configuration writes
+archive and configuration commands, stopping after configuration before returning to step 2 below.
+npm publication is still pending. Configuration writes
 `config/account_kit.ts`, generates the package migrations, and registers the provider and Ace
 commands in `adonisrc.ts`.
 
