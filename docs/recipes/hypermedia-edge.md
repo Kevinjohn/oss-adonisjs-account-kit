@@ -52,7 +52,9 @@ The starter's alert component normally uses `x-cloak`, which hides reset acknowl
 Alpine runs. Remove that cloak while keeping its `x-show` behavior so server-rendered success and
 failure alerts remain visible when JavaScript is disabled. The signup controller also authenticates
 through the same session adapter after creating the user; this saves the initial credential
-revision while preserving the starter's signup form and dashboard redirect.
+revision while preserving the starter's signup form and dashboard redirect. The patch also trims
+and lowercases the starter's shared email rule in `app/validators/user.ts`, because Account Kit
+looks addresses up in that form; normalize existing addresses before enabling the recipe.
 
 The login controller should call `kit.authentication.login` with the existing `web` guard adapter.
 That adapter regenerates the native session, logs the user in through AdonisJS auth and stores the
@@ -94,7 +96,7 @@ pnpm test:recipe -- --recipe=hypermedia-password-reset
 
 ## Clean application check
 
-Verified on 22 October 2026. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/64cf1a2dc17dd2b3b52e9b43a0ced6398e180668/docs/recipes/patches/hypermedia-password-reset.patch)
+Verified on 22 October 2026. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/hypermedia-password-reset.patch)
 after configuration; the [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
 uses the pinned starter's native login, dashboard, forms and CSRF protection. The scaffold command is:
 

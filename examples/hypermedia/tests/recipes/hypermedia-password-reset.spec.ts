@@ -30,13 +30,15 @@ test.group('existing Edge application password reset', (group) => {
     try {
       const page = await context.visit('/signup')
       await page.getByLabel('Full name').fill('New Starter User')
-      await page.getByLabel('Email').fill('new-starter@example.test')
+      // A mixed-case address must still sign in through Account Kit's normalized lookup.
+      await page.getByLabel('Email').fill('New-Starter@Example.test')
       await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
       await page.getByLabel('Confirm password').fill('SignupPass123!')
       await page.getByRole('button', { name: 'Create account' }).click()
       await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       await page.goto('/dashboard')
       await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      await User.findByOrFail('email', 'new-starter@example.test')
     } finally {
       await context.close()
     }
