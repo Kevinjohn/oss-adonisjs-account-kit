@@ -58,6 +58,7 @@ test.group('existing Edge application password reset', (group) => {
     })
     const firstContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
     const secondContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+    const consumedContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
     try {
       const requester = await firstContext.visit('/forgot-password')
       await requester.getByLabel('Email').fill(user.email)
@@ -78,7 +79,7 @@ test.group('existing Edge application password reset', (group) => {
         await login.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       }
 
-      const secondSession = await secondContext.visit(resetPath)
+      const secondSession = await consumedContext.visit(resetPath)
       await secondSession.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await requester.goto(resetPath)
       await requester.getByLabel('New password').fill('NewPassword123!')
@@ -93,18 +94,6 @@ test.group('existing Edge application password reset', (group) => {
         .select('password')
         .where('id', user.id)
         .first())!.password
-
-      await secondSession.getByLabel('New password').fill('AnotherPassword123!')
-      await secondSession.getByLabel('Confirm password').fill('AnotherPassword123!')
-      await secondSession.getByRole('button', { name: 'Reset password' }).click()
-      await secondSession
-        .getByText(/This reset link is invalid, already used, or expired/)
-        .waitFor()
-      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
-      assert.equal(
-        (await db.from('users').select('password').where('id', user.id).first())!.password,
-        newPasswordHash
-      )
 
       for (const context of [firstContext, secondContext]) {
         const protectedPage = await context.visit('/dashboard')
@@ -126,9 +115,32 @@ test.group('existing Edge application password reset', (group) => {
       await requester.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       await requester.goto('/dashboard')
       await requester.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      const assertCurrentSession = async () => {
+        const response = await firstContext.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+        assert.equal(response.status(), 200)
+        assert.equal(new URL(response.url()).pathname, '/dashboard')
+      }
+      await assertCurrentSession()
+      await secondSession.getByLabel('New password').fill('AnotherPassword123!')
+      await secondSession.getByLabel('Confirm password').fill('AnotherPassword123!')
+      await secondSession.getByRole('button', { name: 'Reset password' }).click()
+      await secondSession
+        .getByText(/This reset link is invalid, already used, or expired/)
+        .waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      assert.equal(
+        (await db.from('users').select('password').where('id', user.id).first())!.password,
+        newPasswordHash
+      )
+
+      await assertCurrentSession()
+      await requester.goto(resetPath)
+      await requester.getByText(/invalid, already used, or expired/).waitFor()
+      await assertCurrentSession()
     } finally {
       await firstContext.close()
       await secondContext.close()
+      await consumedContext.close()
     }
   })
 
@@ -190,46 +202,70 @@ test.group('existing Edge application password reset', (group) => {
         .where('hash', validHash)
         .first()
       assert.isNotNull(validProof)
-      for (const token of ['not-a-proof', expired]) {
-        await page.goto(`/reset-password/${encodeURIComponent(valid)}`)
-        await page
-          .locator('form')
-          .evaluate(
-            (form, action) => form.setAttribute('action', action),
-            `/reset-password/${encodeURIComponent(token)}`
+      const ownerSession = await context.visit('/login')
+      await ownerSession.getByLabel('Email').fill(user.email)
+      await ownerSession.getByLabel('Password').fill('OldPassword123!')
+      await ownerSession.getByRole('button', { name: 'Sign in' }).click()
+      await ownerSession.waitForURL('**/dashboard')
+      const formContext = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+      try {
+        const formSession = await formContext.visit('/login')
+        await formSession.getByLabel('Email').fill(formOwner.email)
+        await formSession.getByLabel('Password').fill('OldPassword123!')
+        await formSession.getByRole('button', { name: 'Sign in' }).click()
+        await formSession.waitForURL('**/dashboard')
+        const assertActiveSessions = async () => {
+          for (const client of [ownerSession, formSession]) {
+            const response = await client.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+            assert.equal(response.status(), 200)
+            assert.equal(new URL(response.url()).pathname, '/dashboard')
+          }
+        }
+        for (const token of ['not-a-proof', expired]) {
+          await assertActiveSessions()
+          await page.goto(`/reset-password/${encodeURIComponent(valid)}`)
+          await page
+            .locator('form')
+            .evaluate(
+              (form, action) => form.setAttribute('action', action),
+              `/reset-password/${encodeURIComponent(token)}`
+            )
+          await page.getByLabel('New password').fill('ReplacementPass123!')
+          await page.getByLabel('Confirm password').fill('ReplacementPass123!')
+          await page.getByRole('button', { name: 'Reset password' }).click()
+          assert.equal(
+            (await db.from('users').select('password').where('id', user.id).first())!.password,
+            originalHash
           )
-        await page.getByLabel('New password').fill('ReplacementPass123!')
-        await page.getByLabel('Confirm password').fill('ReplacementPass123!')
-        await page.getByRole('button', { name: 'Reset password' }).click()
-        assert.equal(
-          (await db.from('users').select('password').where('id', user.id).first())!.password,
-          originalHash
-        )
-        assert.equal(
-          (await db.from('users').select('password').where('id', formOwner.id).first())!.password,
-          formOwnerHash
-        )
-        await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
-        assert.equal(
-          (await db.from('users').select('password').where('id', user.id).first())!.password,
-          originalHash
-        )
-        assert.deepEqual(
-          await db
-            .from('password_reset_tokens')
-            .where('tokenable_id', user.id)
-            .where('hash', expiredHash)
-            .first(),
-          expiredProof
-        )
-        assert.deepEqual(
-          await db
-            .from('password_reset_tokens')
-            .where('tokenable_id', formOwner.id)
-            .where('hash', validHash)
-            .first(),
-          validProof
-        )
+          assert.equal(
+            (await db.from('users').select('password').where('id', formOwner.id).first())!.password,
+            formOwnerHash
+          )
+          await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
+          assert.equal(
+            (await db.from('users').select('password').where('id', user.id).first())!.password,
+            originalHash
+          )
+          assert.deepEqual(
+            await db
+              .from('password_reset_tokens')
+              .where('tokenable_id', user.id)
+              .where('hash', expiredHash)
+              .first(),
+            expiredProof
+          )
+          assert.deepEqual(
+            await db
+              .from('password_reset_tokens')
+              .where('tokenable_id', formOwner.id)
+              .where('hash', validHash)
+              .first(),
+            validProof
+          )
+          await assertActiveSessions()
+        }
+      } finally {
+        await formContext.close()
       }
     } finally {
       await context.close()
@@ -264,6 +300,38 @@ test.group('existing Edge application password reset', (group) => {
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
       const replacement = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+      const originalHash = (await db.from('users').select('password').where('id', user.id).first())!
+        .password
+      const replacementHash = createHash('sha256').update(replacement).digest('hex')
+      const replacementProof = await db
+        .from('password_reset_tokens')
+        .where('tokenable_id', user.id)
+        .where('hash', replacementHash)
+        .first()
+      assert.isNotNull(replacementProof)
+      await page.goto('/login')
+      await page.getByLabel('Email').fill(user.email)
+      await page.getByLabel('Password').fill('OldPassword123!')
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.waitForURL('**/dashboard')
+      const assertPreserved = async () => {
+        const response = await context.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+        assert.equal(response.status(), 200)
+        assert.equal(new URL(response.url()).pathname, '/dashboard')
+        assert.equal(
+          (await db.from('users').select('password').where('id', user.id).first())!.password,
+          originalHash
+        )
+        assert.deepEqual(
+          await db
+            .from('password_reset_tokens')
+            .where('tokenable_id', user.id)
+            .where('hash', replacementHash)
+            .first(),
+          replacementProof
+        )
+      }
+      await assertPreserved()
 
       await page.goto(`/reset-password/${encodeURIComponent(replacement)}`)
       await page.getByLabel('New password').fill('ReplacementPass123!')
@@ -291,6 +359,7 @@ test.group('existing Edge application password reset', (group) => {
       assert.equal(await page.getByLabel('New password').inputValue(), '')
       assert.equal(await page.getByLabel('Confirm password').inputValue(), '')
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
+      await assertPreserved()
 
       await page.goto(`/reset-password/${encodeURIComponent(replacement)}`)
       await page
@@ -304,9 +373,7 @@ test.group('existing Edge application password reset', (group) => {
       await page.getByRole('button', { name: 'Reset password' }).click()
       await page.getByText(/This reset link is invalid, already used, or expired/).waitFor()
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
-      assert.isNotNull(
-        await db.from('password_reset_tokens').where('tokenable_id', user.id).first()
-      )
+      await assertPreserved()
     } finally {
       await context.close()
     }

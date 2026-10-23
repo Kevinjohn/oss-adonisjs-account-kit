@@ -135,24 +135,6 @@ test.group('native account journeys', (group) => {
         .select('password')
         .where('id', user.id)
         .first())!.password
-      await consumedProofPage.getByLabel('New password').fill('AnotherPassword123!')
-      await consumedProofPage.getByLabel('Confirm password').fill('AnotherPassword123!')
-      await consumedProofPage.getByRole('button', { name: 'Reset password' }).click()
-      const consumedFeedback = await consumedProofPage.locator('body').innerText()
-      assert.include(
-        consumedFeedback,
-        'This reset link is invalid, already used, or expired. Request a fresh link.'
-      )
-      assert.isTrue(
-        await consumedProofPage
-          .getByText('This reset link is invalid, already used, or expired. Request a fresh link.')
-          .isVisible()
-      )
-      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
-      assert.equal(
-        (await db.from('users').select('password').where('id', user.id).first())!.password,
-        newPasswordHash
-      )
 
       for (const client of [firstSession, secondSession]) {
         await client.goto('/dashboard')
@@ -177,6 +159,35 @@ test.group('native account journeys', (group) => {
       await requester.getByRole('heading', { name: 'Your account' }).waitFor()
       await requester.goto('/dashboard')
       await requester.getByText('Signed in as morgan@example.test.').waitFor()
+      const assertCurrentSession = async () => {
+        const response = await requester.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+        assert.equal(response.status(), 200)
+        assert.equal(new URL(response.url()).pathname, '/dashboard')
+      }
+      await assertCurrentSession()
+      await consumedProofPage.getByLabel('New password').fill('AnotherPassword123!')
+      await consumedProofPage.getByLabel('Confirm password').fill('AnotherPassword123!')
+      await consumedProofPage.getByRole('button', { name: 'Reset password' }).click()
+      const consumedFeedback = await consumedProofPage.locator('body').innerText()
+      assert.include(
+        consumedFeedback,
+        'This reset link is invalid, already used, or expired. Request a fresh link.'
+      )
+      assert.isTrue(
+        await consumedProofPage
+          .getByText('This reset link is invalid, already used, or expired. Request a fresh link.')
+          .isVisible()
+      )
+      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      assert.equal(
+        (await db.from('users').select('password').where('id', user.id).first())!.password,
+        newPasswordHash
+      )
+
+      await assertCurrentSession()
+      await requester.goto(resetPath)
+      await requester.getByText(/invalid, already used, or expired/).waitFor()
+      await assertCurrentSession()
     } finally {
       await secondContext.close()
       await consumedProofContext.close()
@@ -185,6 +196,7 @@ test.group('native account journeys', (group) => {
 
   test('malformed and expired reset POSTs are rejected without changing credentials or proof state', async ({
     visit,
+    browserContext,
     assert,
   }) => {
     accountKitNotifications.clear()
@@ -241,7 +253,19 @@ test.group('native account journeys', (group) => {
       .first()
     assert.isNotNull(validProof)
 
+    const activeSession = await browserContext.visit('/login')
+    await activeSession.goto('/login')
+    await activeSession.getByLabel('Email').fill(user.email)
+    await activeSession.getByLabel('Password').fill('OldPassword123!')
+    await activeSession.getByRole('button', { name: 'Sign in' }).click()
+    await activeSession.waitForURL('**/dashboard')
+    const assertActiveSession = async () => {
+      const response = await activeSession.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+      assert.equal(response.status(), 200)
+      assert.equal(new URL(response.url()).pathname, '/dashboard')
+    }
     for (const rejectedToken of ['not-a-proof', token]) {
+      await assertActiveSession()
       await page.goto(`/reset-password/${encodeURIComponent(validToken)}`)
       await page.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await page
@@ -279,6 +303,7 @@ test.group('native account journeys', (group) => {
           .first(),
         validProof
       )
+      await assertActiveSession()
     }
   })
 
@@ -305,6 +330,33 @@ test.group('native account journeys', (group) => {
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
       const token = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+      const proofHash = createHash('sha256').update(token).digest('hex')
+      const expectedProof = await db
+        .from('password_reset_tokens')
+        .where('tokenable_id', user.id)
+        .where('hash', proofHash)
+        .first()
+      assert.isNotNull(expectedProof)
+      await requester.goto('/login')
+      await requester.getByLabel('Email').fill(user.email)
+      await requester.getByLabel('Password').fill('OldPassword123!')
+      await requester.getByRole('button', { name: 'Sign in' }).click()
+      await requester.waitForURL('**/dashboard')
+      const assertPreserved = async () => {
+        const response = await requester.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+        assert.equal(response.status(), 200)
+        assert.equal(new URL(response.url()).pathname, '/dashboard')
+        assert.deepEqual(
+          await db
+            .from('password_reset_tokens')
+            .where('tokenable_id', user.id)
+            .where('hash', proofHash)
+            .first(),
+          expectedProof
+        )
+      }
+      await assertPreserved()
+
       await requester.goto(`/reset-password/${encodeURIComponent(token)}`)
       await requester.getByRole('heading', { name: 'Choose a new password' }).waitFor()
       await requester.getByLabel('New password').fill('ReplacementPass123!')
@@ -318,9 +370,7 @@ test.group('native account journeys', (group) => {
         (await db.from('users').select('password').where('id', user.id).first())!.password,
         originalHash
       )
-      assert.isNotNull(
-        await db.from('password_reset_tokens').where('tokenable_id', user.id).first()
-      )
+      await assertPreserved()
     } finally {
       await context.close()
     }
@@ -363,6 +413,32 @@ test.group('native account journeys', (group) => {
         .isVisible()
     )
     const replacementToken = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+    const proofHash = createHash('sha256').update(replacementToken).digest('hex')
+    const expectedProof = await db
+      .from('password_reset_tokens')
+      .where('tokenable_id', user.id)
+      .where('hash', proofHash)
+      .first()
+    assert.isNotNull(expectedProof)
+    await page.goto('/login')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByLabel('Password').fill('OldPassword123!')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.waitForURL('**/dashboard')
+    const assertPreserved = async () => {
+      const response = await page.request.get(`${origin}/dashboard`, { maxRedirects: 0 })
+      assert.equal(response.status(), 200)
+      assert.equal(new URL(response.url()).pathname, '/dashboard')
+      assert.deepEqual(
+        await db
+          .from('password_reset_tokens')
+          .where('tokenable_id', user.id)
+          .where('hash', proofHash)
+          .first(),
+        expectedProof
+      )
+    }
+    await assertPreserved()
 
     await page.goto(`/reset-password/${encodeURIComponent(firstToken)}`)
     await page.getByText(/This link is invalid, already used, or expired/).waitFor()
@@ -383,7 +459,7 @@ test.group('native account journeys', (group) => {
       (await db.from('users').select('password').where('id', user.id).first())!.password,
       originalHash
     )
-    assert.isNotNull(await db.from('password_reset_tokens').where('tokenable_id', user.id).first())
+    await assertPreserved()
   })
 
   test('validation retains safe fields, clears secrets, and focuses an error', async ({
