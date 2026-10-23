@@ -46,6 +46,11 @@ requires it. Use your application's real policy in `canAccess`. For local work, 
 `createLogNotifications` as described by the [development mail recipe](development-mail.md), or
 use `createMailNotifications` with configured AdonisJS Mail.
 
+The starter stores email addresses as typed, but Account Kit looks them up trimmed and lowercase,
+so a mixed-case signup could never request a reset. Trim and lowercase the shared `email` rule in
+`app/validators/user.ts`, as the patch does, and normalize existing addresses before enabling the
+recipe.
+
 Add `start/account_kit_routes.ts` with a separate prefix so it cannot replace an existing starter
 route. The example uses the package's public service and HTTP exports:
 
@@ -114,7 +119,7 @@ package does not generate that page.
 ## Verify the reset and revocation
 
 Use the committed [acceptance spec](../../examples/api/tests/recipes/api-password-reset.spec.ts)
-and [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf/docs/recipes/patches/api-password-reset.patch). From the repository root, run:
+and [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/api-password-reset.patch). From the repository root, run:
 
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset --database=sqlite
