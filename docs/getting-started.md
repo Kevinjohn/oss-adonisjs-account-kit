@@ -25,13 +25,11 @@ Account Kit uses `@adonisjs/limiter` for rate limits. Add it first, then add Acc
 the limiter asks for a storage layer, choose `database`; it adds a `rate_limits` migration that
 step 2 runs:
 
-```sh
-node ace add @adonisjs/limiter
-node ace add adonisjs-account-kit
-```
-
-The second command installs the package, writes `config/account_kit.ts`, generates the package
-migrations, and registers the provider and Ace commands in `adonisrc.ts`.
+Follow the [root install instructions](../README.md#install) for the available GitHub release
+archive and configuration commands, stopping after configuration before returning to step 2 below.
+npm publication is still pending. Configuration writes
+`config/account_kit.ts`, generates the package migrations, and registers the provider and Ace
+commands in `adonisrc.ts`.
 
 ## 2. Run the migrations
 

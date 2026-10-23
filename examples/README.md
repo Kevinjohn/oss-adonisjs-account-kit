@@ -14,15 +14,12 @@ evidence for an application.
 
 ## Package availability
 
-The current package manifest has version `0.0.0`, and there is no matching public npm release and
-source tag for these examples yet. Their normal published-package install path is therefore
-unavailable. The example READMEs describe the local archive workflow for contributors separately;
-it builds Account Kit from this checkout and is not a published consumer install.
+Account Kit is available as a GitHub release archive; follow the [root install instructions](../README.md#install).
+npm publication is still pending. Use the package version and example revision recorded by the
+release when checking a released consumer.
 
-When a matching package release and repository tag are available, use the exact package version
-and example revision recorded by that release. The normal consumer setup must not build Account Kit
-from repository source. Until then, do not treat the local archive path as release-pinned consumer
-evidence.
+The example READMEs also describe the local archive workflow for contributors. It builds the
+current checkout and does not establish release-pinned consumer evidence.
 
 ## Contributor smoke record
 
@@ -70,9 +67,8 @@ React formatting passed with `pnpm exec prettier --check .` from `examples/inert
 
 This is contributor-path evidence from a full checkout. It does not replace extracting an isolated
 consumer app and completing a clean frozen install against the exact published package version and
-matching source release revision. That release-pinned consumer validation remains outstanding
-until those artifacts exist; do not treat the local archive or smoke runs as a published-release
-acceptance.
+matching source release revision. The dated smoke record does not establish that release-pinned
+consumer validation; do not treat the local archive or smoke runs as a published-release acceptance.
 
 These API and React runs use development notification fixtures. They do not prove SMTP delivery or
 arrival in a recipient inbox. The acceptance contract records the HTTP, browser, and manual checks
