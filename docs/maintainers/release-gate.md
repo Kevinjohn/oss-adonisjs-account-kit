@@ -1,29 +1,19 @@
-# Local candidate and future release gate
+# 0.2.0 candidate release gate
 
-The candidate is prepared through local package checks, an independent review, and installation of the exact packed archive in fresh Adonis API consumers. Both SQLite and PostgreSQL must pass. Review the [verification record](verification.md), [compatibility assessment](../compatibility.md) before a release decision.
+The release candidate is the archive built from source `1ef240c72c4445482baf8f30b806b9128550d811`, with SHA-256 `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. The required source, distribution, recipe and reference-example checks passed against that unchanged archive. The dated [second-alpha verification record](verification.md#second-alpha-020-candidate) records the initial test-source failure, correction, successful reruns and remaining owner checks; historical totals do not substitute for this evidence. See the [compatibility assessment](../compatibility.md) for supported dependency floors and boundaries.
 
-## Owner-controlled release actions
+## Owner release decision
 
-Choose the published package name/scope and first version before publication. Confirm the supported peer floors against the measured compatibility matrix, assess unresolved dependency advisories in the full consumer install, and finish any application integration required for the release. Universal session revocation, tenant membership, the external starter integration and UI scaffolding remain separate work.
+The current distribution is the GitHub release tarball, as for the advertised `0.1.1` release. Publish `0.2.0` through that route only after the exact candidate checks and final review are complete and recorded. npm publication is a separate future decision; this gate does not assume an npm package, a first-publish name check, or npm signature verification.
 
-After publishing, run the README install commands in a fresh API starter app against the registry,
-and check that the npm badge and `npm audit signatures` resolve. Until the first publish,
-`node ace add adonisjs-account-kit` returns 404.
+Merge and publish actions belong to the repository owner. After publication, the owner must separately install the advertised release using the root [README install instructions](../../README.md#install) in a fresh application and verify that the documented install path resolves the published artifact. That post-publication smoke check is not satisfied by candidate archive tests.
 
-The check workflow runs on pushes to `main`, on pull requests, by hand and from the release
-workflow. Push and pull request runs are skipped while the repository is private, so they only use
-hosted minutes once it is public.
-
-Keep both database matrix jobs, Node 24, pnpm, lint, typecheck, tests, build and built-export checks. Add the installed-consumer/adapter gates once their local commands are accepted for hosted use, and make both database results required in branch protection. The conditional empty service image for SQLite is supported and does not need replacement.
+The owner also performs any manual viewport, keyboard, or other checks outside the automated suites. They remain owner checks and are not represented as completed by the candidate test runs.
 
 ## Upgrade and rollback
 
-0.1.0 is the first alpha, distributed as a GitHub release tarball. Before it the migration stubs
-were squashed to create the final schema directly, so a database created by an earlier unreleased
-build has no in-place upgrade path: reset it and run the current migrations.
+The comparison with the actual published `0.1.1` tarball found all 313 files under `package/build/` byte-identical, including 14 configuration and migration templates. There is no source delta in `src/`, `adapters/`, `commands/`, `providers/`, `services/`, `http/`, `testing/`, `stubs/`, `configure.ts`, or `index.ts`. Version `0.2.0` therefore adds no package-generated configuration or migration; follow the existing configuration and migration guidance in [usage](../usage.md).
 
-Back up deployed application config and migrations. Install the candidate, reconfigure without overwriting owned files, and apply any new package migration before serving traffic. Rehearse the application-owned registration mapping and credential policy before accepting traffic.
+Application-owned policies and configuration remain authoritative during an upgrade and rollback. Credentials and committed outbox entries also remain authoritative: rolling back to `0.1.1` does not undo committed credential changes or make delivered or pending outbox work disappear. Recover pending effects through the application's existing outbox process; do not replay consumed bearer credentials.
 
-A rollback must restore the previous package's compatible config API. Avoid destructive migration rollback while any candidate process is running. Credential changes and durable outbox entries already committed remain authoritative. Do not replay consumed bearer tokens after a post-commit error; recover queued effects from the outbox.
-
-No release or publication is performed by these steps.
+The pre-`0.1.0` schema caveat is historical: unreleased migration stubs were squashed to create the final schema directly, so a database made by those earlier unreleased builds has no in-place upgrade path. Reset that database and run the current migrations. This caveat does not describe an upgrade from the published `0.1.1` package to `0.2.0`.
