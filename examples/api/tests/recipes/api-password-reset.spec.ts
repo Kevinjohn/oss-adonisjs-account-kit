@@ -130,4 +130,32 @@ test.group('API password reset recipe', () => {
       Object.assign(config.notify, previous)
     }
   })
+
+  test('a mixed-case native signup can sign in and request a reset', async ({ client, assert }) => {
+    const capture = captureNotifications()
+    const config = app.config.get<ResolvedConfig>('account_kit')
+    const previous = { ...config.notify }
+    Object.assign(config.notify, capture.notify)
+    try {
+      const email = `Signup-${randomUUID()}@Example.test`
+      const signup = await client.post('/api/v1/auth/signup').json({
+        fullName: 'New Recipe Account',
+        email,
+        password: originalPassword,
+        passwordConfirmation: originalPassword,
+      })
+      assert.equal(signup.status(), 200)
+      assert.equal(
+        (
+          await client.post('/api/v1/auth/login').json({ email, password: originalPassword })
+        ).status(),
+        200
+      )
+      await limiter.clear(['memory'])
+      assert.equal((await client.post(resetPath).json({ email })).status(), 202)
+      assert.isString(capture.tokenFor('passwordResetProvision', email.toLowerCase()))
+    } finally {
+      Object.assign(config.notify, previous)
+    }
+  })
 })
