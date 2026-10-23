@@ -67,9 +67,8 @@ React formatting passed with `pnpm exec prettier --check .` from `examples/inert
 
 This is contributor-path evidence from a full checkout. It does not replace extracting an isolated
 consumer app and completing a clean frozen install against the exact published package version and
-matching source release revision. That release-pinned consumer validation remains outstanding
-until those artifacts exist; do not treat the local archive or smoke runs as a published-release
-acceptance.
+matching source release revision. The dated smoke record does not establish that release-pinned
+consumer validation; do not treat the local archive or smoke runs as a published-release acceptance.
 
 These API and React runs use development notification fixtures. They do not prove SMTP delivery or
 arrival in a recipient inbox. The acceptance contract records the HTTP, browser, and manual checks
