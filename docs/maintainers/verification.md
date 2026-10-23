@@ -273,6 +273,45 @@ correction also clarifies the dated smoke record's limits and where to return fr
 installation instructions before running migrations. No package runtime or archive input changed.
 No merge, package publication or release has occurred; all PRs remain open and unmerged.
 
+### Recipe corrections rerun — 23 October 2026
+
+Review of the open PRs corrected five recipes after the records above. The API, React, Vue and
+Edge patches now trim and lowercase the pinned starters' shared email rule; before that, a
+mixed-case signup could not sign in through the patched login or receive a reset link. The Vue
+patch also signs native signups in through Account Kit, so a new session carries its credential
+revision. The invitation policy now permits only the `member` role. Each recipe spec gained an
+assertion for its correction. The corrections and their mutation checks are recorded on #649,
+#653, #655, #656 and #657.
+
+The archive inputs have no diff from source A: package sources, templates, `package.json`,
+`CHANGELOG.md`, `README-AGENTS.md`, `SECURITY.md` and the lockfile are unchanged. The candidate was
+not repacked. All five recipes ran at test-source revision
+`db8fcd91669b1a5bd29e13dedf3d10b7cac46bf9`, a clean checkout, with the same
+`--candidate-tarball` and `--candidate-revision` arguments as above. Node 24.21.0, pnpm 11.23.0,
+creator 3.4.0, official starter revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`, Core 7.6.0
+and recipe SQLite 3.53.4 are unchanged.
+
+| Output record                                     | Native login | Recipe acceptance | Archive SHA-256 before and after, unchanged                        |
+| ------------------------------------------------- | ------------ | ----------------- | ------------------------------------------------------------------ |
+| `recipe_api-password-reset_corrections`           | 1/1          | 2/2; exit 0       | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_invitations-existing-app_corrections`     | 1/1          | 1/1; exit 0       | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_inertia-react-password-reset_corrections` | 1/1          | 1/1; exit 0       | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_inertia-vue-password-reset_corrections`   | 1/1          | 2/2; exit 0       | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+| `recipe_hypermedia-password-reset_corrections`    | 1/1          | 4/4; exit 0       | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
+
+Retained evidence, with each configured patch checkpoint:
+
+- API reset: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-Uix19V/evidence.json`; configured `0f89364c72e535e3a8f234371a3886a885368e37`.
+- Invitations: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-LKGEPV/evidence.json`; configured `7ac1f4198eb9c9fbbf90e83058c0a39651813cc4`.
+- React: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-U3qYkK/evidence.json`; configured `794185ddd02b9803ac8077927a93bbc39798ced7`.
+- Vue: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-yeoqUI/evidence.json`; configured `3795cac8830657aef35cc8ea75ef128e0748fb6d`.
+- Edge: `/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-fS7BGP/evidence.json`; configured `5a0a0540b6c4c6eac7caefd162f0a352b7903fac`.
+
+These records supersede the earlier recipe records above for the five recipes. The package
+checks, compatibility consumers and reference-example suites remain dated evidence and were not
+repeated; the corrections change only recipe documentation, patches and acceptance specs. The
+browser-test limits above still apply.
+
 ## Historical pre-inspection summary
 
 The following summary is retained from earlier verification and is not the account-inspection
