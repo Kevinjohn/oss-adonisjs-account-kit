@@ -5,12 +5,12 @@ authorization, and user-facing messages while using Account Kit for account oper
 [example acceptance contract](../docs/guides/example-acceptance.md) before using their checks as
 evidence for an application.
 
-| Example                                      | Stack                                                | Start here                                                       |
-| -------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| [API](api/README.md)                         | AdonisJS 7, Lucid, JSON routes, opaque access tokens | [`Build one account API`](../docs/guides/core-api.md)            |
-| [Inertia and React](inertia-react/README.md) | AdonisJS 7, Inertia, React, browser sessions         | [The example README](inertia-react/README.md#run-it)             |
-| [Inertia and Vue](inertia-vue/README.md)     | AdonisJS 7, Inertia, Vue, browser sessions           | [The example README](inertia-vue/README.md#requirements-and-run) |
-| [Hypermedia and Edge](hypermedia/README.md)  | AdonisJS 7, native forms, Edge, database sessions    | [The example README](hypermedia/README.md#install-and-run)       |
+| Example                                      | Purpose                                                      | Supported starting point                                                                                                                                                                        | Start here                                                       |
+| -------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [API](api/README.md)                         | Compose account flows through application-owned JSON routes. | [Pinned AdonisJS API starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/api); one namespace and the opaque `api` guard.                            | [`Build one account API`](../docs/guides/core-api.md)            |
+| [Inertia and React](inertia-react/README.md) | Compose account flows in an Inertia React browser app.       | [Pinned Inertia React starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-react); session guard with a server-side session store.           | [The example README](inertia-react/README.md#run-it)             |
+| [Inertia and Vue](inertia-vue/README.md)     | Compose account flows in an Inertia Vue browser app.         | [Pinned Inertia Vue starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue); session guard with a server-side session store.               | [The example README](inertia-vue/README.md#requirements-and-run) |
+| [Hypermedia and Edge](hypermedia/README.md)  | Compose account flows with server-rendered Edge forms.       | [Pinned Hypermedia starter](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/hypermedia); native forms and CSRF; a server-side session store is required. | [The example README](hypermedia/README.md#install-and-run)       |
 
 ## Package availability
 
