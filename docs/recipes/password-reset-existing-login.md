@@ -6,6 +6,10 @@ want Account Kit to add password reset without taking over login. The example ke
 revision setup in [Browser login with sessions](sessions.md); they cannot use this token-guard
 configuration unchanged.
 
+Follow the [shared reset integration checklist](../guides/password-reset-existing-app.md) for
+installation, the shared schema, application ownership and the full credential-proof contract.
+This recipe supplies the opaque-token configuration and routes.
+
 ## Starting point
 
 Start with the AdonisJS 7 API starter, Node 24, pnpm, its existing `User.accessTokens` provider,
