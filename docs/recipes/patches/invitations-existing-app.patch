@@ -91,7 +91,7 @@ index 0000000..b51935e
 +}
 +
 +export const authorizeInvitations: AuthorizationCallbacks = {
-+  invite: async (actor, role, context) => role !== 'owner' && isOwner(actor.id, context?.trx),
++  invite: async (actor, role, context) => role === 'member' && isOwner(actor.id, context?.trx),
 +  manageInvitation: async (actor, _invitation, context) => isOwner(actor.id, context?.trx),
 +  listInvitations: async (actor, context) => isOwner(actor.id, context?.trx),
 +}
