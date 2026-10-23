@@ -95,6 +95,20 @@ test.group('existing app invitations', (group) => {
     )
     assert.deepEqual(await snapshot(), beforeEscalation)
 
+    // Only `member` is invitable; a case variant or an unknown role is not a member invitation.
+    for (const role of ['Owner', 'admin']) {
+      assert.equal(
+        (
+          await client
+            .post('/api/v1/account/invitations')
+            .bearerToken(ownerToken)
+            .json({ email: 'unlisted-role@example.test', role })
+        ).status(),
+        403
+      )
+    }
+    assert.deepEqual(await snapshot(), beforeEscalation)
+
     assert.equal(
       (
         await client
