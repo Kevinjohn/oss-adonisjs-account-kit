@@ -172,4 +172,21 @@ test.group('Inertia Vue password reset recipe', (group) => {
       await secondContext.close()
     }
   })
+
+  test('native signup with a mixed-case address keeps its session', async ({ visit, assert }) => {
+    const email = `Signup-${randomUUID()}@Example.test`
+    const page = await visit('/signup')
+    await page.getByLabel('Full name').fill('New Recipe Account')
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password', { exact: true }).fill(replacementPassword)
+    await page.getByLabel('Confirm password').fill(replacementPassword)
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+    assert.equal((await page.goto('/dashboard'))?.status(), 200)
+    assert.equal(new URL(page.url()).pathname, '/dashboard')
+    assert.equal(
+      (await User.findByOrFail('email', email.toLowerCase())).fullName,
+      'New Recipe Account'
+    )
+  })
 })

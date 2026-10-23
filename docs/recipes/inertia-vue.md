@@ -78,17 +78,18 @@ application-owned user and session migrations and account policy separate from p
 
 Adapt only the files needed for your application:
 
-| Responsibility                                             | Vue example reference                                                                                                                                           |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Keep login route and integrate revision-aware login/logout | `app/controllers/session_controller.ts`, `app/services/session_guard.ts`, `app/middleware/session_revision_middleware.ts`, `start/routes.ts`, `start/kernel.ts` |
-| Validate reset request and replacement password            | `app/validators/account.ts`                                                                                                                                     |
-| Request, inspect and complete proofs                       | `app/controllers/password_resets_controller.ts`                                                                                                                 |
-| Request and reset forms with field errors                  | `inertia/pages/auth/forgot_password.vue`, `inertia/pages/auth/reset_password.vue`                                                                               |
-| Focus and link validation feedback                         | `inertia/components/form_error_summary.vue`, `inertia/components/form_error_summary.ts`                                                                         |
-| Reset URL and notification callback                        | `config/account_kit.ts`                                                                                                                                         |
-| Use a server-side session store                            | `.env.example`, `config/session.ts`, app-owned `sessions` migration                                                                                             |
+| Responsibility                                                         | Vue example reference                                                                                                                                                                                        |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Keep login and signup routes and integrate revision-aware login/logout | `app/controllers/session_controller.ts`, `app/controllers/new_account_controller.ts`, `app/services/session_guard.ts`, `app/middleware/session_revision_middleware.ts`, `start/routes.ts`, `start/kernel.ts` |
+| Store addresses trimmed and lowercase, as Account Kit looks them up    | `app/validators/user.ts`                                                                                                                                                                                     |
+| Validate reset request and replacement password                        | `app/validators/account.ts`                                                                                                                                                                                  |
+| Request, inspect and complete proofs                                   | `app/controllers/password_resets_controller.ts`                                                                                                                                                              |
+| Request and reset forms with field errors                              | `inertia/pages/auth/forgot_password.vue`, `inertia/pages/auth/reset_password.vue`                                                                                                                            |
+| Focus and link validation feedback                                     | `inertia/components/form_error_summary.vue`, `inertia/components/form_error_summary.ts`                                                                                                                      |
+| Reset URL and notification callback                                    | `config/account_kit.ts`                                                                                                                                                                                      |
+| Use a server-side session store                                        | `.env.example`, `config/session.ts`, app-owned `sessions` migration                                                                                                                                          |
 
-The committed [recipe patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/adoption/vue-reset-recipe/docs/recipes/patches/inertia-vue-password-reset.patch)
+The committed [recipe patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/inertia-vue-password-reset.patch)
 is the application-owned change set used by the clean-starter check. The accompanying browser spec is
 [`inertia-vue-password-reset.spec.ts`](../../examples/inertia-vue/tests/recipes/inertia-vue-password-reset.spec.ts).
 
