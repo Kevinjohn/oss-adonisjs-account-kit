@@ -265,11 +265,13 @@ their mandatory mutation failures and restoration results. Local callback captur
 remain the browser-test limits; no recipient delivery, PostgreSQL browser coverage or new manual
 inspection is claimed.
 
-Delivery review remains separate from these automated results. The existing PRs were opened
-before the requested independent reviews; a later review cannot establish that historical
-sequence. #628 also remains held for its ownership conflict. Those programme conditions are
-unresolved and are not certified by this candidate record. No merge, package publication or
-release has occurred.
+Delivery review remains separate from these automated results. On 23 October 2026 the owner
+accepted the reviews performed after the existing PRs opened and approved adding the install-link
+corrections in `docs/identity-creation.md` and `docs/setup.md` to #628's scope. This resolves both
+programme conditions without changing the historical review sequence. The integrated #628
+correction also clarifies the dated smoke record's limits and where to return from the root
+installation instructions before running migrations. No package runtime or archive input changed.
+No merge, package publication or release has occurred; all PRs remain open and unmerged.
 
 ## Historical pre-inspection summary
 
