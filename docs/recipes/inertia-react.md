@@ -10,7 +10,7 @@ Limiter setup and every generated migration. The setup schema is shared across c
 `enabled: ['passwordReset']` does not generate a reset-only schema. See the
 [session integration](sessions.md) for the guard contract.
 
-The [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/fd457fdce9dcca378b0bb7caee402226896c9700/docs/recipes/patches/inertia-react-password-reset.patch) applies after configure to the
+The [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/inertia-react-password-reset.patch) applies after configure to the
 [pinned starter](../maintainers/verification.md#starter-baselines). It supplies
 application controllers, validators, pages and session wiring; it contains no generated migration,
 generated schema, dependency entry, lockfile or archive. Its handwritten `sessions` migration
@@ -24,7 +24,9 @@ establishment to `kit.authentication.login` with the existing `web` guard. The a
 `app/services/session_guard.ts` regenerates the session, calls `web.login`, and stores the returned
 revision in `accountKitRevision`. It clears and regenerates the session on termination. The
 starter signup controller keeps its validation and `User.create`, then uses the same credential
-adapter for its automatic login, so the new revision check does not break signup.
+adapter for its automatic login, so the new revision check does not break signup. The patch also
+trims and lowercases the starter's shared email rule in `app/validators/user.ts`, because Account Kit
+looks addresses up in that form; normalize existing addresses before enabling the recipe.
 
 Enable only `passwordReset` and select `authentication: { strategy: 'session', guard: 'web',
 canAccess: async () => true }` in `config/account_kit.ts`; replace the permissive callback with
