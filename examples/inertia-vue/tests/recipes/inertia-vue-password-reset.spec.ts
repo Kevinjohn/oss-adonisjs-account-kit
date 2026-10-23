@@ -153,6 +153,18 @@ test.group('Inertia Vue password reset recipe', (group) => {
       await first.getByLabel('Password').fill(replacementPassword)
       await first.getByRole('button', { name: 'Sign in' }).click()
       await first.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      await second.goto('/login')
+      await second.getByLabel('Email').fill(email)
+      await second.getByLabel('Password').fill(replacementPassword)
+      await second.getByRole('button', { name: 'Sign in' }).click()
+      await second.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
+      const currentSessions = async () => {
+        for (const page of [first, second]) {
+          assert.equal((await page.goto('/dashboard'))?.status(), 200)
+          assert.equal(new URL(page.url()).pathname, '/dashboard')
+        }
+      }
+      await currentSessions()
       const replacementHash = (await User.findOrFail(owner.id)).password
 
       await first.goto(replacementProofPath)
@@ -161,11 +173,13 @@ test.group('Inertia Vue password reset recipe', (group) => {
       await owner.refresh()
       assert.equal((await User.verifyCredentials(email, replacementPassword)).id, owner.id)
       assert.equal(owner.password, replacementHash)
+      await currentSessions()
 
       await submitProof(replacementProofPath)
       await owner.refresh()
       assert.equal(owner.password, replacementHash)
       assert.equal((await User.verifyCredentials(email, replacementPassword)).id, owner.id)
+      await currentSessions()
     } finally {
       notify.passwordResetProvision = previousNotify
       await requesterContext.close()

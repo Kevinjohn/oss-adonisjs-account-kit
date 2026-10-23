@@ -158,7 +158,7 @@ describe installing released archives. The exact recipe command was:
 pnpm test:recipe -- --recipe=inertia-vue-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
-The reference browser suite passed 35/35 in 13 seconds, including the composed reset journey. For P7,
+The full Vue application suite (unit, functional and browser) passed 35/35 in 13 seconds, including the composed reset journey. For P7,
 an installed-vendor-only mutation that preserved the old credential revision made the prior recipe
 spec fail in 3 seconds: the existing session still reached `/dashboard` instead of redirecting to
 `/login`. That negative run preceded the malformed and expired POST assertions added to the final
@@ -171,3 +171,27 @@ when rerun with the harness-printed command and retained test environment:
 
 Notifications were captured by an in-process callback; this verifies link generation, not delivery
 to an inbox. These checks use SQLite and do not establish PostgreSQL behavior.
+
+### Consumed-proof session preservation — 23 October 2026
+
+The recipe spec now establishes two native sessions with the replacement password and checks both
+protected dashboard requests before and after consumed-proof inspection and rejection. The stored
+replacement hash is checked separately. This detects replay failures that preserve the password
+but wrongly invalidate an existing session.
+
+| Field                | Recorded evidence                                                                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Updated spec source  | `fdcb6eea86ea7e24f452257e4da8ee25f79d11a9`                                                                                                                                                                                             |
+| Archive              | `adonisjs-account-kit-0.1.1.tgz`; SHA-256 `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                                                                           |
+| P1 starter           | Creator `3.4.0`; starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`; baseline `80976829d4931593a9470e7871659916c56d48f0`; configured checkpoint `bc8c78f01be6d1400ee15c075be3a1a9fe2bd385`                                             |
+| Lockfile SHA-256     | `1361cab418a9cd17746e6b0deb372505a013575d6adf8fb5eb6c851366939fc3`                                                                                                                                                                     |
+| Runtime and database | Node `24.21.0`, pnpm `11.23.0`, Core `7.6.0`, SQLite `3.53.4`; untouched starter cookie sessions, database sessions after the patch                                                                                                    |
+| P6                   | `pnpm test:recipe -- --recipe=inertia-vue-password-reset` passed on a fresh pinned starter, including the original-login baseline, application build and updated recipe spec                                                           |
+| P7                   | Removing only credential-revision advancement failed at the native redirect assertion: expected `/login`, received `/dashboard`; restoring exact implementation bytes from the unchanged archive passed the same spec 1/1 in 5 seconds |
+
+The pinned scaffold command above remains unchanged. P6 retains the generated manifest, installed
+versions, inventory, native-login output and replay environment. The P7 replay selects
+`pnpm test --files=inertia-vue-password-reset.spec.ts` in that retained scaffold. The reference
+application and its existing 35-test unit, functional and browser suite are unchanged by these
+recipe-only assertions. Limits remain local SQLite, Chromium and local notification capture;
+no recipient delivery, PostgreSQL, other browser or new manual inspection is claimed.
