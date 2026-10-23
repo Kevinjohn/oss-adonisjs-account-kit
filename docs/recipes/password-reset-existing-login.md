@@ -9,22 +9,16 @@ configuration unchanged.
 ## Starting point
 
 Start with the AdonisJS 7 API starter, Node 24, pnpm, its existing `User.accessTokens` provider,
-and login route. This recipe assumes Account Kit is installed and configured. With a published
-package version installed, add its configuration and migrations with:
-
-```sh
-node ace add adonisjs-account-kit
-node ace migration:run
-```
+and login route. Follow the [root install instructions](../../README.md#install) for the available
+GitHub release archive, configuration and migrations. npm publication is still pending.
 
 The setup command adds the Lucid adapter and account configuration. Keep your existing login route,
-auth middleware and token provider. The migration adds Account Kit's account columns and reset
-proof table to the selected users table.
+auth middleware and token provider. Configuration generates the shared account schema, including
+account columns and proof tables; inspect all generated migrations before running them.
 
-The current repository snapshot has no matching published package release. To prepare the same
-kind of disposable app from this checkout, run `pnpm test:consumer -- --database=sqlite
---prepare-only` at the repository root. It installs a local packed archive into a disposable copy
-of `examples/api`; this is a contributor verification path, not a published installation.
+For contributor checks, `pnpm test:consumer -- --database=sqlite --prepare-only` installs a local
+packed archive into a disposable copy of `examples/api`. That fixture already has Account Kit
+integration; it is not an existing-application scaffold or released-consumer installation.
 
 ## Configure and mount only password reset
 
