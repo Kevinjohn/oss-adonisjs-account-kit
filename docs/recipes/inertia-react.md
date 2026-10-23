@@ -102,6 +102,9 @@ async function edit({ inertia, params, response }: HttpContext) {
 Keep both password fields in the mounted reset form after a confirmation error, so the user can
 correct the confirmation without retyping the new password. Do not store either value in session,
 flash, logs, a URL or application persistence. A page navigation/reload creates empty inputs.
+The patch's reset-path HTML validation handler flashes errors without request input. This also
+protects ordinary HTML submissions without an `X-Inertia` header; camel-case confirmation fields
+must not fall through to the session middleware's default input flashing.
 The error summary receives focus, links to the invalid field, and connects field feedback using
 `aria-invalid` and `aria-describedby`. The reference app's
 [form-error spec](../../examples/inertia-react/tests/browser/account_form_errors.spec.ts) checks
@@ -115,16 +118,17 @@ The spec signs two distinct native sessions in before reset and verifies each re
 protected dashboard. “Unchanged” means byte-identical stored hash and successful protected
 requests from both saved sessions, rather than a reset response or database token count.
 
-| Case                    | Expected behavior and assertions                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Known / unknown request | Same visible generic acknowledgement; only known account emits captured proof                                       |
-| Valid proof GET twice   | Both pages allow a new password; proof still completes later                                                        |
-| Confirmation mismatch   | Field error; both entered values retained; hash and both sessions unchanged                                         |
-| Malformed proof         | Invalid page and rejected POST; hash and both sessions unchanged                                                    |
-| Expired proof           | Insert a past-expiry proof row; invalid page and rejected POST; hash and both sessions unchanged                    |
-| Replacement link        | Inspect a fresh live proof, request replacement, reject prior proof; unchanged hash/sessions; replacement completes |
-| Consumed proof          | Invalid page and rejected replay; new hash and two fresh successful sessions unchanged                              |
-| Successful reset        | Both old sessions redirected to native login; old-password login fails; new-password login reaches dashboard        |
+| Case                    | Expected behavior and assertions                                                                                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Known / unknown request | Same visible generic acknowledgement; only known account emits captured proof                                              |
+| Valid proof GET twice   | Both pages allow a new password; proof still completes later                                                               |
+| Confirmation mismatch   | Field error; both entered values retained; hash and both sessions unchanged                                                |
+| Native HTML mismatch    | Validation errors recorded without either password in database sessions; reload clears inputs; hash and sessions unchanged |
+| Malformed proof         | Invalid page and rejected POST; hash and both sessions unchanged                                                           |
+| Expired proof           | Insert a past-expiry proof row; invalid page and rejected POST; hash and both sessions unchanged                           |
+| Replacement link        | Inspect a fresh live proof, request replacement, reject prior proof; unchanged hash/sessions; replacement completes        |
+| Consumed proof          | Invalid page and rejected replay; new hash and two fresh successful sessions unchanged                                     |
+| Successful reset        | Both old sessions redirected to native login; old-password login fails; new-password login reaches dashboard               |
 
 The reference app's [composed browser journey](../../examples/inertia-react/tests/browser/account_journeys.spec.ts)
 also signs in two clients before reset, checks native redirects for each old session, and tries the
@@ -205,3 +209,30 @@ the existing application's routes and retention policy independently of the fres
 Limits: local SQLite, Chromium and local notification capture. No recipient delivery,
 PostgreSQL, other browser engine, manual viewport or keyboard sign-off is claimed. See the
 [evidence format](../guides/example-acceptance.md#updating-the-record).
+
+### Native HTML validation correction — 23 October 2026
+
+A CSRF-valid HTML reset submission without `X-Inertia` previously let the default session
+validation handler flash the camel-case `passwordConfirmation` value. The committed recipe patch
+now disables input flashing for reset validation errors while preserving the mounted Inertia
+form's retention policy. The acceptance spec verifies signed database-session values, observes
+the validation error, checks that neither submitted password is stored, reloads empty inputs,
+and proves the password hash and both native sessions are unchanged.
+
+| Field                 | Recorded evidence                                                                                                                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Correction source     | `fd457fdce9dcca378b0bb7caee402226896c9700`                                                                                                                                                                     |
+| Archive               | `adonisjs-account-kit-0.1.1.tgz`; SHA-256 `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                                                   |
+| P1 starter            | Creator `3.4.0`; starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`; baseline `109c325c46efbd8fa6e3c085a59c78d197ed7b54`; configured checkpoint `7ced0b0d47fa9789bc6f5870f9067626b173432a`                     |
+| Lockfile SHA-256      | `2cfe6653de580f91d8900002bff44da5cc40a15c42691560a5ba22921a6232fd`                                                                                                                                             |
+| Runtime and database  | Node `24.21.0`, pnpm `11.23.0`, Core `7.6.0`, SQLite `3.53.4`; original cookie sessions before installation, database sessions afterward                                                                       |
+| P6                    | `pnpm test:recipe -- --recipe=inertia-react-password-reset` passed on a fresh pinned starter, including original login before installation, application build, route listing and the updated recipe spec       |
+| Validation regression | Removing the reset validation override failed on the submitted confirmation appearing in verified session data; restoring it passed the same retained spec 1/1 in 6 seconds                                    |
+| P7                    | Removing only credential-revision advancement failed at the old-session assertion: expected `/login`, received `/dashboard`; restoring implementation bytes from the unchanged archive passed 1/1 in 6 seconds |
+
+The P1 command remains the pinned React scaffold command above. The P6 evidence retains its
+generated manifest, installed versions, native-login output, generated inventory and exact replay
+environment. Both mutation checks used the printed retained replay command, which runs
+`pnpm test --files=inertia-react-password-reset.spec.ts` inside the scaffold. The archive digest
+remained unchanged through restoration. Notification capture is local; this correction adds no
+recipient-delivery, PostgreSQL, other-browser, viewport or keyboard claim.
