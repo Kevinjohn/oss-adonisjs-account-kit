@@ -212,15 +212,21 @@ test('React reset recipe preserves failed submissions and revokes both native se
     assert.equal((await postProof(guest, replacementPath)).status(), 302)
     await unchanged()
 
-    // The starter also establishes a session after native signup; keep that route working.
+    // The starter also establishes a session after native signup; keep that route working, including
+    // for an address typed in mixed case.
+    const signupEmail = `Signup-${randomUUID()}@Example.test`
     await guest.goto('/signup')
     await guest.getByLabel('Full name').fill('New Recipe Account')
-    await guest.getByLabel('Email', { exact: true }).fill(`signup-${randomUUID()}@example.test`)
+    await guest.getByLabel('Email', { exact: true }).fill(signupEmail)
     await guest.getByLabel('Password', { exact: true }).fill(newPassword)
     await guest.getByLabel('Confirm password').fill(newPassword)
     await guest.getByRole('button', { name: 'Create account' }).click()
     await guest.waitForURL('**/dashboard')
     assert.equal((await guest.goto('/dashboard'))?.status(), 200)
+    assert.equal(
+      (await User.findByOrFail('email', signupEmail.toLowerCase())).fullName,
+      'New Recipe Account'
+    )
   } finally {
     Object.assign(config.notify, original)
     await otherContext.close()
