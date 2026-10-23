@@ -1,0 +1,275 @@
+diff --git a/app/controllers/invitations_controller.ts b/app/controllers/invitations_controller.ts
+new file mode 100644
+index 0000000..7afb281
+--- /dev/null
++++ b/app/controllers/invitations_controller.ts
+@@ -0,0 +1,50 @@
++import type { HttpContext } from '@adonisjs/core/http'
++import vine from '@vinejs/vine'
++import { InvalidTokenError } from 'adonisjs-account-kit'
++import accountKit from 'adonisjs-account-kit/services/main'
++
++const sendValidator = vine.compile(
++  vine.object({ email: vine.string().email(), role: vine.string().trim().minLength(1).maxLength(40) })
++)
++const acceptValidator = vine.compile(
++  vine.object({
++    password: vine.string().minLength(8),
++    passwordConfirmation: vine.string().minLength(8),
++    fullName: vine.string().trim().minLength(1).maxLength(100),
++  })
++)
++
++export default class InvitationsController {
++  async send({ auth, request, response }: HttpContext) {
++    const actor = await auth.getUserOrFail()
++    if (!actor.currentAccessToken?.allows('invitations:create')) {
++      return response.forbidden({ error: 'This token cannot create invitations.' })
++    }
++    const { email, role } = await request.validateUsing(sendValidator)
++    const invitation = await accountKit.invitations.send({ actorId: actor.id, email, role })
++    return response.created({ id: invitation.id })
++  }
++
++  async inspect({ params, response }: HttpContext) {
++    const invitation = await accountKit.invitations.inspect({ token: params.token })
++    return invitation ? response.ok(invitation) : response.badRequest({ error: 'Invalid invitation.' })
++  }
++
++  async accept({ params, request, response }: HttpContext) {
++    const { password, passwordConfirmation, fullName } = await request.validateUsing(acceptValidator)
++    if (password !== passwordConfirmation) {
++      return response.unprocessableEntity({ error: 'Password confirmation does not match.' })
++    }
++    try {
++      const user = await accountKit.invitations.accept({
++        token: params.token,
++        password,
++        registrationData: { fullName },
++      })
++      return response.created({ id: user.id, email: user.email })
++    } catch (error) {
++      if (error instanceof InvalidTokenError) return response.badRequest({ error: 'Invalid invitation.' })
++      throw error
++    }
++  }
++}
+diff --git a/app/middleware/invitation_proof_headers_middleware.ts b/app/middleware/invitation_proof_headers_middleware.ts
+new file mode 100644
+index 0000000..359531e
+--- /dev/null
++++ b/app/middleware/invitation_proof_headers_middleware.ts
+@@ -0,0 +1,15 @@
++import type { HttpContext } from '@adonisjs/core/http'
++import type { NextFn } from '@adonisjs/core/types/http'
++
++const invitationProofPath = /^\/api\/v1\/auth\/invitations\/[^/]+\/?$/
++
++/** Protect invitation proof URLs before body parsing or other middleware can reject the request. */
++export default class InvitationProofHeadersMiddleware {
++  handle(ctx: HttpContext, next: NextFn) {
++    if (invitationProofPath.test(ctx.request.url().split('?')[0])) {
++      ctx.response.header('Cache-Control', 'no-store')
++      ctx.response.header('Referrer-Policy', 'no-referrer')
++    }
++    return next()
++  }
++}
+diff --git a/app/services/invitation_authorization.ts b/app/services/invitation_authorization.ts
+new file mode 100644
+index 0000000..b51935e
+--- /dev/null
++++ b/app/services/invitation_authorization.ts
+@@ -0,0 +1,14 @@
++import db from '@adonisjs/lucid/services/db'
++import type { Trx } from 'adonisjs-account-kit'
++import type { AuthorizationCallbacks } from 'adonisjs-account-kit/types'
++
++async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
++  const query = trx ? trx.from('app_user_roles') : db.from('app_user_roles')
++  return Boolean(await query.where('user_id', userId).where('role', 'owner').first())
++}
++
++export const authorizeInvitations: AuthorizationCallbacks = {
++  invite: async (actor, role, context) => role === 'member' && isOwner(actor.id, context?.trx),
++  manageInvitation: async (actor, _invitation, context) => isOwner(actor.id, context?.trx),
++  listInvitations: async (actor, context) => isOwner(actor.id, context?.trx),
++}
+diff --git a/app/services/invitation_delivery.ts b/app/services/invitation_delivery.ts
+new file mode 100644
+index 0000000..5ca1830
+--- /dev/null
++++ b/app/services/invitation_delivery.ts
+@@ -0,0 +1,6 @@
++/** Local link capture for the recipe check; replace with the application's mail transport. */
++export const sentInvitations: string[] = []
++
++export async function deliverInvitation(_invitation: unknown, url: string) {
++  sentInvitations.push(url)
++}
+diff --git a/config/account_kit.ts b/config/account_kit.ts
+index 9214431..2ded3a9 100644
+--- a/config/account_kit.ts
++++ b/config/account_kit.ts
+@@ -1,4 +1,7 @@
+ import env from '#start/env'
++import { deliverInvitation } from '#services/invitation_delivery'
++import { authorizeInvitations } from '#services/invitation_authorization'
++import { InvalidInputError } from 'adonisjs-account-kit'
+ import {
+   createLucidAdapter,
+   defineConfig,
+@@ -14,10 +17,24 @@ const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('
+ const accountUrl = (path: string, token: string) =>
+   new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
+
+-const users = createLucidAdapter(async () => {
+-  const { default: User } = await import('#models/user')
+-  return User
+-})
++const users = createLucidAdapter(
++  async () => {
++    const { default: User } = await import('#models/user')
++    return User
++  },
++  {
++    mapRegistrationData(data, user) {
++      if (!data || typeof data !== 'object' || Array.isArray(data)) {
++        throw new InvalidInputError('Invalid invitation profile fields')
++      }
++      const fullName = Reflect.get(data, 'fullName')
++      if (typeof fullName !== 'string') {
++        throw new InvalidInputError('A full name is required')
++      }
++      user.fullName = fullName
++    },
++  }
++)
+
+ const notConfigured = (method: string) => async () => {
+   throw new Error('account_kit: configure notify.' + method)
+@@ -32,12 +49,20 @@ export default defineConfig({
+   /**
+    * Account flows the application exposes.
+    */
+-  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
++  enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration', 'invitations'],
+
+   /**
+    * Choose admission in the application before exposing a public signup route.
+    */
+-  registration: { availability: 'open' },
++  registration: {
++    availability: 'open',
++    mapFields(data) {
++      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new InvalidInputError('Invalid invitation profile fields')
++      const fullName = Reflect.get(data, 'fullName')
++      if (typeof fullName !== 'string' || !fullName.trim()) throw new InvalidInputError('A full name is required')
++      return { fullName: fullName.trim() }
++    },
++  },
+
+   /**
+    * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
+@@ -48,9 +73,7 @@ export default defineConfig({
+    * Who may send, manage and list invitations. Everything is denied until you decide.
+    */
+   authorize: {
+-    invite: async () => false,
+-    manageInvitation: async () => false,
+-    listInvitations: async () => false,
++    ...authorizeInvitations,
+   },
+
+   /**
+@@ -59,7 +82,7 @@ export default defineConfig({
+   urls: {
+     passwordReset: (token) => accountUrl('recovery', token),
+     emailVerification: (token) => accountUrl('verification', token),
+-    invitation: (token) => accountUrl('invitation', token),
++    invitation: (token) => new URL('api/v1/auth/invitations/' + encodeURIComponent(token), appUrl).toString(),
+     emailChange: (token) => accountUrl('email-change', token),
+   },
+
+@@ -69,7 +92,7 @@ export default defineConfig({
+   notify: {
+     passwordResetProvision: notConfigured('passwordResetProvision'),
+     accountActivationProvision: notConfigured('accountActivationProvision'),
+-    invitationProvision: notConfigured('invitationProvision'),
++    invitationProvision: deliverInvitation,
+     emailChangeProvision: notConfigured('emailChangeProvision'),
+     emailChanged: notConfigured('emailChanged'),
+     passwordResetCompleted: notConfigured('passwordResetCompleted'),
+@@ -87,7 +110,7 @@ export default defineConfig({
+   /**
+    * Grants the invited role inside the acceptance transaction.
+    */
+-  onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
+-    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
++  onInvitationAccepted: async (user: AccountUser, invitation: Invitation, trx: Trx) => {
++    await trx.table('app_user_roles').insert({ user_id: user.id, role: invitation.role })
+   },
+ })
+\ No newline at end of file
+diff --git a/database/migrations/1792695000000_create_app_user_roles.ts b/database/migrations/1792695000000_create_app_user_roles.ts
+new file mode 100644
+index 0000000..48b5c63
+--- /dev/null
++++ b/database/migrations/1792695000000_create_app_user_roles.ts
+@@ -0,0 +1,18 @@
++import { BaseSchema } from '@adonisjs/lucid/schema'
++
++export default class extends BaseSchema {
++  protected tableName = 'app_user_roles'
++
++  async up() {
++    this.schema.createTable(this.tableName, (table) => {
++      table.increments('id')
++      table.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE')
++      table.string('role').notNullable()
++      table.unique(['user_id', 'role'])
++    })
++  }
++
++  async down() {
++    this.schema.dropTable(this.tableName)
++  }
++}
+diff --git a/start/invitation_routes.ts b/start/invitation_routes.ts
+new file mode 100644
+index 0000000..20b2dd1
+--- /dev/null
++++ b/start/invitation_routes.ts
+@@ -0,0 +1,8 @@
++import { middleware } from '#start/kernel'
++import router from '@adonisjs/core/services/router'
++
++router
++  .post('/api/v1/account/invitations', [() => import('#controllers/invitations_controller'), 'send'])
++  .use(middleware.auth())
++router.get('/api/v1/auth/invitations/:token', [() => import('#controllers/invitations_controller'), 'inspect'])
++router.post('/api/v1/auth/invitations/:token', [() => import('#controllers/invitations_controller'), 'accept'])
+diff --git a/start/kernel.ts b/start/kernel.ts
+index d3c18be..4d21865 100644
+--- a/start/kernel.ts
++++ b/start/kernel.ts
+@@ -23,6 +23,7 @@ server.errorHandler(() => import('#exceptions/handler'))
+  * the request URL.
+  */
+ server.use([
++  () => import('#middleware/invitation_proof_headers_middleware'),
+   () => import('#middleware/force_json_response_middleware'),
+   () => import('#middleware/container_bindings_middleware'),
+   () => import('@adonisjs/cors/cors_middleware'),
+diff --git a/start/routes.ts b/start/routes.ts
+index 29fc17f..842570b 100644
+--- a/start/routes.ts
++++ b/start/routes.ts
+@@ -10,6 +10,7 @@
+ import { middleware } from '#start/kernel'
+ import router from '@adonisjs/core/services/router'
+ import { controllers } from '#generated/controllers'
++import './invitation_routes.js'
+
+ router.get('/', () => {
+   return { hello: 'world' }
