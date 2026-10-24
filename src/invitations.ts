@@ -2,7 +2,13 @@ import { DateTime } from 'luxon'
 import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import type { Database } from '@adonisjs/lucid/database'
-import { consumeToken, transaction, isUniqueViolation, isUserEmailUniqueViolation } from './db.js'
+import {
+  consumeToken,
+  lockUser,
+  transaction,
+  isUniqueViolation,
+  isUserEmailUniqueViolation,
+} from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
@@ -182,11 +188,12 @@ export async function storeInvitation(
   try {
     return await settleCommitted(
       transaction(deps.db, async (trx) => {
-        const inviter =
-          input.recheckInvite && input.inviterId !== null
-            ? await deps.config.users.findById(input.inviterId, trx, { forUpdate: true })
-            : undefined
-        if (inviter === null) throw new AuthorizationError()
+        let inviter: AccountUser | null | undefined
+        if (input.recheckInvite && input.inviterId !== null) {
+          await lockUser(trx, deps.config, input.inviterId)
+          inviter = await deps.config.users.findById(input.inviterId, trx)
+          if (!inviter) throw new AuthorizationError()
+        }
         const now = DateTime.utc()
         const stale = trx.from('account_invitations').where('email', input.email)
         if (!input.replacePending) stale.where('expires_at', '<=', sqlTimestamp(trx, now))

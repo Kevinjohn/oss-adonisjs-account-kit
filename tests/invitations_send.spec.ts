@@ -22,6 +22,8 @@ import {
 } from './helpers/fakes.js'
 import { faultAfterCommit } from './helpers/fault_after_commit.js'
 import { dbTime } from './helpers/db_time.js'
+import { createSqlUsersAdapter } from '../adapters/sql.js'
+import { fakeHash } from './helpers/adapter_contract_fixture.js'
 import { locksRows, testEngine } from './helpers/dialect.js'
 import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
 
@@ -156,7 +158,10 @@ test.group('invitations.send', (group) => {
   test('rejects a send blocked behind a committed demotion of the actor', async ({ assert }) => {
     if (!locksRows) return
     const actor = await createActor()
+    // The shipped SQL adapter, which ignores `findById`'s `forUpdate` option.
     const { account } = service({
+      users: createSqlUsersAdapter({ table: 'users', db: kit.db, ...fakeHash }),
+      usersTable: 'users',
       authorize: {
         ...allowAll,
         invite: async (current) => current.email.endsWith('@example.test'),
@@ -164,6 +169,7 @@ test.group('invitations.send', (group) => {
     })
     const demotion = await kit.db.transaction()
     let finished = false
+    let send: Promise<unknown> | undefined
     try {
       await demotion.from('users').where('id', actor.id).update({ email: 'demoted@other.test' })
       const result = await demotion
@@ -175,13 +181,16 @@ test.group('invitations.send', (group) => {
       const tracked = startWithBackendId(kit, () =>
         account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
       )
-      void tracked.operation.catch(() => {})
+      send = tracked.operation
+      void send.catch(() => {})
       await waitForDatabaseLockWait(kit, assert, await tracked.backendId, demotionBackendId)
       await demotion.commit()
       finished = true
       await assert.rejects(() => tracked.operation, AuthorizationError)
     } finally {
       if (!finished) await demotion.rollback()
+      // Let a released send finish before the next test clears the tables.
+      await send?.catch(() => {})
     }
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
   }).timeout(10_000)
