@@ -7,6 +7,8 @@
 - Add pinned-starter reset recipes and runnable acceptance checks for API, Inertia React,
   Inertia Vue and Hypermedia/Edge, including failed proofs, recovery feedback and rejection of
   both pre-existing credentials after reset.
+- Add `authentication.withCurrent(input, run)`: `current` plus an application callback in the same
+  transaction under the account and sign-in row locks, with the caller's sign-in id.
 - Add an existing-application invitation recipe with application-owned owner authorization,
   one-time acceptance and local proof-capture evidence.
 - Verify native Edge forms without JavaScript, explicit validation recovery with proof-page
@@ -15,8 +17,6 @@
   including the duplicate-delivery boundary and an interruption mutation check.
 - Separate implemented behavior, automated checks, historical manual observations and limits in
   the example records; document reuse of the API-monorepo backend without adding another app.
-- Add `authentication.withCurrent(input, run)`: `current` plus an application callback in the same
-  transaction under the account and sign-in row locks, with the caller's sign-in id.
 
 ## 0.1.1 - 2026-10-22
 
