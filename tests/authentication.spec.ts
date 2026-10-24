@@ -394,10 +394,11 @@ test.group('authentication.withCurrent', (group) => {
       account.authentication.withCurrent(input, async () => {
         inside.signal()
         await released
+        order.push('run')
       })
     )
     inside.observe(tracked.operation)
-    const writer = tracked.operation.then(() => void order.push('withCurrent'))
+    const writer = tracked.operation
     let revoke: Promise<void> | undefined
     try {
       await inside.promise
@@ -411,7 +412,7 @@ test.group('authentication.withCurrent', (group) => {
       await Promise.all([writer.catch(() => {}), revoke?.catch(() => {})])
     }
     await Promise.all([writer, revoke])
-    assert.deepEqual(order, ['withCurrent', 'revoke'])
+    assert.deepEqual(order, ['run', 'revoke'])
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
   }).timeout(10_000)
 
@@ -428,10 +429,11 @@ test.group('authentication.withCurrent', (group) => {
       account.authentication.withCurrent(input, async () => {
         inside.signal()
         await released
+        order.push('run')
       })
     )
     inside.observe(tracked.operation)
-    const writer = tracked.operation.then(() => void order.push('withCurrent'))
+    const writer = tracked.operation
     let logout: Promise<void> | undefined
     try {
       await inside.promise
@@ -445,7 +447,7 @@ test.group('authentication.withCurrent', (group) => {
       await Promise.all([writer.catch(() => {}), logout?.catch(() => {})])
     }
     await Promise.all([writer, logout])
-    assert.deepEqual(order, ['withCurrent', 'logout'])
+    assert.deepEqual(order, ['run', 'logout'])
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
   }).timeout(10_000)
 

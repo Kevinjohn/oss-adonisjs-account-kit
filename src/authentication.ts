@@ -217,12 +217,14 @@ export function authenticationService(deps: ServiceDependencies) {
     },
 
     /**
-     * `current`, then `run` in the same transaction under the account lock and the sign-in row's
-     * lock, for a write of your own that must commit only if the sign-in is still valid. `trx` is the Kit's transaction: use it for
-     * every write, keep `run` database-only (SQLite may retry it), and lock your own rows inside
-     * `run`, never before calling this. `signInId` is the caller's row in the sign-in table under
-     * the session strategy with the registry enabled, else undefined. Throws `InvalidSessionError`
-     * exactly as `current` does; a throw from `run` rolls everything back and surfaces unchanged.
+     * `current`, then `run` in the same transaction under the account lock, for a write of your own
+     * that must commit only if the sign-in is still valid. The sign-in row (a registry session or a
+     * token) is locked too, so a logout that deletes it waits for `run`; a session without a
+     * registry row has nothing to lock. `trx` is the Kit's transaction: use it for every write, keep
+     * `run` database-only (SQLite may retry it), and lock your own rows inside `run`, never before
+     * calling this. `signInId` is the caller's row in the sign-in table under the session strategy
+     * with the registry enabled, else undefined. Throws `InvalidSessionError` exactly as `current`
+     * does; a throw from `run` rolls everything back and surfaces unchanged.
      */
     withCurrent<T>(
       input: CurrentAccountInput,
