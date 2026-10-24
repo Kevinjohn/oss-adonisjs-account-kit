@@ -58,6 +58,22 @@ await kit.authentication.login({ email, password, clientKey, sessionLabel }, gua
 Lifecycle events: `sessions.revoked` (`userId`, `operationId`, `count`) for `revoke` and
 `revokeOthers`, and `sessions.revoked_all` (`userId`, `operationId`) for `revokeAll`.
 
+### Rows bound to a sign-in
+
+Sign-in rows are deleted by `revoke`, `revokeOthers`, `logout`, the token guard's `terminate`,
+`prune`, credential changes (`revokeAll`, password and email change, restriction) and account
+deletion. For application rows that must go with the sign-in, add a foreign key to
+`account_sessions.id` (or the token table) with `ON DELETE CASCADE`; it covers every path.
+
+For audit or outbox rows, `onSessionsRevokedTransaction(user, context, trx)` runs inside `revoke`
+and `revokeOthers` after the rows are deleted. `context` holds `signInIds` (the ids `list`
+reports), `userId` and the `operationId` the `sessions.revoked` event carries. Write through
+`trx`; throwing rolls the revocation back. SQLite may retry it, so keep it database-only.
+
+It is not called by `revokeAll` or credential changes, which run `onCredentialsChangedTransaction`
+without ids. If a cascade is not possible, sweep orphans there with an anti-join against the
+sign-in table.
+
 ## Managed routes
 
 With `registerManagedRoutes`, add `sessionManagement` to `enabled`:

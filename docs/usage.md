@@ -198,7 +198,9 @@ commit atomically with a password or email change. The context contains `operati
 `operationId`, and `userId`. It is mutually exclusive with the legacy
 `onCredentialsChanged(user, context)` post-commit callback. The package also invokes the dedicated
 `notify.passwordResetCompleted` or `notify.passwordChanged` notice for the corresponding password
-operation.
+operation. `onSessionsRevokedTransaction(user, context, trx)` is the transactional hook for
+`authentication.sessions.revoke` and `revokeOthers`; see
+[Signed-in devices](signed-in-devices.md#rows-bound-to-a-sign-in).
 
 `onLifecycleEvent(event)` receives safe event identifiers after commit. Payloads contain IDs and an
 operation ID, not tokens, email addresses, passwords, or notification URLs. Events started by an

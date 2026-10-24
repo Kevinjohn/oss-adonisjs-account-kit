@@ -59,8 +59,9 @@ onCredentialsChangedTransaction: async (user, context, trx) => {
 `onCredentialsChangedTransaction` runs inside the operation transaction for `password_reset`,
 `password_change`, `email_change`, `access_restriction`, `registration_claim`, `social_unlink` and
 `sign_out_everywhere`. It does not capture every lifecycle event. `onPasswordResetIssuedTransaction`
-can record password-reset link issuance in its transaction, and `onInvitationAccepted` can record
-invitation acceptance in its transaction; each covers only that operation. For other event types,
+can record password-reset link issuance in its transaction, `onInvitationAccepted` can record
+invitation acceptance in its transaction, and `onSessionsRevokedTransaction` can record
+`sessions.revoke` and `revokeOthers` with the revoked sign-in ids; each covers only that operation. For other event types,
 use an application-owned integration at the relevant transaction boundary if persisted capture is
 required. A worker may retry delivery, so the application must make duplicate processing safe; the
 package does not promise exactly-once delivery.

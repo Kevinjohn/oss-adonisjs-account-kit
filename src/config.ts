@@ -116,6 +116,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     'onInvitationAccepted',
     'onCredentialsChanged',
     'onCredentialsChangedTransaction',
+    'onSessionsRevokedTransaction',
     'onPasswordResetIssuedTransaction',
     'onLifecycleEvent',
     'exportAccountData',
