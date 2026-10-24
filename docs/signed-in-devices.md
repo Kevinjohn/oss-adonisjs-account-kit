@@ -37,7 +37,9 @@ await kit.authentication.sessions.revokeAll({ current })
 Each entry of `list` is
 `{ id, label, createdAt, lastSeenAt, expiresAt, current }`, newest first, without expired entries.
 `label` is the text passed as `sessionLabel` at login; the managed routes pass the `User-Agent`
-header. It is untrusted display text, truncated to 255 characters.
+header. It is untrusted display text, truncated to 255 characters. To bind an application row to
+the caller's sign-in when writing it, use `kit.authentication.withCurrent`, which passes that `id`
+as `signInId` (see [Protected requests](authentication.md#protected-requests)).
 
 ```ts
 await kit.authentication.login({ email, password, clientKey, sessionLabel }, guard)

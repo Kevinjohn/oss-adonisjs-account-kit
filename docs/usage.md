@@ -209,7 +209,8 @@ delivery.
 ## Transactions and callbacks
 
 Package write operations manage their own root transactions and reject execution inside an active
-global transaction. All adapter methods receiving `trx` must use that transaction. Keep database
+global transaction. `authentication.withCurrent` is how an application joins one of those
+transactions. All adapter methods receiving `trx` must use that transaction. Keep database
 writes in `onInvitationAccepted` and the transaction-aware credential hook inside the supplied
 transaction. Do not send mail or call external services from transaction callbacks.
 

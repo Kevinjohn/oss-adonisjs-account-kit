@@ -1,6 +1,18 @@
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
+import { InvalidSessionError } from '../src/errors.js'
+import { readIsoTimestamp } from '../src/timestamps.js'
+import type { CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { dbTime } from './helpers/db_time.js'
+import { locksRows } from './helpers/dialect.js'
 import { insertUser, makeService } from './helpers/fakes.js'
+import {
+  assertUserLockIsHeld,
+  createBarrier,
+  startWithBackendId,
+  waitForDatabaseLockWait,
+} from './helpers/lock_coordination.js'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -203,4 +215,194 @@ test.group('authentication contract', (group) => {
     await account.authentication.logout(guard)
     assert.equal(calls, 2)
   })
+})
+
+test.group('authentication.withCurrent', (group) => {
+  const kit = useTestApp(group)
+  const service = (strategy: 'session' | 'access_tokens' = 'session') =>
+    makeService(kit, {
+      enabled: ['sessionManagement'],
+      authentication:
+        strategy === 'session'
+          ? { strategy: 'session', guard: 'web' }
+          : { strategy: 'access_tokens', guard: 'api' },
+      minRequestMs: 0,
+    })
+
+  async function signIn(account: ReturnType<typeof service>['account']) {
+    let input: CurrentAccountInput | undefined
+    await account.authentication.login(
+      { email: 'person@example.test', password: 'password123', clientKey: 'client' },
+      {
+        strategy: 'session',
+        name: 'web',
+        establish: async (userId: UserId, revision: string | null, handle?: string) => {
+          input = { userId, revision, sessionHandle: handle }
+        },
+        terminate: async () => {},
+      }
+    )
+    return input!
+  }
+
+  /** Run `body` with an application table, dropped afterwards. */
+  async function withAppTable(body: () => Promise<void>) {
+    const schema = kit.db.connection().schema
+    await schema.dropTableIfExists('app_writes')
+    await schema.createTable('app_writes', (table) => {
+      table.increments('id')
+      table.string('note').notNullable()
+    })
+    try {
+      await body()
+    } finally {
+      await schema.dropTableIfExists('app_writes')
+    }
+  }
+
+  test('passes current’s account and the caller’s sign-in id to run', async ({ assert }) => {
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    const [row] = await account.authentication.sessions.list({ current: input })
+    const expected = await account.authentication.current(input)
+    const result = await account.authentication.withCurrent(input, async (context) => {
+      assert.deepEqual(context.account, expected)
+      assert.equal(context.signInId, row.id)
+      assert.isTrue(row.current)
+      return 'done'
+    })
+    assert.equal(result, 'done')
+  })
+
+  test('has no sign-in id under access tokens', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { account } = service('access_tokens')
+    const [inserted] = await kit.db
+      .table('auth_access_tokens')
+      .insert({ tokenable_id: user.id, name: 'Phone', hash: 'hash', created_at: new Date() })
+      .returning('id')
+    const tokenId = typeof inserted === 'object' ? (inserted as { id: number }).id : inserted
+    let signInId: number | undefined = -1
+    await account.authentication.withCurrent({ userId: user.id, tokenId }, async (context) => {
+      signInId = context.signInId
+    })
+    assert.isUndefined(signInId)
+  })
+
+  test('commits writes made through trx with the call', async ({ assert }) => {
+    await withAppTable(async () => {
+      await insertUser(kit)
+      const { account } = service()
+      const input = await signIn(account)
+      await account.authentication.withCurrent(input, ({ trx }) =>
+        trx.table('app_writes').insert({ note: 'kept' })
+      )
+      assert.lengthOf(await kit.db.from('app_writes').where('note', 'kept'), 1)
+    })
+  })
+
+  test('rolls writes back and rethrows when run throws', async ({ assert }) => {
+    await withAppTable(async () => {
+      await insertUser(kit)
+      const { account } = service()
+      const input = await signIn(account)
+      const failure = new Error('abort')
+      try {
+        await account.authentication.withCurrent(input, async ({ trx }) => {
+          await trx.table('app_writes').insert({ note: 'dropped' })
+          throw failure
+        })
+        assert.fail('expected the run failure')
+      } catch (error) {
+        assert.strictEqual(error, failure)
+      }
+      assert.lengthOf(await kit.db.from('app_writes'), 0)
+    })
+  })
+
+  test('run acts on the Kit’s own transaction', async ({ assert }) => {
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    await account.authentication.withCurrent(input, async ({ trx, signInId }) => {
+      await trx.from('account_sessions').where('id', signInId!).delete()
+    })
+    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+  }).timeout(5_000)
+
+  test('touches the session', async ({ assert }) => {
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    const stale = DateTime.utc().minus({ minutes: 6 })
+    await kit.db
+      .from('account_sessions')
+      .where('user_id', input.userId)
+      .update({ last_seen_at: dbTime(kit, stale) })
+    await account.authentication.withCurrent(input, async () => {})
+    const row = await kit.db.from('account_sessions').where('user_id', input.userId).first()
+    assert.isAbove(Date.parse(readIsoTimestamp(row.last_seen_at)!), stale.toMillis() + 60_000)
+  })
+
+  test('rejects a stale credential revision without running', async ({ assert }) => {
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    await kit.db
+      .from('users')
+      .where('id', input.userId)
+      .update({ credentials_changed_at: dbTime(kit, DateTime.utc().plus({ minutes: 1 })) })
+    let ran = false
+    await assert.rejects(
+      () => account.authentication.withCurrent(input, async () => void (ran = true)),
+      InvalidSessionError
+    )
+    assert.isFalse(ran)
+  })
+
+  test('holds the account row lock while run executes', async ({ assert }) => {
+    if (!locksRows) return
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    await account.authentication.withCurrent(input, async ({ account: current }) => {
+      await assertUserLockIsHeld(kit, assert, current.id)
+    })
+  }).timeout(10_000)
+
+  test('a revocation waits for run and then invalidates the sign-in', async ({ assert }) => {
+    if (!locksRows) return
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    const [row] = await account.authentication.sessions.list({ current: input })
+    const inside = createBarrier('withCurrent')
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    const order: string[] = []
+    const tracked = startWithBackendId(kit, () =>
+      account.authentication.withCurrent(input, async () => {
+        inside.signal()
+        await released
+      })
+    )
+    inside.observe(tracked.operation)
+    const writer = tracked.operation.then(() => void order.push('withCurrent'))
+    let revoke: Promise<void> | undefined
+    try {
+      await inside.promise
+      const revoker = startWithBackendId(kit, () =>
+        account.authentication.sessions.revoke({ current: input, id: row.id })
+      )
+      revoke = revoker.operation.then(() => void order.push('revoke'))
+      await waitForDatabaseLockWait(kit, assert, await revoker.backendId, await tracked.backendId)
+    } finally {
+      release()
+      await Promise.all([writer.catch(() => {}), revoke?.catch(() => {})])
+    }
+    await Promise.all([writer, revoke])
+    assert.deepEqual(order, ['withCurrent', 'revoke'])
+    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+  }).timeout(10_000)
 })
