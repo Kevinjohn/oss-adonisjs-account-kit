@@ -88,6 +88,28 @@ export async function currentWithSessionInTransaction(
   return { account: safeAccount(user), session }
 }
 
+/**
+ * Lock the caller's sign-in row until commit, so a logout or token deletion that skips the account
+ * lock waits for the caller's transaction. A row deleted since `current` read it fails closed.
+ * SQLite already serializes writers.
+ */
+async function lockSignIn(
+  deps: Pick<ServiceDependencies, 'config'>,
+  trx: Trx,
+  input: CurrentAccountInput,
+  session: LiveSession | undefined
+): Promise<void> {
+  if (trx.dialect.name === 'better-sqlite3') return
+  const auth = requireAuthentication(deps.config)
+  const [table, id] =
+    auth.strategy === 'access_tokens'
+      ? [auth.tokenTable, input.tokenId]
+      : [sessionTable, session?.id]
+  if (id === undefined) return
+  if (!(await trx.from(table).select('id').where('id', id).forUpdate().first()))
+    throw new InvalidSessionError()
+}
+
 export function authenticationService(deps: ServiceDependencies) {
   return {
     /** Read-only impact of the login methods that remain after a proposed change. */
@@ -195,8 +217,8 @@ export function authenticationService(deps: ServiceDependencies) {
     },
 
     /**
-     * `current`, then `run` in the same transaction under the account lock, for a write of your own
-     * that must commit only if the sign-in is still valid. `trx` is the Kit's transaction: use it for
+     * `current`, then `run` in the same transaction under the account lock and the sign-in row's
+     * lock, for a write of your own that must commit only if the sign-in is still valid. `trx` is the Kit's transaction: use it for
      * every write, keep `run` database-only (SQLite may retry it), and lock your own rows inside
      * `run`, never before calling this. `signInId` is the caller's row in the sign-in table under
      * the session strategy with the registry enabled, else undefined. Throws `InvalidSessionError`
@@ -208,6 +230,7 @@ export function authenticationService(deps: ServiceDependencies) {
     ): Promise<T> {
       return transaction(deps.db, async (trx) => {
         const { account, session } = await currentWithSessionInTransaction(deps, input, trx)
+        await lockSignIn(deps, trx, input, session)
         return run({ account, signInId: session?.id, trx })
       })
     },

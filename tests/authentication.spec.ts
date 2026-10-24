@@ -11,6 +11,7 @@ import {
   assertUserLockIsHeld,
   createBarrier,
   startWithBackendId,
+  waitForBlockedBy,
   waitForDatabaseLockWait,
 } from './helpers/lock_coordination.js'
 
@@ -411,6 +412,40 @@ test.group('authentication.withCurrent', (group) => {
     }
     await Promise.all([writer, revoke])
     assert.deepEqual(order, ['withCurrent', 'revoke'])
+    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+  }).timeout(10_000)
+
+  test('a logout waits for run and then invalidates the sign-in', async ({ assert }) => {
+    if (!locksRows) return
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    const inside = createBarrier('withCurrent')
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    const order: string[] = []
+    const tracked = startWithBackendId(kit, () =>
+      account.authentication.withCurrent(input, async () => {
+        inside.signal()
+        await released
+      })
+    )
+    inside.observe(tracked.operation)
+    const writer = tracked.operation.then(() => void order.push('withCurrent'))
+    let logout: Promise<void> | undefined
+    try {
+      await inside.promise
+      // The session was just created, so `current` did not touch (and lock) it.
+      logout = account.authentication
+        .logout({ terminate: async () => {} }, undefined, input)
+        .then(() => void order.push('logout'))
+      await waitForBlockedBy(kit, assert, await tracked.backendId)
+    } finally {
+      release()
+      await Promise.all([writer.catch(() => {}), logout?.catch(() => {})])
+    }
+    await Promise.all([writer, logout])
+    assert.deepEqual(order, ['withCurrent', 'logout'])
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
   }).timeout(10_000)
 })
