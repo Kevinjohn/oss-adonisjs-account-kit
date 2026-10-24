@@ -2,6 +2,9 @@
 
 ## 0.2.0 - Unreleased
 
+- Add `onSessionsRevokedTransaction(user, context, trx)`, run inside
+  `authentication.sessions.revoke` and `revokeOthers` with the deleted sign-in ids
+  (`SessionsRevokedContext`).
 - Make adding password reset to an existing AdonisJS 7 login the first adoption path, with a
   shared integration guide, ownership map and annotated API starter diff.
 - Add pinned-starter reset recipes and runnable acceptance checks for API, Inertia React,
@@ -15,9 +18,6 @@
   including the duplicate-delivery boundary and an interruption mutation check.
 - Separate implemented behavior, automated checks, historical manual observations and limits in
   the example records; document reuse of the API-monorepo backend without adding another app.
-- Add `onSessionsRevokedTransaction(user, context, trx)`, run inside
-  `authentication.sessions.revoke` and `revokeOthers` with the deleted sign-in ids
-  (`SessionsRevokedContext`).
 
 ## 0.1.1 - 2026-10-22
 
