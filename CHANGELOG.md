@@ -1,7 +1,12 @@
 # Changelog
 
-## 0.2.0 - Unreleased
+## 0.1.2 - 2026-10-25
 
+- Re-check `authorize.invite` inside the invitation insert transaction with `context.trx`, after
+  locking the actor row; a demotion that commits between the pre-check and the insert now rejects
+  the send.
+- Add `authentication.withCurrent(input, run)`: `current` plus an application callback in the same
+  transaction under the account and sign-in row locks, with the caller's sign-in id.
 - Add `onSessionsRevokedTransaction(user, context, trx)`, run inside
   `authentication.sessions.revoke` and `revokeOthers` with the deleted sign-in ids
   (`SessionsRevokedContext`).
@@ -10,15 +15,10 @@
 - Add pinned-starter reset recipes and runnable acceptance checks for API, Inertia React,
   Inertia Vue and Hypermedia/Edge, including failed proofs, recovery feedback and rejection of
   both pre-existing credentials after reset.
-- Add `authentication.withCurrent(input, run)`: `current` plus an application callback in the same
-  transaction under the account and sign-in row locks, with the caller's sign-in id.
 - Add an existing-application invitation recipe with application-owned owner authorization,
   one-time acceptance and local proof-capture evidence.
 - Verify native Edge forms without JavaScript, explicit validation recovery with proof-page
   privacy headers, and an inferred React route-client type fixture with safe validation errors.
-- Re-check `authorize.invite` inside the invitation insert transaction with `context.trx`, after
-  locking the actor row; a demotion that commits between the pre-check and the insert now rejects
-  the send.
 - Add regression coverage for credential-notice outbox recovery across a worker process restart,
   including the duplicate-delivery boundary and an interruption mutation check.
 - Separate implemented behavior, automated checks, historical manual observations and limits in
