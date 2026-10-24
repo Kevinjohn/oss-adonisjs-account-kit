@@ -325,7 +325,15 @@ test.group('authentication.withCurrent', (group) => {
     await insertUser(kit)
     const { account } = service()
     const input = await signIn(account)
+    const stale = DateTime.utc().minus({ minutes: 6 })
+    await kit.db
+      .from('account_sessions')
+      .where('user_id', input.userId)
+      .update({ last_seen_at: dbTime(kit, stale) })
     await account.authentication.withCurrent(input, async ({ trx, signInId }) => {
+      // The touch is not committed yet; only the Kit's own transaction can see it.
+      const row = await trx.from('account_sessions').where('id', signInId!).first()
+      assert.isAbove(Date.parse(readIsoTimestamp(row.last_seen_at)!), stale.toMillis() + 60_000)
       await trx.from('account_sessions').where('id', signInId!).delete()
     })
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
