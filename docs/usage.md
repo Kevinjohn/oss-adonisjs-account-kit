@@ -177,6 +177,12 @@ application permission records; lock mutable permission rows through `trx` when 
 policy requires serialization. The limiter runs outside the write transaction to avoid a
 same-database limiter deadlock with a one-connection SQLite pool.
 
+Invitation send works the same way. `invite` runs once before throttling without a context, then
+again inside the insert transaction with `context.trx`, after the package locks the actor row.
+SQLite retries can repeat the second call, so keep it read-only through `trx` and repeatable. Lock
+the application's membership row through `context.trx` in the second call if a demotion must be
+serialized with the send. A denial in the second call does not refund throttle budget.
+
 `onPasswordResetIssuedTransaction(user, trx)` is an optional hook for password reset issuance. After the
 issuance limiter and initial email lookup, the package starts its root transaction, locks and
 reloads that user, confirms the requested email still matches, and replaces the token before

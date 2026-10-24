@@ -141,6 +141,7 @@ export async function sendInvitation(
     inviterId: actor.id,
     token,
     replacePending: false,
+    recheckInvite: true,
   })
 
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
@@ -163,7 +164,9 @@ export async function sendInvitation(
 /**
  * Insert an invitation row for a normalized email. Expired rows for the address are removed first;
  * `replacePending` also removes a live one (operator reissue). Shared by the actor and operator
- * paths; a pending invitation otherwise surfaces as InvitationPendingError.
+ * paths; a pending invitation otherwise surfaces as InvitationPendingError. `recheckInvite` locks
+ * the inviter row and runs `authorize.invite` again with `trx`. Lock order: inviter, invitation,
+ * then whatever the application locks in `invite`.
  */
 export async function storeInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -173,15 +176,23 @@ export async function storeInvitation(
     inviterId: UserId | null
     token: string
     replacePending: boolean
+    recheckInvite?: boolean
   }
 ): Promise<{ invitation: Invitation; fault?: PostCommitError }> {
   try {
     return await settleCommitted(
       transaction(deps.db, async (trx) => {
+        const inviter =
+          input.recheckInvite && input.inviterId !== null
+            ? await deps.config.users.findById(input.inviterId, trx, { forUpdate: true })
+            : undefined
+        if (inviter === null) throw new AuthorizationError()
         const now = DateTime.utc()
         const stale = trx.from('account_invitations').where('email', input.email)
         if (!input.replacePending) stale.where('expires_at', '<=', sqlTimestamp(trx, now))
         await stale.delete()
+        if (inviter && (await deps.config.authorize.invite(inviter, input.role, { trx })) !== true)
+          throw new AuthorizationError()
         await trx.table('account_invitations').insert({
           email: input.email,
           role: input.role,

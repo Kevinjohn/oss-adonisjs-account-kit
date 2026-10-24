@@ -22,6 +22,8 @@ import {
 } from './helpers/fakes.js'
 import { faultAfterCommit } from './helpers/fault_after_commit.js'
 import { dbTime } from './helpers/db_time.js'
+import { locksRows, testEngine } from './helpers/dialect.js'
+import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
 
 test.group('invitations.send', (group) => {
   const kit = useTestApp(group)
@@ -107,8 +109,82 @@ test.group('invitations.send', (group) => {
       role: 'user',
     })
     assert.equal(allowed.role, 'user')
-    assert.deepEqual(calls, ['admin', 'user'])
+    assert.deepEqual(calls, ['admin', 'user', 'user'])
   })
+
+  test('re-runs invite inside the insert transaction with context.trx', async ({ assert }) => {
+    const actor = await createActor()
+    const contexts: unknown[] = []
+    const { account } = service({
+      authorize: {
+        ...allowAll,
+        invite: async (_actor, _role, context) => {
+          contexts.push(context)
+          return true
+        },
+      },
+    })
+    await account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
+    assert.lengthOf(contexts, 2)
+    assert.isUndefined(contexts[0])
+    assert.isDefined((contexts[1] as { trx?: unknown }).trx)
+  })
+
+  test('rejects when only the in-transaction invite check denies', async ({ assert }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    const events: string[] = []
+    let calls = 0
+    const { account } = service({
+      notify: recorder.notify,
+      onLifecycleEvent: async (event) => {
+        events.push(event.type)
+      },
+      authorize: { ...allowAll, invite: async () => ++calls === 1 },
+    })
+    await assert.rejects(
+      () =>
+        account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' }),
+      AuthorizationError
+    )
+    assert.equal(calls, 2)
+    assert.lengthOf(await kit.db.from('account_invitations'), 0)
+    assert.deepEqual(events, [])
+    assert.lengthOf(recorder.calls, 0)
+  })
+
+  test('rejects a send blocked behind a committed demotion of the actor', async ({ assert }) => {
+    if (!locksRows) return
+    const actor = await createActor()
+    const { account } = service({
+      authorize: {
+        ...allowAll,
+        invite: async (current) => current.email.endsWith('@example.test'),
+      },
+    })
+    const demotion = await kit.db.transaction()
+    let finished = false
+    try {
+      await demotion.from('users').where('id', actor.id).update({ email: 'demoted@other.test' })
+      const result = await demotion
+        .rawQuery(
+          testEngine === 'pg' ? 'select pg_backend_pid() as id' : 'select connection_id() as id'
+        )
+        .exec()
+      const demotionBackendId = String((testEngine === 'mysql' ? result[0][0] : result.rows[0]).id)
+      const tracked = startWithBackendId(kit, () =>
+        account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
+      )
+      void tracked.operation.catch(() => {})
+      await waitForDatabaseLockWait(kit, assert, await tracked.backendId, demotionBackendId)
+      await demotion.commit()
+      finished = true
+      await assert.rejects(() => tracked.operation, AuthorizationError)
+    } finally {
+      if (!finished) await demotion.rollback()
+    }
+    assert.lengthOf(await kit.db.from('account_invitations'), 0)
+  }).timeout(10_000)
 
   test('rejects invalid raw email and role boundaries', async ({ assert }) => {
     const actor = await createActor()

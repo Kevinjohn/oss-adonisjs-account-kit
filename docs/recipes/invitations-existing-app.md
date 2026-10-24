@@ -88,5 +88,5 @@ while the route’s token-ability check stayed enabled. The same retained replay
 when an actor without the owner role received `201` instead of `403` (1 failed, 94 ms total).
 The implementation was restored from the exact JavaScript member of the supplied archive,
 and the identical replay passed 1/1 (114.14 ms test, 146 ms total). The archive digest was unchanged.
-To repeat this mutation, bypass only the package check that calls `authorize.invite` during send,
+To repeat this mutation, bypass both `authorize.invite` calls during send,
 run the harness-printed replay command, restore the original archive bytes, and rerun to green.
