@@ -15,7 +15,6 @@ on:
       - 'providers/**'
       - 'services/**'
       - 'testing/**'
-      - 'tests/**'
       - 'typedoc.json'
       - '.github/workflows/docs.yml'
 

@@ -3,12 +3,32 @@ name: checks
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/FUNDING.yml'
+      - '.github/pull_request_template.md'
+      - '.github/workflows/codeql.yml'
+      - '.github/workflows/docs.yml'
+      - '.github/workflows/scorecard.yml'
   pull_request:
+    paths-ignore:
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/FUNDING.yml'
+      - '.github/pull_request_template.md'
+      - '.github/workflows/codeql.yml'
+      - '.github/workflows/docs.yml'
+      - '.github/workflows/scorecard.yml'
   workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
+
+# A newer push to the same branch or pull request cancels the older run. Release runs keep their
+# own group because a called workflow takes the caller's name.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   checks:
@@ -49,8 +69,14 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
+      # Lint, types, build and the built exports do not depend on the database, so only the
+      # SQLite leg runs them.
+      - if: matrix.database == 'better-sqlite3'
+        run: pnpm lint
+      - if: matrix.database == 'better-sqlite3'
+        run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
-      - run: pnpm test:built-exports
+      - if: matrix.database == 'better-sqlite3'
+        run: pnpm build
+      - if: matrix.database == 'better-sqlite3'
+        run: pnpm test:built-exports
