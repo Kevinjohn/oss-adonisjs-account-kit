@@ -150,7 +150,8 @@ verified routes.
 
 For an application write that must commit only if the sign-in is still valid, use
 `kit.authentication.withCurrent(input, run)`. It runs the `current` checks, then
-`run({ account, signInId, trx })` in the same transaction, under the account row lock:
+`run({ account, signInId, trx })` in the same transaction, holding the account row lock and the
+caller's sign-in row lock, so a concurrent revocation or logout waits for `run`:
 
 ```ts
 await kit.authentication.withCurrent(current, async ({ account, signInId, trx }) => {
@@ -161,7 +162,7 @@ await kit.authentication.withCurrent(current, async ({ account, signInId, trx })
 - `trx` is the package's transaction. Use it for every write; a throw from `run` rolls back and
   surfaces unchanged.
 - Lock your own rows inside `run`, through `trx`, never before the call. The lock order is then
-  the account row first, application rows second.
+  the account row, the sign-in row, then application rows.
 - SQLite may retry the transaction, so keep `run` database-only and repeatable.
 - `signInId` is the caller's sign-in row under the session strategy with `sessionManagement`
   enabled, and `undefined` otherwise.

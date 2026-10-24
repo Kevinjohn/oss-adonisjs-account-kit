@@ -16,7 +16,7 @@
 - Separate implemented behavior, automated checks, historical manual observations and limits in
   the example records; document reuse of the API-monorepo backend without adding another app.
 - Add `authentication.withCurrent(input, run)`: `current` plus an application callback in the same
-  transaction under the account lock, with the caller's sign-in id.
+  transaction under the account and sign-in row locks, with the caller's sign-in id.
 
 ## 0.1.1 - 2026-10-22
 
