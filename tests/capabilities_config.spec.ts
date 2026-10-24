@@ -217,6 +217,10 @@ test.group('capability configuration', (group) => {
       /onPasswordResetIssuedTransaction must be a function/
     )
     assert.throws(
+      () => defineConfig({ ...base, onSessionsRevokedTransaction: 'invalid' } as never),
+      /onSessionsRevokedTransaction must be a function/
+    )
+    assert.throws(
       () =>
         defineConfig({
           ...base,

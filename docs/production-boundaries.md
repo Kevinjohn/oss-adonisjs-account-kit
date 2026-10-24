@@ -38,7 +38,8 @@ the Mail integration contract.
 
 Callbacks in `notify` are post-commit. Enqueue work quickly rather than performing a slow network
 delivery inline. If reliable delivery across process restarts is required, write an application
-outbox row from `onCredentialsChangedTransaction` or another operation-specific transaction hook,
+outbox row from `onCredentialsChangedTransaction` or another operation-specific transaction hook
+such as `onSessionsRevokedTransaction`,
 then have an application-owned worker claim and deliver outbox records. Make delivery idempotent
 using the supplied `operationId` where available. The example application's outbox illustrates the
 application-owned boundary; it is not a package-managed worker or delivery guarantee. Its durable
@@ -58,7 +59,9 @@ response to preserve account-existence privacy.
 Credential-changing Account Kit operations invoke the configured credential-change hook. Use
 `onCredentialsChangedTransaction` to update application-owned credentials in the same transaction
 when atomic revocation is required; its return path is exclusive with the post-commit
-`onCredentialsChanged` hook. The session guard compares the session's credential revision with the
+`onCredentialsChanged` hook. Revoking specific sign-ins with `authentication.sessions.revoke` or
+`revokeOthers` is not a credential change; it runs `onSessionsRevokedTransaction` instead. The
+session guard compares the session's credential revision with the
 user's current revision. The token guard checks that native authentication's token row remains in
 the configured table; credential-changing token operations revoke it by deleting the user's rows in
 that table transactionally. Direct database writes bypass these effects. Route account changes

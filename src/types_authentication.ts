@@ -108,6 +108,20 @@ export interface SignIn {
   current: boolean
 }
 
+/** Describes a revocation of specific sign-ins by their owner. */
+export interface SessionsRevokedContext {
+  /** Whose sign-ins were revoked. */
+  userId: UserId
+  /** A unique id for this revocation, shared with the `sessions.revoked` event. */
+  operationId: string
+  /**
+   * Ids of the rows this call deleted, as `authentication.sessions.list` reports them: session
+   * rows under the session strategy, token rows under access tokens. Length equals the event's
+   * `count`.
+   */
+  signInIds: readonly number[]
+}
+
 /**
  * Adapts your AdonisJS guard so Account Kit can create and end real sessions or tokens.
  * `createManagedGuard` builds one.

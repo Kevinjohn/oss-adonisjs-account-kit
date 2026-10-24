@@ -6,6 +6,7 @@ import type {
   Invitation,
   Capability,
   CredentialChangeContext,
+  SessionsRevokedContext,
   LifecycleEvent,
   AuthorizationCallbacks,
   UrlCallbacks,
@@ -56,6 +57,18 @@ export interface AccountKitConfig {
   onCredentialsChangedTransaction?: (
     user: AccountUser,
     context: CredentialChangeContext,
+    trx: Trx
+  ) => Promise<void>
+  /**
+   * Runs inside the transaction of `authentication.sessions.revoke` and `revokeOthers`, after the
+   * rows are deleted. Use `trx` for every write; throwing keeps the sign-ins. For rows bound to a
+   * sign-in prefer a foreign key with `ON DELETE CASCADE`, which also covers logout, pruning,
+   * credential changes and account deletion; this hook is for audit or outbox rows. Keep it
+   * database-only: SQLite may retry it.
+   */
+  onSessionsRevokedTransaction?: (
+    user: AccountUser,
+    context: SessionsRevokedContext,
     trx: Trx
   ) => Promise<void>
   /** Receives account events after commit, for audit logs. */

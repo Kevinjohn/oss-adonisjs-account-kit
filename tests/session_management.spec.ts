@@ -12,6 +12,8 @@ import type {
   CredentialChangeContext,
   CurrentAccountInput,
   LifecycleEvent,
+  SessionsRevokedContext,
+  Trx,
   UserId,
 } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -19,6 +21,29 @@ import { insertUser, makeService } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 const later = (days: number) => DateTime.utc().plus({ days })
+
+/** Run `body` with an application table holding one row per sign-in id, dropped afterwards. */
+async function withAppRows(
+  kit: ReturnType<typeof useTestApp>,
+  body: () => Promise<void>
+): Promise<void> {
+  const schema = kit.db.connection().schema
+  await schema.dropTableIfExists('app_session_rows')
+  await schema.createTable('app_session_rows', (table) => {
+    table.increments('id')
+    table.integer('sign_in_id').notNullable()
+  })
+  try {
+    await body()
+  } finally {
+    await schema.dropTableIfExists('app_session_rows')
+  }
+}
+
+async function appRows(kit: ReturnType<typeof useTestApp>): Promise<number[]> {
+  const rows = await kit.db.from('app_session_rows').select('sign_in_id')
+  return rows.map((row) => Number(row.sign_in_id))
+}
 
 test.group('sign-in management with sessions', (group) => {
   const kit = useTestApp(group)
@@ -189,6 +214,123 @@ test.group('sign-in management with sessions', (group) => {
     assert.equal((events[0] as { operationId: string }).operationId, inTransaction[0].operationId)
   })
 
+  /** A hook that deletes the application's rows for the revoked ids and records each call. */
+  function revocationHook(seen: Array<{ userId: UserId; context: SessionsRevokedContext }>) {
+    return async (user: { id: UserId }, context: SessionsRevokedContext, trx: Trx) => {
+      seen.push({ userId: user.id, context })
+      await trx
+        .from('app_session_rows')
+        .whereIn('sign_in_id', [...context.signInIds])
+        .delete()
+    }
+  }
+
+  test('revoke runs onSessionsRevokedTransaction in its transaction', async ({ assert }) => {
+    await withAppRows(kit, async () => {
+      const user = await insertUser(kit)
+      const seen: Array<{ userId: UserId; context: SessionsRevokedContext }> = []
+      const { account } = service({ onSessionsRevokedTransaction: revocationHook(seen) })
+      const mine = await signIn(account)
+      await signIn(account)
+      const [otherRow, myRow] = await account.authentication.sessions.list({ current: mine })
+      await kit.db
+        .table('app_session_rows')
+        .insert([{ sign_in_id: otherRow.id }, { sign_in_id: myRow.id }])
+      await account.authentication.sessions.revoke({ current: mine, id: otherRow.id })
+      assert.lengthOf(seen, 1)
+      assert.equal(seen[0].userId, user.id)
+      assert.equal(seen[0].context.userId, user.id)
+      assert.deepEqual(seen[0].context.signInIds, [otherRow.id])
+      assert.isTrue(Object.isFrozen(seen[0].context.signInIds))
+      assert.lengthOf(await kit.db.from('account_sessions').where('id', otherRow.id), 0)
+      assert.deepEqual(await appRows(kit), [myRow.id])
+      assert.equal((events[0] as { operationId: string }).operationId, seen[0].context.operationId)
+    })
+  })
+
+  test('revokeOthers reports exactly the other sign-ins', async ({ assert }) => {
+    const seen: Array<{ userId: UserId; context: SessionsRevokedContext }> = []
+    await withAppRows(kit, async () => {
+      await insertUser(kit)
+      await insertUser(kit, { email: 'other@example.test' })
+      const { account } = service({ onSessionsRevokedTransaction: revocationHook(seen) })
+      const mine = await signIn(account)
+      await signIn(account)
+      await signIn(account)
+      await signIn(account, 'other@example.test')
+      const list = await account.authentication.sessions.list({ current: mine })
+      const ids = list.filter((row) => !row.current).map((row) => row.id)
+      assert.deepEqual(await account.authentication.sessions.revokeOthers({ current: mine }), {
+        count: 2,
+      })
+      assert.lengthOf(seen, 1)
+      assert.deepEqual([...seen[0].context.signInIds].sort(), [...ids].sort())
+      const event = events[0] as { count: number; operationId: string }
+      assert.equal(event.count, seen[0].context.signInIds.length)
+      assert.equal(event.operationId, seen[0].context.operationId)
+    })
+  })
+
+  test('revokeOthers with nothing to revoke skips the hook', async ({ assert }) => {
+    let calls = 0
+    await insertUser(kit)
+    const { account } = service({ onSessionsRevokedTransaction: async () => void calls++ })
+    const mine = await signIn(account)
+    assert.deepEqual(await account.authentication.sessions.revokeOthers({ current: mine }), {
+      count: 0,
+    })
+    assert.equal(calls, 0)
+    assert.deepEqual(
+      events.map((event) => [event.type, 'count' in event ? event.count : null]),
+      [['sessions.revoked', 0]]
+    )
+  })
+
+  test('a throwing onSessionsRevokedTransaction keeps the sign-in', async ({ assert }) => {
+    await withAppRows(kit, async () => {
+      await insertUser(kit)
+      const failure = new Error('keep')
+      const { account } = service({
+        onSessionsRevokedTransaction: async (_user, context, trx) => {
+          await trx
+            .from('app_session_rows')
+            .whereIn('sign_in_id', [...context.signInIds])
+            .delete()
+          throw failure
+        },
+      })
+      const mine = await signIn(account)
+      const other = await signIn(account)
+      const [otherRow] = await account.authentication.sessions.list({ current: mine })
+      await kit.db.table('app_session_rows').insert({ sign_in_id: otherRow.id })
+      try {
+        await account.authentication.sessions.revoke({ current: mine, id: otherRow.id })
+        assert.fail('expected the hook failure')
+      } catch (error) {
+        assert.strictEqual(error, failure)
+      }
+      await account.authentication.current(other)
+      assert.deepEqual(await appRows(kit), [otherRow.id])
+      assert.deepEqual(events, [])
+    })
+  })
+
+  test('sign out everywhere does not run onSessionsRevokedTransaction', async ({ assert }) => {
+    await insertUser(kit)
+    let revokedCalls = 0
+    let changedCalls = 0
+    const { account } = service({
+      onCredentialsChanged: undefined,
+      onCredentialsChangedTransaction: async () => void changedCalls++,
+      onSessionsRevokedTransaction: async () => void revokedCalls++,
+    })
+    const mine = await signIn(account)
+    await signIn(account)
+    await account.authentication.sessions.revokeAll({ current: mine })
+    assert.equal(revokedCalls, 0)
+    assert.equal(changedCalls, 1)
+  })
+
   test('sign out everywhere runs the post-commit credential hook', async ({ assert }) => {
     const user = await insertUser(kit)
     const { account } = service()
@@ -326,6 +468,29 @@ test.group('sign-in management with access tokens', (group) => {
     await account.authentication.current(theirs)
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.isNotNull(row.credentials_changed_at)
+  })
+
+  test('onSessionsRevokedTransaction receives token row ids', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const seen: SessionsRevokedContext[] = []
+    const { account } = makeService(kit, {
+      enabled: ['sessionManagement'],
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+      minRequestMs: 0,
+      onSessionsRevokedTransaction: async (_user, context) => void seen.push(context),
+    })
+    const mine = await token(user.id, 'Phone')
+    const laptop = await token(user.id, 'Laptop')
+    const tablet = await token(user.id, 'Tablet')
+    const watch = await token(user.id, 'Watch')
+    await account.authentication.sessions.revoke({ current: mine, id: laptop.tokenId })
+    assert.deepEqual(await account.authentication.sessions.revokeOthers({ current: mine }), {
+      count: 2,
+    })
+    assert.deepEqual(
+      seen.map((context) => [...context.signInIds].sort((a, b) => a - b)),
+      [[Number(laptop.tokenId)], [Number(tablet.tokenId), Number(watch.tokenId)]]
+    )
   })
 
   test('token login passes the sign-in label as the token name', async ({ assert }) => {

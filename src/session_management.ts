@@ -5,6 +5,7 @@ import {
   currentInTransaction,
   requireAuthentication,
 } from './authentication.js'
+import { deleteReturning } from './consume_rows.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { CapabilityDisabledError, SessionNotFoundError } from './errors.js'
@@ -66,6 +67,38 @@ async function scope(trx: Trx, auth: ResolvedAuthenticationConfig, current: Curr
 
 const sameId = (left: unknown, right: unknown) => String(left) === String(right)
 
+/**
+ * Delete the user's sign-in rows whose id is (`only`) or is not (`except`) `id`, and return the ids
+ * actually deleted. PostgreSQL and SQLite use `delete ... returning`, so a row another statement
+ * removed first is never reported. MySQL has no RETURNING; it locks the rows, then deletes them.
+ */
+async function deleteSignIns(
+  trx: Trx,
+  target: { table: string; owner: string },
+  userId: UserId,
+  match: 'only' | 'except',
+  id: unknown
+): Promise<number[]> {
+  const operator = match === 'only' ? '=' : '<>'
+  if (trx.dialect.name !== 'mysql') {
+    const rows = await deleteReturning<{ id: unknown }>(
+      trx,
+      `delete from ?? where ?? = ? and id ${operator} ? returning id`,
+      [target.table, target.owner, userId, id]
+    )
+    return rows.map((row) => Number(row.id))
+  }
+  const rows: Array<{ id: unknown }> = await trx
+    .from(target.table)
+    .select('id')
+    .where(target.owner, userId)
+    .where('id', operator, id as number)
+    .forUpdate()
+  const ids = rows.map((row) => Number(row.id))
+  if (ids.length > 0) await trx.from(target.table).whereIn('id', ids).delete()
+  return ids
+}
+
 export function sessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
   /** Authenticate the caller and run `mutate` in one transaction under the account lock. */
   function asCurrent<T>(
@@ -79,15 +112,21 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
     })
   }
 
-  async function announce(userId: UserId, count: number): Promise<void> {
+  async function announce(userId: UserId, count: number, operationId: string): Promise<void> {
     await postCommit('Sign-ins revoked but a follow-up failed', [
-      lifecycle(deps.config, {
-        type: 'sessions.revoked',
-        userId,
-        operationId: randomUUID(),
-        count,
-      }),
+      lifecycle(deps.config, { type: 'sessions.revoked', userId, operationId, count }),
     ])
+  }
+
+  /** Run `onSessionsRevokedTransaction` for rows this call deleted. */
+  async function revoked(trx: Trx, userId: UserId, operationId: string, signInIds: number[]) {
+    if (!deps.config.onSessionsRevokedTransaction) return
+    const user = (await deps.config.users.findById(userId, trx))!
+    await deps.config.onSessionsRevokedTransaction(
+      user,
+      { userId, operationId, signInIds: Object.freeze(signInIds) },
+      trx
+    )
   }
 
   return {
@@ -119,21 +158,19 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
       id: unknown
     }): Promise<{ current: boolean }> {
       const id = signInId(input.id)
+      const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
         asCurrent(input.current, async (trx, target, userId) => {
-          const deleted = await trx
-            .from(target.table)
-            .where('id', id)
-            .where(target.owner, userId)
-            .delete()
-          if (Number(deleted) !== 1) throw new SessionNotFoundError()
+          const ids = await deleteSignIns(trx, target, userId, 'only', id)
+          if (ids.length !== 1) throw new SessionNotFoundError()
+          await revoked(trx, userId, operationId, ids)
           return { userId, current: sameId(id, target.currentId) }
         })
       )
       const result = { current: value.current }
       await recordRevocation(result, () =>
         finishCommitted(fault, 'Sign-in revoked but follow-ups failed', () =>
-          announce(value.userId, 1)
+          announce(value.userId, 1, operationId)
         )
       )
       return result
@@ -141,18 +178,16 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
 
     /** Sign out every other sign-in; the caller's own stays valid. */
     async revokeOthers(input: { current: CurrentAccountInput }): Promise<{ count: number }> {
+      const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
         asCurrent(input.current, async (trx, target, userId) => {
-          const deleted = await trx
-            .from(target.table)
-            .where(target.owner, userId)
-            .whereNot('id', target.currentId)
-            .delete()
-          return { userId, count: Number(deleted) }
+          const ids = await deleteSignIns(trx, target, userId, 'except', target.currentId)
+          if (ids.length > 0) await revoked(trx, userId, operationId, ids)
+          return { userId, count: ids.length }
         })
       )
       await finishCommitted(fault, 'Sign-ins revoked but follow-ups failed', () =>
-        announce(value.userId, value.count)
+        announce(value.userId, value.count, operationId)
       )
       return { count: value.count }
     },
