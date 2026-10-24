@@ -448,4 +448,32 @@ test.group('authentication.withCurrent', (group) => {
     assert.deepEqual(order, ['withCurrent', 'logout'])
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
   }).timeout(10_000)
+
+  test('rejects a sign-in deleted after current read it', async ({ assert }) => {
+    if (!locksRows) return
+    await insertUser(kit)
+    let input: CurrentAccountInput | undefined
+    const { account } = makeService(kit, {
+      enabled: ['sessionManagement'],
+      authentication: {
+        strategy: 'session',
+        guard: 'web',
+        // Runs after the session row is read and before it is locked; deletes it on another
+        // connection, as a logout that skips the account lock would.
+        canAccess: async () => {
+          if (input) await kit.db.from('account_sessions').where('user_id', input.userId).delete()
+          return true
+        },
+      },
+      minRequestMs: 0,
+    })
+    const signedIn = await signIn(account)
+    input = signedIn
+    let ran = false
+    await assert.rejects(
+      () => account.authentication.withCurrent(signedIn, async () => void (ran = true)),
+      InvalidSessionError
+    )
+    assert.isFalse(ran)
+  }).timeout(10_000)
 })
