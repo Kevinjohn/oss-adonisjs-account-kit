@@ -242,3 +242,41 @@ export function createBarrier(label: string) {
     },
   }
 }
+
+/** Wait until some connection is blocked on a row lock held by `blockingBackendId`. */
+export async function waitForBlockedBy(
+  kit: TestApp,
+  assert: { isAtLeast(actual: number, expected: number): void },
+  blockingBackendId: string
+) {
+  const deadline = Date.now() + 5_000
+  let waiting = 0
+  while (Date.now() < deadline) {
+    if (testEngine === 'pg') {
+      const result = await kit.db
+        .rawQuery(
+          `select count(*) as waiting from pg_stat_activity as waiter
+           where waiter.datname = current_database() and waiter.wait_event_type = 'Lock'
+             and ? = any(pg_blocking_pids(waiter.pid))`,
+          [blockingBackendId]
+        )
+        .exec()
+      waiting = Number(result.rows[0].waiting)
+    } else if (testEngine === 'mysql') {
+      const result = await kit.db
+        .rawQuery(
+          `select count(*) as waiting
+           from performance_schema.data_lock_waits as waits
+           join performance_schema.threads as blocker
+             on blocker.thread_id = waits.blocking_thread_id
+           where blocker.processlist_id = ?`,
+          [blockingBackendId]
+        )
+        .exec()
+      waiting = Number(result[0][0].waiting)
+    }
+    if (waiting >= 1) break
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+  assert.isAtLeast(waiting, 1)
+}

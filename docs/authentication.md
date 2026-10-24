@@ -148,6 +148,30 @@ verified routes.
   token was revoked between guard authentication and protected access.
 - These methods return only ID, email, pending email, password availability, and active state.
 
+For an application write that must commit only if the sign-in is still valid, use
+`kit.authentication.withCurrent(input, run)`. It runs the `current` checks, then
+`run({ account, signInId, trx })` in the same transaction under the account row lock, so a
+concurrent revocation or credential change waits for `run`:
+
+```ts
+await kit.authentication.withCurrent(current, async ({ account, signInId, trx }) => {
+  await trx.table('drafts').insert({ user_id: account.id, sign_in_id: signInId, body })
+})
+```
+
+- `trx` is the package's transaction. Use it for every write; a throw from `run` rolls back and
+  surfaces unchanged.
+- The caller's sign-in row is locked too: the registry session (session strategy with
+  `sessionManagement` enabled) or the token row (access tokens). A logout or token deletion
+  therefore waits for `run`. A session without a registry row has no server-side row to lock, so
+  its logout only clears the guard's credential and does not wait.
+- Lock your own rows inside `run`, through `trx`, never before the call. The lock order is then
+  the account row, the sign-in row, then application rows.
+- SQLite may retry the transaction, so keep `run` database-only and repeatable.
+- `signInId` is the caller's sign-in row under the session strategy with `sessionManagement`
+  enabled, and `undefined` otherwise.
+- `inspectAccountAccess` remains the read-only inspection that needs no credential.
+
 The maintained example applies `AccountAccessMiddleware` to limited routes and
 `VerifiedAccountMiddleware` to verified routes, whether package-backed or application-owned. The
 email-correction and activation-send routes permit a limited inactive credential while still
