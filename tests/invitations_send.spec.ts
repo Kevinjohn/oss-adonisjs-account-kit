@@ -161,7 +161,6 @@ test.group('invitations.send', (group) => {
     // The shipped SQL adapter, which ignores `findById`'s `forUpdate` option.
     const { account } = service({
       users: createSqlUsersAdapter({ table: 'users', db: kit.db, ...fakeHash }),
-      usersTable: 'users',
       authorize: {
         ...allowAll,
         invite: async (current) => current.email.endsWith('@example.test'),
