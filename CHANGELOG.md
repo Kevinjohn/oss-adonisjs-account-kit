@@ -11,13 +11,13 @@
   one-time acceptance and local proof-capture evidence.
 - Verify native Edge forms without JavaScript, explicit validation recovery with proof-page
   privacy headers, and an inferred React route-client type fixture with safe validation errors.
+- Re-check `authorize.invite` inside the invitation insert transaction with `context.trx`, after
+  locking the actor row; a demotion that commits between the pre-check and the insert now rejects
+  the send.
 - Add regression coverage for credential-notice outbox recovery across a worker process restart,
   including the duplicate-delivery boundary and an interruption mutation check.
 - Separate implemented behavior, automated checks, historical manual observations and limits in
   the example records; document reuse of the API-monorepo backend without adding another app.
-
-The package runtime, generated integration templates and migrations are unchanged from 0.1.1.
-Existing installations need no new package migration or configuration change for this update.
 
 ## 0.1.1 - 2026-10-22
 

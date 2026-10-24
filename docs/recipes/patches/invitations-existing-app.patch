@@ -80,14 +80,16 @@ new file mode 100644
 index 0000000..b51935e
 --- /dev/null
 +++ b/app/services/invitation_authorization.ts
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,16 @@
 +import db from '@adonisjs/lucid/services/db'
 +import type { Trx } from 'adonisjs-account-kit'
 +import type { AuthorizationCallbacks } from 'adonisjs-account-kit/types'
 +
 +async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
-+  const query = trx ? trx.from('app_user_roles') : db.from('app_user_roles')
-+  return Boolean(await query.where('user_id', userId).where('role', 'owner').first())
++  const query = (trx ? trx.from('app_user_roles') : db.from('app_user_roles'))
++    .where('user_id', userId)
++    .where('role', 'owner')
++  return Boolean(await (trx ? query.forUpdate() : query).first())
 +}
 +
 +export const authorizeInvitations: AuthorizationCallbacks = {

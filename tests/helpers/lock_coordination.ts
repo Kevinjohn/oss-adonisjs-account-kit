@@ -96,6 +96,7 @@ export function startWithBackendId<T>(
     ) {
       // Restore before awaiting pool acquisition so a concurrent probe cannot intercept itself.
       restoreTransaction()
+      restoreConnection()
       let transaction: ReturnType<typeof originalTransaction>
       try {
         transaction = Reflect.apply(originalTransaction, this, args) as typeof transaction
@@ -137,8 +138,8 @@ export function startWithBackendId<T>(
     this: typeof database,
     ...args: Parameters<typeof originalConnection>
   ) {
-    // Restore immediately so only this operation receives the instrumented query client.
-    restoreConnection()
+    // Stay installed until a transaction starts: the operation may call `connection()` first for
+    // a dialect check. Start nothing else concurrently until its backend ID resolves.
     let queryClient: ReturnType<typeof originalConnection>
     try {
       queryClient = Reflect.apply(originalConnection, this, args) as typeof queryClient

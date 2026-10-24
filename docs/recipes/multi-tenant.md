@@ -71,7 +71,8 @@ onInvitationAccepted: async (user, invitation, trx) => {
 
 The managed `POST /api/v1/account/invitations` can send a role such as `1:member`; `invite`
 checks its target workspace before creation. Managed resend and revoke check
-`manageInvitation` against the stored role. Resend also checks `invite` again. Keep these
+`manageInvitation` against the stored role. Send and resend both check `invite` again inside
+their transactions. Keep these
 callbacks aligned with changes to your membership policy. Acceptance applies the stored role
 without rechecking the inviter's current authority; if that authority changes, revoke the
 outstanding invitation or add an application acceptance policy.
