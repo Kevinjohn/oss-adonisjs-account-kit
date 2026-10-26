@@ -78,6 +78,12 @@ Run them before a release and after changing `configure.ts`, `stubs/` or `exampl
 
 [AGENTS.md](AGENTS.md) describes the file-size and file-splitting rules the codebase follows.
 
+## Planning files
+
+Private plans, PRDs and review notes live in a gitignored `plans/` directory, or as `PLAN*.md` and
+`__PRD*.md` in the root; `.gitignore` keeps all three out of commits. Delete a plan once its work has
+landed. Reference material for contributors goes in `docs/maintainers/` instead.
+
 ## Pull requests
 
 - Keep each pull request to one change.
