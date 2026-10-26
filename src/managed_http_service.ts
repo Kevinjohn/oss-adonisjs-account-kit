@@ -16,7 +16,7 @@ export function managedHttpService(deps: Dependencies) {
       if (deps.config.registration.availability !== 'open')
         throw new AuthorizationError('Public registration is unavailable')
     },
-    /** Throws unless `guard` is the guard named in `authentication` config. */
+    /** Throws unless `guard` has the name and strategy set in the `authentication` config. */
     assertGuard: (guard: { name: string; strategy: 'session' | 'access_tokens' }): void => {
       const selected = deps.config.authentication
       if (!selected || selected.guard !== guard.name || selected.strategy !== guard.strategy)
