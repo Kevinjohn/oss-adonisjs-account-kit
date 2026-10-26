@@ -64,7 +64,9 @@
     "test:pg": "bash bin/pg.sh test",
     "test:mysql": "cross-env DB_CLIENT=mysql2 TZ=America/New_York pnpm quick:test",
     "test:pg-service": "node --test --test-concurrency=1 scripts/test_pg_service.mjs scripts/tests/pg_service_process_safety.spec.mjs scripts/tests/pg_service_inputs.spec.mjs",
-    "test:recipe": "node scripts/recipes/check.mjs"
+    "test:recipe": "node scripts/recipes/check.mjs",
+    "check:changed": "node scripts/check_changed.mjs",
+    "test:check-changed": "node --test scripts/tests/check_changed_plan.spec.mjs"
   },
   "keywords": [
     "adonisjs",
