@@ -67,6 +67,7 @@ export function captureNotifications() {
   return {
     notify,
     messages,
+    /** The latest message of a kind, optionally to one address. */
     last,
     /** The token from the latest matching message; throws when none was sent. */
     tokenFor(kind: NotificationKind, to?: string): string {
@@ -74,6 +75,7 @@ export function captureNotifications() {
       if (!token) throw new Error(`No ${kind} notification with a token${to ? ` to ${to}` : ''}`)
       return token
     },
+    /** Forget every captured message. */
     clear() {
       messages.length = 0
     },

@@ -117,6 +117,7 @@ export interface AccountKitConfig {
   /** Who may sign up. Required even when `registration` is not enabled. */
   registration: {
     availability: 'open' | 'closed' | 'application'
+    /** Map the raw registration input to the extra fields stored with the user. */
     mapFields?: (input: unknown) => Promise<Record<string, unknown>> | Record<string, unknown>
   }
   /** Rules for new passwords, overriding the defaults one at a time. */
@@ -202,6 +203,7 @@ export interface ResolvedConfig extends Omit<
   urls: UrlCallbacks
   notify: NotificationCallbacks
   delivery: 'best-effort' | 'durable' | 'capture'
+  /** `AccountKitConfig.onInvitationAccepted`, or a no-op. */
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   usersTable: string
   limiterSecret: string

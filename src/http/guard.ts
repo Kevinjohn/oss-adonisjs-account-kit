@@ -14,20 +14,27 @@ export interface ManagedUser {
 
 /** A user model the managed guard can load users from. */
 export interface ManagedUserModel<User> {
+  /** Load a user by id; throws when there is none. */
   findOrFail(id: UserId): Promise<User>
 }
 
 /** A user model with an AdonisJS access-token provider, for a token guard. */
 export interface ManagedTokenModel<User> extends ManagedUserModel<User> {
   accessTokens: {
+    /** Issue a token; `value.release()` returns the plaintext token once. */
     create(
       user: User,
       abilities: string[],
       options?: { expiresIn?: string | number; name?: string }
     ): Promise<{
       identifier: UserId | BigInt
-      value?: { release(): string } | null
+      /** Set when a token was just created; `release` returns its plaintext once. */
+      value?: {
+        /** The plaintext token; AdonisJS lets it be read once. */
+        release(): string
+      } | null
     }>
+    /** Revoke one of the user's tokens by its identifier. */
     delete(user: User, identifier: UserId | BigInt): Promise<unknown>
   }
 }
@@ -72,6 +79,7 @@ export function createManagedGuard<User>(options: ManagedSessionGuardOptions<Use
   'strategy' | 'forRequest'
 > & {
   strategy: 'session'
+  /** The guard bound to one request's session. */
   forRequest(context: HttpContext): Extract<AuthenticationGuard<undefined>, { strategy: 'session' }>
 }
 /** Adapts an existing access-token guard for the managed routes. */
@@ -80,10 +88,13 @@ export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>
   'strategy' | 'forRequest' | 'logoutCredential'
 > & {
   strategy: 'access_tokens'
+  /** The guard bound to one request's bearer token. */
   forRequest(
     context: HttpContext
   ): Extract<AuthenticationGuard<ManagedTokenCredential>, { strategy: 'access_tokens' }>
+  /** The token that authenticated the request, for `terminate` on logout. */
   logoutCredential(context: HttpContext): Promise<ManagedTokenCredential>
+  /** The plaintext token to return to the client, released once. */
   publicCredential(credential: ManagedTokenCredential): string
 }
 export function createManagedGuard<User>(

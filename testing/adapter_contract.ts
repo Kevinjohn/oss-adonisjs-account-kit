@@ -12,6 +12,7 @@ export interface AdapterContractFixture {
   transaction<T>(callback: (trx: Trx) => Promise<T>): Promise<T>
   /** Return the stored password value so the contract can reject plaintext persistence. */
   storedPassword(id: number | string): Promise<string | null>
+  /** Check a plaintext password against the stored value, with the application's hasher. */
   verifyPassword(stored: string, password: string): Promise<boolean>
   /** Hold the package-owned user lock while an independent writer targets that physical row. */
   assertLockBlocksWriter(
@@ -26,8 +27,11 @@ export interface AdapterContractFixture {
   stringIds?: boolean
   /** Exercise updateRegistrationData: the data to send and a reader for the stored result. */
   registrationUpdate?: {
+    /** The registration data to send. */
     data: Record<string, unknown>
+    /** Read the stored registration data back for the given user id. */
     read(id: number | string): Promise<unknown>
+    /** What `read` should return after the update. */
     expected: unknown
   }
 }
