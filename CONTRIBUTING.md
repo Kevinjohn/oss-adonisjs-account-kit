@@ -40,14 +40,20 @@ pnpm and the dependencies; run `pnpm quick:test` once it is ready.
 
 Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
 
-| Script               | What it does                                                    |
-| -------------------- | --------------------------------------------------------------- |
-| `pnpm lint`          | ESLint with the AdonisJS config                                 |
-| `pnpm typecheck`     | TypeScript without emitting                                     |
-| `pnpm quick:test`    | Japa test suite against SQLite                                  |
-| `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster  |
-| `pnpm build`         | Compiles to `build/`                                            |
-| `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api` |
+| Script               | What it does                                                      |
+| -------------------- | ----------------------------------------------------------------- |
+| `pnpm lint`          | ESLint with the AdonisJS config                                   |
+| `pnpm typecheck`     | TypeScript without emitting                                       |
+| `pnpm quick:test`    | Japa test suite against SQLite                                    |
+| `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster    |
+| `pnpm build`         | Compiles to `build/`                                              |
+| `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api`   |
+| `pnpm check:changed` | The checks above that cover the files changed since `origin/main` |
+
+`pnpm check:changed [base]` runs Prettier and ESLint on the changed files, the type-check when
+TypeScript changed, the changed specs (or the full SQLite suite when other files changed), the
+`pg.sh` script tests when they changed, and the docs build when docs changed. It does not run
+`pnpm test:pg`, `pnpm build` or `pnpm test:consumer`.
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
