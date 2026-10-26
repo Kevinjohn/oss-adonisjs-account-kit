@@ -45,6 +45,7 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 | `pnpm lint`          | ESLint with the AdonisJS config                                   |
 | `pnpm typecheck`     | TypeScript without emitting                                       |
 | `pnpm quick:test`    | Japa test suite against SQLite                                    |
+| `pnpm test`          | The SQLite suite under c8; fails below 94% lines, 90% branches    |
 | `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster    |
 | `pnpm build`         | Compiles to `build/`                                              |
 | `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api`   |

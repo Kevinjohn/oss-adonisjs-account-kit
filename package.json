@@ -218,8 +218,14 @@
       "html"
     ],
     "exclude": [
-      "tests/**"
-    ]
+      "tests/**",
+      "scripts/consumer/**",
+      "scripts/test_packed_consumer.mjs"
+    ],
+    "check-coverage": true,
+    "lines": 94,
+    "branches": 90,
+    "functions": 94
   },
   "prettier": "@adonisjs/prettier-config",
   "repository": {

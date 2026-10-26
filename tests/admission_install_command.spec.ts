@@ -9,6 +9,9 @@ import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import InstallAdmission from '../commands/admission_install.js'
 
+// Each test runs a full ace command; V8 coverage instrumentation roughly triples its time.
+const commandTimeout = process.env.NODE_V8_COVERAGE ? 30_000 : 10_000
+
 test.group('admission install command', () => {
   async function fixture() {
     const root = await mkdtemp(join(tmpdir(), 'account-kit-admission-install-'))
@@ -76,7 +79,7 @@ test.group('admission install command', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  }).timeout(10_000)
+  }).timeout(commandTimeout)
 
   test('never overwrites the config or adds a second migration', async ({ assert }) => {
     const { root, run } = await fixture()
@@ -96,7 +99,7 @@ test.group('admission install command', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  }).timeout(10_000)
+  }).timeout(commandTimeout)
 
   test('refuses an unsupported id type without writing', async ({ assert }) => {
     const { root, run } = await fixture()
@@ -111,5 +114,5 @@ test.group('admission install command', () => {
     } finally {
       await rm(root, { recursive: true, force: true })
     }
-  }).timeout(10_000)
+  }).timeout(commandTimeout)
 })
