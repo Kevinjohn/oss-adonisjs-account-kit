@@ -161,6 +161,14 @@ test.group('managed existing-guard adapters', () => {
       )
     )
     if (!cookieConfig) throw new Error('Native cookie config did not resolve')
-    assert.throws(() => new SessionCollection(cookieConfig), /revocable server-side store/)
+    // Session 8.1 builds the store in the constructor; 8.3 builds it on each operation.
+    await assert.rejects(
+      async () => new SessionCollection(cookieConfig).destroy(id),
+      /revocable server-side store/
+    )
+    assert.throws(
+      () => new SessionCollection(cookieConfig).supportsTagging(),
+      /revocable server-side store/
+    )
   })
 })
