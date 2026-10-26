@@ -4,14 +4,36 @@ Validation uses Node 24 and pnpm. Dated candidate records below identify the rev
 configurations tested; historical totals do not describe the latest candidate. Check each pull
 request for its current automated workflow results.
 
-## Second alpha 0.2.0 candidate
+## Checklist
+
+Run from the checkout on Node 24 (`nvm use`). One line per gate; the link gives the detail and the
+last recorded outcome. Record the exact source revision and archive SHA-256 with every result.
+
+1. `pnpm lint`, `pnpm typecheck`, `pnpm build`: [source checks](#source-checks).
+2. `pnpm quick:test`: the SQLite suite; [source checks](#source-checks).
+3. `pnpm test:built-exports` and `pnpm test:built-setup`: the built package entry points and setup command; [source checks](#source-checks).
+4. `pnpm test:pg-service`, then `pnpm test:pg`: PostgreSQL 16 lifecycle and the full suite; [local PostgreSQL package tests](#local-postgresql-package-tests).
+5. `pnpm test:mysql` when a MySQL 8.4 server is available: [MySQL package tests](#mysql-package-tests).
+6. `pnpm test:adapter` and `pnpm docs:build`: [source checks](#source-checks).
+7. Pack one candidate archive and record its SHA-256; it must not change for the rest of the run: [identity and execution boundaries](#identity-and-execution-boundaries).
+8. `pnpm test:consumer` for SQLite and PostgreSQL, in default, `minimum` and `service-only` modes: [reproducible checks](#reproducible-checks) and [packed consumers](#packed-consumers-and-fresh-recipe-transplants).
+9. Install the same archive into each reference example and run its checks: [reference examples](#reference-examples-using-the-same-vendor-archive).
+10. Confirm the failure-path evidence still holds on the candidate: [credential and invitation failure coverage](#credential-and-invitation-failure-coverage).
+11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
+12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
+
+## Reference
+
+Dated candidate records and the detail behind each checklist line. Newest candidate first.
+
+### Second alpha 0.2.0 candidate
 
 Recorded 22 October 2026 for #642, after the #632 final evidence pass and #641 navigation work.
 The required source, distribution, recipe and reference-example commands passed against one
 archive. This is local candidate verification; merge, publication, manual checks outside the
 automated suites and a fresh advertised-install smoke after publication remain owner actions.
 
-### Identity and execution boundaries
+#### Identity and execution boundaries
 
 - Package: `adonisjs-account-kit@0.2.0`. Version and changelog were committed before packing.
 - Archive: `/private/tmp/account-kit-642-candidate/adonisjs-account-kit-0.2.0.tgz`.
@@ -41,7 +63,7 @@ the patch-supplied capture inside the test through an explicitly typed runtime i
 exclusion or reference-app service was added. Independent review found no further findings; API
 lint/typecheck/build/tests, a new fresh consumer and fresh invitation transplant then passed at B.
 
-### Source checks
+#### Source checks
 
 Each row ran the corresponding repository script (`pnpm lint`, `pnpm typecheck`, `pnpm build`,
 `pnpm quick:test`, `pnpm test:built-exports`, `pnpm test:built-setup`, `pnpm test:pg-service`,
@@ -66,7 +88,7 @@ cover SQLite cleanup failure, corrupt-revision storage and integer token timesta
 checks exercise their own PostgreSQL service lifecycle. The docs build reports its existing large
 bundle warning; it exits successfully.
 
-### Packed consumers and fresh recipe transplants
+#### Packed consumers and fresh recipe transplants
 
 These commands used the same two candidate arguments, without asking either harness to pack:
 
@@ -132,7 +154,7 @@ PostgreSQL recipe behavior, viewport coverage, keyboard accessibility or product
 Earlier recipe mutation checks and accepted client-types/monorepo assessments remain dated evidence
 in their recipe and example records; these runs do not replace or broaden those claims.
 
-### Reference examples using the same vendor archive
+#### Reference examples using the same vendor archive
 
 The archive above was copied unchanged to each example's `vendor/adonisjs-account-kit.tgz`.
 Each app ran `pnpm install`, `pnpm exec node ace generate:key`, `pnpm exec node ace codegen`,
@@ -193,7 +215,7 @@ and are exercised separately by the fresh consumer's session suite on both datab
 receiver and durable outbox restart regression are exercised by the consumer suites; no claim of
 exactly-once delivery or a real external provider is made.
 
-### Upgrade impact and final handoff
+#### Upgrade impact and final handoff
 
 The actual published `0.1.1` archive has SHA-256
 `38fd950b08990a95b780d3077ad65f3a98bb898cb858b7b2f9eaabaae236a3d2`.
@@ -219,7 +241,7 @@ Scoped formatting covers the four #642-owned files. The historical verification 
 byte-for-byte unchanged. Publication and the post-publication advertised install smoke remain
 separate owner actions.
 
-### Integrated review corrections — 23 October 2026
+#### Integrated review corrections — 23 October 2026
 
 The later integration at `fbb04b0acd4fcbae6ec6815c79ece89d061a399a` includes the corrected
 evidence wording (#632), invitation copy map (#636), React native-form validation-secret
@@ -273,7 +295,7 @@ correction also clarifies the dated smoke record's limits and where to return fr
 installation instructions before running migrations. No package runtime or archive input changed.
 No merge, package publication or release has occurred; all PRs remain open and unmerged.
 
-### Recipe corrections rerun — 23 October 2026
+#### Recipe corrections rerun — 23 October 2026
 
 Review of the open PRs corrected five recipes after the records above. The API, React, Vue and
 Edge patches now trim and lowercase the pinned starters' shared email rule; before that, a
@@ -312,7 +334,7 @@ checks, compatibility consumers and reference-example suites remain dated eviden
 repeated; the corrections change only recipe documentation, patches and acceptance specs. The
 browser-test limits above still apply.
 
-## Historical pre-inspection summary
+### Historical pre-inspection summary
 
 The following summary is retained from earlier verification and is not the account-inspection
 candidate result. See [Account access inspection](#account-access-inspection) for its dated evidence.
@@ -332,7 +354,7 @@ and the shared 128-character password boundary. Login keeps legacy passwords usa
 input length cap. The independent review found no remaining correctness or security findings in
 this tactical change.
 
-## Reproducible checks
+### Reproducible checks
 
 ```sh
 pnpm lint
@@ -371,7 +393,7 @@ include `examples/api/tests/functional/admission.spec.ts` for both strategies, t
 `ACCOUNT_KIT_ADMISSION_DOMAINS=example.test` for the domain case. The service-only consumer does
 not install admission.
 
-### Account access inspection
+#### Account access inspection
 
 Recorded 21 October 2026 for #600 and #607–#611. The integration candidate at
 `b9816045a5c46d77681ac13ac37942b47e379b43` contains the four prerequisite changes below,
@@ -459,7 +481,7 @@ The changelog includes `AccountAccessDeniedError` and
 `authentication.inspectAccountAccess`. These archives are consumable candidate artifacts; no
 package version was changed and nothing was published to the package registry.
 
-#### Review corrections and MySQL follow-up: 21 October 2026
+##### Review corrections and MySQL follow-up: 21 October 2026
 
 The revised source candidate `5b8bceb80408849e9561d06cc8b8e7fbef72024a` supersedes the
 initial candidate above. The responsibility split was committed separately and passed the full
@@ -507,7 +529,7 @@ MySQL and PostgreSQL servers were stopped after their checks. These are pre-merg
 results; the merged-main gate remains a delivery step after approved merges. The follow-up
 verification-record commit changes documentation only.
 
-### Vocabulary alignment: 15 October 2026
+#### Vocabulary alignment: 15 October 2026
 
 The vocabulary implementation and review fixes at `f526a5e4e94ff730a8f63873a23b54619820e288`
 pass on Node 24.21.0 and pnpm 11.23.0: lint, typecheck, build, 221 SQLite tests, 221 PostgreSQL
@@ -544,7 +566,7 @@ The verification proof remains valid after 59 minutes and expires by 61 minutes 
 setting. All three requested review fixes are addressed; no required findings remain. No package
 publication or hosted workflow execution was performed.
 
-### Local PostgreSQL package tests
+#### Local PostgreSQL package tests
 
 Use Node 24 (`nvm use`) and installed PostgreSQL 16 binaries. On macOS, install them with
 `brew install postgresql@16`; the wrapper also supports a PostgreSQL 16 `pg_ctl` on PATH with
@@ -610,7 +632,7 @@ and `DB_DATABASE`, then run `DB_CLIENT=pg pnpm quick:test` (or `pnpm test` for l
 The wrapper always targets its owned cluster. Packed-consumer checks provision separate databases;
 these package checks do not satisfy their distinct validation gate.
 
-### MySQL package tests
+#### MySQL package tests
 
 `pnpm test:mysql` runs the package suite against an external MySQL 8.4 server, with the Node
 process in a non-UTC time zone (`America/New_York`) so a missed UTC conversion fails. Set
@@ -635,7 +657,7 @@ inspection does not query Performance Schema.
 
 The packed-consumer checks stay on SQLite and PostgreSQL; the MySQL evidence is this suite.
 
-### Local service verification: 15 October 2026
+#### Local service verification: 15 October 2026
 
 These results were produced from uncommitted service/tooling changes on branch
 `local-postgresql-tests`, based on `9776e938bbcb7c4c196b8bcbe0e2639e1dc7e206`. They are not
@@ -668,7 +690,7 @@ The package allowlist is unchanged and excludes the root service script, regress
 and managed data/logs. The consumer matrix and hosted CI were not rerun for this tooling change;
 their earlier evidence remains separate.
 
-### Packed-consumer checks
+#### Packed-consumer checks
 
 The consumer harness writes an `evidence.json` record with the candidate revision, archive digest,
 concrete dependency/database versions and each command outcome. A packed installation must
@@ -695,7 +717,7 @@ Schema variants use `--mode=fresh --user-id-type=string` (or `uuid`) with
 `--users-table=account_users`. The harness records a representative contention measurement; this
 is a smoke check for blocking and duplicate acceptance, not a throughput benchmark.
 
-### Credential and invitation failure coverage
+#### Credential and invitation failure coverage
 
 The links below identify the current regression evidence for failures before commit, callback
 failures after commit, and API outbox interruption. A callback failure after commit means the
@@ -723,7 +745,7 @@ interrupted. The restarted-worker assertion failed as expected (`delivered` was 
 The mutation and test fixture were restored byte-for-byte; the focused test then passed 2/2 in 3 s,
 with the restart case completing in 880.53 ms.
 
-## Mutation evidence
+### Mutation evidence
 
 The previous SQLite application-row locking regression reproduced a phantom UPDATE-trigger audit entry before replacement. Normalized input and missing setup-hook regressions were demonstrated before their fixes. The current expiry-refresh pruning regression preserves a row refreshed after batch selection.
 
@@ -735,11 +757,11 @@ row locking and SQLite writer locking. Every run produced an expected regression
 source file was restored byte-for-byte before integrated verification. These runs used disposable
 fixtures; they do not claim mutation coverage for unchanged historical guards.
 
-## Delivery boundaries
+### Delivery boundaries
 
 No package publication, version change, release, hosted workflow execution, starter integration or owner-application integration is included. The working name and final publication version remain owner decisions. Historical checkpoints are retained in the repository's [manual record](manual-check.md); they are not current candidate evidence.
 
-## Starter baselines
+### Starter baselines
 
 Recorded 22 October 2026 from the official [starter-kits](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc) revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`. Each kit was scaffolded outside this repository with Node 24.21.0, pnpm 11.23.0 and `create-adonisjs` 3.4.0. The generated dependency versions below are the ranges in each generated `package.json`.
 
