@@ -40,16 +40,16 @@ pnpm and the dependencies; run `pnpm quick:test` once it is ready.
 
 Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
 
-| Script               | What it does                                                      |
-| -------------------- | ----------------------------------------------------------------- |
-| `pnpm lint`          | ESLint with the AdonisJS config                                   |
-| `pnpm typecheck`     | TypeScript without emitting                                       |
-| `pnpm quick:test`    | Japa test suite against SQLite                                    |
-| `pnpm test`          | The SQLite suite under c8; fails below 94% lines, 90% branches    |
-| `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster    |
-| `pnpm build`         | Compiles to `build/`                                              |
-| `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api`   |
-| `pnpm check:changed` | The checks above that cover the files changed since `origin/main` |
+| Script               | What it does                                                                   |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `pnpm lint`          | ESLint with the AdonisJS config                                                |
+| `pnpm typecheck`     | TypeScript without emitting                                                    |
+| `pnpm quick:test`    | Japa test suite against SQLite                                                 |
+| `pnpm test`          | `pnpm quick:test` under c8; fails below 94% lines, 90% branches, 94% functions |
+| `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster                 |
+| `pnpm build`         | Compiles to `build/`                                                           |
+| `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api`                |
+| `pnpm check:changed` | The checks above that cover the files changed since `origin/main`              |
 
 `pnpm check:changed [base]` runs Prettier and ESLint on the changed files (the whole repository
 when their configuration or dependencies changed), the type-check when TypeScript or dependencies

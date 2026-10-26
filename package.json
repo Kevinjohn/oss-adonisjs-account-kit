@@ -49,7 +49,7 @@
     "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
     "test:built-setup": "cross-env TEST_BUILT_SETUP=1 pnpm quick:test --files=setup_command.spec.ts",
     "pretest": "pnpm lint",
-    "test": "c8 pnpm quick:test",
+    "test": "c8 --check-coverage --lines 94 --branches 90 --functions 94 pnpm quick:test",
     "precompile": "pnpm lint",
     "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",
@@ -221,11 +221,7 @@
       "tests/**",
       "scripts/consumer/**",
       "scripts/test_packed_consumer.mjs"
-    ],
-    "check-coverage": true,
-    "lines": 94,
-    "branches": 90,
-    "functions": 94
+    ]
   },
   "prettier": "@adonisjs/prettier-config",
   "repository": {
