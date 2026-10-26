@@ -42,6 +42,19 @@ for (const path of git('ls-files', '-z', '--others', '--exclude-standard')?.spli
 const list = [...files.values()].sort((a, b) => a.path.localeCompare(b.path))
 console.log(`check:changed: ${list.length} files changed since ${base} (${mergeBase.slice(0, 8)})`)
 
+let active
+const stop = (pid) => {
+  try {
+    process.kill(-pid, 'SIGKILL')
+  } catch {}
+}
+// Steps run in their own process group, which a terminal's Ctrl-C does not reach.
+for (const signal of ['SIGINT', 'SIGTERM'])
+  process.on(signal, () => {
+    if (active) stop(active)
+    process.exit(130)
+  })
+
 /** Run a command in its own process group, killing the group when it outlives its limit. */
 function run(command, timeoutMs) {
   return new Promise((done) => {
@@ -50,18 +63,18 @@ function run(command, timeoutMs) {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
+    active = child.pid
     let output = ''
     child.stdout.on('data', (chunk) => (output += chunk))
     child.stderr.on('data', (chunk) => (output += chunk))
     let timedOut = false
     const timer = setTimeout(() => {
       timedOut = true
-      try {
-        process.kill(-child.pid, 'SIGKILL')
-      } catch {}
+      stop(child.pid)
     }, timeoutMs)
     child.on('close', (code) => {
       clearTimeout(timer)
+      active = undefined
       done({ code, output, timedOut })
     })
   })

@@ -1,15 +1,22 @@
 // Map a branch's changed files to the checks that cover them. Pure: no file system or processes.
 
 const lintable = /\.(?:ts|mts|cts|js|mjs|cjs)$/
-const typed = /(?:\.(?:ts|mts|cts)$|^tsconfig[^/]*\.json$|^package\.json$)/
+const typed = /(?:\.(?:ts|mts|cts)$|^tsconfig[^/]*\.json$|^package\.json$|^pnpm-lock\.yaml$)/
+const dependencies = /^(?:package\.json|pnpm-lock\.yaml)$/
+// A change to these can break files that did not change, so the whole repository is checked.
+const formatConfig = /^(?:\.prettierignore|\.prettierrc[^/]*|prettier\.config\.[^/]+)$/
+const lintConfig = /^eslint\.config\.[^/]+$/
 const spec = /^tests\/.+\.spec\.ts$/
 const docsSource = /^(?:docs\/(?!api\/|\.vitepress\/(?:cache|dist)\/).+|typedoc\.json)$/
+// TypeDoc reads the exported sources and fails on warnings, so source changes build the docs too.
+const docsInput = /^(?!tests\/|examples\/|stubs\/|scripts\/).+\.(?:ts|mts|cts)$/
 const pgService =
   /^(?:bin\/pg\.sh|scripts\/test_pg_service\.mjs|scripts\/(?:tests|helpers)\/pg_service_[^/]+\.mjs)$/
 const checkChanged = /^scripts\/(?:tests\/)?check_changed[^/]*\.mjs$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
+// Markdown never qualifies: tests/docs_links.spec.ts reads every tracked Markdown file.
 const outsideJapa =
-  /^(?:\.github\/.+|LICENSE\.md|PLAN[^/]*\.md|__[^/]+|bin\/pg\.sh|scripts\/(?:tests|helpers)\/.+|scripts\/test_pg_service\.mjs|scripts\/check_changed[^/]*\.mjs)$/
+  /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|scripts\/(?:tests|helpers)\/.+|scripts\/test_pg_service\.mjs|scripts\/check_changed[^/]*\.mjs)$/
 
 const minute = 60_000
 
@@ -24,26 +31,22 @@ export function planChecks(files) {
   const step = (id, run, command, { skip, ...options }) =>
     steps.push(run ? { id, command, timeoutMs: 5 * minute, ...options } : { id, skip })
 
+  const prettier = ['pnpm', 'exec', 'prettier', '--check']
   step(
     'format',
-    present.length > 0,
-    [
-      'pnpm',
-      'exec',
-      'prettier',
-      '--check',
-      '--ignore-unknown',
-      '--no-error-on-unmatched-pattern',
-      '--',
-      ...present,
-    ],
+    present.length > 0 || any(formatConfig) || any(dependencies),
+    any(formatConfig) || any(dependencies)
+      ? [...prettier, '.']
+      : [...prettier, '--ignore-unknown', '--no-error-on-unmatched-pattern', '--', ...present],
     { skip: 'no existing changed files' }
   )
   const lintFiles = present.filter((path) => lintable.test(path))
   step(
     'lint',
-    lintFiles.length > 0,
-    ['pnpm', 'exec', 'eslint', '--max-warnings', '0', '--no-warn-ignored', '--', ...lintFiles],
+    lintFiles.length > 0 || any(lintConfig) || any(dependencies),
+    any(lintConfig) || any(dependencies)
+      ? ['pnpm', 'lint', '--max-warnings', '0']
+      : ['pnpm', 'exec', 'eslint', '--max-warnings', '0', '--no-warn-ignored', '--', ...lintFiles],
     { skip: 'no changed source files' }
   )
   step('typecheck', any(typed), ['pnpm', 'typecheck'], {
@@ -77,7 +80,7 @@ export function planChecks(files) {
     tests: 'node',
     skip: 'check:changed and its tests unchanged',
   })
-  step('docs', any(docsSource), ['pnpm', 'docs:build'], {
+  step('docs', any(docsSource) || any(docsInput) || any(dependencies), ['pnpm', 'docs:build'], {
     timeoutMs: 10 * minute,
     skip: 'no documentation source changed',
   })

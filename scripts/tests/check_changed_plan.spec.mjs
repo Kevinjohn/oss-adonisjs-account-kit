@@ -51,21 +51,42 @@ test('deleted files select checks but are never passed by name', () => {
 })
 
 test('files no spec reads skip the Japa suite', () => {
-  const steps = plan('LICENSE.md', '.github/workflows/checks.yml')
+  const steps = plan('.github/workflows/checks.yml')
   assert.ok(steps.tests.skip)
   assert.ok(steps.typecheck.skip)
   assert.ok(steps.lint.skip)
-  assert.deepEqual(steps.format.command.slice(-3), [
-    '--',
-    'LICENSE.md',
-    '.github/workflows/checks.yml',
-  ])
+  assert.deepEqual(steps.format.command.slice(-2), ['--', '.github/workflows/checks.yml'])
+})
+
+for (const path of ['LICENSE.md', '.github/pull_request_template.md', '-LICENSE.md'])
+  test(`Markdown (${path}) runs the full suite, which checks every Markdown link`, () => {
+    assert.deepEqual(plan(path).tests.command, ['pnpm', 'quick:test'])
+  })
+
+for (const [path, format, lint] of [
+  ['eslint.config.js', false, true],
+  ['.prettierignore', true, false],
+  ['package.json', true, true],
+  ['pnpm-lock.yaml', true, true],
+])
+  test(`${path} checks the whole repository`, () => {
+    const steps = plan(path)
+    assert.equal(steps.format.command.at(-1) === '.', format)
+    assert.equal(steps.lint.command?.[1] === 'lint', lint)
+  })
+
+test('a lockfile-only change type-checks and builds the docs', () => {
+  const steps = plan('pnpm-lock.yaml')
+  assert.deepEqual(steps.typecheck.command, ['pnpm', 'typecheck'])
+  assert.deepEqual(steps.docs.command, ['pnpm', 'docs:build'])
 })
 
 test('documentation sources build the docs; generated docs do not', () => {
   assert.deepEqual(plan('docs/usage.md').docs.command, ['pnpm', 'docs:build'])
   assert.deepEqual(plan('typedoc.json').docs.command, ['pnpm', 'docs:build'])
   assert.ok(plan('docs/api/index.md').docs.skip)
+  assert.deepEqual(plan('src/http/guard.ts').docs.command, ['pnpm', 'docs:build'])
+  assert.ok(plan('tests/unit/email.spec.ts').docs.skip)
 })
 
 test('policy scripts run their own tests', () => {
