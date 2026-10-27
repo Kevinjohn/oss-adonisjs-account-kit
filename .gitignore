@@ -18,6 +18,8 @@ package-lock.json
 
 # Private planning and ideation documents, never committed or packed
 PLAN*.md
+__PRD*.md
+/plans/
 docs/PRD*.md
 docs/reviews/
 docs/api
