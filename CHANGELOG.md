@@ -4,8 +4,8 @@
 
 No runtime changes from 0.1.2.
 
-- Document every public export in its type declarations, so editor hovers and the API reference cover
-  every function, class and member; the docs build now fails on an undocumented export.
+- Add doc comments to every function, class, method and type the API reference publishes; the docs
+  build now fails when one is missing.
 - State that `assertGuard` checks the guard strategy as well as its name.
 - Replace machine-local paths in the Hypermedia/Edge and Inertia Vue recipe evidence with placeholders.
 - Contributors: Node 24 is pinned through `devEngines`, `pnpm check:changed` checks a branch's
