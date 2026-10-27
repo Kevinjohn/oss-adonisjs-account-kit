@@ -42,6 +42,7 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 
 | Script               | What it does                                                                   |
 | -------------------- | ------------------------------------------------------------------------------ |
+| `pnpm format:check`  | Prettier on every tracked file, without writing                                |
 | `pnpm lint`          | ESLint with the AdonisJS config                                                |
 | `pnpm typecheck`     | TypeScript without emitting                                                    |
 | `pnpm quick:test`    | Japa test suite against SQLite                                                 |
@@ -51,7 +52,7 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 | `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api`                |
 | `pnpm check:changed` | The checks above that cover the files changed since `origin/main`              |
 
-`pnpm check:changed [base]` runs Prettier and ESLint on the changed files (the whole repository
+`pnpm check:changed [base]` runs Prettier first, then ESLint, on the changed files (the whole repository
 when their configuration or dependencies changed), the type-check when TypeScript or dependencies
 changed, the changed specs (or the full SQLite suite when any other file changed), the `pg.sh`
 script tests when they changed, and the docs build when docs, exported sources or dependencies
@@ -63,6 +64,8 @@ own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB
 
 Changes to account operations should pass on both SQLite and PostgreSQL. The `checks` workflow runs
 both on every pull request.
+Its SQLite leg runs `pnpm format:check` and `pnpm lint` before the type-check and tests, and
+`pnpm test` runs both first through `pretest`.
 
 `pnpm test:consumer` and the example app's own checks run locally, not in the `checks` workflow.
 Run them before a release and after changing `configure.ts`, `stubs/` or `examples/api`; the
