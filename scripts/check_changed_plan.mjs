@@ -32,12 +32,13 @@ export function planChecks(files, options = {}) {
   const step = (id, run, command, { skip, ...options }) =>
     steps.push(run ? { id, command, timeoutMs: 5 * minute, ...options } : { id, skip })
 
+  // Formatting runs first, then lint, then everything else.
   const prettier = ['pnpm', 'exec', 'prettier', '--check']
   step(
     'format',
     present.length > 0 || any(formatConfig) || any(dependencies),
     any(formatConfig) || any(dependencies)
-      ? [...prettier, '.']
+      ? ['pnpm', 'format:check']
       : [...prettier, '--ignore-unknown', '--no-error-on-unmatched-pattern', '--', ...present],
     { skip: 'no existing changed files' }
   )

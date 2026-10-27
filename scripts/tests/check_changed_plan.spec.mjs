@@ -1,5 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { delimiter, join } from 'node:path'
 import { countTests, planChecks, stepProblem } from '../check_changed_plan.mjs'
 
 const plan = (...paths) =>
@@ -22,6 +26,11 @@ test('a changed spec runs on its own and is formatted, linted and type-checked',
   assert.ok(steps.docs.skip)
   for (const id of ['format', 'lint', 'typecheck', 'tests'])
     assert.equal('skip' in steps[id], false)
+})
+
+test('formatting runs first, then lint, then type-checking and tests', () => {
+  const ids = planChecks([{ path: 'src/http/guard.ts', deleted: false }]).map((step) => step.id)
+  assert.deepEqual(ids.slice(0, 4), ['format', 'lint', 'typecheck', 'tests'])
 })
 
 test('--static leaves the full suite out and still runs changed specs', () => {
@@ -89,7 +98,7 @@ for (const [path, format, lint] of [
 ])
   test(`${path} checks the whole repository`, () => {
     const steps = plan(path)
-    assert.equal(steps.format.command.at(-1) === '.', format)
+    assert.equal(steps.format.command[1] === 'format:check', format)
     assert.equal(steps.lint.command?.[1] === 'lint', lint)
   })
 
@@ -140,4 +149,31 @@ test('a step fails on exit, timeout, zero tests or stale generated output', () =
     stepProblem({ timeoutMs: 60_000 }, { ...ok, generatedChanged: true }),
     'committed generated output is stale'
   )
+})
+
+test('format:check skips a tracked file deleted from the working tree', () => {
+  const root = join(import.meta.dirname, '..', '..')
+  const script = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts[
+    'format:check'
+  ]
+  const repo = mkdtempSync(join(tmpdir(), 'format-check-'))
+  try {
+    const git = (...args) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' })
+    git('init', '-q')
+    writeFileSync(join(repo, 'kept.js'), 'const kept = 1;\n')
+    writeFileSync(join(repo, 'deleted.js'), 'const deleted = 1;\n')
+    git('add', '.')
+    unlinkSync(join(repo, 'deleted.js'))
+    const result = spawnSync('sh', ['-c', script], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${join(root, 'node_modules', '.bin')}${delimiter}${process.env.PATH}`,
+      },
+    })
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+  } finally {
+    rmSync(repo, { recursive: true, force: true })
+  }
 })
