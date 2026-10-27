@@ -12,8 +12,11 @@ export type LucidModelRow = {
   unverifiedEmail: string | null
   password: string | null
   emailVerifiedAt: DateTime | null
+  /** Bind the row to the transaction its next `save` or `delete` runs in. */
   useTransaction(trx: Trx): unknown
+  /** Persist the row's changed attributes. */
   save(): Promise<unknown>
+  /** Delete the row. */
   delete(): Promise<unknown>
 }
 
@@ -58,7 +61,9 @@ export type LucidCreateAttributes = {
 
 /** The users adapter `createLucidAdapter` returns: the base contract plus creation and metadata. */
 export type LucidUsersAdapter = UsersAdapter & {
+  /** Insert a user through the model, so its hooks (password hashing) run. */
   create(attrs: LucidCreateAttributes, trx: Trx): Promise<AccountUser>
+  /** The model's table name, primary key and email constraint. */
   resolveMetadata(): Promise<UsersAdapterMetadata>
 }
 

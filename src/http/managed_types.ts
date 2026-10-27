@@ -42,10 +42,12 @@ export interface ManagedExtensions {
   }
   /** Replaces the invitation acceptance body validator. */
   invitationAcceptance?: {
+    /** HTTP schema for the acceptance body; the token comes from the path. */
     validate(context: HttpContext): Promise<{ password: string; registrationData?: unknown }>
   }
   /** Replaces the profile update body validator. */
   profile?: {
+    /** HTTP schema for the profile update body. */
     validate(context: HttpContext): Promise<{
       currentPassword?: string
       recentProof?: string

@@ -233,8 +233,10 @@ export class AccountKit {
    * throttles apply; never expose these methods to an HTTP request.
    */
   readonly operator = {
+    /** Send an invitation on behalf of the system, without an inviting user. */
     invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
       this.enabled('invitations', () => operatorInvite(this.deps, input)),
+    /** Issue a password reset link for an address, without the public throttle. */
     resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
       this.enabled('passwordReset', () => operatorResetLink(this.deps, input)),
   }

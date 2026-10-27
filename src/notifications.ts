@@ -14,15 +14,21 @@ export { notificationReadiness, type NotificationReadinessInput } from './notifi
 
 /** The small Mail surface used here keeps service-only imports independent of @adonisjs/mail. */
 export interface AccountMailService {
+  /** Queue a message; `callback` fills it in. */
   sendLater(callback: (message: AccountMailMessage) => void): Promise<unknown>
 }
 
 /** The part of an AdonisJS Mail message `createMailNotifications` uses. */
 export interface AccountMailMessage {
+  /** Set the recipient address. */
   to(address: string): this
+  /** Set the sender address. */
   from(address: string): this
+  /** Set the subject line. */
   subject(subject: string): this
+  /** Set the HTML body. */
   html(content: string): this
+  /** Set the plain-text body. */
   text(content: string): this
 }
 

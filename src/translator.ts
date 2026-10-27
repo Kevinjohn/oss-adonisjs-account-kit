@@ -3,6 +3,7 @@
  * up as `errors.<code>`, with the English message as the fallback.
  */
 export interface AccountKitTranslator {
+  /** Translate `identifier` with `data`, returning `fallbackMessage` when no translation exists. */
   t(identifier: string, data: Record<string, unknown>, fallbackMessage: string): string
   locale?: string
 }

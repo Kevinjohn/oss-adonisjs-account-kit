@@ -32,6 +32,7 @@ export interface ResolvedAuthenticationConfig extends Omit<
   tokenAbilities: string[]
   tokenExpiresIn: string | number | null
   tokenTable: string
+  /** `AuthenticationConfig.canAccess`, or a callback that always allows. */
   canAccess: (user: AccountUser, trx: Trx) => Promise<boolean>
 }
 
@@ -129,21 +130,26 @@ export interface SessionsRevokedContext {
 export type AuthenticationGuard<Credential> =
   | {
       strategy: 'session'
+      /** The guard's name in `config/auth.ts`. */
       name: string
       /** `handle` is set when `sessionManagement` is enabled; store it in the session. */
       establish(userId: UserId, revision: string | null, handle?: string): Promise<Credential>
+      /** End the current session. */
       terminate(credential?: Credential): Promise<void>
       /** Store a new revision for the current session, where `establish` stored the first one. */
       refresh?(revision: string | null): Promise<void>
     }
   | {
       strategy: 'access_tokens'
+      /** The guard's name in `config/auth.ts`. */
       name: string
+      /** Issue a token for the user; the credential carries the token value once. */
       establish(
         userId: UserId,
         abilities: string[],
         expiresIn: string | number | null,
         options?: { name?: string }
       ): Promise<Credential>
+      /** Revoke the given token, or the one that authenticated the request. */
       terminate(credential?: Credential): Promise<void>
     }
