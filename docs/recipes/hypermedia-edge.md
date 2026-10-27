@@ -130,15 +130,17 @@ unchanged after the run. Released archive installation is described in the
 [root instructions](../../README.md#install). The exact recipe command was:
 
 ```sh
-pnpm test:recipe -- --recipe=hypermedia-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
+pnpm test:recipe -- --recipe=hypermedia-password-reset \
+  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
+  --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
 Retained evidence and command outputs are in
-`/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-cK1p2i/evidence.json`.
+`<retained-run-directory>/evidence.json` (run `account-kit-recipe-cK1p2i`).
 The printed command preserves the harness's test environment when repeating the spec:
 
 ```sh
-"/Users/kevinjohngallagher/.nvm/versions/node/v24.21.0/bin/node" "/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-cK1p2i/rerun.mjs"
+<node-24.21.0-executable> <retained-run-directory>/rerun.mjs
 ```
 
 The reference example at source `bce6c05f5ba663f4bfda284d3fd12c5226bb4433` passed
@@ -180,7 +182,7 @@ disabled. Its P1 baseline is `46b5eee2a85b468d67592e99b910ce815294e29f`, configu
 `07f861ece93e9df6d3268ea028ab62ccc71e000e`, and lockfile SHA-256
 `15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea`. Creator, starter, runtime,
 database and archive versions/digests match the record above. The retained record is
-`/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-Tq2stW/evidence.json`;
+`<retained-run-directory>/evidence.json` (run `account-kit-recipe-Tq2stW`);
 its printed rerun command invokes that directory's `rerun.mjs` with Node 24.21.0.
 
 The first strengthened recipe run exposed a test-fixture problem: checking the revoked session

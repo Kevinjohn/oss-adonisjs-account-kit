@@ -145,7 +145,7 @@ The fresh P6 recipe run passed 1/1 in 4 seconds at source revision
 expired, replaced and consumed reset proofs with CSRF-protected POSTs, unchanged password hashes and
 two existing sessions; it also checked mismatch-field clearing, both old sessions' protected-route
 rejection, old-password login failure and new-password login success. The retained evidence is
-`/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-XI5BdN/evidence.json`.
+`<retained-run-directory>/evidence.json` (run `account-kit-recipe-XI5BdN`).
 
 The check used Node 24.21.0, pnpm 11.23.0, AdonisJS Core 7.6.0 and SQLite 3.53.4. It installed the
 unchanged development candidate archive built from source revision
@@ -155,7 +155,9 @@ development pack, not a published release; the [root install instructions](../..
 describe installing released archives. The exact recipe command was:
 
 ```sh
-pnpm test:recipe -- --recipe=inertia-vue-password-reset --candidate-tarball=/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-RukBcO/candidate/adonisjs-account-kit-0.1.1.tgz --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
+pnpm test:recipe -- --recipe=inertia-vue-password-reset \
+  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
+  --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
 The full Vue application suite (unit, functional and browser) passed 35/35 in 13 seconds, including the composed reset journey. For P7,
@@ -163,10 +165,11 @@ an installed-vendor-only mutation that preserved the old credential revision mad
 spec fail in 3 seconds: the existing session still reached `/dashboard` instead of redirecting to
 `/login`. That negative run preceded the malformed and expired POST assertions added to the final
 spec. The original archive member was restored byte-for-byte; the final spec passed 1/1 in 4 seconds
-when rerun with the harness-printed command and retained test environment:
+when rerun with the harness-printed command and retained test environment from run
+`account-kit-recipe-gpaGD9`:
 
 ```sh
-"/Users/kevinjohngallagher/.nvm/versions/node/v24.21.0/bin/node" "/var/folders/hx/yyy7zv5n1wx8rsxpbc52cr4r0000gn/T/account-kit-recipe-gpaGD9/rerun.mjs"
+<node-24.21.0-executable> <retained-run-directory>/rerun.mjs
 ```
 
 Notifications were captured by an in-process callback; this verifies link generation, not delivery
