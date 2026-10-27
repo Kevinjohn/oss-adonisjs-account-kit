@@ -84,7 +84,7 @@ Account Kit is in alpha and not yet on npm. Install the packed release from
 
 ```sh
 node ace add @adonisjs/limiter
-npm install https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.2/adonisjs-account-kit-0.1.2.tgz
+npm install https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.3/adonisjs-account-kit-0.1.3.tgz
 node ace configure adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor

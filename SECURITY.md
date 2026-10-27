@@ -25,7 +25,7 @@ Alpha releases are packed by a maintainer and attached to the tagged
 the archive's SHA-256. Check a downloaded archive before installing it:
 
 ```sh
-shasum -a 256 adonisjs-account-kit-0.1.2.tgz
+shasum -a 256 adonisjs-account-kit-0.1.3.tgz
 ```
 
 npm releases will be published from GitHub Actions with npm provenance. To check that an installed
