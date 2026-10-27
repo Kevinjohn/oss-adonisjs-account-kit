@@ -47,7 +47,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "git ls-files -z | xargs -0 prettier --check --ignore-unknown",
     "docs:api": "typedoc",
     "docs:dev": "pnpm docs:api && vitepress dev docs",
     "docs:build": "pnpm docs:api && vitepress build docs",

@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Contributors: `pnpm format:check` runs Prettier on the whole repository, before lint and tests
-  in `pnpm test`, `pnpm check:changed` and the `checks` workflow.
+- Contributors: `pnpm format:check` runs Prettier on every tracked file, before lint and tests in
+  `pnpm test`, `pnpm check:changed` and the `checks` workflow.
 
 ## 0.1.3 - 2026-10-27
 

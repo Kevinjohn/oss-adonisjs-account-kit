@@ -42,7 +42,7 @@ Run the repository scripts, not the bare tools. They carry the flags the release
 
 | Script               | What it does                                                                   |
 | -------------------- | ------------------------------------------------------------------------------ |
-| `pnpm format:check`  | Prettier on the whole repository, without writing                              |
+| `pnpm format:check`  | Prettier on every tracked file, without writing                                |
 | `pnpm lint`          | ESLint with the AdonisJS config                                                |
 | `pnpm typecheck`     | TypeScript without emitting                                                    |
 | `pnpm quick:test`    | Japa test suite against SQLite                                                 |
