@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.3 - 2026-10-27
+
+No runtime changes from 0.1.2.
+
+- Document every public export in its type declarations, so editor hovers and the API reference cover
+  every function, class and member; the docs build now fails on an undocumented export.
+- State that `assertGuard` checks the guard strategy as well as its name.
+- Replace machine-local paths in the Hypermedia/Edge and Inertia Vue recipe evidence with placeholders.
+- Contributors: Node 24 is pinned through `devEngines`, `pnpm check:changed` checks a branch's
+  changed files, and `pnpm test` enforces coverage thresholds.
+
 ## 0.1.2 - 2026-10-25
 
 - Re-check `authorize.invite` inside the invitation insert transaction with `context.trx`, after
