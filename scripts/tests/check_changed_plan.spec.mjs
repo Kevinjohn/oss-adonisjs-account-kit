@@ -24,6 +24,11 @@ test('a changed spec runs on its own and is formatted, linted and type-checked',
     assert.equal('skip' in steps[id], false)
 })
 
+test('formatting runs first, then lint, then type-checking and tests', () => {
+  const ids = planChecks([{ path: 'src/http/guard.ts', deleted: false }]).map((step) => step.id)
+  assert.deepEqual(ids.slice(0, 4), ['format', 'lint', 'typecheck', 'tests'])
+})
+
 test('changed source runs the full suite', () => {
   assert.deepEqual(plan('src/http/guard.ts', 'tests/unit/email.spec.ts').tests.command, [
     'pnpm',
@@ -71,7 +76,7 @@ for (const [path, format, lint] of [
 ])
   test(`${path} checks the whole repository`, () => {
     const steps = plan(path)
-    assert.equal(steps.format.command.at(-1) === '.', format)
+    assert.equal(steps.format.command[1] === 'format:check', format)
     assert.equal(steps.lint.command?.[1] === 'lint', lint)
   })
 
