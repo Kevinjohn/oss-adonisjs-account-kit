@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Run the checks that cover every file changed since the merge base with a base ref.
-// Usage: pnpm check:changed [base]   (default: origin/main, else main)
+// Usage: pnpm check:changed [--static] [base]   (default: origin/main, else main)
+// --static runs every step except the full Japa suite; changed specs still run on their own.
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -9,7 +10,7 @@ import { countTests, planChecks, stepProblem } from './check_changed_plan.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const usage = (message) => {
-  console.error(`${message}\nusage: pnpm check:changed [base]`)
+  console.error(`${message}\nusage: pnpm check:changed [--static] [base]`)
   process.exit(2)
 }
 const git = (...args) => {
@@ -17,7 +18,8 @@ const git = (...args) => {
   return result.status === 0 ? result.stdout : undefined
 }
 
-const args = process.argv.slice(2)
+const isStatic = process.argv.includes('--static')
+const args = process.argv.slice(2).filter((arg) => arg !== '--static')
 if (args.length > 1 || args[0]?.startsWith('-')) usage('Expected at most one base ref')
 if (Number(process.versions.node.split('.')[0]) !== 24) {
   console.error(`Node 24 is required, found ${process.version}: nvm use`)
@@ -81,7 +83,7 @@ function run(command, timeoutMs) {
 }
 
 let failed = false
-for (const step of planChecks(list)) {
+for (const step of planChecks(list, { static: isStatic })) {
   if ('skip' in step) {
     console.log(`${step.id}: skip (${step.skip})`)
     continue

@@ -57,6 +57,8 @@ when their configuration or dependencies changed), the type-check when TypeScrip
 changed, the changed specs (or the full SQLite suite when any other file changed), the `pg.sh`
 script tests when they changed, and the docs build when docs, exported sources or dependencies
 changed. It does not run `pnpm test:pg`, `pnpm build` or `pnpm test:consumer`.
+With `--static` it leaves the full SQLite suite out and runs only the changed specs, for checking
+several branches that share one full run.
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
