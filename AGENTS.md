@@ -24,7 +24,7 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 
 - Run the repository scripts, not the bare tools: `pnpm lint`, `pnpm typecheck`, `pnpm build`,
   `pnpm quick:test` (SQLite), `pnpm test:pg-service`, and `pnpm test:pg` (local PostgreSQL 16
-  required; see docs/maintainers/verification.md for the external-server alternative).
+  required; see the checklist in docs/maintainers/verification.md and its PostgreSQL section for the external-server alternative).
 
 ## Single Responsibility Principle (files)
 
