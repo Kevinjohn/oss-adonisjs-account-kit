@@ -22,9 +22,10 @@ const minute = 60_000
 
 /**
  * @param {{ path: string, deleted: boolean }[]} files changed since the merge base
+ * @param {{ static?: boolean }} options `static` leaves the full Japa suite out
  * @returns {({ id: string, command: string[], tests?: 'japa' | 'node', timeoutMs: number } | { id: string, skip: string })[]}
  */
-export function planChecks(files) {
+export function planChecks(files, options = {}) {
   const present = files.filter((file) => !file.deleted).map((file) => file.path)
   const any = (pattern) => files.some((file) => pattern.test(file.path))
   const steps = []
@@ -57,7 +58,7 @@ export function planChecks(files) {
     (file) => !outsideJapa.test(file.path) && !(spec.test(file.path) && !file.deleted)
   )
   const specs = present.filter((path) => spec.test(path))
-  if (full) {
+  if (full && !options.static) {
     step('tests', true, ['pnpm', 'quick:test'], {
       tests: 'japa',
       timeoutMs: 15 * minute,
@@ -68,9 +69,13 @@ export function planChecks(files) {
       'tests',
       specs.length > 0,
       ['pnpm', 'quick:test', ...specs.map((path) => `--files=${path}`)],
-      { tests: 'japa', skip: 'no file the Japa suite reads changed' }
+      {
+        tests: 'japa',
+        skip: full ? 'no changed spec files' : 'no file the Japa suite reads changed',
+      }
     )
   }
+  if (full && options.static) steps.push({ id: 'full-suite', skip: '--static leaves it out' })
 
   step('pg-service', any(pgService), ['pnpm', 'test:pg-service'], {
     tests: 'node',

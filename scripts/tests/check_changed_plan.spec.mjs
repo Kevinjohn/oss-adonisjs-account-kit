@@ -24,6 +24,24 @@ test('a changed spec runs on its own and is formatted, linted and type-checked',
     assert.equal('skip' in steps[id], false)
 })
 
+test('--static leaves the full suite out and still runs changed specs', () => {
+  const run = (...paths) =>
+    Object.fromEntries(
+      planChecks(
+        paths.map((path) => ({ path, deleted: false })),
+        { static: true }
+      ).map((step) => [step.id, step])
+    )
+  const source = run('src/http/guard.ts')
+  assert.ok(source.tests.skip)
+  assert.ok(source['full-suite'].skip)
+  assert.deepEqual(source.docs.command, ['pnpm', 'docs:build'])
+  const spec = run('src/http/guard.ts', 'tests/unit/email.spec.ts')
+  assert.deepEqual(spec.tests.command, ['pnpm', 'quick:test', '--files=tests/unit/email.spec.ts'])
+  assert.equal(run('tests/unit/email.spec.ts')['full-suite'], undefined)
+  assert.equal(plan('src/http/guard.ts')['full-suite'], undefined)
+})
+
 test('changed source runs the full suite', () => {
   assert.deepEqual(plan('src/http/guard.ts', 'tests/unit/email.spec.ts').tests.command, [
     'pnpm',
