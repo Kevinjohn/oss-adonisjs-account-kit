@@ -100,7 +100,10 @@ export async function requestMagicLink(
   }
 }
 
-/** Read-only: mail scanners prefetch links, so inspection never consumes. */
+/**
+ * Read-only check for a shaped, stored, unexpired link whose account still has the same email and
+ * is active. It does not consume the link or evaluate `canAccess`; completion decides sign-in.
+ */
 export async function inspectMagicLink(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: MagicLinkInspectInput
