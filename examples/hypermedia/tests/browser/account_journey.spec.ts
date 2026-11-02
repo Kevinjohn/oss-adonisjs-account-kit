@@ -784,23 +784,22 @@ test.group('native account journeys', (group) => {
     } catch (error) {
       testFailed = true
       testFailure = error
-      throw error
-    } finally {
-      const cleanupFailures: unknown[] = []
-      for (const context of contexts) {
-        try {
-          await context.close()
-        } catch (error) {
-          cleanupFailures.push(error)
-        }
-      }
-      if (cleanupFailures.length > 0) {
-        throw new AggregateError(
-          testFailed ? [testFailure, ...cleanupFailures] : cleanupFailures,
-          'Failed to close all profile journey browser contexts'
-        )
+    }
+    const cleanupFailures: unknown[] = []
+    for (const context of contexts) {
+      try {
+        await context.close()
+      } catch (error) {
+        cleanupFailures.push(error)
       }
     }
+    if (cleanupFailures.length > 0) {
+      throw new AggregateError(
+        testFailed ? [testFailure, ...cleanupFailures] : cleanupFailures,
+        'Failed to close all profile journey browser contexts'
+      )
+    }
+    if (testFailed) throw testFailure
   })
 
   test('signed-in visitors keep their identity while inspecting another account proof', async ({

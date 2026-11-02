@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
@@ -44,7 +45,8 @@ test.group('application account access inspection', (group) => {
     await grantAdmittedOwner(owner)
 
     assert.isNull(await inspectAccountForOwner(member, target.id))
-    assert.isNull(await inspectAccountForOwner(owner, 999999))
+    const missingUserId = typeof owner.id === 'number' ? 999999 : randomUUID()
+    assert.isNull(await inspectAccountForOwner(owner, missingUserId))
 
     const inactiveSnapshot = await inspectAccountForOwner(owner, inactive.id)
     assert.isNotNull(inactiveSnapshot)

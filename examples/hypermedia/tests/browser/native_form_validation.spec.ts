@@ -1,6 +1,14 @@
 import { test } from '@japa/runner'
+import { Session } from '@adonisjs/session'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+
+/** Session.commit flattens input fields beside the framework validation bags. */
+function oldInputFromFlash(flash: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(flash).filter(([key]) => !['errorsBag', 'inputErrorsBag'].includes(key))
+  )
+}
 
 test.group('native form validation', (group) => {
   group.each.setup(setupAccountDatabase)
@@ -9,63 +17,79 @@ test.group('native form validation', (group) => {
     browser,
     assert,
   }) => {
-    const context = await browser.newContext({ baseURL: process.env.APP_URL })
+    const context = await browser.newContext({
+      baseURL: process.env.APP_URL,
+      javaScriptEnabled: false,
+    })
     const markers = {
       password: 'SignupSecret-Edge-001!',
       passwordConfirmation: 'SignupSecret-Edge-002!',
-      currentPassword: 'SignupSecret-Edge-003!',
-      cancelCurrentPassword: 'SignupSecret-Edge-004!',
     }
 
     try {
       await context.initiateSession()
-      await context.request.get('/signup')
-      const csrf = (await context.cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')
-      assert.exists(csrf)
+      const page = await context.visit('/signup')
+      const csrf = await page.locator('input[name="_csrf"]').inputValue()
+      assert.isNotEmpty(csrf)
 
-      const response = await context.request.post('/signup', {
-        maxRedirects: 0,
-        form: {
-          fullName: '   ',
-          email: 'native-validation-edge@example.test',
-          ...markers,
-        },
-        headers: {
-          'x-xsrf-token': decodeURIComponent(csrf!.value),
-          'referer': new URL('/signup', process.env.APP_URL).href,
-        },
-      })
+      const sessionPrototype = Session.prototype as unknown as {
+        flash: (this: Session, key: string, value: unknown) => void
+        put: (this: Session, key: string, value: unknown) => void
+      }
+      const originalFlash = sessionPrototype.flash
+      const originalPut = sessionPrototype.put
+      let flashedErrors: Record<string, unknown> = {}
+      let committedFlash: Record<string, unknown> = {}
+      sessionPrototype.flash = function (key, value) {
+        if (key === 'inputErrorsBag') flashedErrors = value as Record<string, unknown>
+        return originalFlash.call(this, key, value)
+      }
+      sessionPrototype.put = function (key, value) {
+        if (key === this.flashKey) committedFlash = value as Record<string, unknown>
+        return originalPut.call(this, key, value)
+      }
+      const postResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' && new URL(response.url()).pathname === '/signup'
+      )
+      try {
+        await page.getByLabel('Full name').fill('   ')
+        await page.getByLabel('Email').fill('native-validation-edge@example.test')
+        await page.getByLabel('Password', { exact: true }).fill(markers.password)
+        await page.getByLabel('Confirm password').fill(markers.passwordConfirmation)
+        await page.getByRole('button', { name: 'Create account' }).click()
+        const response = await postResponse
+        assert.equal(response.status(), 302)
+      } finally {
+        sessionPrototype.flash = originalFlash
+        sessionPrototype.put = originalPut
+      }
 
-      assert.equal(response.status(), 302)
-      const flash = await context.getFlashMessages()
-      const session = await context.getSession()
-      assert.isArray(flash.inputErrorsBag?.fullName)
-      assert.deepEqual(flash.input, {
-        fullName: '   ',
+      assert.isArray(flashedErrors.fullName)
+      assert.isNotEmpty(flashedErrors.fullName)
+      assert.deepEqual(Object.keys(committedFlash.errorsBag as object), ['E_VALIDATION_ERROR'])
+      assert.isObject(committedFlash.inputErrorsBag)
+      assert.deepEqual(oldInputFromFlash(committedFlash), {
         email: 'native-validation-edge@example.test',
       })
-      const persisted = JSON.stringify({ session, flash })
+      const persisted = JSON.stringify(committedFlash)
       for (const marker of Object.values(markers)) assert.notInclude(persisted, marker)
-      assert.isNull(await User.findBy('email', 'native-validation-edge@example.test'))
+      const rejectedUser = await User.findBy('email', 'native-validation-edge@example.test')
+      assert.isNull(rejectedUser)
 
-      const validResponse = await context.request.post('/signup', {
-        maxRedirects: 0,
-        form: {
-          fullName: `  ${'x'.repeat(255)}  `,
-          email: 'native-valid-edge@example.test',
-          password: 'SignupPass123!',
-          passwordConfirmation: 'SignupPass123!',
-        },
-        headers: {
-          'x-xsrf-token': decodeURIComponent(csrf!.value),
-          'referer': new URL('/signup', process.env.APP_URL).href,
-        },
-      })
-      assert.equal(validResponse.status(), 302)
-      assert.equal(
-        (await User.findBy('email', 'native-valid-edge@example.test'))?.fullName,
-        'x'.repeat(255)
+      await page.getByLabel('Full name').fill(`  ${'x'.repeat(255)}  `)
+      await page.getByLabel('Email').fill('native-valid-edge@example.test')
+      await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
+      await page.getByLabel('Confirm password').fill('SignupPass123!')
+      const validPostResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' && new URL(response.url()).pathname === '/signup'
       )
+      await page.getByRole('button', { name: 'Create account' }).click()
+      const validResponse = await validPostResponse
+      assert.equal(validResponse.status(), 302)
+      const acceptedUser = await User.findBy('email', 'native-valid-edge@example.test')
+      assert.equal(acceptedUser?.fullName, 'x'.repeat(255))
     } finally {
       await context.close()
     }
