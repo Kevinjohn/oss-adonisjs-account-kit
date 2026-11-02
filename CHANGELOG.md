@@ -5,6 +5,12 @@
 - Reference examples: keep native-form credential values out of validation flash data, allow
   signup without a name, and honor configured user tables and ID types across the API migrations.
 
+- Reload invitation-management actors under the account lock in each authorization transaction.
+
+- Recognize configured provider registrations structurally and stop before generating files when
+  the application configuration cannot be inspected safely. For dynamic provider lists, document
+  manual registration and the explicit `--provider-registered` step to complete setup.
+
 - Docs: the README is now a short overview with install and a quick example; the production
   checklist moves to the operations guide.
 - Add `homepage` and `bugs` to `package.json` for the npm package page.

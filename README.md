@@ -41,6 +41,41 @@ node ace account-kit:doctor
 `pnpm add` and `yarn add` take the same URL. Prefer generated files? Use [guided setup](docs/setup.md)
 in place of `node ace configure`.
 
+### Dynamic providers
+
+If configure reports that it cannot inspect providers in `adonisrc.ts`, make sure the dynamic list
+registers Account Kit exactly once. Keep an existing `adonisjs-account-kit/account_kit_provider`
+entry or the legacy `adonisjs-account-kit/providers/account_kit_provider` alias; add the current
+export below only when neither entry is already present:
+
+```ts
+const applicationProviders = () => [
+  // Keep your existing provider entries here.
+  () => import('adonisjs-account-kit/account_kit_provider'),
+]
+```
+
+If you pass a config variable to `defineConfig`, expose its settings, existing commands, and provider
+list in an object literal first. This keeps the existing command entries while giving configure a
+static commands array to extend:
+
+```ts
+export default defineConfig({
+  ...applicationConfig,
+  commands: [...(applicationConfig.commands ?? [])],
+  providers: applicationConfig.providers,
+})
+```
+
+Keep the rest of your provider logic, then rerun:
+
+```sh
+node ace configure adonisjs-account-kit --provider-registered
+```
+
+This flag confirms that you registered the provider yourself. Configure then preserves the dynamic
+provider expression and completes the remaining setup. Running it again is safe.
+
 ## Quick example
 
 A forgot-password action. The [getting started tutorial](docs/getting-started.md) adds validation,

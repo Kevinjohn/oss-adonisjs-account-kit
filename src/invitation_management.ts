@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
-import { lockRow, transaction } from './db.js'
+import { lockRow, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import {
   AuthorizationError,
@@ -36,26 +36,33 @@ function requireInvitationId(value: unknown): asserts value is number {
 async function lockManagedInvitation(
   config: ResolvedConfig,
   trx: Trx,
-  actor: AccountUser,
+  actorId: AccountUser['id'],
   invitationId: number
-): Promise<Invitation> {
+): Promise<{ actor: AccountUser; invitation: Invitation }> {
+  await lockUser(trx, config, actorId)
+  const actor = await requireUser(config, actorId, trx)
   await lockRow(trx, 'account_invitations', invitationId)
   const row = await trx.from('account_invitations').where('id', invitationId).forUpdate().first()
   if (!row) throw new InvitationNotFoundError()
   const invitation = toInvitation(row)
   if ((await config.authorize.manageInvitation(actor, invitation, { trx })) !== true)
     throw new InvitationManagementDeniedError()
-  return invitation
+  return { actor, invitation }
 }
 
 /** Lock an invitation the actor may manage and may still invite to its role. */
 async function lockResendable(
   config: ResolvedConfig,
   trx: Trx,
-  actor: AccountUser,
+  actorId: AccountUser['id'],
   invitationId: number
 ): Promise<Invitation> {
-  const current = await lockManagedInvitation(config, trx, actor, invitationId)
+  const { actor, invitation: current } = await lockManagedInvitation(
+    config,
+    trx,
+    actorId,
+    invitationId
+  )
   if ((await config.authorize.invite(actor, current.role, { trx })) !== true)
     throw new InvitationManagementDeniedError()
   return current
@@ -66,17 +73,17 @@ export async function resendInvitation(
   input: InvitationsResendInput
 ): Promise<Invitation> {
   requireInvitationId(input.invitationId)
-  const actor = await requireUser(deps.config, input.actorId)
+  await requireUser(deps.config, input.actorId)
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
   // Both policy reads receive a transaction. The first commits before the limiter touches its
   // store; the second protects the row through rotation and catches intervening policy changes.
   const preflight = await transaction(deps.db, (trx) =>
-    lockResendable(deps.config, trx, actor, input.invitationId)
+    lockResendable(deps.config, trx, input.actorId, input.invitationId)
   )
   await throttlerOf(deps).consume(
     'invitation:resend:actor',
-    String(actor.id),
+    String(input.actorId),
     deps.config.invitationThrottle.resendActor
   )
   await throttlerOf(deps).consume(
@@ -86,7 +93,7 @@ export async function resendInvitation(
   )
   const { value: invitation, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      await lockResendable(deps.config, trx, actor, input.invitationId)
+      await lockResendable(deps.config, trx, input.actorId, input.invitationId)
 
       const now = DateTime.utc()
       await trx
@@ -126,11 +133,11 @@ export async function revokeInvitation(
   input: InvitationsRevokeInput
 ): Promise<void> {
   requireInvitationId(input.invitationId)
-  const actor = await requireUser(deps.config, input.actorId)
+  await requireUser(deps.config, input.actorId)
   const operationId = randomUUID()
   const { fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      await lockManagedInvitation(deps.config, trx, actor, input.invitationId)
+      await lockManagedInvitation(deps.config, trx, input.actorId, input.invitationId)
       await trx.from('account_invitations').where('id', input.invitationId).delete()
     })
   )

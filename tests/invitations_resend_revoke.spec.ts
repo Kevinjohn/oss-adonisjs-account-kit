@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { defineConfig } from '../src/account_kit.js'
+import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
   AuthorizationError,
   DeliveryError,
@@ -176,6 +176,103 @@ test.group('invitations.resend', (group) => {
       role: invitation.role,
     })
   })
+
+  test('resend reloads actor state after limiter consumption and rejects a deleted actor', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const recorder = makeNotify()
+    const policyReads: Array<{ email: string; storedEmail: string; hasTrx: boolean }> = []
+    const { config } = service({
+      notify: recorder.notify,
+      authorize: {
+        ...allowAll,
+        manageInvitation: async (current, _invitation, context) => {
+          assert.isDefined(context?.trx)
+          const stored = await context!.trx!.from('users').where('id', current.id).first()
+          policyReads.push({ email: current.email, storedEmail: stored!.email, hasTrx: true })
+          return current.email.endsWith('@example.test') && stored!.email === current.email
+        },
+        invite: async (current, _role, context) => {
+          if (!context?.trx) return current.email.endsWith('@example.test')
+          const stored = await context!.trx!.from('users').where('id', current.id).first()
+          policyReads.push({ email: current.email, storedEmail: stored!.email, hasTrx: true })
+          return current.email.endsWith('@example.test') && stored!.email === current.email
+        },
+      },
+    })
+    let armed = false
+    let charges = 0
+    let mutation: (() => Promise<void>) | undefined
+    const limiter = {
+      use: (options: { requests: number; duration: string }) => ({
+        consume: async (key: string) => {
+          await kit.limiter.use(options).consume(key)
+          if (armed && ++charges === 2) await mutation?.()
+        },
+      }),
+    }
+    const account = new AccountKit({
+      config,
+      db: kit.db,
+      limiter: limiter as never,
+      encryption: kit.encryption,
+    })
+    const { invitation, token } = await issue(account, recorder, actor.id)
+    const originalRow = await kit.db.from('account_invitations').where('id', invitation.id).first()
+    policyReads.length = 0
+    mutation = async () => {
+      await kit.db.from('users').where('id', actor.id).update({ email: 'demoted@other.test' })
+    }
+    armed = true
+    await assert.rejects(
+      () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      AuthorizationError
+    )
+    armed = false
+    assert.deepEqual(
+      policyReads.map((read) => read.email),
+      [actor.email, actor.email, 'demoted@other.test']
+    )
+    for (const read of policyReads) {
+      assert.isTrue(read.hasTrx)
+      assert.equal(read.storedEmail, read.email)
+    }
+    let unchanged = await kit.db.from('account_invitations').where('id', invitation.id).first()
+    assert.equal(unchanged.token_hash, originalRow.token_hash)
+    assert.equal(
+      new Date(String(unchanged.expires_at)).toISOString(),
+      new Date(String(originalRow.expires_at)).toISOString()
+    )
+    assert.lengthOf(recorder.calls, 1)
+    assert.isNotNull(await account.invitations.inspect({ token }))
+
+    const deletedActor = await createActor('deleted-actor@example.test')
+    const { invitation: pending } = await issue(
+      account,
+      recorder,
+      deletedActor.id,
+      'deleted-actor-pending@example.test'
+    )
+    const pendingBefore = await kit.db.from('account_invitations').where('id', pending.id).first()
+    charges = 0
+    mutation = async () => {
+      await kit.db.from('users').where('id', deletedActor.id).delete()
+    }
+    armed = true
+    await assert.rejects(
+      () => account.invitations.resend({ actorId: deletedActor.id, invitationId: pending.id }),
+      InvalidInputError
+    )
+    armed = false
+    unchanged = await kit.db.from('account_invitations').where('id', pending.id).first()
+    assert.equal(unchanged.token_hash, pendingBefore.token_hash)
+    assert.equal(
+      new Date(String(unchanged.expires_at)).toISOString(),
+      new Date(String(pendingBefore.expires_at)).toISOString()
+    )
+    assert.lengthOf(recorder.calls, 2)
+  }).timeout(6000)
 
   test('delivery and URL failures leave the new token committed', async ({ assert }) => {
     const actor = await createActor()
@@ -357,19 +454,22 @@ test.group('invitations.resend', (group) => {
       })
       try {
         await ready
-        let conflict: unknown
-        try {
-          await transaction(kit.db, (trx) =>
-            trx
-              .rawQuery('SELECT id FROM account_invitations WHERE id = ? FOR UPDATE NOWAIT', [
-                invitation.id,
-              ])
-              .exec()
-          )
-        } catch (error) {
-          conflict = error
+        const assertRowLocked = async (
+          table: 'users' | 'account_invitations',
+          id: number | string
+        ) => {
+          let conflict: unknown
+          try {
+            await transaction(kit.db, (trx) =>
+              trx.rawQuery(`SELECT id FROM ${table} WHERE id = ? FOR UPDATE NOWAIT`, [id]).exec()
+            )
+          } catch (error) {
+            conflict = error
+          }
+          assert.equal((conflict as { code?: string } | undefined)?.code, lockNotAvailableCode)
         }
-        assert.equal((conflict as { code?: string } | undefined)?.code, lockNotAvailableCode)
+        await assertRowLocked('users', actor.id)
+        await assertRowLocked('account_invitations', invitation.id)
       } finally {
         releaseManage()
         await resending
