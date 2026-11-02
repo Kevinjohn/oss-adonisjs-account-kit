@@ -52,13 +52,14 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
 
 export default class PasswordResetsController {
-  async request({ request, response }: HttpContext) {
+  async request({ request, response, logger }: HttpContext) {
     const kit = await app.container.make(AccountKit)
     try {
       await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
     } catch (error) {
       // Mail is sent after commit. Keep one response for known and unknown addresses.
       if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error({ code: error.code }, 'password reset email failed')
     }
     return response.accepted({ message: 'If the account exists, instructions will be sent.' })
   }
