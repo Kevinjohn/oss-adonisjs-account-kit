@@ -57,7 +57,8 @@ password-equivalent secrets and do not share terminal output.
 
 Open `http://localhost:3342` and follow these steps:
 
-1. Choose **Create an account**, enter a full name, email and password twice, then submit. The new
+1. Choose **Create an account**, optionally enter a full name, then enter an email and password
+   twice and submit. The new
    account signs in with limited access. The dashboard offers a verification resend if delivery
    failed or the link was missed.
 2. Copy the verification URL from the server output into the browser. Inspecting the URL does not
@@ -66,7 +67,7 @@ Open `http://localhost:3342` and follow these steps:
 3. Sign in with the confirmed email and new password. Open **Open the protected account page**.
    Signing out and visiting `/account` redirects to sign in; an unverified account is redirected
    to its limited dashboard.
-4. Open **Profile settings**, change the full name and confirm with the current password. The
+4. Open **Profile settings**, change or clear the full name and confirm with the current password. The
    submitted account ID is never used to select the owner.
 5. Open **Password settings**, enter the current password and choose a new one twice. This session
    signs in again with the new password; other sessions are rejected on their next request.
@@ -101,8 +102,9 @@ The starter's `@form` component inserts Shield's CSRF field for state-changing m
 validation redirects back with an input error bag; field components associate messages with the
 input and focus the first invalid field. Controller success and recoverable service outcomes use
 session flash messages and redirects. Views use English application-owned text; no locale or
-translation loader is shipped. This signup form requires a trimmed full name of 1–255 characters;
-the app's registration adapter still maps a missing name to `null` for callers outside this form.
+translation loader is shipped. Signup requires an email and password; the full name is optional. A
+supplied name is trimmed and limited to 255 characters, while a missing or blank name is stored as
+`null`. Profile settings also allow clearing a previously supplied name.
 
 `SessionRevisionMiddleware` checks each signed-in session against Account Kit's current credential
 revision. Password reset and email confirmation revoke sessions for the changed account. A password change
@@ -140,6 +142,9 @@ shared lifecycle and evidence contract, see
 | Implemented                                                                                                                                                  | Automated HTTP                                                                                                                                           | Browser                                                                                                                                                                                                                                                                                                                                | Manual checks and limits                                                                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Signup, verification, login, reset, password/profile/email settings and logout use native Edge forms, CSRF, POST/redirect/GET, and database-backed sessions. | [Native account journey](tests/browser/account_journey.spec.ts) drives the real HTTP routes and checks persistence; there is no separate JSON API suite. | The same [native account journey](tests/browser/account_journey.spec.ts) checks rendered forms, including no-JavaScript recovery. The [clean-starter reset P3](../../docs/recipes/hypermedia-edge.md#clean-application-check) passed 4/4 with JavaScript disabled; expiry mutation failed, then the restored retained spec passed 4/4. | Historical checks below apply only to their recorded revisions. The recipe P3 uses SQLite and local callback capture; no recipient delivery or PostgreSQL claim is made for that run. It records no new viewport or keyboard inspection. |
+
+Validation and CSRF redirects retain only string full-name and email values up to 320 characters; credential fields,
+CSRF tokens, unknown keys, and longer values are not flashed as old input.
 
 Run the example scripts with Node 24:
 

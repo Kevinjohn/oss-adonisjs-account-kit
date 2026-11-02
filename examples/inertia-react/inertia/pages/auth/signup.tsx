@@ -3,7 +3,7 @@ import FormErrorSummary, { focusFormErrorSummary } from '~/components/form_error
 import { Form, Link } from '@adonisjs/inertia/react'
 
 const fields = [
-  { name: 'fullName', label: 'Full name' },
+  { name: 'fullName', label: 'Full name (optional)' },
   { name: 'email', label: 'Email' },
   { name: 'password', label: 'Password' },
   { name: 'passwordConfirmation', label: 'Confirm password' },
@@ -21,7 +21,7 @@ export default function Signup() {
             <FormErrorSummary errors={errors} fields={fields} />
             <div className="field">
               <label className="field__label" htmlFor="fullName">
-                Full name
+                Full name (optional)
               </label>
               <input
                 id="fullName"

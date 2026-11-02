@@ -36,8 +36,8 @@ loopback URLs.
 
 ### Registration
 
-- The example's `registration.mapFields` requires an application-collected full name. Provider name
-  and email are never passed through that mapper as trusted registration data.
+- The example's `registration.mapFields` accepts an optional application-collected full name.
+  Provider name and email are never passed through that mapper as trusted registration data.
 - Applications with `registration.availability: 'application'` must make their own server-side
   signup decision and call `completeRegistration` with a trusted `admit` callback.
 - Closed registration still permits already linked identities to sign in.
@@ -114,9 +114,9 @@ strings.
   signs in through an existing method, sends `{ "password": "…", "purpose": "social_link" }` to
   `POST /api/v1/account/social/proof`, and passes the returned `proof` to
   `POST /api/v1/auth/oauth/:provider/redirect` with `intent: "link"`.
-- **Email or required fields needed**: returns `new` with a transaction-bound `continuation`.
-  `POST /api/v1/auth/oauth/registration` collects `fullName` and, when absent from the provider,
-  `email`; no account exists before completion. The application supplies the collection
+- **Email needed**: returns `new` with a transaction-bound `continuation`.
+  `POST /api/v1/auth/oauth/registration` collects an optional `fullName` and, when absent from the
+  provider, `email`; no account exists before completion. The application supplies the collection
   interface.
 - **Verified provider email** can activate the new account. Missing, unverified, and unsupported
   email assertions require local verification; an inactive account receives no handoff code.

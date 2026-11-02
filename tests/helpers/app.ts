@@ -13,7 +13,7 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { Hash } from '@adonisjs/core/hash'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import { clearRows, resetSchema } from './schema.js'
-import { testClient, testConnection } from './test_connection.js'
+import { dropPostgresFixtureSchema, testClient, testConnection } from './test_connection.js'
 
 export interface TestApp {
   app: ApplicationService
@@ -30,6 +30,7 @@ export interface BootOptions {
   sqliteBusyTimeout?: number
   sqlitePoolMax?: number
   accountKitProvider?: 'source' | 'build'
+  postgresSchema?: string
 }
 
 export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
@@ -39,12 +40,17 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
   const sqliteFilename = sqliteDirectory ? join(sqliteDirectory, 'test.sqlite') : undefined
   const appRootPath = fileURLToPath(new URL('../..', import.meta.url))
   const migrationDirectory = await mkdtemp(join(tmpdir(), 'account-kit-migrations-'))
+  let postgresSchemaCreated = false
 
   const connection = testConnection(client, {
     migrationDirectory,
     sqliteFilename,
     sqliteBusyTimeout: options.sqliteBusyTimeout,
     sqlitePoolMax: options.sqlitePoolMax,
+    postgresSchema: options.postgresSchema,
+    onPostgresSchemaCreated() {
+      postgresSchemaCreated = true
+    },
   })
 
   const factory = new IgnitorFactory()
@@ -96,16 +102,45 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
       appRootPath,
       migrationDirectory,
       async close() {
-        await ignitor.terminate()
-        if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
-        await rm(migrationDirectory, { recursive: true, force: true })
+        try {
+          if (options.postgresSchema && postgresSchemaCreated) {
+            await dropPostgresFixtureSchema(options.postgresSchema)
+          }
+        } finally {
+          try {
+            await ignitor.terminate()
+          } finally {
+            if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
+            await rm(migrationDirectory, { recursive: true, force: true })
+          }
+        }
       },
     }
   } catch (error) {
-    await ignitor.terminate()
-    if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
-    await rm(migrationDirectory, { recursive: true, force: true })
-    throw error
+    let failure: unknown = error
+    try {
+      if (options.postgresSchema && postgresSchemaCreated) {
+        await dropPostgresFixtureSchema(options.postgresSchema)
+      }
+    } catch (cleanupError) {
+      failure = new AggregateError(
+        [error, cleanupError],
+        'Test app startup and fixture cleanup failed'
+      )
+    } finally {
+      try {
+        await ignitor.terminate()
+      } catch (terminationError) {
+        failure = new AggregateError(
+          [failure, terminationError],
+          'Test app startup and termination failed'
+        )
+      } finally {
+        if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
+        await rm(migrationDirectory, { recursive: true, force: true })
+      }
+    }
+    throw failure
   }
 }
 

@@ -19,6 +19,13 @@ The app keeps the starter's session guard and requires a server-side session sto
 
 Emails are printed to the dev server log instead of being sent.
 
+Signup requires an email and password; the full name is optional. A supplied name is trimmed and
+limited to 255 characters, while an omitted or blank name is stored as `null`. Plain HTML validation
+redirects retain only the full name and email in the session; Inertia validation keeps field errors
+without flashing submitted input.
+
+Profile settings also allow clearing a previously supplied name.
+
 ## Explore the browser example
 
 Start with the [local run instructions](#run-it), then visit `/signup`. The screenshot shows the
@@ -44,7 +51,7 @@ links point to the reviewed example source so you can compare each file while ad
 - **User adapter and application policy:** Adapt
   [`config/account_kit.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/config/account_kit.ts)
   and [`app/models/user.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/5f1543fc63731c6135102dfa139d6d204f33eb2b/examples/inertia-react/app/models/user.ts)
-  to your user table and key type. The example maps the form's `fullName`, allows open registration,
+  to your user table and key type. The example maps the optional form `fullName`, allows open registration,
   and permits sign-in; choose your own registration and access policy. The application owns field
   validation and every user-facing message. Configure `createActionUrls` with the real backend
   origin and the pages that receive reset and verification links.
@@ -292,7 +299,7 @@ installing there. If startup reports missing environment values or a database ta
 - A database session store (`node ace make:session-table`, `SESSION_DRIVER=database`). Session
   login needs a server-side store so that signing out cannot be undone by replaying an old cookie.
 - `config/account_kit.ts`: session authentication through the existing `web` guard, open
-  registration that keeps the starter's full name field, `createActionUrls` for links to the pages
+  registration that keeps the starter's optional full name field, `createActionUrls` for links to the pages
   above, and `createLogNotifications` for email.
 - `app/services/session_guard.ts`: lets Account Kit sign users in through the `web` guard and
   stores the credential revision in the session.

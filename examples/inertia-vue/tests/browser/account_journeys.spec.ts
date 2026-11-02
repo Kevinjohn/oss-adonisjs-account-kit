@@ -1,5 +1,6 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each browser result beside its assertion. */
 import { test } from '@japa/runner'
+import { errors as authErrors } from '@adonisjs/auth'
 import { createHash, randomBytes } from 'node:crypto'
 import User from '#models/user'
 import db from '@adonisjs/lucid/services/db'
@@ -186,7 +187,10 @@ test.group('composed account browser journeys', (group) => {
       await current.getByLabel('Password').fill('OldPass123!')
       await current.getByRole('button', { name: 'Sign in' }).click()
       await current.getByText('Invalid email or password.').waitFor()
-      await assert.rejects(() => User.verifyCredentials(email, 'OldPass123!'))
+      await assert.rejects(
+        () => User.verifyCredentials(email, 'OldPass123!'),
+        authErrors.E_INVALID_CREDENTIALS
+      )
 
       await current.getByLabel('Email').fill(email)
       await current.getByLabel('Password').fill('ReplacementPass123!')
