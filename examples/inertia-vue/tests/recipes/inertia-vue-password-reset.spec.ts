@@ -1,6 +1,7 @@
 /* eslint-disable @unicorn/no-await-expression-member, @unicorn/filename-case -- Keep browser assertions beside each native form action and match the recipe selector. */
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
+import { errors as authErrors } from '@adonisjs/auth'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import testUtils from '@adonisjs/core/services/test_utils'
@@ -147,7 +148,10 @@ test.group('Inertia Vue password reset recipe', (group) => {
       await first.getByRole('button', { name: 'Sign in' }).click()
       await first.getByText('Invalid email or password.').waitFor()
       assert.equal(new URL(first.url()).pathname, '/login')
-      await assert.rejects(() => User.verifyCredentials(email, originalPassword))
+      await assert.rejects(
+        () => User.verifyCredentials(email, originalPassword),
+        authErrors.E_INVALID_CREDENTIALS
+      )
 
       await first.getByLabel('Email').fill(email)
       await first.getByLabel('Password').fill(replacementPassword)

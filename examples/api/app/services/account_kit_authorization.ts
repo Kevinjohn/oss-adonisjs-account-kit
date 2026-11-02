@@ -38,7 +38,7 @@ export const authorize: AuthorizationCallbacks = {
   listInvitations: async (actor, context) => isAdmittedOwner(actor.id, context?.trx),
 }
 
-/** Owners decide admission and list the records. The service also requires the actor admitted. */
+/** The list callback checks the owner role; the route's `admittedAccount()` gate checks admission. */
 export const admissionAuthorize: AdmissionAuthorizeCallbacks = {
   decide: async (actor, _subject, context) => isOwner(actor.id, context?.trx),
   list: async (actor, context) => isOwner(actor.id, context?.trx),

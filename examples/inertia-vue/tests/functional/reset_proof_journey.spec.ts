@@ -2,6 +2,7 @@
 
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
+import { errors as authErrors } from '@adonisjs/auth'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import kit from 'adonisjs-account-kit/services/main'
@@ -123,10 +124,16 @@ test.group('reset proof HTTP journey', (group) => {
       assert.include(dashboard.headers.get('location')!, '/login')
 
       assert.equal((await User.verifyCredentials(owner.email, password)).id, owner.id)
-      await assert.rejects(() => User.verifyCredentials(owner.email, 'OldPass123!'))
+      await assert.rejects(
+        () => User.verifyCredentials(owner.email, 'OldPass123!'),
+        authErrors.E_INVALID_CREDENTIALS
+      )
       if (!sameAccount) {
         assert.equal((await User.verifyCredentials(other.email, 'OldPass123!')).id, other.id)
-        await assert.rejects(() => User.verifyCredentials(other.email, password))
+        await assert.rejects(
+          () => User.verifyCredentials(other.email, password),
+          authErrors.E_INVALID_CREDENTIALS
+        )
       }
 
       const replay = await session.request(proof.path, {
@@ -136,10 +143,16 @@ test.group('reset proof HTTP journey', (group) => {
       assert.equal(replay.status, 302)
       assert.equal(new URL(replay.headers.get('location')!, origin).pathname, proof.path)
       assert.equal((await User.verifyCredentials(owner.email, password)).id, owner.id)
-      await assert.rejects(() => User.verifyCredentials(owner.email, replayPassword))
+      await assert.rejects(
+        () => User.verifyCredentials(owner.email, replayPassword),
+        authErrors.E_INVALID_CREDENTIALS
+      )
       if (!sameAccount) {
         assert.equal((await User.verifyCredentials(other.email, 'OldPass123!')).id, other.id)
-        await assert.rejects(() => User.verifyCredentials(other.email, replayPassword))
+        await assert.rejects(
+          () => User.verifyCredentials(other.email, replayPassword),
+          authErrors.E_INVALID_CREDENTIALS
+        )
       }
     })
   }

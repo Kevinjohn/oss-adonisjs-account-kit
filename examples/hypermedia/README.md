@@ -141,6 +141,10 @@ shared lifecycle and evidence contract, see
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Signup, verification, login, reset, password/profile/email settings and logout use native Edge forms, CSRF, POST/redirect/GET, and database-backed sessions. | [Native account journey](tests/browser/account_journey.spec.ts) drives the real HTTP routes and checks persistence; there is no separate JSON API suite. | The same [native account journey](tests/browser/account_journey.spec.ts) checks rendered forms, including no-JavaScript recovery. The [clean-starter reset P3](../../docs/recipes/hypermedia-edge.md#clean-application-check) passed 4/4 with JavaScript disabled; expiry mutation failed, then the restored retained spec passed 4/4. | Historical checks below apply only to their recorded revisions. The recipe P3 uses SQLite and local callback capture; no recipient delivery or PostgreSQL claim is made for that run. It records no new viewport or keyboard inspection. |
 
+Signup requires a full name containing 1–255 characters after trimming. Validation and CSRF
+redirects retain only string full-name and email values up to 320 characters; credential fields,
+CSRF tokens, unknown keys, and longer values are not flashed as old input.
+
 Run the example scripts with Node 24:
 
 ```sh

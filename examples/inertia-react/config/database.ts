@@ -46,7 +46,7 @@ const dbConfig = defineConfig({
 
     /**
      * PostgreSQL connection.
-     * Install package to switch: npm install pg
+     * Install package to switch: pnpm add pg
      */
     // pg: {
     //   client: 'pg',
@@ -70,7 +70,7 @@ const dbConfig = defineConfig({
 
     /**
      * MySQL / MariaDB connection.
-     * Install package to switch: npm install mysql2
+     * Install package to switch: pnpm add mysql2
      */
     // mysql: {
     //   client: 'mysql2',
@@ -94,7 +94,7 @@ const dbConfig = defineConfig({
 
     /**
      * Microsoft SQL Server connection.
-     * Install package to switch: npm install tedious
+     * Install package to switch: pnpm add tedious
      */
     // mssql: {
     //   client: 'mssql',
@@ -118,7 +118,7 @@ const dbConfig = defineConfig({
 
     /**
      * libSQL (Turso) connection.
-     * Install package to switch: npm install @libsql/client
+     * Install package to switch: pnpm add @libsql/client
      */
     // libsql: {
     //   client: 'libsql',

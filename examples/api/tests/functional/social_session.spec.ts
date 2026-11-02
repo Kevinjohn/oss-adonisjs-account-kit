@@ -223,7 +223,11 @@ test.group('Social session', (group) => {
     const callback = await client
       .get(`/api/v1/auth/oauth/github/callback?state=${state}&code=stale-code`)
       .header('cookie', rawCookies(started) || cookie)
-    assert.isAtLeast(callback.status(), 400)
+    assert.equal(callback.status(), 401, JSON.stringify(callback.body()))
+    assert.equal(
+      (callback.body() as { errors: [{ code: string }] }).errors[0].code,
+      'E_ACCOUNT_KIT_INVALID_SESSION'
+    )
     assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
   }).skip(!isSessionStrategy, SESSION_ONLY)
 })
