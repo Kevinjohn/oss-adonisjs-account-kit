@@ -88,141 +88,70 @@ async function prepareMigrations(
   }
 }
 
-test('failed SQLite user-table copy restores the schema and migration state', async ({
+test('optional-name migration keeps the users table and the full_name type and default', async ({
   assert,
 }) => {
-  const kit = await bootTestApp({ sqlitePoolMax: 1 })
+  const client = process.env.DB_CLIENT
+  const postgresSchema =
+    client === 'pg' ? `account_schema_fixture_${randomUUID().replaceAll('-', '')}` : undefined
+  const kit = await bootTestApp({ postgresSchema })
   try {
     const migrate = await prepareMigrations(kit, 'users', 'integer')
     const initial = await migrate('up')
     if (initial.error) throw initial.error
 
-    const now = new Date()
-    await kit.db.table('users').insert({
-      full_name: 'Existing Named User',
-      email: 'legacy@example.test',
-      password: 'unused',
-      created_at: now,
-      updated_at: now,
-    })
-    const legacyUser = await kit.db
-      .from('users')
-      .where('email', 'legacy@example.test')
-      .select('id')
-      .first()
-    if (!legacyUser) throw new Error('failed to create the pre-upgrade user')
-    await kit.db.table('password_reset_tokens').insert({
-      tokenable_id: legacyUser.id,
-      email: 'legacy@example.test',
-      hash: 'legacy-reset',
-      expires_at: new Date(Date.now() + 60_000),
-      created_at: now,
-    })
-    const optionalMigration = await readFile(new URL(optionalNameMigration, migrationSource))
+    const longName = 'n'.repeat(300)
+    if (client === 'pg') {
+      await kit.db.rawQuery(
+        "ALTER TABLE users ALTER COLUMN full_name TYPE text, ALTER COLUMN full_name SET DEFAULT 'Member'"
+      )
+      const now = new Date()
+      await kit.db.table('users').insert({
+        full_name: longName,
+        email: 'long-name@example.test',
+        password: 'unused',
+        created_at: now,
+        updated_at: now,
+      })
+    }
+    const rootPage = () =>
+      kit.db
+        .from('sqlite_master')
+        .where({ type: 'table', name: 'users' })
+        .select('rootpage')
+        .first()
+        .then((row) => row?.rootpage)
+    const rootPageBefore = client === 'pg' ? undefined : await rootPage()
+
     await writeFile(
       join(kit.migrationDirectory, 'fixture-migrations', optionalNameMigration),
-      optionalMigration
+      await readFile(new URL(optionalNameMigration, migrationSource))
     )
+    const upgrade = await migrate('up')
+    if (upgrade.error) throw upgrade.error
 
-    const foreignKeysBefore = await kit.db.connection().rawQuery('PRAGMA foreign_keys').exec()
-    const tableNamesBefore = await kit.db
-      .connection()
-      .getReadClient()
-      .table('sqlite_master')
-      .where('type', 'table')
-      .orderBy('name')
-      .select('name')
-    const injectedError = new Error('simulated failure copying the altered users table')
-    let copyAttempted = false
-    let migrationError: unknown
-    const writeClient = kit.db.connection().getWriteClient()
-    const failDuringCopy = (query: { sql?: unknown }) => {
-      const sql = typeof query.sql === 'string' ? query.sql : ''
-      if (/^INSERT\s+INTO\s+.+\s+SELECT\s+.+\s+FROM\s+"users"/i.test(sql)) {
-        copyAttempted = true
-        throw injectedError
-      }
-    }
-
-    writeClient.on('query', failDuringCopy)
-    try {
-      const failedUpgrade = await migrate('up')
-      migrationError = failedUpgrade.error
-    } catch (error) {
-      migrationError = error
-    } finally {
-      writeClient.off('query', failDuringCopy)
-    }
-
-    assert.isTrue(copyAttempted, 'failure must occur during the users table-copy query')
-    assert.equal((migrationError as Error | undefined)?.message, injectedError.message)
-    assert.equal(foreignKeysBefore[0]?.foreign_keys, 1)
-    const foreignKeysAfter = await kit.db.connection().rawQuery('PRAGMA foreign_keys').exec()
-    assert.equal(foreignKeysAfter[0]?.foreign_keys, foreignKeysBefore[0]?.foreign_keys)
-    assert.isEmpty(await kit.db.connection().rawQuery('PRAGMA foreign_key_check').exec())
-
-    const tableNamesAfter = await kit.db
-      .connection()
-      .getReadClient()
-      .table('sqlite_master')
-      .where('type', 'table')
-      .orderBy('name')
-      .select('name')
-    assert.deepEqual(
-      tableNamesAfter.map((table: { name: string }) => table.name),
-      tableNamesBefore.map((table: { name: string }) => table.name),
-      'failed table copy must remove tables created for the altered schema'
-    )
     const userColumns = await kit.db.connection().getReadClient().table('users').columnInfo()
-    assert.isFalse(userColumns.full_name.nullable)
-    assert.equal(
-      await kit.db
-        .from('users')
-        .where('email', 'legacy@example.test')
-        .select('full_name')
-        .first()
-        .then((row) => row?.full_name),
-      'Existing Named User'
-    )
-    assert.isOk(await kit.db.from('password_reset_tokens').where('hash', 'legacy-reset').first())
-    assert.isNull(
-      await kit.db
-        .from('adonis_schema')
-        .where('name', 'like', `%${optionalNameMigration.replace('.ts', '')}%`)
-        .first()
-    )
-
-    const recoveredUpgrade = await migrate('up')
-    if (recoveredUpgrade.error) throw recoveredUpgrade.error
-    const recoveredUserColumns = await kit.db
-      .connection()
-      .getReadClient()
-      .table('users')
-      .columnInfo()
-    assert.isTrue(recoveredUserColumns.full_name.nullable)
-    assert.equal(
-      await kit.db
-        .from('users')
-        .where('email', 'legacy@example.test')
-        .select('full_name')
-        .first()
-        .then((row) => row?.full_name),
-      'Existing Named User'
-    )
-    assert.isOk(await kit.db.from('password_reset_tokens').where('hash', 'legacy-reset').first())
-    assert.isOk(
-      await kit.db
-        .from('adonis_schema')
-        .where('name', 'like', `%${optionalNameMigration.replace('.ts', '')}%`)
-        .first()
-    )
+    const fullName = userColumns.full_name
+    assert.isTrue(fullName.nullable)
+    if (client === 'pg') {
+      assert.equal(fullName.type, 'text')
+      assert.include(String(fullName.defaultValue), 'Member')
+      assert.equal(
+        await kit.db
+          .from('users')
+          .where('email', 'long-name@example.test')
+          .select('full_name')
+          .first()
+          .then((row) => row?.full_name),
+        longName
+      )
+    } else {
+      assert.equal(await rootPage(), rootPageBefore, 'the users table must not be rebuilt')
+    }
   } finally {
     await kit.close()
   }
-}).skip(
-  process.env.DB_CLIENT === 'pg' || process.env.DB_CLIENT === 'mysql2',
-  'SQLite copy rollback coverage'
-)
+}).skip(process.env.DB_CLIENT === 'mysql2', 'The API example runs on SQLite and PostgreSQL')
 
 for (const usersTable of tables) {
   for (const idType of ids) {
