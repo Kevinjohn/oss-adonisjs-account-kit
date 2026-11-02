@@ -1,5 +1,6 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { readdir } from 'node:fs/promises'
+import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import type Configure from '@adonisjs/core/commands/configure'
 import { isSqlIdentifier } from './src/sql_identifier.js'
 import { stubsRoot } from './stubs/main.js'
@@ -30,7 +31,6 @@ class UnsupportedConfigShape extends Error {}
 type RcNode = {
   getKindName(): string
   getText(): string
-  getDescendants(): RcNode[]
   getArguments?(): RcNode[]
   getExpression?(): RcNode
   getProperty?(name: string): RcNode | undefined
@@ -40,22 +40,19 @@ type RcNode = {
   getStatements?(): RcNode[]
   getLiteralValue?(): string
 }
-type TsMorphProject = {
-  getSourceFile(path: string): RcNode | undefined
-  getProgram(): { getSyntacticDiagnostics(sourceFile: RcNode): unknown[] }
-}
+type AssemblerProject = CodeTransformer['project']
 
 /**
  * Inspect the same defineConfig call and provider entry forms consumed by Assembler's RC
  * transformer. Returning false means the recognized config has no providers property yet.
  */
-function hasLegacyProvider(project: TsMorphProject, rcPath: string): boolean {
+function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
   const rcFile = project.getSourceFile(rcPath)
   if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
   if (project.getProgram().getSyntacticDiagnostics(rcFile).length)
     throw new Error('adonisrc.ts contains TypeScript syntax errors')
 
-  const call = rcFile.getDescendants().find((node) => {
+  const call = (rcFile.getDescendants() as unknown as RcNode[]).find((node) => {
     if (node.getKindName() !== 'CallExpression') return false
     return node.getExpression?.().getText() === 'defineConfig'
   })
@@ -99,30 +96,22 @@ function hasLegacyProvider(project: TsMorphProject, rcPath: string): boolean {
 
   let legacyFound = false
   for (const entry of providersArray.getElements?.() ?? []) {
-    if (entry.getKindName() === 'ArrowFunction') {
-      const path = importPathFromArrow(entry)
-      if (!path)
-        throw new UnsupportedProvidersConfiguration(
-          'a providers entry is not a supported lazy import'
-        )
-      if (path === legacyProviderPath) legacyFound = true
-      continue
+    const isProviderObject = entry.getKindName() === 'ObjectLiteralExpression'
+    let loader: RcNode | undefined = entry
+    if (isProviderObject) {
+      const fileProperty = entry.getProperty?.('file')
+      loader =
+        fileProperty?.getKindName() === 'PropertyAssignment'
+          ? fileProperty.getInitializer?.()
+          : undefined
     }
-
-    if (entry.getKindName() !== 'ObjectLiteralExpression')
-      throw new UnsupportedProvidersConfiguration(
-        'a providers entry is not a supported lazy import'
-      )
-    const fileProperty = entry.getProperty?.('file')
-    const initializer =
-      fileProperty?.getKindName() === 'PropertyAssignment'
-        ? fileProperty.getInitializer?.()
-        : undefined
-    const path = initializer && importPathFromArrow(initializer)
-    if (!path)
-      throw new UnsupportedProvidersConfiguration(
-        'a providers object must have a static file lazy import'
-      )
+    const path = loader && importPathFromArrow(loader)
+    if (!path) {
+      const message = isProviderObject
+        ? 'a providers object must have a static file lazy import'
+        : 'a providers entry is not a supported lazy import'
+      throw new UnsupportedProvidersConfiguration(message)
+    }
     if (path === legacyProviderPath) legacyFound = true
   }
   return legacyFound
@@ -180,10 +169,7 @@ export async function configure(command: Configure) {
   try {
     const project = await codemods.getTsMorphProject()
     if (!project) throw new Error('the Assembler TypeScript project is unavailable')
-    legacyProvider = hasLegacyProvider(
-      project as unknown as TsMorphProject,
-      command.app.makePath('adonisrc.ts')
-    )
+    legacyProvider = hasLegacyProvider(project, command.app.makePath('adonisrc.ts'))
   } catch (error) {
     if (error instanceof UnsupportedConfigShape) {
       command.exitCode = 1
