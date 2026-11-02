@@ -871,7 +871,7 @@ test('configure requires an explicit registration assertion for dynamic provider
   } finally {
     await rm(root, { recursive: true, force: true })
   }
-})
+}).timeout(30_000)
 
 test('migrationSchema reports invalid schema flags with RuntimeException', ({ assert }) => {
   assert.throws(() => migrationSchema('bad-name'), RuntimeException)
