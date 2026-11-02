@@ -1079,7 +1079,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The link is valid.",
+            "description": "The stored link exists and is unexpired, and the account email and active state currently match. Completion still checks the verifier and access policy.",
             "headers": {
               "Cache-Control": {
                 "$ref": "#/components/headers/NoStore"

@@ -128,18 +128,34 @@ test.group('magicLink.complete', (group) => {
 
   test('inactive and access-denied accounts cannot complete', async ({ assert }) => {
     let allowed = true
+    let accessChecks = 0
     const { user, account, token } = await issue({
       authentication: {
         guard: 'web',
         strategy: 'session',
-        canAccess: async () => allowed,
+        canAccess: async () => {
+          accessChecks++
+          return allowed
+        },
       },
     })
+    const issuedRow = await kit.db.from('login_link_tokens').where('tokenable_id', user.id).first()
+    assert.equal(accessChecks, 1)
     allowed = false
+    assert.isTrue(await account.magicLink.inspect({ token }))
+    assert.equal(accessChecks, 1, 'inspection must not evaluate access policy')
+    assert.deepEqual(
+      await kit.db.from('login_link_tokens').where('tokenable_id', user.id).first(),
+      issuedRow,
+      'inspection must leave the issued proof row unchanged'
+    )
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
       InvalidTokenError
     )
+    assert.equal(accessChecks, 2)
+    assert.lengthOf(await kit.db.from('login_link_tokens'), 0)
+    assert.isFalse(await account.magicLink.inspect({ token }))
     allowed = true
     const next = await reissue(user.email)
     await kit.db.from('users').where('id', user.id).update({ unverified_email: user.email })
