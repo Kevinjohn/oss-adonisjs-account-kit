@@ -43,12 +43,25 @@ export function planChecks(files, options = {}) {
     { skip: 'no existing changed files' }
   )
   const lintFiles = present.filter((path) => lintable.test(path))
+  // ESLint looks up the config nearest each named file, so an example app's own config (and its
+  // uninstalled plugins) would load. The root config ignores examples, as `pnpm lint` does.
   step(
     'lint',
     lintFiles.length > 0 || any(lintConfig) || any(dependencies),
     any(lintConfig) || any(dependencies)
       ? ['pnpm', 'lint', '--max-warnings', '0']
-      : ['pnpm', 'exec', 'eslint', '--max-warnings', '0', '--no-warn-ignored', '--', ...lintFiles],
+      : [
+          'pnpm',
+          'exec',
+          'eslint',
+          '--config',
+          'eslint.config.js',
+          '--max-warnings',
+          '0',
+          '--no-warn-ignored',
+          '--',
+          ...lintFiles,
+        ],
     { skip: 'no changed source files' }
   )
   step('typecheck', any(typed), ['pnpm', 'typecheck'], {
