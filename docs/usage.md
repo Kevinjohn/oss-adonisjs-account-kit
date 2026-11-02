@@ -195,7 +195,10 @@ notification and bearer capture run only after a verified commit.
 
 `onInvitationAccepted(user, invitation, trx)` runs inside the acceptance transaction. Use `trx`
 for all application writes, such as role assignment. Throwing rolls back both the account and
-application writes.
+application writes. The hook runs after the invitation row is locked, while resend and revoke lock
+the inviter's users row first. Do not update or lock the inviter's users row in this hook; keep
+inviter-side records in an application table, or PostgreSQL and MySQL can deadlock an acceptance
+against a concurrent resend or revoke.
 
 The shared new-password policy applies to registration, reset, invitation acceptance, activation,
 and password change. The service ceiling is 256 UTF-16 units. Login still checks an existing
