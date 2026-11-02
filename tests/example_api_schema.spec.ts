@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
-import { BaseModel, beforeCreate } from '@adonisjs/lucid/orm'
+import { beforeCreate } from '@adonisjs/lucid/orm'
+import type { BaseModel } from '@adonisjs/lucid/orm'
 import { bootTestApp } from './helpers/app.js'
 
 const migrationSource = new URL('../examples/api/database/migrations/', import.meta.url)
