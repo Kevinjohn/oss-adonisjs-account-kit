@@ -209,10 +209,10 @@ export class AccountKit {
   }
   /** Invitations with roles, for `invitations`. */
   readonly invitations = {
-    /** Invites an address with a role and emails the link; checks the actor's `authorize.invite`. */
+    /** Invites an address with a role and emails the link; checks `authorize.invite`. */
     send: (input: InvitationsSendInput): Promise<Invitation> =>
       this.enabled('invitations', () => sendInvitation(this.deps, input)),
-    /** Lists pending invitations a page at a time; checks the actor's `authorize.listInvitations`. */
+    /** Lists pending invitations a page at a time; checks `authorize.listInvitations`. */
     list: (input: InvitationsListInput): Promise<InvitationPage> =>
       this.enabled('invitations', () => listInvitations(this.deps, input)),
     /** The email and role from a valid invitation token, or null, without using the link. */
@@ -224,10 +224,13 @@ export class AccountKit {
      */
     accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
       this.enabled('invitations', () => acceptInvitation(this.deps, input)),
-    /** Replaces the invitation's link and emails it again; checks the actor's `authorize.manageInvitation`. */
+    /**
+     * Replaces the invitation's link and emails it again; checks `authorize.manageInvitation` and
+     * `authorize.invite` for the invitation's role.
+     */
     resend: (input: InvitationsResendInput): Promise<Invitation> =>
       this.enabled('invitations', () => resendInvitation(this.deps, input)),
-    /** Deletes a pending invitation; checks the actor's `authorize.manageInvitation`. */
+    /** Deletes a pending invitation; checks `authorize.manageInvitation`. */
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
   }
