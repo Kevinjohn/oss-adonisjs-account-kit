@@ -80,26 +80,15 @@ test.group('Account invitations', (group) => {
       ).status(),
       422
     )
-    assert.equal(
-      (
-        await client.post(invitationPath).json({
-          password: 'MemberPass123!',
-          passwordConfirmation: 'MemberPass123!',
-          fullName: '   ',
-        })
-      ).status(),
-      422
-    )
     const accepted = await client.post(invitationPath).json({
       password: 'MemberPass123!',
       passwordConfirmation: 'MemberPass123!',
-      fullName: 'New Member',
     })
     assert.equal(accepted.status(), 201)
     assert.equal(accepted.header('referrer-policy'), 'no-referrer')
     assert.equal((accepted.body() as { verified: boolean }).verified, true)
     const invited = await User.findByOrFail('email', 'new-member@example.test')
-    assert.equal(invited.fullName, 'New Member')
+    assert.isNull(invited.fullName)
     assert.isTrue(await hash.verify(invited.password!, 'MemberPass123!'))
     const role = await db.from('role_assignments').where('user_id', invited.id).first()
     assert.equal(role.role, 'editor')

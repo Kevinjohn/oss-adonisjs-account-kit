@@ -64,7 +64,8 @@ The reset integration steps for an existing Vue/Inertia application are document
 - Password reset requests return the same acknowledgement for known and unknown addresses. Proof
   inspection is read-only; completion changes the password once and ends every session, including
   the current browser. Invalid, used or expired links can be replaced from the reset request page.
-- Profile edits require the current password and only update the signed-in user's full name.
+- Profile edits require the current password and update only the signed-in user's full name; leaving
+  the field blank clears it.
 - Email requests require the current password and leave the old sign-in address active until the
   new owner confirms by POST. Cancellation invalidates the pending proof. Completion ends current
   sessions; sign in with the new address. Confirmation inspection does not switch the current
@@ -76,8 +77,10 @@ The reset integration steps for an existing Vue/Inertia application are document
 Forms submit through Inertia. Vine validation errors remain associated with labels, are summarized
 in a focusable alert, and move keyboard focus to that summary. Password fields clear after form
 errors and success; ordinary invalid fields remain in the Inertia form. Plain HTML validation
-flashes only the non-secret signup name and email fields. Inertia validation requests do not flash
-submitted input into the server-side session. Vue forms send field validation to Vine instead of
+flashes only the non-secret signup name and email fields. Signup requires an email and password;
+the full name is optional. A supplied name is trimmed and limited to 255 characters; an omitted or
+blank name is stored as `null`. Inertia validation requests do not flash submitted input into the
+server-side session. Vue forms send field validation to Vine instead of
 stopping at native browser constraints. Success and recovery messages are announced after
 redirects. Route tokens use the Vue `Form` component's `params` prop, and `aria-invalid` is present
 only while a field has an error.

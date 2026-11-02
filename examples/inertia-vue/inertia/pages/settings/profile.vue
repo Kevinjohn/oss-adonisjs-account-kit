@@ -8,7 +8,7 @@ import SettingsLayout from '~/layouts/settings.vue'
 defineOptions({ layout: [AppLayout, SettingsLayout] })
 defineProps<{ profile: { fullName: string | null; email: string } }>()
 const fields = [
-  { name: 'fullName', label: 'Full name' },
+  { name: 'fullName', label: 'Full name (optional)' },
   { name: 'currentPassword', label: 'Current password' },
 ]
 </script>
@@ -27,14 +27,13 @@ const fields = [
       ><div class="auth__form">
         <ErrorSummary :errors="errors" :fields="fields" />
         <div class="field">
-          <label class="field__label" for="fullName">Full name</label
+          <label class="field__label" for="fullName">Full name (optional)</label
           ><input
             id="fullName"
             class="field__input"
             name="fullName"
             autocomplete="name"
             :value="profile.fullName ?? ''"
-            required
             :aria-invalid="errors.fullName ? 'true' : undefined"
             :aria-describedby="errors.fullName ? 'name-error' : undefined"
           /><span v-if="errors.fullName" id="name-error" class="field__error">{{

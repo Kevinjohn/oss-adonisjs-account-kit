@@ -233,7 +233,7 @@ and confirm both succeed. Then request a reset:
 ```sh
 node ace serve --hmr
 curl -X POST http://localhost:3333/api/v1/auth/signup -H 'content-type: application/json' \
-  -d '{"fullName":"Example Person","email":"person@example.test","password":"old-password-123","passwordConfirmation":"old-password-123"}'
+  -d '{"email":"person@example.test","password":"old-password-123","passwordConfirmation":"old-password-123"}'
 curl -X POST http://localhost:3333/api/v1/auth/login -H 'content-type: application/json' \
   -d '{"email":"person@example.test","password":"old-password-123"}'
 curl -X POST http://localhost:3333/api/v1/auth/login -H 'content-type: application/json' \

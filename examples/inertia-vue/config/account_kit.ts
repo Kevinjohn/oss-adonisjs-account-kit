@@ -15,9 +15,13 @@ const loadUser = async () => {
 }
 
 /**
- * The starter signup form sends a full name; Account Kit stores it on the new user.
+ * The optional starter full name is trimmed and stored on the new user when supplied.
  */
-const fullNameFrom = (data: unknown) => (data as { fullName?: string | null }).fullName ?? null
+const fullNameFrom = (data: unknown) => {
+  const fullName = (data as { fullName?: unknown } | null)?.fullName
+  if (typeof fullName !== 'string' || fullName.trim() === '') return null
+  return fullName.trim()
+}
 
 const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {

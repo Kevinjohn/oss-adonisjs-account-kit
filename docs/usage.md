@@ -170,12 +170,14 @@ transaction lock. See the [`UsersAdapter` type](https://github.com/Kevinjohn/oss
 Authorization callbacks must return exactly `true` to allow. Use `actorId` inputs so the package
 loads the actor via the adapter. Invitation resend performs a preflight authorization transaction,
 charges limiter budgets after that transaction commits, then locks and reauthorizes before changing
-the invitation. Its callbacks can therefore run in both phases; SQLite transaction retries can call
-them again. Keep them read-only and repeatable, and use the optional authorization context's `trx`
-to read current permission state in each phase. The package locks the invitation row, not
-application permission records; lock mutable permission rows through `trx` when the application's
-policy requires serialization. The limiter runs outside the write transaction to avoid a
-same-database limiter deadlock with a one-connection SQLite pool.
+the invitation. Revoke locks and reloads the actor in its deletion transaction. Resend and revoke
+lock the users row before the invitation row, so their callbacks receive current actor state and
+keep the same lock order as invitation send. Resend callbacks can run in both phases; SQLite
+transaction retries can call them again. Keep callbacks read-only and repeatable, and use the
+optional authorization context's `trx` to read current permission state in each phase. The package
+does not lock application-owned permission records; lock mutable permission rows through `trx`
+when the application's policy requires serialization. Limiter consumption stays outside the write
+transaction to avoid a same-database limiter deadlock with a one-connection SQLite pool.
 
 Invitation send works the same way. `invite` runs once before throttling without a context, then
 again inside the insert transaction with `context.trx`, after the package locks the actor row.
@@ -193,7 +195,10 @@ notification and bearer capture run only after a verified commit.
 
 `onInvitationAccepted(user, invitation, trx)` runs inside the acceptance transaction. Use `trx`
 for all application writes, such as role assignment. Throwing rolls back both the account and
-application writes.
+application writes. The hook runs after the invitation row is locked, while resend and revoke lock
+the inviter's users row first. Do not update or lock the inviter's users row in this hook; keep
+inviter-side records in an application table, or PostgreSQL and MySQL can deadlock an acceptance
+against a concurrent resend or revoke.
 
 The shared new-password policy applies to registration, reset, invitation acceptance, activation,
 and password change. The service ceiling is 256 UTF-16 units. Login still checks an existing

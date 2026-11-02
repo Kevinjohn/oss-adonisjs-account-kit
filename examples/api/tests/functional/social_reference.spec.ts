@@ -56,7 +56,7 @@ test.group('Social reference', (group) => {
     assert.notProperty(body(callback), 'token')
     assert.lengthOf(await db.from(User.table).where('email', email), 0)
 
-    for (const fullName of ['   ', 'A'.repeat(101)]) {
+    for (const fullName of ['A'.repeat(256)]) {
       const invalid = await client.post('/api/v1/auth/oauth/registration').json({
         continuation,
         fullName,
@@ -66,10 +66,7 @@ test.group('Social reference', (group) => {
       assert.lengthOf(await db.from(User.table).where('email', email), 0)
     }
 
-    const completed = await client.post('/api/v1/auth/oauth/registration').json({
-      continuation,
-      fullName: '  Confirmed Name  ',
-    })
+    const completed = await client.post('/api/v1/auth/oauth/registration').json({ continuation })
     assert.equal(completed.status(), 200, JSON.stringify(completed.body()))
     assert.equal(body(completed).status, 'new')
     const handoffCode = body(completed).handoffCode as string
@@ -119,7 +116,7 @@ test.group('Social reference', (group) => {
     })
     assert.equal(replay.status(), 400)
     const created = await User.findByOrFail('email', email)
-    assert.equal(created.fullName, 'Confirmed Name')
+    assert.isNull(created.fullName)
     assert.isNull(created.password)
 
     const reauth = await client

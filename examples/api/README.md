@@ -49,9 +49,11 @@ pnpm install
 cp .env.example .env
 node ace generate:key
 node ace codegen
-node ace migration:run
-pnpm dev
 ```
+
+For the default `users` table, run `node ace migration:run`. If you want a custom table or ID type,
+follow [Schema variants](#schema-variants) first and run its migration steps instead; the settings
+must be in `.env` before the first migration. Then start the server with `pnpm dev`.
 
 The API listens at <http://localhost:3333>; `GET /` returns `{"hello":"world"}`. The `.env.example`
 uses SQLite, and `node ace generate:key` fills the local `APP_KEY`. Its OAuth values are inert
@@ -62,13 +64,47 @@ verification, login, and account API flows over HTTP. The suites expect the loop
 in-memory limiter that `test:consumer` sets, so the development `.env` values alone fail the login
 throttling test.
 
+### Schema variants
+
+`ACCOUNT_KIT_USERS_TABLE` and `ACCOUNT_KIT_USER_ID_TYPE` select the physical users table and its
+identifier type (`integer`, `string`, or `uuid`). The committed example migrations use these same
+settings for every account-owned foreign key. Choose the table and ID type before the first
+migration. For example, to use `account_users` with string IDs, set these values in `.env`:
+
+```dotenv
+ACCOUNT_KIT_USERS_TABLE=account_users
+ACCOUNT_KIT_USER_ID_TYPE=string
+```
+
+With a fresh database, run these commands from `examples/api`:
+
+```sh
+node ace migration:run
+node ace schema:generate
+```
+
+Lucid generates `AccountUserSchema` in `database/schema.ts` for `account_users`. In
+`app/models/user.ts`, point the existing `UserSchema` alias at that export:
+
+```ts
+import { AccountUserSchema as UserSchema } from '#database/schema'
+```
+
+Keep `User.table` set from `ACCOUNT_KIT_USERS_TABLE` and retain its ID hook for non-integer IDs.
+For another custom table, use the schema class name exported by `node ace schema:generate` in the
+same import. Changing the environment alone does not retarget an existing database or a schema
+generated under earlier settings. These steps replace the default `node ace migration:run` above;
+do not run the default migration first. For string and UUID IDs, the example model already enables
+`selfAssignPrimaryKey` and assigns a UUID before insertion.
+
 In development, the example prints proof links to the server log and keeps its in-memory capture
 for tests. This makes the HTTP journey inspectable locally; it does not send email or prove
 recipient delivery. The production path deliberately does not print proof links. Use a configured
 transport in an application.
 
-For a short HTTP smoke, submit a signup with `fullName`, `email`, `password`, and
-`passwordConfirmation` to `POST /api/v1/auth/signup`. Copy the verification URL from the server log
+For a short HTTP smoke, submit a signup with `email`, `password`, and `passwordConfirmation` to
+`POST /api/v1/auth/signup`; `fullName` is optional. A supplied name is trimmed and limited to 255
+characters, and missing or blank names are stored as `null`. Copy the verification URL from the server log
 and POST it with the chosen password and confirmation. Then POST the credentials to
 `/api/v1/auth/login` and use the returned bearer token for `GET /api/v1/account/profile`. The
 [core API walkthrough](../../docs/guides/core-api.md) explains the same guard and proof boundaries.

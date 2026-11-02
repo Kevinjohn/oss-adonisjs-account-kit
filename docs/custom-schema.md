@@ -15,6 +15,13 @@ set `static selfAssignPrimaryKey = true` and assign the key before insertion. Wi
 policy, SQLite can replace the in-memory key with its numeric rowid and subsequent refreshes fail.
 The API fixture selects this policy for its string/UUID modes.
 
+For the complete Lucid example flow, set the example's table and ID type in `.env` before its first
+migration, then run `migration:run` and `schema:generate` and point `app/models/user.ts` at the
+generated user schema class. See [the API example's schema steps](../examples/api/README.md#schema-variants)
+for the exact commands and import.
+Its optional-name migration preserves existing names; rollback stops with an actionable error while
+any user has a null `full_name`, so assign names before rolling it back.
+
 When changing an existing database, inspect foreign-key types and all migration references. Match
 `user_id` and `inviter_id` columns to the actual user ID type. Ensure the email unique index covers
 only the email column. PostgreSQL duplicate-email classification discovers the single-column email

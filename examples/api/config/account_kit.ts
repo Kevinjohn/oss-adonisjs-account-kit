@@ -38,7 +38,6 @@ const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
     const fullName = registrationFullName(data)
-    if (!fullName) throw new Error('A full name is required to create an account')
     user.fullName = fullName
   },
 })
@@ -58,8 +57,8 @@ export default defineConfig({
     availability: 'open',
     mapFields(data) {
       const fullName = registrationFullName(data)
-      if (!fullName || fullName.length > 100)
-        throw new Error('A full name of at most 100 characters is required')
+      if (fullName && fullName.length > 255)
+        throw new Error('A full name of at most 255 characters is allowed')
       return { fullName }
     },
   },
