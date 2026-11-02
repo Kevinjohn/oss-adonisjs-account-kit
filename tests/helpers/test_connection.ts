@@ -1,3 +1,23 @@
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+
+interface PostgresClient {
+  connect(): Promise<void>
+  query(sql: string): Promise<unknown>
+  end(): Promise<void>
+}
+
+interface PostgresClientConstructor {
+  new (options: {
+    host: string
+    port: number
+    user: string
+    password: string
+    database: string
+  }): PostgresClient
+}
+
 export type TestClient = 'pg' | 'mysql2' | 'better-sqlite3'
 
 /** The database client under test, from `DB_CLIENT`. */
@@ -14,14 +34,20 @@ export interface TestConnectionOptions {
   sqliteFilename?: string
   sqliteBusyTimeout?: number
   sqlitePoolMax?: number
+  postgresSchema?: string
+  onPostgresSchemaCreated?: () => void
 }
 
 /** The Lucid connection config for the client under test. */
 export function testConnection(client: TestClient, options: TestConnectionOptions) {
-  const { migrationDirectory, sqliteFilename } = options
+  const { migrationDirectory, sqliteFilename, postgresSchema, onPostgresSchemaCreated } = options
+  if (postgresSchema && !/^account_schema_fixture_[a-f0-9]{32}$/.test(postgresSchema)) {
+    throw new Error('PostgreSQL fixture schema must use a generated fixture identifier')
+  }
   return client === 'pg'
     ? {
         client: 'pg' as const,
+        ...(postgresSchema ? { searchPath: [postgresSchema] } : {}),
         connection: {
           host: process.env.DB_HOST ?? '127.0.0.1',
           port: Number(process.env.DB_PORT ?? 55432),
@@ -29,7 +55,25 @@ export function testConnection(client: TestClient, options: TestConnectionOption
           password: process.env.DB_PASSWORD ?? '',
           database: process.env.DB_DATABASE ?? 'account_kit_test',
         },
-        pool: { min: 1, max: 4 },
+        pool: {
+          min: 1,
+          max: 4,
+          ...(postgresSchema
+            ? {
+                afterCreate(
+                  connection: {
+                    query(sql: string, callback: (error: Error | null) => void): void
+                  },
+                  done: (error: Error | null, connection: unknown) => void
+                ) {
+                  connection.query(`CREATE SCHEMA IF NOT EXISTS "${postgresSchema}"`, (error) => {
+                    if (!error) onPostgresSchemaCreated?.()
+                    done(error, connection)
+                  })
+                },
+              }
+            : {}),
+        },
         migrations: { paths: [migrationDirectory] },
       }
     : client === 'mysql2'
@@ -73,4 +117,25 @@ export function testConnection(client: TestClient, options: TestConnectionOption
           },
           migrations: { paths: [migrationDirectory] },
         }
+}
+
+export async function dropPostgresFixtureSchema(schema: string): Promise<void> {
+  if (!/^account_schema_fixture_[a-f0-9]{32}$/.test(schema)) {
+    throw new Error('PostgreSQL fixture schema must use a generated fixture identifier')
+  }
+
+  const { Client } = require('pg') as { Client: PostgresClientConstructor }
+  const client = new Client({
+    host: process.env.DB_HOST ?? '127.0.0.1',
+    port: Number(process.env.DB_PORT ?? 55432),
+    user: process.env.DB_USER ?? 'account_kit',
+    password: process.env.DB_PASSWORD ?? '',
+    database: process.env.DB_DATABASE ?? 'account_kit_test',
+  })
+  try {
+    await client.connect()
+    await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+  } finally {
+    await client.end()
+  }
 }

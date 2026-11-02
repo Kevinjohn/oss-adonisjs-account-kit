@@ -15,12 +15,7 @@ export default class extends BaseSchema {
           : idType === 'uuid'
             ? table.uuid('tokenable_id')
             : table.string('tokenable_id')
-      tokenableId
-        .notNullable()
-        .unique()
-        .references('id')
-        .inTable(usersTable)
-        .onDelete('CASCADE')
+      tokenableId.notNullable().unique().references('id').inTable(usersTable).onDelete('CASCADE')
       table.string('email', 254).notNullable()
       table.string('current_email', 254).notNullable().defaultTo('')
       table.string('purpose', 32).notNullable().defaultTo('activation')

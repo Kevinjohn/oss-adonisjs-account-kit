@@ -62,6 +62,37 @@ verification, login, and account API flows over HTTP. The suites expect the loop
 in-memory limiter that `test:consumer` sets, so the development `.env` values alone fail the login
 throttling test.
 
+### Schema variants
+
+`ACCOUNT_KIT_USERS_TABLE` and `ACCOUNT_KIT_USER_ID_TYPE` select the physical users table and its
+identifier type (`integer`, `string`, or `uuid`). The committed example migrations use these same
+settings for every account-owned foreign key. Set them in `.env` before the first migration. For
+example, to use `account_users` with string IDs, set:
+
+```dotenv
+ACCOUNT_KIT_USERS_TABLE=account_users
+ACCOUNT_KIT_USER_ID_TYPE=string
+```
+
+With a fresh database, run these commands from `examples/api`:
+
+```sh
+node ace migration:run
+node ace schema:generate
+```
+
+Lucid generates `AccountUserSchema` in `database/schema.ts` for `account_users`. In
+`app/models/user.ts`, point the existing `UserSchema` alias at that export:
+
+```ts
+import { AccountUserSchema as UserSchema } from '#database/schema'
+```
+
+Keep `User.table` set from `ACCOUNT_KIT_USERS_TABLE` and retain its ID hook for non-integer IDs.
+For another custom table, use the schema class name exported by `node ace schema:generate` in the
+same import. Changing the environment alone does not retarget an existing database or a schema
+generated under earlier settings.
+
 In development, the example prints proof links to the server log and keeps its in-memory capture
 for tests. This makes the HTTP journey inspectable locally; it does not send email or prove
 recipient delivery. The production path deliberately does not print proof links. Use a configured
