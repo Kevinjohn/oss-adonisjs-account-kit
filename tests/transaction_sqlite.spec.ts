@@ -169,6 +169,33 @@ test.group('managed transaction wrapper', (group) => {
     let commits = 0
     let afterCommits = 0
     let eventSawOpenTransaction = false
+    let knexTransaction:
+      | {
+          on(
+            event: 'query-error',
+            listener: (error: unknown, query: { sql?: string }) => void
+          ): void
+          off(
+            event: 'query-error',
+            listener: (error: unknown, query: { sql?: string }) => void
+          ): void
+          connection?: typeof native
+        }
+      | undefined
+    const queryErrorListeners: Array<{
+      emitter: NonNullable<typeof knexTransaction>
+      listener: (error: unknown, query: { sql?: string }) => void
+    }> = []
+    let commitBusyObserved = false
+    let signalCommitBusy!: () => void
+    let failCommitBusy!: (error: Error) => void
+    const commitBusy = new Promise<void>((resolve, reject) => {
+      signalCommitBusy = resolve
+      failCommitBusy = reject
+    })
+    void commitBusy.catch(() => {})
+    let guard: ReturnType<typeof setTimeout> | undefined
+    let commitOperation: Promise<unknown> | undefined
     try {
       await resetSchema(customKit)
       await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
@@ -178,24 +205,28 @@ test.group('managed transaction wrapper', (group) => {
       })
       reader = await customKit.db.transaction()
       await reader.from('users').first()
-      let releasedAt = 0
-      const started = performance.now()
-      const release = new Promise<void>((resolve, reject) => {
-        setTimeout(async () => {
-          releasedAt = performance.now() - started
-          try {
-            await reader!.commit()
-            resolve()
-          } catch (error) {
-            reject(error)
+      guard = setTimeout(
+        () => failCommitBusy(new Error('DELETE-journal COMMIT never reported SQLITE_BUSY')),
+        5000
+      )
+      const operation = transaction(customKit.db, async (trx) => {
+        knexTransaction = trx.getWriteClient() as unknown as NonNullable<typeof knexTransaction>
+        native = (await trx.getWriteClient().client.acquireConnection()) as typeof native
+        const onQueryError = (error: unknown, query: { sql?: string }) => {
+          const code = (error as { code?: string } | null)?.code
+          if (
+            /^\s*commit\b/i.test(query.sql ?? '') &&
+            (code === 'SQLITE_BUSY' || code === 'SQLITE_BUSY_SNAPSHOT')
+          ) {
+            commitBusyObserved = true
+            signalCommitBusy()
           }
-        }, 80)
-      })
-      await transaction(customKit.db, async (trx) => {
-        native = await trx.getWriteClient().client.acquireConnection()
+        }
+        knexTransaction.on('query-error', onQueryError)
+        queryErrorListeners.push({ emitter: knexTransaction, listener: onQueryError })
         trx.on('commit', () => {
           commits++
-          eventSawOpenTransaction ||= native!.inTransaction
+          eventSawOpenTransaction ||= native?.inTransaction === true
         })
         trx.after('commit', () => {
           afterCommits++
@@ -205,8 +236,20 @@ test.group('managed transaction wrapper', (group) => {
           .where('email', 'commit@example.test')
           .update({ email: 'committed@example.test' })
       })
-      await release
-      assert.isBelow(releasedAt, 500)
+      commitOperation = operation
+      void operation.then(
+        () => {
+          if (!commitBusyObserved)
+            failCommitBusy(new Error('Transaction completed before a busy COMMIT was observed'))
+        },
+        (error) => {
+          if (!commitBusyObserved)
+            failCommitBusy(error instanceof Error ? error : new Error(String(error)))
+        }
+      )
+      await commitBusy
+      await reader.commit()
+      await operation
       assert.isFalse(native!.inTransaction)
       assert.equal(native!.pragma('busy_timeout', { simple: true }), 5000)
       assert.equal(commits, 1)
@@ -220,8 +263,11 @@ test.group('managed transaction wrapper', (group) => {
         assert.equal(timeout[0].timeout, 5000)
       })
     } finally {
-      if (native?.inTransaction) native.exec('ROLLBACK')
+      if (guard) clearTimeout(guard)
+      for (const { emitter, listener } of queryErrorListeners) emitter.off('query-error', listener)
       if (reader && !reader.isCompleted) await reader.rollback()
+      if (commitOperation) await commitOperation.catch(() => {})
+      if (native?.inTransaction) native.exec('ROLLBACK')
       await customKit.close()
     }
   }).timeout(8000)

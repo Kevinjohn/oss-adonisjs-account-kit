@@ -160,7 +160,10 @@ export class AccountKit {
      */
     request: (input: MagicLinkRequestInput): Promise<void> =>
       this.enabled('magicLinkLogin', () => requestMagicLink(this.deps, input)),
-    /** Whether a sign-in link is still usable, without using it up. */
+    /**
+     * Checks that the stored link exists, is unexpired, and still matches the account's email and
+     * active state. This read-only check does not evaluate `canAccess` or guarantee sign-in.
+     */
     inspect: (input: MagicLinkInspectInput): Promise<boolean> =>
       this.enabled('magicLinkLogin', () => inspectMagicLink(this.deps, input)),
     /**
@@ -204,27 +207,27 @@ export class AccountKit {
     complete: (input: VerificationCompleteInput): Promise<'verified'> =>
       this.enabled('emailVerification', () => completeVerification(this.deps, input)),
   }
-  /** Invitations with roles, for `invitations`. Every action checks your `authorize` callbacks. */
+  /** Invitations with roles, for `invitations`. */
   readonly invitations = {
-    /** Invites an address with a role and emails the link. */
+    /** Invites an address with a role and emails the link; checks the actor's `authorize.invite`. */
     send: (input: InvitationsSendInput): Promise<Invitation> =>
       this.enabled('invitations', () => sendInvitation(this.deps, input)),
-    /** Lists pending invitations a page at a time. */
+    /** Lists pending invitations a page at a time; checks the actor's `authorize.listInvitations`. */
     list: (input: InvitationsListInput): Promise<InvitationPage> =>
       this.enabled('invitations', () => listInvitations(this.deps, input)),
-    /** The email and role of a pending invitation, or null, without using the link. */
+    /** The email and role from a valid invitation token, or null, without using the link. */
     inspect: (input: InvitationsInspectInput): Promise<Pick<Invitation, 'email' | 'role'> | null> =>
       this.enabled('invitations', () => inspectInvitation(this.deps.db, input)),
     /**
-     * Uses the link once, creates the account and runs `onInvitationAccepted` in the same
-     * transaction.
+     * Uses the invitation token once, creates the account and runs `onInvitationAccepted` in the
+     * same transaction. It does not call an actor authorization callback.
      */
     accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
       this.enabled('invitations', () => acceptInvitation(this.deps, input)),
-    /** Replaces the invitation's link and emails it again. */
+    /** Replaces the invitation's link and emails it again; checks the actor's `authorize.manageInvitation`. */
     resend: (input: InvitationsResendInput): Promise<Invitation> =>
       this.enabled('invitations', () => resendInvitation(this.deps, input)),
-    /** Deletes a pending invitation. */
+    /** Deletes a pending invitation; checks the actor's `authorize.manageInvitation`. */
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.enabled('invitations', () => revokeInvitation(this.deps, input)),
   }

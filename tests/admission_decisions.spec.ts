@@ -15,7 +15,9 @@ import type { AccountUser } from '../src/types.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { credentialsFixtures } from './helpers/credentials.js'
+import { locksRows } from './helpers/dialect.js'
 import { insertUser, makeNotify, tokenFrom } from './helpers/fakes.js'
+import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
 import { clientChallenge, provider } from './helpers/social_identity.js'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
@@ -209,35 +211,112 @@ test.group('admission decisions', (group) => {
     }
   })
 
-  test('two approvers deciding on each other at once apply in some serial order', async ({
-    assert,
-  }) => {
-    const first = await owner('first@example.test')
-    const second = await owner('second@example.test')
-    // Each decision waits briefly for the other inside its transaction, so both would hold their
-    // locks at once if the two could run together.
-    let arrived = 0
-    const decide = async () => {
-      arrived++
-      for (let waited = 0; arrived < 2 && waited < 20; waited++)
-        await new Promise((resolve) => setTimeout(resolve, 10))
-      return true
-    }
-    const { admission } = makeAdmission(kit, {
-      approval: { required: true, authorize: { decide, list: async () => true } },
+  if (!locksRows) {
+    test('SQLite global writer serialization allows one reciprocal revocation', async ({
+      assert,
+    }) => {
+      const first = await owner('first@example.test')
+      const second = await owner('second@example.test')
+      const { admission } = makeAdmission(kit, approvalOnly)
+      const results = await Promise.allSettled([
+        admission.revoke({ actorId: first.id, userId: second.id }),
+        admission.revoke({ actorId: second.id, userId: first.id }),
+      ])
+      assert.lengthOf(
+        results.filter((result) => result.status === 'fulfilled'),
+        1
+      )
+      const refused = results.find((result) => result.status === 'rejected')
+      assert.instanceOf((refused as PromiseRejectedResult).reason, AuthorizationError)
+      assert.include(['approved', 'revoked'], await status(first))
+      assert.include(['approved', 'revoked'], await status(second))
+      assert.notEqual(await status(first), await status(second))
     })
-    const results = await Promise.allSettled([
-      admission.revoke({ actorId: first.id, userId: second.id }),
-      admission.revoke({ actorId: second.id, userId: first.id }),
-    ])
-    // The first revocation leaves the other actor revoked, so the second is refused.
-    assert.lengthOf(
-      results.filter((result) => result.status === 'fulfilled'),
-      1
-    )
-    const refused = results.find((result) => result.status === 'rejected')
-    assert.instanceOf((refused as PromiseRejectedResult).reason, AuthorizationError)
-  })
+  }
+
+  if (locksRows) {
+    test('reciprocal decisions wait on the shared sorted user locks', async ({ assert }) => {
+      const first = await owner('first@example.test')
+      const second = await owner('second@example.test')
+      let authorizeReady!: () => void
+      let releaseAuthorize!: () => void
+      const ready = new Promise<void>((resolve) => {
+        authorizeReady = resolve
+      })
+      const hold = new Promise<void>((resolve) => {
+        releaseAuthorize = resolve
+      })
+      const { admission } = makeAdmission(kit, {
+        approval: {
+          required: true,
+          authorize: {
+            decide: async () => {
+              authorizeReady()
+              await hold
+              return true
+            },
+            list: async () => true,
+          },
+        },
+      })
+
+      let firstOperation: Promise<unknown> | undefined
+      let secondOperation: Promise<unknown> | undefined
+      const firstTracked = startWithBackendId(kit, () =>
+        admission.revoke({ actorId: first.id, userId: second.id })
+      )
+      firstOperation = firstTracked.operation
+      try {
+        const firstBackendId = await firstTracked.backendId
+        const firstOutcome = firstTracked.operation.then(
+          () => ({ kind: 'completed' as const }),
+          (error: unknown) => ({ kind: 'failed' as const, error })
+        )
+        const firstStage = await Promise.race([ready.then(() => null), firstOutcome])
+        if (firstStage) {
+          if (firstStage.kind === 'failed') throw firstStage.error
+          throw new Error('First reciprocal decision completed before authorization was held')
+        }
+
+        const secondTracked = startWithBackendId(kit, () =>
+          admission.revoke({ actorId: second.id, userId: first.id })
+        )
+        secondOperation = secondTracked.operation
+        const secondBackendId = await secondTracked.backendId
+        const secondOutcome = secondTracked.operation.then(
+          () => ({ kind: 'completed' as const }),
+          (error: unknown) => ({ kind: 'failed' as const, error })
+        )
+        const lockWait = waitForDatabaseLockWait(
+          kit,
+          assert,
+          secondBackendId,
+          firstBackendId,
+          'users'
+        ).then(
+          () => ({ kind: 'waiting' as const }),
+          (error: unknown) => ({ kind: 'wait-failed' as const, error })
+        )
+        const secondStage = await Promise.race([lockWait, secondOutcome])
+        if (secondStage.kind === 'failed' || secondStage.kind === 'wait-failed')
+          throw secondStage.error
+        if (secondStage.kind === 'completed')
+          throw new Error('Opposite decision completed before a database lock wait was observed')
+
+        releaseAuthorize()
+        const results = await Promise.allSettled([firstTracked.operation, secondTracked.operation])
+        assert.equal(results[0].status, 'fulfilled')
+        assert.equal(results[1].status, 'rejected')
+        assert.instanceOf((results[1] as PromiseRejectedResult).reason, AuthorizationError)
+        assert.equal(await status(first), 'approved')
+        assert.equal(await status(second), 'revoked')
+      } finally {
+        releaseAuthorize()
+        await firstOperation?.catch(() => {})
+        await secondOperation?.catch(() => {})
+      }
+    }).timeout(10_000)
+  }
 
   test('a rejection survives login, verification, magic link, social login and email change', async ({
     assert,

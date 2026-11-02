@@ -36,7 +36,8 @@ English "Your sign-in link" template. Run `node ace configure adonisjs-account-k
 // The client keeps `verifier` and sends only its SHA-256 challenge.
 await kit.magicLink.request({ email, clientKey: request.ip(), clientChallenge })
 
-// Read-only. Mail scanners prefetch links, so inspection never uses the link.
+// Read-only. Checks link existence/expiry and the account's current email/active state only.
+// It does not consume the link, evaluate canAccess, or guarantee that completion will sign in.
 const valid = await kit.magicLink.inspect({ token })
 
 // Uses the link and signs in through the configured guard.
@@ -45,6 +46,10 @@ const { account, credential } = await kit.magicLink.complete({ token, verifier }
 
 - `clientChallenge` is the base64url SHA-256 of `verifier` (43 characters). `verifier` is 43 to 128
   characters from `A-Z a-z 0-9 - . _ ~`, as in OAuth PKCE.
+- `inspect` checks that the stored link exists and is unexpired, and that the account's current
+  email matches the link and the account is active. It is read-only; it does not call `canAccess`
+  and does not guarantee that completion will sign in. Completion checks the verifier and current
+  access policy, consumes the link, and reports a failed check as `InvalidTokenError`.
 - `request` returns nothing for every address, waits out `minRequestMs`, and throttles by client
   and by email. Unknown addresses, accounts that never confirmed their email, and accounts
   `canAccess` denies get no link.
@@ -77,7 +82,9 @@ With `registerManagedRoutes`, add `magicLinkLogin` to `enabled`:
 
 The emailed URL points at your frontend (`urls.magicLink`). The page should:
 
-1. Call `GET auth/magic-link/:token` to show whether the link is still valid. This does not use it.
+1. Call `GET auth/magic-link/:token` to check link existence, expiry, email and active-account
+   state. This does not use it or guarantee sign-in; completion checks the verifier and access
+   policy again.
 2. Show a "Sign in" button. Do not complete on page load: link scanners and previews open links
    automatically.
 3. On click, call `POST auth/magic-link/:token` (with `verifier` for access-token clients).

@@ -177,7 +177,8 @@ export async function waitForDatabaseLockWait(
   kit: TestApp,
   assert: { isAtLeast(actual: number, expected: number): void },
   waitingBackendId: string,
-  blockingBackendId: string
+  blockingBackendId: string,
+  table = 'users'
 ) {
   const deadline = Date.now() + 5_000
   let waiting = 0
@@ -208,9 +209,9 @@ export async function waitForDatabaseLockWait(
             and requested.thread_id = waits.requesting_thread_id
            where waiter.processlist_id = ? and blocker.processlist_id = ?
              and requested.object_schema = database()
-             and requested.object_name = 'users'
+             and requested.object_name = ?
              and requested.lock_status = 'WAITING'`,
-          [waitingBackendId, blockingBackendId]
+          [waitingBackendId, blockingBackendId, table]
         )
         .exec()
       waiting = Number(result[0][0].waiting)

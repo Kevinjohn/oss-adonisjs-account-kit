@@ -241,10 +241,43 @@ test.group('passwordReset.reset', (group) => {
     if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
-    let native: { inTransaction: boolean; exec(sql: string): void } | undefined
+    let native:
+      | {
+          inTransaction: boolean
+          exec(sql: string): void
+          pragma(statement: string, options?: { simple: true }): number | string
+        }
+      | undefined
+    let knexTransaction:
+      | {
+          on(
+            event: 'query-error',
+            listener: (error: unknown, query: { sql?: string }) => void
+          ): void
+          off(
+            event: 'query-error',
+            listener: (error: unknown, query: { sql?: string }) => void
+          ): void
+          connection?: typeof native
+        }
+      | undefined
     let readerReleased = false
     let calls = 0
     let observedCommitted = false
+    let commitBusyObserved = false
+    let signalCommitBusy!: () => void
+    let failCommitBusy!: (error: Error) => void
+    const commitBusy = new Promise<void>((resolve, reject) => {
+      signalCommitBusy = resolve
+      failCommitBusy = reject
+    })
+    void commitBusy.catch(() => {})
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    let resetOperation: Promise<unknown> | undefined
+    const queryErrorListeners: Array<{
+      emitter: NonNullable<typeof knexTransaction>
+      listener: (error: unknown, query: { sql?: string }) => void
+    }> = []
     try {
       await resetSchema(customKit)
       await customKit.db.rawQuery('PRAGMA journal_mode = DELETE').exec()
@@ -273,7 +306,22 @@ test.group('passwordReset.reset', (group) => {
           users: {
             ...users,
             async setPassword(id, password, trx) {
-              native = await trx.getWriteClient().client.acquireConnection()
+              knexTransaction = trx.getWriteClient() as unknown as NonNullable<
+                typeof knexTransaction
+              >
+              native = (await trx.getWriteClient().client.acquireConnection()) as typeof native
+              const onQueryError = (error: unknown, query: { sql?: string }) => {
+                const code = (error as { code?: string } | null)?.code
+                if (
+                  /^\s*commit\b/i.test(query.sql ?? '') &&
+                  (code === 'SQLITE_BUSY' || code === 'SQLITE_BUSY_SNAPSHOT')
+                ) {
+                  commitBusyObserved = true
+                  signalCommitBusy()
+                }
+              }
+              knexTransaction.on('query-error', onQueryError)
+              queryErrorListeners.push({ emitter: knexTransaction, listener: onQueryError })
               await users.setPassword(id, password, trx)
             },
           },
@@ -283,29 +331,40 @@ test.group('passwordReset.reset', (group) => {
             observedCommitted =
               readerReleased &&
               native?.inTransaction === false &&
+              native?.pragma('busy_timeout', { simple: true }) === 5000 &&
               (await customKit.hash.verify(row.password, 'new-password123'))
           },
         })
       )
       const account = accountKit(customKit, config)
-      const release = new Promise<void>((resolve, reject) => {
-        setTimeout(async () => {
-          try {
-            await reader!.commit()
-            readerReleased = true
-            resolve()
-          } catch (error) {
-            reject(error)
-          }
-        }, 80)
-      })
-      await account.passwordReset.reset({ token, password: 'new-password123' })
-      await release
+      timeout = setTimeout(
+        () => failCommitBusy(new Error('DELETE-journal COMMIT never reported SQLITE_BUSY')),
+        5000
+      )
+      const reset = account.passwordReset.reset({ token, password: 'new-password123' })
+      resetOperation = reset
+      void reset.then(
+        () => {
+          if (!commitBusyObserved)
+            failCommitBusy(new Error('Password reset completed before a busy COMMIT was observed'))
+        },
+        (error) => {
+          if (!commitBusyObserved)
+            failCommitBusy(error instanceof Error ? error : new Error(String(error)))
+        }
+      )
+      await commitBusy
+      await reader.commit()
+      readerReleased = true
+      await reset
       assert.equal(calls, 1)
       assert.isTrue(observedCommitted)
     } finally {
-      if (native?.inTransaction) native.exec('ROLLBACK')
+      if (timeout) clearTimeout(timeout)
+      for (const { emitter, listener } of queryErrorListeners) emitter.off('query-error', listener)
       if (reader && !reader.isCompleted) await reader.rollback()
+      if (resetOperation) await resetOperation.catch(() => {})
+      if (native?.inTransaction) native.exec('ROLLBACK')
       await customKit.close()
     }
   }).timeout(8000)
