@@ -10,174 +10,85 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import { configure, migrationNames, migrationSchema } from '../configure.js'
 
+async function createConfigureProject() {
+  const root = await mkdtemp(join(tmpdir(), 'account-kit-configure-'))
+  await writeFile(
+    join(root, 'package.json'),
+    '{"type":"module","devDependencies":{"@adonisjs/assembler":"8.5.2"}}'
+  )
+  await writeFile(join(root, 'tsconfig.json'), '{}')
+  await writeFile(
+    join(root, 'adonisrc.ts'),
+    "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [] })\n"
+  )
+  await symlink(
+    fileURLToPath(new URL('../node_modules', import.meta.url)),
+    join(root, 'node_modules')
+  )
+  const packageEntry = process.env.ACCOUNT_KIT_PACKAGE_ENTRY
+    ? pathToFileURL(process.env.ACCOUNT_KIT_PACKAGE_ENTRY).href
+    : new URL('../index.ts', import.meta.url).href
+  const importer = (specifier: string) =>
+    specifier === 'adonisjs-account-kit' ? import(packageEntry) : import(specifier)
+  const ignitorFor = (rootDirectory: string) =>
+    new IgnitorFactory()
+      .withCoreProviders()
+      .withCoreConfig()
+      .merge({
+        rcFileContents: {
+          providers: [],
+          commands: [async () => new ListLoader([Configure])],
+        },
+      })
+      .create(pathToFileURL(`${rootDirectory}/`), { importer })
+
+  const envPath = join(root, 'start', 'env.ts')
+  await mkdir(join(root, 'start'), { recursive: true })
+  await writeFile(
+    envPath,
+    "import { Env } from '@adonisjs/core/env'\n\nexport default await Env.create(new URL('../', import.meta.url), {\n  NODE_ENV: Env.schema.enum(['development', 'production', 'test'] as const),\n})\n"
+  )
+  const configDirectory = join(root, 'config')
+  const migrationsDirectory = join(root, 'database', 'migrations')
+  await mkdir(configDirectory, { recursive: true })
+  await mkdir(migrationsDirectory, { recursive: true })
+  const configPath = join(configDirectory, 'account_kit.ts')
+  const existingMigrationPath = join(
+    migrationsDirectory,
+    'custom_account_kit_create_password_reset_tokens.ts'
+  )
+  const existingMigration = '// application-owned migration\n'
+  await writeFile(existingMigrationPath, existingMigration)
+
+  return {
+    root,
+    envPath,
+    configDirectory,
+    migrationsDirectory,
+    configPath,
+    existingMigrationPath,
+    existingMigration,
+    ignitorFor,
+  }
+}
+
 test('configures the package idempotently without replacing application-owned files', async ({
   assert,
 }) => {
-  const root = await mkdtemp(join(tmpdir(), 'account-kit-configure-'))
+  const project = await createConfigureProject()
+  const {
+    root,
+    envPath,
+    migrationsDirectory,
+    configPath,
+    existingMigrationPath,
+    existingMigration,
+    ignitorFor,
+  } = project
   const originalProcessExitCode = process.exitCode
+  const existingConfig = 'export default { ownerSetting: true }\n'
   try {
-    await writeFile(
-      join(root, 'package.json'),
-      '{"type":"module","devDependencies":{"@adonisjs/assembler":"8.5.2"}}'
-    )
-    await writeFile(join(root, 'tsconfig.json'), '{}')
-    await writeFile(
-      join(root, 'adonisrc.ts'),
-      "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [] })\n"
-    )
-    await symlink(
-      fileURLToPath(new URL('../node_modules', import.meta.url)),
-      join(root, 'node_modules')
-    )
-    const packageEntry = process.env.ACCOUNT_KIT_PACKAGE_ENTRY
-      ? pathToFileURL(process.env.ACCOUNT_KIT_PACKAGE_ENTRY).href
-      : new URL('../index.ts', import.meta.url).href
-    const importer = (specifier: string) =>
-      specifier === 'adonisjs-account-kit' ? import(packageEntry) : import(specifier)
-    const ignitorFor = (rootDirectory: string) =>
-      new IgnitorFactory()
-        .withCoreProviders()
-        .withCoreConfig()
-        .merge({
-          rcFileContents: {
-            providers: [],
-            commands: [async () => new ListLoader([Configure])],
-          },
-        })
-        .create(pathToFileURL(`${rootDirectory}/`), { importer })
-
-    const envPath = join(root, 'start', 'env.ts')
-    await mkdir(join(root, 'start'), { recursive: true })
-    await writeFile(
-      envPath,
-      "import { Env } from '@adonisjs/core/env'\n\nexport default await Env.create(new URL('../', import.meta.url), {\n  NODE_ENV: Env.schema.enum(['development', 'production', 'test'] as const),\n})\n"
-    )
-    const configDirectory = join(root, 'config')
-    const migrationsDirectory = join(root, 'database', 'migrations')
-    await mkdir(configDirectory, { recursive: true })
-    await mkdir(migrationsDirectory, { recursive: true })
-    const configPath = join(configDirectory, 'account_kit.ts')
-    const existingConfig = 'export default { ownerSetting: true }\n'
-    const existingMigrationPath = join(
-      migrationsDirectory,
-      'custom_account_kit_create_password_reset_tokens.ts'
-    )
-    const existingMigration = '// application-owned migration\n'
-    await writeFile(existingMigrationPath, existingMigration)
-
     const rcPath = join(root, 'adonisrc.ts')
-    const dynamicRcWithoutAccountKit = [
-      "import { defineConfig } from '@adonisjs/core/app'",
-      'const applicationProviders = () => [() => import("application/provider")] as const',
-      'const applicationConfig = { providers: applicationProviders(), commands: [() => import("application/commands")] }',
-      'export default defineConfig(applicationConfig)',
-      '',
-    ].join('\n')
-    await writeFile(rcPath, dynamicRcWithoutAccountKit)
-    const envBeforeRecovery = await readFile(envPath, 'utf8')
-    const failedConfigure = ignitorFor(root)
-    await failedConfigure.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
-    assert.equal(process.exitCode, 1)
-    process.exitCode = originalProcessExitCode
-    assert.equal(await readFile(rcPath, 'utf8'), dynamicRcWithoutAccountKit)
-    const configFilesAfterFailure = await readdir(configDirectory)
-    const migrationFilesAfterFailure = await readdir(migrationsDirectory)
-    assert.deepEqual(configFilesAfterFailure.sort(), [])
-    assert.deepEqual(migrationFilesAfterFailure.sort(), [
-      'custom_account_kit_create_password_reset_tokens.ts',
-    ])
-    assert.equal(await readFile(envPath, 'utf8'), envBeforeRecovery)
-
-    const dynamicRcWithAccountKit = [
-      "import { defineConfig } from '@adonisjs/core/app'",
-      'const applicationProviders = () => [() => import("application/provider"), () => import("adonisjs-account-kit/account_kit_provider")] as const',
-      'const applicationConfig = { providers: applicationProviders(), commands: [() => import("application/commands")] }',
-      'export default defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })',
-      '',
-    ].join('\n')
-    await writeFile(rcPath, dynamicRcWithAccountKit)
-    const recoveredConfigure = await ignitorFor(root)
-    await recoveredConfigure
-      .ace()
-      .handle(['configure', 'adonisjs-account-kit', '--force', '--provider-registered'])
-    assert.equal(process.exitCode, 0)
-    process.exitCode = originalProcessExitCode
-    const recoveredRcContents = await readFile(rcPath, 'utf8')
-    assert.include(recoveredRcContents, 'providers: applicationProviders()')
-    assert.equal(
-      recoveredRcContents.match(/import\("adonisjs-account-kit\/account_kit_provider"\)/g)?.length,
-      1
-    )
-    assert.include(recoveredRcContents, 'const applicationProviders = () => [')
-    assert.include(recoveredRcContents, 'providers: applicationConfig.providers')
-    assert.equal(recoveredRcContents.match(/import\("application\/provider"\)/g)?.length, 1)
-    assert.equal(
-      recoveredRcContents.match(/import\('adonisjs-account-kit\/commands'\)/g)?.length,
-      1
-    )
-    assert.equal(recoveredRcContents.match(/import\("application\/commands"\)/g)?.length, 1)
-    assert.include(await readFile(configPath, 'utf8'), "from 'adonisjs-account-kit'")
-    const migrationFilesAfterRecovery = await readdir(migrationsDirectory)
-    assert.equal(
-      migrationFilesAfterRecovery.filter((filename) => filename.endsWith('.ts')).length,
-      migrationNames.length
-    )
-    const envAfterRecovery = await readFile(envPath, 'utf8')
-    assert.equal(
-      envAfterRecovery.match(/APP_URL: Env\.schema\.string\(\{ format: 'url', tld: false \}\)/g)
-        ?.length,
-      1
-    )
-    const recoveredMigrationFiles = migrationFilesAfterRecovery.sort()
-    await recoveredConfigure
-      .ace()
-      .handle(['configure', 'adonisjs-account-kit', '--force', '--provider-registered'])
-    const repeatedRcContents = await readFile(rcPath, 'utf8')
-    assert.include(repeatedRcContents, 'const applicationProviders = () => [')
-    assert.equal(
-      repeatedRcContents.match(/import\("adonisjs-account-kit\/account_kit_provider"\)/g)?.length,
-      1
-    )
-    assert.equal(repeatedRcContents.match(/import\('adonisjs-account-kit\/commands'\)/g)?.length, 1)
-    assert.equal(repeatedRcContents.match(/import\("application\/commands"\)/g)?.length, 1)
-    const repeatedMigrationFiles = await readdir(migrationsDirectory)
-    assert.deepEqual(repeatedMigrationFiles.sort(), recoveredMigrationFiles)
-    assert.equal(await readFile(envPath, 'utf8'), envAfterRecovery)
-
-    const legacyDynamicRc = [
-      "import { defineConfig } from '@adonisjs/core/app'",
-      'const applicationProviders = () => [() => import("adonisjs-account-kit/providers/account_kit_provider"), () => import("application/provider")] as const',
-      'const applicationConfig = { providers: applicationProviders(), commands: [() => import("application/commands")] }',
-      'export default defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })',
-      '',
-    ].join('\n')
-    await writeFile(rcPath, legacyDynamicRc)
-    await recoveredConfigure
-      .ace()
-      .handle(['configure', 'adonisjs-account-kit', '--force', '--provider-registered'])
-    const recoveredLegacyRc = await readFile(rcPath, 'utf8')
-    assert.include(recoveredLegacyRc, 'providers: applicationConfig.providers')
-    assert.equal(
-      recoveredLegacyRc.match(/import\("adonisjs-account-kit\/providers\/account_kit_provider"\)/g)
-        ?.length,
-      1
-    )
-    assert.equal(
-      recoveredLegacyRc.match(/import\("adonisjs-account-kit\/account_kit_provider"\)/g)?.length ??
-        0,
-      0
-    )
-    assert.equal(recoveredLegacyRc.match(/import\("application\/provider"\)/g)?.length, 1)
-    assert.equal(recoveredLegacyRc.match(/import\('adonisjs-account-kit\/commands'\)/g)?.length, 1)
-    assert.equal(recoveredLegacyRc.match(/import\("application\/commands"\)/g)?.length, 1)
-    const legacyMigrationFiles = await readdir(migrationsDirectory)
-    assert.deepEqual(legacyMigrationFiles.sort(), recoveredMigrationFiles)
-    assert.equal(await readFile(envPath, 'utf8'), envAfterRecovery)
-
-    await writeFile(
-      rcPath,
-      "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [] })\n"
-    )
     const ignitor = ignitorFor(root)
 
     await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
@@ -357,6 +268,125 @@ test('configures the package idempotently without replacing application-owned fi
       rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length,
       1
     )
+  } finally {
+    process.exitCode = originalProcessExitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
+test('recovers real configure runs with registered dynamic providers', async ({ assert }) => {
+  const project = await createConfigureProject()
+  const { root, envPath, configDirectory, migrationsDirectory, configPath, ignitorFor } = project
+  const originalProcessExitCode = process.exitCode
+  try {
+    const rcPath = join(root, 'adonisrc.ts')
+    const dynamicRcWithoutAccountKit = [
+      "import { defineConfig } from '@adonisjs/core/app'",
+      'const applicationProviders = () => [() => import("application/provider")] as const',
+      'const applicationConfig = { providers: applicationProviders(), commands: [() => import("application/commands")] }',
+      'export default defineConfig(applicationConfig)',
+      '',
+    ].join('\n')
+    await writeFile(rcPath, dynamicRcWithoutAccountKit)
+    const envBeforeRecovery = await readFile(envPath, 'utf8')
+    const failedConfigure = ignitorFor(root)
+    await failedConfigure.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    assert.equal(process.exitCode, 1)
+    process.exitCode = originalProcessExitCode
+    assert.equal(await readFile(rcPath, 'utf8'), dynamicRcWithoutAccountKit)
+    const configFilesAfterFailure = await readdir(configDirectory)
+    const migrationFilesAfterFailure = await readdir(migrationsDirectory)
+    assert.deepEqual(configFilesAfterFailure.sort(), [])
+    assert.deepEqual(migrationFilesAfterFailure.sort(), [
+      'custom_account_kit_create_password_reset_tokens.ts',
+    ])
+    assert.equal(await readFile(envPath, 'utf8'), envBeforeRecovery)
+
+    const dynamicRcWithAccountKit = [
+      "import { defineConfig } from '@adonisjs/core/app'",
+      'const applicationProviders = () => [() => import("application/provider"), () => import("adonisjs-account-kit/account_kit_provider")] as const',
+      'const applicationConfig = { providers: applicationProviders(), commands: [() => import("application/commands")] }',
+      'export default defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })',
+      '',
+    ].join('\n')
+    await writeFile(rcPath, dynamicRcWithAccountKit)
+    const recoveredConfigure = await ignitorFor(root)
+    await recoveredConfigure
+      .ace()
+      .handle(['configure', 'adonisjs-account-kit', '--force', '--provider-registered'])
+    assert.equal(process.exitCode, 0)
+    process.exitCode = originalProcessExitCode
+    const recoveredRcContents = await readFile(rcPath, 'utf8')
+    assert.include(recoveredRcContents, 'providers: applicationProviders()')
+    assert.equal(
+      recoveredRcContents.match(/import\("adonisjs-account-kit\/account_kit_provider"\)/g)?.length,
+      1
+    )
+    assert.include(recoveredRcContents, 'const applicationProviders = () => [')
+    assert.include(recoveredRcContents, 'providers: applicationConfig.providers')
+    assert.equal(recoveredRcContents.match(/import\("application\/provider"\)/g)?.length, 1)
+    assert.equal(
+      recoveredRcContents.match(/import\('adonisjs-account-kit\/commands'\)/g)?.length,
+      1
+    )
+    assert.equal(recoveredRcContents.match(/import\("application\/commands"\)/g)?.length, 1)
+    assert.include(await readFile(configPath, 'utf8'), "from 'adonisjs-account-kit'")
+    const migrationFilesAfterRecovery = await readdir(migrationsDirectory)
+    assert.equal(
+      migrationFilesAfterRecovery.filter((filename) => filename.endsWith('.ts')).length,
+      migrationNames.length
+    )
+    const envAfterRecovery = await readFile(envPath, 'utf8')
+    assert.equal(
+      envAfterRecovery.match(/APP_URL: Env\.schema\.string\(\{ format: 'url', tld: false \}\)/g)
+        ?.length,
+      1
+    )
+    const recoveredMigrationFiles = migrationFilesAfterRecovery.sort()
+    await recoveredConfigure
+      .ace()
+      .handle(['configure', 'adonisjs-account-kit', '--force', '--provider-registered'])
+    const repeatedRcContents = await readFile(rcPath, 'utf8')
+    assert.include(repeatedRcContents, 'const applicationProviders = () => [')
+    assert.equal(
+      repeatedRcContents.match(/import\("adonisjs-account-kit\/account_kit_provider"\)/g)?.length,
+      1
+    )
+    assert.equal(repeatedRcContents.match(/import\('adonisjs-account-kit\/commands'\)/g)?.length, 1)
+    assert.equal(repeatedRcContents.match(/import\("application\/commands"\)/g)?.length, 1)
+    const repeatedMigrationFiles = await readdir(migrationsDirectory)
+    assert.deepEqual(repeatedMigrationFiles.sort(), recoveredMigrationFiles)
+    assert.equal(await readFile(envPath, 'utf8'), envAfterRecovery)
+
+    const legacyDynamicRc = [
+      "import { defineConfig } from '@adonisjs/core/app'",
+      'const applicationProviders = () => [() => import("adonisjs-account-kit/providers/account_kit_provider"), () => import("application/provider")] as const',
+      'const applicationConfig = { providers: applicationProviders(), commands: [() => import("application/commands")] }',
+      'export default defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })',
+      '',
+    ].join('\n')
+    await writeFile(rcPath, legacyDynamicRc)
+    await recoveredConfigure
+      .ace()
+      .handle(['configure', 'adonisjs-account-kit', '--force', '--provider-registered'])
+    const recoveredLegacyRc = await readFile(rcPath, 'utf8')
+    assert.include(recoveredLegacyRc, 'providers: applicationConfig.providers')
+    assert.equal(
+      recoveredLegacyRc.match(/import\("adonisjs-account-kit\/providers\/account_kit_provider"\)/g)
+        ?.length,
+      1
+    )
+    assert.equal(
+      recoveredLegacyRc.match(/import\("adonisjs-account-kit\/account_kit_provider"\)/g)?.length ??
+        0,
+      0
+    )
+    assert.equal(recoveredLegacyRc.match(/import\("application\/provider"\)/g)?.length, 1)
+    assert.equal(recoveredLegacyRc.match(/import\('adonisjs-account-kit\/commands'\)/g)?.length, 1)
+    assert.equal(recoveredLegacyRc.match(/import\("application\/commands"\)/g)?.length, 1)
+    const legacyMigrationFiles = await readdir(migrationsDirectory)
+    assert.deepEqual(legacyMigrationFiles.sort(), recoveredMigrationFiles)
+    assert.equal(await readFile(envPath, 'utf8'), envAfterRecovery)
   } finally {
     process.exitCode = originalProcessExitCode
     await rm(root, { recursive: true, force: true })
