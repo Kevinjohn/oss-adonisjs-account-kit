@@ -7,7 +7,7 @@ import type { InertiaProps } from '~/types'
 
 type Props = InertiaProps<{ profile: { fullName: string | null; email: string } }>
 const fields = [
-  { name: 'fullName', label: 'Full name' },
+  { name: 'fullName', label: 'Full name (optional)' },
   { name: 'currentPassword', label: 'Current password' },
 ] as const
 
@@ -23,7 +23,7 @@ export default function Profile({ profile }: Props) {
             <FormErrorSummary errors={errors} fields={fields} />
             <div className="field">
               <label className="field__label" htmlFor="fullName">
-                Full name
+                Full name (optional)
               </label>
               <input
                 id="fullName"

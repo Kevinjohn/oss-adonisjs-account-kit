@@ -17,12 +17,41 @@ test.group('Account signup login', (group) => {
   }) => {
     notifications.reset()
 
-    const missingProfile = await client.post('/api/v1/auth/signup').json({
-      email: 'missing-profile@example.test',
-      password: 'MissingPass123!',
-      passwordConfirmation: 'MissingPass123!',
-    } as never)
-    assert.equal(missingProfile.status(), 422)
+    for (const [index, fullName] of [undefined, null, '   '].entries()) {
+      const email = `optional-name-${index}@example.test`
+      const registration = await client.post('/api/v1/auth/signup').json({
+        ...(fullName === undefined ? {} : { fullName }),
+        email,
+        password: 'OptionalNamePass123!',
+        passwordConfirmation: 'OptionalNamePass123!',
+      })
+      assert.equal(registration.status(), 200)
+      const registered = await User.findByOrFail('email', email)
+      assert.isNull(registered.fullName)
+    }
+
+    notifications.reset()
+    const longName = `  ${'x'.repeat(255)}  `
+    const longNameSignup = await client.post('/api/v1/auth/signup').json({
+      fullName: longName,
+      email: 'long-name@example.test',
+      password: 'LongNamePass123!',
+      passwordConfirmation: 'LongNamePass123!',
+    })
+    assert.equal(longNameSignup.status(), 200)
+    assert.equal(
+      (await User.findByOrFail('email', 'long-name@example.test')).fullName,
+      'x'.repeat(255)
+    )
+    const tooLongSignup = await client.post('/api/v1/auth/signup').json({
+      fullName: 'x'.repeat(256),
+      email: 'too-long-name@example.test',
+      password: 'TooLongNamePass123!',
+      passwordConfirmation: 'TooLongNamePass123!',
+    })
+    assert.equal(tooLongSignup.status(), 422)
+    notifications.reset()
+
     const registration = await client.post('/api/v1/auth/signup').json({
       fullName: 'Registration User',
       email: ' Registration@Example.Test ',
@@ -31,7 +60,7 @@ test.group('Account signup login', (group) => {
     })
     assert.equal(registration.status(), 200)
     const registrationBody = responseBody<{
-      data: { user: { fullName: string; email: string }; token: string }
+      data: { user: { fullName: string | null; email: string }; token: string }
     }>(registration)
     assert.equal(registrationBody.data.user.fullName, 'Registration User')
     assert.equal(registrationBody.data.user.email, 'registration@example.test')

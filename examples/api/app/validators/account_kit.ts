@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine'
-import { email, fullName } from '#validators/fields'
+import { email, optionalFullName } from '#validators/fields'
 import { password } from '#validators/password'
 
 export const recoveryRequestValidator = vine.create({ email: email() })
@@ -11,7 +11,7 @@ export const passwordValidator = vine.create({
 export const invitationAcceptValidator = vine.create({
   password: password(),
   passwordConfirmation: vine.string().sameAs('password'),
-  fullName: fullName(),
+  fullName: optionalFullName(),
 })
 export const invitationValidator = vine.create({
   email: email(),
@@ -29,5 +29,5 @@ export const credentialChangeValidator = vine.create({
 export const profileUpdateValidator = vine.create({
   currentPassword: vine.string().minLength(1),
   email: email().optional(),
-  fullName: fullName().optional(),
+  fullName: optionalFullName(),
 })

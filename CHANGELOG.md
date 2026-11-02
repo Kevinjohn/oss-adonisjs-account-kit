@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Reference examples: keep native-form credential values out of validation flash data, require a
-  trimmed signup name, and honor configured user tables and ID types across the API migrations.
+- Reference examples: keep native-form credential values out of validation flash data, allow
+  signup without a name, and honor configured user tables and ID types across the API migrations.
 
 - Docs: the README is now a short overview with install and a quick example; the production
   checklist moves to the operations guide.

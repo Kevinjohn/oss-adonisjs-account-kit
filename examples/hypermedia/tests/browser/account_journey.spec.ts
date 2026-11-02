@@ -647,6 +647,11 @@ test.group('native account journeys', (group) => {
       await primary.getByRole('button', { name: 'Save profile' }).click()
       await primary.getByText('Your profile has been updated.').waitFor()
       assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Morgan Updated')
+      await primary.getByLabel('Full name').fill('   ')
+      await primary.getByLabel('Current password').fill('OldPassword123!')
+      await primary.getByRole('button', { name: 'Save profile' }).click()
+      await primary.getByText('Your profile has been updated.').waitFor()
+      assert.isNull((await User.findByOrFail('id', user.id)).fullName)
 
       const existing = await User.create({
         fullName: 'Existing Example',
