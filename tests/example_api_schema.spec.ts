@@ -200,6 +200,16 @@ test('failed SQLite user-table copy restores the schema and migration state', as
       .table('users')
       .columnInfo()
     assert.isTrue(recoveredUserColumns.full_name.nullable)
+    assert.equal(
+      await kit.db
+        .from('users')
+        .where('email', 'legacy@example.test')
+        .select('full_name')
+        .first()
+        .then((row) => row?.full_name),
+      'Existing Named User'
+    )
+    assert.isOk(await kit.db.from('password_reset_tokens').where('hash', 'legacy-reset').first())
     assert.isOk(
       await kit.db
         .from('adonis_schema')
