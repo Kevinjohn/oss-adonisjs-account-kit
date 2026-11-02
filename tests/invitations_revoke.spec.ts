@@ -8,7 +8,7 @@ import {
   PostCommitError,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
-import type { AccountUser } from '../src/types.js'
+import type { AccountUser, Trx } from '../src/types.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import { invitationHelpers } from './helpers/invitations.js'
 import {
@@ -102,6 +102,68 @@ test.group('invitations.revoke', (group) => {
       InvalidInputError
     )
   })
+
+  test('revoke reloads actor state after an independent change before authorization', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const baseUsers = makeUsersAdapter(kit.db, kit.hash)
+    let actorRead!: () => void
+    let releaseRead!: () => void
+    const readReady = new Promise<void>((resolve) => {
+      actorRead = resolve
+    })
+    const hold = new Promise<void>((resolve) => {
+      releaseRead = resolve
+    })
+    let armed = false
+    let paused = false
+    const users = {
+      ...baseUsers,
+      async findById(id: AccountUser['id'], trx?: Trx, options?: { forUpdate?: boolean }) {
+        const user = await baseUsers.findById(id, trx, options)
+        if (!trx && armed && !paused) {
+          paused = true
+          actorRead()
+          await hold
+        }
+        return user
+      },
+    }
+    const { account, recorder } = service({
+      users,
+      authorize: {
+        ...allowAll,
+        manageInvitation: async (current, _invitation, context) => {
+          assert.isDefined(context?.trx)
+          const stored = await context!.trx!.from('users').where('id', current.id).first()
+          assert.equal(stored!.email, current.email)
+          return current.email === actor.email
+        },
+      },
+    })
+    const { invitation } = await issue(account, recorder, actor.id)
+    armed = true
+    const revoke = account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
+    const outcome = revoke.then(
+      () => ({ kind: 'completed' as const }),
+      (error: unknown) => ({ kind: 'failed' as const, error })
+    )
+    try {
+      const stage = await Promise.race([readReady.then(() => null), outcome])
+      if (stage) {
+        if (stage.kind === 'failed') throw stage.error
+        throw new Error('Revoke completed before the actor lookup reached its gate')
+      }
+      await kit.db.from('users').where('id', actor.id).update({ email: 'demoted@other.test' })
+      releaseRead()
+      await assert.rejects(() => revoke, AuthorizationError)
+    } finally {
+      releaseRead()
+      await revoke.catch(() => {})
+    }
+    assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
+  }).timeout(6000)
 
   if (!locksRows) {
     test('database-backed management policy reads use another pooled SQLite connection', async ({
