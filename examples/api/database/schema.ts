@@ -353,7 +353,7 @@ export class UserSchema extends BaseModel {
   @column.dateTime()
   declare emailVerifiedAt: DateTime | null
   @column()
-  declare fullName: string
+  declare fullName: string | null
   @column({ isPrimary: true })
   declare id: number
   @column({ serializeAs: null })

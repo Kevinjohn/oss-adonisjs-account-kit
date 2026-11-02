@@ -102,8 +102,9 @@ for tests. This makes the HTTP journey inspectable locally; it does not send ema
 recipient delivery. The production path deliberately does not print proof links. Use a configured
 transport in an application.
 
-For a short HTTP smoke, submit a signup with `fullName`, `email`, `password`, and
-`passwordConfirmation` to `POST /api/v1/auth/signup`. Copy the verification URL from the server log
+For a short HTTP smoke, submit a signup with `email`, `password`, and `passwordConfirmation` to
+`POST /api/v1/auth/signup`; `fullName` is optional. A supplied name is trimmed and limited to 255
+characters, and missing or blank names are stored as `null`. Copy the verification URL from the server log
 and POST it with the chosen password and confirmation. Then POST the credentials to
 `/api/v1/auth/login` and use the returned bearer token for `GET /api/v1/account/profile`. The
 [core API walkthrough](../../docs/guides/core-api.md) explains the same guard and proof boundaries.

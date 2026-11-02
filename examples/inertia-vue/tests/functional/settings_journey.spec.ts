@@ -93,18 +93,18 @@ test.group('profile and email settings HTTP journey', (group) => {
     })
     assert.equal(missingProof.status, 302)
     assert.equal((await User.findOrFail(owner.id)).fullName, 'Owner')
-    const invalidName = await ownerBrowser.request('/settings/profile', {
+    const clearedName = await ownerBrowser.request('/settings/profile', {
       fullName: ' ',
       currentPassword,
     })
-    assert.equal(invalidName.status, 302)
-    assert.equal((await User.findOrFail(owner.id)).fullName, 'Owner')
+    assert.equal(clearedName.status, 302)
+    assert.isNull((await User.findOrFail(owner.id)).fullName)
     const wrongPassword = await ownerBrowser.request('/settings/profile', {
       fullName: 'Changed',
       currentPassword: 'WrongPass123!',
     })
     assert.equal(wrongPassword.status, 302)
-    assert.equal((await User.findOrFail(owner.id)).fullName, 'Owner')
+    assert.isNull((await User.findOrFail(owner.id)).fullName)
     const saved = await ownerBrowser.request('/settings/profile', {
       fullName: 'Changed',
       currentPassword,

@@ -5,7 +5,7 @@ import { focusFormErrorSummary } from '~/components/form_error_summary'
 import AuthLayout from '~/layouts/auth.vue'
 defineOptions({ layout: AuthLayout })
 const fields = [
-  { name: 'fullName', label: 'Full name' },
+  { name: 'fullName', label: 'Full name (optional)' },
   { name: 'email', label: 'Email' },
   { name: 'password', label: 'Password' },
   { name: 'passwordConfirmation', label: 'Confirm password' },
@@ -24,13 +24,12 @@ const fields = [
     ><div class="auth__form">
       <ErrorSummary :errors="errors" :fields="fields" />
       <div class="field">
-        <label class="field__label" for="fullName">Full name</label
+        <label class="field__label" for="fullName">Full name (optional)</label
         ><input
           id="fullName"
           class="field__input"
           name="fullName"
           autocomplete="name"
-          required
           :aria-invalid="errors.fullName ? 'true' : undefined"
           :aria-describedby="errors.fullName ? 'signup-fullName-error' : undefined"
         /><span v-if="errors.fullName" id="signup-fullName-error" class="field__error">{{

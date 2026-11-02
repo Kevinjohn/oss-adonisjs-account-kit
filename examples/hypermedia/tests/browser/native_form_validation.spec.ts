@@ -13,7 +13,7 @@ function oldInputFromFlash(flash: Record<string, unknown>) {
 test.group('native form validation', (group) => {
   group.each.setup(setupAccountDatabase)
 
-  test('signup rejects a whitespace-only name and keeps credential markers out of old input', async ({
+  test('signup rejects an overlong name and keeps credential markers out of old input', async ({
     browser,
     assert,
   }) => {
@@ -53,7 +53,7 @@ test.group('native form validation', (group) => {
           response.request().method() === 'POST' && new URL(response.url()).pathname === '/signup'
       )
       try {
-        await page.getByLabel('Full name').fill('   ')
+        await page.getByLabel('Full name').fill('x'.repeat(256))
         await page.getByLabel('Email').fill('native-validation-edge@example.test')
         await page.getByLabel('Password', { exact: true }).fill(markers.password)
         await page.getByLabel('Confirm password').fill(markers.passwordConfirmation)
@@ -70,6 +70,7 @@ test.group('native form validation', (group) => {
       assert.deepEqual(Object.keys(committedFlash.errorsBag as object), ['E_VALIDATION_ERROR'])
       assert.isObject(committedFlash.inputErrorsBag)
       assert.deepEqual(oldInputFromFlash(committedFlash), {
+        fullName: 'x'.repeat(256),
         email: 'native-validation-edge@example.test',
       })
       const persisted = JSON.stringify(committedFlash)
@@ -92,6 +93,31 @@ test.group('native form validation', (group) => {
       assert.equal(acceptedUser?.fullName, 'x'.repeat(255))
     } finally {
       await context.close()
+    }
+  })
+
+  test('signup stores omitted and blank names as null', async ({ browser, assert }) => {
+    for (const [index, name] of [undefined, '   '].entries()) {
+      const email = `optional-name-edge-${index}@example.test`
+      const context = await browser.newContext({
+        baseURL: process.env.APP_URL,
+        javaScriptEnabled: false,
+      })
+
+      try {
+        await context.initiateSession()
+        const page = await context.visit('/signup')
+        if (name !== undefined) await page.getByLabel('Full name').fill(name)
+        await page.getByLabel('Email').fill(email)
+        await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
+        await page.getByLabel('Confirm password').fill('SignupPass123!')
+        await page.getByRole('button', { name: 'Create account' }).click()
+        await page.getByRole('heading', { name: 'Your account' }).waitFor()
+        const registered = await User.findByOrFail('email', email)
+        assert.isNull(registered.fullName)
+      } finally {
+        await context.close()
+      }
     }
   })
 })

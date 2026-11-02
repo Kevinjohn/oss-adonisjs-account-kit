@@ -12,17 +12,18 @@ checks. The package does not install a public registration route. Enable `emailV
 `urls.emailVerification` and `notify.accountActivationProvision` to deliver activation proofs.
 
 Keep request validation and field-error responses in the application's HTTP layer. For example, the
-API example validates `fullName`, `email`, and `password` with its signup validator before calling
+API example validates `email` and `password` plus an optional `fullName` with its signup validator before calling
 `registration.register`. Return those validation failures through the app's normal validation path;
 do not use a users-adapter mapping error as a form-validation response. Translate a duplicate-email
 service error to the application's `email` field error separately.
 
 `registration.mapFields(input)` is the service-level boundary for extra profile data: it selects and
 validates the allowed application fields and returns a plain object. When configured, it runs even
-if `registrationData` is omitted, so it can require profile fields. Without a mapping, only omitted
+if `registrationData` is omitted, so it can require profile fields. The API example maps a missing
+or blank `fullName` to `null`. Without a mapping, only omitted
 `registrationData` is accepted. The returned keys cannot control IDs, email, passwords, verification
 state, or roles. For the same `fullName` example, the controller passes `{ fullName }` as
-`registrationData`, and `mapFields` returns `{ fullName: fullName.trim() }`.
+`registrationData`, and `mapFields` returns `{ fullName: trimmedName }` or `{ fullName: null }`.
 
 The users adapter receives that trusted result and maps it to the model properties or physical
 columns used by the application. This persistence mapping does not repeat request validation or

@@ -12,7 +12,8 @@ const migrationSource = new URL('../examples/api/database/migrations/', import.m
 const ids = ['integer', 'string', 'uuid'] as const
 const tables = ['users', 'account_users'] as const
 
-const schemaMigrations = [
+const optionalNameMigration = '1800000000003_make_user_full_name_nullable.ts'
+const baseSchemaMigrations = [
   '1761885935168_create_users_table.ts',
   '1768620764696_create_access_tokens_table.ts',
   '1791906000000_create_role_assignments.ts',
@@ -32,7 +33,6 @@ const schemaMigrations = [
   '1800000000001_create_notifications_outbox.ts',
   '1800000000002_create_sessions_table.ts',
 ]
-
 const envSource = `
 import { readFileSync } from 'node:fs'
 export default {
@@ -78,15 +78,230 @@ for (const usersTable of tables) {
           })
         )
         await Promise.all(
-          schemaMigrations.map(async (filename) => {
+          baseSchemaMigrations.map(async (filename) => {
             const source = await readFile(new URL(filename, migrationSource))
             await writeFile(join(fixtureMigrations, filename), source)
           })
         )
 
-        const up = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
-        await up.run()
-        if (up.error) throw up.error
+        const migrate = async (direction: 'up' | 'down', step?: number) => {
+          const runner = new MigrationRunner(kit.db, kit.app, {
+            direction,
+            ...(step === undefined ? {} : { step }),
+          })
+          await runner.run()
+          return runner
+        }
+        const initial = await migrate('up')
+        if (initial.error) throw initial.error
+
+        const now = new Date()
+        const later = new Date(Date.now() + 60_000)
+        const legacyId =
+          idType === 'integer'
+            ? undefined
+            : idType === 'uuid'
+              ? randomUUID()
+              : `legacy-${randomUUID()}`
+        await kit.db.table(usersTable).insert({
+          ...(legacyId === undefined ? {} : { id: legacyId }),
+          full_name: 'Existing Named User',
+          email: `legacy-${idType}@example.test`,
+          password: 'unused',
+          created_at: now,
+          updated_at: now,
+        })
+        const legacyUser = await kit.db
+          .from(usersTable)
+          .where('email', `legacy-${idType}@example.test`)
+          .select('id', 'full_name')
+          .first()
+        if (!legacyUser) throw new Error('failed to create the pre-upgrade user')
+        await kit.db.table('password_reset_tokens').insert({
+          tokenable_id: legacyUser.id,
+          email: `legacy-${idType}@example.test`,
+          hash: `legacy-reset-${idType}`,
+          expires_at: later,
+          created_at: now,
+        })
+        await writeFile(
+          join(fixtureMigrations, optionalNameMigration),
+          await readFile(new URL(optionalNameMigration, migrationSource))
+        )
+        if (process.env.DB_CLIENT !== 'pg') {
+          type KnexQueryClient = {
+            query: (connection: unknown, query: unknown) => Promise<unknown>
+          }
+          type KnexClient = KnexQueryClient & {
+            transaction: (container: unknown, ...args: unknown[]) => unknown
+          }
+          type KnexTransaction = { client: KnexQueryClient }
+          const sqliteClient = kit.db.connection().getWriteClient().client as unknown as KnexClient
+          const initialForeignKeys = new WeakMap<object, number>()
+          const injectedError = new Error('simulated failure copying the altered users table')
+          const observedQueries: string[] = []
+          const restoreQueries: Array<() => void> = []
+          let copyBoundaryReached = false
+          let temporaryTableFound = false
+          let failureConnection:
+            | {
+                pragma: (source: string) => Array<{ foreign_keys?: number; [key: string]: unknown }>
+                prepare: (source: string) => { get: (...bindings: unknown[]) => unknown }
+              }
+            | undefined
+          let failedUpgrade: Awaited<ReturnType<typeof migrate>> | undefined
+          let thrownUpgradeError: unknown
+
+          const wrapQuery = (client: KnexQueryClient) => {
+            const originalQuery = client.query
+            client.query = async (connection, query) => {
+              if (typeof connection === 'object' && connection !== null) {
+                const nativeConnection = connection as NonNullable<typeof failureConnection>
+                if (!initialForeignKeys.has(connection)) {
+                  initialForeignKeys.set(
+                    connection,
+                    nativeConnection.pragma('foreign_keys')[0]?.foreign_keys ?? -1
+                  )
+                }
+
+                const sql =
+                  typeof query === 'object' &&
+                  query !== null &&
+                  'sql' in query &&
+                  typeof query.sql === 'string'
+                    ? query.sql
+                    : ''
+                if (/knex_temp_alter|INSERT\s+INTO/i.test(sql)) observedQueries.push(sql)
+                if (/^INSERT\s+INTO\s+"?_knex_temp_alter\d+"?\s+SELECT/i.test(sql)) {
+                  temporaryTableFound = Boolean(
+                    nativeConnection
+                      .prepare(
+                        "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB '_knex_temp_alter[0-9]*'"
+                      )
+                      .get()
+                  )
+                  if (temporaryTableFound) {
+                    copyBoundaryReached = true
+                    failureConnection = nativeConnection
+                    throw injectedError
+                  }
+                }
+              }
+
+              return originalQuery.call(client, connection, query)
+            }
+            restoreQueries.push(() => {
+              client.query = originalQuery
+            })
+          }
+
+          const originalTransaction = sqliteClient.transaction
+          wrapQuery(sqliteClient)
+          sqliteClient.transaction = (container, ...args) => {
+            if (typeof container !== 'function') {
+              return originalTransaction.call(sqliteClient, container, ...args)
+            }
+            return originalTransaction.call(
+              sqliteClient,
+              async (transaction: unknown) => {
+                const transactionClient = (transaction as KnexTransaction).client
+                wrapQuery(transactionClient)
+                return (container as (transaction: unknown) => Promise<unknown>)(transaction)
+              },
+              ...args
+            )
+          }
+          try {
+            failedUpgrade = await migrate('up')
+          } catch (error) {
+            thrownUpgradeError = error
+          } finally {
+            sqliteClient.transaction = originalTransaction
+            for (const restore of restoreQueries.reverse()) restore()
+          }
+
+          assert.isTrue(
+            copyBoundaryReached,
+            `failure must occur at the SQLite table-copy query; observed ${observedQueries.join(' | ')}`
+          )
+          assert.isTrue(temporaryTableFound, 'Knex must have created the replacement table first')
+          const copyFailure = thrownUpgradeError ?? failedUpgrade?.error
+          assert.equal((copyFailure as Error | undefined)?.message, injectedError.message)
+          assert.isOk(failureConnection, 'capture the physical connection used for the table copy')
+          if (!failureConnection) throw new Error('table-copy connection was not captured')
+          assert.equal(
+            failureConnection.pragma('foreign_keys')[0]?.foreign_keys,
+            initialForeignKeys.get(failureConnection),
+            'Knex must restore foreign_keys on the same physical connection after rollback'
+          )
+          assert.equal(initialForeignKeys.get(failureConnection), 1)
+          assert.isUndefined(
+            failureConnection
+              .prepare(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name GLOB '_knex_temp_alter[0-9]*'"
+              )
+              .get(),
+            'failed table copy must remove Knex temporary table'
+          )
+          assert.isEmpty(
+            failureConnection.pragma('foreign_key_check'),
+            'failed table copy must leave no foreign-key violations'
+          )
+          const schemaAfterFailedUpgrade = await kit.db
+            .connection()
+            .getReadClient()
+            .table(usersTable)
+            .columnInfo()
+          assert.isFalse(
+            schemaAfterFailedUpgrade.full_name.nullable,
+            'failed table copy must leave the original schema intact'
+          )
+          assert.equal(
+            await kit.db
+              .from(usersTable)
+              .where('id', legacyUser.id)
+              .select('full_name')
+              .first()
+              .then((row) => row?.full_name),
+            'Existing Named User',
+            'failed table copy must preserve the existing user row'
+          )
+          assert.isOk(
+            await kit.db
+              .from('password_reset_tokens')
+              .where('hash', `legacy-reset-${idType}`)
+              .first(),
+            'failed table copy must preserve the dependent token row'
+          )
+          assert.isNull(
+            await kit.db
+              .from('adonis_schema')
+              .where('name', 'like', '%1800000000003_make_user_full_name_nullable%')
+              .first(),
+            'failed up migration must not be recorded as applied'
+          )
+        }
+        const upgrade = await migrate('up')
+        if (upgrade.error) throw upgrade.error
+        assert.equal(
+          await kit.db
+            .from(usersTable)
+            .where('id', legacyUser.id)
+            .select('full_name')
+            .first()
+            .then((row) => row?.full_name),
+          'Existing Named User',
+          'up migration must preserve existing user names'
+        )
+        assert.isOk(
+          await kit.db
+            .from('password_reset_tokens')
+            .where('hash', `legacy-reset-${idType}`)
+            .first(),
+          'up migration must preserve dependent token rows'
+        )
+        const userColumns = await kit.db.connection().getReadClient().table(usersTable).columnInfo()
+        assert.isTrue(userColumns.full_name.nullable)
 
         const schemaGeneratorModule = await import(
           new URL('./schema_generator/generator.js', import.meta.resolve('@adonisjs/lucid/orm'))
@@ -114,6 +329,7 @@ for (const usersTable of tables) {
           userSchemaSource,
           `declare id: ${idType === 'integer' ? 'number' : 'string'}`
         )
+        assert.include(userSchemaSource, 'declare fullName: string | null')
         const generatedSchemaModule = await import(
           new URL('generated_schema.ts', `file://${kit.migrationDirectory}/`).href
         )
@@ -124,7 +340,7 @@ for (const usersTable of tables) {
 
           declare id: number | string
           declare email: string
-          declare fullName: string
+          declare fullName: string | null
           declare password: string | null
 
           @beforeCreate()
@@ -133,6 +349,83 @@ for (const usersTable of tables) {
               user.id = idType === 'uuid' ? randomUUID() : `member-${randomUUID()}`
           }
         }
+
+        const namelessUser = await SchemaUser.create({
+          fullName: null,
+          email: `nameless-${idType}@example.test`,
+          password: null,
+        })
+        const blockedDown = await migrate('down', 1)
+        assert.equal(
+          (blockedDown.error as Error | undefined)?.message,
+          'Cannot restore required user names while users have NULL full_name; assign names explicitly before rolling back.'
+        )
+        const stillNullable = await kit.db
+          .connection()
+          .getReadClient()
+          .table(usersTable)
+          .columnInfo()
+        assert.isTrue(stillNullable.full_name.nullable)
+        assert.isOk(
+          await kit.db
+            .from('adonis_schema')
+            .where('name', 'like', '%1800000000003_make_user_full_name_nullable%')
+            .first(),
+          'blocked down migration must remain recorded as applied'
+        )
+        assert.equal(
+          await kit.db
+            .from(usersTable)
+            .where('id', legacyUser.id)
+            .select('full_name')
+            .first()
+            .then((row) => row?.full_name),
+          'Existing Named User'
+        )
+        assert.isOk(
+          await kit.db
+            .from('password_reset_tokens')
+            .where('hash', `legacy-reset-${idType}`)
+            .first(),
+          'blocked down migration must preserve dependent token rows'
+        )
+        assert.isOk(
+          await kit.db.from(usersTable).where('id', namelessUser.id).whereNull('full_name').first(),
+          'blocked down migration must preserve the row causing refusal'
+        )
+        await kit.db.from(usersTable).where('id', namelessUser.id).delete()
+        const rollbackOptionalName = await migrate('down', 1)
+        if (rollbackOptionalName.error) throw rollbackOptionalName.error
+        assert.isNull(
+          await kit.db
+            .from('adonis_schema')
+            .where('name', 'like', '%1800000000003_make_user_full_name_nullable%')
+            .first(),
+          'successful down migration must be recorded as rolled back'
+        )
+        const requiredNameColumns = await kit.db
+          .connection()
+          .getReadClient()
+          .table(usersTable)
+          .columnInfo()
+        assert.isFalse(requiredNameColumns.full_name.nullable)
+        assert.equal(
+          await kit.db
+            .from(usersTable)
+            .where('id', legacyUser.id)
+            .select('full_name')
+            .first()
+            .then((row) => row?.full_name),
+          'Existing Named User',
+          'successful down migration must preserve existing user rows'
+        )
+        assert.isOk(
+          await kit.db
+            .from('password_reset_tokens')
+            .where('hash', `legacy-reset-${idType}`)
+            .first(),
+          'successful down migration must preserve dependent token rows'
+        )
 
         const user = await SchemaUser.create({
           fullName: 'Primary User',
@@ -146,8 +439,6 @@ for (const usersTable of tables) {
         })
         const userId = user.id
         const actorId = actor.id
-        const now = new Date()
-        const later = new Date(Date.now() + 60_000)
         assert.isNull(
           await kit.db
             .from(usersTable)
@@ -313,11 +604,7 @@ for (const usersTable of tables) {
           )
         }
 
-        const rollbackDependents = new MigrationRunner(kit.db, kit.app, {
-          direction: 'down',
-          step: schemaMigrations.length - 4,
-        })
-        await rollbackDependents.run()
+        const rollbackDependents = await migrate('down', baseSchemaMigrations.length - 4)
         if (rollbackDependents.error) throw rollbackDependents.error
         assert.isTrue(await kit.db.connection().schema.hasTable(usersTable))
         for (const columnName of [

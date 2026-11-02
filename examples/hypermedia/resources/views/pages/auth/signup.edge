@@ -3,8 +3,8 @@
   <p class="auth__sub">Create an account, then confirm that you own the email address.</p>
   @form({ route: 'new_account.store', method: 'POST', class: 'auth__form' })
     @field.root({ name: 'fullName' })
-      @!field.label({ text: 'Full name' })
-      @!input.control({ autocomplete: 'name', value: old('fullName'), required: true })
+      @!field.label({ text: 'Full name (optional)' })
+      @!input.control({ autocomplete: 'name', value: old('fullName') })
       @!field.error()
     @end
     @field.root({ name: 'email' })

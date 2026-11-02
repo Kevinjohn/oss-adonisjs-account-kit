@@ -23,7 +23,12 @@ test.group('Account profile email', (group) => {
       password: 'EmailPass123!',
       emailVerifiedAt: DateTime.utc(),
     })
-    await User.accessTokens.create(emailUser)
+    const clearedProfile = await client.patch('/api/v1/account/profile').loginAs(emailUser).json({
+      currentPassword: 'EmailPass123!',
+      fullName: '   ',
+    })
+    assert.equal(clearedProfile.status(), 200)
+    assert.isNull((await User.findByOrFail('id', emailUser.id)).fullName)
     assert.equal(
       Number(
         (

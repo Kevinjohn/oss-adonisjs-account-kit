@@ -2,11 +2,11 @@
   @page()
     <h1>Profile settings</h1>
     <p>
-      Change the name shown on your account. Your account ID always comes from the signed-in session.
+      Change or clear the name shown on your account. Your account ID always comes from the signed-in session.
     </p>
     @form({ route: 'profile.update', method: 'POST', class: 'auth__form' })
       @field.root({ name: 'fullName' })
-        @!field.label({ text: 'Full name' })
+        @!field.label({ text: 'Full name (optional)' })
         @!input.control({
           autocomplete: 'name',
           value: old('fullName') || fullName || '',
