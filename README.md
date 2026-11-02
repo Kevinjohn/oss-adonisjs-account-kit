@@ -32,7 +32,7 @@ not yet on npm; install the archive from
 
 ```sh
 node ace add @adonisjs/limiter
-npm install https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.3/adonisjs-account-kit-0.1.3.tgz
+npm install https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.4/adonisjs-account-kit-0.1.4.tgz
 node ace configure adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor

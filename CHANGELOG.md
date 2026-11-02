@@ -1,22 +1,22 @@
 # Changelog
 
-## Unreleased
-
-- Reference examples: keep native-form credential values out of validation flash data, allow
-  signup without a name, and honor configured user tables and ID types across the API migrations.
-
-- Reload invitation-management actors under the account lock in each authorization transaction.
+## 0.1.4 - 2026-11-02
 
 - Recognize configured provider registrations structurally and stop before generating files when
   the application configuration cannot be inspected safely. For dynamic provider lists, document
   manual registration and the explicit `--provider-registered` step to complete setup.
-
+- Reload invitation-management actors under the account lock in each authorization transaction.
+- Reference examples: keep native-form credential values out of validation flash data, allow
+  signup without a name, and honor configured user tables and ID types across the API migrations.
+- Docs: magic-link inspection states what it checks; it does not evaluate `canAccess` or guarantee
+  sign-in.
 - Docs: the README is now a short overview with install and a quick example; the production
   checklist moves to the operations guide.
 - Add `homepage` and `bugs` to `package.json` for the npm package page.
 - Contributors: `pnpm format:check` runs Prettier on every tracked file, before lint and tests in
   `pnpm test`, `pnpm check:changed` and the `checks` workflow.
-- Contributors: `pnpm check:changed --static` runs every step except the full test suite.
+- Contributors: `pnpm check:changed --static` runs every step except the full test suite, and its
+  lint step uses the root ESLint config for changed example-app files.
 
 ## 0.1.3 - 2026-10-27
 
