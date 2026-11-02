@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reload invitation-management actors under the account lock in each authorization transaction.
+
 - Docs: the README is now a short overview with install and a quick example; the production
   checklist moves to the operations guide.
 - Add `homepage` and `bugs` to `package.json` for the npm package page.
