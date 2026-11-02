@@ -59,7 +59,8 @@ function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
     if (node.getKindName() !== 'CallExpression') return false
     return node.getExpression?.().getText() === 'defineConfig'
   })
-  const config = call?.getArguments?.()[0]
+  if (!call) throw new UnsupportedConfigShape('could not locate the defineConfig call')
+  const config = call.getArguments?.()[0]
   if (!config || config.getKindName() !== 'ObjectLiteralExpression')
     throw new UnsupportedConfigShape('defineConfig does not receive a static object literal')
 

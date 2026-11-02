@@ -792,6 +792,21 @@ test('configure rejects unavailable projects before generating files', async ({ 
   }
 })
 
+test('configure names a missing defineConfig call before generating files', async ({ assert }) => {
+  const root = await mkdtemp(join(tmpdir(), 'account-kit-missing-define-config-'))
+  try {
+    const { command, calls } = fakeCommand(root, {}, 'export default { providers: [] }')
+    await configure(command as unknown as Configure)
+    assert.equal(command.exitCode, 1)
+    assert.lengthOf(calls.errors, 1)
+    assert.include(calls.errors[0], 'could not locate the defineConfig call')
+    assert.deepEqual(calls.stubs, [])
+    assert.equal(calls.envValidations, 0)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('configure requires an explicit registration assertion for dynamic providers', async ({
   assert,
 }) => {
