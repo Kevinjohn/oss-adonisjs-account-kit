@@ -1,5 +1,5 @@
 import { RuntimeException } from '@adonisjs/core/exceptions'
-import { readFile, readdir } from 'node:fs/promises'
+import { readdir } from 'node:fs/promises'
 import type Configure from '@adonisjs/core/commands/configure'
 import { isSqlIdentifier } from './src/sql_identifier.js'
 import { stubsRoot } from './stubs/main.js'
@@ -20,6 +20,99 @@ export const migrationNames = [
 
 function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'
+}
+
+const legacyProviderPath = 'adonisjs-account-kit/providers/account_kit_provider'
+
+type RcNode = {
+  getKindName(): string
+  getText(): string
+  getDescendants(): RcNode[]
+  getArguments?(): RcNode[]
+  getExpression?(): RcNode
+  getProperty?(name: string): RcNode | undefined
+  getInitializer?(): RcNode | undefined
+  getElements?(): RcNode[]
+  getBody?(): RcNode
+  getStatements?(): RcNode[]
+  getLiteralValue?(): string
+}
+type TsMorphProject = {
+  getSourceFile(path: string): RcNode | undefined
+  getProgram(): { getSyntacticDiagnostics(sourceFile: RcNode): unknown[] }
+}
+
+/**
+ * Inspect the same defineConfig call and provider entry forms consumed by Assembler's RC
+ * transformer. Returning false means the recognized config has no providers property yet.
+ */
+function hasLegacyProvider(project: TsMorphProject, rcPath: string): boolean {
+  const rcFile = project.getSourceFile(rcPath)
+  if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
+  if (project.getProgram().getSyntacticDiagnostics(rcFile).length)
+    throw new Error('adonisrc.ts contains TypeScript syntax errors')
+
+  const call = rcFile.getDescendants().find((node) => {
+    if (node.getKindName() !== 'CallExpression') return false
+    return node.getExpression?.().getText() === 'defineConfig'
+  })
+  const config = call?.getArguments?.()[0]
+  if (!config || config.getKindName() !== 'ObjectLiteralExpression')
+    throw new Error('could not locate a supported defineConfig({ ... }) call in adonisrc.ts')
+
+  const providersProperty = config.getProperty?.('providers')
+  if (!providersProperty) return false
+  if (providersProperty.getKindName() !== 'PropertyAssignment')
+    throw new Error('the providers property is not a static array assignment')
+
+  const providersArray = providersProperty.getInitializer?.()
+  if (!providersArray || providersArray.getKindName() !== 'ArrayLiteralExpression')
+    throw new Error('the providers property is not a static array')
+
+  const importPathFromArrow = (node: RcNode) => {
+    if (node.getKindName() !== 'ArrowFunction') return undefined
+    const body = node.getBody?.()
+    if (!body) return undefined
+    let importCall: RcNode | undefined
+    if (body.getKindName() === 'CallExpression') importCall = body
+    else if (body.getKindName() === 'Block') {
+      const statements = body.getStatements?.() ?? []
+      if (statements.length !== 1 || statements[0].getKindName() !== 'ReturnStatement')
+        return undefined
+      importCall = statements[0].getExpression?.()
+    }
+    if (!importCall || importCall.getKindName() !== 'CallExpression') return undefined
+    const [argument] = importCall.getArguments?.() ?? []
+    if (
+      importCall.getExpression?.().getKindName() !== 'ImportKeyword' ||
+      !argument ||
+      argument.getKindName() !== 'StringLiteral'
+    )
+      return undefined
+    return argument.getLiteralValue?.()
+  }
+
+  let legacyFound = false
+  for (const entry of providersArray.getElements?.() ?? []) {
+    if (entry.getKindName() === 'ArrowFunction') {
+      const path = importPathFromArrow(entry)
+      if (!path) throw new Error('a providers entry is not a supported lazy import')
+      if (path === legacyProviderPath) legacyFound = true
+      continue
+    }
+
+    if (entry.getKindName() !== 'ObjectLiteralExpression')
+      throw new Error('a providers entry is not a supported lazy import')
+    const fileProperty = entry.getProperty?.('file')
+    const initializer =
+      fileProperty?.getKindName() === 'PropertyAssignment'
+        ? fileProperty.getInitializer?.()
+        : undefined
+    const path = initializer && importPathFromArrow(initializer)
+    if (!path) throw new Error('a providers object must have a static file lazy import')
+    if (path === legacyProviderPath) legacyFound = true
+  }
+  return legacyFound
 }
 
 const userIdTypes = ['integer', 'string', 'uuid'] as const
@@ -66,6 +159,23 @@ export async function configure(command: Configure) {
   }
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
+
+  let legacyProvider: boolean
+  try {
+    const project = await codemods.getTsMorphProject()
+    if (!project) throw new Error('the Assembler TypeScript project is unavailable')
+    legacyProvider = hasLegacyProvider(
+      project as unknown as TsMorphProject,
+      command.app.makePath('adonisrc.ts')
+    )
+  } catch (error) {
+    command.exitCode = 1
+    command.logger.logError(
+      `Unable to inspect adonisrc.ts: ${(error as Error).message}. Expose a supported static providers array or complete Account Kit provider registration manually before running configure.`
+    )
+    return
+  }
+
   await codemods.makeUsingStub(stubsRoot, 'config/account_kit.stub', {})
 
   let migrationFiles: string[] = []
@@ -91,17 +201,8 @@ export async function configure(command: Configure) {
   }
 
   // Applications configured before the root export keep their registered legacy provider path.
-  let rcContents = ''
-  try {
-    rcContents = await readFile(command.app.makePath('adonisrc.ts'), 'utf8')
-  } catch (error) {
-    if (!isMissing(error)) throw error
-  }
-  const hasLegacyProvider = /['"]adonisjs-account-kit\/providers\/account_kit_provider['"]/.test(
-    rcContents
-  )
   await codemods.updateRcFile((rcFile) => {
-    if (!hasLegacyProvider) rcFile.addProvider('adonisjs-account-kit/account_kit_provider')
+    if (!legacyProvider) rcFile.addProvider('adonisjs-account-kit/account_kit_provider')
     rcFile.addCommand('adonisjs-account-kit/commands')
   })
 
