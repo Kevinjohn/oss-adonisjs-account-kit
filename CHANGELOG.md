@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: the README is now a short overview with install and a quick example; the production
+  checklist moves to the operations guide.
+- Add `homepage` and `bugs` to `package.json` for the npm package page.
 - Contributors: `pnpm format:check` runs Prettier on every tracked file, before lint and tests in
   `pnpm test`, `pnpm check:changed` and the `checks` workflow.
 - Contributors: `pnpm check:changed --static` runs every step except the full test suite.

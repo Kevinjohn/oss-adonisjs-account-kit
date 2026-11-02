@@ -85,6 +85,10 @@
   ],
   "author": "Kevinjohn Gallagher",
   "license": "MIT",
+  "homepage": "https://kevinjohn.github.io/oss-adonisjs-account-kit/",
+  "bugs": {
+    "url": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/issues"
+  },
   "devDependencies": {
     "@adonisjs/assembler": "^8.6.0",
     "@adonisjs/core": "^7.0.1",
