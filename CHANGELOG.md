@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reload invitation-management actors under the account lock in each authorization transaction.
+
 - Recognize configured provider registrations structurally and stop before generating files when
   the application configuration cannot be inspected safely. For dynamic provider lists, document
   manual registration and the explicit `--provider-registered` step to complete setup.
