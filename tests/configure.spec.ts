@@ -7,6 +7,7 @@ import { ListLoader } from '@adonisjs/core/ace'
 import Configure from '@adonisjs/core/commands/configure'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { RuntimeException } from '@adonisjs/core/exceptions'
+import { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import { configure, migrationNames, migrationSchema } from '../configure.js'
 
 test('configures the package idempotently without replacing application-owned files', async ({
@@ -134,21 +135,146 @@ test('configures the package idempotently without replacing application-owned fi
     assert.equal(secondEnv, firstEnv)
     const secondRcContents = await readFile(join(root, 'adonisrc.ts'), 'utf8')
     assert.equal(secondRcContents.match(/adonisjs-account-kit\/account_kit_provider/g)?.length, 1)
+
+    const rcPath = join(root, 'adonisrc.ts')
+    await writeFile(
+      rcPath,
+      [
+        "import { defineConfig as makeConfig } from '@adonisjs/core/app'",
+        'const defineConfig = makeConfig',
+        "// 'adonisjs-account-kit/providers/account_kit_provider'",
+        "/* 'adonisjs-account-kit/providers/account_kit_provider' */",
+        "const note = 'adonisjs-account-kit/providers/account_kit_provider'",
+        'const template = `adonisjs-account-kit/providers/account_kit_provider`',
+        "export default defineConfig({ note, template, providers: [() => import('adonisjs-account-kit/providers/account_kit_provider_extra')] })",
+        '',
+      ].join('\n')
+    )
+    await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    let rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length,
+      1
+    )
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/providers\/account_kit_provider'\)/g)
+        ?.length ?? 0,
+      0
+    )
+    assert.include(
+      rcContents,
+      "import('adonisjs-account-kit/providers/account_kit_provider_extra')"
+    )
+
+    await writeFile(
+      rcPath,
+      [
+        "import { defineConfig } from '@adonisjs/core/app'",
+        "export default defineConfig({ providers: [{ file: () => import('adonisjs-account-kit/providers/account_kit_provider'), environment: ['console'] }] })",
+        '',
+      ].join('\n')
+    )
+    await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/providers\/account_kit_provider'\)/g)
+        ?.length,
+      1
+    )
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length ?? 0,
+      0
+    )
+
+    await writeFile(
+      rcPath,
+      [
+        "import { defineConfig } from '@adonisjs/core/app'",
+        "export default defineConfig({ providers: [{ file: () => { return import('adonisjs-account-kit/providers/account_kit_provider') }, environment: ['console'] }] })",
+        '',
+      ].join('\n')
+    )
+    await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/providers\/account_kit_provider'\)/g)
+        ?.length,
+      1
+    )
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length ?? 0,
+      0
+    )
+
+    await writeFile(
+      rcPath,
+      [
+        "import { defineConfig } from '@adonisjs/core/app'",
+        "export default defineConfig({ providers: [{ file: () => { return import('adonisjs-account-kit/account_kit_provider') }, environment: ['console'] }] })",
+        '',
+      ].join('\n')
+    )
+    await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length,
+      1
+    )
+
+    await writeFile(
+      rcPath,
+      "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [() => import('adonisjs-account-kit/account_kit_provider')] })\n"
+    )
+    await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length,
+      1
+    )
+
+    await writeFile(
+      rcPath,
+      "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({})\n"
+    )
+    await ignitor.ace().handle(['configure', 'adonisjs-account-kit', '--force'])
+    rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(
+      rcContents.match(/import\('adonisjs-account-kit\/account_kit_provider'\)/g)?.length,
+      1
+    )
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 }).timeout(10_000)
 
-function fakeCommand(root: string, parsedFlags: Record<string, string>) {
+function fakeCommand(
+  root: string,
+  parsedFlags: Record<string, string>,
+  rcContents?: string,
+  projectUnavailable = false
+) {
   const calls = {
     migrations: [] as Array<Record<string, unknown>>,
+    stubs: [] as string[],
     envValidations: 0,
     errors: [] as string[],
     providers: [] as string[],
   }
   const codemods = {
     overwriteExisting: true,
+    async getTsMorphProject() {
+      if (projectUnavailable) return undefined
+      await writeFile(join(root, 'tsconfig.json'), '{}')
+      const project = new CodeTransformer(pathToFileURL(`${root}/`)).project
+      project.createSourceFile(
+        join(root, 'adonisrc.ts'),
+        rcContents ??
+          "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [] })"
+      )
+      return project
+    },
     async makeUsingStub(_root: string, name: string, data: Record<string, unknown>) {
+      calls.stubs.push(name)
       if (name.startsWith('migrations/'))
         calls.migrations.push(data.migration as Record<string, unknown>)
     },
@@ -242,15 +368,43 @@ test('configure registers the root provider export and keeps a registered legacy
     await mkdir(join(root, 'database', 'migrations'), { recursive: true })
     const fresh = fakeCommand(root, {})
     await configure(fresh.command as unknown as Configure)
+    assert.deepEqual(fresh.calls.errors, [])
     assert.deepEqual(fresh.calls.providers, ['adonisjs-account-kit/account_kit_provider'])
 
-    await writeFile(
-      join(root, 'adonisrc.ts'),
-      "export default { providers: [() => import('adonisjs-account-kit/providers/account_kit_provider')] }\n"
+    const existing = fakeCommand(
+      root,
+      {},
+      "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [() => import('adonisjs-account-kit/providers/account_kit_provider')] })\n"
     )
-    const existing = fakeCommand(root, {})
     await configure(existing.command as unknown as Configure)
     assert.deepEqual(existing.calls.providers, [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('configure rejects unavailable projects and unsupported providers before generating files', async ({
+  assert,
+}) => {
+  const root = await mkdtemp(join(tmpdir(), 'account-kit-provider-preflight-'))
+  try {
+    const cases = [
+      fakeCommand(root, {}, undefined, true),
+      fakeCommand(
+        root,
+        {},
+        "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [...applicationProviders] })"
+      ),
+    ]
+    for (const { command, calls } of cases) {
+      await configure(command as unknown as Configure)
+      assert.equal(command.exitCode, 1)
+      assert.lengthOf(calls.errors, 1)
+      assert.include(calls.errors[0], 'supported static providers array')
+      assert.deepEqual(calls.stubs, [])
+      assert.deepEqual(calls.migrations, [])
+      assert.equal(calls.envValidations, 0)
+    }
   } finally {
     await rm(root, { recursive: true, force: true })
   }
