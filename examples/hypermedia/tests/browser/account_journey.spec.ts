@@ -609,9 +609,14 @@ test.group('native account journeys', (group) => {
       emailVerifiedAt: DateTime.now(),
       unverifiedEmail: null,
     })
-    const otherContext = await browser.newContext({ baseURL: origin })
-    const emailContext = await browser.newContext({ baseURL: origin })
+    const contexts: Array<{ close: () => Promise<void> }> = []
+    let testFailed = false
+    let testFailure: unknown
     try {
+      const otherContext = await browser.newContext({ baseURL: origin })
+      contexts.push(otherContext)
+      const emailContext = await browser.newContext({ baseURL: origin })
+      contexts.push(emailContext)
       const primary = await visit('/login')
       await primary.getByLabel('Email').fill(user.email)
       await primary.getByLabel('Password').fill('OldPassword123!')
@@ -696,6 +701,7 @@ test.group('native account journeys', (group) => {
         unverifiedEmail: null,
       })
       const visitorContext = await browser.newContext({ baseURL: origin })
+      contexts.push(visitorContext)
       const inspection = await visitorContext.visit('/login')
       await inspection.getByLabel('Email').fill(visitor.email)
       await inspection.getByLabel('Password').fill('VisitorPassword123!')
@@ -723,6 +729,7 @@ test.group('native account journeys', (group) => {
       await emailPrimary.getByRole('heading', { name: 'Sign in' }).waitFor()
 
       const passwordContext = await browser.newContext({ baseURL: origin })
+      contexts.push(passwordContext)
       const otherPasswordSession = await passwordContext.visit('/login')
       await otherPasswordSession.getByLabel('Email').fill(user.email)
       await otherPasswordSession.getByLabel('Password').fill('OldPassword123!')
@@ -730,6 +737,7 @@ test.group('native account journeys', (group) => {
       await otherPasswordSession.getByRole('heading', { name: 'Your account' }).waitFor()
 
       const passwordPrimaryContext = await browser.newContext({ baseURL: origin })
+      contexts.push(passwordPrimaryContext)
       const passwordPrimary = await passwordPrimaryContext.visit('/login')
       await passwordPrimary.getByLabel('Email').fill(user.email)
       await passwordPrimary.getByLabel('Password').fill('OldPassword123!')
@@ -755,6 +763,7 @@ test.group('native account journeys', (group) => {
       await otherPasswordSession.goto('/account')
       await otherPasswordSession.getByRole('heading', { name: 'Sign in' }).waitFor()
       const newEmailContext = await browser.newContext({ baseURL: origin })
+      contexts.push(newEmailContext)
       const newEmailLogin = await newEmailContext.visit('/login')
       await newEmailLogin.getByLabel('Email').fill('email-owner.new@example.test')
       await newEmailLogin.getByLabel('Password').fill('EmailOwnerPassword123!')
@@ -765,21 +774,32 @@ test.group('native account journeys', (group) => {
       )
       assert.isDefined(savedSessionCookie)
       const replayContext = await browser.newContext({ baseURL: origin })
+      contexts.push(replayContext)
       await replayContext.addCookies([savedSessionCookie!])
       await passwordPrimary.getByRole('button', { name: 'Log out' }).click()
       await passwordPrimary.getByRole('heading', { name: 'Sign in' }).waitFor()
       assert.equal(new URL(passwordPrimary.url()).pathname, '/login')
       const replay = await replayContext.visit('/account')
       await replay.getByRole('heading', { name: 'Sign in' }).waitFor()
-      await replayContext.close()
-      await passwordContext.close()
-      await passwordPrimaryContext.close()
-      await newEmailContext.close()
-      await visitorContext.close()
-      await emailContext.close()
+    } catch (error) {
+      testFailed = true
+      testFailure = error
+      throw error
     } finally {
-      await otherContext.close()
-      await emailContext.close()
+      const cleanupFailures: unknown[] = []
+      for (const context of contexts) {
+        try {
+          await context.close()
+        } catch (error) {
+          cleanupFailures.push(error)
+        }
+      }
+      if (cleanupFailures.length > 0) {
+        throw new AggregateError(
+          testFailed ? [testFailure, ...cleanupFailures] : cleanupFailures,
+          'Failed to close all profile journey browser contexts'
+        )
+      }
     }
   })
 

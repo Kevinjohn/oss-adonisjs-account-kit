@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
+import { errors as authErrors } from '@adonisjs/auth'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
@@ -207,7 +208,10 @@ test.group('account form errors', (group) => {
     assert.equal(user.password, originalPasswordHash)
     const authenticated = await User.verifyCredentials(user.email, 'OldPass123!')
     assert.equal(authenticated.id, user.id)
-    await assert.rejects(() => User.verifyCredentials(user.email, 'Replacement123!'))
+    await assert.rejects(
+      () => User.verifyCredentials(user.email, 'Replacement123!'),
+      authErrors.E_INVALID_CREDENTIALS
+    )
   })
 
   test('profile validation errors clear the current password', async ({ visit, assert }) => {

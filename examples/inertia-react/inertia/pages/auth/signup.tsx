@@ -27,6 +27,7 @@ export default function Signup() {
                 id="fullName"
                 name="fullName"
                 type="text"
+                required
                 className="field__input"
                 autoComplete="name"
                 placeholder="Ada Lovelace"

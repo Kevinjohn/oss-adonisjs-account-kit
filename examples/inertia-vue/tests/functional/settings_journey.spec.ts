@@ -1,5 +1,6 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each HTTP response beside its assertion. */
 import { test } from '@japa/runner'
+import { errors as authErrors } from '@adonisjs/auth'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import kit from 'adonisjs-account-kit/services/main'
@@ -162,7 +163,10 @@ test.group('profile and email settings HTTP journey', (group) => {
     assert.equal(pending.email, 'owner@example.test')
     assert.equal(pending.unverifiedEmail, 'new@example.test')
     assert.equal((await User.verifyCredentials('owner@example.test', currentPassword)).id, owner.id)
-    await assert.rejects(() => User.verifyCredentials('new@example.test', currentPassword))
+    await assert.rejects(
+      () => User.verifyCredentials('new@example.test', currentPassword),
+      authErrors.E_INVALID_CREDENTIALS
+    )
     assert.equal((await User.findOrFail(other.id)).email, 'other@example.test')
     const path = new URL(confirmationUrl).pathname
     const inspect = await unrelated.props(path)
@@ -175,7 +179,10 @@ test.group('profile and email settings HTTP journey', (group) => {
     assert.include(completed.headers.get('location')!, '/login')
     assert.equal((await User.findOrFail(owner.id)).email, 'new@example.test')
     assert.equal((await User.verifyCredentials('new@example.test', currentPassword)).id, owner.id)
-    await assert.rejects(() => User.verifyCredentials('owner@example.test', currentPassword))
+    await assert.rejects(
+      () => User.verifyCredentials('owner@example.test', currentPassword),
+      authErrors.E_INVALID_CREDENTIALS
+    )
     assert.equal((await unrelated.props(path)).props.props.valid, false)
     const replay = await unrelated.request(path, {})
     assert.equal(replay.status, 302)

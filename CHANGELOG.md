@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Reference examples: keep native-form credential values out of validation flash data, require a
+  trimmed signup name, and honor configured user tables and ID types across the API migrations.
+
 - Reload invitation-management actors under the account lock in each authorization transaction.
 
 - Recognize configured provider registrations structurally and stop before generating files when

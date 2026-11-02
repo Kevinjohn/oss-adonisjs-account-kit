@@ -43,6 +43,21 @@ export default class HttpExceptionHandler extends ExceptionHandler {
   }
 
   /**
+   * Keep validation errors available to Inertia without storing submitted credentials. For plain
+   * HTML form submissions, retain only the non-secret fields useful for correcting the form.
+   */
+  async renderValidationErrorAsHTML(
+    error: Parameters<ExceptionHandler['renderValidationErrorAsHTML']>[0],
+    ctx: HttpContext
+  ) {
+    if (!ctx.session) return super.renderValidationErrorAsHTML(error, ctx)
+
+    ctx.session.flashValidationErrors(error, false)
+    if (!ctx.request.header('X-Inertia')) ctx.session.flashOnly(['fullName', 'email'])
+    ctx.response.redirect('back', true)
+  }
+
+  /**
    * The method is used for handling errors and returning
    * response to the client
    */

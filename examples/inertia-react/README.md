@@ -19,6 +19,10 @@ The app keeps the starter's session guard and requires a server-side session sto
 
 Emails are printed to the dev server log instead of being sent.
 
+Signup requires a full name containing 1–255 characters after trimming. Plain HTML validation
+redirects retain only the full name and email in the session; Inertia validation keeps field errors
+without flashing submitted input.
+
 ## Explore the browser example
 
 Start with the [local run instructions](#run-it), then visit `/signup`. The screenshot shows the
