@@ -34,6 +34,9 @@ type RcNode = {
   getArguments?(): RcNode[]
   getExpression?(): RcNode
   getProperty?(name: string): RcNode | undefined
+  getProperties?(): RcNode[]
+  getName?(): string
+  getNameNode?(): RcNode
   getInitializer?(): RcNode | undefined
   getElements?(): RcNode[]
   getBody?(): RcNode
@@ -44,7 +47,7 @@ type AssemblerProject = CodeTransformer['project']
 
 /**
  * Inspect the same defineConfig call and provider entry forms consumed by Assembler's RC
- * transformer. Returning false means the recognized config has no providers property yet.
+ * transformer. Returning false means no legacy provider was found in the inspectable configuration.
  */
 function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
   const rcFile = project.getSourceFile(rcPath)
@@ -60,7 +63,43 @@ function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
   if (!config || config.getKindName() !== 'ObjectLiteralExpression')
     throw new UnsupportedConfigShape('defineConfig does not receive a static object literal')
 
-  const providersProperty = config.getProperty?.('providers')
+  const properties = config.getProperties?.() ?? []
+  if (
+    properties.some((property) => property.getNameNode?.().getKindName() === 'ComputedPropertyName')
+  ) {
+    throw new UnsupportedConfigShape('computed config properties cannot be inspected safely')
+  }
+
+  let lastSpreadIndex = -1
+  for (const [index, property] of properties.entries()) {
+    if (property.getKindName() === 'SpreadAssignment') lastSpreadIndex = index
+  }
+  const propertiesAfterLastSpread = properties.slice(lastSpreadIndex + 1).reverse()
+  const findProperty = (name: string) =>
+    lastSpreadIndex >= 0
+      ? propertiesAfterLastSpread.find((property) => property.getName?.() === name)
+      : config.getProperty?.(name)
+  if (
+    lastSpreadIndex >= 0 &&
+    !['providers', 'commands'].every(
+      (name) => findProperty(name)?.getKindName() === 'PropertyAssignment'
+    )
+  ) {
+    throw new UnsupportedConfigShape(
+      'a config with object spreads must explicitly expose providers and commands after its last spread'
+    )
+  }
+
+  const providersProperty = findProperty('providers')
+  const commandsProperty = findProperty('commands')
+  if (
+    commandsProperty &&
+    (commandsProperty.getKindName() !== 'PropertyAssignment' ||
+      commandsProperty.getInitializer?.()?.getKindName() !== 'ArrayLiteralExpression')
+  ) {
+    throw new UnsupportedConfigShape('the commands property is not a static array assignment')
+  }
+
   if (!providersProperty) return false
   if (providersProperty.getKindName() !== 'PropertyAssignment')
     throw new UnsupportedProvidersConfiguration(
@@ -99,7 +138,31 @@ function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
     const isProviderObject = entry.getKindName() === 'ObjectLiteralExpression'
     let loader: RcNode | undefined = entry
     if (isProviderObject) {
-      const fileProperty = entry.getProperty?.('file')
+      const entryProperties = entry.getProperties?.() ?? []
+      if (
+        entryProperties.some(
+          (property) => property.getNameNode?.().getKindName() === 'ComputedPropertyName'
+        )
+      ) {
+        throw new UnsupportedProvidersConfiguration(
+          'computed provider object properties cannot be inspected safely'
+        )
+      }
+
+      let entryLastSpreadIndex = -1
+      for (const [index, property] of entryProperties.entries()) {
+        if (property.getKindName() === 'SpreadAssignment') entryLastSpreadIndex = index
+      }
+      const fileProperty =
+        entryLastSpreadIndex >= 0
+          ? entryProperties
+              .slice(entryLastSpreadIndex + 1)
+              .reverse()
+              .find(
+                (property) =>
+                  property.getKindName() === 'PropertyAssignment' && property.getName?.() === 'file'
+              )
+          : entry.getProperty?.('file')
       loader =
         fileProperty?.getKindName() === 'PropertyAssignment'
           ? fileProperty.getInitializer?.()
