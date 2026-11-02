@@ -28,6 +28,16 @@ test('a changed spec runs on its own and is formatted, linted and type-checked',
     assert.equal('skip' in steps[id], false)
 })
 
+test('named-file lint uses the root config, which ignores the example apps', () => {
+  const steps = plan('examples/inertia-react/app/exceptions/handler.ts', 'src/index.ts')
+  const config = steps.lint.command.indexOf('--config')
+  assert.equal(steps.lint.command[config + 1], 'eslint.config.js')
+  assert.deepEqual(steps.lint.command.slice(-2), [
+    'examples/inertia-react/app/exceptions/handler.ts',
+    'src/index.ts',
+  ])
+})
+
 test('formatting runs first, then lint, then type-checking and tests', () => {
   const ids = planChecks([{ path: 'src/http/guard.ts', deleted: false }]).map((step) => step.id)
   assert.deepEqual(ids.slice(0, 4), ['format', 'lint', 'typecheck', 'tests'])
