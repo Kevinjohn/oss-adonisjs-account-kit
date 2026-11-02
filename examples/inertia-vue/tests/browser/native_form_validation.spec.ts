@@ -2,6 +2,13 @@ import { test } from '@japa/runner'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 
+/** Session.commit flattens its input bag into top-level flash entries. */
+function oldInputFromFlash(flash: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(flash).filter(([key]) => !['errorsBag', 'inputErrorsBag'].includes(key))
+  )
+}
+
 test.group('native form validation', (group) => {
   group.each.setup(setupAccountDatabase)
 
@@ -20,7 +27,8 @@ test.group('native form validation', (group) => {
     try {
       await context.initiateSession()
       await context.request.get('/signup')
-      const csrf = (await context.cookies()).find((cookie) => cookie.name === 'XSRF-TOKEN')
+      const cookies = await context.cookies()
+      const csrf = cookies.find((cookie) => cookie.name === 'XSRF-TOKEN')
       assert.exists(csrf)
 
       const response = await context.request.post('/signup', {
@@ -37,16 +45,17 @@ test.group('native form validation', (group) => {
       })
 
       assert.equal(response.status(), 302)
+      const rejectedUser = await User.findBy('email', 'native-validation-vue@example.test')
       const flash = await context.getFlashMessages()
       const session = await context.getSession()
       assert.isArray(flash.inputErrorsBag?.fullName)
-      assert.deepEqual(flash.input, {
-        fullName: '   ',
+      assert.deepEqual(oldInputFromFlash(flash), {
+        fullName: null,
         email: 'native-validation-vue@example.test',
       })
       const persisted = JSON.stringify({ session, flash })
       for (const marker of Object.values(markers)) assert.notInclude(persisted, marker)
-      assert.isNull(await User.findBy('email', 'native-validation-vue@example.test'))
+      assert.isNull(rejectedUser)
 
       const validResponse = await context.request.post('/signup', {
         maxRedirects: 0,
@@ -62,10 +71,8 @@ test.group('native form validation', (group) => {
         },
       })
       assert.equal(validResponse.status(), 302)
-      assert.equal(
-        (await User.findBy('email', 'native-valid-vue@example.test'))?.fullName,
-        'x'.repeat(255)
-      )
+      const acceptedUser = await User.findBy('email', 'native-valid-vue@example.test')
+      assert.equal(acceptedUser?.fullName, 'x'.repeat(255))
     } finally {
       await context.close()
     }

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
@@ -219,7 +220,7 @@ test.group('Social session', (group) => {
       email: user.email,
       emailVerified: true,
     })
-    await db.from(User.table).where('id', user.id).update({ credentials_changed_at: new Date() })
+    await user.merge({ credentialsChangedAt: DateTime.utc() }).save()
     const callback = await client
       .get(`/api/v1/auth/oauth/github/callback?state=${state}&code=stale-code`)
       .header('cookie', rawCookies(started) || cookie)
