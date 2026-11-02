@@ -131,8 +131,9 @@ export function authenticationService(deps: ServiceDependencies) {
      * Looks up the account, checks its password and `canAccess`, then signs in through `guard`.
      * Unknown accounts, passwordless accounts, wrong passwords and access-policy denials throw
      * `InvalidCredentialsError`, count against failed-login limits and wait out `minRequestMs`.
-     * Malformed input, guard/configuration errors, throttling, infrastructure failures and
-     * credential-establishment failures have their own outcomes.
+     * Malformed input also throws `InvalidCredentialsError`, without counting or waiting.
+     * Guard/configuration errors, throttling, infrastructure failures and credential-establishment
+     * failures have their own outcomes.
      */
     async login<Credential>(
       input: PasswordLoginInput,

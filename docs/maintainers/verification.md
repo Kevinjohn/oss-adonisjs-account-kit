@@ -24,10 +24,12 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 
 ## November 2026 remediation candidate
 
-The combined candidate uses package archive source
+This record covers the combined candidate of pull requests #707, #708, #709 and #710, integrated
+on the `review-remediation` branch. It applies to `main` only once all four have merged; a subset
+carries different runtime sources. The candidate uses package archive source
 `44edc3f7208878cccca41c51c861e00e9e695d97` and test source
-`baead98f4b75a694f3980da99690003bbc6c617f` (subsequent changes correct test fixtures, cleanup and documentation; package runtime
-sources and templates are unchanged). Archive SHA-256:
+`baead98f4b75a694f3980da99690003bbc6c617f` (subsequent changes correct test fixtures, cleanup and
+documentation; package runtime sources and templates are unchanged). Archive SHA-256:
 `356094d59b96c1344c1f1be01875fd46b91e100f7d56d73079a29b8f061a0288`.
 The archive was packed once and reused for every consumer and reference-example check.
 
