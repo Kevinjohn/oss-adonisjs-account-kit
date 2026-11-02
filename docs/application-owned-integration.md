@@ -76,6 +76,9 @@ reference guides document CSRF, session revision checks, token revocation, and r
 
 ## How it works
 
+Account Kit owns the account transaction: tokens, locking, revocation and events. Your app owns the
+HTTP layer, validation, authorization and the user model.
+
 ### Validate requests before calling account operations
 
 Use AdonisJS validators to normalize and validate request bodies, query values, and route

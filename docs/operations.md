@@ -7,6 +7,17 @@ package guarantees about readiness, delivery and revocation.
 
 ## Run in production
 
+### Production checklist
+
+- Configure trusted proxies before passing `request.ip()` as `clientKey`.
+- Store email addresses trimmed and lowercase, with a single-column unique index.
+- Keep `APP_KEY` identical on every instance that shares a limiter store.
+- Do not wrap Account Kit calls in your own transaction; each operation owns its transaction and
+  passes `trx` to your callbacks. See [transactions and callbacks](usage.md#transactions-and-callbacks).
+- On SQLite, enable foreign keys on every connection.
+- Schedule `node ace account-kit:prune` to delete expired tokens.
+- Keep proof links out of access logs and analytics.
+
 ### Deployment prerequisites
 
 Before serving traffic, apply and verify the generated migrations, configure the database and

@@ -1,8 +1,10 @@
 # Update policy: follow AdonisJS.
-# - Patch updates: always.
-# - Minor updates: only for AdonisJS-owned packages. Everything else (TypeScript included) moves
-#   to a new minor by hand, when AdonisJS moves.
+# - Patch updates: always, grouped into one weekly pull request.
+# - Minor updates: only for AdonisJS-owned packages, in a separate grouped pull request. Everything
+#   else (TypeScript included) moves to a new minor by hand, when AdonisJS moves.
 # - Major updates: never. Raise them by hand alongside an AdonisJS major.
+# Dependabot allows one schedule per ecosystem and directory, so patch and minor updates share the
+# weekly run; the groups keep them in separate pull requests.
 # Dependabot `ignore` rules cannot exclude a pattern, so the minor rule lists the non-AdonisJS
 # packages. Add new third-party dependencies to that list.
 version: 2
@@ -12,10 +14,11 @@ updates:
     schedule:
       interval: weekly
     groups:
-      adonisjs:
+      patch:
+        update-types: ['patch']
+      adonisjs-minor:
         patterns: ['@adonisjs/*', '@vinejs/*', '@japa/*', '@poppinss/*']
-      development:
-        dependency-type: development
+        update-types: ['minor']
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
