@@ -22,6 +22,50 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
 12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
 
+## November 2026 remediation candidate
+
+The combined candidate uses package archive source
+`44edc3f7208878cccca41c51c861e00e9e695d97` and test source
+`baead98f4b75a694f3980da99690003bbc6c617f` (subsequent changes correct test fixtures, cleanup and documentation; package runtime
+sources and templates are unchanged). Archive SHA-256:
+`356094d59b96c1344c1f1be01875fd46b91e100f7d56d73079a29b8f061a0288`.
+The archive was packed once and reused for every consumer and reference-example check.
+
+All commands used Node 24 and pnpm 11.23.0. The outer runtime was 24.21.0; pnpm's managed package
+and consumer harness runtime was 24.22.1. Disposable example apps used 24.21.0.
+
+| Check                                         | Result                                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `pnpm test`, including formatting and lint    | 1,149 passed, 2 SQLite skips; 98.32% lines, 91.72% branches, 97.58% functions                                 |
+| `DB_CLIENT=pg pnpm quick:test`, PostgreSQL 16 | 1,148 passed, 3 SQLite-specific skips                                                                         |
+| `pnpm test:mysql`, MySQL 8.4.13               | 1,138 passed, 12 skips                                                                                        |
+| `pnpm test:pg-service`                        | 61 passed                                                                                                     |
+| Build, built exports and built setup          | Passed; built checks 2 and 11 passed                                                                          |
+| Typecheck and docs build                      | Passed                                                                                                        |
+| Committed API migration matrix                | Six table/ID configurations passed on SQLite and PostgreSQL, with schema generation, constraints and rollback |
+| Packed fresh consumers                        | Default integer plus `account_users` string and UUID passed on SQLite and PostgreSQL                          |
+| Minimum consumer and actual configure hook    | Passed with Core 7.0.0 and Assembler 8.0.0                                                                    |
+| Vue password-reset recipe                     | Original login 1 passed; transplanted acceptance 2 passed                                                     |
+
+The direct API migration matrix is limited to that example's SQLite/PostgreSQL connections; its
+seven named cases account for seven MySQL skips. Existing package MySQL migration checks still run.
+MySQL session-cleanup failure probes separately proved restoration on the same physical connection
+and replacement of a session whose setting could not be restored. PostgreSQL contention tests
+observe the specific waiting and blocking backend pair. SQLite checks describe global writer
+serialization and do not claim per-user row locks.
+
+All four disposable reference apps passed their own lint, typecheck and build. API token journeys
+passed 51 tests (19 session-only skips), and its stale-session callback executed with the exact
+401/error-code assertion. React and Vue affected functional/browser journeys passed 28 and 30
+respectively; their native validation and signup-boundary tests also passed. Hypermedia's account
+browser spec passed 12 tests, and its native validation passed with JavaScript disabled. Its related
+unit checks passed three tests. Cleanup acquisition/assertion failure probes passed.
+
+The real API model was additionally exercised against default, custom-string and custom-UUID
+committed schemas: schema generation, the documented generated import, Lucid create/save, access
+token creation and Account Kit adapter lookup passed. Default generated schema output matched the
+checked-in file byte-for-byte. Packed-consumer migration results are recorded separately above.
+
 ## Reference
 
 Dated candidate records and the detail behind each checklist line. Newest candidate first.
