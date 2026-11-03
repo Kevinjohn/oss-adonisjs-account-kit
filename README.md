@@ -102,14 +102,14 @@ export default class PasswordResetsController {
 
 ## Tested against
 
-| | Every pull request | Weekly and before each release |
-| --- | --- | --- |
-| Node.js | 24 | 24 |
-| AdonisJS core | locked version | lowest supported (7.0.0) and latest 7.x |
-| Lucid | locked version | lowest supported and latest 22.x |
-| SQLite (better-sqlite3) | yes | yes |
-| PostgreSQL 16 | yes | yes |
-| MySQL 8.4 | no (experimental) | experimental |
+|                         | Every pull request | Weekly and before each release          |
+| ----------------------- | ------------------ | --------------------------------------- |
+| Node.js                 | 24                 | 24                                      |
+| AdonisJS core           | locked version     | lowest supported (7.0.0) and latest 7.x |
+| Lucid                   | locked version     | lowest supported and latest 22.x        |
+| SQLite (better-sqlite3) | yes                | yes                                     |
+| PostgreSQL 16           | yes                | yes                                     |
+| MySQL 8.4               | no (experimental)  | experimental                            |
 
 ## Documentation
 

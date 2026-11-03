@@ -35,17 +35,17 @@ pnpm quick:test
 
 Run the repository scripts, not the bare tools. They carry the flags used by CI.
 
-| Script | What it does |
-| --- | --- |
-| `pnpm format:check` | Checks formatting on tracked files |
-| `pnpm lint` | Runs ESLint with the AdonisJS config |
-| `pnpm typecheck` | Runs TypeScript without emitting |
-| `pnpm quick:test` | Runs the Japa suite against SQLite |
-| `pnpm test` | Runs `pnpm quick:test` with coverage thresholds |
-| `pnpm test:pg` | Runs the suite against a local PostgreSQL 16 database |
-| `pnpm build` | Compiles to `build/` |
-| `pnpm test:built-exports` | Checks the package's built exports |
-| `pnpm test:consumer` | Packs the package and checks it in a consumer application |
+| Script                    | What it does                                              |
+| ------------------------- | --------------------------------------------------------- |
+| `pnpm format:check`       | Checks formatting on tracked files                        |
+| `pnpm lint`               | Runs ESLint with the AdonisJS config                      |
+| `pnpm typecheck`          | Runs TypeScript without emitting                          |
+| `pnpm quick:test`         | Runs the Japa suite against SQLite                        |
+| `pnpm test`               | Runs `pnpm quick:test` with coverage thresholds           |
+| `pnpm test:pg`            | Runs the suite against a local PostgreSQL 16 database     |
+| `pnpm build`              | Compiles to `build/`                                      |
+| `pnpm test:built-exports` | Checks the package's built exports                        |
+| `pnpm test:consumer`      | Packs the package and checks it in a consumer application |
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
@@ -59,7 +59,7 @@ The `compat` workflow checks minimum and latest peer versions weekly and before 
 checks the packed consumer application and experimental MySQL 8.4 compatibility. The `examples`
 workflow checks recipes and example applications.
 
-The *Tested against* table in `README.md` mirrors `.github/workflows/checks.yml` and
+The _Tested against_ table in `README.md` mirrors `.github/workflows/checks.yml` and
 `.github/workflows/compat.yml`; change them in the same PR.
 
 ## Code layout
