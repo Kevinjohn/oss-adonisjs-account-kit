@@ -7,7 +7,9 @@ The release candidate is the archive built from source `1ef240c72c4445482baf8f30
 Distribution is through GitHub release tarballs only. Until the GitHub release workflow is restored, prepare a release manually:
 
 ```sh
-pnpm build && pnpm pack && gh release create <tag> adonisjs-account-kit-<version>.tgz
+pnpm build && pnpm pack
+gh release create <tag> adonisjs-account-kit-<version>.tgz \
+  --notes "SHA-256: $(shasum -a 256 adonisjs-account-kit-<version>.tgz | cut -d ' ' -f 1)"
 ```
 
 Publish `0.2.0` through that route only after the exact candidate checks and final review are complete and recorded.
