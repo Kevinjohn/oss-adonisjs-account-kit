@@ -630,7 +630,7 @@ managed tests refuse it until `pnpm pg:stop`.
 | Port     | `DB_PORT`, default `55432` |
 | User     | `account_kit`              |
 | Password | empty                      |
-| Database | `package_test`         |
+| Database | `package_test`             |
 
 Only `DB_PORT` configures the managed wrapper. It uses trust authentication, UTF-8, C locale,
 loopback TCP without Unix sockets, and `fsync=off`. Data at `tmp/pg16` persists for reuse and is
