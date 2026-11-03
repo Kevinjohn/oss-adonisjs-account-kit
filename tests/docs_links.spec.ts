@@ -42,7 +42,8 @@ test('every relative Markdown link points at a tracked path', async ({ assert })
       const path = decodeURIComponent(target.split('#')[0])
       checked++
       const linked = posix.normalize(posix.join(posix.dirname(document), path))
-      const isTracked = tracked.has(linked) || trackedDirectories.has(linked)
+      const directory = linked.replace(/\/+$/, '') || '.'
+      const isTracked = tracked.has(linked) || trackedDirectories.has(directory)
       if (!isTracked) broken.push(`${document}: ${target}`)
     }
   }
