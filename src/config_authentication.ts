@@ -6,6 +6,7 @@ import { InvalidConfigurationError } from './errors.js'
 import { isSqlIdentifier } from './sql_identifier.js'
 import { configuredExpiresAt } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
+import { freezeResolved } from './config_freeze.js'
 
 export function resolveAuthentication(
   config: Pick<AccountKitConfig, 'authentication'>
@@ -69,11 +70,11 @@ export function resolveAuthentication(
       guard: auth.guard,
       canAccess: auth.canAccess ?? (async () => true),
       clientLimit,
-      identityLimit: { ...identityLimit, blockDuration },
-      tokenAbilities: [...(auth.tokenAbilities ?? ['*'])],
+      identityLimit: freezeResolved({ ...identityLimit, blockDuration }),
+      tokenAbilities: freezeResolved([...(auth.tokenAbilities ?? ['*'])]),
       tokenExpiresIn: auth.tokenExpiresIn ?? null,
       tokenTable,
     }
   }
-  return authentication
+  return authentication && freezeResolved(authentication)
 }

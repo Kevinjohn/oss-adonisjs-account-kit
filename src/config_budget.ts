@@ -3,6 +3,7 @@ import string from '@adonisjs/core/helpers/string'
 import { assertPlainObject } from './config_assert.js'
 import { InvalidConfigurationError } from './errors.js'
 import type { ThrottleBudget } from './types.js'
+import { freezeResolved } from './config_freeze.js'
 
 export function budget(
   input: Partial<ThrottleBudget> | undefined,
@@ -33,5 +34,5 @@ export function budget(
       durationField,
       `account_kit: ${durationField} must be a limiter-representable duration`
     )
-  return { requests, duration }
+  return freezeResolved({ requests, duration })
 }

@@ -257,4 +257,31 @@ test.group('account kit configuration and service surface', (group) => {
     assert.lengthOf(seen, 1)
     assert.strictEqual(seen[0], input)
   })
+
+  test('freezes the configuration it constructs and never the application objects', ({
+    assert,
+  }) => {
+    const input = makeConfig({
+      users: makeUsersAdapter(kit.db, kit.hash),
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+    })
+    const resolved = defineConfig(input)
+    assert.isTrue(Object.isFrozen(resolved))
+    assert.isTrue(Object.isFrozen(resolved.enabled))
+    assert.isTrue(Object.isFrozen(resolved.expiresIn))
+    assert.isTrue(Object.isFrozen(resolved.throttle))
+    assert.isTrue(Object.isFrozen(resolved.invitationThrottle))
+    assert.isTrue(Object.isFrozen(resolved.invitationThrottle.sendActor))
+    assert.isTrue(Object.isFrozen(resolved.authorize))
+    assert.isTrue(Object.isFrozen(resolved.urls))
+    assert.isTrue(Object.isFrozen(resolved.notify))
+    assert.isTrue(Object.isFrozen(resolved.passwordPolicy))
+    assert.isTrue(Object.isFrozen(resolved.authentication))
+    assert.isTrue(Object.isFrozen(resolved.authentication?.clientLimit))
+    assert.isTrue(Object.isFrozen(resolved.authentication?.identityLimit))
+    assert.isTrue(Object.isFrozen(resolved.authentication?.tokenAbilities))
+    assert.isFalse(Object.isFrozen(input))
+    assert.isFalse(Object.isFrozen(input.users))
+    assert.strictEqual(resolved.users, input.users)
+  })
 })

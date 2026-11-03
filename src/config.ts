@@ -18,6 +18,7 @@ import type {
   ResolvedConfig,
   UrlCallbacks,
 } from './types.js'
+import { freezeResolved } from './config_freeze.js'
 
 function disabled(): never {
   throw new CapabilityDisabledError('This account capability is disabled')
@@ -59,7 +60,7 @@ function bindCallbacks<T extends object>(container: object | undefined, defaults
     const fn = (container as Record<string, unknown> | undefined)?.[key]
     result[key] = typeof fn === 'function' ? fn.bind(container) : defaults[key as keyof T]
   }
-  return result as T
+  return freezeResolved(result) as T
 }
 
 /** Binds the application's top-level hooks to the configuration object it passed. */
@@ -195,25 +196,27 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'limiterNamespace',
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
-  const expiresIn = {
+  const expiresIn = freezeResolved({
     passwordReset: config.expiresIn?.passwordReset ?? '1h',
     emailVerification: config.expiresIn?.emailVerification ?? '1h',
     invitation: config.expiresIn?.invitation ?? '7d',
     emailChange: config.expiresIn?.emailChange ?? '1h',
     magicLink: config.expiresIn?.magicLink ?? '15m',
-  }
+  })
   for (const [name, value] of Object.entries(expiresIn))
     configuredExpiresAt(`expiresIn.${name}`, DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
-  const invitationThrottle = Object.fromEntries(
-    ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
-      name,
-      budget(
-        config.invitationThrottle?.[name as keyof InvitationThrottle],
-        { requests: name.endsWith('Actor') ? 10 : 3, duration: '1h' },
-        `invitationThrottle.${name}`
-      ),
-    ])
+  const invitationThrottle = freezeResolved(
+    Object.fromEntries(
+      ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
+        name,
+        budget(
+          config.invitationThrottle?.[name as keyof InvitationThrottle],
+          { requests: name.endsWith('Actor') ? 10 : 3, duration: '1h' },
+          `invitationThrottle.${name}`
+        ),
+      ])
+    )
   ) as unknown as InvitationThrottle
   const minRequestMs = config.minRequestMs ?? 300
   if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
@@ -264,9 +267,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'account_kit: usersTable must be a plain SQL identifier'
     )
   const hooks = bindTopLevelHooks(config)
-  return {
+  return freezeResolved({
     ...hooks,
-    enabled: [...enabled],
+    enabled: freezeResolved([...enabled]),
     delivery: config.delivery ?? 'best-effort',
     expiresIn,
     throttle,
@@ -284,5 +287,5 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     urls: bindCallbacks<UrlCallbacks>(config.urls, disabledUrls),
     notify: bindCallbacks<NotificationCallbacks>(config.notify, disabledNotify),
     onInvitationAccepted: hooks.onInvitationAccepted ?? disabled,
-  }
+  })
 }

@@ -2,6 +2,7 @@
 import { InvalidConfigurationError } from './errors.js'
 import type { AccountKitConfig, PasswordPolicy } from './types.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.js'
+import { freezeResolved } from './config_freeze.js'
 
 export function resolvePasswordPolicy(
   config: Pick<AccountKitConfig, 'passwordPolicy'>
@@ -53,5 +54,5 @@ export function resolvePasswordPolicy(
         `passwordPolicy.${key}`,
         `account_kit: passwordPolicy.${key} must be boolean`
       )
-  return passwordPolicy
+  return freezeResolved(passwordPolicy)
 }
