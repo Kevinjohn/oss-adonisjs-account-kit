@@ -89,6 +89,10 @@
   "bugs": {
     "url": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git"
+  },
   "devDependencies": {
     "@adonisjs/assembler": "^8.6.0",
     "@adonisjs/core": "^7.0.1",
@@ -106,12 +110,12 @@
     "@poppinss/ts-exec": "^1.5.1",
     "@release-it/conventional-changelog": "^10.0.5",
     "@types/luxon": "^3.0.0",
-    "@types/node": "^25.3.5",
+    "@types/node": "^24.0.0",
     "@vinejs/vine": "^4.4.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "better-sqlite3": "^12.0.0",
-    "c8": "^11.0.0",
+    "better-sqlite3": "^13.0.0",
+    "c8": "^12.0.0",
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
     "drizzle-orm": "0.45.4",
@@ -121,7 +125,7 @@
     "pg": "^8.0.0",
     "prettier": "^3.8.1",
     "release-it": "^19.2.4",
-    "tsdown": "^0.21.0",
+    "tsdown": "^0.23.4",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.14.1",
     "typescript": "^5.9.3",
@@ -154,10 +158,6 @@
     "typescript": {
       "optional": true
     }
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
   },
   "tsdown": {
     "entry": [
@@ -199,6 +199,22 @@
     "sourcemaps": false,
     "target": "esnext"
   },
+  "c8": {
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "exclude": [
+      "tests/**",
+      "scripts/consumer/**",
+      "scripts/test_packed_consumer.mjs"
+    ]
+  },
+  "prettier": "@adonisjs/prettier-config",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "release-it": {
     "hooks": {
       "before:bump": "pnpm version ${version} --no-git-tag-version --allow-same-version",
@@ -223,22 +239,6 @@
         }
       }
     }
-  },
-  "c8": {
-    "reporter": [
-      "text",
-      "html"
-    ],
-    "exclude": [
-      "tests/**",
-      "scripts/consumer/**",
-      "scripts/test_packed_consumer.mjs"
-    ]
-  },
-  "prettier": "@adonisjs/prettier-config",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git"
   },
   "packageManager": "pnpm@11.23.0"
 }
