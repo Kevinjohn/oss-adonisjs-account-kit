@@ -236,6 +236,17 @@ function run(command: string, args: string[], cwd = appRoot) {
     )
   return result.stdout
 }
+function commitFixture(message: string) {
+  run('git', [
+    '-c',
+    'user.name=Recipe fixture',
+    '-c',
+    'user.email=recipe@example.test',
+    'commit',
+    '-m',
+    message,
+  ])
+}
 const digest = async (path: string) =>
   createHash('sha256')
     .update(await readFile(path))
@@ -279,7 +290,7 @@ try {
   run('git', ['init'])
   evidence.baselineInitialization = 'manual git init after pinned starter creation'
   run('git', ['add', '-A'])
-  run('git', ['commit', '-m', 'starter'])
+  commitFixture('starter')
   evidence.starterCommit = run('git', ['rev-parse', 'HEAD']).trim()
   evidence.starterDependencies = JSON.parse(await readFile(join(appRoot, 'package.json'), 'utf8'))
   evidence.starterLockSha256 = await digest(join(appRoot, 'pnpm-lock.yaml'))
@@ -349,7 +360,7 @@ test('original starter login reaches its protected profile', async ({ client, as
   run('pnpm', ['exec', 'node', 'ace', 'configure', '@kevinjohn/adonisjs-account-kit'])
   evidence.generatedInventory = run('git', ['status', '--porcelain'])
   run('git', ['add', '-A'])
-  run('git', ['commit', '-m', 'Configure account dependencies'])
+  commitFixture('Configure account dependencies')
   evidence.patchBaseline = run('git', ['rev-parse', 'HEAD']).trim()
   run('git', ['apply', '--check', patch])
   run('git', ['apply', patch])
