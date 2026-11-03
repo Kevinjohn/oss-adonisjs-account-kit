@@ -286,6 +286,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     authorize: bindCallbacks<AuthorizationCallbacks>(config.authorize, disabledAuthorize),
     urls: bindCallbacks<UrlCallbacks>(config.urls, disabledUrls),
     notify: bindCallbacks<NotificationCallbacks>(config.notify, disabledNotify),
-    onInvitationAccepted: hooks.onInvitationAccepted ?? disabled,
+    onInvitationAccepted:
+      typeof config.onInvitationAccepted === 'function'
+        ? config.onInvitationAccepted.bind(config)
+        : disabled,
   })
 }

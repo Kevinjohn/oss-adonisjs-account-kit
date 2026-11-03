@@ -258,6 +258,24 @@ test.group('account kit configuration and service surface', (group) => {
     assert.strictEqual(seen[0], input)
   })
 
+  test('keeps a prototype invitation hook on a class-instance configuration', async ({
+    assert,
+  }) => {
+    let called = false
+    class Hooks {
+      onInvitationAccepted() {
+        called = true
+        return Promise.resolve()
+      }
+    }
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    delete (base as Partial<AccountKitConfig>).onInvitationAccepted
+    const input = Object.assign(new Hooks(), base) as AccountKitConfig
+    const resolved = defineConfig(input)
+    await resolved.onInvitationAccepted({} as never, {} as never, {} as never)
+    assert.isTrue(called)
+  })
+
   test('freezes the configuration it constructs and never the application objects', ({
     assert,
   }) => {
