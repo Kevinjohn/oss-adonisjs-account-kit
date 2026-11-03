@@ -256,7 +256,7 @@ curl -X POST 'http://localhost:3333/account-kit/recovery/<proof>' \
 
 The response is `200 {"message":"Password reset."}`. Both old bearer tokens must now fail on
 the **same protected application route**; the new password must log in and the old password must
-fail. Posting the same proof again returns a mapped `422 E_ACCOUNT_KIT_INVALID_TOKEN` response.
+fail. Posting the same proof again returns a mapped `400 E_ACCOUNT_KIT_INVALID_TOKEN` response.
 Missing or malformed email and missing or policy-rejected password receive normal AdonisJS
 validation errors. A completion POST without a proof segment receives the route's 404; a
 nonempty invalid proof receives

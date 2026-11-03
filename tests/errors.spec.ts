@@ -6,6 +6,7 @@ import {
   DeliveryError,
   EmailAlreadyRegisteredError,
   IdentityNotConfirmedError,
+  InvalidCredentialsError,
   InvalidInputError,
   InvalidTokenError,
   InvitationPendingError,
@@ -25,6 +26,10 @@ test.group('account kit errors', () => {
     assert.instanceOf(error, AccountKitError)
     assert.notInstanceOf(error, AuthorizationError)
     assert.isUndefined(error.cause)
+  })
+  test('class statuses are the documented HTTP contract', ({ assert }) => {
+    assert.equal(new InvalidCredentialsError().status, 401)
+    assert.equal(new InvalidTokenError().status, 400)
   })
   test('exposes stable class names and codes, retry timing, and causes', async ({ assert }) => {
     const errorTypes = [
