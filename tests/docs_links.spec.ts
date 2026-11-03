@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { dirname, join, posix } from 'node:path'
+import { join, posix } from 'node:path'
 import { test } from '@japa/runner'
 import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
 
@@ -11,8 +11,28 @@ function trackedDocuments(): string[] {
   return trackedMarkdown(['**/*.md']).filter((name) => name !== 'CHANGELOG.md')
 }
 
+function trackedPaths(): Set<string> {
+  const result = spawnSync('git', ['ls-files', '-z'], { cwd: repoRoot, encoding: 'utf8' })
+  if (result.status !== 0) throw new Error(result.stderr)
+  return new Set(
+    result.stdout
+      .split('\0')
+      .filter(Boolean)
+      .map((path) => posix.normalize(path))
+  )
+}
+
 test('every relative Markdown link points at a tracked path', async ({ assert }) => {
   const broken: string[] = []
+  const tracked = trackedPaths()
+  const trackedDirectories = new Set<string>(['.'])
+  for (const path of tracked) {
+    let directory = posix.dirname(path)
+    while (directory !== '.') {
+      trackedDirectories.add(directory)
+      directory = posix.dirname(directory)
+    }
+  }
   let checked = 0
   for (const document of trackedDocuments()) {
     const source = await readFile(join(repoRoot, document), 'utf8')
@@ -21,8 +41,10 @@ test('every relative Markdown link points at a tracked path', async ({ assert })
       if (/^(?:[a-z][a-z\d+.-]*:|#)/i.test(target)) continue
       const path = decodeURIComponent(target.split('#')[0])
       checked++
-      if (!existsSync(join(repoRoot, dirname(document), path)))
-        broken.push(`${document}: ${target}`)
+      const linked = posix.normalize(posix.join(posix.dirname(document), path))
+      const directory = linked.replace(/\/+$/, '') || '.'
+      const isTracked = tracked.has(linked) || trackedDirectories.has(directory)
+      if (!isTracked) broken.push(`${document}: ${target}`)
     }
   }
   assert.isAbove(checked, 0)
