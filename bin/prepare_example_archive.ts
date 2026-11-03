@@ -51,7 +51,8 @@ if (matches.length !== 1) throw new Error('Expected exactly one candidate packag
 const entry = matches[0][0]
 const identity = /^ {4}resolution:[\s\S]*?^ {4}version: [^\n]+\n/m
 const pinnedMetadata = entry.replace(/^.*\n/, '').replace(identity, '')
-const normalize = (value: string) => value.replace(/\s/g, '')
+const normalize = (value: string) =>
+  value.replace(/^ {4}engines: \{ ?node: ('[^']*') ?\}$/m, '    engines: {node: $1}').trimEnd()
 if (normalize(pinnedMetadata) !== normalize(metadata)) {
   throw new Error(
     'Candidate dependency or peer metadata changed; regenerate example lockfiles deliberately'

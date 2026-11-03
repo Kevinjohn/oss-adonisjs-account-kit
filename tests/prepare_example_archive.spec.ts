@@ -68,6 +68,7 @@ for (const [name, packageEntry, message] of [
     'archive resolution path',
   ],
   ['different peers', entry.replace('^7.0.0', '^8.0.0'), 'metadata changed'],
+  ['changed peer range whitespace', entry.replace('^7.0.0', '^7. 0.0'), 'metadata changed'],
 ]) {
   test(`rejects ${name} without modifying the lockfile`, ({ assert }) => {
     const f = fixture(baseManifest, packageEntry)
