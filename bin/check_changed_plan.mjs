@@ -11,12 +11,13 @@ const docsSource = /^(?:docs\/(?!api\/|\.vitepress\/(?:cache|dist)\/).+|typedoc\
 // TypeDoc reads the exported sources and fails on warnings, so source changes build the docs too.
 const docsInput = /^(?!tests\/|examples\/|stubs\/|bin\/).+\.(?:ts|mts|cts)$/
 const pgService =
-  /^(?:bin\/pg\.sh|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.mjs)$/
+  /^(?:bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.mjs|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.mjs)$/
 const checkChanged =
   /^(?:bin\/check_changed[^/]*\.mjs|tests\/tooling\/check_changed_plan\.spec\.mjs)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
 // Markdown never qualifies: tests/docs_links.spec.ts reads every tracked Markdown file.
-const outsideJapa = /^(?!.*\.md$)(?:\.github\/.+|bin\/.+|tests\/tooling\/.+)$/
+const outsideJapa =
+  /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.mjs|tests\/tooling\/.+|bin\/check_changed[^/]*\.mjs)$/
 
 const minute = 60_000
 

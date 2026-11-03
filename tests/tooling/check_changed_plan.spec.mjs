@@ -129,11 +129,17 @@ test('documentation sources build the docs; generated docs do not', () => {
 test('policy scripts run their own tests', () => {
   assert.deepEqual(plan('bin/pg.sh')['pg-service'].command, ['pnpm', 'test:pg-service'])
   assert.ok(plan('bin/pg.sh').tests.skip)
+  assert.deepEqual(plan('bin/helpers/pg_service_fixture.mjs')['pg-service'].command, [
+    'pnpm',
+    'test:pg-service',
+  ])
+  assert.ok(plan('bin/helpers/pg_service_fixture.mjs').tests.skip)
   assert.deepEqual(plan('bin/check_changed_plan.mjs')['check-changed'].command, [
     'pnpm',
     'test:check-changed',
   ])
   assert.ok(plan('bin/check_changed_plan.mjs').tests.skip)
+  assert.deepEqual(plan('bin/helpers/consumer/fixture.mjs').tests.command, ['pnpm', 'quick:test'])
   assert.ok(plan('src/index.ts')['pg-service'].skip)
 })
 

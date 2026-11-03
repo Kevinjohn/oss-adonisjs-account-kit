@@ -2,10 +2,10 @@
 
 import { mkdir, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { runFresh } from './consumer/fresh.mjs'
-import { commands, digest, output, redact, run } from './consumer/harness.mjs'
-import { runMinimumCompatibility } from './consumer/minimum.mjs'
-import { runServiceOnly } from './consumer/service_only.mjs'
+import { runFresh } from './helpers/consumer/fresh.mjs'
+import { commands, digest, output, redact, run } from './helpers/consumer/harness.mjs'
+import { runMinimumCompatibility } from './helpers/consumer/minimum.mjs'
+import { runServiceOnly } from './helpers/consumer/service_only.mjs'
 import {
   candidateInput,
   candidateRevision,
@@ -17,7 +17,7 @@ import {
   tempRoot,
   userIdType,
   usersTable,
-} from './consumer/settings.mjs'
+} from './helpers/consumer/settings.mjs'
 
 const evidencePath = join(tempRoot, 'evidence.json')
 
