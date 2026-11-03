@@ -51,8 +51,8 @@
     "docs:api": "typedoc",
     "docs:dev": "pnpm docs:api && vitepress dev docs",
     "docs:build": "pnpm docs:api && vitepress build docs",
-    "demos": "node scripts/demos/create_app.mjs tmp/demo-app && node scripts/demos/record.mjs tmp/demo-app tmp/demo-casts && node scripts/demos/render.mjs tmp/demo-casts docs/assets/demos",
-    "demos:setup": "node scripts/demos/create_setup_app.mjs tmp/setup-demo-app && node scripts/demos/record_setup.mjs tmp/setup-demo-app tmp/setup-demo-casts && node scripts/demos/render.mjs tmp/setup-demo-casts docs/assets/demos",
+    "demos": "node bin/demos/create_app.mjs tmp/demo-app && node bin/demos/record.mjs tmp/demo-app tmp/demo-casts && node bin/demos/render.mjs tmp/demo-casts docs/assets/demos",
+    "demos:setup": "node bin/demos/create_setup_app.mjs tmp/setup-demo-app && node bin/demos/record_setup.mjs tmp/setup-demo-app tmp/setup-demo-casts && node bin/demos/render.mjs tmp/setup-demo-casts docs/assets/demos",
     "quick:test": "node --import=@poppinss/ts-exec --enable-source-maps bin/test.ts",
     "test:built-exports": "cross-env TEST_BUILT_EXPORTS=1 pnpm quick:test --files=package_exports.spec.ts",
     "test:built-setup": "cross-env TEST_BUILT_SETUP=1 pnpm quick:test --files=setup_command.spec.ts",
@@ -62,16 +62,16 @@
     "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",
     "build": "pnpm compile",
-    "test:consumer": "node scripts/test_packed_consumer.mjs",
+    "test:consumer": "node bin/test_consumer.mjs",
     "test:adapter": "pnpm quick:test --files=lucid_adapter.spec.ts",
     "pg:start": "bash bin/pg.sh start",
     "pg:stop": "bash bin/pg.sh stop",
     "test:pg": "bash bin/pg.sh test",
     "test:mysql": "cross-env DB_CLIENT=mysql2 TZ=America/New_York pnpm quick:test",
-    "test:pg-service": "node --test --test-concurrency=1 scripts/test_pg_service.mjs scripts/tests/pg_service_process_safety.spec.mjs scripts/tests/pg_service_inputs.spec.mjs",
-    "test:recipe": "node scripts/recipes/check.mjs",
-    "check:changed": "node scripts/check_changed.mjs",
-    "test:check-changed": "node --test scripts/tests/check_changed_plan.spec.mjs"
+    "test:pg-service": "node --test --test-concurrency=1 tests/tooling/pg_service.spec.mjs tests/tooling/pg_service_process_safety.spec.mjs tests/tooling/pg_service_inputs.spec.mjs",
+    "test:recipe": "node bin/test_recipe.mjs",
+    "check:changed": "node bin/check_changed.mjs",
+    "test:check-changed": "node --test tests/tooling/check_changed_plan.spec.mjs"
   },
   "keywords": [
     "adonisjs",
@@ -201,8 +201,7 @@
     ],
     "exclude": [
       "tests/**",
-      "scripts/consumer/**",
-      "scripts/test_packed_consumer.mjs"
+      "bin/**"
     ]
   },
   "prettier": "@adonisjs/prettier-config",
