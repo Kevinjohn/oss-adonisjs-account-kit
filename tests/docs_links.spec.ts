@@ -51,6 +51,50 @@ test('every relative Markdown link points at a tracked path', async ({ assert })
   assert.deepEqual(broken, [])
 })
 
+// The VitePress site publishes these sources at another URL and does not rewrite relative links
+// to them, so a link to the source path is a 404 on the site.
+test('no docs link targets a page the site publishes at another URL', async ({ assert }) => {
+  const config = await readFile(join(repoRoot, 'docs/.vitepress/config.mts'), 'utf8')
+  const rewritten = new Set(
+    [...config.match(/rewrites: \{([^}]*)\}/)![1].matchAll(/'([^']+)':/g)].map(
+      ([, source]) => `docs/${source}`
+    )
+  )
+  assert.isAbove(rewritten.size, 0)
+  const broken: string[] = []
+  for (const document of trackedMarkdown(['docs/**/*.md'])) {
+    const source = await readFile(join(repoRoot, document), 'utf8')
+    for (const [, target] of source.replace(/```[\s\S]*?```/g, '').matchAll(/\]\(([^)\s]+)\)/g)) {
+      if (/^(?:[a-z][a-z\d+.-]*:|#)/i.test(target)) continue
+      const linked = posix.normalize(posix.join(posix.dirname(document), target.split('#')[0]))
+      if (rewritten.has(linked)) broken.push(`${document}: ${target}`)
+    }
+  }
+  assert.deepEqual(broken, [])
+})
+
+// Packed Markdown and GitHub readers follow absolute links to this repository's main branch.
+test('absolute links to the main branch point at tracked paths', async ({ assert }) => {
+  const listed = spawnSync('git', ['ls-files', '-z'], { cwd: repoRoot, encoding: 'utf8' })
+  if (listed.status !== 0) throw new Error(listed.stderr)
+  const tracked = new Set(listed.stdout.split('\0').filter(Boolean))
+  const broken: string[] = []
+  let checked = 0
+  const prefix =
+    /https:\/\/github\.com\/Kevinjohn\/oss-adonisjs-account-kit\/(?:blob|tree)\/main\/([^)\s#>"]+)/g
+  for (const document of trackedMarkdown(['**/*.md'])) {
+    const source = await readFile(join(repoRoot, document), 'utf8')
+    for (const [, target] of source.matchAll(prefix)) {
+      checked++
+      const path = decodeURIComponent(target).replace(/\/+$/, '')
+      if (!tracked.has(path) && ![...tracked].some((file) => file.startsWith(`${path}/`)))
+        broken.push(`${document}: ${target}`)
+    }
+  }
+  assert.isAbove(checked, 0)
+  assert.deepEqual(broken, [])
+})
+
 /** GitHub's heading anchors: lowercase, punctuation dropped, spaces as hyphens. */
 async function headingAnchors(document: string): Promise<Set<string>> {
   const source = await readFile(join(repoRoot, document), 'utf8')

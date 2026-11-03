@@ -6,6 +6,9 @@ on:
       - 'examples/**'
       - 'stubs/**'
       - 'docs/guide/**'
+      - 'docs/recipes/patches/**'
+      - 'bin/test_recipe.ts'
+      - 'bin/prepare_example_archive.ts'
       - 'http/**'
       - '.github/workflows/examples.yml'
   schedule:
