@@ -4,6 +4,7 @@ import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+import { credentialsChangedOverride } from '../../config/account_kit.js'
 
 async function proofFor(owner: User) {
   const token = randomBytes(40).toString('base64url')
@@ -82,14 +83,9 @@ test.group('verification session browser journey', (group) => {
     await page.getByRole('button', { name: 'Sign in' }).click()
     await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
 
-    const config = (
-      kit as unknown as {
-        deps: { config: { onCredentialsChanged?: () => Promise<void> } }
-      }
-    ).deps.config
-    const previous = config.onCredentialsChanged
+    const previous = credentialsChangedOverride.run
     let followUpFailed = false
-    config.onCredentialsChanged = async () => {
+    credentialsChangedOverride.run = async () => {
       followUpFailed = true
       throw new Error('simulated follow-up failure')
     }
@@ -100,7 +96,7 @@ test.group('verification session browser journey', (group) => {
       await page.getByRole('button', { name: 'Confirm email' }).click()
       await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
     } finally {
-      config.onCredentialsChanged = previous
+      credentialsChangedOverride.run = previous
     }
     assert.isTrue(followUpFailed)
 
