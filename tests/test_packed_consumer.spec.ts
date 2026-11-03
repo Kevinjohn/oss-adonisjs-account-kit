@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
-const consumerHarness = join(repoRoot, 'scripts/test_packed_consumer.mjs')
+const consumerHarness = join(repoRoot, 'bin/test_consumer.mjs')
 
 test('rejects minimum compatibility for modes that do not support it before setup', ({
   assert,
@@ -68,7 +68,7 @@ test('fresh consumer copies exclude local databases, secrets and installed artif
     await writeFile(join(source, '.env.example'), 'NODE_ENV=development')
     await writeFile(join(source, 'package.json'), '{"private":true}')
 
-    const copyModule = new URL('../scripts/consumer/fixture.mjs', import.meta.url).href
+    const copyModule = new URL('../bin/helpers/consumer/fixture.mjs', import.meta.url).href
     const result = spawnSync(
       process.execPath,
       [

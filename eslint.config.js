@@ -2,7 +2,7 @@ import { configPkg } from '@adonisjs/eslint-config'
 
 export default [
   ...configPkg({
-    ignores: ['build/**', 'tmp/**', 'examples/**', 'stubs/**', 'scripts/demos/overlay/**'],
+    ignores: ['build/**', 'tmp/**', 'examples/**', 'stubs/**', 'bin/demos/overlay/**'],
   }),
   {
     rules: {

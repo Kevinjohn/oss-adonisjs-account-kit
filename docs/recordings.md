@@ -7,7 +7,7 @@ managed JSON routes under `/api` and emails printed to the log. Long tokens are 
 sign-in is not recorded because it needs a live provider.
 
 The recordings are regenerated with `pnpm demos` and `pnpm demos:setup`; see
-[scripts/demos](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/scripts/demos).
+[bin/demos](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/bin/demos).
 
 ## Install check
 

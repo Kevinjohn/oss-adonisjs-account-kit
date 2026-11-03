@@ -11,6 +11,6 @@
     "examples/**",
     "stubs/**",
     "docs/reviews/**",
-    "scripts/demos/overlay/**"
+    "bin/demos/overlay/**"
   ]
 }
