@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'typedoc.json'
       - 'index.ts'
       - 'configure.ts'
       - 'src/**'
@@ -15,7 +16,28 @@ on:
       - 'providers/**'
       - 'services/**'
       - 'testing/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
       - 'typedoc.json'
+      - 'index.ts'
+      - 'configure.ts'
+      - 'src/**'
+      - 'http/**'
+      - 'adapters/**'
+      - 'commands/**'
+      - 'providers/**'
+      - 'services/**'
+      - 'testing/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
       - '.github/workflows/docs.yml'
 
 permissions:
@@ -44,6 +66,7 @@ jobs:
           path: docs/.vitepress/dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:

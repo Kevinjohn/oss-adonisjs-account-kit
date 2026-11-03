@@ -1,0 +1,44 @@
+name: examples
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'stubs/**'
+      - 'docs/guide/**'
+      - 'http/**'
+      - '.github/workflows/examples.yml'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: examples-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  examples:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:recipe
+      - name: Test examples
+        run: |
+          for manifest in examples/*/package.json; do
+            if node -e 'const p = require("./" + process.argv[1]); process.exit(p.scripts?.test ? 0 : 1)' "$manifest"; then
+              directory=$(dirname "$manifest")
+              pnpm --dir "$directory" install --frozen-lockfile
+              pnpm --dir "$directory" test
+            fi
+          done

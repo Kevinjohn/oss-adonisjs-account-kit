@@ -166,8 +166,8 @@ NODE
   if [ ! -f "$DATA/PG_VERSION" ]; then pg initdb -D "$DATA" -U account_kit --auth=trust --no-locale -E UTF8 || return $?; fi
   owns_started_cluster=1
   pg pg_ctl -D "$DATA" -w -t 10 -l "$LOG" -o "-p $PORT -c unix_socket_directories='' -c listen_addresses=127.0.0.1 -c fsync=off" start || return $?
-  if existing="$(client psql -X -w -d postgres -tAc "select 1 from pg_database where datname='account_kit_test'")"; then :; else return $?; fi
-  if [ -z "$existing" ]; then client createdb account_kit_test || return $?; fi
+  if existing="$(client psql -X -w -d postgres -tAc "select 1 from pg_database where datname='package_test'")"; then :; else return $?; fi
+  if [ -z "$existing" ]; then client createdb package_test || return $?; fi
 }
 case "$COMMAND" in
   status)
@@ -190,7 +190,7 @@ case "$COMMAND" in
     set -m
     (
       for variable in $(compgen -v PG); do unset "$variable"; done
-      export DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT="$PORT" DB_USER=account_kit DB_PASSWORD= DB_DATABASE=account_kit_test
+      export DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT="$PORT" DB_USER=account_kit DB_PASSWORD= DB_DATABASE=package_test
       cd "$ROOT"
       exec pnpm quick:test "$@"
     ) &

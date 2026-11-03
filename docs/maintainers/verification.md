@@ -630,7 +630,7 @@ managed tests refuse it until `pnpm pg:stop`.
 | Port     | `DB_PORT`, default `55432` |
 | User     | `account_kit`              |
 | Password | empty                      |
-| Database | `account_kit_test`         |
+| Database | `package_test`         |
 
 Only `DB_PORT` configures the managed wrapper. It uses trust authentication, UTF-8, C locale,
 loopback TCP without Unix sockets, and `fsync=off`. Data at `tmp/pg16` persists for reuse and is
@@ -658,7 +658,7 @@ For a shell with connection overrides, use the full fixed connection values when
 explicitly started cluster:
 
 ```sh
-DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_PASSWORD= DB_DATABASE=account_kit_test pnpm quick:test --files=db.spec.ts
+DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_PASSWORD= DB_DATABASE=package_test pnpm quick:test --files=db.spec.ts
 ```
 
 `bash bin/pg.sh status` reports the owned cluster's state (exit 0 running, 3 stopped). Readiness
@@ -683,7 +683,7 @@ these package checks do not satisfy their distinct validation gate.
 `pnpm test:mysql` runs the package suite against an external MySQL 8.4 server, with the Node
 process in a non-UTC time zone (`America/New_York`) so a missed UTC conversion fails. Set
 `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and `DB_DATABASE`; the defaults are
-`127.0.0.1:33306`, `root`, no password and `account_kit_test`. The harness sets the session time
+`127.0.0.1:33306`, `root`, no password and `package_test`. The harness sets the session time
 zone to UTC on every connection. A throwaway Homebrew server:
 
 ```sh
@@ -691,7 +691,7 @@ brew install mysql@8.4
 "$(brew --prefix mysql@8.4)/bin/mysqld" --initialize-insecure --datadir=/tmp/ak-mysql
 "$(brew --prefix mysql@8.4)/bin/mysqld" --datadir=/tmp/ak-mysql --port=33306 \
   --socket=/tmp/ak-mysql.sock --mysqlx=OFF &
-"$(brew --prefix mysql@8.4)/bin/mysql" -uroot -h127.0.0.1 -P33306 -e 'create database account_kit_test'
+"$(brew --prefix mysql@8.4)/bin/mysql" -uroot -h127.0.0.1 -P33306 -e 'create database package_test'
 pnpm test:mysql
 ```
 

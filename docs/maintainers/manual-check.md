@@ -20,7 +20,7 @@ At the T8.1 checkpoint, package validation passed on the same Node 24 toolchain:
 
 ```sh
 DB_CLIENT=better-sqlite3 pnpm test        # 121 passed; includes lint
-DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_DATABASE=account_kit_test pnpm test  # 123 passed; includes lint
+DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_DATABASE=package_test pnpm test  # 123 passed; includes lint
 pnpm typecheck
 pnpm build
 ```

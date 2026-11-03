@@ -1,0 +1,165 @@
+name: compat
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'index.ts'
+      - 'configure.ts'
+      - 'providers/**'
+      - 'stubs/**'
+      - 'commands/**'
+      - 'bin/test_consumer.ts'
+      - 'bin/helpers/consumer/**'
+      - 'bin/helpers/consumer_*.ts'
+      - '.github/workflows/compat.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compat-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  min-peers:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    env:
+      DB_CLIENT: pg
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: package_test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: package_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install minimum peers
+        run: |
+          PEERS=$(node -e '
+            const p=require("./package.json"); const dev=p.devDependencies||{};
+            for (const [n,r] of Object.entries(p.peerDependencies||{})) {
+              if (n==="typescript") continue;
+              if (/^https?:/.test(dev[n]||"")) continue;
+              process.stdout.write(n+"@"+r.replace(/^[\^~]/,"").split(" ")[0]+" ");
+            }')
+          pnpm add -D $PEERS
+          pnpm list --depth 0 $(echo $PEERS | sed 's/@[^ @]*\( \|$\)/ /g')
+      - run: pnpm test
+      - run: pnpm build
+
+  latest-peers:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    env:
+      DB_CLIENT: pg
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: package_test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: package_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Update latest peers
+        run: |
+          PEERS=$(node -e '
+            const p=require("./package.json"); const dev=p.devDependencies||{};
+            for (const [n,r] of Object.entries(p.peerDependencies||{})) {
+              if (n==="typescript") continue;
+              if (/^https?:/.test(dev[n]||"")) continue;
+              process.stdout.write(n+" ");
+            }')
+          pnpm update $PEERS
+      - run: pnpm test
+      - run: pnpm build
+
+  consumer:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build && pnpm test:consumer
+
+  mysql-experimental:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_DATABASE: package_test
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: package_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:mysql
