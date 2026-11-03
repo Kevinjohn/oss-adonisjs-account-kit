@@ -37,7 +37,7 @@ test.group('managed OpenAPI snapshot', () => {
       assert.deepEqual(
         document,
         committed,
-        `Regenerate with \`pnpm build && node bin/openapi_snapshot.mjs\` and review the diff`
+        `Regenerate with \`pnpm build && node --import=@poppinss/ts-exec bin/openapi_snapshot.ts\` and review the diff`
       )
     }
   })

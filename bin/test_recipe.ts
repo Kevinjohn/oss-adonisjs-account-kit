@@ -10,14 +10,14 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const option = (name, fallback) =>
+const option = (name: string, fallback?: string) =>
   process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback
-const recipe = option('recipe')
+const recipe = option('recipe') ?? ''
 const database = option('database', 'sqlite')
 const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
 const candidateRevision = option('candidate-revision', process.env.CANDIDATE_REVISION)
 if (Number(process.versions.node.split('.')[0]) !== 24) throw new Error('Node 24 is required')
-const recipeKits = {
+const recipeKits: Record<string, string> = {
   'api-password-reset': 'api',
   'invitations-existing-app': 'api',
   'inertia-react-password-reset': 'inertia-react',
@@ -39,7 +39,7 @@ try {
   patchText = await readFile(patch, 'utf8')
   await readFile(spec)
 } catch (error) {
-  if (error.code === 'ENOENT')
+  if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
     throw new Error(
       `Recipe ${recipe} is unavailable in this checkout: missing patch or acceptance spec`
     )
@@ -59,7 +59,7 @@ const retained = await mkdtemp(join(tmpdir(), 'account-kit-recipe-'))
 const appRoot = join(retained, 'app')
 const specCommand = ['test', `--files=${recipe}.spec.ts`]
 const browserBootstrapPath = join(appRoot, 'tests/bootstrap.ts')
-const vueBrowserBootstrap = (source) => {
+const vueBrowserBootstrap = (source: string) => {
   if (source.includes("from '@japa/browser-client'")) return source
   const pluginImports = `import { browserClient } from '@japa/browser-client'
 import { authBrowserClient } from '@adonisjs/auth/plugins/browser_client'
@@ -83,7 +83,41 @@ import { sessionBrowserClient } from '@adonisjs/session/plugins/browser_client'
 ]`
   )
 }
-const evidence = {
+const evidence: {
+  recipe: string
+  database: string | undefined
+  runtime: string
+  starterRevision: string
+  scaffolderVersion: string
+  notificationMode: string
+  commands: {
+    command: string
+    args: string[]
+    cwd: string
+    exitCode: number | null
+    output: string
+  }[]
+  status: string
+  retainedScaffold: string
+  specCommand: string
+  error?: string
+  sourceRevision?: string
+  sourceChanges?: string
+  packageManager?: string
+  candidateRevision?: string
+  candidateTarball?: string
+  candidateSha256?: string
+  baselineInitialization?: string
+  starterCommit?: string
+  starterDependencies?: unknown
+  starterLockSha256?: string
+  databasePath?: string
+  generatedInventory?: string
+  patchBaseline?: string
+  routes?: string
+  adonisVersion?: string
+  databaseVersion?: string
+} = {
   recipe,
   database,
   runtime: process.versions.node,
@@ -97,22 +131,24 @@ const evidence = {
 }
 const listener = createServer()
 try {
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolvePromise, reject) => {
     listener.once('error', reject)
-    listener.listen(0, '127.0.0.1', resolve)
+    listener.listen(0, '127.0.0.1', resolvePromise)
   })
 } catch (error) {
   evidence.status = 'failed'
-  evidence.error = error.stack ?? String(error)
+  evidence.error = error instanceof Error ? (error.stack ?? error.message) : String(error)
   await writeFile(join(retained, 'evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`)
   console.log(`Evidence: ${join(retained, 'evidence.json')}`)
   console.log(`Retained scaffold: ${appRoot}`)
   throw error
 }
-const port = String(listener.address().port)
-await new Promise((resolve) => listener.close(resolve))
+const address = listener.address()
+if (!address || typeof address === 'string') throw new Error('Expected loopback port')
+const port = String(address.port)
+await new Promise<void>((resolvePromise) => listener.close(() => resolvePromise()))
 // Only runtime, OS and explicitly supported package-cache settings reach child processes.
-function childEnvironment(source) {
+function childEnvironment(source: NodeJS.ProcessEnv) {
   const runtimeNames = new Set([
     'PATH',
     'HOME',
@@ -162,7 +198,7 @@ const testEnvironment = {
   pnpm_config_enable_global_virtual_store: 'false',
 }
 const env = { ...inheritedEnv, ...testEnvironment }
-const rerunPath = join(retained, 'rerun.mjs')
+const rerunPath = join(retained, 'rerun.ts')
 await writeFile(join(retained, 'test-environment.json'), JSON.stringify(testEnvironment), {
   mode: 0o600,
 })
@@ -179,7 +215,7 @@ process.exitCode = result.status ?? 1
 `
 )
 evidence.specCommand = `${JSON.stringify(process.execPath)} ${JSON.stringify(rerunPath)}`
-function run(command, args, cwd = appRoot) {
+function run(command: string, args: string[], cwd = appRoot) {
   console.log(`> ${command} ${args.join(' ')}`)
   const result = spawnSync(command, args, {
     cwd,
@@ -200,7 +236,7 @@ function run(command, args, cwd = appRoot) {
     )
   return result.stdout
 }
-const digest = async (path) =>
+const digest = async (path: string) =>
   createHash('sha256')
     .update(await readFile(path))
     .digest('hex')
@@ -219,7 +255,9 @@ try {
       ['--config.verify-deps-before-run=false', 'pack', '--pack-destination', destination],
       root
     )
-    const archives = (await readdir(destination)).filter((name) => name.endsWith('.tgz'))
+    const archives = await readdir(destination).then((files) =>
+      files.filter((name) => name.endsWith('.tgz'))
+    )
     if (archives.length !== 1) throw new Error('Expected exactly one development archive')
     candidate = join(destination, archives[0])
   }
@@ -365,7 +403,7 @@ test('original starter login reaches its protected profile', async ({ client, as
   evidence.status = 'passed'
 } catch (error) {
   evidence.status = 'failed'
-  evidence.error = error.stack ?? String(error)
+  evidence.error = error instanceof Error ? (error.stack ?? error.message) : String(error)
   throw error
 } finally {
   await writeFile(join(retained, 'evidence.json'), `${JSON.stringify(evidence, null, 2)}\n`)

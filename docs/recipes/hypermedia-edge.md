@@ -140,7 +140,7 @@ Retained evidence and command outputs are in
 The printed command preserves the harness's test environment when repeating the spec:
 
 ```sh
-<node-24.21.0-executable> <retained-run-directory>/rerun.mjs
+<node-24.21.0-executable> <retained-run-directory>/rerun.ts
 ```
 
 The reference example at source `bce6c05f5ba663f4bfda284d3fd12c5226bb4433` passed
@@ -183,7 +183,7 @@ disabled. Its P1 baseline is `46b5eee2a85b468d67592e99b910ce815294e29f`, configu
 `15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea`. Creator, starter, runtime,
 database and archive versions/digests match the record above. The retained record is
 `<retained-run-directory>/evidence.json` (run `account-kit-recipe-Tq2stW`);
-its printed rerun command invokes that directory's `rerun.mjs` with Node 24.21.0.
+its printed rerun command invokes that directory's `rerun.ts` with Node 24.21.0.
 
 The first strengthened recipe run exposed a test-fixture problem: checking the revoked session
 also invalidated the CSRF state in its preloaded form. Giving consumed-proof replay an independent

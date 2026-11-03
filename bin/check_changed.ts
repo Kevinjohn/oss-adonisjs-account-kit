@@ -6,14 +6,14 @@ import { spawn, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { countTests, planChecks, stepProblem } from './check_changed_plan.mjs'
+import { countTests, planChecks, stepProblem } from './check_changed_plan.js'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const usage = (message) => {
+function usage(message: string): never {
   console.error(`${message}\nusage: pnpm check:changed [--static] [base]`)
   process.exit(2)
 }
-const git = (...args) => {
+const git = (...args: string[]) => {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' })
   return result.status === 0 ? result.stdout : undefined
 }
@@ -44,10 +44,10 @@ for (const path of git('ls-files', '-z', '--others', '--exclude-standard')?.spli
 const list = [...files.values()].sort((a, b) => a.path.localeCompare(b.path))
 console.log(`check:changed: ${list.length} files changed since ${base} (${mergeBase.slice(0, 8)})`)
 
-let active
-const stop = (pid) => {
+let active: number | undefined
+const stop = (pid: number | undefined) => {
   try {
-    process.kill(-pid, 'SIGKILL')
+    process.kill(-pid!, 'SIGKILL')
   } catch {}
 }
 // Steps run in their own process group, which a terminal's Ctrl-C does not reach.
@@ -58,8 +58,8 @@ for (const signal of ['SIGINT', 'SIGTERM'])
   })
 
 /** Run a command in its own process group, killing the group when it outlives its limit. */
-function run(command, timeoutMs) {
-  return new Promise((done) => {
+function run(command: string[], timeoutMs: number) {
+  return new Promise<{ code: number | null; output: string; timedOut: boolean }>((done) => {
     const child = spawn(command[0], command.slice(1), {
       cwd: root,
       detached: true,
@@ -90,7 +90,7 @@ for (const step of planChecks(list, { static: isStatic })) {
   }
   const before = step.id === 'docs' ? git('status', '--porcelain') : undefined
   const result = await run(step.command, step.timeoutMs)
-  const count = step.tests ? countTests(step.tests, result.output) : undefined
+  const count = step.tests ? countTests(result.output) : undefined
   const problem = stepProblem(step, {
     ...result,
     generatedChanged: before !== undefined && git('status', '--porcelain') !== before,
