@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { defineConfig } from '../src/account_kit.js'
 import { expiresAt } from '../src/ttl.js'
 import type { AccountKitConfig } from '../src/types.js'
@@ -110,7 +111,7 @@ test.group('account kit configuration and service surface', (group) => {
     }
   })
 
-  test('reports invalid configuration with RuntimeException', ({ assert }) => {
+  test('reports invalid configuration as a RuntimeException', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     const invalid = [
       { ...base, usersTable: 'bad-name' },
@@ -125,6 +126,19 @@ test.group('account kit configuration and service surface', (group) => {
     for (const config of invalid) {
       assert.throws(() => defineConfig(config as never), RuntimeException, /^account_kit: /)
     }
+  })
+
+  test('identifies invalid configuration fields with a stable error code', ({ assert }) => {
+    let error: unknown
+    try {
+      defineConfig({} as never)
+    } catch (caught) {
+      error = caught
+    }
+    assert.instanceOf(error, InvalidConfigurationError)
+    assert.instanceOf(error, RuntimeException)
+    assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
+    assert.equal((error as InvalidConfigurationError).field, 'users')
   })
 
   test('rejects a supplied non-function credential callback', ({ assert }) => {

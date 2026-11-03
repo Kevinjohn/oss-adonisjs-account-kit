@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { defineAdmission } from '../src/admission/config.js'
 import AdmissionProvider from '../src/admission/provider.js'
 import { AccountAdmission } from '../src/admission/service.js'
@@ -40,7 +41,15 @@ test.group('admission provider', () => {
         'account_kit',
         defineConfig(makeConfig({ users: makeUsersAdapter(app.db, app.hash) }))
       )
-      await assert.rejects(() => app.app.container.make(AccountAdmission), /config\/admission\.ts/)
+      let error: unknown
+      try {
+        await app.app.container.make(AccountAdmission)
+      } catch (caught) {
+        error = caught
+      }
+      assert.instanceOf(error, InvalidConfigurationError)
+      assert.equal((error as InvalidConfigurationError).field, 'config/admission.ts')
+      assert.match((error as Error).message, /config\/admission\.ts/)
     } finally {
       await app.close()
     }
