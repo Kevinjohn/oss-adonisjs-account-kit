@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import {
+  DeliveryError,
   InvalidInputError,
   InvalidTokenError,
   PostCommitError,
@@ -423,6 +424,36 @@ test.group('passwordReset.reset', (group) => {
       assert.equal((error as PostCommitError).cause, failure)
     }
     assert.isTrue(await kit.hash.verify((await storedPassword())!, 'new-password123'))
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
+  })
+
+  test('passwordResetCompleted failure reports DeliveryError after the password reset commits', async ({
+    assert,
+  }) => {
+    const { token } = await issue()
+    const failure = new Error('passwordResetCompleted failed')
+    let lifecycleCalls = 0
+    const account = service({
+      notify: {
+        ...makeNotify().notify,
+        async passwordResetCompleted() {
+          throw failure
+        },
+      },
+      onLifecycleEvent: async () => {
+        lifecycleCalls++
+      },
+    })
+    try {
+      await account.passwordReset.reset({ token, password: 'new-password123' })
+      assert.fail('expected delivery error')
+    } catch (error) {
+      assert.instanceOf(error, DeliveryError)
+      assert.equal((error as DeliveryError).cause, failure)
+    }
+    assert.equal(lifecycleCalls, 1)
+    const row = await kit.db.from('users').first()
+    assert.isTrue(await kit.hash.verify(row.password, 'new-password123'))
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
 })

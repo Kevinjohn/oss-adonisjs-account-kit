@@ -143,13 +143,15 @@ export class InvitationPendingError extends AccountKitError {
   static status = 409
 }
 /**
- * A notification callback failed after the account change committed. Do not repeat the operation.
+ * Delivery effects failed after the account change committed without an observer or commit-listener
+ * failure. Do not repeat the operation.
  */
 export class DeliveryError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_DELIVERY'
 }
 /**
- * The transaction committed, then a follow-up failed. Do not repeat a committed mutation.
+ * A post-commit observer or commit listener failed. Any delivery failures from the same follow-up
+ * batch are included in the cause. Do not repeat a committed mutation.
  * Read-only account inspection returns no snapshot; retry is safe when its dependencies satisfy
  * the documented read-only, retry-safe contract.
  */

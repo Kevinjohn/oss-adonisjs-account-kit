@@ -233,9 +233,10 @@ once and must be repeatable. The lock migration must be applied before package w
 uses row-level locks and does not retry failed transactions. Transient database errors can
 propagate on either dialect.
 
-Notifications and lifecycle callbacks run after commit. A `DeliveryError` means a notification
-could not be delivered; a `PostCommitError` means a post-commit callback failed after the database
-change committed and exposes `committed: true`. Do not retry a committed account mutation as if it
+Notifications and lifecycle callbacks run after commit. A `DeliveryError` means only delivery effects
+failed; a `PostCommitError` means an observer or commit listener failed
+and exposes `committed: true`. If delivery also fails, its cause is included in the
+`PostCommitError`. Do not retry a committed account mutation as if it
 had rolled back. If delivery must survive process failure, write an outbox row in the transaction
 and deliver it from an application-owned worker. See the
 [production boundaries](production-boundaries.md#durable-notifications).

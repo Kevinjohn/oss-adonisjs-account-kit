@@ -23,10 +23,10 @@ if (mapped) {
 ```
 
 The body is `{ code, message }`. It adds `committed: true` for `PostCommitError`; `DeliveryError` is
-a committed delivery-path failure without that marker. `PostCommitError` identifies a failed
-post-commit observer or follow-up, and can also wrap a notification callback when that callback
-runs as an observer. For mutating operations, both errors mean the change committed, so map them at the operation
-boundary to its ordinary success or partial-success response. Read-only account inspection is
+a committed delivery-only failure without that marker. `PostCommitError` identifies a failed observer
+or commit listener; if a delivery also fails, its cause is included.
+For mutating operations, both errors mean the change committed, so map them at the operation boundary
+to its ordinary success or partial-success response. Read-only account inspection is
 different: a `PostCommitError` discards its snapshot, so no successful result is available. Retry
 inspection only with adapters and policy callbacks that satisfy its read-only, retry-safe contract. Log a redacted failure
 kind and operation name; keep causes and raw unknown errors in private application reporting.
@@ -63,8 +63,8 @@ return response.accepted(acknowledgement)
 ```
 
 For reset **completion**, report committed follow-up failure as a successful password change rather
-than inviting another reset. Its notification callback may fail as `PostCommitError`; do not infer
-that every notification failure is `DeliveryError`. The example outbox persists password-reset
+than inviting another reset. A notice-only failure is `DeliveryError`; if an observer or commit
+listener also fails, the operation throws `PostCommitError` with both causes. The example outbox persists password-reset
 **completion** and password-change notices, but not reset-link delivery. A failed reset-link
 delivery keeps the generic acknowledgement, and the requester can submit another generic reset
 request for a replacement link. For signup, direct the person to request another verification link;
@@ -77,8 +77,8 @@ credentials, or callback causes in the response.
 - `ThrottledError` adds a `Retry-After` header.
 - `DeliveryError` marks a committed delivery-path failure. It does not expose a `committed`
   property in the mapped body.
-- `PostCommitError` marks a failed post-commit observer or follow-up and adds `committed: true` to
-  the mapped body. It can also wrap notification callbacks that run as observers.
+- `PostCommitError` marks a failed post-commit observer or commit listener and adds `committed: true` to
+  the mapped body. If delivery also fails in the same follow-up batch, its cause is included.
 - `InvitationManagementDeniedError` is reported as `InvitationNotFoundError`, so a caller cannot
   tell a hidden invitation from a missing one.
 
@@ -145,7 +145,7 @@ An application that also uses the managed routes keeps one `errors.json` for bot
 | `InvitationPendingError`                  | `E_ACCOUNT_KIT_INVITATION_PENDING`             |    409 | An invitation to this address is already pending.                                                                                                            | Resend the existing invitation instead.                                                                                                                                    |
 | `UserNotFoundError`                       | `E_ACCOUNT_KIT_USER_NOT_FOUND`                 |    404 | `kit.operator.resetLink` (or `account-kit:reset-link`) found no account for the address. Operator paths only.                                                | Check the address.                                                                                                                                                         |
 | `DeliveryError`                           | `E_ACCOUNT_KIT_DELIVERY`                       |    500 | A committed delivery-path failure. Does not carry `committed: true`.                                                                                         | Do not repeat the operation. Report its committed outcome and inspect only persisted notices.                                                                              |
-| `PostCommitError`                         | `E_ACCOUNT_KIT_POST_COMMIT`                    |    500 | A post-commit observer or follow-up failed; this can include an observer-path notification callback. Has the marker.                                         | Do not repeat a committed mutation; log a redacted failure and report its committed outcome. Read-only inspection may be retried under its documented dependency contract. |
+| `PostCommitError`                         | `E_ACCOUNT_KIT_POST_COMMIT`                    |    500 | A post-commit observer or commit listener failed; the cause can include delivery failures from the same follow-up batch. Has the marker.                     | Do not repeat a committed mutation; log a redacted failure and report its committed outcome. Read-only inspection may be retried under its documented dependency contract. |
 | `CapabilityDisabledError`                 | `E_ACCOUNT_KIT_CAPABILITY_DISABLED`            |    500 | An operation was called for a capability that is not in `enabled`.                                                                                           | Add the capability to `enabled`, or stop calling it.                                                                                                                       |
 | `InvalidCredentialsError`                 | `E_INVALID_CREDENTIALS`                        |    400 | Login failed. The same error covers unknown email, wrong password, restricted and passwordless accounts.                                                     | Return one generic message. Many APIs send 401; the example app does.                                                                                                      |
 | `InvalidSessionError`                     | `E_ACCOUNT_KIT_INVALID_SESSION`                |    401 | The session or token is missing, revoked, or older than the latest credential change.                                                                        | Sign the user out and send them to the login page.                                                                                                                         |

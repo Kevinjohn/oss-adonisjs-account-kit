@@ -170,12 +170,12 @@ integration and verification are complete.
 
 ### Recover from committed notification or observer failures
 
-`DeliveryError` identifies a committed delivery-path failure and does not add a `committed` field
-to the mapped error body. `PostCommitError` identifies a failed post-commit observer or follow-up
-and maps with `committed: true`; it can also include a notification callback when that callback
-runs as an observer. For example, reset-link delivery can produce `DeliveryError`, while reset
-completion and password-change notification callbacks run as post-commit observers and can produce
-`PostCommitError`. Handle either at the operation boundary: record only a redacted operation name
+`DeliveryError` identifies a committed delivery-only failure and does not
+add a `committed` field to the mapped error body. `PostCommitError` identifies a failed observer or
+commit listener and maps with `committed: true`; if a delivery also fails, its cause is included.
+For example, reset-link delivery and notice-only failures on reset completion or password change
+can produce `DeliveryError`. An observer or commit-listener failure produces `PostCommitError`,
+including when a notice also fails. Handle either at the operation boundary: record only a redacted operation name
 and failure kind, then return that operation's normal success or partial-success response. Do not
 repeat a mutation because its follow-up failed. Other package-defined errors extend
 `AccountKitError`; database and application callback errors may propagate unchanged and should

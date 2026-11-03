@@ -110,9 +110,9 @@ trigger them. Configure the maintained callbacks directly through `notify` when 
 `sendLater` acceptance means the configured Mail delivery mechanism accepted the message; it
 does not prove recipient delivery. With `best-effort`, Account Kit does not retry a failed or
 lost message. Record failures privately with an operation ID and message kind, omitting proofs,
-full URLs, passwords, and unnecessary personal data. Action-link callback rejection is reported
-as `DeliveryError`; credential notice or other post-commit follow-up failure is reported as
-`PostCommitError` with `committed: true`. Both can follow a committed account change, so never
+full URLs, passwords, and unnecessary personal data. A delivery-only failure is reported as
+`DeliveryError`. Any observer or commit-listener failure is reported as `PostCommitError` with
+`committed: true`; if a delivery also fails, its cause is included. Both can follow a committed account change, so never
 blindly repeat a non-repeatable mutation. A transport failure _after_ `sendLater` accepts the
 message is observable through the application's Mail transport or worker logs, not a later
 Account Kit exception. Password-reset request HTTP handlers return the same generic `202`

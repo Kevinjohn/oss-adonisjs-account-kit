@@ -167,7 +167,7 @@ test.group('managed transaction wrapper', (group) => {
         }
       | undefined
     let commits = 0
-    let afterCommits = 0
+    let commitHooksRun = 0
     let eventSawOpenTransaction = false
     let knexTransaction:
       | {
@@ -229,7 +229,7 @@ test.group('managed transaction wrapper', (group) => {
           eventSawOpenTransaction ||= native?.inTransaction === true
         })
         trx.after('commit', () => {
-          afterCommits++
+          commitHooksRun++
         })
         await trx
           .from('users')
@@ -253,7 +253,7 @@ test.group('managed transaction wrapper', (group) => {
       assert.isFalse(native!.inTransaction)
       assert.equal(native!.pragma('busy_timeout', { simple: true }), 5000)
       assert.equal(commits, 1)
-      assert.equal(afterCommits, 1)
+      assert.equal(commitHooksRun, 1)
       assert.isFalse(eventSawOpenTransaction)
       assert.isNotNull(
         await customKit.db.from('users').where('email', 'committed@example.test').first()
@@ -285,7 +285,7 @@ test.group('managed transaction wrapper', (group) => {
     }> = []
     let commits = 0
     let rollbacks = 0
-    let afterCommits = 0
+    let commitHooksRun = 0
     let afterRollbacks = 0
     try {
       await resetSchema(customKit)
@@ -306,7 +306,7 @@ test.group('managed transaction wrapper', (group) => {
             rollbacks++
           })
           trx.after('commit', () => {
-            afterCommits++
+            commitHooksRun++
           })
           trx.after('rollback', () => {
             afterRollbacks++
@@ -329,7 +329,7 @@ test.group('managed transaction wrapper', (group) => {
         assert.equal(native.pragma('busy_timeout', { simple: true }), 5000)
       }
       assert.equal(commits, 0)
-      assert.equal(afterCommits, 0)
+      assert.equal(commitHooksRun, 0)
       assert.equal(rollbacks, natives.length)
       assert.equal(afterRollbacks, natives.length)
       await reader.commit()

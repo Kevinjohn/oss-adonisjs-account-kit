@@ -36,17 +36,6 @@ export async function deliver(message: string, send: () => Promise<void>): Promi
 
 const observer = (run: PostCommitEffect['run']): PostCommitEffect => ({ kind: 'observer', run })
 
-/**
- * Run post-commit effects in order. Every effect runs even when an earlier one fails, and the
- * failures are reported together as one PostCommitError.
- */
-export async function afterCommit(
-  message: string,
-  ...effects: Array<() => Promise<void> | undefined>
-): Promise<void> {
-  return postCommit(message, effects.map(observer))
-}
-
 /** Report a lifecycle event after commit; a failing hook surfaces as PostCommitError. */
 export function lifecycle(
   config: Pick<ResolvedConfig, 'onLifecycleEvent'>,

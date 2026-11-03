@@ -13,11 +13,8 @@ function reportFailure(logger: SafeLogger, operation: string, failure: Failure) 
 }
 
 /** Report follow-up failures without recording an address, proof, credential, or raw exception. */
-export function reportCommittedFailure(
-  logger: SafeLogger,
-  error: DeliveryError | PostCommitError,
-  operation: string
-) {
+export function reportCommittedFailure(logger: SafeLogger, error: unknown, operation: string) {
+  if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
   reportFailure(logger, operation, error instanceof DeliveryError ? 'delivery' : 'post_commit')
 }
 
