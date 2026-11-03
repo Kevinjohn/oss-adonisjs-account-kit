@@ -11,6 +11,10 @@ export class AccountKitError extends Exception {
   static status = 500
   declare code: string
 
+  get identifier(): string {
+    return `errors.${this.code}`
+  }
+
   constructor(message = new.target.name, options?: ErrorOptions) {
     super(message, options)
     this.name = new.target.name

@@ -50,4 +50,13 @@ test.group('account kit errors', () => {
     assert.equal(new DeliveryError('delivery failed', { cause }).cause, cause)
     assert.equal(new ThrottledError(17, 'rate limited', { cause }).cause, cause)
   })
+  test('exposes the translation identifier from the public error code', ({ assert }) => {
+    assert.equal(new ThrottledError(1).identifier, 'errors.E_ACCOUNT_KIT_THROTTLED')
+
+    class CustomThrottledError extends ThrottledError {
+      static code = 'E_CUSTOM_THROTTLED'
+    }
+
+    assert.equal(new CustomThrottledError(1).identifier, 'errors.E_CUSTOM_THROTTLED')
+  })
 })
