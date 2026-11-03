@@ -129,10 +129,11 @@ the caller's own sign-in: `keepCurrent.sessionHandle` keeps that `account_sessio
 matches nothing deletes them all. The call returns `{ revision }`, the new credential revision. A
 session guard must store it where `establish` stored the first one, or the next request fails the
 revision check, and should regenerate the session id so a copied cookie for the kept session stops
-working. When a follow-up fails after commit, the call throws `PostCommitError` instead;
-`passwordChangeRevision(error)` returns the committed revision, so store that one. The managed
-session guard's `refresh(revision)` does both, and the managed password-change route passes
-`keepCurrent` and calls it on both paths. Password reset, email change, restriction,
+working. When a post-commit observer or commit listener fails, the call throws `PostCommitError`;
+`passwordChangeRevision(error)` returns the committed revision, so store that one. A notice-only
+delivery failure throws `DeliveryError`, for which `passwordChangeRevision` does not return a
+revision. The managed session guard's `refresh(revision)` does both, and the managed password-change
+route passes `keepCurrent` and calls it on success and observer-failure paths. Password reset, email change, restriction,
 social unlink and sign out everywhere still end every sign-in.
 
 ### Custom guard adapters

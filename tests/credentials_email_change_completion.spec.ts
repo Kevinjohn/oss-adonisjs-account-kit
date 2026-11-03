@@ -234,7 +234,7 @@ test.group('emailPasswordManagement', (group) => {
     const token = await issueEmailChange(account, user, recorder)
     try {
       await account.emailPasswordManagement.completeEmailChange({ token })
-      assert.fail('expected postcommit error')
+      assert.fail('expected DeliveryError')
     } catch (error) {
       assert.instanceOf(error, DeliveryError)
       assert.equal((error as DeliveryError).cause, failure)
