@@ -1,22 +1,24 @@
 import { randomBytes } from 'node:crypto'
 import { createServer } from 'node:net'
-import { database, secret } from './settings.mjs'
+import { database, secret } from './settings.js'
 
 /** A loopback port the OS reports free, so concurrent runs on one machine do not collide. */
 async function freePort() {
   const server = createServer()
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
     server.listen(0, '127.0.0.1', resolve)
   })
-  const { port } = server.address()
-  await new Promise((resolve) => server.close(resolve))
+  const address = server.address()
+  if (!address || typeof address === 'string') throw new Error('Expected loopback port')
+  const { port } = address
+  await new Promise<void>((resolve) => server.close(() => resolve()))
   return String(port)
 }
 
 const port = await freePort()
 
-export function databaseEnvironment(appRoot, schema = 'account_kit_consumer') {
+export function databaseEnvironment(_appRoot: string, schema = 'account_kit_consumer') {
   const dbEnv = {
     ...process.env,
     NODE_ENV: 'test',

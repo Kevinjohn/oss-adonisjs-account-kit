@@ -2,7 +2,7 @@ import { cp } from 'node:fs/promises'
 import { relative, sep } from 'node:path'
 
 /** Copy source without a developer's database, secrets or installed/build artifacts. */
-export async function copyFixture(source, destination) {
+export async function copyFixture(source: string, destination: string) {
   const localDirectories = new Set(['node_modules', 'tmp', 'build', 'vendor', '.adonisjs'])
   await cp(source, destination, {
     recursive: true,

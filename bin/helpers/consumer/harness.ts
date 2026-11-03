@@ -3,17 +3,28 @@ import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { relative } from 'node:path'
-import { repoRoot, secret } from './settings.mjs'
+import { repoRoot, secret } from './settings.js'
 
-export const output = []
-export const commands = []
+export const output: { command: string; text: string }[] = []
+type CommandRecord = { command: string; args: string[]; cwd: string; exitCode: number | null }
+export const commands: CommandRecord[] = []
 
-export function redact(value) {
+export function redact(value: unknown) {
   return secret ? String(value).split(secret).join('[REDACTED]') : String(value)
 }
 
-export function run(command, args, cwd, env = process.env) {
-  const record = { command, args, cwd: relative(repoRoot, cwd) || '.', exitCode: null }
+export function run(
+  command: string,
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const record: CommandRecord = {
+    command,
+    args,
+    cwd: relative(repoRoot, cwd) || '.',
+    exitCode: null,
+  }
   commands.push(record)
   const result = spawnSync(command, args, {
     cwd,
@@ -31,7 +42,13 @@ export function run(command, args, cwd, env = process.env) {
   return result.stdout
 }
 
-export function expectFailure(command, args, cwd, env, expected) {
+export function expectFailure(
+  command: string,
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  expected: string
+) {
   const result = spawnSync(command, args, {
     cwd,
     env,
@@ -54,13 +71,13 @@ export function expectFailure(command, args, cwd, env, expected) {
   })
 }
 
-export async function digest(path) {
+export async function digest(path: string) {
   return createHash('sha256')
     .update(await readFile(path))
     .digest('hex')
 }
 
-export async function hashFiles(paths) {
+export async function hashFiles(paths: string[]) {
   const entries = []
   for (const path of paths) entries.push([path, await digest(path)])
   return entries

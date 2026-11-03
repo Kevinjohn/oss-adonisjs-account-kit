@@ -1,11 +1,11 @@
 // Service only: compile and boot the package without the backend-only dependencies installed.
 import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { databaseEnvironment } from './consumer_app.mjs'
-import { run } from './harness.mjs'
-import { database, tempRoot } from './settings.mjs'
+import { databaseEnvironment } from './consumer_app.js'
+import { run } from './harness.js'
+import { database, tempRoot } from './settings.js'
 
-export async function runServiceOnly(candidate, runName) {
+export async function runServiceOnly(candidate: string, runName: string) {
   const appRoot = join(tempRoot, runName)
   await mkdir(appRoot)
   const manifest = {
@@ -54,7 +54,7 @@ import { AccountAccessDeniedError, InvalidInputError } from 'adonisjs-account-ki
 const require = createRequire(import.meta.url)
 for (const name of ['@adonisjs/auth', '@adonisjs/session', '@adonisjs/shield', '@tuyau/core', '@adonisjs/mail', '@adonisjs/ally']) {
   try { require.resolve(name); throw new Error('Backend-only dependency installed: ' + name) }
-  catch (error) { if ((error as { code?: string }).code !== 'MODULE_NOT_FOUND') throw error }
+  catch (error) { if ((error as { code? }).code !== 'MODULE_NOT_FOUND') throw error }
 }
 const connection = ${
       database === 'sqlite'
