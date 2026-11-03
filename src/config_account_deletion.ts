@@ -1,6 +1,7 @@
 // Validates the account deletion settings.
 import { InvalidConfigurationError } from './errors.js'
 import type { AccountDeletionConfig, AccountKitConfig } from './types.js'
+import { freezeResolved } from './config_freeze.js'
 
 export function resolveAccountDeletion(config: AccountKitConfig): Required<AccountDeletionConfig> {
   const settings = config.accountDeletion ?? {}
@@ -15,5 +16,5 @@ export function resolveAccountDeletion(config: AccountKitConfig): Required<Accou
       'accountDeletion.invitations',
       'account_kit: accountDeletion.invitations must be keep or revoke'
     )
-  return { invitations }
+  return freezeResolved({ invitations })
 }

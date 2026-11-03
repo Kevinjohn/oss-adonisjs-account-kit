@@ -18,6 +18,7 @@ import type {
   ResolvedConfig,
   UrlCallbacks,
 } from './types.js'
+import { freezeResolved } from './config_freeze.js'
 
 function disabled(): never {
   throw new CapabilityDisabledError('This account capability is disabled')
@@ -47,6 +48,29 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
   socialIdentityUnlinked: disabled,
   magicLinkProvision: disabled,
   accountDeleted: disabled,
+}
+
+/**
+ * Binds each callback the application supplied to the object that holds it, so prototype methods
+ * keep `this`. A missing callback keeps its disabled default.
+ */
+function bindCallbacks<T extends object>(container: object | undefined, defaults: T): T {
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(defaults)) {
+    const fn = (container as Record<string, unknown> | undefined)?.[key]
+    result[key] = typeof fn === 'function' ? fn.bind(container) : defaults[key as keyof T]
+  }
+  return freezeResolved(result) as T
+}
+
+/** Binds the application's top-level hooks to the configuration object it passed. */
+function bindTopLevelHooks<T extends AccountKitConfig>(config: T): T {
+  return Object.fromEntries(
+    Object.entries(config).map(([key, value]) => [
+      key,
+      typeof value === 'function' ? value.bind(config) : value,
+    ])
+  ) as T
 }
 
 /**
@@ -172,25 +196,27 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'limiterNamespace',
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
-  const expiresIn = {
+  const expiresIn = freezeResolved({
     passwordReset: config.expiresIn?.passwordReset ?? '1h',
     emailVerification: config.expiresIn?.emailVerification ?? '1h',
     invitation: config.expiresIn?.invitation ?? '7d',
     emailChange: config.expiresIn?.emailChange ?? '1h',
     magicLink: config.expiresIn?.magicLink ?? '15m',
-  }
+  })
   for (const [name, value] of Object.entries(expiresIn))
     configuredExpiresAt(`expiresIn.${name}`, DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
-  const invitationThrottle = Object.fromEntries(
-    ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
-      name,
-      budget(
-        config.invitationThrottle?.[name as keyof InvitationThrottle],
-        { requests: name.endsWith('Actor') ? 10 : 3, duration: '1h' },
-        `invitationThrottle.${name}`
-      ),
-    ])
+  const invitationThrottle = freezeResolved(
+    Object.fromEntries(
+      ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
+        name,
+        budget(
+          config.invitationThrottle?.[name as keyof InvitationThrottle],
+          { requests: name.endsWith('Actor') ? 10 : 3, duration: '1h' },
+          `invitationThrottle.${name}`
+        ),
+      ])
+    )
   ) as unknown as InvitationThrottle
   const minRequestMs = config.minRequestMs ?? 300
   if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
@@ -240,9 +266,10 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'usersTable',
       'account_kit: usersTable must be a plain SQL identifier'
     )
-  return {
-    ...config,
-    enabled: [...enabled],
+  const hooks = bindTopLevelHooks(config)
+  return freezeResolved({
+    ...hooks,
+    enabled: freezeResolved([...enabled]),
     delivery: config.delivery ?? 'best-effort',
     expiresIn,
     throttle,
@@ -256,18 +283,12 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     usersTable,
     limiterSecret,
     limiterNamespace,
-    authorize: {
-      ...disabledAuthorize,
-      ...config.authorize,
-    } as AuthorizationCallbacks,
-    urls: {
-      ...disabledUrls,
-      ...config.urls,
-    } as UrlCallbacks,
-    notify: {
-      ...disabledNotify,
-      ...config.notify,
-    } as NotificationCallbacks,
-    onInvitationAccepted: config.onInvitationAccepted ?? disabled,
-  }
+    authorize: bindCallbacks<AuthorizationCallbacks>(config.authorize, disabledAuthorize),
+    urls: bindCallbacks<UrlCallbacks>(config.urls, disabledUrls),
+    notify: bindCallbacks<NotificationCallbacks>(config.notify, disabledNotify),
+    onInvitationAccepted:
+      typeof config.onInvitationAccepted === 'function'
+        ? config.onInvitationAccepted.bind(config)
+        : disabled,
+  })
 }

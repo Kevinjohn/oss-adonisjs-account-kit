@@ -154,8 +154,9 @@ export function authenticationService(deps: ServiceDependencies) {
       const key = throttlerOf(deps).key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
-      const clientLimiter = deps.limiter.use(auth.clientLimit)
-      const identityLimiter = deps.limiter.use(auth.identityLimit)
+      // The limiter normalises the options it receives in place; give it copies of the frozen budgets.
+      const clientLimiter = deps.limiter.use({ ...auth.clientLimit })
+      const identityLimiter = deps.limiter.use({ ...auth.identityLimit })
       const clientState = await clientLimiter.get(clientKey)
       if (clientState && clientState.remaining <= 0)
         throw new ThrottledError(clientState.availableIn)

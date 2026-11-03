@@ -18,8 +18,11 @@ test.group('account kit configuration and service surface', (group) => {
     })
     const resolved = defineConfig(input)
     assert.equal(resolved.users, input.users)
-    assert.deepEqual(resolved.authorize, input.authorize)
-    assert.deepEqual(resolved.notify, input.notify)
+    assert.deepEqual(
+      Object.keys(resolved.authorize).sort(),
+      Object.keys(input.authorize ?? {}).sort()
+    )
+    assert.deepEqual(Object.keys(resolved.notify).sort(), Object.keys(input.notify ?? {}).sort())
     assert.deepEqual(resolved.expiresIn, {
       passwordReset: '2h',
       emailVerification: '1h',
@@ -218,5 +221,85 @@ test.group('account kit configuration and service surface', (group) => {
       magicLink: '15m',
     })
     assert.deepEqual(resolved.throttle, { requests: 5, duration: '15m' })
+  })
+
+  test('keeps prototype callbacks and binds them to the object the application passed', ({
+    assert,
+  }) => {
+    class Notify {
+      prefix = 'x'
+      passwordResetProvision() {
+        return this.prefix
+      }
+    }
+    const resolved = defineConfig(
+      makeConfig({
+        enabled: [],
+        users: makeUsersAdapter(kit.db, kit.hash),
+        notify: new Notify() as unknown as AccountKitConfig['notify'],
+      })
+    )
+    assert.equal((resolved.notify.passwordResetProvision as unknown as () => string)(), 'x')
+  })
+
+  test('binds top-level hooks to the configuration object the application passed', async ({
+    assert,
+  }) => {
+    const seen: unknown[] = []
+    const input = Object.assign(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }), {
+      onLifecycleEvent(this: unknown) {
+        seen.push(this)
+        return Promise.resolve()
+      },
+    })
+    const resolved = defineConfig(input)
+    await resolved.onLifecycleEvent?.({} as never)
+    assert.lengthOf(seen, 1)
+    assert.strictEqual(seen[0], input)
+  })
+
+  test('keeps a prototype invitation hook on a class-instance configuration', async ({
+    assert,
+  }) => {
+    let called = false
+    class Hooks {
+      onInvitationAccepted() {
+        called = true
+        return Promise.resolve()
+      }
+    }
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    delete (base as Partial<AccountKitConfig>).onInvitationAccepted
+    const input = Object.assign(new Hooks(), base) as AccountKitConfig
+    const resolved = defineConfig(input)
+    await resolved.onInvitationAccepted({} as never, {} as never, {} as never)
+    assert.isTrue(called)
+  })
+
+  test('freezes the configuration it constructs and never the application objects', ({
+    assert,
+  }) => {
+    const input = makeConfig({
+      users: makeUsersAdapter(kit.db, kit.hash),
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+    })
+    const resolved = defineConfig(input)
+    assert.isTrue(Object.isFrozen(resolved))
+    assert.isTrue(Object.isFrozen(resolved.enabled))
+    assert.isTrue(Object.isFrozen(resolved.expiresIn))
+    assert.isTrue(Object.isFrozen(resolved.throttle))
+    assert.isTrue(Object.isFrozen(resolved.invitationThrottle))
+    assert.isTrue(Object.isFrozen(resolved.invitationThrottle.sendActor))
+    assert.isTrue(Object.isFrozen(resolved.authorize))
+    assert.isTrue(Object.isFrozen(resolved.urls))
+    assert.isTrue(Object.isFrozen(resolved.notify))
+    assert.isTrue(Object.isFrozen(resolved.passwordPolicy))
+    assert.isTrue(Object.isFrozen(resolved.authentication))
+    assert.isTrue(Object.isFrozen(resolved.authentication?.clientLimit))
+    assert.isTrue(Object.isFrozen(resolved.authentication?.identityLimit))
+    assert.isTrue(Object.isFrozen(resolved.authentication?.tokenAbilities))
+    assert.isFalse(Object.isFrozen(input))
+    assert.isFalse(Object.isFrozen(input.users))
+    assert.strictEqual(resolved.users, input.users)
   })
 })

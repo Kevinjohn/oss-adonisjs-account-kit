@@ -4,6 +4,7 @@ import { InvalidConfigurationError } from './errors.js'
 import { sessionTouchIntervalMs } from './session_registry.js'
 import { configuredExpiresAt } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedConfig } from './types.js'
+import { freezeResolved } from './config_freeze.js'
 
 export function resolveSessionManagement(
   config: AccountKitConfig
@@ -25,5 +26,5 @@ export function resolveSessionManagement(
       'sessionManagement.idleExpiry',
       `account_kit: sessionManagement.idleExpiry must be longer than ${sessionTouchIntervalMs / 60_000} minutes`
     )
-  return { idleExpiry }
+  return freezeResolved({ idleExpiry })
 }
