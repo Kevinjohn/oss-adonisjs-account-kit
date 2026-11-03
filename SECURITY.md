@@ -28,8 +28,6 @@ the archive's SHA-256. Check a downloaded archive before installing it:
 shasum -a 256 adonisjs-account-kit-<version>.tgz
 ```
 
-Check the SHA-256 in the GitHub release notes before installing an archive.
-
 ## Security model
 
 [docs/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/security.md) describes what Account Kit defends against and what remains
