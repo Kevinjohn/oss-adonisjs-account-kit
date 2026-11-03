@@ -7,8 +7,9 @@
   "exclude": [
     "node_modules",
     "build",
-    "stubs/**",
+    "tmp/**",
     "examples/**",
+    "stubs/**",
     "docs/reviews/**",
     "scripts/demos/overlay/**"
   ]
