@@ -75,9 +75,7 @@ test('no docs link targets a page the site publishes at another URL', async ({ a
 
 // Packed Markdown and GitHub readers follow absolute links to this repository's main branch.
 test('absolute links to the main branch point at tracked paths', async ({ assert }) => {
-  const listed = spawnSync('git', ['ls-files', '-z'], { cwd: repoRoot, encoding: 'utf8' })
-  if (listed.status !== 0) throw new Error(listed.stderr)
-  const tracked = new Set(listed.stdout.split('\0').filter(Boolean))
+  const tracked = trackedPaths()
   const broken: string[] = []
   let checked = 0
   const prefix =

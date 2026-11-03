@@ -153,7 +153,7 @@ the config's `notify` in tests, run a flow, then read `tokenFor(kind, email)`.
 
 - [Security model](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/security.md)
 - [Getting started](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/getting-started.md)
-- [Generated API reference](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/docs/reference/api)
+- [Generated API reference](https://kevinjohn.github.io/oss-adonisjs-account-kit/reference/api/)
 - [Glossary](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/glossary.md), for "provision", "pillar" and other package terms
 
 ## Tested against
