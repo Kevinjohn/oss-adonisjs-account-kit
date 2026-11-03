@@ -146,6 +146,7 @@ jobs:
         image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: '%'
           MYSQL_USER: postgres
           MYSQL_PASSWORD: postgres
           MYSQL_DATABASE: package_test
@@ -164,4 +165,22 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Grant lock observation access
+        run: |
+          node --input-type=module <<'JS'
+          import mysql from 'mysql2/promise'
+          const connection = await mysql.createConnection({
+            host: process.env.DB_HOST,
+            port: Number(process.env.DB_PORT),
+            user: 'root',
+            password: 'root',
+          })
+          try {
+            for (const table of ['data_lock_waits', 'threads', 'data_locks']) {
+              await connection.query(`GRANT SELECT ON performance_schema.${table} TO 'postgres'@'%'`)
+            }
+          } finally {
+            await connection.end()
+          }
+          JS
       - run: pnpm test:mysql

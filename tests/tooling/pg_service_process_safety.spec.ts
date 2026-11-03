@@ -232,24 +232,30 @@ test.group('pg_service_process_safety.spec', (group) => {
     await f.stopped()
   })
 
-  test('ambiguous flattened command cannot disguise a foreign physical data directory', async (t) => {
-    const f = await fixture(t)
-    const data = join(f.root, 'tmp/pg16')
-    const foreign = `${data} -p ${f.port} -c unix_socket_directories= -c listen_addresses=127.0.0.1 -c fsync=off`
-    await mkdir(foreign, { recursive: true })
-    await f.control({ postgresCwd: foreign })
-    assert.equal(await f.run(['start']).then((outcome) => outcome.code), 0)
-    const pidfile = join(data, 'postmaster.pid')
-    const original = await readFile(pidfile, 'utf8')
-    const pid = Number(original.split('\n')[0])
-    for (const command of ['status', 'start', 'stop', 'reset', 'test']) {
-      const result = await f.run([command])
-      assert.equal(result.code, 1, result.output)
-      assert.match(result.output, /cannot verify postmaster directory/)
-      assert.equal(alive(pid), true)
-      assert.equal(await readFile(pidfile, 'utf8'), original)
-    }
-  })
+  for (const platform of [undefined, 'linux'])
+    test(
+      platform
+        ? 'Linux flattened command cannot disguise a foreign physical data directory'
+        : 'ambiguous flattened command cannot disguise a foreign physical data directory',
+      async (t) => {
+        const f = await fixture(t, { platform })
+        const data = join(f.root, 'tmp/pg16')
+        const foreign = `${data} -p ${f.port} -c unix_socket_directories= -c listen_addresses=127.0.0.1 -c fsync=off`
+        await mkdir(foreign, { recursive: true })
+        await f.control({ postgresCwd: foreign })
+        assert.equal(await f.run(['start']).then((outcome) => outcome.code), 0)
+        const pidfile = join(data, 'postmaster.pid')
+        const original = await readFile(pidfile, 'utf8')
+        const pid = Number(original.split('\n')[0])
+        for (const command of ['status', 'start', 'stop', 'reset', 'test']) {
+          const result = await f.run([command])
+          assert.equal(result.code, 1, result.output)
+          assert.match(result.output, /cannot verify postmaster directory/)
+          assert.equal(alive(pid), true)
+          assert.equal(await readFile(pidfile, 'utf8'), original)
+        }
+      }
+    )
 
   test('Linux comm name uses physical executable and directory inspection', async (t) => {
     const f = await fixture(t, { platform: 'linux' })

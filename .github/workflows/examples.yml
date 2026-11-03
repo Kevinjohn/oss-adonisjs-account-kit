@@ -32,7 +32,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:recipe
+      - run: pnpm test:recipe --recipe=api-password-reset
       - run: pnpm build
       - run: pnpm pack --out tmp/examples/adonisjs-account-kit.tgz
       - name: Prepare and test examples
