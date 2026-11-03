@@ -48,7 +48,7 @@ export class InvalidInputError extends AccountKitError {
  */
 export class InvalidTokenError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_INVALID_TOKEN'
-  static status = 422
+  static status = 400
 }
 /**
  * A rate limit is spent. `retryAfterSeconds` says when the caller may retry; send it as `Retry-
@@ -170,7 +170,8 @@ export class CapabilityDisabledError extends AccountKitError {
  */
 export class InvalidCredentialsError extends AccountKitError {
   static code = 'E_INVALID_CREDENTIALS'
-  static status = 400
+  // Official `@adonisjs/auth` uses 400; this package documents 401.
+  static status = 401
   constructor() {
     super('Invalid email or password')
   }
