@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url'
 import { run } from './pack_checkout.js'
 import { createAdonisApp } from './scaffold_app.js'
 
-const choices = fileURLToPath(new URL('../../docs/setup_choices.api.example.json', import.meta.url))
+const choices = fileURLToPath(
+  new URL('../../docs/reference/setup_choices.api.example.json', import.meta.url)
+)
 const { appDir, tarball } = createAdonisApp('create_setup_app.ts')
 
 // Setup's prerequisites: TypeScript to inspect the app, Mail and a limiter store.

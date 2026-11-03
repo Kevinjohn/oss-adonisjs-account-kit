@@ -271,7 +271,7 @@ notice fails after commit, the controller still reports the successful password 
 - Send real email: [notifications](notifications.md) and
   [custom email templates](../recipes/email-templates.md).
 - Add signup, verification, login and protected settings with the
-  [complete core API walkthrough](core-api.md); use the [recipes](../README.md#how-to-guides)
+  [complete core API walkthrough](core-api.md); use the [recipes](../#how-to-guides)
   for individual flows and invitations.
 - Prefer not to write controllers? Mount the [managed JSON routes](managed-http.md).
 - Test your flows: [testing](../recipes/testing.md).

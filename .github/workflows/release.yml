@@ -7,18 +7,24 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  # Refuse other branches before the checks spend their minutes.
+  main-only:
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "$GITHUB_REF" = "refs/heads/main" || { echo "release runs on main only"; exit 1; }
   checks:
+    needs: main-only
     uses: ./.github/workflows/checks.yml
   compat:
+    needs: main-only
     uses: ./.github/workflows/compat.yml
   examples:
+    needs: main-only
     uses: ./.github/workflows/examples.yml
   release:
     needs: [checks, compat, examples]
     runs-on: ubuntu-latest
     steps:
-      - name: Only main releases
-        run: test "$GITHUB_REF" = "refs/heads/main" || { echo "release runs on main only"; exit 1; }
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - uses: pnpm/action-setup@v6
