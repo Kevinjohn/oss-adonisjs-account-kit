@@ -30,6 +30,6 @@ shasum -a 256 adonisjs-account-kit-<version>.tgz
 
 ## Security model
 
-[docs/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/security.md) describes what Account Kit defends against and what remains
+[docs/guide/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/security.md) describes what Account Kit defends against and what remains
 the application's responsibility. The dependency audit assessment is in
-[compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/compatibility.md#dependency-audit-assessment).
+[compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/compatibility.md#dependency-audit-assessment).

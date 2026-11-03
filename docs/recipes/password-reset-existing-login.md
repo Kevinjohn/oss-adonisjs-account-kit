@@ -6,7 +6,7 @@ want Account Kit to add password reset without taking over login. The example ke
 revision setup in [Browser login with sessions](sessions.md); they cannot use this token-guard
 configuration unchanged.
 
-Follow the [shared reset integration checklist](../guides/password-reset-existing-app.md) for
+Follow the [shared reset integration checklist](../guide/password-reset-existing-app.md) for
 installation, the shared schema, application ownership and the full credential-proof contract.
 This recipe supplies the opaque-token configuration and routes.
 
@@ -112,7 +112,7 @@ server.use([
 ])
 ```
 
-See [Managed JSON routes](../managed-http.md#inspection-never-consumes-proof). Point
+See [Managed JSON routes](../guide/managed-http.md#inspection-never-consumes-proof). Point
 `urls.passwordReset` in `config/account_kit.ts` at your application-owned password form; the
 package does not generate that page.
 
@@ -248,4 +248,4 @@ application-owned reset form instead of the local JSON inspection URL.
 
 Limits: local SQLite and local notification capture only; no recipient delivery, PostgreSQL,
 browser form, viewport or keyboard acceptance is claimed. See the
-[example evidence format](../guides/example-acceptance.md#updating-the-record).
+[example evidence format](../guide/example-acceptance.md#updating-the-record).

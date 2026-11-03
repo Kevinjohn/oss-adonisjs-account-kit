@@ -1,12 +1,12 @@
 # Recipes and how-to guides
 
-For an existing application, start with the [reset-only integration guide](../guides/password-reset-existing-app.md)
-and choose the recipe for your stack. The [complete API walkthrough](../guides/core-api.md) is the
+For an existing application, start with the [reset-only integration guide](../guide/password-reset-existing-app.md)
+and choose the recipe for your stack. The [complete API walkthrough](../guide/core-api.md) is the
 secondary path for a new application.
 
 ## Add one capability to an existing application
 
-Choose your [stack and starting point](../guides/adoption-paths.md) first. These focused tasks
+Choose your [stack and starting point](../guide/adoption-paths.md) first. These focused tasks
 preserve the starting application's working login and selected guard:
 
 - [Add reset to an existing API login](password-reset-existing-login.md).
@@ -29,18 +29,18 @@ browser form.
 - [API-only login with access tokens](access-tokens.md)
 - [Browser login with sessions](sessions.md)
 - [Google and GitHub sign-in with Ally](social-login.md)
-- [Magic-link sign-in](../magic-link.md)
-- [Signed-in devices](../signed-in-devices.md)
-- [Admission](../admission.md)
+- [Magic-link sign-in](../guide/magic-link.md)
+- [Signed-in devices](../guide/signed-in-devices.md)
+- [Admission](../guide/admission.md)
 
 ## Users and account data
 
 - [Custom user model](custom-user-model.md)
-- [Custom user table or ID type](../custom-schema.md)
-- [Drizzle, Prisma, and plain SQL users](../adapters.md)
+- [Custom user table or ID type](../guide/custom-schema.md)
+- [Drizzle, Prisma, and plain SQL users](../guide/adapters.md)
 - [Custom users adapter](custom-adapter.md)
 - [Multi-tenant applications](multi-tenant.md)
-- [Account export and deletion](../account-data.md)
+- [Account export and deletion](../guide/account-data.md)
 
 ## Email and notifications
 
@@ -51,12 +51,12 @@ browser form.
 
 - [Testing account flows](testing.md)
 - [Audit log](audit-log.md)
-- [Guided setup](../setup.md)
-- [Operations](../operations.md)
+- [Guided setup](../guide/setup.md)
+- [Operations](../guide/operations.md)
 
 ## HTTP integration choices
 
-- [Application-owned routes](../application-owned-integration.md)
-- [Managed JSON routes](../managed-http.md)
-- [Managed social routes](../managed-social.md)
-- [Application-owned social routes](../social-reference.md)
+- [Application-owned routes](../guide/application-owned-integration.md)
+- [Managed JSON routes](../guide/managed-http.md)
+- [Managed social routes](../guide/managed-social.md)
+- [Application-owned social routes](../reference/social-reference.md)

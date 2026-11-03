@@ -1,12 +1,12 @@
 # Production requirements
 
 Supported versions, required stores and default limiter budgets. For the procedures, see
-[operations](../operations.md).
+[operations](../guide/operations.md).
 
 ## Configuration
 
 Production support is limited to the tested points and declared peer ranges in
-[compatibility](../compatibility.md). Account Kit requires Node.js 24 or later, AdonisJS Core 7,
+[compatibility](compatibility.md). Account Kit requires Node.js 24 or later, AdonisJS Core 7,
 Lucid 22.4.2 or later in the 22.x line, Limiter 3, and Luxon 3. PostgreSQL and SQLite are
 supported, and MySQL 8.4 is experimental, with the schema and connection requirements listed there. Use the same database and
 schema across application instances.
@@ -40,8 +40,8 @@ that establish authentication or change state. Keep BodyParser, session, Shield,
 in that order. The setup session-policy booleans record operator checks; they do not configure the
 session backend or prove it works at runtime. Use a shared limiter store when limits must apply across
 instances. An in-memory store gives each process its own budgets and is suitable only where that
-behavior is intended, such as isolated tests. See [authentication](../authentication.md) and
-[managed HTTP](../managed-http.md) for the guard and request contract.
+behavior is intended, such as isolated tests. See [authentication](../guide/authentication.md) and
+[managed HTTP](../guide/managed-http.md) for the guard and request contract.
 
 Installing `@adonisjs/limiter` does not configure its runtime service. If it is missing, run
 `pnpm add @adonisjs/limiter` followed by `pnpm exec node ace configure @adonisjs/limiter`; verify
@@ -93,4 +93,4 @@ to 10 sends per actor per hour, 3 sends per recipient per hour, 10 resends per a
 Password reset issuance is limited by both client key and normalized email. When a request is throttled,
 the existing unexpired password reset link remains redeemable; the next successful issuance replaces it.
 Use a client key derived from the request IP only behind correctly configured trusted proxies, and
-do not trust arbitrary forwarded-IP headers. See [password reset and invitation rules](../usage.md#a-reset-link-works-once-then-expires).
+do not trust arbitrary forwarded-IP headers. See [password reset and invitation rules](../guide/usage.md#a-reset-link-works-once-then-expires).

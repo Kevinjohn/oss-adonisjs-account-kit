@@ -1,7 +1,7 @@
 # Feature recordings
 
 These scripts make the terminal recordings in `docs/assets/demos/`, shown on
-[See it run](../../docs/recordings.md) and the feature pages.
+[See it run](../../docs/guide/recordings.md) and the feature pages.
 
 ```sh
 pnpm demos
@@ -26,7 +26,7 @@ pnpm demos:setup
 
 `create_setup_app.ts tmp/setup-demo-app` creates the same API starter with Mail, the limiter and
 TypeScript, registers the Account Kit commands in `adonisrc.ts`, adds an application-owned
-`canAccess` policy, copies `docs/setup_choices.api.example.json` in as `choices.json` and commits
+`canAccess` policy, copies `docs/reference/setup_choices.api.example.json` in as `choices.json` and commits
 the result. `record_setup.ts tmp/setup-demo-app tmp/setup-demo-casts` resets the app to that
 commit, previews and applies the choices, and writes `setup.cast`; it can be run again.
 

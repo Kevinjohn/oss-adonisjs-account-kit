@@ -87,7 +87,7 @@ with `operation`, `operationId` and `userId`. The magic-link proof is bound to t
 client, is single-use and expires. These callbacks do not place a durable delivery intent in the
 account transaction. If delivery must survive process or transport failure, persist the intent in
 an application-owned transaction and process it with an application worker; see
-[Notifications](../notifications.md).
+[Notifications](../guide/notifications.md).
 
 ## Render without sending
 
@@ -192,5 +192,5 @@ Copy this file to `resources/lang/<locale>/account_kit.json` and translate the v
 
 ## Further reading
 
-- [Notifications](../notifications.md): delivery failures, readiness checks and durable delivery.
+- [Notifications](../guide/notifications.md): delivery failures, readiness checks and durable delivery.
 - [Development mail](development-mail.md): print messages instead of sending them.

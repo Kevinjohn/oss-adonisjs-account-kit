@@ -163,5 +163,5 @@ pnpm typecheck
 pnpm exec node ace test --files=account_access_inspection.spec.ts
 ```
 
-See [Authentication integration](../authentication.md#inspecting-another-account) for the API
+See [Authentication integration](../guide/authentication.md#inspecting-another-account) for the API
 contract and transaction limits.

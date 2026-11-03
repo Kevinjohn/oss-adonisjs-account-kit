@@ -2,7 +2,7 @@
 
 Use this recipe when an AdonisJS 7 application already has a Vue/Inertia login form, user model,
 session guard and protected pages. Keep those application-owned pieces and add reset routes and pages
-around them. Start with the [shared reset integration checklist](../guides/password-reset-existing-app.md)
+around them. Start with the [shared reset integration checklist](../guide/password-reset-existing-app.md)
 and follow the [root install instructions](../../README.md#install) for the available archive and
 configuration command.
 

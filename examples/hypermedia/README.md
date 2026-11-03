@@ -135,7 +135,7 @@ Copy the minimum relevant pieces and adapt names to the host app:
 Keep user columns, validation rules, access policy, notification delivery and wording in the
 application. Do not copy the example database or its development key into a deployed app. For the
 shared lifecycle and evidence contract, see
-[`docs/guides/example-acceptance.md`](../../docs/guides/example-acceptance.md).
+[`docs/guide/example-acceptance.md`](../../docs/guide/example-acceptance.md).
 
 ## Checks and evidence
 

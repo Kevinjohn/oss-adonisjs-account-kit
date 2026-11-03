@@ -7,7 +7,7 @@ const dependencies = /^(?:package\.json|pnpm-lock\.yaml)$/
 const formatConfig = /^(?:\.prettierignore|\.prettierrc[^/]*|prettier\.config\.[^/]+)$/
 const lintConfig = /^eslint\.config\.[^/]+$/
 const spec = /^tests\/.+\.spec\.ts$/
-const docsSource = /^(?:docs\/(?!api\/|\.vitepress\/(?:cache|dist)\/).+|typedoc\.json)$/
+const docsSource = /^(?:docs\/(?!reference\/api\/|\.vitepress\/(?:cache|dist)\/).+|typedoc\.json)$/
 // TypeDoc reads the exported sources and fails on warnings, so source changes build the docs too.
 const docsInput = /^(?!tests\/|examples\/|stubs\/|bin\/).+\.(?:ts|mts|cts)$/
 const pgService =

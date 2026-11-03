@@ -2,22 +2,22 @@
 
 ## Choose your stack and starting point
 
-For an existing application, start with [the reset-only integration guide](guides/password-reset-existing-app.md)
-to keep your working login and add password reset. The [stack and starting-point selector](guides/adoption-paths.md)
-gives the exact recipe for React, Vue, Hypermedia/Edge and API. The [annotated API starter diff](guides/password-reset-starter-diff.md)
+For an existing application, start with [the reset-only integration guide](guide/password-reset-existing-app.md)
+to keep your working login and add password reset. The [stack and starting-point selector](guide/adoption-paths.md)
+gives the exact recipe for React, Vue, Hypermedia/Edge and API. The [annotated API starter diff](guide/password-reset-starter-diff.md)
 shows the file-by-file changes; the complete new-application examples are secondary paths.
 
 The reset guide preserves the application's login route, user model and guard. Session stacks also
 need a login-controller revision update, revision-check middleware and a server-side session store;
 the API recipe uses bearer-token revocation without a session adapter. Compare the examples with the
-[shared account journey acceptance guide](guides/example-acceptance.md).
+[shared account journey acceptance guide](guide/example-acceptance.md).
 
 ## Tutorial
 
-- [Build one account API](guides/core-api.md): the recommended complete API-starter path from signup
+- [Build one account API](guide/core-api.md): the recommended complete API-starter path from signup
   and ownership proof through protected settings and reset.
-- [Getting started](getting-started.md): focused install and password-reset tutorial.
-- [See it run](recordings.md): selected terminal recordings of account flows.
+- [Getting started](guide/getting-started.md): focused install and password-reset tutorial.
+- [See it run](guide/recordings.md): selected terminal recordings of account flows.
 
 ## How-to guides
 
@@ -26,16 +26,16 @@ quality guides. It links directly to every topic.
 
 ## Reference
 
-Browse the [reference index](reference/index.md) for configuration, service operations, endpoints,
+Browse the [reference index](reference/) for configuration, service operations, endpoints,
 errors, production requirements, and compatibility details.
 
 ## Explanation
 
-- [Features](features.md): core account flows and additional capabilities.
-- [Security model](security.md)
-- [How setup works](how-setup-works.md): preview, recovery, and readiness.
-- [Production boundaries](production-boundaries.md): readiness, delivery, and credential lifecycle.
-- [Authentication integration](authentication.md)
-- [Identity creation](identity-creation.md)
-- [Registration](registration.md)
-- [Social authentication services](social-authentication.md)
+- [Features](guide/features.md): core account flows and additional capabilities.
+- [Security model](guide/security.md)
+- [How setup works](guide/how-setup-works.md): preview, recovery, and readiness.
+- [Production boundaries](guide/production-boundaries.md): readiness, delivery, and credential lifecycle.
+- [Authentication integration](guide/authentication.md)
+- [Identity creation](guide/identity-creation.md)
+- [Registration](guide/registration.md)
+- [Social authentication services](guide/social-authentication.md)

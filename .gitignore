@@ -27,7 +27,3 @@ docs/.vitepress/dist
 # Repository-specific
 # example env fixture
 !examples/inertia-react/.env.test
-# until the docs move (WP-7)
-docs/PRD*.md
-docs/reviews/
-docs/api

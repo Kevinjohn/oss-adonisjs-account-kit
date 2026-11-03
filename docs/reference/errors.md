@@ -70,7 +70,7 @@ delivery keeps the generic acknowledgement, and the requester can submit another
 request for a replacement link. For signup, direct the person to request another verification link;
 for a pending invitation, resend it. If invitation acceptance committed, direct the new account to
 sign in or use password reset. Check the committed account or invitation state before choosing the
-next action, and never repeat signup or invitation acceptance. The [starter tutorial](../getting-started.md)
+next action, and never repeat signup or invitation acceptance. The [starter tutorial](../guide/getting-started.md)
 shows reset request and completion handling. Never log full proof-bearing URLs, raw bearer
 credentials, or callback causes in the response.
 
@@ -86,7 +86,7 @@ credentials, or callback causes in the response.
 
 When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n),
 pass the request's `ctx.i18n` as `i18n`. The message for code `X` is looked up as `errors.X`, with
-the English message as the fallback, the same keys the [managed routes](../managed-http.md) use.
+the English message as the fallback, the same keys the [managed routes](../guide/managed-http.md) use.
 The code is the error's own `code` from the catalog below, except that
 `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` is never returned. These are the keys and their
 English messages for `resources/lang/<locale>/errors.json`:
@@ -159,7 +159,7 @@ An application that also uses the managed routes keeps one `errors.json` for bot
 
 ## Admission errors
 
-The optional [admission module](../admission.md) adds two errors. They extend `AccountKitError`,
+The optional [admission module](../guide/admission.md) adds two errors. They extend `AccountKitError`,
 so `accountErrorResponse` maps them, but they are exported only from
 `adonisjs-account-kit/admission`:
 
@@ -179,7 +179,7 @@ Their translation keys are `errors.E_ACCOUNT_KIT_ADMISSION_REQUIRED` and
 
 Error `code` values are public API from the first public release. This covers the codes in the
 catalog above and the managed-route codes in the `errors.json` block in
-[managed HTTP](../managed-http.md). A code is changed or removed only as a breaking change listed
+[managed HTTP](../guide/managed-http.md). A code is changed or removed only as a breaking change listed
 in the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md).
 Before 1.0 that can happen in a minor release, and it is still listed as breaking.
 
@@ -189,10 +189,10 @@ Before 1.0 that can happen in a minor release, and it is still listed as breakin
 
 SPA and mobile clients that translate on their side should key translations on `code`, not
 `message`. The full lists are the catalog above and the `errors.json` block in
-[managed HTTP](../managed-http.md). Every package code starts with `E_`.
+[managed HTTP](../guide/managed-http.md). Every package code starts with `E_`.
 
 Request-validation errors come from VineJS and are keyed on the rule and field instead: `rule` and
 `field` in JSON, `code` and `source.pointer` in JSON:API. There, `code` is the rule name, such as
 `required`, never an `E_` code.
 
-Related: the [security model](../security.md) explains why several of these errors are generic.
+Related: the [security model](../guide/security.md) explains why several of these errors are generic.

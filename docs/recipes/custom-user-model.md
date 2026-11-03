@@ -157,14 +157,14 @@ The reference API's
 [profile controller](../../examples/api/app/controllers/profile_controller.ts),
 [user model](../../examples/api/app/models/user.ts), and
 [registration mapper](../../examples/api/app/services/registration_fields.ts) show the existing
-application-owned pattern. The [example acceptance record](../guides/example-acceptance.md)
+application-owned pattern. The [example acceptance record](../guide/example-acceptance.md)
 separates this disposable run from those reference fixtures.
 
 ## Hashing and alternate adapters
 
 The Lucid adapter saves passwords through the model, so `withAuthFinder` or your `beforeSave`
 hashing runs as usual. Account Kit never writes a plain password to the database. For a different
-table or ID type, see [custom user table or ID type](../custom-schema.md). For Drizzle, Prisma or
+table or ID type, see [custom user table or ID type](../guide/custom-schema.md). For Drizzle, Prisma or
 plain SQL, write an adapter that satisfies the [custom adapter](custom-adapter.md) contract.
 
 ## Disposable acceptance
@@ -186,4 +186,4 @@ disposable-app test named `recipe_custom_user_field.spec.ts` passed with
 `pnpm exec node ace test --files=recipe_custom_user_field.spec.ts`; it verified direct mapper
 rejection for `isAdmin`. Removing the mapper allowlist made that assertion fail, and restoring it
 passed. Blank/overlength values reached Account Kit's generic invalid-input response in those runs,
-and no signup field was added. See the [example acceptance record](../guides/example-acceptance.md).
+and no signup field was added. See the [example acceptance record](../guide/example-acceptance.md).

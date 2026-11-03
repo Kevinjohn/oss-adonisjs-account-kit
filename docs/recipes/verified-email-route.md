@@ -106,7 +106,7 @@ session variant.
 This API example does not claim browser behavior, translated frontend form errors, or a Vue/Edge
 integration. Keep messages and any guest redirect in the application; Account Kit supplies stable
 error codes and the verification decision. See [AdonisJS Auth middleware](https://docs.adonisjs.com/guides/auth/introduction)
-and the [authentication reference](../authentication.md) for the selected guard setup.
+and the [authentication reference](../guide/authentication.md) for the selected guard setup.
 
 The disposable acceptance app was scaffolded with
 `pnpm create adonisjs@3.4.0 /private/tmp/recipe-api-sessionfree --kit=api --pkg=pnpm` from the
@@ -134,4 +134,4 @@ unverified result from 403 to 200; restoring it returned the test green. An earl
 fixture check is not used as Session-free evidence because that reference app retains optional
 browser-strategy code.
 This verifies the API guard and route middleware, not browser redirects or localized frontend
-messages. See the [example acceptance record](../guides/example-acceptance.md).
+messages. See the [example acceptance record](../guide/example-acceptance.md).

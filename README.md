@@ -23,7 +23,7 @@ transactions that are easy to get wrong.
   password signs out older sessions and tokens.
 - **Invitations** with roles, resend and revoke.
 - **Opt-in extras**: magic links, signed-in devices, account export and deletion, Google and GitHub
-  sign-in, admission rules, OpenAPI. See [all features](docs/features.md).
+  sign-in, admission rules, OpenAPI. See [all features](docs/guide/features.md).
 - **Your ORM**: Lucid by default, or Drizzle, Prisma and plain SQL adapters.
 
 ## Install
@@ -39,7 +39,7 @@ node ace migration:run
 node ace account-kit:doctor
 ```
 
-`pnpm add` and `yarn add` take the same URL. Prefer generated files? Use [guided setup](docs/setup.md)
+`pnpm add` and `yarn add` take the same URL. Prefer generated files? Use [guided setup](docs/guide/setup.md)
 in place of `node ace configure`.
 
 ### Dynamic providers
@@ -79,7 +79,7 @@ provider expression and completes the remaining setup. Running it again is safe.
 
 ## Quick example
 
-A forgot-password action. The [getting started tutorial](docs/getting-started.md) adds validation,
+A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds validation,
 error mapping and the reset action.
 
 ```ts
@@ -104,11 +104,11 @@ export default class PasswordResetsController {
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md): install and add password reset to an API starter.
+- [Getting started](docs/guide/getting-started.md): install and add password reset to an API starter.
 - [Choose your stack](docs/README.md#choose-your-stack-and-starting-point): Inertia React, Inertia
   Vue, Hypermedia/Edge or API, for new and existing applications.
-- [Recipes](docs/recipes/index.md) and [reference](docs/reference/index.md).
-- [Security model](docs/security.md) and [operations](docs/operations.md), including the
+- [Recipes](docs/recipes/index.md) and [reference](docs/reference/README.md).
+- [Security model](docs/guide/security.md) and [operations](docs/guide/operations.md), including the
   production checklist.
 - [README-AGENTS.md](README-AGENTS.md): the requirements, invariants and file map for AI coding
   agents.

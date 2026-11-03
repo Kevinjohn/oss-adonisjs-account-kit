@@ -6,7 +6,7 @@
     "testing/adapter_contract.ts",
     "testing/notifications.ts"
   ],
-  "out": "docs/api",
+  "out": "docs/reference/api",
   "plugin": ["typedoc-plugin-markdown"],
   "entryFileName": "index",
   "readme": "none",

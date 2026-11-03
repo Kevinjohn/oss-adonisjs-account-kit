@@ -3,9 +3,9 @@
 `registerManagedRoutes` from `adonisjs-account-kit/http` mounts these JSON routes under the
 `prefix` you choose, for example `/api/v1`. Only the capabilities in its `enabled` list are
 mounted, and `except` removes individual endpoints by name. Setup and guard requirements are in
-[managed HTTP](../managed-http.md).
+[managed HTTP](../guide/managed-http.md).
 
-The [core API walkthrough](../guides/core-api.md) uses application-owned `/api/v1` routes, so
+The [core API walkthrough](../guide/core-api.md) uses application-owned `/api/v1` routes, so
 its `auth/request-password-reset` and `account/password` paths are chosen by that application rather
 than by this managed route table.
 
@@ -20,7 +20,7 @@ Access levels:
 `auth/csrf` is mounted for the `session` strategy whenever any capability is enabled.
 
 Request and response schemas for the routes you mounted are in the generated
-[OpenAPI document](../openapi.md).
+[OpenAPI document](openapi.md).
 
 ## `registration`
 
@@ -46,7 +46,7 @@ Request and response schemas for the routes you mounted are in the generated
 | `POST`   | `/account/sessions/revoke-others` | `account.sessions.revokeOthers` | limited |
 | `POST`   | `/account/sessions/revoke-all`    | `account.sessions.revokeAll`    | limited |
 
-See [signed-in devices](../signed-in-devices.md) for responses.
+See [signed-in devices](../guide/signed-in-devices.md) for responses.
 
 ## `passwordReset`
 
@@ -64,7 +64,7 @@ See [signed-in devices](../signed-in-devices.md) for responses.
 | `GET`  | `/auth/magic-link/:token` | `auth.magicLink.inspect`  | public |
 | `POST` | `/auth/magic-link/:token` | `auth.magicLink.complete` | public |
 
-See [magic-link sign-in](../magic-link.md) for bodies and verifier handling.
+See [magic-link sign-in](../guide/magic-link.md) for bodies and verifier handling.
 
 ## `emailVerification`
 
@@ -101,7 +101,7 @@ See [magic-link sign-in](../magic-link.md) for bodies and verifier handling.
 | `POST`   | `/account/export` | `account.data.export` | limited |
 | `DELETE` | `/account`        | `account.delete`      | limited |
 
-See [account export and deletion](../account-data.md) for bodies and responses.
+See [account export and deletion](../guide/account-data.md) for bodies and responses.
 
 ## `socialAuthentication`
 

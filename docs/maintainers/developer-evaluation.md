@@ -59,9 +59,9 @@ The four tasks and observed results were:
 
 The walkthrough used the candidate README and maintained documentation and examples, plus the
 official AdonisJS API starter and ordinary framework/package tooling. The relevant published
-references were the [setup guide](../setup.md), [managed HTTP contract](../managed-http.md),
-[notification guide](../notifications.md), [application-owned integration guide](../application-owned-integration.md),
-and [API token example](../token-reference.md). No implementation source, build output,
+references were the [setup guide](../guide/setup.md), [managed HTTP contract](../guide/managed-http.md),
+[notification guide](../guide/notifications.md), [application-owned integration guide](../guide/application-owned-integration.md),
+and [API token example](../reference/token-reference.md). No implementation source, build output,
 declarations, private evaluation materials, or maintainer assistance supplied task steps.
 
 ## Files delta

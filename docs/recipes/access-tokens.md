@@ -37,7 +37,7 @@ record, or role. Keep the application's resource and role policy check on the ro
 The empty `onCredentialsChangedTransaction` is appropriate only if the application holds no other
 credentials. Revoke application-owned sessions, remember-me credentials or API keys in that
 callback using its transaction when your policy requires them to end on a credential change.
-The [reset tutorial](../getting-started.md) exercises two starter tokens across a reset.
+The [reset tutorial](../guide/getting-started.md) exercises two starter tokens across a reset.
 
 ## 2. Adapt the guard
 
@@ -139,5 +139,5 @@ alone does not prove that authority; when the issued ability is `'*'`, it always
 
 ## Further reading
 
-- [Authentication integration](../authentication.md): limits, revision checks and logout details.
-- [Token API reference](../token-reference.md): the full request sequence of the example app.
+- [Authentication integration](../guide/authentication.md): limits, revision checks and logout details.
+- [Token API reference](../reference/token-reference.md): the full request sequence of the example app.

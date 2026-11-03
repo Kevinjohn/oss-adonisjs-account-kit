@@ -162,5 +162,5 @@ port `3343`, a browser GET to `/signup` rendered the signup form. The browser re
 `/favicon.ico` (404); the app page itself rendered. The 35-test suite was not repeated in this fresh
 checkout, and setup verification does not cover recipient email delivery or PostgreSQL.
 
-See the shared [example acceptance contract](../../docs/guides/example-acceptance.md) for the
+See the shared [example acceptance contract](../../docs/guide/example-acceptance.md) for the
 journey boundaries and cross-example evidence record.

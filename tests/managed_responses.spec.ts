@@ -184,7 +184,7 @@ test.group('managed HTTP error wording docs', () => {
   test('the documented errors.json lists every managed code with its English message', async ({
     assert,
   }) => {
-    const docs = await readFile(new URL('../docs/managed-http.md', import.meta.url), 'utf8')
+    const docs = await readFile(new URL('../docs/guide/managed-http.md', import.meta.url), 'utf8')
     const block = docs
       .split('resources/lang/<locale>/errors.json')[1]
       ?.match(/```json\n([\s\S]*?)```/)

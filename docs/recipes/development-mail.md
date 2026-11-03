@@ -89,7 +89,7 @@ error is emitted by Mail as `queued:mail:error`; it is not automatically convert
 outcomes. For production, use a persistent messenger such as the documented AdonisJS Queue
 integration, deploy its worker with the web app, and configure retries and terminal-failure
 handling. Queue acceptance is still not recipient delivery. See
-[Account notifications](../notifications.md) for Account Kit callback failure boundaries and
+[Account notifications](../guide/notifications.md) for Account Kit callback failure boundaries and
 production readiness requirements.
 
 If Account Kit's awaited notification callback or queue submission rejects, it reports a committed
@@ -100,7 +100,7 @@ password-reset request still returns its generic acknowledgement, so the person 
 link. For a committed password change, reset, signup or other mutation, inspect the saved account
 state and use that flow's recovery path; do not repeat signup because its post-commit notification
 failed. For signup, sign in or request a fresh verification link if delivery did not arrive. The
-[operations guide](../operations.md#recover-from-committed-notification-or-observer-failures)
+[operations guide](../guide/operations.md#recover-from-committed-notification-or-observer-failures)
 describes each recovery decision.
 
 The API example's [notification callbacks](../../examples/api/app/services/account_kit_notifications.ts)
@@ -140,5 +140,5 @@ remained usable after the asynchronous transport failure. This did not test a wo
 recipient delivery; the app needs an explicit retry policy for later queue errors. The temporary
 event logger and captured tests were not committed as repository test files.
 
-See the [example acceptance record](../guides/example-acceptance.md) for the starter/package
+See the [example acceptance record](../guide/example-acceptance.md) for the starter/package
 versions and shared acceptance boundaries.

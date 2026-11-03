@@ -14,7 +14,7 @@ selected managed routes enabled in `config/account_kit.ts`. Reuse the applicatio
 and `accountAccess` middleware from [`start/kernel.ts`](../../examples/api/start/kernel.ts).
 
 For session guards, first install the guarded server-side session configuration required by
-[Managed JSON routes](../managed-http.md#configuration).
+[Managed JSON routes](../guide/managed-http.md#configuration).
 
 ## Exclude one named route and add its replacement
 
@@ -91,8 +91,8 @@ The API reference's [route-selection tests](../../tests/managed_routes.spec.ts),
 tests](../../tests/managed_http_proofs.spec.ts), and [token revocation HTTP
 test](../../examples/api/tests/functional/account_password_reset.spec.ts) cover route planning,
 proof headers and reset revocation. Those fixtures do not replace this disposable application
-check. See [Managed JSON routes](../managed-http.md) and the
-[example acceptance record](../guides/example-acceptance.md) for stack boundaries and evidence.
+check. See [Managed JSON routes](../guide/managed-http.md) and the
+[example acceptance record](../guide/example-acceptance.md) for stack boundaries and evidence.
 
 ## Disposable acceptance
 
@@ -113,4 +113,4 @@ routes, not a browser or external delivery. The complete `AccountProfileControll
 including its `HttpContext` type import, was copied verbatim into
 `app/controllers/account_profile_controller.ts` in that disposable app and passed
 `pnpm typecheck` under Node `v24.21.0`. See the
-[example acceptance record](../guides/example-acceptance.md).
+[example acceptance record](../guide/example-acceptance.md).

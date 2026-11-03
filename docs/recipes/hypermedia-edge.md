@@ -2,7 +2,7 @@
 
 This recipe adds password reset to the pinned AdonisJS 7 Hypermedia starter while keeping its
 `User` model, `/login` route, `web` guard, Edge layouts and account policy. Read the shared
-[existing-app integration guide](../guides/password-reset-existing-app.md) first, then follow this
+[existing-app integration guide](../guide/password-reset-existing-app.md) first, then follow this
 kit-specific walkthrough. Install Account Kit from the
 [root install instructions](../../README.md#install).
 

@@ -68,9 +68,9 @@ package does not promise exactly-once delivery.
 
 For account deletion, `onAccountDeletingTransaction(user, trx)` can persist an application-owned
 deletion intent in the deletion transaction; `account.deleted` remains a post-commit event. See
-[Account export and deletion](../account-data.md#account-export-and-deletion).
+[Account export and deletion](../guide/account-data.md#account-export-and-deletion).
 
 ## Further reading
 
-- [Usage: transactions and callbacks](../usage.md#transactions-and-callbacks)
-- [Admission events](../admission.md) use the separate `onAdmissionEvent` callback.
+- [Usage: transactions and callbacks](../guide/usage.md#transactions-and-callbacks)
+- [Admission events](../guide/admission.md) use the separate `onAdmissionEvent` callback.
