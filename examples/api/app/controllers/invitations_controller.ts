@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError, InvalidTokenError } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { InvalidInputError, InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import {
   invitationAcceptValidator,
   invitationListValidator,

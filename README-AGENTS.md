@@ -31,7 +31,7 @@ username-only accounts, or as an identity provider for other applications.
 
 ```sh
 node ace add @adonisjs/limiter
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.4/adonisjs-account-kit-0.1.4.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.5/kevinjohn-adonisjs-account-kit-0.1.5.tgz
 node ace migration:run
 node ace account-kit:doctor
 ```
@@ -62,7 +62,7 @@ Login itself is the `authentication` config block (`strategy: 'session' | 'acces
 existing guard name), used through `kit.authentication`.
 
 Get the service with `await app.container.make(AccountKit)` (import `AccountKit` from
-`adonisjs-account-kit`).
+`@kevinjohn/adonisjs-account-kit`).
 
 Integration modes:
 
@@ -72,19 +72,19 @@ Integration modes:
 | Managed JSON routes | An API or SPA wants ready-made endpoints under a prefix             | [Managed HTTP](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/managed-http.md)                                   |
 
 Both call the same service. Managed routes are registered with `registerManagedRoutes` from
-`adonisjs-account-kit/http`, and `account-kit:openapi` writes their OpenAPI 3.1 document.
+`@kevinjohn/adonisjs-account-kit/http`, and `account-kit:openapi` writes their OpenAPI 3.1 document.
 
 Users adapters:
 
 | Import                                  | For                                     |
 | --------------------------------------- | --------------------------------------- |
-| `adonisjs-account-kit/adapters/lucid`   | A Lucid model (the default)             |
-| `adonisjs-account-kit/adapters/drizzle` | Drizzle                                 |
-| `adonisjs-account-kit/adapters/prisma`  | Prisma                                  |
-| `adonisjs-account-kit/adapters/sql`     | Plain SQL through Lucid's query builder |
+| `@kevinjohn/adonisjs-account-kit/adapters/lucid`   | A Lucid model (the default)             |
+| `@kevinjohn/adonisjs-account-kit/adapters/drizzle` | Drizzle                                 |
+| `@kevinjohn/adonisjs-account-kit/adapters/prisma`  | Prisma                                  |
+| `@kevinjohn/adonisjs-account-kit/adapters/sql`     | Plain SQL through Lucid's query builder |
 
-A custom adapter implements `UsersAdapter` (`adonisjs-account-kit/types`) and should pass
-`adonisjs-account-kit/testing/adapter_contract`. The Lucid adapter requires the `id` primary key and
+A custom adapter implements `UsersAdapter` (`@kevinjohn/adonisjs-account-kit/types`) and should pass
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract`. The Lucid adapter requires the `id` primary key and
 the column names in the requirements table.
 
 Commands:
@@ -127,7 +127,7 @@ link), `ThrottledError` (429, `retryAfterSeconds`), `InvalidCredentialsError`,
 
 ## Testing an application
 
-`adonisjs-account-kit/testing/notifications` exports `captureNotifications()`. Pass its `notify` as
+`@kevinjohn/adonisjs-account-kit/testing/notifications` exports `captureNotifications()`. Pass its `notify` as
 the config's `notify` in tests, run a flow, then read `tokenFor(kind, email)`.
 
 ## Source map
@@ -143,7 +143,7 @@ the config's `notify` in tests, run a flow, then read `tokenFor(kind, email)`.
 | `src/account_export.ts`, `src/account_deletion.ts`                                                                | Export and deletion                                                                                                                                              |
 | `src/transaction.ts`, `src/db.ts`, `src/effects.ts`                                                               | Transactions, locking, post-commit effects                                                                                                                       |
 | `src/throttle.ts`                                                                                                 | Rate limiting with HMAC limiter keys                                                                                                                             |
-| `src/admission/`                                                                                                  | Admission (`adonisjs-account-kit/admission`); see the [admission guide](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/admission.md) |
+| `src/admission/`                                                                                                  | Admission (`@kevinjohn/adonisjs-account-kit/admission`); see the [admission guide](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/admission.md) |
 | `src/notifications.ts`, `src/log_notifications.ts`                                                                | Built-in emails and development logging                                                                                                                          |
 | `src/http/`                                                                                                       | Managed routes, validators, OpenAPI                                                                                                                              |
 | `src/setup/`                                                                                                      | `account-kit:setup` planning and apply                                                                                                                           |

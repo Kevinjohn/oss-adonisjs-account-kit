@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
-import { InvalidInputError } from 'adonisjs-account-kit'
-import { AccountAdmission } from 'adonisjs-account-kit/admission'
+import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 import { accountInput } from '#services/account_input'
 import { admissionListValidator } from '#validators/admission'
 

@@ -38,7 +38,7 @@ pnpm build
 The API archive and clean example setup were:
 
 ```sh
-pnpm pack --out examples/api/vendor/adonisjs-account-kit.tgz
+pnpm pack --out examples/api/vendor/kevinjohn-adonisjs-account-kit.tgz
 cd examples/api
 pnpm install
 cp .env.example .env
@@ -48,7 +48,7 @@ node ace migration:run
 pnpm dev
 ```
 
-The React run used the same setup sequence with `pnpm pack --out examples/inertia-react/vendor/adonisjs-account-kit.tgz`
+The React run used the same setup sequence with `pnpm pack --out examples/inertia-react/vendor/kevinjohn-adonisjs-account-kit.tgz`
 and `cd examples/inertia-react`.
 
 The API smoke received 200 from `GET /`, signed up over HTTP, followed the development proof link,

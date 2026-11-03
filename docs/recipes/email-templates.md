@@ -7,7 +7,7 @@ layout, or replace them completely.
 
 ```ts
 // config/account_kit.ts
-import { createMailNotifications } from 'adonisjs-account-kit'
+import { createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 notify: createMailNotifications({
   from: 'Acme <accounts@acme.test>',
@@ -46,7 +46,7 @@ link with an Edge template and keeps the built-in messages for everything else:
 
 ```ts
 import mail from '@adonisjs/mail/services/main'
-import { createMailNotifications } from 'adonisjs-account-kit'
+import { createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 const builtIn = createMailNotifications({ from: 'accounts@acme.test', brandName: 'Acme' })
 

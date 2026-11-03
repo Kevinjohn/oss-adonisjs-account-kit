@@ -264,7 +264,7 @@ export interface AccountDataInput {
 
 /** Version 1 of the account export document. Timestamps are ISO 8601 UTC strings. */
 export interface AccountExport {
-  format: 'adonisjs-account-kit/export'
+  format: '@kevinjohn/adonisjs-account-kit/export'
   version: 1
   generatedAt: string
   account: {

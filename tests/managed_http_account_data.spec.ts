@@ -86,7 +86,7 @@ test.group('managed account data routes', (group) => {
     const { call, as, warnings } = mount('session')
     const output = await call('POST /api/v1/account/export', as(user))
     assert.equal(output.status, 200)
-    assert.equal(output.body.format, 'adonisjs-account-kit/export')
+    assert.equal(output.body.format, '@kevinjohn/adonisjs-account-kit/export')
     assert.equal(output.body.account.id, user.id)
     assert.equal(output.headers['Cache-Control'], 'no-store')
     assert.equal(

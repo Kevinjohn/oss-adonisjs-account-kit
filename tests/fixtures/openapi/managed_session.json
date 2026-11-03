@@ -7033,7 +7033,7 @@
         "type": "object",
         "properties": {
           "format": {
-            "const": "adonisjs-account-kit/export"
+            "const": "@kevinjohn/adonisjs-account-kit/export"
           },
           "version": {
             "const": 1

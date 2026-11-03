@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { SocialProvider, SocialProviderName } from 'adonisjs-account-kit'
+import type { SocialProvider, SocialProviderName } from '@kevinjohn/adonisjs-account-kit'
 
 export interface SocialFixtureUser {
   subject: string

@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import accountKit from 'adonisjs-account-kit/services/main'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { accountInput } from '#services/account_input'
 
 export { accountInput }

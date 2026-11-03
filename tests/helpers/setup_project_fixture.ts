@@ -38,7 +38,7 @@ export async function fixture() {
         '@adonisjs/session': '8',
         '@adonisjs/shield': '9',
         '@vinejs/vine': '4',
-        'adonisjs-account-kit': '0',
+        '@kevinjohn/adonisjs-account-kit': '0',
       },
       imports: { '#models/*': './app/models/*.js', '#database/*': './database/*.js' },
     })

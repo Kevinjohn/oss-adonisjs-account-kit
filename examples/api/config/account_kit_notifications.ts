@@ -1,6 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import { notifications } from '#services/account_kit_notifications'
-import type { NotificationCallbacks } from 'adonisjs-account-kit/types'
+import type { NotificationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
 
 type NotificationLogger = { info(message: string): void }
 

@@ -25,7 +25,7 @@ export function sharedSchemas(): Record<string, JsonSchema> {
     }),
     AccountExport: closed(
       {
-        format: constant('adonisjs-account-kit/export'),
+        format: constant('@kevinjohn/adonisjs-account-kit/export'),
         version: constant(1),
         generatedAt: timestamp,
         account: closed({

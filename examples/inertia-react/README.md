@@ -41,7 +41,7 @@ links point to the reviewed example source so you can compare each file while ad
 
 ### Shared foundation
 
-- **Dependencies and registration:** Add `adonisjs-account-kit` and `@adonisjs/limiter` to your
+- **Dependencies and registration:** Add `@kevinjohn/adonisjs-account-kit` and `@adonisjs/limiter` to your
   existing AdonisJS 7 Inertia React app. Keep its existing `@adonisjs/auth`, `@adonisjs/session`,
   `@adonisjs/shield`, `@adonisjs/lucid`, `@adonisjs/inertia`, and `@vinejs/vine` integrations.
   Follow the [root install instructions](../../README.md#install) for the limiter, GitHub release
@@ -253,7 +253,7 @@ establish a released-package install. Use Node.js 24 and pnpm 11.23.0 from the r
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
-pnpm pack --out examples/inertia-react/vendor/adonisjs-account-kit.tgz
+pnpm pack --out examples/inertia-react/vendor/kevinjohn-adonisjs-account-kit.tgz
 cd examples/inertia-react
 pnpm install
 cp .env.example .env
@@ -269,7 +269,7 @@ development logger exposes the proof URL in the local terminal; it does not send
 recipient delivery.
 
 The root install provides the build tools to build Account Kit. Packing creates
-`vendor/adonisjs-account-kit.tgz`, which is ignored by Git. The committed example lockfile pins every
+`vendor/kevinjohn-adonisjs-account-kit.tgz`, which is ignored by Git. The committed example lockfile pins every
 other dependency. After installing the example once, `pnpm kit:pack` refreshes the archive after
 source changes. Run `pnpm install` again in the example after each re-pack to install the new archive
 and update its integrity entry; this refresh install cannot use `--frozen-lockfile`.
@@ -289,13 +289,13 @@ the verified state; change the password from settings and verify that the curren
 signed in. These steps exercise the example's account flow, not email delivery to an inbox.
 
 If `kit:pack` cannot find the root build tools, run the frozen root install first. If package
-installation cannot find `vendor/adonisjs-account-kit.tgz`, pack from the example directory before
+installation cannot find `vendor/kevinjohn-adonisjs-account-kit.tgz`, pack from the example directory before
 installing there. If startup reports missing environment values or a database table, copy
 `.env.example`, generate `APP_KEY`, and run the migrations before starting the server.
 
 ## What was added to the starter kit
 
-- `@adonisjs/limiter` and `adonisjs-account-kit`, each added with `node ace add`.
+- `@adonisjs/limiter` and `@kevinjohn/adonisjs-account-kit`, each added with `node ace add`.
 - A database session store (`node ace make:session-table`, `SESSION_DRIVER=database`). Session
   login needs a server-side store so that signing out cannot be undone by replaying an old cookie.
 - `config/account_kit.ts`: session authentication through the existing `web` guard, open

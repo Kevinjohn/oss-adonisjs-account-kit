@@ -81,8 +81,8 @@ automated suites and a fresh advertised-install smoke after publication remain o
 
 #### Identity and execution boundaries
 
-- Package: `adonisjs-account-kit@0.2.0`. Version and changelog were committed before packing.
-- Archive: `/private/tmp/account-kit-642-candidate/adonisjs-account-kit-0.2.0.tgz`.
+- Package: `@kevinjohn/adonisjs-account-kit@0.2.0`. Version and changelog were committed before packing.
+- Archive: `/private/tmp/account-kit-642-candidate/kevinjohn-adonisjs-account-kit-0.2.0.tgz`.
 - Archive source (A): `1ef240c72c4445482baf8f30b806b9128550d811`.
 - SHA-256: `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. It was packed once and was not replaced.
 - Corrected test-source integration (B): `3babfbf3dc9bfa25aa2fccc8615b087bb5a4f26c`, incorporating the #636
@@ -139,7 +139,7 @@ bundle warning; it exits successfully.
 These commands used the same two candidate arguments, without asking either harness to pack:
 
 ```sh
-candidate=/private/tmp/account-kit-642-candidate/adonisjs-account-kit-0.2.0.tgz
+candidate=/private/tmp/account-kit-642-candidate/kevinjohn-adonisjs-account-kit-0.2.0.tgz
 revision=1ef240c72c4445482baf8f30b806b9128550d811
 pnpm test:consumer -- --database=sqlite --candidate-tarball="$candidate" --candidate-revision="$revision"
 pnpm test:consumer -- --database=postgres --candidate-tarball="$candidate" --candidate-revision="$revision"
@@ -202,7 +202,7 @@ in their recipe and example records; these runs do not replace or broaden those 
 
 #### Reference examples using the same vendor archive
 
-The archive above was copied unchanged to each example's `vendor/adonisjs-account-kit.tgz`.
+The archive above was copied unchanged to each example's `vendor/kevinjohn-adonisjs-account-kit.tgz`.
 Each app ran `pnpm install`, `pnpm exec node ace generate:key`, `pnpm exec node ace codegen`,
 and `pnpm exec node ace migration:run --force`, followed by its own `pnpm lint`,
 `pnpm typecheck`, `pnpm build` and `pnpm test`. The local `.env` files came from the app's
@@ -494,7 +494,7 @@ DB_PORT=55436 pnpm test:consumer -- --mode=service-only --database=postgres
 DB_PORT=55436 pnpm pg:stop
 ```
 
-Both runs packed `adonisjs-account-kit-0.0.0.tgz` from candidate
+Both runs packed `kevinjohn-adonisjs-account-kit-0.0.0.tgz` from candidate
 `b9816045a5c46d77681ac13ac37942b47e379b43`. Their evidence files report successful installation,
 compilation and startup; the archive bytes were independently checked against each recorded digest.
 

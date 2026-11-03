@@ -13,7 +13,7 @@ of sending them:
 ```ts
 // config/account_kit.ts
 import app from '@adonisjs/core/services/app'
-import { createLogNotifications, createMailNotifications } from 'adonisjs-account-kit'
+import { createLogNotifications, createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 notify: app.inProduction
   ? createMailNotifications({ from: 'accounts@acme.test', brandName: 'Acme' })
@@ -54,7 +54,7 @@ message and fake-mail APIs.
 In `config/account_kit.ts`, replace the local logger callback with the maintained Mail callbacks:
 
 ```ts
-import { createMailNotifications } from 'adonisjs-account-kit'
+import { createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 notify: createMailNotifications({
   from: 'Example Accounts <accounts@example.test>',

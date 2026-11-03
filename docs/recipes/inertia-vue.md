@@ -156,7 +156,7 @@ describe installing released archives. The exact recipe command was:
 
 ```sh
 pnpm test:recipe -- --recipe=inertia-vue-password-reset \
-  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
+  --candidate-tarball=<default-run-directory>/candidate/kevinjohn-adonisjs-account-kit-0.1.1.tgz \
   --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
@@ -185,7 +185,7 @@ but wrongly invalidate an existing session.
 | Field                | Recorded evidence                                                                                                                                                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Updated spec source  | `fdcb6eea86ea7e24f452257e4da8ee25f79d11a9`                                                                                                                                                                                             |
-| Archive              | `adonisjs-account-kit-0.1.1.tgz`; SHA-256 `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                                                                           |
+| Archive              | `kevinjohn-adonisjs-account-kit-0.1.1.tgz`; SHA-256 `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                                                                 |
 | P1 starter           | Creator `3.4.0`; starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`; baseline `80976829d4931593a9470e7871659916c56d48f0`; configured checkpoint `bc8c78f01be6d1400ee15c075be3a1a9fe2bd385`                                             |
 | Lockfile SHA-256     | `1361cab418a9cd17746e6b0deb372505a013575d6adf8fb5eb6c851366939fc3`                                                                                                                                                                     |
 | Runtime and database | Node `24.21.0`, pnpm `11.23.0`, Core `7.6.0`, SQLite `3.53.4`; untouched starter cookie sessions, database sessions after the patch                                                                                                    |

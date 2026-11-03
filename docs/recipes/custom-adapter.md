@@ -7,7 +7,7 @@ write through the `trx` it receives.
 ## The interface
 
 ```ts
-import type { UsersAdapter } from 'adonisjs-account-kit'
+import type { UsersAdapter } from '@kevinjohn/adonisjs-account-kit'
 
 export const users: UsersAdapter = {
   async resolveMetadata() {
@@ -41,7 +41,7 @@ password hash.
 
 ## Prove it with the contract suite
 
-`adonisjs-account-kit/testing/adapter_contract` runs the same behavior checks the Lucid adapter
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` runs the same behavior checks the Lucid adapter
 passes: creation, lookups, password hashing, email changes, verification, and row locking.
 The application validates signup fields and presents field errors before calling the service; its
 `registration.mapFields` callback selects and validates allowed profile data. The adapter receives
@@ -53,7 +53,7 @@ and [adapter mapping](../guide/adapters.md#registration-data) for the shared `fu
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import hash from '@adonisjs/core/services/hash'
-import { assertUsersAdapterContract } from 'adonisjs-account-kit/testing/adapter_contract'
+import { assertUsersAdapterContract } from '@kevinjohn/adonisjs-account-kit/testing/adapter_contract'
 import { users } from '#services/users_adapter'
 
 test('users adapter meets the Account Kit contract', async () => {

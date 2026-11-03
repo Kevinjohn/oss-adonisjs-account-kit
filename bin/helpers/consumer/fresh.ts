@@ -48,17 +48,33 @@ export async function runFresh(candidate: string, runName: string) {
   for (const migration of await packageMigrations(appRoot)) await rm(migration)
   const originalRc = await readFile(adonisrcPath, 'utf8')
   const withoutProvider = originalRc.replace(
-    /^\s*\(\) => import\(['"]adonisjs-account-kit\/account_kit_provider['"]\),?\r?\n/m,
+    new RegExp(
+      String.raw`^\s*\(\) => import\(['"]@kevinjohn/adonisjs-account-kit\/account_kit_provider['"]\),?\r?\n`,
+      'm'
+    ),
     ''
   )
   if (withoutProvider === originalRc)
     throw new Error('Fresh fixture did not contain a removable provider entry')
   // Admission has its own install command: drop the fixture's registrations and config so it adds them.
   const withoutAdmission = withoutProvider
-    .replace(/^\s*\(\) => import\(['"]adonisjs-account-kit\/admission\/provider['"]\),?\r?\n/m, '')
-    .replace(/^\s*\(\) => import\(['"]adonisjs-account-kit\/admission\/commands['"]\),?\r?\n/m, '')
+    .replace(
+      new RegExp(
+        String.raw`^\s*\(\) => import\(['"]@kevinjohn/adonisjs-account-kit\/admission\/provider['"]\),?\r?\n`,
+        'm'
+      ),
+      ''
+    )
+    .replace(
+      new RegExp(
+        String.raw`^\s*\(\) => import\(['"]@kevinjohn/adonisjs-account-kit\/admission\/commands['"]\),?\r?\n`,
+        'm'
+      ),
+      ''
+    )
   const admissionEntries = (rc: string) =>
-    (rc.match(/adonisjs-account-kit\/admission\//g) ?? []).length
+    (rc.match(new RegExp(String.raw`@kevinjohn/adonisjs-account-kit\/admission\/`, 'g')) ?? [])
+      .length
   if (admissionEntries(withoutProvider) !== 2 || admissionEntries(withoutAdmission) !== 0)
     throw new Error('Fresh fixture did not contain removable admission entries')
   await writeFile(adonisrcPath, withoutAdmission)
@@ -88,7 +104,10 @@ export async function runFresh(candidate: string, runName: string) {
   )
   const admittedRc = await readFile(adonisrcPath, 'utf8')
   for (const entry of ['admission/provider', 'admission/commands']) {
-    if ((admittedRc.match(new RegExp(`adonisjs-account-kit/${entry}`, 'g')) ?? []).length !== 1)
+    if (
+      (admittedRc.match(new RegExp(`@kevinjohn/adonisjs-account-kit/${entry}`, 'g')) ?? [])
+        .length !== 1
+    )
       throw new Error(`Admission install did not register exactly one ${entry} entry`)
   }
   await copyFile(admissionConfigCopy, admissionConfigPath)
@@ -97,7 +116,13 @@ export async function runFresh(candidate: string, runName: string) {
   run('pnpm', ['run', 'typecheck'], appRoot, env)
   const generatedConfigSha256 = await digest(configPath)
   const configuredRc = await readFile(adonisrcPath, 'utf8')
-  if ((configuredRc.match(/adonisjs-account-kit\/account_kit_provider/g) ?? []).length !== 1) {
+  if (
+    (
+      configuredRc.match(
+        new RegExp(String.raw`@kevinjohn/adonisjs-account-kit\/account_kit_provider`, 'g')
+      ) ?? []
+    ).length !== 1
+  ) {
     throw new Error('Configure did not register exactly one account-kit provider')
   }
   await copyFile(adapterPath, configPath)

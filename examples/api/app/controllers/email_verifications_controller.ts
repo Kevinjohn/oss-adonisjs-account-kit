@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidTokenError } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { passwordValidator } from '#validators/account_kit'
 import { proofFailure, proofHeaders } from '#services/http_responses'
 import { committedFollowUp } from '#services/committed_failure_diagnostic'

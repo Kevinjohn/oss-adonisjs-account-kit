@@ -1,4 +1,4 @@
-// The public entry point of `adonisjs-account-kit/admission`.
+// The public entry point of `@kevinjohn/adonisjs-account-kit/admission`.
 export { defineAdmission } from './config.js'
 export { AccountAdmission } from './service.js'
 export type { AdmissionDependencies } from './service.js'

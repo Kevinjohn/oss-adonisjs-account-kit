@@ -25,8 +25,8 @@ only `account.profile.show`:
 // start/account_kit_routes.ts
 import app from '@adonisjs/core/services/app'
 import router from '@adonisjs/core/services/router'
-import { AccountKit } from 'adonisjs-account-kit'
-import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/http'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import { createManagedGuard, registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
 import { middleware } from '#start/kernel'
 import AccountProfileController from '#controllers/account_profile_controller'
 

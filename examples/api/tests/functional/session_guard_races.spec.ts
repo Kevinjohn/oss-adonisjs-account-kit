@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { SESSION_ONLY, isSessionStrategy } from '#tests/helpers/strategy'

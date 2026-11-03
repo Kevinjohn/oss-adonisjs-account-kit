@@ -1,6 +1,6 @@
 # Testing your account flows
 
-`adonisjs-account-kit/testing/notifications` records notifications in memory, so tests can follow
+`@kevinjohn/adonisjs-account-kit/testing/notifications` records notifications in memory, so tests can follow
 a reset or verification link without a mail fake.
 
 ## Capture notifications
@@ -10,7 +10,7 @@ imports:
 
 ```ts
 // tests/helpers/account_mail.ts
-import { captureNotifications } from 'adonisjs-account-kit/testing/notifications'
+import { captureNotifications } from '@kevinjohn/adonisjs-account-kit/testing/notifications'
 
 export const accountMail = captureNotifications()
 ```

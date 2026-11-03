@@ -26,7 +26,7 @@ pnpm --dir examples/hypermedia install
 ```
 
 The pack command creates the ignored local archive at
-`examples/hypermedia/vendor/adonisjs-account-kit.tgz`. It is built from the checked-out source.
+`examples/hypermedia/vendor/kevinjohn-adonisjs-account-kit.tgz`. It is built from the checked-out source.
 After a clean checkout, repeat the pack command before installing the example. The archive
 contains the built package and `CHANGELOG.md`, so its checksum changes whenever either changes.
 The example install therefore omits `--frozen-lockfile`: it keeps the locked versions and records

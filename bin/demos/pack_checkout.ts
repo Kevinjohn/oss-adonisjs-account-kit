@@ -17,7 +17,7 @@ export function packCheckout(destination: string) {
     repoRoot
   )
   const tarball = readdirSync(destination).find((file) =>
-    /^adonisjs-account-kit-.*\.tgz$/.test(file)
+    /^kevinjohn-adonisjs-account-kit-.*\.tgz$/.test(file)
   )
   if (!tarball) throw new Error('pnpm pack wrote no tarball')
   return tarball

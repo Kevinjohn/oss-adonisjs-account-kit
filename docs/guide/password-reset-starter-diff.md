@@ -68,7 +68,7 @@ youch ^4.1.1
 The fresh pinned starter passed `recipe_starter_login.spec.ts` before Account Kit configuration:
 the original login reached its protected profile. The starter baseline was committed before
 configuration. The generated inventory below records the tracked changes after the Limiter
-prerequisite and `node ace configure adonisjs-account-kit`; the local `.env` file is ignored and
+prerequisite and `node ace configure @kevinjohn/adonisjs-account-kit`; the local `.env` file is ignored and
 does not appear in that inventory.
 
 ## Generated files

@@ -27,7 +27,7 @@ export default defineConfig({
 ```
 
 With `createActionUrls`, add a `magicLink` destination. `createMailNotifications` already has the
-English "Your sign-in link" template. Run `node ace configure adonisjs-account-kit` and
+English "Your sign-in link" template. Run `node ace configure @kevinjohn/adonisjs-account-kit` and
 `node ace migration:run` to create the `login_link_tokens` table.
 
 ## Service API

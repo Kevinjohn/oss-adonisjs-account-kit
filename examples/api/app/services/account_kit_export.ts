@@ -1,4 +1,4 @@
-import type { AccountUser, Trx } from 'adonisjs-account-kit'
+import type { AccountUser, Trx } from '@kevinjohn/adonisjs-account-kit'
 import { isAdmitted } from './account_admission_access.js'
 
 /**

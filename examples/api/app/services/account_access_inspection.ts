@@ -1,5 +1,5 @@
 import app from '@adonisjs/core/services/app'
-import { AccountAccessDeniedError, AccountKit } from 'adonisjs-account-kit'
+import { AccountAccessDeniedError, AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import { isAdmittedOwner } from './account_kit_authorization.js'
 
 type AuthenticatedActor = { id: number | string }

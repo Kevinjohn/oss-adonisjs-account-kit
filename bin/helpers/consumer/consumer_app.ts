@@ -19,7 +19,7 @@ export async function configure(appRoot: string, env: NodeJS.ProcessEnv) {
       'node',
       'ace',
       'configure',
-      'adonisjs-account-kit',
+      '@kevinjohn/adonisjs-account-kit',
       '--users-table',
       usersTable,
       '--user-id-type',

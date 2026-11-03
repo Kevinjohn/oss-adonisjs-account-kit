@@ -11,7 +11,7 @@ const { appDir, tarball } = createAdonisApp('create_app.ts')
 
 run('pnpm', ['add', join('..', tarball), '@adonisjs/limiter', 'typescript@^5.9.3'], appDir)
 run('node', ['ace', 'configure', '@adonisjs/limiter', '--store=database'], appDir)
-run('node', ['ace', 'configure', 'adonisjs-account-kit'], appDir)
+run('node', ['ace', 'configure', '@kevinjohn/adonisjs-account-kit'], appDir)
 
 // Every capability except social sign-in, managed routes under /api, emails printed to the log.
 cpSync(overlay, appDir, { recursive: true })

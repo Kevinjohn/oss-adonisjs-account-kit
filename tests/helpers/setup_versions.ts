@@ -8,5 +8,5 @@ export const setupVersions: Record<string, string> = {
   '@adonisjs/session': '8.1.0',
   '@adonisjs/shield': '9.0.0',
   '@vinejs/vine': '4.4.0',
-  'adonisjs-account-kit': '0.0.0',
+  '@kevinjohn/adonisjs-account-kit': '0.0.0',
 }

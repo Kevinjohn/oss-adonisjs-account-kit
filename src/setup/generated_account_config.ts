@@ -18,7 +18,7 @@ export function accountConfigSource(choices: SetupChoices): string {
       ...(choices.user.adapter === 'lucid' ? ['createLucidAdapter'] : []),
       ...(managedMail ? ['createMailNotifications'] : []),
       ...(social ? ['createAllySocialProvider'] : []),
-    ].join(', ')} } from 'adonisjs-account-kit'`,
+    ].join(', ')} } from '@kevinjohn/adonisjs-account-kit'`,
     ...(choices.user.adapter === 'custom'
       ? ["import users from '#services/account_kit_users'"]
       : []),
@@ -27,7 +27,7 @@ export function accountConfigSource(choices: SetupChoices): string {
       : ["import { accountKitNotifications } from '#services/account_kit_notifications'"]),
     ...(usesPolicy ? ["import { accountKitPolicy } from '#services/account_kit_policy'"] : []),
     ...(choices.policy.registrationFields.length
-      ? ["import { InvalidInputError } from 'adonisjs-account-kit/errors'"]
+      ? ["import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'"]
       : []),
     ...(social ? ["import type { HttpContext } from '@adonisjs/core/http'"] : []),
     '',

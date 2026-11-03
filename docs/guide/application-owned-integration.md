@@ -61,13 +61,13 @@ Account Kit is available from the AdonisJS container after its provider is confi
 
 ```ts
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
 
 const kit = await app.container.make(AccountKit)
 ```
 
 This shows provider and container resolution explicitly. For ordinary controller examples, the
-short default service import is `import accountKit from 'adonisjs-account-kit/services/main'`.
+short default service import is `import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'`.
 
 Keep each route's middleware and capability selection explicit. Apply the selected authentication
 integration before loading an actor, and apply verified-account or application authorization checks
@@ -91,7 +91,7 @@ For example, validate a password change and derive its actor from the authentica
 calling the service:
 
 ```ts
-import accountKit from 'adonisjs-account-kit/services/main'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 
 const actor = await auth.getUserOrFail()
 const { currentPassword, newPassword } = await request.validateUsing(credentialChangeValidator)
@@ -125,7 +125,7 @@ For a token guard, pass `keepCurrent: { tokenId }` with the current token's iden
 token survives and needs no refresh. Without `keepCurrent`, the change signs out every session and
 token, including the caller's.
 
-Import `PostCommitError` and `passwordChangeRevision` from `adonisjs-account-kit`, and
+Import `PostCommitError` and `passwordChangeRevision` from `@kevinjohn/adonisjs-account-kit`, and
 `reportCommittedFailure` from the reference diagnostic helper. The logger is the request logger. This
 handling matters because an observer or notification error can be reported after the password change
 and credential revocation have committed. `passwordChangeRevision(error)` returns the revision that

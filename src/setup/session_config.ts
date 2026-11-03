@@ -12,7 +12,7 @@ import {
 } from './ts_source.js'
 
 const sessionImport =
-  "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from 'adonisjs-account-kit/http'\n// account-kit:session-import:end\n"
+  "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from '@kevinjohn/adonisjs-account-kit/http'\n// account-kit:session-import:end\n"
 
 const selectionStart = '// account-kit:session-selection:start\n'
 

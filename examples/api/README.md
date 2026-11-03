@@ -43,7 +43,7 @@ Use Node.js 24 and pnpm 11.23.0. From the repository root:
 ```sh
 pnpm install --frozen-lockfile
 pnpm build
-pnpm pack --out examples/api/vendor/adonisjs-account-kit.tgz
+pnpm pack --out examples/api/vendor/kevinjohn-adonisjs-account-kit.tgz
 cd examples/api
 pnpm install
 cp .env.example .env
@@ -215,7 +215,7 @@ route group's `auth()` runs first, then profile uses `accountAccess()` while pas
 Copy only when the application gates its own data on admission:
 first follow [admission setup](../../docs/guide/admission.md) and install its provider, command loader,
 config, and migration (for example, `node ace account-kit:admission:install` followed by the
-documented migration step). Register `adonisjs-account-kit/admission/provider` in `adonisrc.ts`.
+documented migration step). Register `@kevinjohn/adonisjs-account-kit/admission/provider` in `adonisrc.ts`.
 Copy/adapt `examples/api/config/admission.ts`; merge `admissionAuthorize` into the approval
 callbacks in `config/admission.ts`. In `config/account_kit.ts`, install
 `withAdmissionCleanup()` on `onAccountDeletingTransaction`; if invitation evidence is required,
@@ -309,7 +309,7 @@ procedure. Set provider credentials and the exact OAuth callback URI before a li
 This is the application-owned Adonis 7 API example used by the packed-consumer gate. It includes
 routes, validation, central error mapping, a maintained lazy Lucid user adapter, captured
 notifications, migrations, and HTTP flow tests. The test harness copies this fixture outside the
-repository, inserts the exact candidate tarball as its `adonisjs-account-kit` dependency, runs the
+repository, inserts the exact candidate tarball as its `@kevinjohn/adonisjs-account-kit` dependency, runs the
 package configure command, and tests the installed package. It never resolves the repository source
 or reuses this checkout's `node_modules`.
 

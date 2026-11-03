@@ -54,7 +54,7 @@ export default defineConfig({
     () => import('@adonisjs/static/static_provider'),
     () => import('@adonisjs/lucid/database_provider'),
     () => import('@adonisjs/auth/auth_provider'),
-    () => import('adonisjs-account-kit/account_kit_provider'),
+    () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
   ],
 
   /*

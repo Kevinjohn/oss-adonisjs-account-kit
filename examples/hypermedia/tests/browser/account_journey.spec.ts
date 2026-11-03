@@ -9,8 +9,8 @@ import { Session } from '@adonisjs/session'
 import User from '#models/user'
 import { accountKitNotifications } from '#services/account_kit_notifications'
 import { setupAccountDatabase } from '#tests/helpers/account_database'
-import { errors } from 'adonisjs-account-kit'
-import kit from 'adonisjs-account-kit/services/main'
+import { errors } from '@kevinjohn/adonisjs-account-kit'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 
 const origin = process.env.APP_URL!
 

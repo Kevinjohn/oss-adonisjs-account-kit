@@ -3,7 +3,7 @@ import {
   createAllySocialProvider,
   type SocialProvider,
   type SocialProviderName,
-} from 'adonisjs-account-kit'
+} from '@kevinjohn/adonisjs-account-kit'
 
 export class SocialProviderExchangeError extends Error {
   constructor(readonly category: 'denied' | 'missing_code' | 'unavailable' | 'provider_mismatch') {

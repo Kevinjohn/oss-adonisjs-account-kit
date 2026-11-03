@@ -346,7 +346,7 @@ test('original starter login reaches its protected profile', async ({ client, as
   run('pnpm', ['add', candidate, '@adonisjs/limiter@^3.0.0'])
   // Limiter's configurator supports database/redis; tests select its runtime memory store.
   run('pnpm', ['exec', 'node', 'ace', 'configure', '@adonisjs/limiter', '--store=database'])
-  run('pnpm', ['exec', 'node', 'ace', 'configure', 'adonisjs-account-kit'])
+  run('pnpm', ['exec', 'node', 'ace', 'configure', '@kevinjohn/adonisjs-account-kit'])
   evidence.generatedInventory = run('git', ['status', '--porcelain'])
   run('git', ['add', '-A'])
   run('git', ['commit', '-m', 'Configure account dependencies'])

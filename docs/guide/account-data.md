@@ -60,7 +60,7 @@ The document, version 1 (timestamps are ISO 8601 UTC strings):
 
 ```json
 {
-  "format": "adonisjs-account-kit/export",
+  "format": "@kevinjohn/adonisjs-account-kit/export",
   "version": 1,
   "generatedAt": "2026-10-18T12:00:00.000Z",
   "account": {

@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import kit from 'adonisjs-account-kit/services/main'
-import { InvalidSessionError } from 'adonisjs-account-kit'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
+import { InvalidSessionError } from '@kevinjohn/adonisjs-account-kit'
 import { accountKitSessionGuard } from '#services/session_guard'
 
 /**

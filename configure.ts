@@ -23,7 +23,7 @@ function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'
 }
 
-const legacyProviderPath = 'adonisjs-account-kit/providers/account_kit_provider'
+const providerPath = '@kevinjohn/adonisjs-account-kit/account_kit_provider'
 
 class UnsupportedProvidersConfiguration extends Error {}
 class UnsupportedConfigShape extends Error {}
@@ -47,9 +47,9 @@ type AssemblerProject = CodeTransformer['project']
 
 /**
  * Inspect the same defineConfig call and provider entry forms consumed by Assembler's RC
- * transformer. Returning false means no legacy provider was found in the inspectable configuration.
+ * transformer. Returning false means no registered provider was found in the inspectable configuration.
  */
-function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
+function hasRegisteredProvider(project: AssemblerProject, rcPath: string): boolean {
   const rcFile = project.getSourceFile(rcPath)
   if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
   if (project.getProgram().getSyntacticDiagnostics(rcFile).length)
@@ -134,7 +134,7 @@ function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
     return argument.getLiteralValue?.()
   }
 
-  let legacyFound = false
+  let providerFound = false
   for (const entry of providersArray.getElements?.() ?? []) {
     const isProviderObject = entry.getKindName() === 'ObjectLiteralExpression'
     let loader: RcNode | undefined = entry
@@ -176,9 +176,9 @@ function hasLegacyProvider(project: AssemblerProject, rcPath: string): boolean {
         : 'a providers entry is not a supported lazy import'
       throw new UnsupportedProvidersConfiguration(message)
     }
-    if (path === legacyProviderPath) legacyFound = true
+    if (path === providerPath) providerFound = true
   }
-  return legacyFound
+  return providerFound
 }
 
 const userIdTypes = ['integer', 'string', 'uuid'] as const
@@ -206,10 +206,10 @@ export function migrationSchema(usersTable = 'users', userIdType: UserIdType = '
 }
 
 /**
- * Runs on `node ace add adonisjs-account-kit` or `node ace configure adonisjs-account-kit`: writes
+ * Runs on `node ace add @kevinjohn/adonisjs-account-kit` or `node ace configure @kevinjohn/adonisjs-account-kit`: writes
  * `config/account_kit.ts`, generates the migrations and registers the provider and commands. Never
  * overwrites existing files. Flags: `--users-table` and `--user-id-type` (`integer`, `string` or
- * `uuid`). For an unsupported dynamic `providers` expression, ensure exactly one current or legacy
+ * `uuid`). For an unsupported dynamic `providers` expression, ensure exactly one current
  * Account Kit provider export is registered, then rerun with `--provider-registered` to leave that
  * expression unchanged. The RC config must be an object literal so Assembler can add the package
  * command while preserving the existing entries.
@@ -229,16 +229,16 @@ export async function configure(command: Configure) {
   const codemods = await command.createCodemods()
   codemods.overwriteExisting = false
 
-  let legacyProvider: boolean | undefined
+  let registeredProvider: boolean | undefined
   try {
     const project = await codemods.getTsMorphProject()
     if (!project) throw new Error('the Assembler TypeScript project is unavailable')
-    legacyProvider = hasLegacyProvider(project, command.app.makePath('adonisrc.ts'))
+    registeredProvider = hasRegisteredProvider(project, command.app.makePath('adonisrc.ts'))
   } catch (error) {
     if (error instanceof UnsupportedConfigShape) {
       command.exitCode = 1
       command.logger.logError(
-        `Unable to inspect adonisrc.ts: ${error.message}. Pass the config as an object literal, preserving its fields and exposing commands and providers explicitly (for example, defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })). Ensure the provider list registers Account Kit exactly once: retain either the current export adonisjs-account-kit/account_kit_provider or legacy alias adonisjs-account-kit/providers/account_kit_provider if present, and add the current export only if neither is registered. Then rerun node ace configure adonisjs-account-kit --provider-registered.`
+        `Unable to inspect adonisrc.ts: ${error.message}. Pass the config as an object literal, preserving its fields and exposing commands and providers explicitly (for example, defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })). Ensure the provider list registers Account Kit exactly once: retain @kevinjohn/adonisjs-account-kit/account_kit_provider if present, and add it only if it is not registered. Then rerun node ace configure @kevinjohn/adonisjs-account-kit --provider-registered.`
       )
       return
     }
@@ -250,7 +250,7 @@ export async function configure(command: Configure) {
       } else {
         command.exitCode = 1
         command.logger.logError(
-          `Unable to inspect adonisrc.ts providers: ${error.message}. Ensure the dynamic provider list registers Account Kit exactly once: retain either the current export adonisjs-account-kit/account_kit_provider or legacy alias adonisjs-account-kit/providers/account_kit_provider if present, and add the current export only if neither is registered. Then rerun node ace configure adonisjs-account-kit --provider-registered. If defineConfig receives a config variable, first expose it as an object literal with its providers property, as described in the install guide. This flag confirms that registration is already complete; configure will leave providers unchanged.`
+          `Unable to inspect adonisrc.ts providers: ${error.message}. Ensure the dynamic provider list registers Account Kit exactly once: retain @kevinjohn/adonisjs-account-kit/account_kit_provider if present, and add it only if it is not registered. Then rerun node ace configure @kevinjohn/adonisjs-account-kit --provider-registered. If defineConfig receives a config variable, first expose it as an object literal with its providers property, as described in the install guide. This flag confirms that registration is already complete; configure will leave providers unchanged.`
         )
         return
       }
@@ -285,16 +285,17 @@ export async function configure(command: Configure) {
     })
   }
 
-  // Applications configured before the root export keep their registered legacy provider path.
+  // Keep an existing registration rather than adding the provider twice.
   await codemods.updateRcFile((rcFile) => {
-    if (legacyProvider === false) rcFile.addProvider('adonisjs-account-kit/account_kit_provider')
-    rcFile.addCommand('adonisjs-account-kit/commands')
+    if (registeredProvider === false)
+      rcFile.addProvider('@kevinjohn/adonisjs-account-kit/account_kit_provider')
+    rcFile.addCommand('@kevinjohn/adonisjs-account-kit/commands')
   })
 
   // The generated config builds links from APP_URL. Declare it in start/env.ts so a missing
   // value fails at boot; defineEnvValidations leaves an existing declaration unchanged.
   await codemods.defineEnvValidations({
-    leadingComment: 'Variables for adonisjs-account-kit',
+    leadingComment: 'Variables for @kevinjohn/adonisjs-account-kit',
     variables: { APP_URL: "Env.schema.string({ format: 'url', tld: false })" },
   })
 }

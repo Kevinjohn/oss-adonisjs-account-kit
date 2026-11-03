@@ -5,8 +5,8 @@ import {
   DeliveryError,
   PostCommitError,
   RegistrationEmailAlreadyRegisteredError,
-} from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+} from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard, accountKitSessionGuard } from '#services/account_kit_guards'
 import { authStrategy } from '#services/auth_strategy'

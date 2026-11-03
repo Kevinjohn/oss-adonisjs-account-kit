@@ -66,7 +66,7 @@ print messages to the log. In `config/account_kit.ts`, import two helpers:
 
 ```ts
 import app from '@adonisjs/core/services/app'
-import { createLogNotifications } from 'adonisjs-account-kit'
+import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 ```
 
 Replace the whole `notify: { ... }` block, and delete the `notConfigured` helper above
@@ -154,7 +154,7 @@ import {
   DeliveryError,
   PostCommitError,
   accountErrorResponse,
-} from 'adonisjs-account-kit'
+} from '@kevinjohn/adonisjs-account-kit'
 import {
   recoveryCompleteValidator,
   recoveryProofValidator,

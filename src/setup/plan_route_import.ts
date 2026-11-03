@@ -39,7 +39,7 @@ export async function planRouteImport(
     .filter(
       (node) =>
         source.ts.isStringLiteral(node.moduleSpecifier) &&
-        node.moduleSpecifier.text === 'adonisjs-account-kit/http' &&
+        node.moduleSpecifier.text === '@kevinjohn/adonisjs-account-kit/http' &&
         !node.importClause?.isTypeOnly
     )
   const namedMounts = mountImports.flatMap((node) => {
@@ -56,7 +56,11 @@ export async function planRouteImport(
     const bindings = node.importClause?.namedBindings
     return bindings && source.ts.isNamespaceImport(bindings) ? [bindings.name.text] : []
   })
-  const mountBinding = importedName(source, 'adonisjs-account-kit/http', 'registerManagedRoutes')
+  const mountBinding = importedName(
+    source,
+    '@kevinjohn/adonisjs-account-kit/http',
+    'registerManagedRoutes'
+  )
   const routeRouter = defaultImportName(source, '@adonisjs/core/services/router')
   if (
     hasAmbiguousRuntimeModuleImports(source, '@adonisjs/core/services/router') ||
@@ -88,7 +92,7 @@ export async function planRouteImport(
     return
   }
   let unsupportedMount =
-    hasAmbiguousRuntimeModuleImports(source, 'adonisjs-account-kit/http') ||
+    hasAmbiguousRuntimeModuleImports(source, '@kevinjohn/adonisjs-account-kit/http') ||
     namedMounts.length > 1 ||
     namespaceMounts.some((name) => hasUnsafeBindingReferences(source, name, () => false))
   walk(source, (node) => {

@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import app from '@adonisjs/core/services/app'
-import { AccountAdmission } from 'adonisjs-account-kit/admission'
+import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 import { accountInput } from '#services/account_input'
 
 /** Credential, restriction, verified-account and admission gate for protected application data. */

@@ -1,4 +1,4 @@
-import type { LifecycleEvent } from 'adonisjs-account-kit'
+import type { LifecycleEvent } from '@kevinjohn/adonisjs-account-kit'
 
 export type Notice = { kind: string; recipient: string; value: string }
 

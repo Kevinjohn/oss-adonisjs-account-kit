@@ -49,7 +49,7 @@ identifier to Account Kit. Never accept either value from a request body, query 
 // app/middleware/verified_account_middleware.ts
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import accountKit from 'adonisjs-account-kit/services/main'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { accountInput } from '#services/account_input'
 
 export default class VerifiedAccountMiddleware {
@@ -116,7 +116,7 @@ Core `7.6.0`, Auth `10.1.0`, Lucid `22.4.2`, Vine `4.4.0`, SQLite `better-sqlite
 Account Kit `0.0.0` from a local package archive built at source revision
 `d97d95d165fd5a2b8fac58262e92dba67db07d0d`. Setup used
 `pnpm add <local-archive>`, `node ace add @adonisjs/limiter` with the database store,
-`node ace add adonisjs-account-kit` (historical check recorded 21 October 2026),
+`node ace add @kevinjohn/adonisjs-account-kit` (historical check recorded 21 October 2026),
 `pnpm remove @adonisjs/session`, and
 `node ace migration:run`. The generated account configuration selected the `api` token guard and
 verification capability. The app manifest, `adonisrc.ts`, `config/auth.ts`, `start/kernel.ts`,

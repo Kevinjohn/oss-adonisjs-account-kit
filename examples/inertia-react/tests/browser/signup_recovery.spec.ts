@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
-import kit from 'adonisjs-account-kit/services/main'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { DateTime } from 'luxon'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'

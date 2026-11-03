@@ -52,7 +52,7 @@ Create the application's ordinary users table through its own migration, includi
 normalized `email`, and `password` (nullable if the application allows passwordless accounts). To
 install and configure Account Kit, follow the [root install instructions](../../README.md#install)
 for the available GitHub release archive; npm publication is still pending. For an already installed
-package, run `node ace configure adonisjs-account-kit`. Configure generates `config/account_kit.ts`,
+package, run `node ace configure @kevinjohn/adonisjs-account-kit`. Configure generates `config/account_kit.ts`,
 registers the provider and command, declares `APP_URL`, and creates migrations that are missing; it
 does not create or replace the application users table. The package currently generates 11 migrations. Its
 [`configure.ts` migration inventory](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/configure.ts)

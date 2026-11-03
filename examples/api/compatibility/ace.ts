@@ -15,8 +15,8 @@ const factory = new IgnitorFactory()
     rcFileContents: {
       commands: [
         () => import('@adonisjs/lucid/commands'),
-        () => import('adonisjs-account-kit/commands'),
-        () => import('adonisjs-account-kit/admission/commands'),
+        () => import('@kevinjohn/adonisjs-account-kit/commands'),
+        () => import('@kevinjohn/adonisjs-account-kit/admission/commands'),
       ],
       providers: [() => import('@adonisjs/lucid/database_provider')],
     },

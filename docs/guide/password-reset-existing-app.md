@@ -47,7 +47,7 @@ versions. Session applications retain Session and Shield; Mail is optional if an
 transport is supplied. Install/configure Limiter before booting Account Kit, choosing the store
 appropriate to the application.
 
-Run `node ace configure adonisjs-account-kit` once after archive installation. For a non-default
+Run `node ace configure @kevinjohn/adonisjs-account-kit` once after archive installation. For a non-default
 schema, pass `--users-table=members` and the matching `--user-id-type=integer`, `string` or `uuid`.
 Configuration preserves existing generated files; inspect conflicts instead of assuming it has
 rewritten an old installation.

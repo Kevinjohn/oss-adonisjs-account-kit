@@ -8,7 +8,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "kit:pack": "pnpm --dir ../.. build && pnpm --dir ../.. pack --out examples/inertia-vue/vendor/adonisjs-account-kit.tgz",
+    "kit:pack": "pnpm --dir ../.. build && pnpm --dir ../.. pack --out examples/inertia-vue/vendor/kevinjohn-adonisjs-account-kit.tgz",
     "start": "node bin/server.js",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
@@ -75,7 +75,7 @@
     "@inertiajs/vue3": "^3.7.1",
     "@tuyau/core": "^1.2.2",
     "@vinejs/vine": "^4.4.0",
-    "adonisjs-account-kit": "file:vendor/adonisjs-account-kit.tgz",
+    "@kevinjohn/adonisjs-account-kit": "file:vendor/kevinjohn-adonisjs-account-kit.tgz",
     "better-sqlite3": "^13.0.3",
     "edge.js": "^6.5.1",
     "luxon": "^3.7.2",

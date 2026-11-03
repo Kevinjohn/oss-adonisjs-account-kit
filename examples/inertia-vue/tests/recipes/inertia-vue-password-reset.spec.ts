@@ -5,7 +5,7 @@ import { errors as authErrors } from '@adonisjs/auth'
 import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import testUtils from '@adonisjs/core/services/test_utils'
-import type { ResolvedConfig } from 'adonisjs-account-kit/types'
+import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import User from '#models/user'
 
 const originalPassword = 'OriginalPass123!'

@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import accountKit from 'adonisjs-account-kit/services/main'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import accountKitConfig from '#config/account_kit'
 import { accountInput } from '#middleware/account_access_middleware'
 import { lastUsedMethod } from '#services/last_used_method'

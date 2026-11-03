@@ -64,7 +64,7 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
           ...(options.accountKitProvider === 'source'
             ? [() => import('../../providers/account_kit_provider.js')]
             : options.accountKitProvider === 'build'
-              ? [() => import('adonisjs-account-kit/providers/account_kit_provider')]
+              ? [() => import('@kevinjohn/adonisjs-account-kit/account_kit_provider')]
               : []),
         ],
       },

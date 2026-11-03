@@ -57,8 +57,8 @@ route. The example uses the package's public service and HTTP exports:
 ```ts
 import app from '@adonisjs/core/services/app'
 import router from '@adonisjs/core/services/router'
-import { AccountKit } from 'adonisjs-account-kit'
-import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/http'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import { createManagedGuard, registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
 
 registerManagedRoutes(router, {
   prefix: '/account-kit',
@@ -88,7 +88,7 @@ middleware class and register it in the early server stack before the body parse
 // app/middleware/account_kit_proof_headers_middleware.ts
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { managedProofHeadersMiddleware } from 'adonisjs-account-kit/http'
+import { managedProofHeadersMiddleware } from '@kevinjohn/adonisjs-account-kit/http'
 
 const proofHeaders = managedProofHeadersMiddleware({
   prefix: '/account-kit',
@@ -130,7 +130,7 @@ building or packing another one:
 
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset --database=sqlite \
-  --candidate-tarball=/absolute/path/adonisjs-account-kit.tgz \
+  --candidate-tarball=/absolute/path/kevinjohn-adonisjs-account-kit.tgz \
   --candidate-revision=<source-commit>
 ```
 
@@ -163,7 +163,7 @@ The spec checks the following observable behavior:
 - `node ace list:routes` exposes only the three reset endpoints beneath `/account-kit`.
 
 For the mutation check, locate `advanceCredentialRevision` in the installed package's
-`node_modules/adonisjs-account-kit/build/` JavaScript (the packed build uses a chunk filename).
+`node_modules/@kevinjohn/adonisjs-account-kit/build/` JavaScript (the packed build uses a chunk filename).
 Remove its `credentials_changed_at` update **and** skip its access-token deletion. Run the printed replay command and require an assertion failure
 when an earlier credential still reaches the protected profile. Restore the installed archive and
 rerun the same command to green. A success response or a token-row count alone does not prove
@@ -180,7 +180,7 @@ A second harness run scaffolded another fresh starter and installed the same sup
 | Field                                                 | Recorded evidence                                                                                                                              |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Package source revision                               | `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` (clean working tree)                                                                                |
-| Archive                                               | `adonisjs-account-kit-0.1.1.tgz`                                                                                                               |
+| Archive                                               | `kevinjohn-adonisjs-account-kit-0.1.1.tgz`                                                                                                     |
 | Archive SHA-256                                       | `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                             |
 | Creator / starter                                     | `create-adonisjs` `3.4.0`; official API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                     |
 | Default run baseline / configured checkpoint          | `c1f74eadf5c11fb2f3bdb15e5063b39460ec7c62` / `909e473c899720eaea6c9cf0581baaecff0f142a`                                                        |
@@ -220,7 +220,7 @@ The supplied-archive command used the archive retained by that run:
 
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset \
-  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
+  --candidate-tarball=<default-run-directory>/candidate/kevinjohn-adonisjs-account-kit-0.1.1.tgz \
   --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 

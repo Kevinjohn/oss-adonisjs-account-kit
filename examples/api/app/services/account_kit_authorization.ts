@@ -1,7 +1,7 @@
 import db from '@adonisjs/lucid/services/db'
-import type { AccountUser, Invitation, Trx } from 'adonisjs-account-kit'
-import type { AdmissionAuthorizeCallbacks } from 'adonisjs-account-kit/admission'
-import type { AuthorizationCallbacks } from 'adonisjs-account-kit/types'
+import type { AccountUser, Invitation, Trx } from '@kevinjohn/adonisjs-account-kit'
+import type { AdmissionAuthorizeCallbacks } from '@kevinjohn/adonisjs-account-kit/admission'
+import type { AuthorizationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
 import { isAdmitted } from './account_admission_access.js'
 
 export { isAdmitted }

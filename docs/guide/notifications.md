@@ -7,7 +7,11 @@ verified sender address. Import Mail only in the application configuration; serv
 of Account Kit do not load it.
 
 ```ts
-import { createActionUrls, createMailNotifications, defineConfig } from 'adonisjs-account-kit'
+import {
+  createActionUrls,
+  createMailNotifications,
+  defineConfig,
+} from '@kevinjohn/adonisjs-account-kit'
 
 const urls = createActionUrls({
   backendOrigin: 'https://api.example.com/v1/',

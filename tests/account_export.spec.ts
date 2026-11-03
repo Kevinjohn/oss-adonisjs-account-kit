@@ -44,7 +44,7 @@ test.group('account data export', (group) => {
     assert.deepEqual(
       { ...document, generatedAt: 'now' },
       {
-        format: 'adonisjs-account-kit/export',
+        format: '@kevinjohn/adonisjs-account-kit/export',
         version: 1,
         generatedAt: 'now',
         account: {

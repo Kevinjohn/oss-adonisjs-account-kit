@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { CurrentAccountInput } from 'adonisjs-account-kit'
+import type { CurrentAccountInput } from '@kevinjohn/adonisjs-account-kit'
 import { accountInput } from '#services/account_input'
 import { selectedGuardName } from '#services/auth_strategy'
 

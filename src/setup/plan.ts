@@ -125,7 +125,7 @@ export async function planSetup(
     ...(choices.managed.length ? ['@adonisjs/core/providers/vinejs_provider'] : []),
     '@adonisjs/lucid/database_provider',
     '@adonisjs/limiter/limiter_provider',
-    'adonisjs-account-kit/account_kit_provider',
+    '@kevinjohn/adonisjs-account-kit/account_kit_provider',
     ...(choices.managed.length ? ['@adonisjs/auth/auth_provider'] : []),
     ...(choices.social.status === 'enabled' ? ['@adonisjs/ally/ally_provider'] : []),
     ...(choices.authentication?.strategy === 'session' && choices.managed.length

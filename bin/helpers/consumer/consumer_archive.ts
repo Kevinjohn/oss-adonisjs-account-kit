@@ -35,13 +35,13 @@ function setCompatibilityVersions(manifest: {
 export async function installArchive(appRoot: string, archive: string) {
   const manifestPath = join(appRoot, 'package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
-  manifest.dependencies['adonisjs-account-kit'] = `file:${resolve(archive)}`
+  manifest.dependencies['@kevinjohn/adonisjs-account-kit'] = `file:${resolve(archive)}`
   setCompatibilityVersions(manifest)
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
   run('pnpm', ['install', '--no-frozen-lockfile'], appRoot)
   await ensureExclusivePostgresDatabase(appRoot)
 
-  const installed = join(appRoot, 'node_modules/adonisjs-account-kit')
+  const installed = join(appRoot, 'node_modules/@kevinjohn/adonisjs-account-kit')
   const installedPath = await realpath(installed)
   const appNodeModules = await realpath(join(appRoot, 'node_modules'))
   if (!installedPath.startsWith(`${appNodeModules}/`)) {
@@ -51,7 +51,7 @@ export async function installArchive(appRoot: string, archive: string) {
     throw new Error(`Package resolved to repository source: ${installedPath}`)
   }
   const packageMetadata = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8'))
-  if (packageMetadata.name !== 'adonisjs-account-kit') {
+  if (packageMetadata.name !== '@kevinjohn/adonisjs-account-kit') {
     throw new Error(`Unexpected installed package name: ${packageMetadata.name}`)
   }
   const dependencyVersions: Record<string, string> = {}

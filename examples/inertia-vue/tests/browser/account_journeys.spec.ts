@@ -4,7 +4,7 @@ import { errors as authErrors } from '@adonisjs/auth'
 import { createHash, randomBytes } from 'node:crypto'
 import User from '#models/user'
 import db from '@adonisjs/lucid/services/db'
-import kit from 'adonisjs-account-kit/services/main'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 
 type Notifications = {

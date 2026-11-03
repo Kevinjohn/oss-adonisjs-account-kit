@@ -35,7 +35,7 @@ production; it does not deliver mail to a recipient. The database and limiter us
 session store uses the configured database driver.
 
 The root install supplies the build tools used by `pnpm kit:pack`. Packing creates the ignored
-`vendor/adonisjs-account-kit.tgz`; the example's committed pnpm lockfile records the archive
+`vendor/kevinjohn-adonisjs-account-kit.tgz`; the example's committed pnpm lockfile records the archive
 integrity. The contributor install omits frozen mode because each locally built archive changes its
 integrity. Commit a lockfile refresh only when dependencies change.
 

@@ -18,7 +18,7 @@ Run the configurator and inspect its generated inventory before adding test setu
 bootstrap code:
 
 ```sh
-pnpm exec node ace configure adonisjs-account-kit
+pnpm exec node ace configure @kevinjohn/adonisjs-account-kit
 git status --short
 ```
 
@@ -131,7 +131,7 @@ unchanged after the run. Released archive installation is described in the
 
 ```sh
 pnpm test:recipe -- --recipe=hypermedia-password-reset \
-  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
+  --candidate-tarball=<default-run-directory>/candidate/kevinjohn-adonisjs-account-kit-0.1.1.tgz \
   --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
@@ -146,7 +146,7 @@ The printed command preserves the harness's test environment when repeating the 
 The reference example at source `bce6c05f5ba663f4bfda284d3fd12c5226bb4433` passed
 `pnpm test` 13/13 in 14 seconds, plus `pnpm lint`, `pnpm typecheck` and `pnpm build`.
 For P7, only the installed reference-example package under
-`examples/hypermedia/node_modules/adonisjs-account-kit/build/session_registry-*.js` was changed:
+`examples/hypermedia/node_modules/@kevinjohn/adonisjs-account-kit/build/session_registry-*.js` was changed:
 the expiry predicate and its corresponding binding were temporarily removed from the SQLite
 proof-consumption query. Running the following command from `examples/hypermedia` failed 1/1
 in 778 ms on an explicit password-hash mismatch after the expired POST:

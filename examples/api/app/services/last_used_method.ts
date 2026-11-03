@@ -1,6 +1,6 @@
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import type { SocialProviderName } from 'adonisjs-account-kit'
+import type { SocialProviderName } from '@kevinjohn/adonisjs-account-kit'
 
 type Method = 'password' | SocialProviderName
 const cookieName = 'account_kit_last_method'

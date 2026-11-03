@@ -22,7 +22,7 @@ cd my-app
 Follow the [root install instructions](../../README.md#install) to install the GitHub release
 archive, configure Account Kit and run migrations. npm publication is still pending. For
 contributor evaluation of unreleased changes, build and pack the checkout, install that local
-archive instead, then run `node ace configure adonisjs-account-kit`. Record the source revision
+archive instead, then run `node ace configure @kevinjohn/adonisjs-account-kit`. Record the source revision
 and archive digest separately from released-consumer evidence. The
 [verified-route recipe](../recipes/verified-email-route.md#verify-all-three-states) retains its
 dated local-archive check; the rest of this tutorial has separately recorded HTTP journey evidence.
@@ -66,7 +66,7 @@ The generated config throws on notification until a mail transport is chosen. Fi
 notification callback required by the selected capabilities:
 
 ```ts
-import { captureNotifications } from 'adonisjs-account-kit/testing/notifications'
+import { captureNotifications } from '@kevinjohn/adonisjs-account-kit/testing/notifications'
 
 export const accountMail = captureNotifications()
 ```
@@ -77,7 +77,7 @@ before `defineConfig` so only test runs load the capture:
 
 ```ts
 import app from '@adonisjs/core/services/app'
-import { createLogNotifications } from 'adonisjs-account-kit'
+import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 const testMailModule = app.inTest ? await import('#tests/helpers/account_mail') : null
 
@@ -190,7 +190,7 @@ export const changePasswordValidator = vine.create({
 In the starter's `app/exceptions/handler.ts`, add the mapping before its ordinary handler call:
 
 ```ts
-import { accountErrorResponse } from 'adonisjs-account-kit'
+import { accountErrorResponse } from '@kevinjohn/adonisjs-account-kit'
 
 // at the start of HttpExceptionHandler.handle(error, ctx):
 const mapped = accountErrorResponse(error)
@@ -221,8 +221,8 @@ import {
   PostCommitError,
   RegistrationEmailAlreadyRegisteredError,
   passwordChangeRevision,
-} from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+} from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { accessTokenGuard } from '#services/account_kit_guard'
 import {
   signupValidator,

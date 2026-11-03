@@ -1,5 +1,5 @@
-import { DeliveryError, InvalidTokenError, PostCommitError } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { DeliveryError, InvalidTokenError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import { proofFailure, proofHeaders } from '#services/http_responses'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
