@@ -5,6 +5,7 @@ export {
   type ExistingRoute,
   type RoutePatternToken,
 } from './route_collisions.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** A group of managed routes you can mount with `registerManagedRoutes`. */
 export type ManagedCapability =
@@ -427,19 +428,20 @@ export function planManagedRoutes(
   alreadyRegistered = false
 ): ManagedRoute[] {
   const { prefix, strategy, enabled, except = [] } = selection
-  if (alreadyRegistered) throw new Error('Account Kit managed routes are already registered')
+  if (alreadyRegistered)
+    throw new InvalidArgumentsException('Account Kit managed routes are already registered')
   if (!/^\/(?:[\w-]+(?:\/[\w-]+)*)?$/.test(prefix) || prefix === '/')
-    throw new Error('Managed route prefix must be an absolute static path')
+    throw new InvalidArgumentsException('Managed route prefix must be an absolute static path')
   if (
     new Set(enabled).size !== enabled.length ||
     enabled.some((name) => !definitions.some((route) => route.capability === name))
   )
-    throw new Error('Invalid managed capabilities')
+    throw new InvalidArgumentsException('Invalid managed capabilities')
   if (
     new Set(except).size !== except.length ||
     except.some((name) => !definitions.some((route) => route.name === name))
   )
-    throw new Error('Invalid managed endpoint exclusion')
+    throw new InvalidArgumentsException('Invalid managed endpoint exclusion')
 
   const result = definitions
     .filter(
@@ -456,7 +458,7 @@ export function planManagedRoutes(
       (candidate) =>
         candidate.method.toUpperCase() === route.method && overlappingPaths(candidate, route.path)
     )
-    if (collision) throw new Error(collisionMessage(route, collision))
+    if (collision) throw new InvalidArgumentsException(collisionMessage(route, collision))
   }
   return result
 }

@@ -1,6 +1,7 @@
 import { configProvider } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { ConfigProvider } from '@adonisjs/core/types'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** A session store factory as AdonisJS session config declares it. */
 export type ManagedSessionStoreFactory = (context: HttpContext, config: never) => unknown
@@ -31,7 +32,7 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
   }
 ): ConfigProvider<Config> {
   return configProvider.create(async (app) => {
-    if (typeof options.verifyStore !== 'function') throw new Error(setupError)
+    if (typeof options.verifyStore !== 'function') throw new InvalidArgumentsException(setupError)
     // The session package is optional until this session-only helper is resolved.
     const { stores } = await import('@adonisjs/session')
     const config = await configProvider.resolve<Config>(app, provider)
@@ -39,9 +40,9 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
       app,
       stores.cookie()
     )
-    if (!config || !cookieFactory) throw new Error(setupError)
+    if (!config || !cookieFactory) throw new InvalidArgumentsException(setupError)
     const selected = config.stores[config.store]
-    if (typeof selected !== 'function') throw new Error(setupError)
+    if (typeof selected !== 'function') throw new InvalidArgumentsException(setupError)
 
     const verifiedFactory: ManagedSessionStoreFactory = (context, sessionConfig) => {
       // Native SessionCollection passes null; it needs the same store check but no request marker.
@@ -53,9 +54,11 @@ export function protectManagedSessionConfig<Config extends ManagedSessionConfigu
         nativeCookie && typeof nativeCookie === 'object'
           ? Object.getPrototypeOf(nativeCookie)?.constructor
           : undefined
-      if (typeof cookieConstructor !== 'function') throw new Error(setupError)
+      if (typeof cookieConstructor !== 'function') throw new InvalidArgumentsException(setupError)
       if (store instanceof cookieConstructor || options.verifyStore(store) !== true)
-        throw new Error('Managed session authentication requires a revocable server-side store')
+        throw new InvalidArgumentsException(
+          'Managed session authentication requires a revocable server-side store'
+        )
       if (httpContext)
         verifiedRequests.set(httpContext, { config: sessionConfig, factory: verifiedFactory })
       return store
@@ -83,5 +86,5 @@ export function assertManagedSessionStore(
     typeof config.stores !== 'object' ||
     (config.stores as Record<string, unknown>)[config.store] !== marker.factory
   )
-    throw new Error(setupError)
+    throw new InvalidArgumentsException(setupError)
 }

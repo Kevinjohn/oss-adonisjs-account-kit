@@ -30,6 +30,7 @@ export type {
   ManagedRequest,
   ManagedRoutesOptions,
 } from './managed_types.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** Flatten committed router definitions into one entry per method for collision checks. */
 function routeEntries(router: Router) {
@@ -64,7 +65,9 @@ export function registerManagedRoutes<Credential>(
   options: ManagedRoutesOptions<Credential>
 ): readonly ManagedRoute[] {
   if (router.commited)
-    throw new Error('Managed routes must be registered before the router commits')
+    throw new InvalidArgumentsException(
+      'Managed routes must be registered before the router commits'
+    )
   assertManagedRoutesOptions(options)
   const existing = routeEntries(router)
   const routes = planManagedRoutes(

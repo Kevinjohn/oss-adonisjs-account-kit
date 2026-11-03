@@ -1,5 +1,6 @@
 import { isSocialProviderName } from '../social_providers.js'
 import type { ManagedRoutesOptions } from './managed_types.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** Reject managed route options that cannot work with the selected guard or providers. */
 export function assertManagedRoutesOptions<Credential>(
@@ -16,7 +17,7 @@ export function assertManagedRoutesOptions<Credential>(
     ) &&
     !options.guard.publicCredential
   )
-    throw new Error('Managed access-token routes require publicCredential')
+    throw new InvalidArgumentsException('Managed access-token routes require publicCredential')
   if (
     options.enabled.includes('socialAuthentication') &&
     (!options.extensions?.social ||
@@ -25,5 +26,7 @@ export function assertManagedRoutesOptions<Credential>(
       new Set(options.extensions.social.providers).size !==
         options.extensions.social.providers.length)
   )
-    throw new Error('Managed social routes require a selected Google or GitHub provider inventory')
+    throw new InvalidArgumentsException(
+      'Managed social routes require a selected Google or GitHub provider inventory'
+    )
 }

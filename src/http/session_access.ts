@@ -1,5 +1,6 @@
 /** Access to the AdonisJS session store that managed session flows keep server-side state in. */
 import type { HttpContext } from '@adonisjs/core/http'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 export interface SessionStore {
   get(key: string): unknown
@@ -21,6 +22,6 @@ export function optionalSession(context: HttpContext): SessionStore | undefined 
 /** The request's session store; throws `message` when session middleware is not installed. */
 export function requireSession(context: HttpContext, message: string): SessionStore {
   const value = (context as HttpContext & { session?: SessionStore }).session
-  if (!value?.get || !value.put || !value.forget) throw new Error(message)
+  if (!value?.get || !value.put || !value.forget) throw new InvalidArgumentsException(message)
   return value
 }

@@ -21,4 +21,17 @@ export default [
       ],
     },
   },
+  {
+    files: ['src/config.ts', 'src/config_*.ts', 'src/admission/config.ts', 'src/http/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ThrowStatement > NewExpression[callee.name=/^(Error|TypeError)$/]',
+          message:
+            'Throw a package error class, InvalidArgumentsException or RuntimeException at public seams.',
+        },
+      ],
+    },
+  },
 ]

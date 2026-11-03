@@ -4,6 +4,7 @@ import { applyProofHeaders } from './proof_headers.js'
 import { recoveryDiagnostic, publicAccount } from './response_helpers.js'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
 import type { ManagedEndpointName, ManagedRoute } from './routes.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   if (!route.proof) return
@@ -26,7 +27,7 @@ export async function executeManagedRequest<Credential>(
     (route.method !== 'GET' || route.name === 'auth.csrf') &&
     typeof csrfToken !== 'string'
   )
-    throw new Error('Managed session routes require Shield CSRF middleware')
+    throw new InvalidArgumentsException('Managed session routes require Shield CSRF middleware')
   const kit = await options.kit()
   kit.managedHttp.assertGuard(options.guard)
   if (route.proof) await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })

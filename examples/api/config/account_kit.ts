@@ -47,7 +47,7 @@ const notify = Object.fromEntries(
     name,
     (...args: unknown[]) => overridable[name](...args),
   ])
-) as NotificationCallbacks
+) as unknown as NotificationCallbacks
 
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
