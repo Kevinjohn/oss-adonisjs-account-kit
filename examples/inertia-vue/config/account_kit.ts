@@ -47,6 +47,9 @@ const notify = Object.fromEntries(
   ])
 ) as unknown as NotificationCallbacks
 
+/** Test seam for the lifecycle observer; the kit freezes its configuration. */
+export const lifecycleOverrides: { run?: (event: unknown) => Promise<void> } = {}
+
 export default defineConfig({
   users,
   enabled: ['passwordReset', 'emailVerification', 'emailPasswordManagement', 'registration'],
@@ -95,4 +98,7 @@ export default defineConfig({
    * sessions end on their own. Nothing else holds credentials in this app.
    */
   onCredentialsChangedTransaction: async () => {},
+  onLifecycleEvent: async (event) => {
+    await lifecycleOverrides.run?.(event)
+  },
 })
