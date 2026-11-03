@@ -33,6 +33,8 @@ pnpm quick:test
 
 ## Checks
 
+- `pnpm check` runs the quick profile (`--full` adds the rest).
+
 Run the repository scripts, not the bare tools. They carry the flags used by CI.
 
 | Script                    | What it does                                              |

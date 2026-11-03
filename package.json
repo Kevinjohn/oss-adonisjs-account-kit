@@ -56,6 +56,7 @@
     "pg:stop": "bash bin/pg.sh stop",
     "test:mysql": "cross-env DB_CLIENT=mysql2 TZ=America/New_York pnpm quick:test",
     "check:changed": "node --import=@poppinss/ts-exec --enable-source-maps bin/check_changed.ts",
+    "check": "node --import=@poppinss/ts-exec --enable-source-maps bin/check.ts",
     "precompile": "pnpm lint",
     "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",
