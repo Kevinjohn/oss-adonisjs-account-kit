@@ -34,7 +34,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:recipe
       - run: pnpm build
-      - run: pnpm pack --out tmp/examples/adonisjs-account-kit.tgz
+      - run: pnpm pack --out tmp/examples/kevinjohn-adonisjs-account-kit.tgz
       - name: Prepare and test examples
         env:
           HOST: 127.0.0.1
@@ -44,7 +44,7 @@ jobs:
             if node -e 'const p = require("./" + process.argv[1]); process.exit(p.scripts?.test ? 0 : 1)' "$manifest"; then
               directory=$(dirname "$manifest")
               mkdir -p "$directory/vendor"
-              cp tmp/examples/adonisjs-account-kit.tgz "$directory/vendor/adonisjs-account-kit.tgz"
+              cp tmp/examples/kevinjohn-adonisjs-account-kit.tgz "$directory/vendor/kevinjohn-adonisjs-account-kit.tgz"
               node --import=@poppinss/ts-exec bin/prepare_example_archive.ts "$directory"
               pnpm --dir "$directory" install --frozen-lockfile
               (

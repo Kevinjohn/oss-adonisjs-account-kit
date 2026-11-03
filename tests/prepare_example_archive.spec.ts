@@ -7,14 +7,14 @@ import { join, resolve } from 'node:path'
 
 const helper = resolve('bin/prepare_example_archive.ts')
 const baseManifest = {
-  name: 'adonisjs-account-kit',
+  name: '@kevinjohn/adonisjs-account-kit',
   version: '0.2.0',
   engines: { node: '>=24.0.0' },
   peerDependencies: { '@adonisjs/core': '^7.0.0' },
   peerDependenciesMeta: { '@adonisjs/core': { optional: true } },
 }
-const entry = `  adonisjs-account-kit@file:vendor/adonisjs-account-kit.tgz:
-    resolution: {integrity: sha512-old, tarball: file:vendor/adonisjs-account-kit.tgz}
+const entry = `  '@kevinjohn/adonisjs-account-kit@file:vendor/kevinjohn-adonisjs-account-kit.tgz':
+    resolution: {integrity: sha512-old, tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz}
     version: 0.0.0
     engines: {node: '>=24.0.0'}
     peerDependencies:
@@ -28,7 +28,7 @@ function fixture(manifest = baseManifest, packageEntry = entry) {
   mkdirSync(join(directory, 'vendor'))
   mkdirSync(join(directory, 'package'))
   writeFileSync(join(directory, 'package/package.json'), JSON.stringify(manifest))
-  const archive = join(directory, 'vendor/adonisjs-account-kit.tgz')
+  const archive = join(directory, 'vendor/kevinjohn-adonisjs-account-kit.tgz')
   execFileSync('tar', ['-czf', archive, '-C', directory, 'package'])
   const lock = `lockfileVersion: '9.0'\n\npackages:\n\n${packageEntry}\n\n  unrelated@1.0.0:\n    resolution: {integrity: sha512-unchanged}\n`
   const path = join(directory, 'pnpm-lock.yaml')

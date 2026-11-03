@@ -6,12 +6,12 @@ import { join } from 'node:path'
 
 const directory = process.argv[2]
 if (!directory) throw new Error('Usage: prepare_example_archive.ts <example directory>')
-const archive = join(directory, 'vendor/adonisjs-account-kit.tgz')
+const archive = join(directory, 'vendor/kevinjohn-adonisjs-account-kit.tgz')
 const manifest = JSON.parse(
   execFileSync('tar', ['-xOf', archive, 'package/package.json'], { encoding: 'utf8' })
 )
 if (
-  manifest.name !== 'adonisjs-account-kit' ||
+  manifest.name !== '@kevinjohn/adonisjs-account-kit' ||
   !/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(manifest.version)
 ) {
   throw new Error('Expected an Account Kit candidate with a valid version')
@@ -44,8 +44,10 @@ for (const [name, options] of Object.entries(manifest.peerDependenciesMeta ?? {}
 }
 const path = join(directory, 'pnpm-lock.yaml')
 const lock = readFileSync(path, 'utf8')
-const pattern =
-  /^ {2}adonisjs-account-kit@file:vendor\/adonisjs-account-kit\.tgz:\n([\s\S]*?)(?=\n\n)/gm
+const pattern = new RegExp(
+  String.raw`^ {2}'@kevinjohn/adonisjs-account-kit@file:vendor\/kevinjohn-adonisjs-account-kit\.tgz':\n([\s\S]*?)(?=\n\n)`,
+  'gm'
+)
 const matches = [...lock.matchAll(pattern)]
 if (matches.length !== 1) throw new Error('Expected exactly one candidate package lock entry')
 const entry = matches[0][0]
@@ -63,7 +65,8 @@ if ((entry.match(/integrity: sha512-[\w+/=]+/g) ?? []).length !== 1 || !identity
 }
 const integrity = `sha512-${createHash('sha512').update(readFileSync(archive)).digest('base64')}`
 if (
-  (entry.match(/tarball: file:vendor\/adonisjs-account-kit\.tgz(?=[,}\s])/g) ?? []).length !== 1
+  (entry.match(/tarball: file:vendor\/kevinjohn-adonisjs-account-kit\.tgz(?=[,}\s])/g) ?? [])
+    .length !== 1
 ) {
   throw new Error('Expected the candidate archive resolution path')
 }
