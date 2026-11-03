@@ -183,7 +183,7 @@ test.group('Account password reset', (group) => {
       {
         event: 'account_kit_follow_up_failed',
         operation: 'password_reset.complete',
-        failure: 'post_commit',
+        failure: 'delivery',
       },
     ])
     const pendingOutbox = await db

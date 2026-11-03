@@ -100,7 +100,7 @@ test.group('Account password change', (group) => {
       {
         event: 'account_kit_follow_up_failed',
         operation: 'account_password.change',
-        failure: 'post_commit',
+        failure: 'delivery',
       },
     ])
     await passwordUser.refresh()
