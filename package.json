@@ -110,7 +110,7 @@
     "@poppinss/ts-exec": "^1.5.1",
     "@release-it/conventional-changelog": "^10.0.5",
     "@types/luxon": "^3.0.0",
-    "@types/node": "^25.3.5",
+    "@types/node": "^24.19.2",
     "@vinejs/vine": "^4.4.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
