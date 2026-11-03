@@ -26,7 +26,7 @@ quality guides. It links directly to every topic.
 
 ## Reference
 
-Browse the [reference index](reference/README.md) for configuration, service operations, endpoints,
+Browse the [reference index](reference/) for configuration, service operations, endpoints,
 errors, production requirements, and compatibility details.
 
 ## Explanation
