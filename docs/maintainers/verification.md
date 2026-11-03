@@ -28,10 +28,10 @@ This is local candidate evidence for `@kevinjohn/adonisjs-account-kit@0.1.5`; na
 merge and publication remain owner actions. Earlier records below retain their original package
 names, archive paths, commands and digests.
 
-- Clean archive source: `ffe33aa2f58c862fa654c6d994fe44cd80b33427`.
+- Clean archive source: `555c56cda66f3168477fec687c32e4ff87ae71de`.
 - Archive: `kevinjohn-adonisjs-account-kit-0.1.5.tgz`.
-- SHA-256: `910cbe0af740edc5644c90d4c3323a7f1d3a1513280f1b419f152fa20dc66708`.
-- Consumer and example-lock verification source: `e1f1057061bd206b858c5362b7ba3acfecda01cc`,
+- SHA-256: `d124bfec0913fc05ee3df010e996ebca20d5633272c1f0cc8d602fc85e253d8b`.
+- Consumer and example-lock verification source: `e65202fe4abb4009b32e58eef7fcdf05a9324a84`,
   with a clean working tree. Only the four example archive integrity values differ from the
   archive source; those lockfiles are outside the packed files.
 - Runtime launcher: Node `24.21.0`; actual consumer process: Node `24.22.1`, pnpm `11.23.0`.
@@ -48,16 +48,18 @@ reconciled only its version and SHA-512 in each existing lockfile. Fresh `pnpm i
 version `0.1.5` inside its own `node_modules`. Dependency version ranges and the resolved dependency
 graph were preserved.
 
-The candidate was rebuilt after the statement coverage floor changed from 98 to 97, the rounded
-minimum measured across the required database matrix; line, branch and function floors remain
-94, 90 and 94. The previous scoped candidate archive is superseded by the identity above.
+The candidate was rebuilt after the README API link changed to the hosted reference so clean
+checkouts do not depend on ignored generated pages. It also includes the statement coverage floor
+change from 98 to 97, the rounded minimum measured across the required database matrix; line,
+branch and function floors remain 94, 90 and 94. Earlier scoped candidate archives are superseded
+by the identity above.
 
 Source validation:
 
 | Revision   | Check                                                                 | Result                                           |
 | ---------- | --------------------------------------------------------------------- | ------------------------------------------------ |
-| `ffe33aa2` | `pnpm build` (including lint), refreshed archive                      | Passed                                           |
-| `e1f1057`  | Explicit-candidate consumer and four fresh frozen installs            | Passed                                           |
+| `555c56cd` | `pnpm build` (including lint), refreshed archive                      | Passed                                           |
+| `e65202fe` | Explicit-candidate consumer and four fresh frozen installs            | Passed                                           |
 | `74a05dc`  | `pnpm build` (including lint), `pnpm format:check`, `pnpm docs:build` | Passed                                           |
 | `1ad924b`  | `pnpm typecheck`; strict archive helper and documentation links       | Passed; 8 helper and 3 link tests                |
 | `e612960`  | `pnpm quick:test`                                                     | 1,251 passed, 2 skipped                          |
@@ -66,12 +68,15 @@ Source validation:
 
 The later changes from `e612960` tighten the archive helper's peer-metadata comparison, add its
 regression test, set the coverage statement floor, format contributor tables, correct Linux-only
-tooling fixtures and make recipe Git identity invocation-local. Package runtime
-sources, stubs and public exports are unchanged; their full-suite and built-entry evidence is
-reused. The changed helper is covered by the eight final focused tests, and the actual final
-archive is covered by the fresh consumer and four frozen installs above. Documentation generation
-finished before the final link checks; an earlier concurrent check saw the API directory while it
-was being regenerated and is not counted as passing evidence.
+tooling fixtures, make recipe Git identity invocation-local, and replace the README API link with
+the hosted reference. Package runtime sources, stubs and public exports are unchanged; their
+full-suite and built-entry evidence is reused. The archive helper is covered by eight focused
+tests, and the actual final archive is covered by the fresh consumer and four frozen installs
+above. The strengthened documentation link test checks Git-tracked membership rather than local
+filesystem existence. It rejects the former link even when ignored API output exists, accepts the
+hosted URL, and distinguishes tracked directory links from a file followed by a slash. The final
+record passed all three focused link tests; prior link checks that depended on generated output do
+not establish the clean-checkout guarantee.
 
 Hosted prerequisite evidence is separate from the refreshed local archive proof:
 
@@ -88,7 +93,9 @@ Hosted prerequisite evidence is separate from the refreshed local archive proof:
 - The 97% floor's [checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678338),
   [compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678170) and
   [examples](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678492) runs
-  were still in progress when this record was written; they are not counted as passing evidence.
+  completed successfully at the 97% floor: both checks jobs, minimum/latest compatibility tests
+  and builds, MySQL and its consumer, and all four examples. These hosted prerequisite results
+  are distinct from the local scoped archive proof above.
 - The recipe Git identity correction passed both real clean-environment recipe tests at
   `2644e61`.
 
