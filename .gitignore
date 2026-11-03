@@ -1,3 +1,4 @@
+# Common to the Kevinjohn AdonisJS packages
 node_modules
 .pnpm-store/
 coverage
@@ -8,20 +9,25 @@ coverage
 build
 dist
 package-lock.json
-
 .env
 .env.*
 !.env.example
-!examples/inertia-react/.env.test
 *.tgz
 /tmp/
-
-# Private planning and ideation documents, never committed or packed
+# Private planning and review documents, never committed or packed
 PLAN*.md
-__PRD*.md
+__*.md
 /plans/
+docs/maintainers/design/prd*.md
+docs/maintainers/reviews/
+docs/reference/api
+docs/.vitepress/cache
+docs/.vitepress/dist
+
+# Repository-specific
+# example env fixture
+!examples/inertia-react/.env.test
+# until the docs move (WP-7)
 docs/PRD*.md
 docs/reviews/
 docs/api
-docs/.vitepress/cache
-docs/.vitepress/dist
