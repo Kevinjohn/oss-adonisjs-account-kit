@@ -141,6 +141,19 @@ test.group('account kit configuration and service surface', (group) => {
     assert.equal((error as InvalidConfigurationError).field, 'users')
   })
 
+  test('preserves the cause when a throttle duration cannot be parsed', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    let error: unknown
+    try {
+      defineConfig({ ...base, throttle: { duration: 'soon' } })
+    } catch (caught) {
+      error = caught
+    }
+    assert.instanceOf(error, InvalidConfigurationError)
+    assert.equal((error as InvalidConfigurationError).field, 'throttle.duration')
+    assert.instanceOf((error as Error).cause, Error)
+  })
+
   test('rejects a supplied non-function credential callback', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     assert.throws(() => defineConfig({ ...base, onCredentialsChanged: 'not a callback' } as never))

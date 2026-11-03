@@ -23,9 +23,10 @@ export class InvalidConfigurationError extends RuntimeException {
   static status = 500
   constructor(
     readonly field: string,
-    message: string
+    message: string,
+    options?: ErrorOptions
   ) {
-    super(message, { code: new.target.code, status: new.target.status })
+    super(message, { ...options, code: new.target.code, status: new.target.status })
   }
 }
 /**

@@ -20,10 +20,11 @@ export function budget(
   let milliseconds: number
   try {
     milliseconds = string.seconds.parse(duration) * 1000
-  } catch {
+  } catch (cause) {
     throw new InvalidConfigurationError(
       `${name}.duration`,
-      `account_kit: ${name}.duration must be a supported positive duration`
+      `account_kit: ${name}.duration must be a supported positive duration`,
+      { cause }
     )
   }
   if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0 || milliseconds > 2_147_483_647)
