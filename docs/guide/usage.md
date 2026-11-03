@@ -256,7 +256,7 @@ with a generic response and retains Vine request validation at 422.
 | Error                             | Code                                         | Status |
 | --------------------------------- | -------------------------------------------- | -----: |
 | `InvalidInputError`               | `E_ACCOUNT_KIT_INVALID_INPUT`                |    422 |
-| `InvalidTokenError`               | `E_ACCOUNT_KIT_INVALID_TOKEN`                |    422 |
+| `InvalidTokenError`               | `E_ACCOUNT_KIT_INVALID_TOKEN`                |    400 |
 | `ThrottledError`                  | `E_ACCOUNT_KIT_THROTTLED`                    |    429 |
 | `AuthorizationError`              | `E_ACCOUNT_KIT_AUTHORIZATION`                |    403 |
 | `InvitationManagementDeniedError` | `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` |    404 |
