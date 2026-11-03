@@ -169,8 +169,8 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
 - npm releases will be published from GitHub Actions with npm provenance. Run
   `npm audit signatures` to check that an installed copy was built from this repository.
 - CodeQL and OpenSSF Scorecard workflows scan the public repository.
-- Dependabot takes patch updates for everything and minor updates only for AdonisJS-owned
-  packages; majors move by hand with AdonisJS.
+- Dependabot opens one weekly pull request with patch updates to npm packages. Minor and major
+  updates, and GitHub Actions versions, move by hand each month.
 - The [dependency audit assessment](compatibility.md#dependency-audit-assessment) records known
   advisories and why each does not apply.
 

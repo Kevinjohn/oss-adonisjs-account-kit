@@ -33,9 +33,6 @@ pnpm install
 pnpm quick:test
 ```
 
-To skip local setup, open the repository in GitHub Codespaces. The dev container installs Node 24,
-pnpm and the dependencies; run `pnpm quick:test` once it is ready.
-
 ## Checks
 
 Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
