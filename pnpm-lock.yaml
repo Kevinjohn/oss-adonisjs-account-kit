@@ -57,7 +57,7 @@ importers:
         specifier: ^3.0.0
         version: 3.7.6
       '@types/node':
-        specifier: ^24.19.2
+        specifier: ^24.0.0
         version: 24.19.2
       '@vinejs/vine':
         specifier: ^4.4.0
@@ -69,7 +69,7 @@ importers:
         specifier: ^3.0.1
         version: 3.0.1(ajv@8.20.0)
       better-sqlite3:
-        specifier: ^13.0.3
+        specifier: ^13.0.0
         version: 13.0.3
       c8:
         specifier: ^12.0.0
