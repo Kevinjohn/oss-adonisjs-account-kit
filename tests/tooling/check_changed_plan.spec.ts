@@ -74,7 +74,7 @@ test.group('check_changed_plan.spec', (group) => {
     'package.json',
     'pnpm-lock.yaml',
     'tsconfig.json',
-    'docs/usage.md',
+    'docs/guide/usage.md',
     '.gitignore',
   ])
     test(`configuration or a file specs read (${path}) runs the full suite`, () => {
@@ -121,9 +121,9 @@ test.group('check_changed_plan.spec', (group) => {
   })
 
   test('documentation sources build the docs; generated docs do not', () => {
-    assert.deepEqual(plan('docs/usage.md').docs.command, ['pnpm', 'docs:build'])
+    assert.deepEqual(plan('docs/guide/usage.md').docs.command, ['pnpm', 'docs:build'])
     assert.deepEqual(plan('typedoc.json').docs.command, ['pnpm', 'docs:build'])
-    assert.ok(plan('docs/api/index.md').docs.skip)
+    assert.ok(plan('docs/reference/api/index.md').docs.skip)
     assert.deepEqual(plan('src/http/guard.ts').docs.command, ['pnpm', 'docs:build'])
     assert.ok(plan('tests/email.spec.ts').docs.skip)
   })

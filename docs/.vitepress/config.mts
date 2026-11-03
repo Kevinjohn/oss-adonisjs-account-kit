@@ -9,7 +9,7 @@ export default defineConfig({
   base: '/oss-adonisjs-account-kit/',
   cleanUrls: true,
   lastUpdated: true,
-  srcExclude: ['maintainers/**', 'reviews/**', 'PRD*.md'],
+  srcExclude: ['maintainers/**'],
   rewrites: { 'README.md': 'index.md' },
   markdown: { config: githubLinks },
   themeConfig: {

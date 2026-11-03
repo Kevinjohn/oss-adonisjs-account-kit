@@ -157,7 +157,7 @@ test.group('managed HTTP translation', () => {
   })
 
   test('the documented account_kit.json lists every acknowledgement key', async ({ assert }) => {
-    const docs = await readFile(new URL('../docs/managed-http.md', import.meta.url), 'utf8')
+    const docs = await readFile(new URL('../docs/guide/managed-http.md', import.meta.url), 'utf8')
     const block = docs
       .split('resources/lang/<locale>/account_kit.json')[1]
       ?.match(/```json\n([\s\S]*?)```/)

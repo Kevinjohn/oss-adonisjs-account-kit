@@ -1,6 +1,6 @@
 # 0.2.0 candidate release gate
 
-The release candidate is the archive built from source `1ef240c72c4445482baf8f30b806b9128550d811`, with SHA-256 `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. The required source, distribution, recipe and reference-example checks passed against that unchanged archive. The dated [second-alpha verification record](verification.md#second-alpha-020-candidate) records the initial test-source failure, correction, successful reruns and remaining owner checks; historical totals do not substitute for this evidence. See the [compatibility assessment](../compatibility.md) for supported dependency floors and boundaries.
+The release candidate is the archive built from source `1ef240c72c4445482baf8f30b806b9128550d811`, with SHA-256 `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. The required source, distribution, recipe and reference-example checks passed against that unchanged archive. The dated [second-alpha verification record](verification.md#second-alpha-020-candidate) records the initial test-source failure, correction, successful reruns and remaining owner checks; historical totals do not substitute for this evidence. See the [compatibility assessment](../reference/compatibility.md) for supported dependency floors and boundaries.
 
 ## Owner release decision
 
@@ -20,7 +20,7 @@ The owner also performs any manual viewport, keyboard, or other checks outside t
 
 ## Upgrade and rollback
 
-The comparison with the actual published `0.1.1` tarball found all 313 files under `package/build/` byte-identical, including 14 configuration and migration templates. There is no source delta in `src/`, `adapters/`, `commands/`, `providers/`, `services/`, `http/`, `testing/`, `stubs/`, `configure.ts`, or `index.ts`. Version `0.2.0` therefore adds no package-generated configuration or migration; follow the existing configuration and migration guidance in [usage](../usage.md).
+The comparison with the actual published `0.1.1` tarball found all 313 files under `package/build/` byte-identical, including 14 configuration and migration templates. There is no source delta in `src/`, `adapters/`, `commands/`, `providers/`, `services/`, `http/`, `testing/`, `stubs/`, `configure.ts`, or `index.ts`. Version `0.2.0` therefore adds no package-generated configuration or migration; follow the existing configuration and migration guidance in [usage](../guide/usage.md).
 
 Application-owned policies and configuration remain authoritative during an upgrade and rollback. Credentials and committed outbox entries also remain authoritative: rolling back to `0.1.1` does not undo committed credential changes or make delivered or pending outbox work disappear. Recover pending effects through the application's existing outbox process; do not replay consumed bearer credentials.
 

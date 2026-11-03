@@ -1,7 +1,7 @@
 # Feature recordings
 
 These scripts make the terminal recordings in `docs/assets/demos/`, shown on
-[See it run](../../docs/recordings.md) and the feature pages.
+[See it run](../../docs/guide/recordings.md) and the feature pages.
 
 ```sh
 pnpm demos

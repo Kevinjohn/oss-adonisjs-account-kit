@@ -1,11 +1,11 @@
 # Account API example
 
 A complete AdonisJS 7 API app that uses Account Kit from its own controllers. Copy from it when
-you wire Account Kit into your app; the [usage guide](../../docs/usage.md) points here for the
+you wire Account Kit into your app; the [usage guide](../../docs/guide/usage.md) points here for the
 full picture.
 
 For a single supported API-starter journey with one namespace and the opaque `api` guard, begin
-with [Build one account API](../../docs/guides/core-api.md). This example also has optional
+with [Build one account API](../../docs/guide/core-api.md). This example also has optional
 admission, invitation, and social integrations. Its notification capture and sample outbox are
 demo/test fixtures; the copy row below states their limits.
 
@@ -29,7 +29,7 @@ integrations that are not prerequisites.
 | HTTP tests                                                                             | The exact per-flow suites are listed below.                                                                                                                                                                                                                                                                  |
 
 These deterministic fixtures keep receiver idempotency in memory, stop at the first failed row,
-and have no backoff or safe concurrent claims. Use [notification guidance](../../docs/notifications.md)
+and have no backoff or safe concurrent claims. Use [notification guidance](../../docs/guide/notifications.md)
 for production mail and workers.
 
 ## Run it
@@ -107,7 +107,7 @@ For a short HTTP smoke, submit a signup with `email`, `password`, and `passwordC
 characters, and missing or blank names are stored as `null`. Copy the verification URL from the server log
 and POST it with the chosen password and confirmation. Then POST the credentials to
 `/api/v1/auth/login` and use the returned bearer token for `GET /api/v1/account/profile`. The
-[core API walkthrough](../../docs/guides/core-api.md) explains the same guard and proof boundaries.
+[core API walkthrough](../../docs/guide/core-api.md) explains the same guard and proof boundaries.
 
 The archive is ignored under `examples/api/vendor/`. The root install supplies the package build
 tools. Build and pack from the repository root before installing the example because its local
@@ -120,7 +120,7 @@ install the new archive and update its integrity entry; this refresh install can
 
 The source directory is `examples/api/`; each source path below maps to the same destination path
 in your app. The core path uses the starter's opaque `api` guard and one `/api/v1` namespace, as
-in [Build one account API](../../docs/guides/core-api.md). Each flow needs the shared foundation
+in [Build one account API](../../docs/guide/core-api.md). Each flow needs the shared foundation
 and its listed files. Merge route and kernel entries instead of replacing starter files, and keep
 `User.accessTokens` with `auth_access_tokens`. Install package migrations with the configure
 command; do not copy the example's package migrations. The core path does not need the optional
@@ -137,7 +137,7 @@ session, social, invitation, admission, or outbox integrations.
   imports, implement callbacks for enabled features (the reference policy is in
   `examples/api/app/services/account_kit_authorization.ts`), and replace sample notifications with
   your application-owned transport as described in
-  [notification guidance](../../docs/notifications.md).
+  [notification guidance](../../docs/guide/notifications.md).
 - `examples/api/app/services/account_kit_guards.ts` → `app/services/account_kit_guards.ts`: keep
   the `accessTokenGuard` adapter and adapt the User import. Omit its session adapter for this path.
 - `examples/api/app/services/auth_strategy.ts` → `app/services/auth_strategy.ts`, and
@@ -213,7 +213,7 @@ route group's `auth()` runs first, then profile uses `accountAccess()` while pas
 ### Admission (optional add-on)
 
 Copy only when the application gates its own data on admission:
-first follow [admission setup](../../docs/admission.md) and install its provider, command loader,
+first follow [admission setup](../../docs/guide/admission.md) and install its provider, command loader,
 config, and migration (for example, `node ace account-kit:admission:install` followed by the
 documented migration step). Register `adonisjs-account-kit/admission/provider` in `adonisrc.ts`.
 Copy/adapt `examples/api/config/admission.ts`; merge `admissionAuthorize` into the approval
@@ -259,9 +259,9 @@ roles or grant invitation roles itself.
 The example's explicit invitation-link path is `POST /api/v1/auth/invitations/:token`; its
 password and signup fields are described in the [invitation controller](app/controllers/invitations_controller.ts)
 and [`invitationAcceptValidator`](app/validators/account_kit.ts). A verified social signup may
-instead consume a matching invitation automatically. See the [social invitation scenario map](../../docs/social-authentication.md#signing-in-with-the-invited-address).
+instead consume a matching invitation automatically. See the [social invitation scenario map](../../docs/guide/social-authentication.md#signing-in-with-the-invited-address).
 
-The [token reference](../../docs/token-reference.md) and [session reference](../../docs/session-reference.md) walk through bearer and
+The [token reference](../../docs/reference/token-reference.md) and [session reference](../../docs/reference/session-reference.md) walk through bearer and
 browser clients.
 
 ## How the example works
@@ -274,12 +274,12 @@ client key. Keep `APP_URL` on HTTPS in production so generated links are secure.
 `ACCOUNT_KIT_AUTH_STRATEGY=session` to use the existing `web` guard, a server-side session store,
 CSRF bootstrap, and HTTP-only browser cookies; the default uses the existing `api` bearer-token
 guard. The cookie session store is rejected because it cannot invalidate a replayed cookie on
-logout. See [authentication integration](../../docs/authentication.md) for setup, route protection,
-revocation, and client handling, and [token API reference](../../docs/token-reference.md) for bearer requests, proof
+logout. See [authentication integration](../../docs/guide/authentication.md) for setup, route protection,
+revocation, and client handling, and [token API reference](../../docs/reference/token-reference.md) for bearer requests, proof
 confirmation, error formats, and log redaction. The example permits a limited inactive credential to correct an
 unconfirmed email, while `VerifiedAccountMiddleware` rejects it on verified routes. Bearer tokens
 must have the `invitations:create` ability before the invitation-send controller acts.
-The [session reference](../../docs/session-reference.md) gives the browser bootstrap, cookie, logout, and application-route
+The [session reference](../../docs/reference/session-reference.md) gives the browser bootstrap, cookie, logout, and application-route
 revocation walkthrough.
 
 The credential-notice outbox stores password-reset and password-change operation IDs, kinds, and
@@ -299,7 +299,7 @@ provide those production guarantees.
 
 ## Social sign-in
 
-The [social reference](../../docs/social-reference.md) connects Google and GitHub through Ally and
+The [social reference](../../docs/reference/social-reference.md) connects Google and GitHub through Ally and
 the package's social services. It includes application-owned routes for browser sessions and token
 clients, a deterministic provider fixture for the functional suite, and the live-provider smoke
 procedure. Set provider credentials and the exact OAuth callback URI before a live check.
@@ -321,11 +321,11 @@ separate minimum-version consumer.
 
 ## Checks and evidence
 
-| Implemented                                                                                                                                              | Automated HTTP                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Browser                                          | Manual checks and limits                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Signup, verification, login, reset, password and profile settings, bearer revocation, and optional API integrations are implemented in this application. | Named functional suites: [signup/login](tests/functional/account_signup_login.spec.ts), [email verification](tests/functional/account_email_verification.spec.ts), [password reset](tests/functional/account_password_reset.spec.ts), [password change](tests/functional/account_password_change.spec.ts), [profile/email](tests/functional/account_profile_email.spec.ts), and [bearer revocation](tests/functional/bearer_revocation.spec.ts). The [API-monorepo assessment](https://github.com/Kevinjohn/oss-adonisjs-account-kit/issues/640#issuecomment-6349469115) found the pinned backend can reuse the same API guard, login and protected routes; its P1 clean backend baseline passed 1/1 in 98 ms (guest profile 401, signup/login 200, bearer profile 200). The frontend is empty; use the backend working directory and an app-owned frontend origin. No additional permanent app is needed. | None claimed; the API example has no browser UI. | Reset P3: [fresh API recipe record](../../docs/recipes/password-reset-existing-login.md#clean-application-check), default and supplied archive each 1/1; the revision/token-deletion mutation failed at protected-profile 401 (received 200), then restoration passed 1/1. Invitations P3: [fresh recipe record](../../docs/recipes/invitations-existing-app.md#clean-application-check), P6 1/1; owner-policy mutation failed (received 201 instead of 403), then restoration passed 1/1. Both P3 runs use local SQLite and callback capture; they add no PostgreSQL coverage and make no browser, viewport, keyboard or recipient-delivery claim. See the [acceptance guide](../../docs/guides/example-acceptance.md) for separate package-consumer evidence. |
+| Implemented                                                                                                                                              | Automated HTTP                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Browser                                          | Manual checks and limits                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signup, verification, login, reset, password and profile settings, bearer revocation, and optional API integrations are implemented in this application. | Named functional suites: [signup/login](tests/functional/account_signup_login.spec.ts), [email verification](tests/functional/account_email_verification.spec.ts), [password reset](tests/functional/account_password_reset.spec.ts), [password change](tests/functional/account_password_change.spec.ts), [profile/email](tests/functional/account_profile_email.spec.ts), and [bearer revocation](tests/functional/bearer_revocation.spec.ts). The [API-monorepo assessment](https://github.com/Kevinjohn/oss-adonisjs-account-kit/issues/640#issuecomment-6349469115) found the pinned backend can reuse the same API guard, login and protected routes; its P1 clean backend baseline passed 1/1 in 98 ms (guest profile 401, signup/login 200, bearer profile 200). The frontend is empty; use the backend working directory and an app-owned frontend origin. No additional permanent app is needed. | None claimed; the API example has no browser UI. | Reset P3: [fresh API recipe record](../../docs/recipes/password-reset-existing-login.md#clean-application-check), default and supplied archive each 1/1; the revision/token-deletion mutation failed at protected-profile 401 (received 200), then restoration passed 1/1. Invitations P3: [fresh recipe record](../../docs/recipes/invitations-existing-app.md#clean-application-check), P6 1/1; owner-policy mutation failed (received 201 instead of 403), then restoration passed 1/1. Both P3 runs use local SQLite and callback capture; they add no PostgreSQL coverage and make no browser, viewport, keyboard or recipient-delivery claim. See the [acceptance guide](../../docs/guide/example-acceptance.md) for separate package-consumer evidence. |
 
 ## Shared acceptance criteria
 
-See the [example account journey acceptance guide](../../docs/guides/example-acceptance.md) for
+See the [example account journey acceptance guide](../../docs/guide/example-acceptance.md) for
 the common baseline, application-policy differences, recorded coverage and remaining gaps.

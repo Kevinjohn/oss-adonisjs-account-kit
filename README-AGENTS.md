@@ -66,10 +66,10 @@ Get the service with `await app.container.make(AccountKit)` (import `AccountKit`
 
 ## Integration modes
 
-| Mode                | Pick it when                                                        | Docs                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Application-owned   | The app has its own controllers, validation, pages or Inertia views | [application-owned-integration](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/application-owned-integration.md) |
-| Managed JSON routes | An API or SPA wants ready-made endpoints under a prefix             | [managed-http](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/managed-http.md)                                   |
+| Mode                | Pick it when                                                        | Docs                                                                                                                                         |
+| ------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application-owned   | The app has its own controllers, validation, pages or Inertia views | [application-owned-integration](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/application-owned-integration.md) |
+| Managed JSON routes | An API or SPA wants ready-made endpoints under a prefix             | [managed-http](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/managed-http.md)                                   |
 
 Both call the same service. Managed routes are registered with `registerManagedRoutes` from
 `adonisjs-account-kit/http`, and `account-kit:openapi` writes their OpenAPI 3.1 document.
@@ -132,25 +132,25 @@ the config's `notify` in tests, run a flow, then read `tokenFor(kind, email)`.
 
 ## Source map
 
-| Path                                                                                                              | Holds                                                                 |
-| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `src/account_kit.ts`                                                                                              | The `AccountKit` service and its namespaces                           |
-| `src/config*.ts`                                                                                                  | `defineConfig` and validation of each config block                    |
-| `src/capabilities.ts`                                                                                             | Per-capability adapter methods and required hooks                     |
-| `src/password_reset.ts`, `src/verification.ts`, `src/credentials.ts`, `src/invitations.ts`, `src/registration.ts` | Account operations                                                    |
-| `src/authentication.ts`, `src/session_*.ts`                                                                       | Login, revision checks, signed-in devices                             |
-| `src/magic_link.ts`, `src/social_*.ts`                                                                            | Magic-link and social sign-in                                         |
-| `src/account_export.ts`, `src/account_deletion.ts`                                                                | Export and deletion                                                   |
-| `src/transaction.ts`, `src/db.ts`, `src/effects.ts`                                                               | Transactions, locking, post-commit effects                            |
-| `src/throttle.ts`                                                                                                 | Rate limiting with HMAC limiter keys                                  |
-| `src/admission/`                                                                                                  | Admission (`adonisjs-account-kit/admission`); see `docs/admission.md` |
-| `src/notifications.ts`, `src/log_notifications.ts`                                                                | Built-in emails and development logging                               |
-| `src/http/`                                                                                                       | Managed routes, validators, OpenAPI                                   |
-| `src/setup/`                                                                                                      | `account-kit:setup` planning and apply                                |
-| `adapters/`, `stubs/`                                                                                             | Users adapters, generated config and migrations                       |
+| Path                                                                                                              | Holds                                                                       |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `src/account_kit.ts`                                                                                              | The `AccountKit` service and its namespaces                                 |
+| `src/config*.ts`                                                                                                  | `defineConfig` and validation of each config block                          |
+| `src/capabilities.ts`                                                                                             | Per-capability adapter methods and required hooks                           |
+| `src/password_reset.ts`, `src/verification.ts`, `src/credentials.ts`, `src/invitations.ts`, `src/registration.ts` | Account operations                                                          |
+| `src/authentication.ts`, `src/session_*.ts`                                                                       | Login, revision checks, signed-in devices                                   |
+| `src/magic_link.ts`, `src/social_*.ts`                                                                            | Magic-link and social sign-in                                               |
+| `src/account_export.ts`, `src/account_deletion.ts`                                                                | Export and deletion                                                         |
+| `src/transaction.ts`, `src/db.ts`, `src/effects.ts`                                                               | Transactions, locking, post-commit effects                                  |
+| `src/throttle.ts`                                                                                                 | Rate limiting with HMAC limiter keys                                        |
+| `src/admission/`                                                                                                  | Admission (`adonisjs-account-kit/admission`); see `docs/guide/admission.md` |
+| `src/notifications.ts`, `src/log_notifications.ts`                                                                | Built-in emails and development logging                                     |
+| `src/http/`                                                                                                       | Managed routes, validators, OpenAPI                                         |
+| `src/setup/`                                                                                                      | `account-kit:setup` planning and apply                                      |
+| `adapters/`, `stubs/`                                                                                             | Users adapters, generated config and migrations                             |
 
 ## Further reading
 
-- [Security model](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/security.md)
-- [Getting started](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/getting-started.md)
-- [Glossary](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/glossary.md), for "provision", "pillar" and other package terms
+- [Security model](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/security.md)
+- [Getting started](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/getting-started.md)
+- [Glossary](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/glossary.md), for "provision", "pillar" and other package terms

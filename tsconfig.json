@@ -10,7 +10,7 @@
     "tmp/**",
     "examples/**",
     "stubs/**",
-    "docs/reviews/**",
+    "docs/maintainers/reviews/**",
     "bin/demos/overlay/**"
   ]
 }

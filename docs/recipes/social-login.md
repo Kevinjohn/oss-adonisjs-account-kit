@@ -51,10 +51,10 @@ authentication: { strategy: 'session', guard: 'web' },
 
 The simplest route is the managed one: add `socialAuthentication` to `registerManagedRoutes` and
 the redirect, callback, handoff and identity-management endpoints are mounted for you. See
-[managed social authentication](../managed-social.md) and the
+[managed social authentication](../guide/managed-social.md) and the
 [endpoint list](../reference/endpoints.md#socialauthentication).
 
-To own the routes instead, follow the [application-owned social reference](../social-reference.md);
+To own the routes instead, follow the [application-owned social reference](../reference/social-reference.md);
 the example app's
 [social controller](../../examples/api/app/controllers/social_auth_controller.ts) shows both
 session and token clients.
@@ -69,4 +69,4 @@ session and token clients.
 
 ## Further reading
 
-- [Social authentication services](../social-authentication.md)
+- [Social authentication services](../guide/social-authentication.md)

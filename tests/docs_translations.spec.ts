@@ -9,9 +9,9 @@ type Blocks = Record<string, string>
 const FILES = ['errors.json', 'validator.json']
 const read = (path: string) => readFile(join(repoRoot, path), 'utf8')
 
-/** The English blocks are the ones `docs/managed-http.md` tells applications to copy. */
+/** The English blocks are the ones `docs/guide/managed-http.md` tells applications to copy. */
 async function englishBlocks(): Promise<Blocks> {
-  const docs = await read('docs/managed-http.md')
+  const docs = await read('docs/guide/managed-http.md')
   const blocks: Blocks = {}
   for (const file of FILES) {
     const block = docs.split(`resources/lang/<locale>/${file}`)[1]?.match(/```json\n([\s\S]*?)```/)
@@ -128,8 +128,8 @@ test.group('docs translations', () => {
 
   test('every locale page has the same keys and placeholders as English', async ({ assert }) => {
     const english = await englishBlocks()
-    const pages = trackedMarkdown(['docs/translations/*.md']).filter(
-      (page) => page !== 'docs/translations/index.md'
+    const pages = trackedMarkdown(['docs/guide/translations/*.md']).filter(
+      (page) => page !== 'docs/guide/translations/index.md'
     )
     const problems: string[] = []
     for (const page of pages) {

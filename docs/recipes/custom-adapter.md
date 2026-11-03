@@ -46,8 +46,8 @@ passes: creation, lookups, password hashing, email changes, verification, and ro
 The application validates signup fields and presents field errors before calling the service; its
 `registration.mapFields` callback selects and validates allowed profile data. The adapter receives
 that trusted result and maps it to its model properties or physical columns. Adapter persistence
-mapping errors are not the application's form-validation path; see [registration](../registration.md)
-and [adapter mapping](../adapters.md#registration-data) for the shared `fullName` example.
+mapping errors are not the application's form-validation path; see [registration](../guide/registration.md)
+and [adapter mapping](../guide/adapters.md#registration-data) for the shared `fullName` example.
 
 ```ts
 import { test } from '@japa/runner'

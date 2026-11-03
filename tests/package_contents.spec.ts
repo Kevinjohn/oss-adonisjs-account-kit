@@ -23,15 +23,15 @@ test('packs the build and top-level documents, not docs, examples or planning do
     await writeFile(join(root, '.gitignore'), await readFile(join(repoRoot, '.gitignore')))
     const publicFiles = ['build/index.js', 'README-AGENTS.md', 'CHANGELOG.md']
     const privateFiles = [
-      'docs/usage.md',
+      'docs/guide/usage.md',
       'examples/api/README.md',
       'PLAN-private.md',
-      'docs/PRD-private.md',
-      'docs/reviews/private-review.md',
-      'docs/reviews/nested/private-notes.md',
+      'docs/maintainers/design/prd-private.md',
+      'docs/maintainers/reviews/private-review.md',
+      'docs/maintainers/reviews/nested/private-notes.md',
       'docs/maintainers/release-assessment.md',
       'docs/.vitepress/dist/index.html',
-      'docs/api/index.md',
+      'docs/reference/api/index.md',
     ]
     for (const file of [...publicFiles, ...privateFiles]) {
       await mkdir(dirname(join(root, file)), { recursive: true })

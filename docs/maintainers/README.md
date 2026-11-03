@@ -3,6 +3,7 @@
 These records support releases and are not needed to use Account Kit. They are kept in the
 repository and left out of the npm package.
 
+- [Releasing](releasing.md): the current GitHub release process.
 - [Release gate](release-gate.md): the local checks and owner actions before a release.
 - [Verification](verification.md): the release check list, then the dated local check results and consumer outcomes.
 - [Release assessment](release-assessment.md): how to rerun it, then the acceptance scenarios mapped to tests.

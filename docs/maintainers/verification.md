@@ -335,7 +335,7 @@ inspection is claimed.
 
 Delivery review remains separate from these automated results. On 23 October 2026 the owner
 accepted the reviews performed after the existing PRs opened and approved adding the install-link
-corrections in `docs/identity-creation.md` and `docs/setup.md` to #628's scope. This resolves both
+corrections in `docs/guide/identity-creation.md` and `docs/guide/setup.md` to #628's scope. This resolves both
 programme conditions without changing the historical review sequence. The integrated #628
 correction also clarifies the dated smoke record's limits and where to return from the root
 installation instructions before running migrations. No package runtime or archive input changed.
@@ -748,7 +748,7 @@ including all HTTP flows, required profile data, string/UUID IDs and a custom ta
 non-disclosing password reset responses, permission failures, scanner-safe inspection, token revocation,
 and retryable outbox delivery. The exact-floor consumer independently typechecks the public
 package API and exercises rollback, deferred commit failure, post-commit failure and concurrent
-acceptance on both databases. See [compatibility](../compatibility.md) for the distinct dependency sets.
+acceptance on both databases. See [compatibility](../reference/compatibility.md) for the distinct dependency sets.
 
 The exact-floor consumer also loads every public entry point and boots Ace with the package
 command collections registered to run `migration:run --force`, the same path a consumer's

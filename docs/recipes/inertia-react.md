@@ -4,7 +4,7 @@ Keep the official AdonisJS 7 React starter's `/login`, `User` model, `web` guard
 and styling. Add only password reset. “Keep your login” includes adapting its controller to
 capture a credential revision; an unchanged session login cannot revoke older sessions.
 
-First complete the mandatory [existing-application checklist](../guides/password-reset-existing-app.md),
+First complete the mandatory [existing-application checklist](../guide/password-reset-existing-app.md),
 including the [README installation instructions](../../README.md#install), required peers,
 Limiter setup and every generated migration. The setup schema is shared across capabilities;
 `enabled: ['passwordReset']` does not generate a reset-only schema. See the
@@ -208,7 +208,7 @@ the existing application's routes and retention policy independently of the fres
 
 Limits: local SQLite, Chromium and local notification capture. No recipient delivery,
 PostgreSQL, other browser engine, manual viewport or keyboard sign-off is claimed. See the
-[evidence format](../guides/example-acceptance.md#updating-the-record).
+[evidence format](../guide/example-acceptance.md#updating-the-record).
 
 ### Native HTML validation correction — 23 October 2026
 

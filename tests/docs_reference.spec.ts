@@ -63,7 +63,7 @@ test('the endpoint reference lists every managed route', async ({ assert }) => {
 })
 
 test('every documented error code starts with E_, unlike a validation rule', async ({ assert }) => {
-  const managed = await read('docs/managed-http.md')
+  const managed = await read('docs/guide/managed-http.md')
   const block = managed
     .split('resources/lang/<locale>/errors.json')[1]
     ?.match(/```json\n([\s\S]*?)```/)
