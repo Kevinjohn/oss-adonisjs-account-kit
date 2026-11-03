@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { PostCommitError, passwordChangeRevision } from '@kevinjohn/adonisjs-account-kit'
+import { passwordChangeRevision } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { credentialChangeValidator } from '#validators/account_kit'
 import { accountInput } from '#services/account_input'
@@ -25,7 +25,7 @@ export default class AccountPasswordController {
     } catch (error) {
       // A follow-up failed after commit: the change stands, so keep this session on it.
       const committed = passwordChangeRevision(error)
-      if (!(error instanceof PostCommitError) || committed === undefined) throw error
+      if (committed === undefined) throw error
       reportCommittedFailure(logger, error, 'account_password.change')
       revision = committed
     }

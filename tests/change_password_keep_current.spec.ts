@@ -8,7 +8,7 @@ import { passwordChangeRevision } from '../src/password_change_revision.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 
 type Validator = { validate(data: unknown): Promise<unknown> }
@@ -197,6 +197,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
       ...overrides,
     })
     const issued: CurrentAccountInput[] = []
+    const refreshed: Array<string | null> = []
     let caller: CurrentAccountInput | undefined
     const guard = stubGuard<string>({
       strategy,
@@ -215,6 +216,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
           terminate: async () => {},
           // The cookie session: the caller's next request carries the stored revision.
           refresh: async (revision: string | null) => {
+            refreshed.push(revision)
             caller = { ...caller!, revision }
           },
         }) as never,
@@ -246,7 +248,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
       caller = input
     }
     const current = () => caller!
-    return { call, as, current, issued }
+    return { call, as, current, issued, refreshed }
   }
 
   test('session: the same session is still signed in on the next request', async ({ assert }) => {
@@ -287,6 +289,30 @@ test.group('managed password change keeps the caller signed in', (group) => {
     }).catch((caught: unknown) => caught)
     assert.notDeepEqual(failed, { status: 200, body: { changed: true } })
     assert.notEqual(current().revision, mine.revision)
+    assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
+  })
+
+  test('session: a password notice failure returns committed and refreshes the committed revision', async ({
+    assert,
+  }) => {
+    await insertUser(kit)
+    const notify = makeNotify()
+    notify.failOn('passwordChanged')
+    const { call, as, current, issued, refreshed } = mount('session', { notify: notify.notify })
+    await call('POST /api/v1/auth/login', { email: 'person@example.test', password: 'password123' })
+    const [mine] = issued
+    as(mine)
+
+    const changed = await call('POST /api/v1/account/password', {
+      ...change,
+      newPasswordConfirmation: change.newPassword,
+    })
+
+    assert.deepEqual(changed, { status: 202, body: { committed: true } })
+    assert.lengthOf(refreshed, 1)
+    assert.isString(refreshed[0])
+    assert.notEqual(refreshed[0], mine.revision)
+    assert.equal(current().revision, refreshed[0])
     assert.equal((await call('GET /api/v1/account/sessions')).status, 200)
   })
 
