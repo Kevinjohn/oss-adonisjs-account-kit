@@ -2,11 +2,8 @@
 
 ## Node version
 
-- Use Node 24 for every command in this repository. `package.json` requires `node >=24` and the
-  `better-sqlite3` binary is compiled against it; under Node 22 the test suite fails with
-  `NODE_MODULE_VERSION` errors.
-- `.nvmrc` pins `24`. If the shell starts on another version, run `nvm use` (or put
-  `~/.nvm/versions/node/v24.*/bin` first on `PATH`) before `pnpm` commands.
+Use Node 24 (`.nvmrc`) for every command. CI tests Node 24 only. `better-sqlite3` is compiled
+against Node 24; under Node 22 the test suite fails with `NODE_MODULE_VERSION` errors.
 
 ## Project principles
 
@@ -22,9 +19,27 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 
 ## Checks
 
-- Run the repository scripts, not the bare tools: `pnpm lint`, `pnpm typecheck`, `pnpm build`,
-  `pnpm quick:test` (SQLite, including tooling lifecycle tests), and `pnpm test:pg` (local PostgreSQL 16
-  required; see the checklist in docs/maintainers/verification.md and its PostgreSQL section for the external-server alternative).
+- `pnpm typecheck` runs TypeScript without emitting.
+- `pnpm lint` runs ESLint with the AdonisJS config.
+- `pnpm format` formats the repository with Prettier.
+- `pnpm format:check` checks formatting for tracked files.
+- `pnpm quick:test` runs the Japa suite against SQLite.
+- `pnpm pretest` runs lint before the test suite.
+- `pnpm test` runs the SQLite suite with coverage thresholds.
+- `pnpm test:built-exports` checks the package's built exports.
+- `pnpm test:consumer` packs and checks the package in a consumer application.
+- `pnpm test:pg` runs the suite against a local PostgreSQL 16 database.
+- `pnpm pg:start` starts the local PostgreSQL 16 service.
+- `pnpm pg:stop` stops the local PostgreSQL 16 service.
+- `pnpm test:mysql` runs the experimental MySQL suite.
+- `pnpm check:changed` runs checks for files changed from the selected base.
+- `pnpm precompile` runs lint before compilation.
+- `pnpm compile` compiles JavaScript and type declarations.
+- `pnpm postcompile` copies templates into `build/`.
+- `pnpm build` runs the package compilation scripts.
+- `pnpm docs:api` generates the API reference.
+- `pnpm docs:dev` generates the API reference and serves the documentation site.
+- `pnpm docs:build` generates the API reference and builds the documentation site.
 
 ## Single Responsibility Principle (files)
 
@@ -48,3 +63,39 @@ even if it means more files.
    `tests/helpers/` once. Do not rename tests while moving them.
 8. Small and cohesive is finished. Do not split a file that is under the first threshold and does
    one thing.
+
+## Folder layout
+
+```
+index.ts                    public entry
+configure.ts                `node ace configure` hook
+providers/<name>_provider.ts AdonisJS provider
+commands/                   Ace commands
+services/main.ts            container service
+stubs/                      configure templates
+src/                        implementation; `src/types.ts` and `src/errors.ts` hold public types and errors
+<subpath>/main.ts           top-level folder only when it backs a package export
+bin/                        package scripts (`.ts` via ts-exec; `.sh` allowed)
+bin/helpers/                modules used only by `bin/`
+tests/                      Japa specs, flat
+tests/helpers/              shared test helpers
+tests/fixtures/              static fixtures
+tests/tooling/              specs for scripts
+tests/types/                type-level tests (`.ts`, not `.spec.ts`), where present
+examples/                   example applications
+docs/                       documentation
+```
+
+1. A top-level folder exists only for an exported subpath. Anything else goes in `src/`.
+2. Scripts are TypeScript under `bin/`, run with `node --import=@poppinss/ts-exec`. Use `.mjs`
+   only when the script must run before dependencies are installed, and explain why in a comment
+   at the top.
+3. Use one Japa config with `files: ['tests/**/*.spec.ts']`; do not add suites or `node --test`
+   scripts.
+4. Do not add a `scripts/` folder.
+
+## Repository-specific
+
+The application owns its language. Look up user-facing text through `@adonisjs/i18n` when the
+application uses it, with English as the fallback. Do not add locale detection, a package language
+setting, translations or a loader to this package.
