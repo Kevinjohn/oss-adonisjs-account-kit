@@ -229,7 +229,7 @@ selected the committed recipe spec, copied it into the fresh application's funct
 ran `pnpm test` with that copied file selected. Its private environment record preserves
 `NODE_ENV=test`, `TZ=UTC`, loopback host and an allocated port, matching `APP_URL`,
 `SESSION_DRIVER=memory`, `LIMITER_STORE=memory`, `LOG_LEVEL=silent` and a generated development
-`APP_KEY`. For P7, the printed replay command invoked the retained `rerun.mjs` with the recorded
+`APP_KEY`. For P7, the printed replay command invoked the retained `rerun.ts` with the recorded
 Node executable and those same settings.
 
 The mutation changed both the `credentials_changed_at` update and access-token deletion in the

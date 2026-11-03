@@ -12,7 +12,7 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 1. `pnpm lint`, `pnpm typecheck`, `pnpm build`: [source checks](#source-checks).
 2. `pnpm quick:test`: the SQLite suite; [source checks](#source-checks).
 3. `pnpm test:built-exports` and `pnpm test:built-setup`: the built package entry points and setup command; [source checks](#source-checks).
-4. `pnpm test:pg-service`, then `pnpm test:pg`: PostgreSQL 16 lifecycle and the full suite; [local PostgreSQL package tests](#local-postgresql-package-tests).
+4. `pnpm test:pg`: PostgreSQL 16 lifecycle and the full suite; [local PostgreSQL package tests](#local-postgresql-package-tests).
 5. `pnpm test:mysql` when a MySQL 8.4 server is available: [MySQL package tests](#mysql-package-tests).
 6. `pnpm test:adapter` and `pnpm docs:build`: [source checks](#source-checks).
 7. Pack one candidate archive and record its SHA-256; it must not change for the rest of the run: [identity and execution boundaries](#identity-and-execution-boundaries).
@@ -408,7 +408,6 @@ pnpm typecheck
 pnpm build
 pnpm quick:test
 pnpm test:built-exports
-pnpm test:pg-service
 pnpm test:pg
 pnpm test:adapter
 pnpm test:consumer -- --database=sqlite
@@ -617,7 +616,8 @@ publication or hosted workflow execution was performed.
 Use Node 24 (`nvm use`) and installed PostgreSQL 16 binaries. On macOS, install them with
 `brew install postgresql@16`; the wrapper also supports a PostgreSQL 16 `pg_ctl` on PATH with
 its companion utilities in the same directory. It does not install software or use Homebrew
-services. Run `pnpm test:pg-service` for the isolated lifecycle regression checks.
+services. The isolated lifecycle regression checks run within `pnpm quick:test`. Select them with
+`pnpm quick:test --files=pg_service.spec.ts --files=pg_service_inputs.spec.ts --files=pg_service_process_safety.spec.ts`.
 
 `pnpm test:pg` starts the checkout's disposable server, runs the package suite and stops the
 server on success, failure or interruption. Selectors are forwarded:

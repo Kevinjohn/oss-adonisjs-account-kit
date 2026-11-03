@@ -1,19 +1,20 @@
 // Records each feature demo against a running demo app and writes one asciicast v2 file per scenario.
-// Usage: node record.mjs <app-dir> <out-dir> [scenario ...]
+// Usage: node record.ts <app-dir> <out-dir> [scenario ...]
 import { execFileSync, spawn } from 'node:child_process'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { Cast, fit } from './cast.mjs'
-import { createScenarios } from './scenarios.mjs'
+import { Cast, fit } from './cast.js'
+import type { HttpOptions } from './scenarios.js'
+import { createScenarios } from './scenarios.js'
 
 const [appDir, outDir, ...only] = process.argv.slice(2)
-if (!appDir || !outDir) throw new Error('Usage: node record.mjs <app-dir> <out-dir> [scenario ...]')
+if (!appDir || !outDir) throw new Error('Usage: node record.ts <app-dir> <out-dir> [scenario ...]')
 const base = 'localhost:3333'
 const password = 'hunter2hunter2'
 
 /** Long secrets are shortened on screen; the real values are still sent. */
-const shorten = (text) =>
+const shorten = (text: string) =>
   text
     .replace(/(oat_[\w-]{2})[\w.-]{20,}/g, '$1…')
     .replace(
@@ -24,7 +25,7 @@ const shorten = (text) =>
 
 // ---- app process -------------------------------------------------------------------------------
 
-let server
+let server: ReturnType<typeof spawn> | undefined
 let log = ''
 /** Process IDs listening on port 3333; clients connected to it are not included. */
 const listeners = () =>
@@ -36,8 +37,8 @@ async function startServer() {
   if (listeners().length) throw new Error('Port 3333 is in use; stop that process first')
   log = ''
   server = spawn('node', ['ace', 'serve'], { cwd: appDir, stdio: ['ignore', 'pipe', 'pipe'] })
-  server.stdout.on('data', (d) => (log += d))
-  server.stderr.on('data', (d) => (log += d))
+  server.stdout!.on('data', (d) => (log += d))
+  server.stderr!.on('data', (d) => (log += d))
   for (let i = 0; i < 80 && !log.includes('started HTTP server'); i++) await sleep(250)
   if (!log.includes('started HTTP server')) throw new Error(`server did not start:\n${log}`)
 }
@@ -50,12 +51,13 @@ function stopServer() {
     } catch {}
   }
 }
-const ace = (...args) => execFileSync('node', ['ace', ...args], { cwd: appDir, encoding: 'utf8' })
+const ace = (...args: string[]) =>
+  execFileSync('node', ['ace', ...args], { cwd: appDir, encoding: 'utf8' })
 
 // ---- HTTP --------------------------------------------------------------------------------------
 
 /** Runs curl for real and returns { status, body }. */
-function curl(method, path, { body, token } = {}) {
+function curl(method: string, path: string | undefined, { body, token }: HttpOptions = {}) {
   const args = ['-s', '-o', '-', '-w', '\n%{http_code}', '-X', method, `${base}${path}`]
   if (body) args.push('-H', 'content-type: application/json', '-d', JSON.stringify(body))
   if (token) args.push('-H', `authorization: Bearer ${token}`)
@@ -72,7 +74,12 @@ function curl(method, path, { body, token } = {}) {
 }
 
 /** Shows the command a reader would type, runs it, and prints the status and body. */
-function http(cast, method, path, { body, token, tokenName = 'TOKEN' } = {}) {
+function http(
+  cast: Cast,
+  method: string,
+  path: string | undefined,
+  { body, token, tokenName = 'TOKEN' }: HttpOptions & { tokenName?: string } = {}
+) {
   let shown = `curl -X ${method} :3333${path}`
   if (token) shown += ` -H "authorization: Bearer $${tokenName}"`
   if (body) shown += ` -d '${shorten(JSON.stringify(body))}'`
@@ -86,7 +93,7 @@ function http(cast, method, path, { body, token, tokenName = 'TOKEN' } = {}) {
 // ---- mail --------------------------------------------------------------------------------------
 
 let mailSeen = 0
-async function nextMail(to) {
+async function nextMail(to: string) {
   for (let i = 0; i < 40; i++) {
     const mails = log
       .split('\n')
@@ -108,7 +115,7 @@ function skipMail() {
 }
 
 /** Prints the mail's subject and link as the dev server log shows them, and returns the link. */
-async function showMail(cast, to) {
+async function showMail(cast: Cast, to: string) {
   const mail = await nextMail(to)
   const [first] = mail.split('\n')
   const link = mail.match(/https?:\/\/\S+/)?.[0]
@@ -120,10 +127,10 @@ async function showMail(cast, to) {
 // ---- quiet setup -------------------------------------------------------------------------------
 
 /** Creates a verified account off screen and returns a bearer token for it. */
-async function verifiedUser(email) {
+async function verifiedUser(email: string) {
   curl('POST', '/api/auth/signup', { body: { email, password, passwordConfirmation: password } })
   const mail = await nextMail(email)
-  const path = new URL(mail.match(/https?:\/\/\S+/)[0]).pathname
+  const path = new URL(mail.match(/https?:\/\/\S+/)![0]).pathname
   curl('POST', path, { body: { password, passwordConfirmation: password } })
   return curl('POST', '/api/auth/login', { body: { email, password } }).body.token
 }
@@ -132,7 +139,15 @@ async function verifiedUser(email) {
 
 // ---- run ---------------------------------------------------------------------------------------
 
-const scenarios = createScenarios({ ace, http, curl, showMail, skipMail, verifiedUser, password })
+const scenarios: Record<string, (cast: Cast) => Promise<void>> = createScenarios({
+  ace,
+  http,
+  curl,
+  showMail,
+  skipMail,
+  verifiedUser,
+  password,
+})
 
 mkdirSync(outDir, { recursive: true })
 const selected = only.length ? only : Object.keys(scenarios)

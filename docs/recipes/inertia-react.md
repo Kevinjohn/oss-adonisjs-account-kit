@@ -192,7 +192,7 @@ The copied acceptance file ran in the fresh application's browser suite through 
 that file selected. Node 24 was enforced for the script and its children. The retained private
 settings use `NODE_ENV=test`, UTC, a loopback host with an allocated port and matching `APP_URL`,
 a generated development `APP_KEY`, `SESSION_DRIVER=database` and `LIMITER_STORE=memory`. Run the
-printed Node executable and `rerun.mjs` command to reproduce these settings; a bare test command
+printed Node executable and `rerun.ts` command to reproduce these settings; a bare test command
 with a different environment does not reproduce the record.
 
 For P7, the installed package's `advanceCredentialRevision` implementation had only its

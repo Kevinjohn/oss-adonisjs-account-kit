@@ -11,27 +11,40 @@ const docsSource = /^(?:docs\/(?!api\/|\.vitepress\/(?:cache|dist)\/).+|typedoc\
 // TypeDoc reads the exported sources and fails on warnings, so source changes build the docs too.
 const docsInput = /^(?!tests\/|examples\/|stubs\/|bin\/).+\.(?:ts|mts|cts)$/
 const pgService =
-  /^(?:bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.mjs|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.mjs)$/
+  /^(?:bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.ts)$/
 const checkChanged =
-  /^(?:bin\/check_changed[^/]*\.mjs|tests\/tooling\/check_changed_plan\.spec\.mjs)$/
+  /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_plan\.spec\.ts)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
 // Markdown never qualifies: tests/docs_links.spec.ts reads every tracked Markdown file.
 const outsideJapa =
-  /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.mjs|tests\/tooling\/.+|bin\/check_changed[^/]*\.mjs)$/
+  /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
 
 const minute = 60_000
 
 /**
  * @param {{ path: string, deleted: boolean }[]} files changed since the merge base
  * @param {{ static?: boolean }} options `static` leaves the full Japa suite out
- * @returns {({ id: string, command: string[], tests?: 'japa' | 'node', timeoutMs: number } | { id: string, skip: string })[]}
+ * @returns {({ id: string, command: string[], tests?: 'japa', timeoutMs: number } | { id: string, skip: string })[]}
  */
-export function planChecks(files, options = {}) {
+export type CheckStep =
+  | { id: string; command: string[]; tests?: 'japa'; timeoutMs: number; skip?: never }
+  | { id: string; skip: string; command?: never; tests?: never; timeoutMs?: never }
+export function planChecks(
+  files: { path: string; deleted: boolean }[],
+  options: { static?: boolean } = {}
+): CheckStep[] {
   const present = files.filter((file) => !file.deleted).map((file) => file.path)
-  const any = (pattern) => files.some((file) => pattern.test(file.path))
-  const steps = []
-  const step = (id, run, command, { skip, ...options }) =>
-    steps.push(run ? { id, command, timeoutMs: 5 * minute, ...options } : { id, skip })
+  const any = (pattern: RegExp) => files.some((file) => pattern.test(file.path))
+  const steps: CheckStep[] = []
+  const step = (
+    id: string,
+    run: boolean,
+    command: string[],
+    { skip, ...stepOptions }: { skip?: string; tests?: 'japa'; timeoutMs?: number }
+  ) =>
+    steps.push(
+      run ? { id, command, timeoutMs: 5 * minute, ...stepOptions } : { id, skip: skip ?? '' }
+    )
 
   // Formatting runs first, then lint, then everything else.
   const prettier = ['pnpm', 'exec', 'prettier', '--check']
@@ -92,14 +105,30 @@ export function planChecks(files, options = {}) {
   }
   if (full && options.static) steps.push({ id: 'full-suite', skip: '--static leaves it out' })
 
-  step('pg-service', any(pgService), ['pnpm', 'test:pg-service'], {
-    tests: 'node',
-    skip: 'pg.sh and its tests unchanged',
-  })
-  step('check-changed', any(checkChanged), ['pnpm', 'test:check-changed'], {
-    tests: 'node',
-    skip: 'check:changed and its tests unchanged',
-  })
+  step(
+    'pg-service',
+    any(pgService),
+    [
+      'pnpm',
+      'quick:test',
+      '--files=tests/tooling/pg_service.spec.ts',
+      '--files=tests/tooling/pg_service_inputs.spec.ts',
+      '--files=tests/tooling/pg_service_process_safety.spec.ts',
+    ],
+    {
+      tests: 'japa',
+      skip: 'pg.sh and its tests unchanged',
+    }
+  )
+  step(
+    'check-changed',
+    any(checkChanged),
+    ['pnpm', 'quick:test', '--files=tests/tooling/check_changed_plan.spec.ts'],
+    {
+      tests: 'japa',
+      skip: 'check:changed and its tests unchanged',
+    }
+  )
   step('docs', any(docsSource) || any(docsInput) || any(dependencies), ['pnpm', 'docs:build'], {
     timeoutMs: 10 * minute,
     skip: 'no documentation source changed',
@@ -109,26 +138,27 @@ export function planChecks(files, options = {}) {
 
 /**
  * Count the tests a runner reported, or undefined when its summary is missing.
- * @param {'japa' | 'node'} runner
  * @param {string} output
  */
-export function countTests(runner, output) {
+export function countTests(output: string) {
+  // Strip terminal ANSI escapes before reading the runner summary.
+  // eslint-disable-next-line no-control-regex
   const text = output.replace(/\u001b\[[0-9;]*m/g, '')
-  const match =
-    runner === 'japa'
-      ? /^\s*Tests\s+.*\((\d+)\)\s*$/m.exec(text)
-      : /^(?:#|ℹ)\s*tests\s+(\d+)\s*$/m.exec(text)
+  const match = /^\s*Tests\s+.*\((\d+)\)\s*$/m.exec(text)
   return match ? Number(match[1]) : undefined
 }
 
 /**
  * Why a step that ran failed, or undefined when it passed.
- * @param {{ timeoutMs: number, tests?: 'japa' | 'node' }} step
+ * @param {{ timeoutMs: number, tests?: 'japa' }} step
  * @param {{ code: number | null, timedOut: boolean, output: string, generatedChanged?: boolean }} result
  */
-export function stepProblem(step, result) {
+export function stepProblem(
+  step: { timeoutMs: number; tests?: 'japa' },
+  result: { code: number | null; timedOut: boolean; output: string; generatedChanged?: boolean }
+) {
   if (result.timedOut) return `stopped after ${step.timeoutMs / minute} minutes`
   if (result.code !== 0) return `exit ${result.code}`
-  if (step.tests && !countTests(step.tests, result.output)) return 'ran no tests'
+  if (step.tests && !countTests(result.output)) return 'ran no tests'
   if (result.generatedChanged) return 'committed generated output is stale'
 }

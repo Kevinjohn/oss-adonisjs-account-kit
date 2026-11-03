@@ -1,5 +1,5 @@
-// Builds a fresh AdonisJS API app that is ready for account-kit:setup, for record_setup.mjs.
-// Usage: node bin/demos/create_setup_app.mjs <app-dir>
+// Builds a fresh AdonisJS API app that is ready for account-kit:setup, for record_setup.ts.
+// Usage: node bin/demos/create_setup_app.ts <app-dir>
 import {
   appendFileSync,
   copyFileSync,
@@ -10,15 +10,15 @@ import {
 } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { run } from './pack_checkout.mjs'
-import { createAdonisApp } from './scaffold_app.mjs'
+import { run } from './pack_checkout.js'
+import { createAdonisApp } from './scaffold_app.js'
 
 const choices = fileURLToPath(new URL('../../docs/setup_choices.api.example.json', import.meta.url))
-const { appDir, tarball } = createAdonisApp('create_setup_app.mjs')
+const { appDir, tarball } = createAdonisApp('create_setup_app.ts')
 
 // Setup's prerequisites: TypeScript to inspect the app, Mail and a limiter store.
 const packages = ['typescript@^5.9.3', '@adonisjs/mail@^10', '@adonisjs/limiter']
-run('npm', ['install', join('..', tarball), ...packages], appDir)
+run('pnpm', ['add', join('..', tarball), ...packages], appDir)
 run('node', ['ace', 'configure', '@adonisjs/mail', '--transports=smtp'], appDir)
 run('node', ['ace', 'configure', '@adonisjs/limiter', '--store=database'], appDir)
 

@@ -1,6 +1,6 @@
 // A supervised fixture that runs bin/pg.sh against fake PostgreSQL tools.
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import { createServer } from 'node:net'
 import {
   mkdtemp,
@@ -17,10 +17,12 @@ import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
-import { tools } from './pg_service_fake_tools.mjs'
+import type { Readable } from 'node:stream'
+import type { TestContext } from '@japa/runner/core'
+import { tools } from './pg_service_fake_tools.js'
 
 const source = fileURLToPath(new URL('../../bin/pg.sh', import.meta.url))
-export async function exists(path) {
+export async function exists(path: string) {
   try {
     await access(path)
     return true
@@ -29,7 +31,11 @@ export async function exists(path) {
   }
 }
 
-export async function until(check, description, timeout = 10000) {
+export async function until(
+  check: () => boolean | Promise<boolean>,
+  description: string,
+  timeout = 10000
+) {
   const deadline = Date.now() + timeout
   while (!(await check())) {
     assert.ok(Date.now() < deadline, `timed out waiting for ${description}`)
@@ -37,7 +43,7 @@ export async function until(check, description, timeout = 10000) {
   }
 }
 
-export function alive(pid) {
+export function alive(pid: number | string | undefined) {
   try {
     process.kill(Number(pid), 0)
     return true
@@ -46,10 +52,19 @@ export function alive(pid) {
   }
 }
 
-export async function fixture(t, config = {}) {
+export type FixtureConfig = {
+  platform?: string
+  [key: string]: string | number | boolean | undefined
+}
+type RunResult = { code: number | null; signal: NodeJS.Signals | null; output: string }
+type RunOptions = { cwd?: string; env?: NodeJS.ProcessEnv }
+export async function fixture(t: Pick<TestContext, 'cleanup'>, config: FixtureConfig = {}) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'pg service [fixture]-')))
   const bin = join(root, 'bin')
-  const children = []
+  const children: {
+    child: ChildProcessByStdio<null, Readable, Readable>
+    done: Promise<RunResult>
+  }[] = []
   await mkdir(bin)
   await mkdir(join(root, 'tests'))
   await copyFile(source, join(bin, 'pg.sh'))
@@ -67,9 +82,12 @@ export async function fixture(t, config = {}) {
     await writeFile(join(bin, name), tools)
     await chmod(join(bin, name), 0o755)
   }
+  const inspectProcess = Boolean(config.platform) || process.platform === 'linux'
+  config = { ...config, platform: config.platform ?? process.platform }
   await writeFile(join(root, 'control.json'), JSON.stringify(config))
-  if (config.platform) {
-    // Exercise the real inline inspection code with fake platform observations.
+  if (inspectProcess) {
+    // The fake postgres executable is a Node script, so Linux /proc/exe names Node.
+    // Model its PostgreSQL identity while retaining the real inspection checks.
     const preload = join(root, 'process_inspection.cjs')
     await writeFile(
       preload,
@@ -82,11 +100,11 @@ const realpath = fs.realpathSync
 Object.defineProperty(process, 'platform', { value: config.platform })
 fs.realpathSync = (name, ...options) => {
   const proc = /^\\/proc\\/([0-9]+)\\/(exe|cwd)$/.exec(String(name))
-  if (proc) {
+  if (proc && fs.readFileSync(path.join(root, 'server-pid'), 'utf8').trim() === proc[1]) {
     process.kill(Number(proc[1]), 0)
     name = proc[2] === 'exe'
       ? config.procExecutable || path.join(root, 'bin/postgres')
-      : config.procDirectory || path.join(root, 'tmp/pg16')
+      : config.procDirectory || config.postgresCwd || path.join(root, 'tmp/pg16')
   }
   return realpath(name, ...options)
 }
@@ -103,12 +121,14 @@ process.exit(result.status === null ? 1 : result.status)
     await chmod(join(bin, 'node'), 0o755)
   }
   const listener = createServer()
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     listener.once('error', reject)
     listener.listen(0, '127.0.0.1', resolve)
   })
-  const port = listener.address().port
-  await new Promise((resolve) => listener.close(resolve))
+  const address = listener.address()
+  assert.ok(address && typeof address !== 'string')
+  const port = address.port
+  await new Promise<void>((resolve) => listener.close(() => resolve()))
   const env = {
     ...process.env,
     PATH: `${bin}:${dirname(process.execPath)}:/usr/bin:/bin`,
@@ -117,10 +137,12 @@ process.exit(result.status === null ? 1 : result.status)
   // Each wrapper has its own group. Bash job control gives its runner a separate
   // group, which is recorded by the fake pnpm before it can create descendants.
   const ownedPids = async () => {
-    const groups = new Set(children.map(({ child }) => child.pid))
-    const pids = new Set()
+    const groups = new Set(children.flatMap(({ child }) => (child.pid ? [child.pid] : [])))
+    const pids = new Set<number>()
     if (await exists(join(root, 'runner-pids'))) {
-      for (const line of (await readFile(join(root, 'runner-pids'), 'utf8')).trim().split('\n')) {
+      for (const line of await readFile(join(root, 'runner-pids'), 'utf8').then((value) =>
+        value.trim().split('\n')
+      )) {
         const pid = Number(line)
         if (Number.isSafeInteger(pid) && pid > 1) groups.add(pid)
       }
@@ -137,9 +159,9 @@ process.exit(result.status === null ? 1 : result.status)
     // Stop wrappers first so no new runner group can appear after the PID snapshot.
     for (const { child } of children) {
       try {
-        process.kill(-child.pid, 'SIGKILL')
+        process.kill(-child.pid!, 'SIGKILL')
       } catch (error) {
-        if (error.code !== 'ESRCH') throw error
+        if (!(error instanceof Error) || !('code' in error) || error.code !== 'ESRCH') throw error
       }
     }
     const { groups, pids } = await ownedPids()
@@ -147,19 +169,19 @@ process.exit(result.status === null ? 1 : result.status)
       try {
         process.kill(-group, 'SIGKILL')
       } catch (error) {
-        if (error.code !== 'ESRCH') throw error
+        if (!(error instanceof Error) || !('code' in error) || error.code !== 'ESRCH') throw error
       }
     }
     for (const pid of pids) {
       try {
         process.kill(pid, 'SIGKILL')
       } catch (error) {
-        if (error.code !== 'ESRCH') throw error
+        if (!(error instanceof Error) || !('code' in error) || error.code !== 'ESRCH') throw error
       }
     }
     return { groups, pids }
   }
-  const start = (args, options = {}) => {
+  const start = (args: string[], options: RunOptions = {}) => {
     const child = spawn('/bin/bash', [join(bin, 'pg.sh'), ...args], {
       cwd: options.cwd || root,
       env: { ...env, ...options.env },
@@ -174,8 +196,8 @@ process.exit(result.status === null ? 1 : result.status)
     child.stderr.on('data', (data) => {
       output += data
     })
-    let finish
-    const done = new Promise((resolve, reject) => {
+    let finish!: (result: RunResult) => void
+    const done = new Promise<RunResult>((resolve, reject) => {
       finish = resolve
       child.once('error', reject)
       child.once('close', (code, signal) =>
@@ -203,7 +225,7 @@ process.exit(result.status === null ? 1 : result.status)
     children.push({ child, done })
     return { child, done }
   }
-  t.after(async () => {
+  t.cleanup(async () => {
     const { groups, pids } = await terminateOwned()
     try {
       await until(
@@ -235,13 +257,13 @@ process.exit(result.status === null ? 1 : result.status)
     port,
     env,
     start,
-    run: async (args, options) => start(args, options).done,
-    control: async (next) => {
+    run: async (args: string[], options?: RunOptions) => start(args, options).done,
+    control: async (next: FixtureConfig) => {
       Object.assign(config, next)
       await writeFile(join(root, 'control.json'), JSON.stringify(config))
     },
-    marker: (name) => until(() => exists(join(root, name)), name),
-    release: (name) => writeFile(join(root, `${name}-release`), ''),
+    marker: (name: string) => until(() => exists(join(root, name)), name),
+    release: (name: string) => writeFile(join(root, `${name}-release`), ''),
     stopped: async () => {
       assert.equal(await exists(join(root, 'tmp/pg16/postmaster.pid')), false)
       assert.equal(await exists(join(root, 'tmp/pg16.lock')), false)

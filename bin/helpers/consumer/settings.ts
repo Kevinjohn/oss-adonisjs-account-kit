@@ -12,7 +12,9 @@ if (nodeMajor !== 24) {
   throw new Error(`Node 24 is required; current runtime is ${process.versions.node}`)
 }
 
-function option(name, fallback) {
+function option(name: string, fallback: string): string
+function option(name: string, fallback?: string): string | undefined
+function option(name: string, fallback?: string) {
   const prefix = `--${name}=`
   const arg = process.argv.find((value) => value.startsWith(prefix))
   return arg ? arg.slice(prefix.length) : fallback

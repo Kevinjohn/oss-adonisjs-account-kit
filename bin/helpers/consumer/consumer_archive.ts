@@ -1,11 +1,14 @@
 import { createRequire } from 'node:module'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { run } from './harness.mjs'
-import { ensureExclusivePostgresDatabase, pgClient } from './postgres.mjs'
-import { compatibility, database, repoRoot } from './settings.mjs'
+import { run } from './harness.js'
+import { ensureExclusivePostgresDatabase, pgClient } from './postgres.js'
+import { compatibility, database, repoRoot } from './settings.js'
 
-function setCompatibilityVersions(manifest) {
+function setCompatibilityVersions(manifest: {
+  dependencies: Record<string, string>
+  devDependencies: Record<string, string>
+}) {
   const versions =
     compatibility === 'minimum'
       ? {
@@ -29,7 +32,7 @@ function setCompatibilityVersions(manifest) {
   manifest.dependencies.pg = '^8.23.1'
 }
 
-export async function installArchive(appRoot, archive) {
+export async function installArchive(appRoot: string, archive: string) {
   const manifestPath = join(appRoot, 'package.json')
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
   manifest.dependencies['adonisjs-account-kit'] = `file:${resolve(archive)}`
@@ -51,7 +54,7 @@ export async function installArchive(appRoot, archive) {
   if (packageMetadata.name !== 'adonisjs-account-kit') {
     throw new Error(`Unexpected installed package name: ${packageMetadata.name}`)
   }
-  const dependencyVersions = {}
+  const dependencyVersions: Record<string, string> = {}
   for (const name of [
     '@adonisjs/core',
     '@adonisjs/assembler',

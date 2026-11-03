@@ -1,10 +1,10 @@
 // Scaffolds a fresh AdonisJS API app beside a tarball of this checkout, for the demo scripts.
 import { existsSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
-import { packCheckout, run } from './pack_checkout.mjs'
+import { packCheckout, run } from './pack_checkout.js'
 
 /** Reads the app directory from the command line, then packs the checkout and creates the app. */
-export function createAdonisApp(script) {
+export function createAdonisApp(script: string) {
   const [target] = process.argv.slice(2)
   if (!target) throw new Error(`Usage: node bin/demos/${script} <app-dir>`)
   const appDir = resolve(target)
@@ -13,8 +13,8 @@ export function createAdonisApp(script) {
 
   const tarball = packCheckout(dirname(appDir))
   run(
-    'npx',
-    ['-y', 'create-adonisjs@3.4.0', basename(appDir), '--kit=api', '--pkg=npm'],
+    'pnpm',
+    ['dlx', 'create-adonisjs@3.4.0', basename(appDir), '--kit=api', '--pkg=pnpm'],
     dirname(appDir)
   )
   return { appDir, tarball }

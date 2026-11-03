@@ -8,14 +8,14 @@ import {
   databaseEnvironment,
   installArchive,
   packageMigrations,
-} from './consumer_app.mjs'
-import { digest, expectFailure, hashFiles, run } from './harness.mjs'
-import { copyFixture } from './fixture.mjs'
-import { resetExclusivePostgresSchema } from './postgres.mjs'
-import { fixtureRoot, prepareOnly, tempRoot, userIdType, usersTable } from './settings.mjs'
+} from './consumer_app.js'
+import { digest, expectFailure, hashFiles, run } from './harness.js'
+import { copyFixture } from './fixture.js'
+import { resetExclusivePostgresSchema } from './postgres.js'
+import { fixtureRoot, prepareOnly, tempRoot, userIdType, usersTable } from './settings.js'
 
 /** Checks the generated config as written, before the app's formatter can repair it. */
-async function checkGeneratedStyle(appRoot, env) {
+async function checkGeneratedStyle(appRoot: string, env: NodeJS.ProcessEnv) {
   const configPath = join(appRoot, 'config/account_kit.ts')
   // The AdonisJS stub engine trims every file it renders, so the final newline is not ours.
   const generated = await readFile(configPath, 'utf8')
@@ -31,7 +31,7 @@ async function checkGeneratedStyle(appRoot, env) {
   }
 }
 
-export async function runFresh(candidate, runName) {
+export async function runFresh(candidate: string, runName: string) {
   const appRoot = join(tempRoot, runName)
   await copyFixture(fixtureRoot, appRoot)
   await mkdir(join(appRoot, 'tmp'), { recursive: true })
@@ -57,7 +57,8 @@ export async function runFresh(candidate, runName) {
   const withoutAdmission = withoutProvider
     .replace(/^\s*\(\) => import\(['"]adonisjs-account-kit\/admission\/provider['"]\),?\r?\n/m, '')
     .replace(/^\s*\(\) => import\(['"]adonisjs-account-kit\/admission\/commands['"]\),?\r?\n/m, '')
-  const admissionEntries = (rc) => (rc.match(/adonisjs-account-kit\/admission\//g) ?? []).length
+  const admissionEntries = (rc: string) =>
+    (rc.match(/adonisjs-account-kit\/admission\//g) ?? []).length
   if (admissionEntries(withoutProvider) !== 2 || admissionEntries(withoutAdmission) !== 0)
     throw new Error('Fresh fixture did not contain removable admission entries')
   await writeFile(adonisrcPath, withoutAdmission)

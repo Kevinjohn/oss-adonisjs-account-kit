@@ -140,4 +140,4 @@ configured policy, and enumerated values such as `purpose` are checked by the ha
   accept and reject the same inputs.
 - `tests/managed_openapi_snapshot.spec.ts` compares the generator with the committed documents in
   `tests/fixtures/openapi/`. After a deliberate change, run `pnpm build` and
-  `node bin/openapi_snapshot.mjs`, then review the diff.
+  `node --import=@poppinss/ts-exec bin/openapi_snapshot.ts`, then review the diff.

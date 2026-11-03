@@ -169,7 +169,7 @@ when rerun with the harness-printed command and retained test environment from r
 `account-kit-recipe-gpaGD9`:
 
 ```sh
-<node-24.21.0-executable> <retained-run-directory>/rerun.mjs
+<node-24.21.0-executable> <retained-run-directory>/rerun.ts
 ```
 
 Notifications were captured by an in-process callback; this verifies link generation, not delivery

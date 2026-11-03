@@ -1,10 +1,10 @@
 // Prepares the dedicated PostgreSQL database that consumer runs own.
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
-import { database, secret } from './settings.mjs'
+import { database, secret } from './settings.js'
 
 /** A client for one database on the consumer server, loaded from the app's own `pg`. */
-export function pgClient(appRoot, databaseName) {
+export function pgClient(appRoot: string, databaseName: string) {
   const require = createRequire(join(appRoot, 'package.json'))
   const { Client } = require('pg')
   return new Client({
@@ -16,7 +16,7 @@ export function pgClient(appRoot, databaseName) {
   })
 }
 
-export async function resetExclusivePostgresSchema(appRoot) {
+export async function resetExclusivePostgresSchema(appRoot: string) {
   if (database !== 'postgres') return
   const databaseName = process.env.DB_DATABASE ?? 'account_kit_consumer'
   if (databaseName !== 'account_kit_consumer') {
@@ -31,7 +31,7 @@ export async function resetExclusivePostgresSchema(appRoot) {
   await client.end()
 }
 
-export async function ensureExclusivePostgresDatabase(appRoot) {
+export async function ensureExclusivePostgresDatabase(appRoot: string) {
   if (database !== 'postgres') return
   const databaseName = process.env.DB_DATABASE ?? 'account_kit_consumer'
   if (databaseName !== 'account_kit_consumer') {
