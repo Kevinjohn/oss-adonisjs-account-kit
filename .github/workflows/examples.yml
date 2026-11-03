@@ -1,0 +1,74 @@
+name: examples
+
+on:
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'stubs/**'
+      - 'docs/guide/**'
+      - 'docs/recipes/patches/**'
+      - 'bin/test_recipe.ts'
+      - 'bin/prepare_example_archive.ts'
+      - 'http/**'
+      - '.github/workflows/examples.yml'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: examples-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  examples:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:recipe --recipe=api-password-reset
+      - run: pnpm build
+      - run: pnpm pack --out tmp/examples/adonisjs-account-kit.tgz
+      - name: Prepare and test examples
+        env:
+          HOST: 127.0.0.1
+          LIMITER_STORE: memory
+        run: |
+          for manifest in examples/*/package.json; do
+            if node -e 'const p = require("./" + process.argv[1]); process.exit(p.scripts?.test ? 0 : 1)' "$manifest"; then
+              directory=$(dirname "$manifest")
+              mkdir -p "$directory/vendor"
+              cp tmp/examples/adonisjs-account-kit.tgz "$directory/vendor/adonisjs-account-kit.tgz"
+              node --import=@poppinss/ts-exec bin/prepare_example_archive.ts "$directory"
+              pnpm --dir "$directory" install --frozen-lockfile
+              (
+                cd "$directory"
+                cp .env.example .env
+                pnpm exec node ace generate:key --force
+                pnpm exec node ace codegen
+                pnpm exec node ace migration:run --force
+                if node -e 'const p = require("./package.json"); process.exit(p.devDependencies?.["@japa/browser-client"] ? 0 : 1)'; then
+                  PLAYWRIGHT_CLI=$(node -p "require('node:path').join(require('node:path').dirname(require.resolve('playwright/package.json', {paths:[require.resolve('@japa/browser-client')]})), 'cli.js')")
+                  node "$PLAYWRIGHT_CLI" install --with-deps chromium
+                  pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort > /tmp/example-vite.log 2>&1 &
+                  vite_pid=$!
+                  trap 'kill "$vite_pid" 2>/dev/null || true; wait "$vite_pid" 2>/dev/null || true' EXIT
+                  for attempt in {1..30}; do
+                    if curl -fsS http://127.0.0.1:5173/@vite/client >/dev/null; then break; fi
+                    sleep 1
+                  done
+                  curl -fsS http://127.0.0.1:5173/@vite/client >/dev/null
+                fi
+                pnpm test
+              )
+            fi
+          done

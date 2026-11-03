@@ -49,6 +49,7 @@ export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
       db.manager.patch(connectionName, testConfig)
       if (db.manager.get(connectionName)?.config !== testConfig)
         throw new Error('Could not isolate test database')
+      return testUtils.db().truncate()
     },
   ],
   teardown: [],

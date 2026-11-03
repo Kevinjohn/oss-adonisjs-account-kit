@@ -7,6 +7,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/FUNDING.yml'
       - '.github/pull_request_template.md'
+      - '.github/dependabot.yml'
       - '.github/workflows/codeql.yml'
       - '.github/workflows/docs.yml'
       - '.github/workflows/scorecard.yml'
@@ -15,6 +16,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/FUNDING.yml'
       - '.github/pull_request_template.md'
+      - '.github/dependabot.yml'
       - '.github/workflows/codeql.yml'
       - '.github/workflows/docs.yml'
       - '.github/workflows/scorecard.yml'
@@ -24,11 +26,9 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same branch or pull request cancels the older run. Release runs keep their
-# own group because a called workflow takes the caller's name.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: checks-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -39,21 +39,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        database: [pg, better-sqlite3]
+        database: [better-sqlite3, pg]
     env:
       DB_CLIENT: ${{ matrix.database }}
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
-      DB_DATABASE: account_kit_test
+      DB_DATABASE: package_test
     services:
       postgres:
         image: ${{ matrix.database == 'pg' && 'postgres:16' || '' }}
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: account_kit_test
+          POSTGRES_DB: package_test
         ports:
           - 5432:5432
         options: >-

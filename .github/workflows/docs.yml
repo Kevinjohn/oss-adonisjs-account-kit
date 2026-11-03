@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'typedoc.json'
       - 'index.ts'
       - 'configure.ts'
       - 'src/**'
@@ -15,14 +16,36 @@ on:
       - 'providers/**'
       - 'services/**'
       - 'testing/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
       - 'typedoc.json'
+      - 'index.ts'
+      - 'configure.ts'
+      - 'src/**'
+      - 'http/**'
+      - 'adapters/**'
+      - 'commands/**'
+      - 'providers/**'
+      - 'services/**'
+      - 'testing/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'tsconfig.json'
       - '.github/workflows/docs.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: pages
+  # Each PR build has its own queue; deployments share the Pages queue.
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.pull_request.number) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
@@ -44,6 +67,7 @@ jobs:
           path: docs/.vitepress/dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:

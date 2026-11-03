@@ -53,7 +53,7 @@ export function testConnection(client: TestClient, options: TestConnectionOption
           port: Number(process.env.DB_PORT ?? 55432),
           user: process.env.DB_USER ?? 'account_kit',
           password: process.env.DB_PASSWORD ?? '',
-          database: process.env.DB_DATABASE ?? 'account_kit_test',
+          database: process.env.DB_DATABASE ?? 'package_test',
         },
         pool: {
           min: 1,
@@ -84,7 +84,7 @@ export function testConnection(client: TestClient, options: TestConnectionOption
             port: Number(process.env.DB_PORT ?? 33306),
             user: process.env.DB_USER ?? 'root',
             password: process.env.DB_PASSWORD ?? '',
-            database: process.env.DB_DATABASE ?? 'account_kit_test',
+            database: process.env.DB_DATABASE ?? 'package_test',
             timezone: 'Z',
           },
           pool: {
@@ -130,7 +130,7 @@ export async function dropPostgresFixtureSchema(schema: string): Promise<void> {
     port: Number(process.env.DB_PORT ?? 55432),
     user: process.env.DB_USER ?? 'account_kit',
     password: process.env.DB_PASSWORD ?? '',
-    database: process.env.DB_DATABASE ?? 'account_kit_test',
+    database: process.env.DB_DATABASE ?? 'package_test',
   })
   try {
     await client.connect()

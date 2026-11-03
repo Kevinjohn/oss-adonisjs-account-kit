@@ -37,7 +37,7 @@ test.group('pg_service.spec', (group) => {
       DB_PORT: String(f.port),
       DB_USER: 'account_kit',
       DB_PASSWORD: '',
-      DB_DATABASE: 'account_kit_test',
+      DB_DATABASE: 'package_test',
       KEEP_ME: 'yes',
     }))
       assert.equal(observed.env[key], value)
