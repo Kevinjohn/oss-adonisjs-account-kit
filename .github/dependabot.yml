@@ -1,12 +1,6 @@
-# Update policy: follow AdonisJS.
-# - Patch updates: always, grouped into one weekly pull request.
-# - Minor updates: only for AdonisJS-owned packages, in a separate grouped pull request. Everything
-#   else (TypeScript included) moves to a new minor by hand, when AdonisJS moves.
-# - Major updates: never. Raise them by hand alongside an AdonisJS major.
-# Dependabot allows one schedule per ecosystem and directory, so patch and minor updates share the
-# weekly run; the groups keep them in separate pull requests.
-# Dependabot `ignore` rules cannot exclude a pattern, so the minor rule lists the non-AdonisJS
-# packages. Add new third-party dependencies to that list.
+# Dependabot opens one pull request a week with patch updates to npm packages.
+# Minor and major updates, and GitHub Actions versions, are updated by hand (see
+# docs/maintainers/README.md, "Monthly").
 version: 2
 updates:
   - package-ecosystem: npm
@@ -16,50 +10,7 @@ updates:
     groups:
       patch:
         update-types: ['patch']
-      adonisjs-minor:
-        patterns: ['@adonisjs/*', '@vinejs/*', '@japa/*', '@poppinss/*']
-        update-types: ['minor']
     ignore:
       - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: '@release-it/*'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: '@types/*'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'ajv*'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'better-sqlite3'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'c8'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'copyfiles'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'cross-env'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'drizzle-orm'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'eslint'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'luxon'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'mysql2'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'pg'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'prettier'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'release-it'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'tsdown'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'typedoc*'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'typescript'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'vitepress'
-        update-types: ['version-update:semver-minor']
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
     open-pull-requests-limit: 5
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: monthly
