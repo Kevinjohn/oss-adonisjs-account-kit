@@ -82,9 +82,12 @@ export async function fixture(t: Pick<TestContext, 'cleanup'>, config: FixtureCo
     await writeFile(join(bin, name), tools)
     await chmod(join(bin, name), 0o755)
   }
+  const inspectProcess = Boolean(config.platform) || process.platform === 'linux'
+  config = { ...config, platform: config.platform ?? process.platform }
   await writeFile(join(root, 'control.json'), JSON.stringify(config))
-  if (config.platform) {
-    // Exercise the real inline inspection code with fake platform observations.
+  if (inspectProcess) {
+    // The fake postgres executable is a Node script, so Linux /proc/exe names Node.
+    // Model its PostgreSQL identity while retaining the real inspection checks.
     const preload = join(root, 'process_inspection.cjs')
     await writeFile(
       preload,
@@ -97,11 +100,11 @@ const realpath = fs.realpathSync
 Object.defineProperty(process, 'platform', { value: config.platform })
 fs.realpathSync = (name, ...options) => {
   const proc = /^\\/proc\\/([0-9]+)\\/(exe|cwd)$/.exec(String(name))
-  if (proc) {
+  if (proc && fs.readFileSync(path.join(root, 'server-pid'), 'utf8').trim() === proc[1]) {
     process.kill(Number(proc[1]), 0)
     name = proc[2] === 'exe'
       ? config.procExecutable || path.join(root, 'bin/postgres')
-      : config.procDirectory || path.join(root, 'tmp/pg16')
+      : config.procDirectory || config.postgresCwd || path.join(root, 'tmp/pg16')
   }
   return realpath(name, ...options)
 }
