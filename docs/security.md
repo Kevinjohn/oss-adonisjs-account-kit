@@ -166,8 +166,8 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   [GitHub release](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases), whose notes
   give the archive's SHA-256. Compare it with `shasum -a 256` before installing.
 - CodeQL and OpenSSF Scorecard workflows scan the public repository.
-- Dependabot takes patch updates for everything and minor updates only for AdonisJS-owned
-  packages; majors move by hand with AdonisJS.
+- Dependabot opens one weekly pull request with patch updates to npm packages. Minor and major
+  updates, and GitHub Actions versions, move by hand each month.
 - The [dependency audit assessment](compatibility.md#dependency-audit-assessment) records known
   advisories and why each does not apply.
 
