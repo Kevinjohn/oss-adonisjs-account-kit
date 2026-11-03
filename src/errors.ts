@@ -11,6 +11,7 @@ export class AccountKitError extends Exception {
   static status = 500
   declare code: string
 
+  /** The translation key for this error's current machine-readable code. */
   get identifier(): string {
     return `errors.${this.code}`
   }
