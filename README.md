@@ -1,20 +1,18 @@
 # Account Kit for AdonisJS
 
 [![checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml/badge.svg?branch=main)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/workflows/checks.yml)
-[![Release: alpha](https://img.shields.io/github/v/release/Kevinjohn/oss-adonisjs-account-kit?include_prereleases&label=alpha&color=orange)](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases)
 [![Node.js 24+](https://img.shields.io/badge/node-%3E%3D24-339933)](package.json)
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
 > Pre-release. Installed from GitHub releases; not on npm.
 
+## What you get
+
 Password reset, email verification, invitations and account settings for AdonisJS 7. You keep your
-user model, routes and frontend; Account Kit handles the tokens, rate limits, session revocation and
+user model, routes and frontend; Account Kit handles tokens, rate limits, session revocation and
 transactions that are easy to get wrong.
 
 ![A password reset in a new AdonisJS app: the doctor passes, a reset request returns the generic response, the dev server log prints the email, the link resets the password once and is rejected the second time](docs/assets/demo.svg)
-
-## What you get
 
 - **Forgot password** with single-use, expiring links and the same response for known and unknown
   addresses.
@@ -23,7 +21,7 @@ transactions that are easy to get wrong.
   password signs out older sessions and tokens.
 - **Invitations** with roles, resend and revoke.
 - **Opt-in extras**: magic links, signed-in devices, account export and deletion, Google and GitHub
-  sign-in, admission rules, OpenAPI. See [all features](docs/guide/features.md).
+  sign-in, admission rules and OpenAPI. See [all features](docs/guide/features.md).
 - **Your ORM**: Lucid by default, or Drizzle, Prisma and plain SQL adapters.
 
 ## Install
@@ -33,21 +31,21 @@ Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install th
 
 ```sh
 node ace add @adonisjs/limiter
-npm install https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.4/adonisjs-account-kit-0.1.4.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.4/adonisjs-account-kit-0.1.4.tgz
 node ace configure adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor
 ```
 
-`pnpm add` and `yarn add` take the same URL. Prefer generated files? Use [guided setup](docs/guide/setup.md)
-in place of `node ace configure`.
+Prefer generated files? Use [guided setup](docs/guide/setup.md) instead of
+`node ace configure`.
 
 ### Dynamic providers
 
-If configure reports that it cannot inspect providers in `adonisrc.ts`, make sure the dynamic list
-registers Account Kit exactly once. Keep an existing `adonisjs-account-kit/account_kit_provider`
-entry or the legacy `adonisjs-account-kit/providers/account_kit_provider` alias; add the current
-export below only when neither entry is already present:
+If configure cannot inspect providers in `adonisrc.ts`, make sure the dynamic list registers
+Account Kit exactly once. Keep an existing `adonisjs-account-kit/account_kit_provider` entry or the
+legacy `adonisjs-account-kit/providers/account_kit_provider` alias; add the current export below
+only when neither entry is already present:
 
 ```ts
 const applicationProviders = () => [
@@ -56,7 +54,7 @@ const applicationProviders = () => [
 ]
 ```
 
-If you pass a config variable to `defineConfig`, expose its settings, existing commands, and provider
+If you pass a config variable to `defineConfig`, expose its settings, existing commands and provider
 list in an object literal first. This keeps the existing command entries while giving configure a
 static commands array to extend:
 
@@ -79,8 +77,8 @@ provider expression and completes the remaining setup. Running it again is safe.
 
 ## Quick example
 
-A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds validation,
-error mapping and the reset action.
+A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds
+validation, error mapping and the reset action.
 
 ```ts
 import app from '@adonisjs/core/services/app'
@@ -102,15 +100,27 @@ export default class PasswordResetsController {
 }
 ```
 
+## Tested against
+
+| | Every pull request | Weekly and before each release |
+| --- | --- | --- |
+| Node.js | 24 | 24 |
+| AdonisJS core | locked version | lowest supported (7.0.0) and latest 7.x |
+| Lucid | locked version | lowest supported and latest 22.x |
+| SQLite (better-sqlite3) | yes | yes |
+| PostgreSQL 16 | yes | yes |
+| MySQL 8.4 | no (experimental) | experimental |
+
 ## Documentation
 
-- [Getting started](docs/guide/getting-started.md): install and add password reset to an API starter.
-- [Choose your stack](docs/README.md#choose-your-stack-and-starting-point): Inertia React, Inertia
-  Vue, Hypermedia/Edge or API, for new and existing applications.
-- [Recipes](docs/recipes/index.md) and [reference](docs/reference/README.md).
-- [Security model](docs/guide/security.md) and [operations](docs/guide/operations.md), including the
-  production checklist.
-- [README-AGENTS.md](README-AGENTS.md): the requirements, invariants and file map for AI coding
+- [Getting started](docs/guide/getting-started.md): install and add password reset to an API
+  starter.
+- [Troubleshooting](docs/guide/troubleshooting.md) and [reference](docs/reference/README.md).
+- [Generated API reference](docs/reference/api/index.md).
+- [Recipes](docs/recipes/index.md).
+- [Security model](docs/guide/security.md) and [operations](docs/guide/operations.md), including
+  the production checklist.
+- [README-AGENTS.md](README-AGENTS.md): requirements, invariants and the source map for coding
   agents.
 
 Need two-factor authentication or passkeys? Use [AdonisJS Plus](https://plus.adonisjs.com).

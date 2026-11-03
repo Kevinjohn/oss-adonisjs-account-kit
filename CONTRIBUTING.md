@@ -1,11 +1,9 @@
 # Contributing
 
-Thanks for helping. Bug reports, documentation fixes, recipes and adapters are all welcome.
-
 ## Before you start
 
 - For a bug, open an issue with a reproduction first, unless the fix is a one-line change.
-- For a new feature or a behavior change, open an issue to agree the shape before writing code.
+- For a new feature or a behavior change, open an issue to agree on the shape before writing code.
   Account Kit keeps a small public surface on purpose.
 - Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
   public issue.
@@ -35,57 +33,52 @@ pnpm quick:test
 
 ## Checks
 
-Run the repository scripts, not the bare tools. They carry the flags the release gate uses.
+Run the repository scripts, not the bare tools. They carry the flags used by CI.
 
-| Script               | What it does                                                                   |
-| -------------------- | ------------------------------------------------------------------------------ |
-| `pnpm format:check`  | Prettier on every tracked file, without writing                                |
-| `pnpm lint`          | ESLint with the AdonisJS config                                                |
-| `pnpm typecheck`     | TypeScript without emitting                                                    |
-| `pnpm quick:test`    | Japa test suite against SQLite                                                 |
-| `pnpm test`          | `pnpm quick:test` under c8; fails below 94% lines, 90% branches, 94% functions |
-| `pnpm test:pg`       | The same suite against a throwaway local PostgreSQL 16 cluster                 |
-| `pnpm build`         | Compiles to `build/`                                                           |
-| `pnpm test:consumer` | Packs the package and installs it into a copy of `examples/api`                |
-| `pnpm check:changed` | The checks above that cover the files changed since `origin/main`              |
-
-`pnpm check:changed [base]` runs Prettier first, then ESLint, on the changed files (the whole repository
-when their configuration or dependencies changed), the type-check when TypeScript or dependencies
-changed, the changed specs (or the full SQLite suite when any other file changed), the `pg.sh`
-script tests when they changed, and the docs build when docs, exported sources or dependencies
-changed. It does not run `pnpm test:pg`, `pnpm build` or `pnpm test:consumer`.
-With `--static` it leaves the full SQLite suite out and runs only the changed specs, for checking
-several branches that share one full run.
+| Script | What it does |
+| --- | --- |
+| `pnpm format:check` | Checks formatting on tracked files |
+| `pnpm lint` | Runs ESLint with the AdonisJS config |
+| `pnpm typecheck` | Runs TypeScript without emitting |
+| `pnpm quick:test` | Runs the Japa suite against SQLite |
+| `pnpm test` | Runs `pnpm quick:test` with coverage thresholds |
+| `pnpm test:pg` | Runs the suite against a local PostgreSQL 16 database |
+| `pnpm build` | Compiles to `build/` |
+| `pnpm test:built-exports` | Checks the package's built exports |
+| `pnpm test:consumer` | Packs the package and checks it in a consumer application |
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your
 own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` and
 `DB_DATABASE`, then run `pnpm quick:test`.
 
-Changes to account operations should pass on both SQLite and PostgreSQL. The `checks` workflow runs
-both on every pull request.
-Its SQLite leg runs `pnpm format:check` and `pnpm lint` before the type-check and tests, and
-`pnpm test` runs both first through `pretest`.
+Changes to account operations should pass on both SQLite and PostgreSQL. The `checks` workflow
+runs both databases on every pull request. Its SQLite leg checks formatting, lint and types, then
+builds the package and checks its built exports. `pnpm test` runs lint first through `pretest`.
 
-`pnpm test:consumer` and the example app's own checks run locally, not in the `checks` workflow.
-Run them before a release and after changing `configure.ts`, `stubs/` or `examples/api`; the
-[release gate](docs/maintainers/release-gate.md) records when they move to hosted CI.
+The `compat` workflow checks minimum and latest peer versions weekly and before a release. It also
+checks the packed consumer application and experimental MySQL 8.4 compatibility. The `examples`
+workflow checks recipes and example applications.
+
+The *Tested against* table in `README.md` mirrors `.github/workflows/checks.yml` and
+`.github/workflows/compat.yml`; change them in the same PR.
 
 ## Code layout
 
 - `src/` holds the account operations, one responsibility per file.
 - `src/http/` holds the optional managed JSON routes.
 - `src/setup/` holds the `account-kit:setup` planner.
-- `commands/` holds the Ace commands, `providers/` the AdonisJS provider and `stubs/` the generated
+- `commands/` holds Ace commands, `providers/` the AdonisJS provider and `stubs/` the generated
   config and migrations.
 - `tests/` mirrors the source: one spec per module. Shared fixtures live in `tests/helpers/`.
+- `bin/` holds package scripts and `bin/helpers/` modules used only by those scripts.
 
 [AGENTS.md](AGENTS.md) describes the file-size and file-splitting rules the codebase follows.
 
 ## Planning files
 
 Private plans, PRDs and review notes live in a gitignored `plans/` directory, or as `PLAN*.md` and
-`__PRD*.md` in the root; `.gitignore` keeps all three out of commits. Delete a plan once its work has
-landed. Reference material for contributors goes in `docs/maintainers/` instead.
+`__PRD*.md` in the root; `.gitignore` keeps all three out of commits. Delete a plan once its work
+has landed. Reference material for contributors goes in `docs/maintainers/` instead.
 
 ## Pull requests
 
@@ -98,19 +91,22 @@ landed. Reference material for contributors goes in `docs/maintainers/` instead.
 - Write commit messages in the imperative mood, describing the change ("Reject expired invitation
   tokens on resend").
 
-## Adding a translation
+## Repository-specific
+
+### Adding a translation
 
 Translations are copy-paste pages in the docs, not files in the package.
 
 1. Copy the `errors.json` and `validator.json` blocks from
-   [docs/guide/managed-http.md](docs/guide/managed-http.md) into `docs/guide/translations/<locale>.md`, following
+   [docs/guide/managed-http.md](docs/guide/managed-http.md) into
+   `docs/guide/translations/<locale>.md`, following
    [docs/guide/translations/index.md](docs/guide/translations/index.md).
 2. Translate the values. Keep every key and every `{placeholder}`.
 3. Add the locale to the list in `docs/guide/translations/index.md`.
 4. Run `pnpm quick:test --files=docs_translations.spec.ts`. It checks keys, ICU syntax and
    placeholders, not wording.
 
-## Adapters
+### Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in
 `adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behavior the

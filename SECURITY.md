@@ -2,13 +2,14 @@
 
 ## Supported versions
 
-Security fixes go into the latest published minor version. Until 1.0, upgrade to the newest
-release to receive fixes.
+Until 1.0, only the latest 0.x release receives security fixes. Upgrade to the latest release to
+receive fixes.
 
 ## Reporting a vulnerability
 
-Report suspected vulnerabilities privately to [cve@kevinjohngallagher.com](mailto:cve@kevinjohngallagher.com).
-Do not open a public issue.
+Report suspected vulnerabilities through [GitHub private vulnerability reporting](https://github.com/Kevinjohn/oss-adonisjs-account-kit/security/advisories/new)
+or by email to [cve@kevinjohngallagher.com](mailto:cve@kevinjohngallagher.com). Never open a
+public issue.
 
 Please include the affected package version or commit, runtime and database versions, a concise
 reproduction, and the impact you observed. Do not include live credentials or personal data.
@@ -20,16 +21,21 @@ date with you once a fix is ready.
 
 ## Verifying a release
 
-Alpha releases are packed by a maintainer and attached to the tagged
-[GitHub release](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases), whose notes give
-the archive's SHA-256. Check a downloaded archive before installing it:
+For a downloaded `<tarball>.tgz`, run:
 
 ```sh
-shasum -a 256 adonisjs-account-kit-<version>.tgz
+shasum -a 256 <tarball>.tgz
 ```
+
+The resulting SHA-256 must match the value in the GitHub release notes for that version.
 
 ## Security model
 
-[docs/guide/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/security.md) describes what Account Kit defends against and what remains
-the application's responsibility. The dependency audit assessment is in
+[docs/guide/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/guide/security.md)
+describes what Account Kit defends against and what remains the application's responsibility. The
+dependency audit assessment is in
 [compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/compatibility.md#dependency-audit-assessment).
+
+## Independent review
+
+None yet.
