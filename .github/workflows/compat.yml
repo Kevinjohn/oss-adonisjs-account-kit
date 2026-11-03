@@ -138,14 +138,16 @@ jobs:
     env:
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: root
+      DB_USER: postgres
+      DB_PASSWORD: postgres
       DB_DATABASE: package_test
     services:
       mysql:
         image: mysql:8.4
         env:
           MYSQL_ROOT_PASSWORD: root
+          MYSQL_USER: postgres
+          MYSQL_PASSWORD: postgres
           MYSQL_DATABASE: package_test
         ports:
           - 3306:3306

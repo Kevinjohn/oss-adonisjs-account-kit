@@ -63,6 +63,7 @@ export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
       if (db.manager.get(connectionName)?.config !== testSqliteConfig) {
         throw new Error(`Failed to isolate the ${connectionName} test database`)
       }
+      return testUtils.db().truncate()
     },
   ],
   teardown: [],

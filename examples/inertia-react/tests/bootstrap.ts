@@ -85,6 +85,7 @@ export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
           }
         })
         .use(middleware.auth())
+      return testUtils.db().truncate()
     },
   ],
   teardown: [],
