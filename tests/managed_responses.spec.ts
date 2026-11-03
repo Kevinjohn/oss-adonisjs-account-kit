@@ -17,7 +17,7 @@ test.group('managed HTTP responses', () => {
     const error = new InvalidTokenError('database row and token details')
     assert.deepEqual(managedErrorResponse(error, { proof: 'password' }), {
       status: 400,
-      headers: { Vary: 'Accept' },
+      headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
       contentType: 'application/json',
       body: {
         errors: [
@@ -42,7 +42,7 @@ test.group('managed HTTP responses', () => {
       managedErrorResponse(new ThrottledError(1.2), { accept: 'application/vnd.api+json' }),
       {
         status: 429,
-        headers: { 'Vary': 'Accept', 'Retry-After': '2' },
+        headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store', 'Retry-After': '2' },
         contentType: 'application/vnd.api+json',
         body: { errors: [{ code: 'E_ACCOUNT_KIT_THROTTLED', title: 'Too many requests.' }] },
       }
@@ -57,13 +57,25 @@ test.group('managed HTTP responses', () => {
     ]) {
       assert.deepEqual(managedErrorResponse(new InvalidInputError(detail)), {
         status: 422,
-        headers: { Vary: 'Accept' },
+        headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
         contentType: 'application/json',
         body: {
           errors: [{ code: 'E_ACCOUNT_KIT_INVALID_INPUT', message: 'Account request rejected.' }],
         },
       })
     }
+  })
+
+  test('negotiates JSON for missing, wildcard and HTML Accept values', ({ assert }) => {
+    const error = new InvalidCredentialsError()
+    for (const accept of [undefined, '*/*', 'application/*', 'text/html']) {
+      assert.equal(managedErrorResponse(error, { accept })?.contentType, 'application/json', accept)
+    }
+    assert.equal(
+      managedErrorResponse(error, { accept: 'application/json;q=0.5, application/vnd.api+json' })
+        ?.contentType,
+      'application/vnd.api+json'
+    )
   })
 
   test('honors quality zero and customizes wording without changing a code', ({ assert }) => {
@@ -76,7 +88,7 @@ test.group('managed HTTP responses', () => {
       }),
       {
         status: 400,
-        headers: { Vary: 'Accept' },
+        headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
         contentType: 'application/json',
         body: {
           errors: [
@@ -145,7 +157,15 @@ test.group('managed HTTP responses', () => {
   })
 
   test('does not expose committed callback failures as a rolled-back response', ({ assert }) => {
-    assert.isNull(managedErrorResponse(new PostCommitError('mail failed')))
+    assert.deepEqual(managedErrorResponse(new PostCommitError('mail failed'))?.body, {
+      errors: [
+        {
+          code: 'E_ACCOUNT_KIT_OPERATION_FAILED',
+          message: 'Account operation failed.',
+          committed: true,
+        },
+      ],
+    })
     assert.deepEqual(proofHeaders(), {
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
@@ -155,7 +175,7 @@ test.group('managed HTTP responses', () => {
   test('distinguishes rejected identity proof from an unverified email', ({ assert }) => {
     assert.deepEqual(managedErrorResponse(new IdentityNotConfirmedError()), {
       status: 403,
-      headers: { Vary: 'Accept' },
+      headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
       contentType: 'application/json',
       body: {
         errors: [
@@ -171,7 +191,7 @@ test.group('managed HTTP responses', () => {
   test('hides denied invitation management as a missing invitation', ({ assert }) => {
     assert.deepEqual(managedErrorResponse(new InvitationManagementDeniedError()), {
       status: 404,
-      headers: { Vary: 'Accept' },
+      headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
       contentType: 'application/json',
       body: {
         errors: [{ code: 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND', message: 'Invitation not found.' }],

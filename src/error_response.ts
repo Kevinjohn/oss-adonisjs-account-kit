@@ -1,23 +1,18 @@
-import {
-  AccountKitError,
-  InvitationManagementDeniedError,
-  InvitationNotFoundError,
-  PostCommitError,
-  ThrottledError,
-} from './errors.js'
+import { AccountKitError } from './errors.js'
+import { publicHeaders, publicIdentity } from './http/public_identity.js'
 import type { AccountKitTranslator } from './translator.js'
 
 /**
- * A safe HTTP response for an Account Kit error: status, headers such as `Retry-After`, and a
- * generic body.
+ * A safe HTTP response for an Account Kit error: the status, the headers and the same
+ * `{ errors: [...] }` envelope the managed routes send.
  */
 export interface AccountErrorResponse {
   /** The HTTP status. */
   status: number
-  /** Headers to set, such as `Retry-After`. */
+  /** Headers to set, such as `Cache-Control` and `Retry-After`. */
   headers: Record<string, string>
-  /** A generic body. `committed` is true when the change was saved before a later step failed. */
-  body: { code: string; message: string; committed?: true }
+  /** The error entries. `committed` is true when the change was saved before a later step failed. */
+  body: { errors: Array<{ code: string; message: string; committed?: true }> }
 }
 
 /**
@@ -30,25 +25,20 @@ export function accountErrorResponse(
   options: { i18n?: AccountKitTranslator } = {}
 ): AccountErrorResponse | null {
   if (!(error instanceof AccountKitError)) return null
-  const managed =
-    error instanceof InvitationNotFoundError || error instanceof InvitationManagementDeniedError
-  const code = managed ? InvitationNotFoundError.code : error.code
-  const fallbackMessage = managed
-    ? 'Invitation not found'
-    : error.status >= 500
-      ? 'Account operation failed'
-      : 'Account request rejected'
-  const message = options.i18n?.t(`errors.${code}`, {}, fallbackMessage) ?? fallbackMessage
+  const identity = publicIdentity(error)
+  const message =
+    options.i18n?.t(`errors.${identity.code}`, {}, identity.message) ?? identity.message
   return {
-    status: managed ? 404 : error.status,
-    headers:
-      error instanceof ThrottledError
-        ? { 'Retry-After': String(Math.max(1, Math.ceil(error.retryAfterSeconds))) }
-        : {},
+    status: identity.status,
+    headers: publicHeaders(error),
     body: {
-      code,
-      message,
-      ...(error instanceof PostCommitError ? { committed: true as const } : {}),
+      errors: [
+        {
+          code: identity.code,
+          message,
+          ...(identity.committed ? { committed: true as const } : {}),
+        },
+      ],
     },
   }
 }

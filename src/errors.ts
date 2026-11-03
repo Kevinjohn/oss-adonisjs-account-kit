@@ -1,3 +1,4 @@
+import type { HttpContext } from '@adonisjs/core/http'
 import { Exception, RuntimeException } from '@adonisjs/core/exceptions'
 
 /**
@@ -19,6 +20,12 @@ export class AccountKitError extends Exception {
   constructor(message = new.target.name, options?: ErrorOptions) {
     super(message, options)
     this.name = new.target.name
+  }
+
+  /** Renders the public response when the error reaches the AdonisJS exception handler. */
+  async handle(error: this, ctx: HttpContext): Promise<void> {
+    const { renderAccountKitError } = await import('./http/responses.js')
+    await renderAccountKitError(ctx, error)
   }
 }
 

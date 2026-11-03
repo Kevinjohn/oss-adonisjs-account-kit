@@ -103,7 +103,7 @@ test.group('Token reference', (group) => {
       .json({ email, password: 'WrongPass123!' })
     assert.equal(rejected.status(), 401)
     assert.deepEqual(rejected.body(), {
-      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Authentication failed.' }],
     })
     const jsonApi = await client
       .post('/api/v1/auth/login')
@@ -112,7 +112,7 @@ test.group('Token reference', (group) => {
     assert.equal(jsonApi.status(), 401)
     assert.include(jsonApi.header('content-type'), 'application/vnd.api+json')
     assert.deepEqual(jsonApi.body(), {
-      errors: [{ code: 'E_INVALID_CREDENTIALS', title: 'Account request rejected' }],
+      errors: [{ code: 'E_INVALID_CREDENTIALS', title: 'Authentication failed.' }],
     })
     const excluded = await client
       .post('/api/v1/auth/login')
@@ -121,7 +121,7 @@ test.group('Token reference', (group) => {
     assert.equal(excluded.status(), 401)
     assert.notInclude(excluded.header('content-type'), 'application/vnd.api+json')
     assert.deepEqual(excluded.body(), {
-      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Authentication failed.' }],
     })
     const wildcard = await client
       .post('/api/v1/auth/login')
@@ -130,7 +130,7 @@ test.group('Token reference', (group) => {
     assert.equal(wildcard.status(), 401)
     assert.notInclude(wildcard.header('content-type'), 'application/vnd.api+json')
     assert.deepEqual(wildcard.body(), {
-      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Account request rejected' }],
+      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Authentication failed.' }],
     })
     const validation = await client
       .post('/api/v1/auth/login')

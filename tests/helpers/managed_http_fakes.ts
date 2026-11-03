@@ -24,7 +24,10 @@ export function fakeManagedHttp() {
       didCommit = true
     },
   } as unknown as Router
-  function context(params: Record<string, string> = {}) {
+  function context(
+    params: Record<string, string> = {},
+    requestHeaders: Record<string, string> = {}
+  ) {
     const headers: Record<string, string> = {}
     const response = {
       header(name: string, value: string) {
@@ -33,6 +36,12 @@ export function fakeManagedHttp() {
       },
       getHeader(name: string) {
         return headers[name]
+      },
+      vary(field: string) {
+        const terms = headers.Vary ? headers.Vary.split(',').map((term) => term.trim()) : []
+        if (!terms.some((term) => term.toLowerCase() === field.toLowerCase())) terms.push(field)
+        headers.Vary = terms.join(', ')
+        return this
       },
       status(status: number) {
         return { send: (body: unknown) => ({ status, body }) }
@@ -57,7 +66,7 @@ export function fakeManagedHttp() {
       params,
       request: {
         ip: () => '192.0.2.1',
-        header: () => undefined,
+        header: (name: string) => requestHeaders[name.toLowerCase()],
         validateUsing: async () => ({ email: 'a@example.test', password: 'password123' }),
       },
       response,

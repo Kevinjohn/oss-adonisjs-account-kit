@@ -2,8 +2,14 @@ import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
-import { EmailAlreadyRegisteredError, ThrottledError } from '../src/errors.js'
+import {
+  EmailAlreadyRegisteredError,
+  InvitationManagementDeniedError,
+  ThrottledError,
+} from '../src/errors.js'
+import { accountErrorResponse } from '../src/error_response.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
+import { managedErrorResponse } from '../src/http/responses.js'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 const french: Record<string, string> = {
@@ -119,6 +125,34 @@ test.group('managed HTTP translation', () => {
         errors: [{ field: 'email', rule: 'unique', message: 'Le champ e-mail est déjà utilisé.' }],
       },
     })
+  })
+
+  test('masked invitation lookups use the public key on both paths and never expose the message', ({
+    assert,
+  }) => {
+    const lookups: string[] = []
+    const keyed = {
+      t(identifier: string) {
+        lookups.push(identifier)
+        return identifier
+      },
+    }
+    const error = new InvitationManagementDeniedError('invitation 42 belongs to another account')
+    const managed = managedErrorResponse(error, { accept: 'application/json', i18n: keyed })!
+    const helper = accountErrorResponse(error, { i18n: keyed })!
+    assert.deepEqual(managed.body.errors, [
+      {
+        code: 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND',
+        message: 'errors.E_ACCOUNT_KIT_INVITATION_NOT_FOUND',
+      },
+    ])
+    assert.deepEqual(helper.body.errors, managed.body.errors)
+    assert.deepEqual(lookups, [
+      'errors.E_ACCOUNT_KIT_INVITATION_NOT_FOUND',
+      'errors.E_ACCOUNT_KIT_INVITATION_NOT_FOUND',
+    ])
+    assert.notInclude(JSON.stringify([managed, helper]), 'another account')
+    assert.notInclude(lookups, 'errors.E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED')
   })
 
   test('request acknowledgements use the request i18n instance', async ({ assert }) => {

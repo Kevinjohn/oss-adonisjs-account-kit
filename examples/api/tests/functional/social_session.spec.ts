@@ -227,7 +227,7 @@ test.group('Social session', (group) => {
     assert.equal(callback.status(), 401, JSON.stringify(callback.body()))
     assert.equal(
       (callback.body() as { errors: [{ code: string }] }).errors[0].code,
-      'E_ACCOUNT_KIT_INVALID_SESSION'
+      'E_INVALID_CREDENTIALS'
     )
     assert.lengthOf(await db.from('social_identities').where('user_id', user.id), 0)
   }).skip(!isSessionStrategy, SESSION_ONLY)

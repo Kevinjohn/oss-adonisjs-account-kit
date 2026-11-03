@@ -98,7 +98,9 @@ function errorResponse(description: string, json: JsonSchema, headers: JsonSchem
 }
 
 function errorResponses(route: ManagedRoute, hasInput: boolean, conflict: boolean) {
-  const headers = route.proof ? proofHeaders : {}
+  const headers = route.proof
+    ? proofHeaders
+    : { 'Cache-Control': { $ref: '#/components/headers/NoStore' } }
   const error = (description: string, json: JsonSchema = ref('ManagedErrorBody')) =>
     errorResponse(description, json, headers)
   const schemas = managedEndpointSchemas[route.name]
