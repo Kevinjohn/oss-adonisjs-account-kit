@@ -1,7 +1,7 @@
 {
   "name": "Account Kit",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
-  "postCreateCommand": "corepack enable && corepack prepare pnpm@11.23.0 --activate && pnpm install --frozen-lockfile",
+  "postCreateCommand": "sudo corepack enable pnpm && corepack prepare pnpm@11.23.0 --activate && pnpm install --frozen-lockfile",
   "postAttachCommand": "echo 'Run pnpm quick:test to run the suite against SQLite.'",
   "customizations": {
     "vscode": {
