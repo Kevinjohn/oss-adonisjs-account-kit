@@ -7,7 +7,8 @@ import type { ThrottleBudget } from './types.js'
 export function budget(
   input: Partial<ThrottleBudget> | undefined,
   defaults: ThrottleBudget,
-  name: string
+  name: string,
+  durationField = `${name}.duration`
 ): ThrottleBudget {
   if (input !== undefined) assertPlainObject(input, name)
   const requests = input?.requests ?? defaults.requests
@@ -22,15 +23,15 @@ export function budget(
     milliseconds = string.seconds.parse(duration) * 1000
   } catch (cause) {
     throw new InvalidConfigurationError(
-      `${name}.duration`,
-      `account_kit: ${name}.duration must be a supported positive duration`,
+      durationField,
+      `account_kit: ${durationField} must be a supported positive duration`,
       { cause }
     )
   }
   if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0 || milliseconds > 2_147_483_647)
     throw new InvalidConfigurationError(
-      `${name}.duration`,
-      `account_kit: ${name}.duration must be a limiter-representable duration`
+      durationField,
+      `account_kit: ${durationField} must be a limiter-representable duration`
     )
   return { requests, duration }
 }

@@ -2,7 +2,7 @@
 import { DateTime } from 'luxon'
 import { InvalidConfigurationError } from './errors.js'
 import { sessionTouchIntervalMs } from './session_registry.js'
-import { expiresAt } from './ttl.js'
+import { configuredExpiresAt } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedConfig } from './types.js'
 
 export function resolveSessionManagement(
@@ -16,7 +16,11 @@ export function resolveSessionManagement(
     )
   const idleExpiry = value?.idleExpiry ?? '30d'
   const now = DateTime.utc()
-  if (expiresAt(now, idleExpiry).toMillis() - now.toMillis() <= sessionTouchIntervalMs)
+  if (
+    configuredExpiresAt('sessionManagement.idleExpiry', now, idleExpiry).toMillis() -
+      now.toMillis() <=
+    sessionTouchIntervalMs
+  )
     throw new InvalidConfigurationError(
       'sessionManagement.idleExpiry',
       `account_kit: sessionManagement.idleExpiry must be longer than ${sessionTouchIntervalMs / 60_000} minutes`

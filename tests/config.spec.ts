@@ -154,6 +154,45 @@ test.group('account kit configuration and service surface', (group) => {
     assert.instanceOf((error as Error).cause, Error)
   })
 
+  test('names the configured field when a duration is invalid', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    const session = { strategy: 'session', guard: 'web' } as const
+    const cases: Array<[Partial<AccountKitConfig>, string]> = [
+      [{ expiresIn: { magicLink: 'soon' } }, 'expiresIn.magicLink'],
+      [
+        { authentication: { strategy: 'access_tokens', guard: 'api', tokenExpiresIn: 0 } },
+        'authentication.tokenExpiresIn',
+      ],
+      [
+        {
+          authentication: {
+            ...session,
+            identityLimit: { requests: 5, duration: '1m', blockDuration: 'soon' },
+          },
+        },
+        'authentication.identityLimit.blockDuration',
+      ],
+      [
+        {
+          enabled: ['sessionManagement'],
+          authentication: session,
+          sessionManagement: { idleExpiry: 'soon' },
+        },
+        'sessionManagement.idleExpiry',
+      ],
+    ]
+    for (const [overrides, field] of cases) {
+      let error: unknown
+      try {
+        defineConfig({ ...base, ...overrides })
+      } catch (caught) {
+        error = caught
+      }
+      assert.instanceOf(error, InvalidConfigurationError, field)
+      assert.equal((error as InvalidConfigurationError).field, field)
+    }
+  })
+
   test('rejects a supplied non-function credential callback', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     assert.throws(() => defineConfig({ ...base, onCredentialsChanged: 'not a callback' } as never))

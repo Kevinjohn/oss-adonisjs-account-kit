@@ -9,7 +9,7 @@ import { resolvePasswordPolicy } from './config_password_policy.js'
 import { resolveAccountDeletion } from './config_account_deletion.js'
 import { resolveSessionManagement } from './config_session_management.js'
 import { validateSocialAuthentication } from './config_social_authentication.js'
-import { expiresAt } from './ttl.js'
+import { configuredExpiresAt } from './config_ttl.js'
 import type {
   AccountKitConfig,
   AuthorizationCallbacks,
@@ -179,7 +179,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     emailChange: config.expiresIn?.emailChange ?? '1h',
     magicLink: config.expiresIn?.magicLink ?? '15m',
   }
-  for (const value of Object.values(expiresIn)) expiresAt(DateTime.utc(), value)
+  for (const [name, value] of Object.entries(expiresIn))
+    configuredExpiresAt(`expiresIn.${name}`, DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
   const invitationThrottle = Object.fromEntries(
     ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [

@@ -4,7 +4,7 @@ import { budget } from './config_budget.js'
 import { assertPlainObject } from './config_assert.js'
 import { InvalidConfigurationError } from './errors.js'
 import { isSqlIdentifier } from './sql_identifier.js'
-import { expiresAt } from './ttl.js'
+import { configuredExpiresAt } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedAuthenticationConfig } from './types.js'
 
 export function resolveAuthentication(
@@ -39,7 +39,8 @@ export function resolveAuthentication(
         'authentication.tokenAbilities',
         'account_kit: authentication.tokenAbilities must be non-empty strings'
       )
-    if (auth.tokenExpiresIn !== undefined) expiresAt(DateTime.utc(), auth.tokenExpiresIn)
+    if (auth.tokenExpiresIn !== undefined)
+      configuredExpiresAt('authentication.tokenExpiresIn', DateTime.utc(), auth.tokenExpiresIn)
     const tokenTable = auth.tokenTable ?? 'auth_access_tokens'
     if (typeof tokenTable !== 'string' || !isSqlIdentifier(tokenTable))
       throw new InvalidConfigurationError(
@@ -60,6 +61,7 @@ export function resolveAuthentication(
     budget(
       { requests: 1, duration: blockDuration },
       { requests: 1, duration: '20m' },
+      'authentication.identityLimit',
       'authentication.identityLimit.blockDuration'
     )
     authentication = {
