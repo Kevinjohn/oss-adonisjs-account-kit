@@ -116,7 +116,7 @@ export default class PasswordResetsController {
 - [Getting started](docs/guide/getting-started.md): install and add password reset to an API
   starter.
 - [Troubleshooting](docs/guide/troubleshooting.md) and [reference](docs/reference/README.md).
-- [Generated API reference](docs/reference/api/index.md).
+- [Generated API reference](https://kevinjohn.github.io/oss-adonisjs-account-kit/reference/api/).
 - [Recipes](docs/recipes/index.md).
 - [Security model](docs/guide/security.md) and [operations](docs/guide/operations.md), including
   the production checklist.
