@@ -180,7 +180,7 @@ A second harness run scaffolded another fresh starter and installed the same sup
 | Field                                                 | Recorded evidence                                                                                                                              |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Package source revision                               | `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` (clean working tree)                                                                                |
-| Archive                                               | `adonisjs-account-kit-0.1.1.tgz`                                                                                                     |
+| Archive                                               | `adonisjs-account-kit-0.1.1.tgz`                                                                                                               |
 | Archive SHA-256                                       | `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                                                             |
 | Creator / starter                                     | `create-adonisjs` `3.4.0`; official API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                     |
 | Default run baseline / configured checkpoint          | `c1f74eadf5c11fb2f3bdb15e5063b39460ec7c62` / `909e473c899720eaea6c9cf0581baaecff0f142a`                                                        |
