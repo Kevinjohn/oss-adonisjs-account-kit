@@ -89,6 +89,10 @@
   "bugs": {
     "url": "https://github.com/Kevinjohn/oss-adonisjs-account-kit/issues"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git"
+  },
   "devDependencies": {
     "@adonisjs/assembler": "^8.6.0",
     "@adonisjs/core": "^7.0.1",
@@ -155,10 +159,6 @@
       "optional": true
     }
   },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "tsdown": {
     "entry": [
       "./index.ts",
@@ -199,6 +199,22 @@
     "sourcemaps": false,
     "target": "esnext"
   },
+  "c8": {
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "exclude": [
+      "tests/**",
+      "scripts/consumer/**",
+      "scripts/test_packed_consumer.mjs"
+    ]
+  },
+  "prettier": "@adonisjs/prettier-config",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "release-it": {
     "hooks": {
       "before:bump": "pnpm version ${version} --no-git-tag-version --allow-same-version",
@@ -223,22 +239,6 @@
         }
       }
     }
-  },
-  "c8": {
-    "reporter": [
-      "text",
-      "html"
-    ],
-    "exclude": [
-      "tests/**",
-      "scripts/consumer/**",
-      "scripts/test_packed_consumer.mjs"
-    ]
-  },
-  "prettier": "@adonisjs/prettier-config",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Kevinjohn/oss-adonisjs-account-kit.git"
   },
   "packageManager": "pnpm@11.23.0"
 }
