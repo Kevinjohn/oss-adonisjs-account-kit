@@ -69,19 +69,19 @@ even if it means more files.
 ```
 index.ts                    public entry
 configure.ts                `node ace configure` hook
-providers/                  AdonisJS providers
+providers/<name>_provider.ts AdonisJS provider
 commands/                   Ace commands
 services/main.ts            container service
 stubs/                      configure templates
-src/                        implementation and public types/errors
+src/                        implementation; `src/types.ts` and `src/errors.ts` hold public types and errors
 <subpath>/main.ts           top-level folder only when it backs a package export
-bin/                        package scripts
-bin/helpers/                modules used only by scripts
+bin/                        package scripts (`.ts` via ts-exec; `.sh` allowed)
+bin/helpers/                modules used only by `bin/`
 tests/                      Japa specs, flat
 tests/helpers/              shared test helpers
 tests/fixtures/              static fixtures
 tests/tooling/              specs for scripts
-tests/types/                type-level tests, where present
+tests/types/                type-level tests (`.ts`, not `.spec.ts`), where present
 examples/                   example applications
 docs/                       documentation
 ```
