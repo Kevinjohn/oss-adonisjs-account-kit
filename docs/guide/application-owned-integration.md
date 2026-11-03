@@ -125,7 +125,7 @@ For a token guard, pass `keepCurrent: { tokenId }` with the current token's iden
 token survives and needs no refresh. Without `keepCurrent`, the change signs out every session and
 token, including the caller's.
 
-Import `PostCommitError` and `passwordChangeRevision` from `@kevinjohn/adonisjs-account-kit`, and
+Import `passwordChangeRevision` from `@kevinjohn/adonisjs-account-kit`, and
 `reportCommittedFailure` from the reference diagnostic helper. The logger is the request logger. This
 handling matters because a delivery, observer, or commit-listener error can be reported after the
 password change and credential revocation have committed. `passwordChangeRevision(error)` returns
