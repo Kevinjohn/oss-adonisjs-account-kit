@@ -9,8 +9,8 @@ import { browserClient } from '@japa/browser-client'
 import { authBrowserClient } from '@adonisjs/auth/plugins/browser_client'
 import { sessionBrowserClient } from '@adonisjs/session/plugins/browser_client'
 import router from '@adonisjs/core/services/router'
-import { errors } from 'adonisjs-account-kit'
-import kit from 'adonisjs-account-kit/services/main'
+import { errors } from '@kevinjohn/adonisjs-account-kit'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { middleware } from '#start/kernel'
 
 /**

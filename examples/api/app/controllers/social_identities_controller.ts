@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { accountInput } from '#middleware/account_access_middleware'
 import { passwordProofValidator, socialUnlinkValidator } from '#validators/social'
 

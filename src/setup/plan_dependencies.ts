@@ -73,7 +73,7 @@ export async function planDependencies(
     '@adonisjs/core',
     '@adonisjs/lucid',
     '@adonisjs/limiter',
-    'adonisjs-account-kit',
+    '@kevinjohn/adonisjs-account-kit',
     ...(choices.managed.length ? ['@adonisjs/auth', '@vinejs/vine'] : []),
     ...(choices.authentication?.strategy === 'session' && choices.managed.length
       ? ['@adonisjs/session', '@adonisjs/shield']

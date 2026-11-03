@@ -143,7 +143,7 @@ For the service contract and other address-confirmation paths, see
   or make remote side effects. It is not called for login, registration, confirmation or reauth.
 
 ```ts
-import { SocialLinkRefusedError } from 'adonisjs-account-kit'
+import { SocialLinkRefusedError } from '@kevinjohn/adonisjs-account-kit'
 
 socialAuthentication: {
   providers: { google: googleProvider },

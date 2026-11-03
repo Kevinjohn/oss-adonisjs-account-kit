@@ -56,7 +56,7 @@ export function accountKitSessionGuard(ctx: HttpContext) {
 ## 3. Log in
 
 ```ts
-import accountKit from 'adonisjs-account-kit/services/main'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 
 const result = await accountKit.authentication.login(
   { email, password, clientKey: ctx.request.ip() },

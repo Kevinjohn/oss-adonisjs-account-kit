@@ -17,7 +17,7 @@ URLs. The callback URL must match the route you register below exactly.
 ```ts
 // app/services/social_provider.ts
 import type { HttpContext } from '@adonisjs/core/http'
-import { createAllySocialProvider, type SocialProviderName } from 'adonisjs-account-kit'
+import { createAllySocialProvider, type SocialProviderName } from '@kevinjohn/adonisjs-account-kit'
 
 export function socialProvider(name: SocialProviderName) {
   return createAllySocialProvider({

@@ -31,8 +31,8 @@ Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install th
 
 ```sh
 node ace add @adonisjs/limiter
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.4/adonisjs-account-kit-0.1.4.tgz
-node ace configure adonisjs-account-kit
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.1.5/kevinjohn-adonisjs-account-kit-0.1.5.tgz
+node ace configure @kevinjohn/adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor
 ```
@@ -43,14 +43,13 @@ Prefer generated files? Use [guided setup](docs/guide/setup.md) instead of
 ### Dynamic providers
 
 If configure cannot inspect providers in `adonisrc.ts`, make sure the dynamic list registers
-Account Kit exactly once. Keep an existing `adonisjs-account-kit/account_kit_provider` entry or the
-legacy `adonisjs-account-kit/providers/account_kit_provider` alias; add the current export below
-only when neither entry is already present:
+Account Kit exactly once. Keep an existing `@kevinjohn/adonisjs-account-kit/account_kit_provider` entry;
+add the export below only when it is not already present:
 
 ```ts
 const applicationProviders = () => [
   // Keep your existing provider entries here.
-  () => import('adonisjs-account-kit/account_kit_provider'),
+  () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
 ]
 ```
 
@@ -69,7 +68,7 @@ export default defineConfig({
 Keep the rest of your provider logic, then rerun:
 
 ```sh
-node ace configure adonisjs-account-kit --provider-registered
+node ace configure @kevinjohn/adonisjs-account-kit --provider-registered
 ```
 
 This flag confirms that you registered the provider yourself. Configure then preserves the dynamic
@@ -83,7 +82,7 @@ validation, error mapping and the reset action.
 ```ts
 import app from '@adonisjs/core/services/app'
 import type { HttpContext } from '@adonisjs/core/http'
-import { AccountKit, DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { AccountKit, DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
 
 export default class PasswordResetsController {
   async request({ request, response, logger }: HttpContext) {

@@ -10,12 +10,6 @@ import {
 import type * as TypeScript from 'typescript'
 import { diagnostic } from './shared.js'
 
-/** Earlier import paths that already satisfy a required import. */
-const legacyImports: Record<string, string> = {
-  'adonisjs-account-kit/providers/account_kit_provider':
-    'adonisjs-account-kit/account_kit_provider',
-}
-
 export async function planArrayImports(
   changes: SetupFileChange[],
   state: SetupInspection,
@@ -59,11 +53,7 @@ export async function planArrayImports(
     return
   }
   const array = providers.initializer
-  const present = new Set(
-    array.elements
-      .map((entry) => lazyImportPath(source!, entry))
-      .map((name) => (name && legacyImports[name]) ?? name)
-  )
+  const present = new Set(array.elements.map((entry) => lazyImportPath(source!, entry)))
   const missing = imports.filter((name) => !present.has(name))
   if (!missing.length) {
     changes.push({

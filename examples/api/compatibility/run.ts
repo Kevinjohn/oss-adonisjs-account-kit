@@ -5,8 +5,13 @@ import { defineConfig as defineHashConfig, drivers } from '@adonisjs/core/hash'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { DateTime } from 'luxon'
-import { AccountKit, createLucidAdapter, defineConfig, PostCommitError } from 'adonisjs-account-kit'
-import type { AccountUser, Invitation, Trx } from 'adonisjs-account-kit'
+import {
+  AccountKit,
+  createLucidAdapter,
+  defineConfig,
+  PostCommitError,
+} from '@kevinjohn/adonisjs-account-kit'
+import type { AccountUser, Invitation, Trx } from '@kevinjohn/adonisjs-account-kit'
 import {
   databaseClient,
   databaseName,

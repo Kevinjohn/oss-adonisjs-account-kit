@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.1.5 - 2026-11-03
+
+### Changed
+
+- Package renamed to `@kevinjohn/adonisjs-account-kit`. Migration: reinstall from the new tarball and remove the old dependency with `pnpm remove adonisjs-account-kit`, so a missed import fails instead of loading the 0.1.4 copy; replace `adonisjs-account-kit` with `@kevinjohn/adonisjs-account-kit` in imports; change the provider line in `adonisrc.ts` to `@kevinjohn/adonisjs-account-kit/account_kit_provider`.
+
 - Update setup diagnostics to describe ambiguous module origins.
 
 ## 0.1.4 - 2026-11-02

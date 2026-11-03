@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine'
-import type { SensitivePurpose, SocialIntent } from 'adonisjs-account-kit'
+import type { SensitivePurpose, SocialIntent } from '@kevinjohn/adonisjs-account-kit'
 import { authStrategy } from '#services/auth_strategy'
 
 const beginIntents = ['login', 'link', 'reauth'] as const satisfies readonly SocialIntent[]

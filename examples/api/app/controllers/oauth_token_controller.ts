@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import User from '#models/user'
 import UserTransformer from '#transformers/user_transformer'
 import { accessTokenGuard } from '#services/account_kit_guards'

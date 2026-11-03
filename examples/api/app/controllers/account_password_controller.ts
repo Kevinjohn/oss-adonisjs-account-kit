@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { PostCommitError, passwordChangeRevision } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { PostCommitError, passwordChangeRevision } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { credentialChangeValidator } from '#validators/account_kit'
 import { accountInput } from '#services/account_input'
 import { authStrategy } from '#services/auth_strategy'

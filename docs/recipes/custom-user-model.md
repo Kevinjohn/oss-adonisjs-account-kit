@@ -133,7 +133,7 @@ registration: {
 },
 ```
 
-Import `InvalidInputError` from `adonisjs-account-kit`. Keep the application's signup validator
+Import `InvalidInputError` from `@kevinjohn/adonisjs-account-kit`. Keep the application's signup validator
 responsible for requiring its existing `fullName`. The service mapper independently rejects
 unrecognized keys and invalid values from non-HTTP callers, and the adapter rejects a new account
 without `fullName`, which managed signup, invitation and social registration can otherwise send. The adapter never mass-assigns a

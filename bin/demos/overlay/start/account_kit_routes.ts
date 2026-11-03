@@ -1,7 +1,7 @@
 import router from '@adonisjs/core/services/router'
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
-import { createManagedGuard, registerManagedRoutes } from 'adonisjs-account-kit/http'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+import { createManagedGuard, registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
 
 registerManagedRoutes(router, {
   prefix: '/api',

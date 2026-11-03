@@ -1,5 +1,5 @@
 import { channel } from 'node:diagnostics_channel'
-import { DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
 
 type SafeLogger = { error: (details: object, message: string) => void }
 type Failure = 'delivery' | 'post_commit' | 'credential_establishment'

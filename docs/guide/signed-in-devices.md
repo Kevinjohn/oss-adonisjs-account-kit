@@ -15,7 +15,7 @@ export default defineConfig({
 })
 ```
 
-Run `node ace configure adonisjs-account-kit` and `node ace migration:run` to create the
+Run `node ace configure @kevinjohn/adonisjs-account-kit` and `node ace migration:run` to create the
 `account_sessions` table.
 
 - `idleExpiry` (default `'30d'`) is how long a session sign-in lasts without use. It must be longer

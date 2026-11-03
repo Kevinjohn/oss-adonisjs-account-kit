@@ -2,7 +2,7 @@ import { defineConfig, services } from '@adonisjs/ally'
 import type { InferSocialProviders } from '@adonisjs/ally/types'
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
-import type { SocialProviderName } from 'adonisjs-account-kit'
+import type { SocialProviderName } from '@kevinjohn/adonisjs-account-kit'
 
 const base = env.get('APP_URL').replace(/\/$/, '')
 const tokenClientCallback = env.get('SOCIAL_CLIENT_CALLBACK_URL')

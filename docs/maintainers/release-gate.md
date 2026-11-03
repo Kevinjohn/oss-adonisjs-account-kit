@@ -8,8 +8,8 @@ Distribution is through GitHub release tarballs only. Until the GitHub release w
 
 ```sh
 pnpm build && pnpm pack
-gh release create <tag> adonisjs-account-kit-<version>.tgz \
-  --notes "SHA-256: $(shasum -a 256 adonisjs-account-kit-<version>.tgz | cut -d ' ' -f 1)"
+gh release create <tag> kevinjohn-adonisjs-account-kit-<version>.tgz \
+  --notes "SHA-256: $(shasum -a 256 kevinjohn-adonisjs-account-kit-<version>.tgz | cut -d ' ' -f 1)"
 ```
 
 Publish `0.2.0` through that route only after the exact candidate checks and final review are complete and recorded.

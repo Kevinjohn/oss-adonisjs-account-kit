@@ -16,7 +16,7 @@ export async function runServiceOnly(candidate: string, runName: string) {
       '@adonisjs/core': '^7.0.0',
       '@adonisjs/lucid': '^22.4.2',
       '@adonisjs/limiter': '^3.0.0',
-      'adonisjs-account-kit': `file:${resolve(candidate)}`,
+      '@kevinjohn/adonisjs-account-kit': `file:${resolve(candidate)}`,
       'luxon': '^3.0.0',
       [database === 'sqlite' ? 'better-sqlite3' : 'pg']:
         database === 'sqlite' ? '^12.11.1' : '^8.23.1',
@@ -47,9 +47,9 @@ export async function runServiceOnly(candidate: string, runName: string) {
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
-import { AccountKit, defineConfig, type UsersAdapter } from 'adonisjs-account-kit'
-import type { AccountAccessInput, AccountAccessSnapshot } from 'adonisjs-account-kit/types'
-import { AccountAccessDeniedError, InvalidInputError } from 'adonisjs-account-kit/errors'
+import { AccountKit, defineConfig, type UsersAdapter } from '@kevinjohn/adonisjs-account-kit'
+import type { AccountAccessInput, AccountAccessSnapshot } from '@kevinjohn/adonisjs-account-kit/types'
+import { AccountAccessDeniedError, InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'
 
 const require = createRequire(import.meta.url)
 for (const name of ['@adonisjs/auth', '@adonisjs/session', '@adonisjs/shield', '@tuyau/core', '@adonisjs/mail', '@adonisjs/ally']) {
@@ -65,7 +65,7 @@ const ignitor = new IgnitorFactory().withCoreProviders().withCoreConfig().merge(
   rcFileContents: { providers: [
     () => import('@adonisjs/lucid/database_provider'),
     () => import('@adonisjs/limiter/limiter_provider'),
-    () => import('adonisjs-account-kit/providers/account_kit_provider'),
+    () => import('@kevinjohn/adonisjs-account-kit/account_kit_provider'),
   ] },
   config: {
     database: defineDatabaseConfig({ connection: 'service', connections: { service: connection } }),
@@ -107,7 +107,7 @@ try {
 `
   )
   run('pnpm', ['install', '--no-frozen-lockfile'], appRoot)
-  const installed = await realpath(join(appRoot, 'node_modules/adonisjs-account-kit'))
+  const installed = await realpath(join(appRoot, 'node_modules/@kevinjohn/adonisjs-account-kit'))
   if (!installed.startsWith(`${await realpath(join(appRoot, 'node_modules'))}/`)) {
     throw new Error('Service-only package resolved outside isolated consumer')
   }

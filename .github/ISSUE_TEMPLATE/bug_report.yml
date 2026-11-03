@@ -43,7 +43,7 @@ body:
       label: Integration mode
       options:
         - Application-owned routes (service API)
-        - Managed HTTP routes (adonisjs-account-kit/http)
+        - Managed HTTP routes (@kevinjohn/adonisjs-account-kit/http)
         - Not sure
   - type: textarea
     id: environment

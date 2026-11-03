@@ -3,7 +3,7 @@
 For a new installation with a non-default table or key type, pass configure options, for example:
 
 ```sh
-pnpm exec node ace configure adonisjs-account-kit --users-table=account_users --user-id-type=uuid
+pnpm exec node ace configure @kevinjohn/adonisjs-account-kit --users-table=account_users --user-id-type=uuid
 ```
 
 Supported ID types are `integer`, `string`, and `uuid`. Configure uses these values only when it

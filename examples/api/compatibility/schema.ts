@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import type { Database } from '@adonisjs/lucid/database'
-import type { Trx } from 'adonisjs-account-kit'
+import type { Trx } from '@kevinjohn/adonisjs-account-kit'
 import { databaseName } from './connection.js'
 
 /** Recreates the consumer tables and logs the Lucid `returning` result shapes. */

@@ -87,7 +87,7 @@ The proof-page controller keeps inspection separate from completion:
 
 ```ts
 import type { HttpContext } from '@adonisjs/core/http'
-import kit from 'adonisjs-account-kit/services/main'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 
 async function edit({ inertia, params, response }: HttpContext) {
   response.header('Cache-Control', 'no-store')

@@ -1,5 +1,5 @@
 import env from '#start/env'
-import { defineAdmission } from 'adonisjs-account-kit/admission'
+import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 import { admissionAuthorize } from '#services/account_kit_authorization'
 
 // Comma-separated, for example `example.com,example.org`; unset leaves the domain requirement off.

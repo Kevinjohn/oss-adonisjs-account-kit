@@ -264,6 +264,7 @@ export interface AccountDataInput {
 
 /** Version 1 of the account export document. Timestamps are ISO 8601 UTC strings. */
 export interface AccountExport {
+  /** Stable document identifier, independent of the installed package name. */
   format: 'adonisjs-account-kit/export'
   version: 1
   generatedAt: string

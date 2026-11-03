@@ -69,7 +69,10 @@ From code, after the routes are registered:
 
 ```ts
 import router from '@adonisjs/core/services/router'
-import { generateManagedOpenApi, managedRouteRegistration } from 'adonisjs-account-kit/http'
+import {
+  generateManagedOpenApi,
+  managedRouteRegistration,
+} from '@kevinjohn/adonisjs-account-kit/http'
 
 const document = generateManagedOpenApi({
   registration: managedRouteRegistration(router)!,

@@ -1,5 +1,5 @@
-import kit from 'adonisjs-account-kit/services/main'
-import { errors } from 'adonisjs-account-kit'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
+import { errors } from '@kevinjohn/adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { updateProfileValidator } from '#validators/profile'
 

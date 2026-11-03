@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { errors } from 'adonisjs-account-kit'
-import kit from 'adonisjs-account-kit/services/main'
+import { errors } from '@kevinjohn/adonisjs-account-kit'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 
 export default class VerifiedAccountMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {

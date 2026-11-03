@@ -13,7 +13,7 @@ integer keys. Validate the entire role: workspace `1` must never match workspace
 ```ts
 // app/services/workspace_invitations.ts
 import db from '@adonisjs/lucid/services/db'
-import type { Trx } from 'adonisjs-account-kit'
+import type { Trx } from '@kevinjohn/adonisjs-account-kit'
 
 export function workspaceId(value: unknown): number | null {
   if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null
@@ -161,12 +161,12 @@ remain mounted. Import this route file once from `start/routes.ts`.
 // start/account_kit_routes.ts
 import router from '@adonisjs/core/services/router'
 import app from '@adonisjs/core/services/app'
-import { AccountKit } from 'adonisjs-account-kit'
+import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import {
   createManagedGuard,
   managedAccountMiddleware,
   registerManagedRoutes,
-} from 'adonisjs-account-kit/http'
+} from '@kevinjohn/adonisjs-account-kit/http'
 
 const guard = createManagedGuard({
   strategy: 'access_tokens',

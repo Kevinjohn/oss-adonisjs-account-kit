@@ -13,7 +13,7 @@ conflict and `--apply` writes nothing.
 
 1. Install the GitHub release archive using the [root install instructions](../../README.md#install),
    stopping before `node ace configure` and migrations. npm publication is still pending.
-2. Add `() => import('adonisjs-account-kit/commands')` to the `commands` array in `adonisrc.ts`.
+2. Add `() => import('@kevinjohn/adonisjs-account-kit/commands')` to the `commands` array in `adonisrc.ts`.
 3. Install TypeScript 5.9.3 or newer 5.x, or 6.0.3 or newer 6.x, if the app does not have it:
    `pnpm add -D typescript@^5.9.3`. Setup reads your config files with it instead of running
    them. Other Account Kit entry points do not load TypeScript.
@@ -33,7 +33,7 @@ conflict and `--apply` writes nothing.
    Create `app/services/account_kit_policy.ts` with this typed, copyable form:
 
    ```ts
-   import type { AccountUser, Trx } from 'adonisjs-account-kit'
+   import type { AccountUser, Trx } from '@kevinjohn/adonisjs-account-kit'
 
    export const accountKitPolicy = {
      canAccess: async (_user: AccountUser, _trx: Trx) => true,
@@ -122,7 +122,7 @@ Wire them up:
    `#middleware/account_access_middleware`.
 3. Keep a login route of your own while the managed routes are off. In it, resolve the service with
    `const kit = await app.container.make(AccountKit)` (`AccountKit` comes from
-   `adonisjs-account-kit`) and call
+   `@kevinjohn/adonisjs-account-kit`) and call
    `kit.authentication.login({ email, password, clientKey: request.ip() }, accountKitGuard.forRequest(ctx))`.
    The generated guard adapter creates the real session or token and records the credential
    revision Account Kit checks later.
@@ -186,7 +186,7 @@ To send account emails through your own transport instead of AdonisJS Mail:
    `mail.transportEnv` to `null`.
 2. Create `app/services/account_kit_notifications.ts` exporting
    `accountKitNotifications: Partial<NotificationCallbacks>` (the type comes from
-   `adonisjs-account-kit`).
+   `@kevinjohn/adonisjs-account-kit`).
 3. Implement the callbacks your services need:
    - The example choices files select five services and need `passwordResetProvision`,
      `accountActivationProvision`, `emailChangeProvision`, `emailChanged`,
@@ -213,7 +213,7 @@ import { open, mkdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { dirname } from 'node:path'
 import app from '@adonisjs/core/services/app'
-import type { NotificationCallbacks } from 'adonisjs-account-kit'
+import type { NotificationCallbacks } from '@kevinjohn/adonisjs-account-kit'
 
 async function capture(kind: keyof NotificationCallbacks, recipient: string, url?: string) {
   if (app.inProduction) throw new Error('Configure account message delivery before production')

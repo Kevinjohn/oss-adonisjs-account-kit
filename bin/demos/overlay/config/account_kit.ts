@@ -1,7 +1,11 @@
 // Demo configuration: every capability except social sign-in, with emails printed to the log.
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
-import { createLogNotifications, createLucidAdapter, defineConfig } from 'adonisjs-account-kit'
+import {
+  createLogNotifications,
+  createLucidAdapter,
+  defineConfig,
+} from '@kevinjohn/adonisjs-account-kit'
 
 const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
 const link = (path: string) => (token: string) =>

@@ -6,8 +6,8 @@ import app from '@adonisjs/core/services/app'
 import { MessageBuilder } from '@adonisjs/core/helpers'
 import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
-import { captureNotifications } from 'adonisjs-account-kit/testing/notifications'
-import type { ResolvedConfig } from 'adonisjs-account-kit/types'
+import { captureNotifications } from '@kevinjohn/adonisjs-account-kit/testing/notifications'
+import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import User from '#models/user'
 
 type Page = BasePage['page']

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { performance } from 'node:perf_hooks'
-import type { AccountKit } from 'adonisjs-account-kit'
+import type { AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import type dbService from '@adonisjs/lucid/services/db'
 import type UserModel from './user.js'
 import type { NativeSqlite } from './connection.js'

@@ -31,7 +31,10 @@ const source = readFileSync(rc, 'utf8')
 if (!source.includes(commands)) throw new Error('adonisrc.ts has no Mail commands entry')
 writeFileSync(
   rc,
-  source.replace(commands, `${commands},\n    () => import('adonisjs-account-kit/commands')`)
+  source.replace(
+    commands,
+    `${commands},\n    () => import('@kevinjohn/adonisjs-account-kit/commands')`
+  )
 )
 appendFileSync(
   join(appDir, '.env'),

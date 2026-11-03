@@ -30,6 +30,6 @@ test('core never imports the admission module', async ({ assert }) => {
 
 test('the boundary check notices an admission import', ({ assert }) => {
   assert.isTrue(importsAdmission.test(`import { x } from './admission/service.js'`))
-  assert.isTrue(importsAdmission.test(`await import('adonisjs-account-kit/admission')`))
+  assert.isTrue(importsAdmission.test(`await import('@kevinjohn/adonisjs-account-kit/admission')`))
   assert.isFalse(importsAdmission.test(`import { x } from './registration.js'`))
 })

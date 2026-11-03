@@ -1,5 +1,5 @@
-import { DeliveryError, PostCommitError, type AccountUser } from 'adonisjs-account-kit'
-import accountKit from 'adonisjs-account-kit/services/main'
+import { DeliveryError, PostCommitError, type AccountUser } from '@kevinjohn/adonisjs-account-kit'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import { accountInput } from '#middleware/account_access_middleware'
 import { profileUpdateValidator } from '#validators/account_kit'

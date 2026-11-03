@@ -109,7 +109,7 @@ Translations are copy-paste pages in the docs, not files in the package.
 ### Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in
-`adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behavior the
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behavior the
 Lucid adapter passes.
 
 ## Code of conduct

@@ -1,4 +1,4 @@
-import { DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
 
 /**
  * True when Account Kit reports a failure after it has saved the account change.

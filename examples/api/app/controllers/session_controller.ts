@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import accountKit from 'adonisjs-account-kit/services/main'
+import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import User from '#models/user'
 import { loginValidator } from '#validators/user'
 import UserTransformer from '#transformers/user_transformer'

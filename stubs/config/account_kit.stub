@@ -6,7 +6,7 @@ import {
   type AccountUser,
   type Invitation,
   type Trx,
-} from 'adonisjs-account-kit'
+} from '@kevinjohn/adonisjs-account-kit'
 
 /**
  * A trailing slash keeps any APP_URL path, for example https://example.com/portal.

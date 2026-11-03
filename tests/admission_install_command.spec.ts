@@ -71,11 +71,11 @@ test.group('admission install command', () => {
       assert.notInclude(migration, '{{')
 
       const config = await readFile(join(root, 'config', 'admission.ts'), 'utf8')
-      assert.include(config, "from 'adonisjs-account-kit/admission'")
+      assert.include(config, "from '@kevinjohn/adonisjs-account-kit/admission'")
       assert.include(config, 'defineAdmission(')
       const rc = await readFile(join(root, 'adonisrc.ts'), 'utf8')
-      assert.include(rc, 'adonisjs-account-kit/admission/provider')
-      assert.include(rc, 'adonisjs-account-kit/admission/commands')
+      assert.include(rc, '@kevinjohn/adonisjs-account-kit/admission/provider')
+      assert.include(rc, '@kevinjohn/adonisjs-account-kit/admission/commands')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -94,8 +94,16 @@ test.group('admission install command', () => {
       const contents = await readFile(join(root, 'database', 'migrations', migration), 'utf8')
       assert.include(contents, "table.integer('user_id').unsigned()")
       const rc = await readFile(join(root, 'adonisrc.ts'), 'utf8')
-      assert.equal(rc.match(/adonisjs-account-kit\/admission\/provider/g)?.length, 1)
-      assert.equal(rc.match(/adonisjs-account-kit\/admission\/commands/g)?.length, 1)
+      assert.equal(
+        rc.match(new RegExp(String.raw`@kevinjohn/adonisjs-account-kit\/admission\/provider`, 'g'))
+          ?.length,
+        1
+      )
+      assert.equal(
+        rc.match(new RegExp(String.raw`@kevinjohn/adonisjs-account-kit\/admission\/commands`, 'g'))
+          ?.length,
+        1
+      )
     } finally {
       await rm(root, { recursive: true, force: true })
     }

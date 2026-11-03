@@ -55,8 +55,8 @@ export default class InstallAdmission extends BaseCommand {
       })
 
     await codemods.updateRcFile((rcFile) => {
-      rcFile.addProvider('adonisjs-account-kit/admission/provider')
-      rcFile.addCommand('adonisjs-account-kit/admission/commands')
+      rcFile.addProvider('@kevinjohn/adonisjs-account-kit/admission/provider')
+      rcFile.addCommand('@kevinjohn/adonisjs-account-kit/admission/commands')
     })
 
     this.logger.info('Finish admission in your application:')

@@ -6,12 +6,15 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
  * Loads every public entry point of the installed package on the exact dependency floors, so a
  * module that imports an export the floor does not provide fails here instead of in a consumer.
  */
-const manifestUrl = new URL('./node_modules/adonisjs-account-kit/package.json', import.meta.url)
+const manifestUrl = new URL(
+  './node_modules/@kevinjohn/adonisjs-account-kit/package.json',
+  import.meta.url
+)
 const manifest = JSON.parse(await readFile(manifestUrl, 'utf8')) as {
   exports: Record<string, string>
 }
 const specifiers = Object.keys(manifest.exports).map((key) =>
-  key.replace(/^\./, 'adonisjs-account-kit')
+  key.replace(/^\./, '@kevinjohn/adonisjs-account-kit')
 )
 assert.ok(specifiers.length > 0, 'The installed package declares no entry points')
 

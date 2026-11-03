@@ -41,7 +41,8 @@ const capabilityTables: Record<Capability, string[]> = {
   sessionManagement: [packageTables.accountSessions],
 }
 
-const migrationFix = 'Run `node ace configure adonisjs-account-kit`, then `node ace migration:run`'
+const migrationFix =
+  'Run `node ace configure @kevinjohn/adonisjs-account-kit`, then `node ace migration:run`'
 
 function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['environment']) {
   const name = 'APP_URL'
@@ -141,7 +142,7 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorCheck[]> {
       name: 'Config',
       ok: false,
       detail: 'config/account_kit.ts is missing or does not export defineConfig(...)',
-      fix: 'Run `node ace configure adonisjs-account-kit`',
+      fix: 'Run `node ace configure @kevinjohn/adonisjs-account-kit`',
     })
   } else {
     checks.push({ name: 'Config', ok: true, detail: `enabled: ${input.config.enabled.join(', ')}` })

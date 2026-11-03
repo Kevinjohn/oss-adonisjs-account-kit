@@ -1,7 +1,7 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
-import { errors } from 'adonisjs-account-kit'
+import { errors } from '@kevinjohn/adonisjs-account-kit'
 import { isDeliveryFailure } from '#services/delivery_failure'
 
 /**

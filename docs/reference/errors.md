@@ -3,8 +3,8 @@
 Package-defined account errors extend `AccountKitError`, which extends the AdonisJS `Exception`.
 They carry a stable `code` and an HTTP `status`. Database errors and errors thrown by application
 callbacks may propagate as their original error; callback failures after commit are wrapped in one
-of the committed failure types below. Import package errors from `adonisjs-account-kit` or
-`adonisjs-account-kit/errors`.
+of the committed failure types below. Import package errors from `@kevinjohn/adonisjs-account-kit` or
+`@kevinjohn/adonisjs-account-kit/errors`.
 
 ## Mapping errors to responses
 
@@ -13,7 +13,7 @@ of the committed failure types below. Import package errors from `adonisjs-accou
 failure handling:
 
 ```ts
-import { accountErrorResponse } from 'adonisjs-account-kit'
+import { accountErrorResponse } from '@kevinjohn/adonisjs-account-kit'
 
 const mapped = accountErrorResponse(error, { i18n: 'i18n' in ctx ? ctx.i18n : undefined })
 if (mapped) {
@@ -35,7 +35,7 @@ For a copyable reset-request boundary, validate with Vine first so field errors 
 normal response, then preserve the generic acknowledgement for either committed failure:
 
 ```ts
-import { DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
 
 const acknowledgement = { message: 'If the account exists, instructions will be sent.' }
 try {
@@ -161,10 +161,13 @@ An application that also uses the managed routes keeps one `errors.json` for bot
 
 The optional [admission module](../guide/admission.md) adds two errors. They extend `AccountKitError`,
 so `accountErrorResponse` maps them, but they are exported only from
-`adonisjs-account-kit/admission`:
+`@kevinjohn/adonisjs-account-kit/admission`:
 
 ```ts
-import { AdmissionDecisionError, AdmissionRequiredError } from 'adonisjs-account-kit/admission'
+import {
+  AdmissionDecisionError,
+  AdmissionRequiredError,
+} from '@kevinjohn/adonisjs-account-kit/admission'
 ```
 
 | Error                    | Code                               | Status | When                                                                         | What to do                                                                                     |

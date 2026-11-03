@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError } from 'adonisjs-account-kit'
+import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
 import { authStrategy } from '#services/auth_strategy'
 
 /** The browser's PKCE verifier, kept in the session between redirect and callback. */

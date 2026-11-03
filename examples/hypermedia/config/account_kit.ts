@@ -5,7 +5,7 @@ import {
   createLogNotifications,
   createLucidAdapter,
   defineConfig,
-} from 'adonisjs-account-kit'
+} from '@kevinjohn/adonisjs-account-kit'
 import { accountKitNotify } from '#services/account_kit_notifications'
 
 const environment = app.inProduction ? 'production' : app.inTest ? 'test' : 'development'

@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { DeliveryError, PostCommitError } from 'adonisjs-account-kit'
+import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
 import { reportCommittedFailure } from '#services/committed_failure_diagnostic'
 
 test('committed follow-up diagnostics omit private error details', async ({ assert }) => {

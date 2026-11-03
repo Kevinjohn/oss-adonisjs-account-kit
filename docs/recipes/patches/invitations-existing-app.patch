@@ -6,8 +6,8 @@ index 0000000..7afb281
 @@ -0,0 +1,50 @@
 +import type { HttpContext } from '@adonisjs/core/http'
 +import vine from '@vinejs/vine'
-+import { InvalidTokenError } from 'adonisjs-account-kit'
-+import accountKit from 'adonisjs-account-kit/services/main'
++import { InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
++import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 +
 +const sendValidator = vine.compile(
 +  vine.object({ email: vine.string().email(), role: vine.string().trim().minLength(1).maxLength(40) })
@@ -82,8 +82,8 @@ index 0000000..b51935e
 +++ b/app/services/invitation_authorization.ts
 @@ -0,0 +1,16 @@
 +import db from '@adonisjs/lucid/services/db'
-+import type { Trx } from 'adonisjs-account-kit'
-+import type { AuthorizationCallbacks } from 'adonisjs-account-kit/types'
++import type { Trx } from '@kevinjohn/adonisjs-account-kit'
++import type { AuthorizationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
 +
 +async function isOwner(userId: number | string, trx?: Trx): Promise<boolean> {
 +  const query = (trx ? trx.from('app_user_roles') : db.from('app_user_roles'))
@@ -117,7 +117,7 @@ index 9214431..2ded3a9 100644
  import env from '#start/env'
 +import { deliverInvitation } from '#services/invitation_delivery'
 +import { authorizeInvitations } from '#services/invitation_authorization'
-+import { InvalidInputError } from 'adonisjs-account-kit'
++import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
  import {
    createLucidAdapter,
    defineConfig,

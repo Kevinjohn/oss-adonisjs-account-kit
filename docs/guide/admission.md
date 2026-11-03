@@ -14,7 +14,7 @@ Every requirement you configure must be met. None is on by default. Account Kit 
 and evaluates it; the application decides who may approve, and owns every screen and every word.
 There are no roles, no admin pages and no managed admission routes.
 
-Admission lives in its own entry point, `adonisjs-account-kit/admission`. The rest of the package
+Admission lives in its own entry point, `@kevinjohn/adonisjs-account-kit/admission`. The rest of the package
 never imports it, so an application that does not install it is unchanged.
 
 ## Configuration
@@ -22,7 +22,7 @@ never imports it, so an application that does not install it is unchanged.
 `config/admission.ts`:
 
 ```ts
-import { defineAdmission } from 'adonisjs-account-kit/admission'
+import { defineAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 
 export default defineAdmission({
   domain: { allowed: ['example.com'], includeSubdomains: false }, // omit to disable
@@ -55,7 +55,7 @@ Register the provider in `adonisrc.ts`:
 ```ts
 providers: [
   // ...
-  () => import('adonisjs-account-kit/admission/provider'),
+  () => import('@kevinjohn/adonisjs-account-kit/admission/provider'),
 ]
 ```
 
@@ -66,7 +66,10 @@ It binds `AccountAdmission` as a container singleton, with the alias `account_ad
 Wrap two callbacks in `config/account_kit.ts`:
 
 ```ts
-import { withAdmissionCleanup, withInvitationEvidence } from 'adonisjs-account-kit/admission'
+import {
+  withAdmissionCleanup,
+  withInvitationEvidence,
+} from '@kevinjohn/adonisjs-account-kit/admission'
 
 export default defineConfig({
   // ...
@@ -160,7 +163,7 @@ admission before the route runs:
 ```ts
 import router from '@adonisjs/core/services/router'
 import app from '@adonisjs/core/services/app'
-import { AccountAdmission, admissionMiddleware } from 'adonisjs-account-kit/admission'
+import { AccountAdmission, admissionMiddleware } from '@kevinjohn/adonisjs-account-kit/admission'
 
 const admitted = admissionMiddleware({
   admission: () => app.container.make(AccountAdmission),
@@ -176,7 +179,7 @@ routes cannot carry this middleware; they stay the limited surface.
 
 ### Errors
 
-Both errors extend `AccountKitError` and are exported from `adonisjs-account-kit/admission` only.
+Both errors extend `AccountKitError` and are exported from `@kevinjohn/adonisjs-account-kit/admission` only.
 `accountErrorResponse` maps them like any other package error.
 
 | Error                    | Code                               | Status | When                                                                             |
@@ -325,8 +328,8 @@ authorization policy.
 - `config/admission.ts`, from the stub, when it does not exist;
 - `database/migrations/<timestamp>_account_kit_admission_create_account_admissions.ts`, when no
   migration with that suffix exists;
-- the provider `adonisjs-account-kit/admission/provider` and the command loader
-  `adonisjs-account-kit/admission/commands` in `adonisrc.ts`.
+- the provider `@kevinjohn/adonisjs-account-kit/admission/provider` and the command loader
+  `@kevinjohn/adonisjs-account-kit/admission/commands` in `adonisrc.ts`.
 
 It changes no other file.
 

@@ -2,12 +2,12 @@
 
 Account Kit reads and writes users through a `UsersAdapter`. Four ship with the package:
 
-| Import                                  | Use it when                                    |
-| --------------------------------------- | ---------------------------------------------- |
-| `adonisjs-account-kit/adapters/lucid`   | Users are a Lucid model.                       |
-| `adonisjs-account-kit/adapters/drizzle` | The users table is defined with Drizzle.       |
-| `adonisjs-account-kit/adapters/prisma`  | The users table is defined with Prisma.        |
-| `adonisjs-account-kit/adapters/sql`     | Any other users table on the Lucid connection. |
+| Import                                             | Use it when                                    |
+| -------------------------------------------------- | ---------------------------------------------- |
+| `@kevinjohn/adonisjs-account-kit/adapters/lucid`   | Users are a Lucid model.                       |
+| `@kevinjohn/adonisjs-account-kit/adapters/drizzle` | The users table is defined with Drizzle.       |
+| `@kevinjohn/adonisjs-account-kit/adapters/prisma`  | The users table is defined with Prisma.        |
+| `@kevinjohn/adonisjs-account-kit/adapters/sql`     | Any other users table on the Lucid connection. |
 
 For anything else, write your own: see [custom adapter](../recipes/custom-adapter.md).
 
@@ -107,7 +107,7 @@ export const users = pgTable('users', {
 
 ```ts
 // config/account_kit.ts
-import { createDrizzleAdapter } from 'adonisjs-account-kit/adapters/drizzle'
+import { createDrizzleAdapter } from '@kevinjohn/adonisjs-account-kit/adapters/drizzle'
 import { users } from '../database/schema.js'
 
 export default defineConfig({
@@ -137,7 +137,7 @@ model User {
 
 ```ts
 import { Prisma } from '@prisma/client'
-import { createPrismaAdapter } from 'adonisjs-account-kit/adapters/prisma'
+import { createPrismaAdapter } from '@kevinjohn/adonisjs-account-kit/adapters/prisma'
 
 const userModel = Prisma.dmmf.datamodel.models.find((model) => model.name === 'User')!
 
@@ -152,7 +152,7 @@ export default defineConfig({
 ## Plain SQL
 
 ```ts
-import { createSqlUsersAdapter } from 'adonisjs-account-kit/adapters/sql'
+import { createSqlUsersAdapter } from '@kevinjohn/adonisjs-account-kit/adapters/sql'
 
 export default defineConfig({
   users: createSqlUsersAdapter({ table: 'users' }),
@@ -201,6 +201,6 @@ input-validation and field-error path.
 
 ## Proving an adapter
 
-`adonisjs-account-kit/testing/adapter_contract` runs the behavior checks every shipped adapter
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` runs the behavior checks every shipped adapter
 passes, including rollback of each write. Run it against your adapter and database in your test
 suite; see [custom adapter](../recipes/custom-adapter.md).

@@ -282,7 +282,10 @@ test.group('setup choice validation', (group) => {
     assert.include(config, 'mapFields: mapRegistrationFields')
     assert.include(config, 'mapRegistrationData: (data, user)')
     assert.include(config, 'registrationData.${key} is not allowed')
-    assert.include(config, "import { InvalidInputError } from 'adonisjs-account-kit/errors'")
+    assert.include(
+      config,
+      "import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'"
+    )
     assert.include(
       config,
       'throw new InvalidInputError(`account_kit: registrationData.${field.name} is required`)'

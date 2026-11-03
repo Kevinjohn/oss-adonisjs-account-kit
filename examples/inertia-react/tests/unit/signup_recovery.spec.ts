@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import { DeliveryError, InvalidInputError, PostCommitError } from 'adonisjs-account-kit'
-import kit from 'adonisjs-account-kit/services/main'
+import { DeliveryError, InvalidInputError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import NewAccountController from '#controllers/new_account_controller'
 
 type Route = 'dashboard' | 'session.create'

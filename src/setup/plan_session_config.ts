@@ -35,7 +35,7 @@ export async function planSessionConfigIntegration(
   const existingWrapper = defaultExpression(parsed)
   const wrapperBinding = importedName(
     parsed,
-    'adonisjs-account-kit/http',
+    '@kevinjohn/adonisjs-account-kit/http',
     'protectManagedSessionConfig'
   )
   if (

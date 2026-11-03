@@ -22,6 +22,83 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
 12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
 
+## Scoped package candidate — 2026-11-03
+
+This is local candidate evidence for `@kevinjohn/adonisjs-account-kit@0.1.5`; naming confirmation,
+merge and publication remain owner actions. Earlier records below retain their original package
+names, archive paths, commands and digests.
+
+- Clean archive source: `555c56cda66f3168477fec687c32e4ff87ae71de`.
+- Archive: `kevinjohn-adonisjs-account-kit-0.1.5.tgz`.
+- SHA-256: `d124bfec0913fc05ee3df010e996ebca20d5633272c1f0cc8d602fc85e253d8b`.
+- Consumer and example-lock verification source: `e65202fe4abb4009b32e58eef7fcdf05a9324a84`,
+  with a clean working tree. Only the four example archive integrity values differ from the
+  archive source; those lockfiles are outside the packed files.
+- Runtime launcher: Node `24.21.0`; actual consumer process: Node `24.22.1`, pnpm `11.23.0`.
+
+The final archive passed the default fresh SQLite consumer journey through `pnpm test:consumer`
+with the explicit candidate archive and source revision. It installed the scoped package inside
+the disposable consumer's own `node_modules`, generated configuration and 12 migrations, and ran
+the consumer checks against SQLite `3.53.2`. Core was `7.6.0`, Assembler `8.6.0`, Lucid `22.4.2`,
+Limiter `3.0.1`, Luxon `3.7.2` and `better-sqlite3` `12.11.1`.
+
+The same unchanged archive was copied into all four examples. The strict archive identity helper
+reconciled only its version and SHA-512 in each existing lockfile. Fresh `pnpm install
+--frozen-lockfile` passed for API, Hypermedia, Inertia React and Inertia Vue; each installed scoped
+version `0.1.5` inside its own `node_modules`. Dependency version ranges and the resolved dependency
+graph were preserved.
+
+The candidate was rebuilt after the README API link changed to the hosted reference so clean
+checkouts do not depend on ignored generated pages. It also includes the statement coverage floor
+change from 98 to 97, the rounded minimum measured across the required database matrix; line,
+branch and function floors remain 94, 90 and 94. Earlier scoped candidate archives are superseded
+by the identity above.
+
+Source validation:
+
+| Revision   | Check                                                                 | Result                                           |
+| ---------- | --------------------------------------------------------------------- | ------------------------------------------------ |
+| `555c56cd` | `pnpm build` (including lint), refreshed archive                      | Passed                                           |
+| `e65202fe` | Explicit-candidate consumer and four fresh frozen installs            | Passed                                           |
+| `74a05dc`  | `pnpm build` (including lint), `pnpm format:check`, `pnpm docs:build` | Passed                                           |
+| `1ad924b`  | `pnpm typecheck`; strict archive helper and documentation links       | Passed; 8 helper and 3 link tests                |
+| `e612960`  | `pnpm quick:test`                                                     | 1,251 passed, 2 skipped                          |
+| `e612960`  | `DB_PORT=55556 pnpm test:pg`                                          | 1,250 passed, 3 skipped; managed cluster stopped |
+| `e612960`  | `pnpm test:built-exports`, `pnpm test:built-setup`                    | 2 and 11 passed                                  |
+
+The later changes from `e612960` tighten the archive helper's peer-metadata comparison, add its
+regression test, set the coverage statement floor, format contributor tables, correct Linux-only
+tooling fixtures, make recipe Git identity invocation-local, and replace the README API link with
+the hosted reference. Package runtime sources, stubs and public exports are unchanged; their
+full-suite and built-entry evidence is reused. The archive helper is covered by eight focused
+tests, and the actual final archive is covered by the fresh consumer and four frozen installs
+above. The strengthened documentation link test checks Git-tracked membership rather than local
+filesystem existence. It rejects the former link even when ignored API output exists, accepts the
+hosted URL, and distinguishes tracked directory links from a file followed by a slash. The final
+record passed all three focused link tests; prior link checks that depended on generated output do
+not establish the clean-checkout guarantee.
+
+Hosted prerequisite evidence is separate from the refreshed local archive proof:
+
+- At `c66049d`, the [Linux checks run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41571438775)
+  passed SQLite (1,246 passed, 2 skipped), PostgreSQL (1,245 passed, 3 skipped), the build and
+  both built-export tests.
+- At `a3ccaf0d`, the [compatibility run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41571528823)
+  passed MySQL (1,241 passed, 13 skipped) and its consumer. The PostgreSQL minimum/latest tests
+  passed 1,252 with 3 skipped, but the 98% statement gate failed at 97.9%. The corresponding
+  [checks run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41571528841)
+  passed SQLite; its PostgreSQL tests also passed 1,252 with 3 skipped before the same coverage
+  failure. These runs establish test outcomes and the stricter gate's failure, not an overall
+  passing compatibility workflow.
+- The 97% floor's [checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678338),
+  [compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678170) and
+  [examples](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678492) runs
+  completed successfully at the 97% floor: both checks jobs, minimum/latest compatibility tests
+  and builds, MySQL and its consumer, and all four examples. These hosted prerequisite results
+  are distinct from the local scoped archive proof above.
+- The recipe Git identity correction passed both real clean-environment recipe tests at
+  `2644e61`.
+
 ## November 2026 remediation candidate
 
 This record covers the combined candidate of pull requests #707, #708, #709 and #710, integrated
@@ -841,3 +918,18 @@ Generated `package.json` dependency ranges:
 - **Hypermedia** — dependencies: `@adonisjs/auth@^10.1.0`, `@adonisjs/core@^7.5.2`, `@adonisjs/lucid@^22.4.2`, `@adonisjs/session@^8.1.0`, `@adonisjs/shield@^9.0.0`, `@adonisjs/static@^2.0.1`, `@adonisjs/vite@^6.0.2`, `@vinejs/vine@^4.4.0`, `better-sqlite3@^13.0.3`, `edge-iconify@^2.0.2`, `edge.js@^6.5.1`, `luxon@^3.7.2`, `reflect-metadata@^0.2.2`; devDependencies: `@adonisjs/assembler@^8.5.2`, `@adonisjs/eslint-config@^3.1.0`, `@adonisjs/prettier-config@^1.5.0`, `@adonisjs/tsconfig@^2.0.0`, `@iconify-json/lucide@^1.2.136`, `@japa/assert@^4.2.0`, `@japa/browser-client@^2.3.0`, `@japa/plugin-adonisjs@^5.2.0`, `@japa/runner@^5.3.0`, `@poppinss/ts-exec@^1.4.4`, `@types/alpinejs@^3.13.11`, `@types/luxon@^3.7.5`, `@types/node@~26.6.2`, `alpinejs@^3.17.4`, `eslint@^10.11.0`, `hot-hook@^1.0.0`, `pino-pretty@^13.1.3`, `prettier@^3.9.9`, `typescript@~6.0.3`, `vite@^8.3.0`, `youch@^4.1.1`.
 
 For React, the exact D2 command downloaded the pinned tree, but its initial package install could not reach the registry from the sandbox. The generated lockfile was resolved from registry metadata and then installed successfully with `CI=true pnpm install --frozen-lockfile`; the scaffolder's prepare actions and migration were completed before committing the baseline. The resulting tree was checked against the pinned upstream source as described above.
+
+### Scoped rename candidate after current-main review (2026-11-03)
+
+The current candidate supersedes the earlier scoped archive above. It includes main revision
+`4bdb6012aa847cb588389e3cfb2b7820e5de4b60` and preserves the version-1 export identifier and
+limiter-key derivation. Naming approval is complete; merge and release remain separate owner actions.
+
+- Packed source: `220b6d248fd24cea5b83f6d4ef2b9564220d28cf`; the following HTTP assertion-only
+  correction does not change packed members.
+- Archive: `kevinjohn-adonisjs-account-kit-0.1.5.tgz`.
+- SHA-256: `820acd917e9c2b23512062508d0cc9c02b880b0734b12b64496289e5f05bb23c`.
+- All four example installs passed `CI=true pnpm install --frozen-lockfile` with the actual
+  archive. Only its integrity changed in each lockfile; dependency ranges and the resolved graphs
+  were preserved. Every example installed scoped version 0.1.5 in its own `node_modules`.
+- Node 24 launcher: 24.21.0; pnpm-managed runtime: 24.22.1; pnpm: 11.23.0.

@@ -1,4 +1,4 @@
-import type { AccountUser, CredentialChangeContext, Trx } from 'adonisjs-account-kit'
+import type { AccountUser, CredentialChangeContext, Trx } from '@kevinjohn/adonisjs-account-kit'
 
 export async function onCredentialsChangedTransaction(
   user: AccountUser,

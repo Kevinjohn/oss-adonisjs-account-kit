@@ -2,8 +2,11 @@
 
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
-import { createLucidAdapter, defineConfig } from 'adonisjs-account-kit'
-import { withAdmissionCleanup, withInvitationEvidence } from 'adonisjs-account-kit/admission'
+import { createLucidAdapter, defineConfig } from '@kevinjohn/adonisjs-account-kit'
+import {
+  withAdmissionCleanup,
+  withInvitationEvidence,
+} from '@kevinjohn/adonisjs-account-kit/admission'
 import { notifications } from '#services/account_kit_notifications'
 import { createNotify } from './account_kit_notifications.js'
 import { onCredentialsChangedTransaction } from './account_kit_credential_notice.js'

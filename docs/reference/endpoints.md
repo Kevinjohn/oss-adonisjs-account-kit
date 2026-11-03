@@ -1,6 +1,6 @@
 # Managed endpoints
 
-`registerManagedRoutes` from `adonisjs-account-kit/http` mounts these JSON routes under the
+`registerManagedRoutes` from `@kevinjohn/adonisjs-account-kit/http` mounts these JSON routes under the
 `prefix` you choose, for example `/api/v1`. Only the capabilities in its `enabled` list are
 mounted, and `except` removes individual endpoints by name. Setup and guard requirements are in
 [managed HTTP](../guide/managed-http.md).

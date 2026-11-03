@@ -53,9 +53,9 @@ importers:
       '@vinejs/vine':
         specifier: ^4.4.0
         version: 4.4.0
-      adonisjs-account-kit:
-        specifier: file:vendor/adonisjs-account-kit.tgz
-        version: file:vendor/adonisjs-account-kit.tgz(a53274e9ae7eb1e6a258218e02d0ee13)
+      '@kevinjohn/adonisjs-account-kit':
+        specifier: file:vendor/kevinjohn-adonisjs-account-kit.tgz
+        version: file:vendor/kevinjohn-adonisjs-account-kit.tgz(a53274e9ae7eb1e6a258218e02d0ee13)
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -1289,9 +1289,9 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  adonisjs-account-kit@file:vendor/adonisjs-account-kit.tgz:
-    resolution: {integrity: sha512-nTstU69G2Gloan3GMPLeoGqxE07cOda1TdOwjP/135gwoxxHzrgmkMMJs8IIOG3O1BfaIQZuRinXbQK9dXGjQQ==, tarball: file:vendor/adonisjs-account-kit.tgz}
-    version: 0.0.0
+  '@kevinjohn/adonisjs-account-kit@file:vendor/kevinjohn-adonisjs-account-kit.tgz':
+    resolution: {integrity: sha512-whh03VvyeT803iT4bPNvOidIobfaYBHHi4gFi03bWmmc4z3km2GHQcKx0L3hQFkr1u7d1Fz6KudEfuvMbgo/8g==, tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz}
+    version: 0.1.5
     engines: {node: '>=24.0.0'}
     peerDependencies:
       '@adonisjs/assembler': ^8.0.0
@@ -4519,7 +4519,7 @@ snapshots:
 
   acorn@8.19.0: {}
 
-  adonisjs-account-kit@file:vendor/adonisjs-account-kit.tgz(a53274e9ae7eb1e6a258218e02d0ee13):
+  '@kevinjohn/adonisjs-account-kit@file:vendor/kevinjohn-adonisjs-account-kit.tgz(a53274e9ae7eb1e6a258218e02d0ee13)':
     dependencies:
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/limiter': 3.0.1(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@6.0.3))(@vinejs/vine@4.4.0)(edge.js@6.5.1)(pino-pretty@13.2.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(supports-color@10.2.2))

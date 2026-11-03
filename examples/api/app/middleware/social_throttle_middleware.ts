@@ -3,7 +3,7 @@ import { errors } from '@adonisjs/limiter'
 import limiter from '@adonisjs/limiter/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
-import { ThrottledError } from 'adonisjs-account-kit'
+import { ThrottledError } from '@kevinjohn/adonisjs-account-kit'
 import env from '#start/env'
 import { accountInput } from '#middleware/account_access_middleware'
 

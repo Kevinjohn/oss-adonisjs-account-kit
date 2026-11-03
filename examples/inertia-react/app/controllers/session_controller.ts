@@ -1,4 +1,4 @@
-import kit from 'adonisjs-account-kit/services/main'
+import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { loginValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
 import { accountKitSessionGuard } from '#services/session_guard'
