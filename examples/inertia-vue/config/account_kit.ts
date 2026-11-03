@@ -1,3 +1,4 @@
+import type { NotificationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import {
@@ -28,6 +29,26 @@ const users = createLucidAdapter(loadUser, {
     user.fullName = fullNameFrom(data)
   },
 })
+
+/**
+ * Test seam: the kit freezes the notification callbacks it resolves from this file, so tests
+ * replace entries in `notifyOverrides`. The kit calls through it at call time.
+ */
+export const notifyOverrides: NotificationCallbacks = createLogNotifications({
+  brandName: 'My App',
+  environment,
+})
+
+const overridable = notifyOverrides as unknown as Record<string, (...args: unknown[]) => unknown>
+const notify = Object.fromEntries(
+  Object.keys(notifyOverrides).map((name) => [
+    name,
+    (...args: unknown[]) => overridable[name](...args),
+  ])
+) as unknown as NotificationCallbacks
+
+/** Test seam for the lifecycle observer; the kit freezes its configuration. */
+export const lifecycleOverrides: { run?: (event: unknown) => Promise<void> } = {}
 
 export default defineConfig({
   users,
@@ -71,10 +92,13 @@ export default defineConfig({
    * Prints each email, link included, to the server log, and refuses to boot in production.
    * Before deploying, add @adonisjs/mail and switch to createMailNotifications.
    */
-  notify: createLogNotifications({ brandName: 'My App', environment }),
+  notify,
   /**
    * A no-op on purpose: session login checks the credential revision on every request, so older
    * sessions end on their own. Nothing else holds credentials in this app.
    */
   onCredentialsChangedTransaction: async () => {},
+  onLifecycleEvent: async (event) => {
+    await lifecycleOverrides.run?.(event)
+  },
 })

@@ -7,6 +7,7 @@ import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 const password = 'ReplacementPass123!'
 const replayPassword = 'SecondReplacement123!'
@@ -204,11 +205,7 @@ test.group('reset proof HTTP journey', (group) => {
     const session = new HttpSession()
     assert.equal((await session.login(other)).status, 302)
 
-    const notify = (
-      kit as unknown as {
-        deps: { config: { notify: { passwordResetCompleted: () => Promise<void> } } }
-      }
-    ).deps.config.notify
+    const notify = notifyOverrides
     const previous = notify.passwordResetCompleted
     notify.passwordResetCompleted = async () => {
       throw new Error('simulated notification failure')

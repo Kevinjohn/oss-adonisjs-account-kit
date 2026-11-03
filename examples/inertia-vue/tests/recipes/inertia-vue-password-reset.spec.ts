@@ -2,11 +2,10 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { errors as authErrors } from '@adonisjs/auth'
-import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import testUtils from '@adonisjs/core/services/test_utils'
-import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import User from '#models/user'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 const originalPassword = 'OriginalPass123!'
 const replacementPassword = 'ReplacementPass123!'
@@ -30,7 +29,7 @@ test.group('Inertia Vue password reset recipe', (group) => {
     const email = `recipe-${randomUUID()}@example.test`
     const owner = await User.create({ fullName: 'Recipe Owner', email, password: originalPassword })
     const originalHash = owner.password
-    const notify = app.config.get<ResolvedConfig>('account_kit').notify
+    const notify = notifyOverrides
     const previousNotify = notify.passwordResetProvision
     const resetUrls: string[] = []
     notify.passwordResetProvision = async (_user, url) => {

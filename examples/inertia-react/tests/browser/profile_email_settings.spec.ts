@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import User from '#models/user'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 const password = 'OldPass123!'
 const longEmail = `${'a'.repeat(64)}@example.test`
@@ -65,17 +66,7 @@ test.group('profile and email settings browser journey', (group) => {
         }),
         true
       )
-      const notify = (
-        kit as unknown as {
-          deps: {
-            config: {
-              notify: {
-                emailChangeProvision: (...args: unknown[]) => Promise<void>
-              }
-            }
-          }
-        }
-      ).deps.config.notify
+      const notify = notifyOverrides
       const original = notify.emailChangeProvision
       const confirmationUrls: string[] = []
       notify.emailChangeProvision = async (...args: unknown[]) => {

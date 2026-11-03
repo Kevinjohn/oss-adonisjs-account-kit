@@ -5,6 +5,7 @@ import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 const origin = process.env.APP_URL!
 const currentPassword = 'OldPass123!'
@@ -136,13 +137,7 @@ test.group('profile and email settings HTTP journey', (group) => {
     await first.login(owner)
     await second.login(owner)
     await unrelated.login(other)
-    const notify = (
-      kit as unknown as {
-        deps: {
-          config: { notify: { emailChangeProvision: (...args: unknown[]) => Promise<void> } }
-        }
-      }
-    ).deps.config.notify
+    const notify = notifyOverrides
     const original = notify.emailChangeProvision
     let confirmationUrl = ''
     notify.emailChangeProvision = async (...args: unknown[]) => {
@@ -258,13 +253,7 @@ test.group('profile and email settings HTTP journey', (group) => {
     const withoutProof = await browser.request('/settings/email', { email: 'new@example.test' })
     assert.equal(withoutProof.status, 302)
     assert.equal((await User.findOrFail(owner.id)).unverifiedEmail, null)
-    const notification = (
-      kit as unknown as {
-        deps: {
-          config: { notify: { emailChangeProvision: (...args: unknown[]) => Promise<void> } }
-        }
-      }
-    ).deps.config.notify
+    const notification = notifyOverrides
     const original = notification.emailChangeProvision
     let confirmationUrl = ''
     notification.emailChangeProvision = async (...args: unknown[]) => {
@@ -304,13 +293,7 @@ test.group('profile and email settings HTTP journey', (group) => {
     })
     const browser = new BrowserSession()
     await browser.login(owner)
-    const notify = (
-      kit as unknown as {
-        deps: {
-          config: { notify: { emailChangeProvision: (...args: unknown[]) => Promise<void> } }
-        }
-      }
-    ).deps.config.notify
+    const notify = notifyOverrides
     const original = notify.emailChangeProvision
     let confirmationUrl = ''
     notify.emailChangeProvision = async (...args: unknown[]) => {
@@ -353,18 +336,7 @@ test.group('profile and email settings HTTP journey', (group) => {
     const completingBrowser = new BrowserSession()
     await requester.login(owner)
     await completingBrowser.login(other)
-    const notify = (
-      kit as unknown as {
-        deps: {
-          config: {
-            notify: {
-              emailChangeProvision: (...args: unknown[]) => Promise<void>
-              emailChanged: (...args: unknown[]) => Promise<void>
-            }
-          }
-        }
-      }
-    ).deps.config.notify
+    const notify = notifyOverrides
     const oldProvision = notify.emailChangeProvision
     const oldChanged = notify.emailChanged
     let confirmationUrl = ''
