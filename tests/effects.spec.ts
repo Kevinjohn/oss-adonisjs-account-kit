@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DeliveryError, PostCommitError } from '../src/errors.js'
-import { afterCommit, lifecycle, postCommit } from '../src/effects.js'
+import { lifecycle, postCommit } from '../src/effects.js'
 import type { LifecycleEvent } from '../src/types.js'
 
 test.group('post-commit effects', () => {
@@ -103,29 +103,33 @@ test.group('post-commit effects', () => {
     assert.equal((failure as PostCommitError).cause, listener)
   })
 
-  test('afterCommit reports a failing notice as PostCommitError and still runs later effects', async ({
+  test('a delivery failure reports DeliveryError and still runs later effects', async ({
     assert,
   }) => {
     const notice = new Error('notice')
     const ran: string[] = []
     let failure: unknown
     try {
-      await afterCommit(
-        'follow-up failed',
-        async () => {
-          ran.push('notice')
-          throw notice
+      await postCommit('follow-up failed', [
+        {
+          kind: 'delivery',
+          run: async () => {
+            ran.push('notice')
+            throw notice
+          },
         },
-        async () => {
-          ran.push('event')
-        }
-      )
+        {
+          kind: 'observer',
+          run: async () => {
+            ran.push('event')
+          },
+        },
+      ])
     } catch (error) {
       failure = error
     }
     assert.deepEqual(ran, ['notice', 'event'])
-    assert.instanceOf(failure, PostCommitError)
-    assert.notInstanceOf(failure, DeliveryError)
-    assert.equal((failure as PostCommitError).cause, notice)
+    assert.instanceOf(failure, DeliveryError)
+    assert.equal((failure as DeliveryError).cause, notice)
   })
 })

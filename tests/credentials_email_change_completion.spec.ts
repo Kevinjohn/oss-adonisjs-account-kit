@@ -1,6 +1,11 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { EmailAlreadyRegisteredError, InvalidTokenError, PostCommitError } from '../src/errors.js'
+import {
+  DeliveryError,
+  EmailAlreadyRegisteredError,
+  InvalidTokenError,
+  PostCommitError,
+} from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { useTestApp } from './helpers/app.js'
 import { makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
@@ -231,8 +236,8 @@ test.group('emailPasswordManagement', (group) => {
       await account.emailPasswordManagement.completeEmailChange({ token })
       assert.fail('expected postcommit error')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, DeliveryError)
+      assert.equal((error as DeliveryError).cause, failure)
     }
     assert.equal(credentialsCalls, 1)
     const stored = await kit.db.from('users').where('id', user.id).first()

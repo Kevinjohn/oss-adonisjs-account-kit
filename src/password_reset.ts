@@ -4,7 +4,7 @@ import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import { consumeUserToken, transaction } from './db.js'
-import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
+import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { invitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
@@ -87,16 +87,12 @@ export async function completePasswordReset(
 
   const context = { operation: 'password_reset' as const, operationId, userId: user.id }
   await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
-    afterCommit(
-      'Credentials changed but a follow-up failed',
-      () => deps.config.onCredentialsChanged?.(user, context),
-      () => deps.config.notify.passwordResetCompleted(user, context),
-      () =>
-        deps.config.onLifecycleEvent?.({ type: 'password.reset', userId: user.id, operationId }),
-      ...invitationAccepted(deps.config, reset.invitationId, user.id, operationId).map(
-        (effect) => effect.run
-      )
-    )
+    postCommit('Credentials changed but a follow-up failed', [
+      { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(user, context) },
+      { kind: 'delivery', run: () => deps.config.notify.passwordResetCompleted(user, context) },
+      lifecycle(deps.config, { type: 'password.reset', userId: user.id, operationId }),
+      ...invitationAccepted(deps.config, reset.invitationId, user.id, operationId),
+    ])
   )
   return user
 }

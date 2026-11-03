@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import {
+  DeliveryError,
   IdentityNotConfirmedError,
   InvalidInputError,
   InvalidTokenError,
@@ -235,6 +236,39 @@ test.group('emailPasswordManagement', (group) => {
     assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
+  })
+
+  test('passwordChanged failure reports DeliveryError after the password change commits', async ({
+    assert,
+  }) => {
+    const user = await createUser()
+    const failure = new Error('passwordChanged failed')
+    let lifecycleCalls = 0
+    const account = service({
+      notify: {
+        ...makeNotify().notify,
+        async passwordChanged() {
+          throw failure
+        },
+      },
+      onLifecycleEvent: async () => {
+        lifecycleCalls++
+      },
+    })
+    try {
+      await account.emailPasswordManagement.changePassword({
+        actorId: user.id,
+        currentPassword: 'oldPassword123',
+        newPassword: 'newPassword123',
+      })
+      assert.fail('expected delivery error')
+    } catch (error) {
+      assert.instanceOf(error, DeliveryError)
+      assert.equal((error as DeliveryError).cause, failure)
+    }
+    assert.equal(lifecycleCalls, 1)
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isTrue(await kit.hash.verify(row.password, 'newPassword123'))
   })
 
   test('accepts 256 UTF-16 units for a password change', async ({ assert }) => {

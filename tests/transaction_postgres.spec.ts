@@ -21,7 +21,7 @@ test.group('managed transaction wrapper', (group) => {
       .exec()
     let commits = 0
     let rollbacks = 0
-    let afterCommits = 0
+    let commitHooksRun = 0
     let afterRollbacks = 0
     try {
       let failure: unknown
@@ -34,7 +34,7 @@ test.group('managed transaction wrapper', (group) => {
             rollbacks++
           })
           trx.after('commit', () => {
-            afterCommits++
+            commitHooksRun++
           })
           trx.after('rollback', () => {
             afterRollbacks++
@@ -47,7 +47,7 @@ test.group('managed transaction wrapper', (group) => {
       }
       assert.equal((failure as { code?: string })?.code, '23503')
       assert.equal(commits, 0)
-      assert.equal(afterCommits, 0)
+      assert.equal(commitHooksRun, 0)
       assert.equal(rollbacks, 1)
       assert.equal(afterRollbacks, 1)
       assert.lengthOf(await kit.db.from('test_deferred_commit'), 0)

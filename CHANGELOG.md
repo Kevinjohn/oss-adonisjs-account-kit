@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Breaking: A failed password reset, password change, or email change notice now throws `DeliveryError` instead of `PostCommitError`; `afterCommit` has been removed from `src/effects.ts`.
+
 ## 0.1.5 - 2026-11-03
 
 ### Changed

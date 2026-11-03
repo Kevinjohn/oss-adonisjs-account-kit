@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { credentialsChanged, revision } from './authentication.js'
 import { transaction } from './db.js'
-import { afterCommit, finishCommitted, settleCommitted } from './effects.js'
+import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { rememberPasswordChangeRevision } from './password_change_revision.js'
@@ -57,13 +57,11 @@ export async function changePassword(
   const context = { operation: 'password_change' as const, operationId, userId: user.id }
   try {
     await finishCommitted(fault, 'Credentials changed but follow-ups failed', () =>
-      afterCommit(
-        'Credentials changed but a follow-up failed',
-        () => deps.config.onCredentialsChanged?.(user, context),
-        () => deps.config.notify.passwordChanged(user, context),
-        () =>
-          deps.config.onLifecycleEvent?.({ type: 'password.changed', userId: user.id, operationId })
-      )
+      postCommit('Credentials changed but a follow-up failed', [
+        { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(user, context) },
+        { kind: 'delivery', run: () => deps.config.notify.passwordChanged(user, context) },
+        lifecycle(deps.config, { type: 'password.changed', userId: user.id, operationId }),
+      ])
     )
   } catch (error) {
     // The change committed: the caller still needs the revision to keep its own session.

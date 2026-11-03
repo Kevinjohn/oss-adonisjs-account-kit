@@ -4,7 +4,7 @@ import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
-import { afterCommit, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
   EmailAlreadyRegisteredError,
@@ -254,17 +254,18 @@ export async function completeEmailChange(
   // The previous address learns about the change whether or not the callback succeeds.
   const context = { operation: 'email_change' as const, operationId, userId: changed.user.id }
   await finishCommitted(fault, 'Email changed but follow-ups failed', () =>
-    afterCommit(
-      'Email changed but a follow-up failed',
-      () => deps.config.onCredentialsChanged?.(changed.user, context),
-      () => deps.config.notify.emailChanged(changed.previousEmail, changed.user),
-      () =>
-        deps.config.onLifecycleEvent?.({
-          type: 'email_change.completed',
-          userId: changed.user.id,
-          operationId,
-        })
-    )
+    postCommit('Email changed but a follow-up failed', [
+      { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(changed.user, context) },
+      {
+        kind: 'delivery',
+        run: () => deps.config.notify.emailChanged(changed.previousEmail, changed.user),
+      },
+      lifecycle(deps.config, {
+        type: 'email_change.completed',
+        userId: changed.user.id,
+        operationId,
+      }),
+    ])
   )
   return changed.user
 }
