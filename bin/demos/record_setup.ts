@@ -1,34 +1,40 @@
 // Records account-kit:setup previewing, then applying, the API choices on a setup demo app.
-// Usage: node bin/demos/record_setup.mjs <app-dir> <out-dir>
+// Usage: node bin/demos/record_setup.ts <app-dir> <out-dir>
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
-import { Cast } from './cast.mjs'
+import { Cast } from './cast.js'
+type SetupReport = {
+  pillars: Record<string, string>
+  changes: { path: string; action: string }[]
+  prerequisites: string[]
+}
 
 const [appDir, outDir] = process.argv.slice(2)
-if (!appDir || !outDir) throw new Error('Usage: node record_setup.mjs <app-dir> <out-dir>')
+if (!appDir || !outDir) throw new Error('Usage: node record_setup.ts <app-dir> <out-dir>')
 
-const sh = (command) => execFileSync('bash', ['-c', command], { cwd: appDir, encoding: 'utf8' })
+const sh = (command: string) =>
+  execFileSync('bash', ['-c', command], { cwd: appDir, encoding: 'utf8' })
 
 /** Splits setup's output into its JSON report and the lines printed after it. */
-function parse(output) {
+function parse(output: string) {
   const lines = output.split('\n')
   const start = lines.findIndex((line) => line.startsWith('[ info ] {'))
   const end = lines.indexOf('}', start)
   if (start === -1 || end === -1) throw new Error(`no setup report in:\n${output}`)
   const json = ['{', ...lines.slice(start + 1, end + 1)].join('\n')
-  return { report: JSON.parse(json), after: lines.slice(end + 1).filter(Boolean) }
+  return { report: JSON.parse(json) as SetupReport, after: lines.slice(end + 1).filter(Boolean) }
 }
 
 /** One line per pillar. */
-const pillars = (report) =>
+const pillars = (report: SetupReport) =>
   Object.entries(report.pillars).map(([name, value]) => `  ${name.padEnd(16)}${value}`)
 
 /** One line per file change, with the generated migrations folded into one line. */
-function changes(report) {
+function changes(report: SetupReport) {
   const migration = /^database\/migrations\/\d+_account_kit_.*\.ts$/
   const count = report.changes.filter((change) => migration.test(change.path)).length
-  const lines = []
+  const lines: string[] = []
   for (const change of report.changes) {
     const action = `  \x1b[33m${change.action.padEnd(8)}\x1b[0m`
     if (!migration.test(change.path)) lines.push(`${action}${change.path}`)
@@ -38,13 +44,13 @@ function changes(report) {
   return lines
 }
 
-const info = (line) => line.replace('[ info ]', '\x1b[34m[ info ]\x1b[0m')
+const info = (line: string) => line.replace('[ info ]', '\x1b[34m[ info ]\x1b[0m')
 
 // Start from the committed starter app, so the recording can be run again. Without its own
 // repository, git would find an enclosing one, such as this checkout, and reset that instead.
 const root = sh('git rev-parse --show-toplevel').trim()
 if (realpathSync(root) !== realpathSync(appDir))
-  throw new Error(`${appDir} is not a setup demo app; run create_setup_app.mjs first`)
+  throw new Error(`${appDir} is not a setup demo app; run create_setup_app.ts first`)
 sh('git reset -q --hard && git clean -fdq')
 
 const cast = new Cast()

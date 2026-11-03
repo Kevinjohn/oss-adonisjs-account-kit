@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 
-export const run = (command, args, cwd) =>
+export const run = (command: string, args: string[], cwd: string) =>
   execFileSync(command, args, { cwd, stdio: ['ignore', 'inherit', 'inherit'] })
 
 /** Writes the package tarball into a directory and returns its file name. */
-export function packCheckout(destination) {
+export function packCheckout(destination: string) {
   run('pnpm', ['build'], repoRoot)
   run(
     'pnpm',

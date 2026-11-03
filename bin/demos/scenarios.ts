@@ -1,4 +1,21 @@
 import { createHash, randomBytes } from 'node:crypto'
+import type { Cast } from './cast.js'
+export type HttpOptions = { body?: Record<string, unknown>; token?: string }
+type HttpResult = { status: number; body: Record<string, string>; raw: string }
+type ScenarioTools = {
+  ace: (...args: string[]) => string
+  http: (
+    cast: Cast,
+    method: string,
+    path: string | undefined,
+    options?: HttpOptions & { tokenName?: string }
+  ) => HttpResult
+  curl: (method: string, path: string | undefined, options?: HttpOptions) => HttpResult
+  showMail: (cast: Cast, to: string) => Promise<string | undefined>
+  skipMail: () => void
+  verifiedUser: (email: string) => Promise<string>
+  password: string
+}
 
 export const createScenarios = ({
   ace,
@@ -8,14 +25,14 @@ export const createScenarios = ({
   skipMail,
   verifiedUser,
   password,
-}) => ({
-  async 'doctor'(cast) {
+}: ScenarioTools) => ({
+  async 'doctor'(cast: Cast) {
     cast.comment('check the install: config, limiter, APP_URL and tables')
     cast.type('node ace account-kit:doctor')
     cast.print(ace('account-kit:doctor').replaceAll('[ success ]', '\x1b[32m[ success ]\x1b[0m'))
   },
 
-  async 'password-reset'(cast) {
+  async 'password-reset'(cast: Cast) {
     await verifiedUser('ada@example.com')
     skipMail()
     cast.comment('request a reset: the same answer whether or not the account exists')
@@ -30,7 +47,7 @@ export const createScenarios = ({
     http(cast, 'POST', path, { body: next })
   },
 
-  async 'signup-verification'(cast) {
+  async 'signup-verification'(cast: Cast) {
     cast.comment('sign up: the account starts unverified')
     http(cast, 'POST', '/api/auth/signup', {
       body: { email: 'grace@example.com', password, passwordConfirmation: password },
@@ -42,7 +59,7 @@ export const createScenarios = ({
     http(cast, 'POST', '/api/auth/login', { body: { email: 'grace@example.com', password } })
   },
 
-  async 'invitations'(cast) {
+  async 'invitations'(cast: Cast) {
     const token = await verifiedUser('owner@example.com')
     skipMail()
     cast.comment('invite a teammate with a role')
@@ -58,7 +75,7 @@ export const createScenarios = ({
     http(cast, 'POST', path, { body: { password, passwordConfirmation: password } })
   },
 
-  async 'email-change'(cast) {
+  async 'email-change'(cast: Cast) {
     const token = await verifiedUser('mo@example.com')
     skipMail()
     cast.comment('change email: confirm with the current password')
@@ -73,7 +90,7 @@ export const createScenarios = ({
     await showMail(cast, 'mo@example.com')
   },
 
-  async 'password-change'(cast) {
+  async 'password-change'(cast: Cast) {
     await verifiedUser('kai@example.com')
     cast.comment('signed in on two devices')
     const laptop = http(cast, 'POST', '/api/auth/login', {
@@ -95,7 +112,7 @@ export const createScenarios = ({
     http(cast, 'GET', '/api/account/profile', { token: phone, tokenName: 'PHONE' })
   },
 
-  async 'login-throttling'(cast) {
+  async 'login-throttling'(cast: Cast) {
     await verifiedUser('sam@example.com')
     cast.comment('wrong passwords get one generic error')
     for (let i = 0; i < 5; i++)
@@ -106,7 +123,7 @@ export const createScenarios = ({
     http(cast, 'POST', '/api/auth/login', { body: { email: 'sam@example.com', password } })
   },
 
-  async 'magic-link'(cast) {
+  async 'magic-link'(cast: Cast) {
     await verifiedUser('ivy@example.com')
     skipMail()
     const verifier = randomBytes(32).toString('base64url')
@@ -126,7 +143,7 @@ export const createScenarios = ({
     http(cast, 'POST', second, { body: { verifier } })
   },
 
-  async 'devices'(cast) {
+  async 'devices'(cast: Cast) {
     await verifiedUser('noor@example.com')
     const tokens = []
     for (let i = 0; i < 2; i++)
@@ -141,7 +158,7 @@ export const createScenarios = ({
     http(cast, 'GET', '/api/account/sessions', { token: tokens[0] })
   },
 
-  async 'export-deletion'(cast) {
+  async 'export-deletion'(cast: Cast) {
     const token = await verifiedUser('eli@example.com')
     cast.comment('download your data; re-enter the password first')
     http(cast, 'POST', '/api/account/export', { token, body: { currentPassword: password } })
@@ -152,7 +169,7 @@ export const createScenarios = ({
     http(cast, 'POST', '/api/auth/login', { body: { email: 'eli@example.com', password } })
   },
 
-  async 'operator-commands'(cast) {
+  async 'operator-commands'(cast: Cast) {
     await verifiedUser('support@example.com')
     cast.comment('a reset link from a trusted shell, for support cases')
     cast.type('node ace account-kit:reset-link support@example.com')
