@@ -114,7 +114,7 @@
     "@vinejs/vine": "^4.4.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "better-sqlite3": "^12.0.0",
+    "better-sqlite3": "^13.0.3",
     "c8": "^12.0.0",
     "copyfiles": "^2.4.1",
     "cross-env": "^10.1.0",
