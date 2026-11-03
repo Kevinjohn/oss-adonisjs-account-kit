@@ -1,3 +1,4 @@
+import type { NotificationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
 /* eslint-disable @unicorn/no-await-expression-member -- Keep the transaction-aware Lucid query and result together in the adapter callbacks. */
 
 import app from '@adonisjs/core/services/app'
@@ -35,7 +36,18 @@ if (env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' && env.get('SESSION_DRIVE
   throw new Error('account_kit: session authentication requires a server-side session store')
 }
 
-const notify = createNotify(accountUrl)
+/**
+ * Test seam: the kit freezes the notification callbacks it resolves from this file, so tests
+ * replace entries in `notifyOverrides`. The kit calls through it at call time.
+ */
+export const notifyOverrides = createNotify(accountUrl) as NotificationCallbacks
+const overridable = notifyOverrides as unknown as Record<string, (...args: unknown[]) => unknown>
+const notify = Object.fromEntries(
+  Object.keys(notifyOverrides).map((name) => [
+    name,
+    (...args: unknown[]) => overridable[name](...args),
+  ])
+) as NotificationCallbacks
 
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {

@@ -2,13 +2,12 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import type { BasePage } from '@japa/browser-client'
-import app from '@adonisjs/core/services/app'
 import { MessageBuilder } from '@adonisjs/core/helpers'
 import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
 import { captureNotifications } from '@kevinjohn/adonisjs-account-kit/testing/notifications'
-import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import User from '#models/user'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 type Page = BasePage['page']
 const oldPassword = 'OriginalPass123!'
@@ -52,10 +51,9 @@ test('React reset recipe preserves failed submissions and revokes both native se
     email: `recipe-${randomUUID()}@example.test`,
     password: oldPassword,
   })
-  const config = app.config.get<ResolvedConfig>('account_kit')
-  const original = { ...config.notify }
+  const original = { ...notifyOverrides }
   const capture = captureNotifications()
-  Object.assign(config.notify, capture.notify)
+  Object.assign(notifyOverrides, capture.notify)
   const otherContext = await browser.newContext({ baseURL: process.env.APP_URL })
   const guestContext = await browser.newContext({ baseURL: process.env.APP_URL })
   try {
@@ -228,7 +226,7 @@ test('React reset recipe preserves failed submissions and revokes both native se
       'New Recipe Account'
     )
   } finally {
-    Object.assign(config.notify, original)
+    Object.assign(notifyOverrides, original)
     await otherContext.close()
     await guestContext.close()
   }

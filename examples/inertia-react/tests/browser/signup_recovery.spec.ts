@@ -4,6 +4,7 @@ import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { DateTime } from 'luxon'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 type SignupConfig = {
   deps: {
@@ -23,9 +24,8 @@ test.group('Signup recovery in the browser', (group) => {
     assert,
   }) => {
     const email = `delivery-${Date.now()}@example.test`
-    const resolvedConfig = (kit as unknown as SignupConfig).deps.config
-    const originalProvision = resolvedConfig.notify.accountActivationProvision
-    resolvedConfig.notify.accountActivationProvision = async () => {
+    const originalProvision = notifyOverrides.accountActivationProvision
+    notifyOverrides.accountActivationProvision = async () => {
       throw new Error('private fixture delivery detail')
     }
 
@@ -54,7 +54,7 @@ test.group('Signup recovery in the browser', (group) => {
       const originalToken = (await tokensForUser().first())!.hash
 
       let resendDeliveries = 0
-      resolvedConfig.notify.accountActivationProvision = async () => {
+      notifyOverrides.accountActivationProvision = async () => {
         resendDeliveries += 1
       }
       await tokensForUser().update({
@@ -75,7 +75,7 @@ test.group('Signup recovery in the browser', (group) => {
       assert.isNotNull(renewedToken)
       assert.notEqual(renewedToken!.hash, originalToken)
     } finally {
-      resolvedConfig.notify.accountActivationProvision = originalProvision
+      notifyOverrides.accountActivationProvision = originalProvision
     }
   })
 
