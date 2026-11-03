@@ -5,6 +5,11 @@
 - Breaking: A notice-only failure on password reset, password change, or email change now throws `DeliveryError` instead of `PostCommitError`; `afterCommit` has been removed from `src/effects.ts`.
 - Breaking: Applications that guard `passwordChangeRevision(error)` with `error instanceof PostCommitError` must drop that check; the helper now also returns the committed revision for `DeliveryError`.
 
+### Breaking
+
+- Configuration errors are now `InvalidConfigurationError` instances with code
+  `E_ACCOUNT_KIT_INVALID_CONFIGURATION` and a `field`; they remain `RuntimeException` instances.
+
 ## 0.1.5 - 2026-11-03
 
 ### Changed

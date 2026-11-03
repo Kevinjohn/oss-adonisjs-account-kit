@@ -1,4 +1,4 @@
-import { Exception } from '@adonisjs/core/exceptions'
+import { Exception, RuntimeException } from '@adonisjs/core/exceptions'
 
 /**
  * Base class for every error Account Kit throws. Each subclass has a stable `code` and an HTTP
@@ -11,9 +11,27 @@ export class AccountKitError extends Exception {
   static status = 500
   declare code: string
 
+  /** The translation key for this error's current machine-readable code. */
+  get identifier(): string {
+    return `errors.${this.code}`
+  }
+
   constructor(message = new.target.name, options?: ErrorOptions) {
     super(message, options)
     this.name = new.target.name
+  }
+}
+
+/** A configuration value is invalid. The field names the configuration path that needs attention. */
+export class InvalidConfigurationError extends RuntimeException {
+  static code = 'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
+  static status = 500
+  constructor(
+    readonly field: string,
+    message: string,
+    options?: ErrorOptions
+  ) {
+    super(message, { ...options, code: new.target.code, status: new.target.status })
   }
 }
 /**

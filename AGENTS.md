@@ -19,6 +19,7 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 
 ## Checks
 
+- `pnpm check` runs the quick profile (`--full` adds the rest).
 - `pnpm typecheck` runs TypeScript without emitting.
 - `pnpm lint` runs ESLint with the AdonisJS config.
 - `pnpm format` formats the repository with Prettier.

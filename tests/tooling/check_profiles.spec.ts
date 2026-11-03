@@ -1,0 +1,70 @@
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { delimiter, join } from 'node:path'
+import { test } from '@japa/runner'
+import { checkProfiles, selectedSteps } from '../../bin/check_profiles.js'
+
+const root = join(import.meta.dirname, '../..')
+const allSteps = Object.values(checkProfiles).flat()
+
+function scripts(directory = ''): Record<string, string> {
+  return JSON.parse(readFileSync(join(root, directory, 'package.json'), 'utf8')).scripts
+}
+
+test('every check step names an existing script', ({ assert }) => {
+  const missing = allSteps.filter((step) => !(step.script in scripts(step.directory)))
+  assert.deepEqual(missing, [])
+})
+
+test('the check profiles cover every pnpm script the CI workflows run', ({ assert }) => {
+  const covered = new Set(allSteps.map((step) => step.script))
+  const ignored = new Set(['install', 'dlx', 'add', 'list', 'update', 'pack', 'exec', '--dir'])
+  const uncovered = ['checks.yml', 'compat.yml', 'examples.yml', 'docs.yml'].flatMap((workflow) =>
+    [
+      ...readFileSync(join(root, '.github/workflows', workflow), 'utf8').matchAll(
+        /\bpnpm ([a-z][\w:-]*)/g
+      ),
+    ]
+      .map((match) => match[1])
+      .filter((script) => !ignored.has(script) && !covered.has(script))
+      .map((script) => `${workflow}: ${script}`)
+  )
+  assert.deepEqual(uncovered, [])
+})
+
+test('full adds to the quick profile and unknown flags are rejected', ({ assert }) => {
+  assert.deepEqual(selectedSteps([]), checkProfiles.quick)
+  assert.equal(
+    selectedSteps(['--full']).length,
+    checkProfiles.quick.length + checkProfiles.full.length
+  )
+  assert.throws(() => selectedSteps(['--fast']), /pnpm check/)
+})
+
+test('format:check covers tracked files only and tolerates an unstaged deletion', ({ assert }) => {
+  const directory = mkdtempSync(join(tmpdir(), 'format-check-'))
+  const formatCheck = () =>
+    spawnSync('sh', ['-c', scripts()['format:check']], {
+      cwd: directory,
+      env: {
+        ...process.env,
+        PATH: `${join(root, 'node_modules/.bin')}${delimiter}${process.env.PATH}`,
+      },
+    }).status
+
+  try {
+    spawnSync('git', ['init', '-q'], { cwd: directory })
+    writeFileSync(join(directory, 'kept.ts'), 'export const kept = 1;\n')
+    writeFileSync(join(directory, 'deleted.ts'), 'export const deleted = 1;\n')
+    spawnSync('git', ['add', '.'], { cwd: directory })
+    rmSync(join(directory, 'deleted.ts'))
+    writeFileSync(join(directory, 'untracked.ts'), 'export   const untracked={a:1}\n')
+    assert.equal(formatCheck(), 0)
+
+    writeFileSync(join(directory, 'kept.ts'), 'export   const kept=1\n')
+    assert.notEqual(formatCheck(), 0)
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})

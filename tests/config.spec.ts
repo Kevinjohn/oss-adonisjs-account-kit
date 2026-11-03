@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { defineConfig } from '../src/account_kit.js'
 import { expiresAt } from '../src/ttl.js'
 import type { AccountKitConfig } from '../src/types.js'
@@ -110,7 +111,7 @@ test.group('account kit configuration and service surface', (group) => {
     }
   })
 
-  test('reports invalid configuration with RuntimeException', ({ assert }) => {
+  test('reports invalid configuration as a RuntimeException', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     const invalid = [
       { ...base, usersTable: 'bad-name' },
@@ -124,6 +125,71 @@ test.group('account kit configuration and service surface', (group) => {
     ]
     for (const config of invalid) {
       assert.throws(() => defineConfig(config as never), RuntimeException, /^account_kit: /)
+    }
+  })
+
+  test('identifies invalid configuration fields with a stable error code', ({ assert }) => {
+    let error: unknown
+    try {
+      defineConfig({} as never)
+    } catch (caught) {
+      error = caught
+    }
+    assert.instanceOf(error, InvalidConfigurationError)
+    assert.instanceOf(error, RuntimeException)
+    assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
+    assert.equal((error as InvalidConfigurationError).field, 'users')
+  })
+
+  test('preserves the cause when a throttle duration cannot be parsed', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    let error: unknown
+    try {
+      defineConfig({ ...base, throttle: { duration: 'soon' } })
+    } catch (caught) {
+      error = caught
+    }
+    assert.instanceOf(error, InvalidConfigurationError)
+    assert.equal((error as InvalidConfigurationError).field, 'throttle.duration')
+    assert.instanceOf((error as Error).cause, Error)
+  })
+
+  test('names the configured field when a duration is invalid', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    const session = { strategy: 'session', guard: 'web' } as const
+    const cases: Array<[Partial<AccountKitConfig>, string]> = [
+      [{ expiresIn: { magicLink: 'soon' } }, 'expiresIn.magicLink'],
+      [
+        { authentication: { strategy: 'access_tokens', guard: 'api', tokenExpiresIn: 0 } },
+        'authentication.tokenExpiresIn',
+      ],
+      [
+        {
+          authentication: {
+            ...session,
+            identityLimit: { requests: 5, duration: '1m', blockDuration: 'soon' },
+          },
+        },
+        'authentication.identityLimit.blockDuration',
+      ],
+      [
+        {
+          enabled: ['sessionManagement'],
+          authentication: session,
+          sessionManagement: { idleExpiry: 'soon' },
+        },
+        'sessionManagement.idleExpiry',
+      ],
+    ]
+    for (const [overrides, field] of cases) {
+      let error: unknown
+      try {
+        defineConfig({ ...base, ...overrides })
+      } catch (caught) {
+        error = caught
+      }
+      assert.instanceOf(error, InvalidConfigurationError, field)
+      assert.equal((error as InvalidConfigurationError).field, field)
     }
   })
 
