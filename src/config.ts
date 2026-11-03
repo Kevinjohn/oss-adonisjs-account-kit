@@ -1,6 +1,5 @@
-import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
-import { CapabilityDisabledError } from './errors.js'
+import { CapabilityDisabledError, InvalidConfigurationError } from './errors.js'
 import { budget } from './config_budget.js'
 import { assertPlainObject } from './config_assert.js'
 import { isSqlIdentifier } from './sql_identifier.js'
@@ -10,7 +9,7 @@ import { resolvePasswordPolicy } from './config_password_policy.js'
 import { resolveAccountDeletion } from './config_account_deletion.js'
 import { resolveSessionManagement } from './config_session_management.js'
 import { validateSocialAuthentication } from './config_social_authentication.js'
-import { expiresAt } from './ttl.js'
+import { configuredExpiresAt } from './config_ttl.js'
 import type {
   AccountKitConfig,
   AuthorizationCallbacks,
@@ -56,61 +55,82 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
  */
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   if (!config || typeof config !== 'object' || !config.users || typeof config.users !== 'object')
-    throw new RuntimeException('account_kit: users adapter must be configured')
+    throw new InvalidConfigurationError('users', 'account_kit: users adapter must be configured')
   if (
     config.delivery !== undefined &&
     !['best-effort', 'durable', 'capture'].includes(config.delivery)
   )
-    throw new RuntimeException('account_kit: delivery must be best-effort, durable, or capture')
+    throw new InvalidConfigurationError(
+      'delivery',
+      'account_kit: delivery must be best-effort, durable, or capture'
+    )
   const enabled = config.enabled ?? defaultCapabilities
   if (
     !Array.isArray(enabled) ||
     new Set(enabled).size !== enabled.length ||
     enabled.some((name) => !capabilities.includes(name))
   )
-    throw new RuntimeException(
+    throw new InvalidConfigurationError(
+      'enabled',
       'account_kit: enabled must contain unique supported capability names'
     )
   if (enabled.includes('emailPasswordManagement') && !enabled.includes('emailVerification'))
-    throw new RuntimeException('account_kit: emailPasswordManagement requires emailVerification')
+    throw new InvalidConfigurationError(
+      'emailPasswordManagement',
+      'account_kit: emailPasswordManagement requires emailVerification'
+    )
   for (const name of ['authorize', 'urls', 'notify', 'expiresIn', 'invitationThrottle'] as const) {
     if (config[name] !== undefined) assertPlainObject(config[name], name)
   }
   if (config.users.hashPassword !== undefined) {
     if (typeof config.users.hashPassword !== 'function')
-      throw new RuntimeException('account_kit: users.hashPassword must be a function')
+      throw new InvalidConfigurationError(
+        'users.hashPassword',
+        'account_kit: users.hashPassword must be a function'
+      )
     if (typeof config.users.setPasswordHash !== 'function')
-      throw new RuntimeException(
+      throw new InvalidConfigurationError(
+        'users.setPasswordHash',
         'account_kit: users.setPasswordHash must be a function when users.hashPassword is set'
       )
   }
   for (const capability of enabled) {
     for (const method of capabilityRegistry[capability].adapterMethods) {
       if (typeof config.users[method] !== 'function')
-        throw new RuntimeException(`account_kit: users.${method} must be a function`)
+        throw new InvalidConfigurationError(
+          `users.${method}`,
+          `account_kit: users.${method} must be a function`
+        )
     }
     for (const path of capabilityRegistry[capability].requiredHooks) {
       const parts = path.split('.')
       const parent =
         parts.length === 1 ? config : config[parts[0] as 'urls' | 'notify' | 'authorize']
       if (typeof (parent as Record<string, unknown> | undefined)?.[parts.at(-1)!] !== 'function')
-        throw new RuntimeException(`account_kit: ${path} must be a function`)
+        throw new InvalidConfigurationError(path, `account_kit: ${path} must be a function`)
     }
   }
   if (
     !config.registration ||
     !['open', 'closed', 'application'].includes(config.registration.availability)
   )
-    throw new RuntimeException(
+    throw new InvalidConfigurationError(
+      'registration.availability',
       'account_kit: registration.availability must be open, closed, or application'
     )
   if (
     config.registration.mapFields !== undefined &&
     typeof config.registration.mapFields !== 'function'
   )
-    throw new RuntimeException('account_kit: registration.mapFields must be a function')
+    throw new InvalidConfigurationError(
+      'registration.mapFields',
+      'account_kit: registration.mapFields must be a function'
+    )
   if (enabled.includes('magicLinkLogin') && !config.authentication)
-    throw new RuntimeException('account_kit: magicLinkLogin requires authentication')
+    throw new InvalidConfigurationError(
+      'magicLinkLogin',
+      'account_kit: magicLinkLogin requires authentication'
+    )
   if (enabled.includes('socialAuthentication')) validateSocialAuthentication(config, enabled)
   for (const hook of [
     'onInvitationAccepted',
@@ -123,16 +143,23 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     'onAccountDeletingTransaction',
   ] as const) {
     if (config[hook] !== undefined && typeof config[hook] !== 'function')
-      throw new RuntimeException(`account_kit: ${hook} must be a function when supplied`)
+      throw new InvalidConfigurationError(
+        hook,
+        `account_kit: ${hook} must be a function when supplied`
+      )
   }
   if (config.onCredentialsChanged && config.onCredentialsChangedTransaction)
-    throw new RuntimeException('account_kit: credential revocation hooks are mutually exclusive')
+    throw new InvalidConfigurationError(
+      'onCredentialsChanged',
+      'account_kit: credential revocation hooks are mutually exclusive'
+    )
   const limiterSecret =
     typeof config.limiterSecret === 'string'
       ? config.limiterSecret
       : config.limiterSecret?.release?.()
   if (typeof limiterSecret !== 'string' || Buffer.byteLength(limiterSecret) < 32)
-    throw new RuntimeException(
+    throw new InvalidConfigurationError(
+      'limiterSecret',
       'account_kit: limiterSecret must be a stable shared secret of at least 32 bytes'
     )
   const limiterNamespace = config.limiterNamespace ?? 'default'
@@ -141,7 +168,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     limiterNamespace.length === 0 ||
     limiterNamespace.length > 128
   )
-    throw new RuntimeException(
+    throw new InvalidConfigurationError(
+      'limiterNamespace',
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
   const expiresIn = {
@@ -151,7 +179,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     emailChange: config.expiresIn?.emailChange ?? '1h',
     magicLink: config.expiresIn?.magicLink ?? '15m',
   }
-  for (const value of Object.values(expiresIn)) expiresAt(DateTime.utc(), value)
+  for (const [name, value] of Object.entries(expiresIn))
+    configuredExpiresAt(`expiresIn.${name}`, DateTime.utc(), value)
   const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
   const invitationThrottle = Object.fromEntries(
     ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
@@ -165,33 +194,52 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   ) as unknown as InvitationThrottle
   const minRequestMs = config.minRequestMs ?? 300
   if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
-    throw new RuntimeException('account_kit: minRequestMs must be a finite non-negative number')
+    throw new InvalidConfigurationError(
+      'minRequestMs',
+      'account_kit: minRequestMs must be a finite non-negative number'
+    )
   const tokenSecretLength = config.tokenSecretLength ?? 40
   if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)
-    throw new RuntimeException('account_kit: tokenSecretLength must be an integer from 16 to 64')
+    throw new InvalidConfigurationError(
+      'tokenSecretLength',
+      'account_kit: tokenSecretLength must be an integer from 16 to 64'
+    )
   const passwordPolicy = resolvePasswordPolicy(config)
   const authentication = resolveAuthentication(config)
   if (enabled.includes('sessionManagement') && !authentication)
-    throw new RuntimeException('account_kit: sessionManagement requires authentication')
+    throw new InvalidConfigurationError(
+      'sessionManagement',
+      'account_kit: sessionManagement requires authentication'
+    )
   const sessionManagement = resolveSessionManagement(config)
   const accountDeletion = resolveAccountDeletion(config)
   if (
     config.users.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
   )
-    throw new RuntimeException('account_kit: users.resolveMetadata must be a function')
+    throw new InvalidConfigurationError(
+      'users.resolveMetadata',
+      'account_kit: users.resolveMetadata must be a function'
+    )
   if (config.users.resolveMetadata && config.usersTable !== undefined)
-    throw new RuntimeException(
+    throw new InvalidConfigurationError(
+      'usersTable',
       'account_kit: usersTable is for custom adapters; the Lucid adapter derives its table'
     )
   if (
     config.emailConstraint !== undefined &&
     (typeof config.emailConstraint !== 'string' || config.emailConstraint.trim() === '')
   )
-    throw new RuntimeException('account_kit: emailConstraint must be a non-empty constraint name')
+    throw new InvalidConfigurationError(
+      'emailConstraint',
+      'account_kit: emailConstraint must be a non-empty constraint name'
+    )
   const usersTable = config.usersTable ?? 'users'
   if (!isSqlIdentifier(usersTable))
-    throw new RuntimeException('account_kit: usersTable must be a plain SQL identifier')
+    throw new InvalidConfigurationError(
+      'usersTable',
+      'account_kit: usersTable must be a plain SQL identifier'
+    )
   return {
     ...config,
     enabled: [...enabled],

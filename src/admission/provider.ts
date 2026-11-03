@@ -1,7 +1,7 @@
 // Binds the admission service in the container from `config/account_kit.ts` and `config/admission.ts`.
-import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKit } from '../account_kit.js'
+import { InvalidConfigurationError } from '../errors.js'
 import type { ResolvedConfig } from '../types.js'
 import { AccountAdmission } from './service.js'
 import type { ResolvedAdmissionConfig } from './types.js'
@@ -22,11 +22,13 @@ export default class AdmissionProvider {
       const accountConfig = this.app.config.get<ResolvedConfig | undefined>('account_kit')
       const config = this.app.config.get<ResolvedAdmissionConfig | undefined>('admission')
       if (!accountConfig)
-        throw new RuntimeException(
+        throw new InvalidConfigurationError(
+          'config/account_kit.ts',
           'Invalid "config/account_kit.ts" file. Make sure it exists and exports defineConfig(...)'
         )
       if (!config)
-        throw new RuntimeException(
+        throw new InvalidConfigurationError(
+          'config/admission.ts',
           'Invalid "config/admission.ts" file. Make sure it exists and exports defineAdmission(...)'
         )
       return new AccountAdmission({ kit, db, accountConfig, config })

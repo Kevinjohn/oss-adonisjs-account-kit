@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Breaking
+
+- Configuration errors are now `InvalidConfigurationError` instances with code
+  `E_ACCOUNT_KIT_INVALID_CONFIGURATION` and a `field`; they remain `RuntimeException` instances.
+
 ## 0.1.5 - 2026-11-03
 
 ### Changed
