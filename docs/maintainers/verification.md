@@ -918,3 +918,18 @@ Generated `package.json` dependency ranges:
 - **Hypermedia** — dependencies: `@adonisjs/auth@^10.1.0`, `@adonisjs/core@^7.5.2`, `@adonisjs/lucid@^22.4.2`, `@adonisjs/session@^8.1.0`, `@adonisjs/shield@^9.0.0`, `@adonisjs/static@^2.0.1`, `@adonisjs/vite@^6.0.2`, `@vinejs/vine@^4.4.0`, `better-sqlite3@^13.0.3`, `edge-iconify@^2.0.2`, `edge.js@^6.5.1`, `luxon@^3.7.2`, `reflect-metadata@^0.2.2`; devDependencies: `@adonisjs/assembler@^8.5.2`, `@adonisjs/eslint-config@^3.1.0`, `@adonisjs/prettier-config@^1.5.0`, `@adonisjs/tsconfig@^2.0.0`, `@iconify-json/lucide@^1.2.136`, `@japa/assert@^4.2.0`, `@japa/browser-client@^2.3.0`, `@japa/plugin-adonisjs@^5.2.0`, `@japa/runner@^5.3.0`, `@poppinss/ts-exec@^1.4.4`, `@types/alpinejs@^3.13.11`, `@types/luxon@^3.7.5`, `@types/node@~26.6.2`, `alpinejs@^3.17.4`, `eslint@^10.11.0`, `hot-hook@^1.0.0`, `pino-pretty@^13.1.3`, `prettier@^3.9.9`, `typescript@~6.0.3`, `vite@^8.3.0`, `youch@^4.1.1`.
 
 For React, the exact D2 command downloaded the pinned tree, but its initial package install could not reach the registry from the sandbox. The generated lockfile was resolved from registry metadata and then installed successfully with `CI=true pnpm install --frozen-lockfile`; the scaffolder's prepare actions and migration were completed before committing the baseline. The resulting tree was checked against the pinned upstream source as described above.
+
+### Scoped rename candidate after current-main review (2026-11-03)
+
+The current candidate supersedes the earlier scoped archive above. It includes main revision
+`4bdb6012aa847cb588389e3cfb2b7820e5de4b60` and preserves the version-1 export identifier and
+limiter-key derivation. Naming approval is complete; merge and release remain separate owner actions.
+
+- Packed source: `220b6d248fd24cea5b83f6d4ef2b9564220d28cf`; the following HTTP assertion-only
+  correction does not change packed members.
+- Archive: `kevinjohn-adonisjs-account-kit-0.1.5.tgz`.
+- SHA-256: `820acd917e9c2b23512062508d0cc9c02b880b0734b12b64496289e5f05bb23c`.
+- All four example installs passed `CI=true pnpm install --frozen-lockfile` with the actual
+  archive. Only its integrity changed in each lockfile; dependency ranges and the resolved graphs
+  were preserved. Every example installed scoped version 0.1.5 in its own `node_modules`.
+- Node 24 launcher: 24.21.0; pnpm-managed runtime: 24.22.1; pnpm: 11.23.0.
