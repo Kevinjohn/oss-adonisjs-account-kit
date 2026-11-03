@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Update setup diagnostics to describe ambiguous module origins.
+
 ## 0.1.4 - 2026-11-02
 
 - Recognize configured provider registrations structurally and stop before generating files when

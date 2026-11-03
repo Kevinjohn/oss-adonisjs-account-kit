@@ -1,8 +1,8 @@
 # Compatibility and validation
 
 Account Kit is available as a GitHub release archive; follow the [install instructions](../README.md#install).
-It is not yet published to npm. The table records concrete tested points and declared peer ranges
-separately; testing one point does not verify every version in a range.
+The table records concrete tested points and declared peer ranges separately; testing one point
+does not verify every version in a range.
 
 | Component             | Tested point | Declared support                             |
 | --------------------- | ------------ | -------------------------------------------- |
@@ -82,15 +82,16 @@ must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
 
 Audits of the candidate and the fresh SQLite consumer install were run on 2026-10-14 with pnpm
 11.23.0 under Node 24.21.0. The candidate's full audit reported 16 advisories (7 high, 6 moderate,
-3 low, no critical); all were development-tool paths. Fourteen advisories affect `undici 6.23.0`
-through `release-it 19.2.4` and `@release-it/conventional-changelog 10.0.6`. Their IDs are
+3 low, no critical); all were development-tool paths. Fourteen advisories affected `undici 6.23.0`
+through distribution automation dependencies that have since been removed. Their IDs are
 GHSA-f269-vfmq-vjvj, GHSA-2mjp-6q6p-2qxm, GHSA-vrm6-8vpv-qv8q, GHSA-v9p9-hfj2-hcw8,
 GHSA-4992-7rv2-5pvq, GHSA-p88m-4jfj-68fv, GHSA-vxpw-j846-p89q, GHSA-g8m3-5g58-fq7m,
 GHSA-8xcm-r25x-g524, GHSA-m8rv-5g2x-5cg5, GHSA-v3r7-h72x-cjcm, GHSA-35p6-xmwp-9g52,
 GHSA-r53p-7pc4-xj5r, and GHSA-rfgv-xxqx-mfg5. The audit lists fixes from `undici 6.24.0` to
 `6.28.1`; `6.28.1` satisfies all listed ranges. `basic-ftp 5.3.1` has high advisory
-[GHSA-c475-qrg2-pj4r](https://github.com/advisories/GHSA-c475-qrg2-pj4r), via the same release-tool
-tree, with a patched version listed at `6.2.1`.
+[GHSA-c475-qrg2-pj4r](https://github.com/advisories/GHSA-c475-qrg2-pj4r), via the same removed
+distribution automation dependencies, with a patched version listed at `6.2.1`. These findings
+describe the audited revision, not the current dependency tree.
 
 The consumer audit changes the previous production-risk assessment: its full audit and
 `pnpm audit --prod` each report high advisory
@@ -113,7 +114,7 @@ method, and the API reference returns JSON without these redirects. This trace d
 other consumer application code. Compatibility floors describe verified behavior, not a security
 guarantee: use the tested latest-compatible Core `7.6.0` and Luxon `3.7.2` for production rather
 than the older minimum test points. Those latest versions have neither direct advisory; the
-optional assembler and release-tool advisories above remain unresolved.
+optional assembler advisory above remains unresolved.
 
 The candidate's `pnpm audit --prod` reports no dependencies because runtime packages are peers;
 that result alone does not assess a consumer installation. Consumers should audit their complete
@@ -121,4 +122,4 @@ installed tree, including resolved peers. No dependency was upgraded for this as
 [verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md) for check evidence.
 
 Earlier stage-by-stage manual-check notes remain in [manual-check.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/manual-check.md) as historical
-provenance. Use the maintained verification record for current checks and outstanding evidence.
+records. Use the maintained verification record for current checks and outstanding evidence.

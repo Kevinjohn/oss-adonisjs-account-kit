@@ -62,9 +62,6 @@
     "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",
     "build": "pnpm compile",
-    "release": "release-it",
-    "version": "pnpm build",
-    "prepublishOnly": "pnpm build",
     "test:consumer": "node scripts/test_packed_consumer.mjs",
     "test:adapter": "pnpm quick:test --files=lucid_adapter.spec.ts",
     "pg:start": "bash bin/pg.sh start",
@@ -104,7 +101,6 @@
     "@japa/assert": "^4.2.0",
     "@japa/runner": "^5.3.0",
     "@poppinss/ts-exec": "^1.5.1",
-    "@release-it/conventional-changelog": "^10.0.5",
     "@types/luxon": "^3.0.0",
     "@types/node": "^25.3.5",
     "@vinejs/vine": "^4.4.0",
@@ -120,7 +116,6 @@
     "mysql2": "^3.24.6",
     "pg": "^8.0.0",
     "prettier": "^3.8.1",
-    "release-it": "^19.2.4",
     "tsdown": "^0.21.0",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.14.1",
@@ -154,10 +149,6 @@
     "typescript": {
       "optional": true
     }
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
   },
   "tsdown": {
     "entry": [
@@ -198,31 +189,6 @@
     "treeshake": false,
     "sourcemaps": false,
     "target": "esnext"
-  },
-  "release-it": {
-    "hooks": {
-      "before:bump": "pnpm version ${version} --no-git-tag-version --allow-same-version",
-      "before:release": "pnpm publish --access public --provenance --no-git-checks"
-    },
-    "git": {
-      "requireCleanWorkingDir": true,
-      "requireUpstream": true,
-      "commitMessage": "chore(release): ${version}",
-      "tagAnnotation": "v${version}",
-      "push": true,
-      "tagName": "v${version}"
-    },
-    "github": {
-      "release": true
-    },
-    "npm": false,
-    "plugins": {
-      "@release-it/conventional-changelog": {
-        "preset": {
-          "name": "angular"
-        }
-      }
-    }
   },
   "c8": {
     "reporter": [

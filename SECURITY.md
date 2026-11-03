@@ -28,12 +28,7 @@ the archive's SHA-256. Check a downloaded archive before installing it:
 shasum -a 256 adonisjs-account-kit-<version>.tgz
 ```
 
-npm releases will be published from GitHub Actions with npm provenance. To check that an installed
-copy was built from this repository:
-
-```sh
-npm audit signatures
-```
+Check the SHA-256 in the GitHub release notes before installing an archive.
 
 ## Security model
 

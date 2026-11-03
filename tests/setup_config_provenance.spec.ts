@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import { planSetup } from '../src/setup/plan.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
-test.group('setup config provenance', () => {
+test.group('setup config origins', () => {
   test('mutated Limiter and environment bindings cannot certify selected factories', async ({
     assert,
   }) => {
@@ -34,7 +34,7 @@ test.group('setup config provenance', () => {
     })
   })
 
-  test('additional runtime module imports invalidate session and Limiter provenance', async ({
+  test('additional runtime module imports invalidate session and Limiter origins', async ({
     assert,
   }) => {
     await withFixture(async (choices, state) => {

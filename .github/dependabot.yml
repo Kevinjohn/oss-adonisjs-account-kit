@@ -22,8 +22,6 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
-      - dependency-name: '@release-it/*'
-        update-types: ['version-update:semver-minor']
       - dependency-name: '@types/*'
         update-types: ['version-update:semver-minor']
       - dependency-name: 'ajv*'
@@ -47,8 +45,6 @@ updates:
       - dependency-name: 'pg'
         update-types: ['version-update:semver-minor']
       - dependency-name: 'prettier'
-        update-types: ['version-update:semver-minor']
-      - dependency-name: 'release-it'
         update-types: ['version-update:semver-minor']
       - dependency-name: 'tsdown'
         update-types: ['version-update:semver-minor']

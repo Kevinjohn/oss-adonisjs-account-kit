@@ -34,7 +34,7 @@ export async function planMail(
       diagnostic(
         diagnostics,
         'config/mail.ts',
-        'Resolve runtime Mail and environment module provenance before setup'
+        'Resolve runtime Mail and environment module origins before setup'
       )
     else
       diagnostic(

@@ -27,7 +27,7 @@ export async function parseSetupSource(text: string): Promise<SetupSource> {
   return { ts, file, text }
 }
 
-/** Multiple runtime views of a module make a selected import's provenance ambiguous. */
+/** Multiple runtime views of a module make a selected import's origin ambiguous. */
 export function hasAmbiguousRuntimeModuleImports(source: SetupSource, module: string): boolean {
   const { ts } = source
   let dynamicExposure = false

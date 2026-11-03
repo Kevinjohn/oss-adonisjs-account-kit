@@ -84,11 +84,7 @@ export async function planRouteImport(
           ].includes(call.expression.name.text)
       ))
   ) {
-    diagnostic(
-      diagnostics,
-      path,
-      'Resolve router service provenance before mounting managed routes'
-    )
+    diagnostic(diagnostics, path, 'Resolve router service origins before mounting managed routes')
     return
   }
   let unsupportedMount =

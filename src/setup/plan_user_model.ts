@@ -240,7 +240,7 @@ export async function planUserModel(
         diagnostic(
           diagnostics,
           'user.connection',
-          'Resolve imported BaseModel provenance before generated migrations'
+          'Resolve imported BaseModel origins before generated migrations'
         )
       if (safeComposition && schemaBinding)
         ({ schemaClass, schemaSource } = await inspectUserSchema(
