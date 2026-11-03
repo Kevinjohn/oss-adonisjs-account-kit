@@ -6,15 +6,9 @@ import User from '#models/user'
 import db from '@adonisjs/lucid/services/db'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
+import { notifyOverrides } from '../../config/account_kit.js'
 
-type Notifications = {
-  accountActivationProvision: (user: unknown, url: string) => Promise<void>
-  passwordResetProvision: (user: unknown, url: string) => Promise<void>
-  emailChangeProvision: (user: unknown, email: string, url: string) => Promise<void>
-}
-
-const notifications = () =>
-  (kit as unknown as { deps: { config: { notify: Notifications } } }).deps.config.notify
+const notifications = () => notifyOverrides
 
 test.group('composed account browser journeys', (group) => {
   group.each.setup(setupAccountDatabase)

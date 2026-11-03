@@ -1,12 +1,11 @@
 /* eslint-disable @unicorn/no-await-expression-member, @unicorn/filename-case -- Keep HTTP assertions beside requests and the filename aligned with the recipe selector. */
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
-import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
 import { captureNotifications } from '@kevinjohn/adonisjs-account-kit/testing/notifications'
-import type { ResolvedConfig } from '@kevinjohn/adonisjs-account-kit/types'
 import User from '#models/user'
+import { notifyOverrides } from '../../config/account_kit.js'
 
 const resetPath = '/account-kit/auth/password-reset'
 const originalPassword = 'OriginalPass123!'
@@ -18,9 +17,8 @@ test.group('API password reset recipe', () => {
     assert,
   }) => {
     const capture = captureNotifications()
-    const config = app.config.get<ResolvedConfig>('account_kit')
-    const previous = { ...config.notify }
-    Object.assign(config.notify, capture.notify)
+    const previous = { ...notifyOverrides }
+    Object.assign(notifyOverrides, capture.notify)
     try {
       const user = await User.create({
         fullName: 'Recipe Owner',
@@ -127,15 +125,14 @@ test.group('API password reset recipe', () => {
       assert.equal((await submit(replacement)).status(), 400)
       await unchanged()
     } finally {
-      Object.assign(config.notify, previous)
+      Object.assign(notifyOverrides, previous)
     }
   })
 
   test('a mixed-case native signup can sign in and request a reset', async ({ client, assert }) => {
     const capture = captureNotifications()
-    const config = app.config.get<ResolvedConfig>('account_kit')
-    const previous = { ...config.notify }
-    Object.assign(config.notify, capture.notify)
+    const previous = { ...notifyOverrides }
+    Object.assign(notifyOverrides, capture.notify)
     try {
       const email = `Signup-${randomUUID()}@Example.test`
       const signup = await client.post('/api/v1/auth/signup').json({
@@ -155,7 +152,7 @@ test.group('API password reset recipe', () => {
       assert.equal((await client.post(resetPath).json({ email })).status(), 202)
       assert.isString(capture.tokenFor('passwordResetProvision', email.toLowerCase()))
     } finally {
-      Object.assign(config.notify, previous)
+      Object.assign(notifyOverrides, previous)
     }
   })
 })
