@@ -109,7 +109,7 @@ try {
 } catch (error) {
   // A follow-up failed after commit: the change stands, so keep this session on its revision.
   const committed = passwordChangeRevision(error)
-  if (!(error instanceof PostCommitError) || committed === undefined) throw error
+  if (committed === undefined) throw error
   reportCommittedFailure(logger, error, 'account_password.change')
   revision = committed
 }
@@ -127,10 +127,10 @@ token, including the caller's.
 
 Import `PostCommitError` and `passwordChangeRevision` from `@kevinjohn/adonisjs-account-kit`, and
 `reportCommittedFailure` from the reference diagnostic helper. The logger is the request logger. This
-handling matters because an observer or commit-listener error can be reported after the password change and credential
-revocation have committed. `passwordChangeRevision(error)` returns the revision that
-change wrote, so the session survives; return the success response and do not invite a retry as if
-the change rolled back. The example's [password-change action](../../examples/api/app/controllers/account_password_controller.ts)
+handling matters because a delivery, observer, or commit-listener error can be reported after the
+password change and credential revocation have committed. `passwordChangeRevision(error)` returns
+the revision that change wrote for either failure, so the session survives; return the success
+response and do not invite a retry as if the change rolled back. The example's [password-change action](../../examples/api/app/controllers/account_password_controller.ts)
 uses this service contract and safe diagnostic.
 
 The signup route follows the same boundary: validate the email, password, confirmation and

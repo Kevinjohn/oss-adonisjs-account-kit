@@ -8,6 +8,7 @@ import {
   PostCommitError,
   ThrottledError,
 } from '../src/errors.js'
+import { passwordChangeRevision } from '../src/password_change_revision.js'
 import type { AccountUser } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { makeNotify, makeUsersAdapter } from './helpers/fakes.js'
@@ -245,6 +246,7 @@ test.group('emailPasswordManagement', (group) => {
     const failure = new Error('passwordChanged failed')
     let lifecycleCalls = 0
     const account = service({
+      authentication: { strategy: 'session', guard: 'web' },
       notify: {
         ...makeNotify().notify,
         async passwordChanged() {
@@ -265,6 +267,7 @@ test.group('emailPasswordManagement', (group) => {
     } catch (error) {
       assert.instanceOf(error, DeliveryError)
       assert.equal((error as DeliveryError).cause, failure)
+      assert.isString(passwordChangeRevision(error))
     }
     assert.equal(lifecycleCalls, 1)
     const row = await kit.db.from('users').where('id', user.id).first()
