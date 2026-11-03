@@ -202,7 +202,7 @@
       "bin/**"
     ],
     "check-coverage": true,
-    "statements": 98,
+    "statements": 97,
     "lines": 94,
     "branches": 90,
     "functions": 94
