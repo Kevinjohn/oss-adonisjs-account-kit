@@ -1928,7 +1928,7 @@ packages:
   '@kevinjohn/adonisjs-account-kit@file:vendor/kevinjohn-adonisjs-account-kit.tgz':
     resolution:
       {
-        integrity: sha512-y4cLvMxRAW60Bykkw5b8u8DZVsHKRlyDM0/pCwfPLC7LC8/SQVMZXM/l9s3XRhAI3By5k2ig5lAh3kJAAQOHfA==,
+        integrity: sha512-nd5PDmDtmR/GtM9lvu3C5MV6PvrdU/tinC3J25WfDlW00UpX1NYniQTKlw3oT5S5kly86CDdPg80x7bafIjf2Q==,
         tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz,
       }
     version: 0.1.5
