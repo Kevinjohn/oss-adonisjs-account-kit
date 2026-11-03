@@ -10,7 +10,10 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   srcExclude: ['maintainers/**'],
-  rewrites: { 'README.md': 'index.md' },
+  rewrites: {
+    'README.md': 'index.md',
+    'reference/README.md': 'reference/index.md',
+  },
   markdown: { config: githubLinks },
   themeConfig: {
     search: { provider: 'local' },
