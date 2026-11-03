@@ -197,15 +197,6 @@ test('configures the package idempotently without replacing application-owned fi
       )?.length,
       1
     )
-    assert.equal(
-      rcContents.match(
-        new RegExp(
-          String.raw`import\('@kevinjohn/adonisjs-account-kit\/account_kit_provider'\)`,
-          'g'
-        )
-      )?.length ?? 0,
-      1
-    )
     assert.include(
       rcContents,
       "import('@kevinjohn/adonisjs-account-kit/account_kit_provider_extra')"
@@ -230,15 +221,6 @@ test('configures the package idempotently without replacing application-owned fi
       )?.length,
       1
     )
-    assert.equal(
-      rcContents.match(
-        new RegExp(
-          String.raw`import\('@kevinjohn/adonisjs-account-kit\/account_kit_provider'\)`,
-          'g'
-        )
-      )?.length ?? 0,
-      1
-    )
 
     await writeFile(
       rcPath,
@@ -257,15 +239,6 @@ test('configures the package idempotently without replacing application-owned fi
           'g'
         )
       )?.length,
-      1
-    )
-    assert.equal(
-      rcContents.match(
-        new RegExp(
-          String.raw`import\('@kevinjohn/adonisjs-account-kit\/account_kit_provider'\)`,
-          'g'
-        )
-      )?.length ?? 0,
       1
     )
 
@@ -447,15 +420,6 @@ test('recovers real configure runs with registered dynamic providers', async ({ 
           'g'
         )
       )?.length,
-      1
-    )
-    assert.equal(
-      recoveredRegisteredRc.match(
-        new RegExp(
-          String.raw`import\("@kevinjohn/adonisjs-account-kit\/account_kit_provider"\)`,
-          'g'
-        )
-      )?.length ?? 0,
       1
     )
     assert.equal(recoveredRegisteredRc.match(/import\("application\/provider"\)/g)?.length, 1)
@@ -728,15 +692,6 @@ test('checks effective provider object file entries around spreads', async ({ as
     )
     assert.equal(
       rcContents.match(
-        new RegExp(
-          String.raw`import\("@kevinjohn/adonisjs-account-kit\/account_kit_provider"\)`,
-          'g'
-        )
-      )?.length ?? 0,
-      1
-    )
-    assert.equal(
-      rcContents.match(
         new RegExp(String.raw`import\('@kevinjohn/adonisjs-account-kit\/commands'\)`, 'g')
       )?.length,
       1
@@ -950,7 +905,6 @@ test('configure requires an explicit registration assertion for dynamic provider
       await configure(command as unknown as Configure)
       assert.equal(command.exitCode, 1)
       assert.lengthOf(calls.errors, 1)
-      assert.include(calls.errors[0], '@kevinjohn/adonisjs-account-kit/account_kit_provider')
       assert.include(calls.errors[0], '@kevinjohn/adonisjs-account-kit/account_kit_provider')
       assert.include(calls.errors[0], 'exactly once')
       assert.include(
