@@ -22,6 +22,50 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
 12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
 
+## Scoped package candidate — 2026-11-03
+
+This is local candidate evidence for `@kevinjohn/adonisjs-account-kit@0.1.5`; naming confirmation,
+merge and publication remain owner actions. Earlier records below retain their original package
+names, archive paths, commands and digests.
+
+- Clean archive source: `74a05dcc52d5d08d9dadcdd189e506a9ccaf5d48`.
+- Archive: `kevinjohn-adonisjs-account-kit-0.1.5.tgz`.
+- SHA-256: `8a59e04485a789c5bf5a8baf5f6a19a1e43b60c21c8e5fda814a1022e5cb4ea2`.
+- Consumer and example-lock verification source: `1ad924bd742395a8b9bdba34975d492519bced54`,
+  with a clean working tree. Only the four example archive integrity values differ from the
+  archive source; those lockfiles are outside the packed files.
+- Runtime launcher: Node `24.21.0`; actual consumer process: Node `24.22.1`, pnpm `11.23.0`.
+
+The final archive passed the default fresh SQLite consumer journey through `pnpm test:consumer`
+with the explicit candidate archive and source revision. It installed the scoped package inside
+the disposable consumer's own `node_modules`, generated configuration and 12 migrations, and ran
+the consumer checks against SQLite `3.53.2`. Core was `7.6.0`, Assembler `8.6.0`, Lucid `22.4.2`,
+Limiter `3.0.1`, Luxon `3.7.2` and `better-sqlite3` `12.11.1`.
+
+The same unchanged archive was copied into all four examples. The strict archive identity helper
+reconciled only its version and SHA-512 in each existing lockfile. Fresh `pnpm install
+--frozen-lockfile` passed for API, Hypermedia, Inertia React and Inertia Vue; each installed scoped
+version `0.1.5` inside its own `node_modules`. Dependency version ranges and the resolved dependency
+graph were preserved.
+
+Source validation:
+
+| Revision  | Check                                                                 | Result                                           |
+| --------- | --------------------------------------------------------------------- | ------------------------------------------------ |
+| `74a05dc` | `pnpm build` (including lint), `pnpm format:check`, `pnpm docs:build` | Passed                                           |
+| `1ad924b` | `pnpm typecheck`; strict archive helper and documentation links       | Passed; 8 helper and 3 link tests                |
+| `e612960` | `pnpm quick:test`                                                     | 1,251 passed, 2 skipped                          |
+| `e612960` | `DB_PORT=55556 pnpm test:pg`                                          | 1,250 passed, 3 skipped; managed cluster stopped |
+| `e612960` | `pnpm test:built-exports`, `pnpm test:built-setup`                    | 2 and 11 passed                                  |
+
+The later changes from `e612960` tighten the archive helper's peer-metadata comparison, add its
+regression test, set the coverage statement floor and format contributor tables. Package runtime
+sources, stubs and public exports are unchanged; their full-suite and built-entry evidence is
+reused. The changed helper is covered by the eight final focused tests, and the actual final
+archive is covered by the fresh consumer and four frozen installs above. Documentation generation
+finished before the final link checks; an earlier concurrent check saw the API directory while it
+was being regenerated and is not counted as passing evidence.
+
 ## November 2026 remediation candidate
 
 This record covers the combined candidate of pull requests #707, #708, #709 and #710, integrated
