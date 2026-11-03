@@ -8,6 +8,7 @@ import type {
 } from './openapi_types.js'
 import type { ManagedRouteRegistration } from './route_registration.js'
 import type { ManagedCapability, ManagedRoute } from './routes.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 export interface ManagedOpenApiInput extends ManagedOpenApiOptions {
   /** From `managedRouteRegistration(router)` after the routes are registered. */
@@ -169,7 +170,7 @@ function requestBody(
   const name = route.name as ReplaceableRequestEndpoint
   const override = requestBodies?.[name]
   if (name in replaceable && input.registration.replaced[replaceable[name]] && !override)
-    throw new Error(
+    throw new InvalidArgumentsException(
       `OpenAPI generation needs openapi.requestBodies['${name}'] because the application replaced its validator`
     )
   const schema = override ?? managedEndpointSchemas[route.name].body?.(input.registration.strategy)
@@ -211,7 +212,7 @@ export function generateManagedOpenApi(input: ManagedOpenApiInput): OpenApiDocum
 
   const usesAccount = JSON.stringify(paths).match(/#\/components\/schemas\/(Issued)?Account"/)
   if (usesAccount && registration.replaced.representAccount && !accountSchema)
-    throw new Error(
+    throw new InvalidArgumentsException(
       'OpenAPI generation needs openapi.accountSchema because the application sets representAccount'
     )
 

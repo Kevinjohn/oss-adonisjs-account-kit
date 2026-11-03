@@ -46,6 +46,7 @@ export function createTokenGuard<User>(
     strategy: 'access_tokens',
     name: options.name,
     publicCredential(credential: ManagedTokenCredential) {
+      // eslint-disable-next-line no-restricted-syntax -- internal invariant, not reachable from application code
       if (!credential.value) throw new Error('Token guard did not return a bearer value')
       return credential.value
     },
@@ -74,9 +75,11 @@ export function createTokenGuard<User>(
             Object.keys(createOptions).length ? createOptions : undefined
           )
           try {
+            // eslint-disable-next-line no-restricted-syntax -- internal invariant, not reachable from application code
             if (!token.value) throw new Error('Token guard did not return a bearer value')
             const identifier = normalizedIdentifier(token.identifier)
             const value = token.value.release()
+            // eslint-disable-next-line no-restricted-syntax -- internal invariant, not reachable from application code
             if (!value) throw new Error('Token guard did not return a bearer value')
             return { userId, identifier, value }
           } catch (error) {

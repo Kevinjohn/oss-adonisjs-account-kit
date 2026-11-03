@@ -1,4 +1,5 @@
 import type { ManagedRoute } from './routes.js'
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 
 /** A route already registered by the application, checked for collisions with managed routes. */
 export interface ExistingRoute {
@@ -107,6 +108,6 @@ export function assertManagedRouteCollisions(
         candidate.method.toUpperCase() === route.method &&
         overlappingPaths(candidate, route.path)
     )
-    if (collision) throw new Error(collisionMessage(route, collision))
+    if (collision) throw new InvalidArgumentsException(collisionMessage(route, collision))
   }
 }

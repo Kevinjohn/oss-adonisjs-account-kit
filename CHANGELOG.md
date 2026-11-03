@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed: managed-route setup and argument errors throw `InvalidArgumentsException` instead of a bare `Error`, and route-collision errors do the same; messages are unchanged.
 - Breaking: `accountErrorResponse` returns `{ errors: [{ code, message, committed? }] }`, the envelope the managed routes send; helper code `E_ACCOUNT_KIT_AUTHORIZATION` is now `E_ACCOUNT_KIT_FORBIDDEN`, every 5xx returns `E_ACCOUNT_KIT_OPERATION_FAILED`, and `InvalidSessionError` returns `E_INVALID_CREDENTIALS`. Package errors handle themselves through the AdonisJS exception handler, and error responses set `Cache-Control: no-store`.
 - Changed: a post-commit failure on a managed route that has no committed-success path renders the 500 operation-failed response directly instead of being rethrown.
 - Changed: `defineConfig` keeps prototype methods on `authorize`, `urls` and `notify` objects and binds them; the resolved configuration is frozen.
