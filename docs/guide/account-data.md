@@ -5,6 +5,9 @@ data, and can permanently delete their account. Both need fresh re-authenticatio
 
 ![Exporting account data after re-entering the password, then deleting the account; login fails afterwards](../assets/demos/export-deletion.svg)
 
+The version-1 document keeps its `adonisjs-account-kit/export` format identifier across package
+renames. The identifier describes the document format, independently of the installed package name.
+
 ## Configuration
 
 Both capabilities are off by default and independent:
@@ -60,7 +63,7 @@ The document, version 1 (timestamps are ISO 8601 UTC strings):
 
 ```json
 {
-  "format": "@kevinjohn/adonisjs-account-kit/export",
+  "format": "adonisjs-account-kit/export",
   "version": 1,
   "generatedAt": "2026-10-18T12:00:00.000Z",
   "account": {

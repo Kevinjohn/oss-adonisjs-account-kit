@@ -88,7 +88,7 @@ export async function exportAccountData(
         .where('inviter_id', user.id)
         .orderBy('id')
       return {
-        format: '@kevinjohn/adonisjs-account-kit/export',
+        format: 'adonisjs-account-kit/export',
         version: 1,
         generatedAt: DateTime.utc().toISO(),
         account: {

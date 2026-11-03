@@ -7437,7 +7437,7 @@
         "type": "object",
         "properties": {
           "format": {
-            "const": "@kevinjohn/adonisjs-account-kit/export"
+            "const": "adonisjs-account-kit/export"
           },
           "version": {
             "const": 1

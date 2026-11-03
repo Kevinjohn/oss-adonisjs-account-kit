@@ -24,8 +24,9 @@ export async function consume(
 }
 
 export function limiterKey(operation: string, key: string, secret: string, namespace = 'default') {
+  // Keep the version-1 salt stable so package renames preserve stored rate-limit budgets.
   const derivedKey = Buffer.from(
-    hkdfSync('sha256', secret, '@kevinjohn/adonisjs-account-kit', 'limiter-key-v1', 32)
+    hkdfSync('sha256', secret, 'adonisjs-account-kit', 'limiter-key-v1', 32)
   )
   const digest = createHmac('sha256', derivedKey)
     .update(JSON.stringify([namespace, operation, key]))
