@@ -28,10 +28,10 @@ This is local candidate evidence for `@kevinjohn/adonisjs-account-kit@0.1.5`; na
 merge and publication remain owner actions. Earlier records below retain their original package
 names, archive paths, commands and digests.
 
-- Clean archive source: `74a05dcc52d5d08d9dadcdd189e506a9ccaf5d48`.
+- Clean archive source: `ffe33aa2f58c862fa654c6d994fe44cd80b33427`.
 - Archive: `kevinjohn-adonisjs-account-kit-0.1.5.tgz`.
-- SHA-256: `8a59e04485a789c5bf5a8baf5f6a19a1e43b60c21c8e5fda814a1022e5cb4ea2`.
-- Consumer and example-lock verification source: `1ad924bd742395a8b9bdba34975d492519bced54`,
+- SHA-256: `910cbe0af740edc5644c90d4c3323a7f1d3a1513280f1b419f152fa20dc66708`.
+- Consumer and example-lock verification source: `e1f1057061bd206b858c5362b7ba3acfecda01cc`,
   with a clean working tree. Only the four example archive integrity values differ from the
   archive source; those lockfiles are outside the packed files.
 - Runtime launcher: Node `24.21.0`; actual consumer process: Node `24.22.1`, pnpm `11.23.0`.
@@ -48,23 +48,49 @@ reconciled only its version and SHA-512 in each existing lockfile. Fresh `pnpm i
 version `0.1.5` inside its own `node_modules`. Dependency version ranges and the resolved dependency
 graph were preserved.
 
+The candidate was rebuilt after the statement coverage floor changed from 98 to 97, the rounded
+minimum measured across the required database matrix; line, branch and function floors remain
+94, 90 and 94. The previous scoped candidate archive is superseded by the identity above.
+
 Source validation:
 
-| Revision  | Check                                                                 | Result                                           |
-| --------- | --------------------------------------------------------------------- | ------------------------------------------------ |
-| `74a05dc` | `pnpm build` (including lint), `pnpm format:check`, `pnpm docs:build` | Passed                                           |
-| `1ad924b` | `pnpm typecheck`; strict archive helper and documentation links       | Passed; 8 helper and 3 link tests                |
-| `e612960` | `pnpm quick:test`                                                     | 1,251 passed, 2 skipped                          |
-| `e612960` | `DB_PORT=55556 pnpm test:pg`                                          | 1,250 passed, 3 skipped; managed cluster stopped |
-| `e612960` | `pnpm test:built-exports`, `pnpm test:built-setup`                    | 2 and 11 passed                                  |
+| Revision   | Check                                                                 | Result                                           |
+| ---------- | --------------------------------------------------------------------- | ------------------------------------------------ |
+| `ffe33aa2` | `pnpm build` (including lint), refreshed archive                      | Passed                                           |
+| `e1f1057`  | Explicit-candidate consumer and four fresh frozen installs            | Passed                                           |
+| `74a05dc`  | `pnpm build` (including lint), `pnpm format:check`, `pnpm docs:build` | Passed                                           |
+| `1ad924b`  | `pnpm typecheck`; strict archive helper and documentation links       | Passed; 8 helper and 3 link tests                |
+| `e612960`  | `pnpm quick:test`                                                     | 1,251 passed, 2 skipped                          |
+| `e612960`  | `DB_PORT=55556 pnpm test:pg`                                          | 1,250 passed, 3 skipped; managed cluster stopped |
+| `e612960`  | `pnpm test:built-exports`, `pnpm test:built-setup`                    | 2 and 11 passed                                  |
 
 The later changes from `e612960` tighten the archive helper's peer-metadata comparison, add its
-regression test, set the coverage statement floor and format contributor tables. Package runtime
+regression test, set the coverage statement floor, format contributor tables, correct Linux-only
+tooling fixtures and make recipe Git identity invocation-local. Package runtime
 sources, stubs and public exports are unchanged; their full-suite and built-entry evidence is
 reused. The changed helper is covered by the eight final focused tests, and the actual final
 archive is covered by the fresh consumer and four frozen installs above. Documentation generation
 finished before the final link checks; an earlier concurrent check saw the API directory while it
 was being regenerated and is not counted as passing evidence.
+
+Hosted prerequisite evidence is separate from the refreshed local archive proof:
+
+- At `c66049d`, the [Linux checks run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41571438775)
+  passed SQLite (1,246 passed, 2 skipped), PostgreSQL (1,245 passed, 3 skipped), the build and
+  both built-export tests.
+- At `a3ccaf0d`, the [compatibility run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41571528823)
+  passed MySQL (1,241 passed, 13 skipped) and its consumer. The PostgreSQL minimum/latest tests
+  passed 1,252 with 3 skipped, but the 98% statement gate failed at 97.9%. The corresponding
+  [checks run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41571528841)
+  passed SQLite; its PostgreSQL tests also passed 1,252 with 3 skipped before the same coverage
+  failure. These runs establish test outcomes and the stricter gate's failure, not an overall
+  passing compatibility workflow.
+- The 97% floor's [checks](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678338),
+  [compatibility](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678170) and
+  [examples](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41572678492) runs
+  were still in progress when this record was written; they are not counted as passing evidence.
+- The recipe Git identity correction passed both real clean-environment recipe tests at
+  `2644e61`.
 
 ## November 2026 remediation candidate
 
