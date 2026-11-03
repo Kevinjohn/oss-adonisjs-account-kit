@@ -8,14 +8,18 @@ import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 test.group('capability configuration', (group) => {
   const kit = useTestApp(group)
 
-  test('classifies delivery explicitly without changing custom callbacks', ({ assert }) => {
+  test('classifies delivery explicitly without changing custom callbacks', async ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     assert.equal(defineConfig(base).delivery, 'best-effort')
     assert.equal(defineConfig({ ...base, delivery: 'durable' }).delivery, 'durable')
-    assert.strictEqual(
-      defineConfig({ ...base, delivery: 'durable' }).notify.passwordChanged,
-      base.notify.passwordChanged
-    )
+    let calls = 0
+    const durable = defineConfig({
+      ...base,
+      delivery: 'durable',
+      notify: { ...base.notify, passwordChanged: async () => void calls++ },
+    })
+    await (durable.notify.passwordChanged as unknown as () => Promise<void>)()
+    assert.equal(calls, 1)
     assert.throws(() => defineConfig({ ...base, delivery: 'unknown' as never }), /delivery/)
   })
 

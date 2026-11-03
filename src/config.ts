@@ -50,6 +50,29 @@ const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
 }
 
 /**
+ * Binds each callback the application supplied to the object that holds it, so prototype methods
+ * keep `this`. A missing callback keeps its disabled default.
+ */
+function bindCallbacks<T extends object>(container: object | undefined, defaults: T): T {
+  const result: Record<string, unknown> = {}
+  for (const key of Object.keys(defaults)) {
+    const fn = (container as Record<string, unknown> | undefined)?.[key]
+    result[key] = typeof fn === 'function' ? fn.bind(container) : defaults[key as keyof T]
+  }
+  return result as T
+}
+
+/** Binds the application's top-level hooks to the configuration object it passed. */
+function bindTopLevelHooks<T extends AccountKitConfig>(config: T): T {
+  return Object.fromEntries(
+    Object.entries(config).map(([key, value]) => [
+      key,
+      typeof value === 'function' ? value.bind(config) : value,
+    ])
+  ) as T
+}
+
+/**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
  * a missing callback an enabled capability needs or an out-of-range value.
  */
@@ -240,8 +263,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'usersTable',
       'account_kit: usersTable must be a plain SQL identifier'
     )
+  const hooks = bindTopLevelHooks(config)
   return {
-    ...config,
+    ...hooks,
     enabled: [...enabled],
     delivery: config.delivery ?? 'best-effort',
     expiresIn,
@@ -256,18 +280,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     usersTable,
     limiterSecret,
     limiterNamespace,
-    authorize: {
-      ...disabledAuthorize,
-      ...config.authorize,
-    } as AuthorizationCallbacks,
-    urls: {
-      ...disabledUrls,
-      ...config.urls,
-    } as UrlCallbacks,
-    notify: {
-      ...disabledNotify,
-      ...config.notify,
-    } as NotificationCallbacks,
-    onInvitationAccepted: config.onInvitationAccepted ?? disabled,
+    authorize: bindCallbacks<AuthorizationCallbacks>(config.authorize, disabledAuthorize),
+    urls: bindCallbacks<UrlCallbacks>(config.urls, disabledUrls),
+    notify: bindCallbacks<NotificationCallbacks>(config.notify, disabledNotify),
+    onInvitationAccepted: hooks.onInvitationAccepted ?? disabled,
   }
 }
