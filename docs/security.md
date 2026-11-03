@@ -164,10 +164,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
 
 - Alpha releases are packed by a maintainer and attached to the tagged
   [GitHub release](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases), whose notes
-  give the archive's SHA-256. Compare it with `shasum -a 256` before installing. They carry no npm
-  provenance.
-- npm releases will be published from GitHub Actions with npm provenance. Run
-  `npm audit signatures` to check that an installed copy was built from this repository.
+  give the archive's SHA-256. Compare it with `shasum -a 256` before installing.
 - CodeQL and OpenSSF Scorecard workflows scan the public repository.
 - Dependabot opens one weekly pull request with patch updates to npm packages. Minor and major
   updates, and GitHub Actions versions, move by hand each month.

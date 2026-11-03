@@ -6,6 +6,8 @@
 [![AdonisJS 7](https://img.shields.io/badge/AdonisJS-7-5a45ff)](https://adonisjs.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
+> Pre-release. Installed from GitHub releases; not on npm.
+
 Password reset, email verification, invitations and account settings for AdonisJS 7. You keep your
 user model, routes and frontend; Account Kit handles the tokens, rate limits, session revocation and
 transactions that are easy to get wrong.
@@ -26,8 +28,7 @@ transactions that are easy to get wrong.
 
 ## Install
 
-Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Account Kit is in alpha and
-not yet on npm; install the archive from
+Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install the archive from
 [GitHub releases](https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases):
 
 ```sh

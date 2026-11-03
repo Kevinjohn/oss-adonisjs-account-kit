@@ -127,7 +127,7 @@ test.group('setup mail prerequisites', () => {
         assert.isTrue(
           ambiguous.diagnostics.some(
             ({ field, severity, message }) =>
-              field === 'config/mail.ts' && severity === 'error' && message.includes('provenance')
+              field === 'config/mail.ts' && severity === 'error' && message.includes('origins')
           )
         )
         assert.isFalse(ambiguous.readiness.externalConfigured)

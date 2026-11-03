@@ -28,13 +28,6 @@ the archive's SHA-256. Check a downloaded archive before installing it:
 shasum -a 256 adonisjs-account-kit-<version>.tgz
 ```
 
-npm releases will be published from GitHub Actions with npm provenance. To check that an installed
-copy was built from this repository:
-
-```sh
-npm audit signatures
-```
-
 ## Security model
 
 [docs/security.md](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/security.md) describes what Account Kit defends against and what remains
