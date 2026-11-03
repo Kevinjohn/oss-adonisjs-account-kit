@@ -330,7 +330,11 @@ export default class AccountJourneyController {
         keepCurrent: actor.tokenId ? { tokenId: actor.tokenId } : {},
       })
     } catch (error) {
-      if (passwordChangeRevision(error) === undefined) throw error
+      if (
+        !(error instanceof DeliveryError || error instanceof PostCommitError) ||
+        passwordChangeRevision(error) === undefined
+      )
+        throw error
       privateFault(ctx, error, 'changePassword')
     }
     return ctx.response.ok({ changed: true })
