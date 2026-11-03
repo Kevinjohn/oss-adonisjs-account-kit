@@ -22,8 +22,9 @@ if (mapped) {
 }
 ```
 
-The body is `{ code, message }`. It adds `committed: true` for `PostCommitError`; `DeliveryError` is
-a committed delivery-only failure without that marker. `PostCommitError` identifies a failed observer
+The body is `{ errors: [{ code, message }] }`, the same envelope the managed routes send. The entry
+adds `committed: true` for `PostCommitError`; `DeliveryError` is a committed delivery-only failure
+without that marker. Every 5xx error returns `E_ACCOUNT_KIT_OPERATION_FAILED`. `PostCommitError` identifies a failed observer
 or commit listener; if a delivery also fails, its cause is included.
 For mutating operations, both errors mean the change committed, so map them at the operation boundary
 to its ordinary success or partial-success response. Read-only account inspection is
@@ -74,9 +75,10 @@ next action, and never repeat signup or invitation acceptance. The [starter tuto
 shows reset request and completion handling. Never log full proof-bearing URLs, raw bearer
 credentials, or callback causes in the response.
 
-- `ThrottledError` adds a `Retry-After` header.
-- `DeliveryError` marks a committed delivery-path failure. It does not expose a `committed`
-  property in the mapped body.
+- `ThrottledError` adds a `Retry-After` header. Every package error response sets
+  `Cache-Control: no-store`.
+- `DeliveryError` marks a committed delivery-path failure. It returns
+  `E_ACCOUNT_KIT_OPERATION_FAILED` without a `committed` marker.
 - `PostCommitError` marks a failed post-commit observer or commit listener and adds `committed: true` to
   the mapped body. If delivery also fails in the same follow-up batch, its cause is included.
 - `InvitationManagementDeniedError` is reported as `InvitationNotFoundError`, so a caller cannot
@@ -87,38 +89,35 @@ credentials, or callback causes in the response.
 When the application uses [`@adonisjs/i18n`](https://docs.adonisjs.com/guides/digging-deeper/i18n),
 pass the request's `ctx.i18n` as `i18n`. The message for code `X` is looked up as `errors.X`, with
 the English message as the fallback, the same keys the [managed routes](../guide/managed-http.md) use.
-The code is the error's own `code` from the catalog below, except that
-`E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` is never returned. These are the keys and their
-English messages for `resources/lang/<locale>/errors.json`:
+The key is the public `code` the response carries. That is the error's own code, except that every
+5xx returns `E_ACCOUNT_KIT_OPERATION_FAILED`, `AuthorizationError` returns `E_ACCOUNT_KIT_FORBIDDEN`,
+and `InvalidSessionError` returns `E_INVALID_CREDENTIALS`. These are the keys and their English
+messages for `resources/lang/<locale>/errors.json`:
 
 ```json
 {
-  "E_ACCOUNT_KIT": "Account operation failed",
-  "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected",
-  "E_ACCOUNT_KIT_INVALID_TOKEN": "Account request rejected",
-  "E_ACCOUNT_KIT_THROTTLED": "Account request rejected",
-  "E_ACCOUNT_KIT_AUTHORIZATION": "Account request rejected",
-  "E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED": "Account request rejected",
-  "E_ACCOUNT_KIT_INVITATION_NOT_FOUND": "Invitation not found",
-  "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected",
-  "E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED": "Account request rejected",
-  "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected",
-  "E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED": "Account request rejected",
-  "E_ACCOUNT_KIT_INVITATION_PENDING": "Account request rejected",
-  "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected",
-  "E_ACCOUNT_KIT_DELIVERY": "Account operation failed",
-  "E_ACCOUNT_KIT_POST_COMMIT": "Account operation failed",
-  "E_ACCOUNT_KIT_CAPABILITY_DISABLED": "Account operation failed",
-  "E_INVALID_CREDENTIALS": "Account request rejected",
-  "E_ACCOUNT_KIT_INVALID_SESSION": "Account request rejected",
-  "E_ACCOUNT_KIT_UNVERIFIED_EMAIL": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED": "Account request rejected",
-  "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected"
+  "E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED": "Account request rejected.",
+  "E_ACCOUNT_KIT_OPERATION_FAILED": "Account operation failed.",
+  "E_ACCOUNT_KIT_FORBIDDEN": "Access denied.",
+  "E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED": "The account request conflicts with an existing account.",
+  "E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED": "Current identity proof could not be confirmed.",
+  "E_INVALID_CREDENTIALS": "Authentication failed.",
+  "E_ACCOUNT_KIT_INVALID_INPUT": "Account request rejected.",
+  "E_ACCOUNT_KIT_INVALID_TOKEN": "This link is invalid or expired.",
+  "E_ACCOUNT_KIT_INVITATION_NOT_FOUND": "Invitation not found.",
+  "E_ACCOUNT_KIT_INVITATION_PENDING": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD": "Account request rejected.",
+  "E_ACCOUNT_KIT_NO_PASSWORD": "Account request rejected.",
+  "E_ACCOUNT_KIT_SESSION_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected.",
+  "E_ACCOUNT_KIT_THROTTLED": "Too many requests.",
+  "E_ACCOUNT_KIT_UNVERIFIED_EMAIL": "Email verification is required.",
+  "E_ACCOUNT_KIT_USER_NOT_FOUND": "Account request rejected."
 }
 ```
 

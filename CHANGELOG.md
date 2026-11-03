@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Breaking: `accountErrorResponse` returns `{ errors: [{ code, message, committed? }] }`, the envelope the managed routes send; helper code `E_ACCOUNT_KIT_AUTHORIZATION` is now `E_ACCOUNT_KIT_FORBIDDEN`, every 5xx returns `E_ACCOUNT_KIT_OPERATION_FAILED`, and `InvalidSessionError` returns `E_INVALID_CREDENTIALS`. Package errors handle themselves through the AdonisJS exception handler, and error responses set `Cache-Control: no-store`.
+- Changed: a post-commit failure on a managed route that has no committed-success path renders the 500 operation-failed response directly instead of being rethrown.
 - Changed: `defineConfig` keeps prototype methods on `authorize`, `urls` and `notify` objects and binds them; the resolved configuration is frozen.
 - Breaking: `InvalidCredentialsError.status` is 401 and `InvalidTokenError.status` is 400; the HTTP responses already used these.
 - Breaking: A notice-only failure on password reset, password change, or email change now throws `DeliveryError` instead of `PostCommitError`; `afterCommit` has been removed from `src/effects.ts`.

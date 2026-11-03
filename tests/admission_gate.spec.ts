@@ -122,7 +122,7 @@ test.group('admission gate', (group) => {
     })
     const mapped = accountErrorResponse(error)
     assert.equal(mapped?.status, 403)
-    assert.equal(mapped?.body.code, 'E_ACCOUNT_KIT_ADMISSION_REQUIRED')
+    assert.equal(mapped?.body.errors[0].code, 'E_ACCOUNT_KIT_ADMISSION_REQUIRED')
   })
 
   for (const [strategy, { authentication, signIn }] of Object.entries(strategies)) {

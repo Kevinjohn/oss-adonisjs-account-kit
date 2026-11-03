@@ -342,7 +342,7 @@ test.group('setup generated sources', (group) => {
       assert.deepEqual(managedErrorResponse(caught), {
         status: 422,
         contentType: 'application/json',
-        headers: { Vary: 'Accept' },
+        headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
         body: {
           errors: [{ code: 'E_ACCOUNT_KIT_INVALID_INPUT', message: 'Account request rejected.' }],
         },

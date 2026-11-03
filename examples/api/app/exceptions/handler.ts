@@ -76,12 +76,8 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     const mapped = accountErrorResponse(error)
     if (mapped) {
       for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
-      return accountError(
-        ctx,
-        error instanceof errors.InvalidCredentialsError ? 401 : mapped.status,
-        mapped.body.code,
-        mapped.body.message
-      )
+      const [entry] = mapped.body.errors
+      return accountError(ctx, mapped.status, entry.code, entry.message)
     }
     if (social && (provider || unexpected)) {
       return accountError(

@@ -1,45 +1,29 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import {
-  AccountKitError,
-  AuthorizationError,
-  EmailAlreadyRegisteredError,
-  IdentityNotConfirmedError,
-  InvalidCredentialsError,
-  InvalidInputError,
-  InvalidSessionError,
-  InvalidTokenError,
-  InvitationManagementDeniedError,
-  InvitationNotFoundError,
-  PostCommitError,
-  ThrottledError,
-  UnverifiedEmailError,
-} from '../errors.js'
+import { HttpRequest } from '@adonisjs/core/http'
+import { AccountKitError } from '../errors.js'
 import type { AccountKitTranslator } from '../translator.js'
+import { publicHeaders, publicIdentity, type ProofKind } from './public_identity.js'
 
 export { proofHeaders } from './proof_headers.js'
+
+const JSON_API = 'application/vnd.api+json'
 
 export interface ManagedErrorResponse {
   status: number
   headers: Record<string, string>
   contentType: 'application/json' | 'application/vnd.api+json'
-  body: { errors: Array<{ code: string; message: string } | { code: string; title: string }> }
+  body: {
+    errors: Array<
+      | { code: string; message: string; committed?: true }
+      | { code: string; title: string; committed?: true }
+    >
+  }
 }
 
 export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorResponse): void {
   for (const [name, value] of Object.entries(mapped.headers)) {
-    if (name.toLowerCase() !== 'vary') {
-      context.response.header(name, value)
-      continue
-    }
-    const existing = context.response.getHeader('Vary')
-    const terms = existing
-      ? String(existing)
-          .split(',')
-          .map((term) => term.trim())
-      : []
-    if (terms.includes('*')) continue
-    if (!terms.some((term) => term.toLowerCase() === 'accept')) terms.push('Accept')
-    context.response.header('Vary', terms.join(', '))
+    if (name === 'Vary') context.response.vary(value)
+    else context.response.header(name, value)
   }
   context.response.header('Content-Type', mapped.contentType)
 }
@@ -50,74 +34,19 @@ export function applyMappedHeaders(context: HttpContext, mapped: ManagedErrorRes
  */
 export type ManagedMessage = (code: string, defaultMessage: string) => string
 
-function prefersJsonApi(accept?: string): boolean {
-  if (!accept) return false
-  const ranges = accept.split(',').map((part) => {
-    const [type, ...parameters] = part
-      .trim()
-      .split(';')
-      .map((value) => value.trim().toLowerCase())
-    const q = parameters.find((parameter) => parameter.startsWith('q='))
-    const value = q === undefined ? 1 : Number(q.slice(2))
-    return { type, quality: Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0 }
-  })
-  const quality = (type: string) => {
-    for (const mediaType of [type, 'application/*', '*/*']) {
-      const match = ranges.find((range) => range.type === mediaType)
-      if (match) return match.quality
-    }
-    return 0
-  }
-  const jsonApi = quality('application/vnd.api+json')
-  return (
-    ranges.some((range) => range.type === 'application/vnd.api+json') &&
-    jsonApi > 0 &&
-    jsonApi >= quality('application/json')
+/**
+ * The framework's own negotiation: a missing, wildcard or unrecognised `Accept` gets JSON, and
+ * JSON:API only when the client ranks it at least as high as JSON.
+ */
+function negotiate(accept?: string): typeof JSON_API | 'application/json' {
+  const request = new HttpRequest(
+    { headers: accept === undefined ? {} : { accept }, url: '/', method: 'GET' } as never,
+    {} as never,
+    undefined as never,
+    {} as never,
+    undefined as never
   )
-}
-
-type ErrorClass = abstract new (...args: never[]) => AccountKitError
-
-/** First match wins, so a subclass must come before its parent. */
-const managedErrors: ReadonlyArray<readonly [ErrorClass, number, string, string]> = [
-  [
-    InvalidTokenError,
-    400,
-    'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN',
-    'This link is invalid or expired.',
-  ],
-  [InvalidCredentialsError, 401, 'E_INVALID_CREDENTIALS', 'Authentication failed.'],
-  [InvalidSessionError, 401, 'E_INVALID_CREDENTIALS', 'Authentication failed.'],
-  [UnverifiedEmailError, 403, 'E_ACCOUNT_KIT_UNVERIFIED_EMAIL', 'Email verification is required.'],
-  [
-    IdentityNotConfirmedError,
-    403,
-    'E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED',
-    'Current identity proof could not be confirmed.',
-  ],
-  [InvitationNotFoundError, 404, 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND', 'Invitation not found.'],
-  [
-    InvitationManagementDeniedError,
-    404,
-    'E_ACCOUNT_KIT_INVITATION_NOT_FOUND',
-    'Invitation not found.',
-  ],
-  [AuthorizationError, 403, 'E_ACCOUNT_KIT_FORBIDDEN', 'Access denied.'],
-  [
-    EmailAlreadyRegisteredError,
-    409,
-    'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED',
-    'The account request conflicts with an existing account.',
-  ],
-  [ThrottledError, 429, 'E_ACCOUNT_KIT_THROTTLED', 'Too many requests.'],
-  [InvalidInputError, 422, 'E_ACCOUNT_KIT_INVALID_INPUT', 'Account request rejected.'],
-]
-
-const invalidTokenCodes: Record<'password' | 'email' | 'invitation' | 'magicLink', string> = {
-  password: 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN',
-  email: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN',
-  invitation: 'E_ACCOUNT_KIT_INVALID_INVITATION_TOKEN',
-  magicLink: 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK',
+  return request.accepts(['json', JSON_API]) === JSON_API ? JSON_API : 'application/json'
 }
 
 /** Package errors are deliberately translated without exposing internal messages or causes. */
@@ -125,43 +54,42 @@ export function managedErrorResponse(
   error: unknown,
   options: {
     accept?: string
-    proof?: 'password' | 'email' | 'invitation' | 'magicLink'
+    proof?: ProofKind
     message?: ManagedMessage
     i18n?: AccountKitTranslator
   } = {}
 ): ManagedErrorResponse | null {
-  if (error instanceof PostCommitError) return null
   if (!(error instanceof AccountKitError)) return null
-
-  let status = 500
-  let code = 'E_ACCOUNT_KIT_OPERATION_FAILED'
-  let message = 'Account operation failed.'
-  const mapped = managedErrors.find(([errorClass]) => error instanceof errorClass)
-  if (mapped) {
-    status = mapped[1]
-    code = mapped[2]
-    message = mapped[3]
-    if (error instanceof InvalidTokenError) code = invalidTokenCodes[options.proof ?? 'password']
-  } else if (error.status >= 400 && error.status < 500) {
-    status = error.status
-    code = error.code
-    message = 'Account request rejected.'
-  }
-
-  const jsonApi = prefersJsonApi(options.accept)
-  const translated = options.i18n?.t(`errors.${code}`, {}, message) ?? message
-  const publicMessage = options.message?.(code, translated) ?? translated
+  const identity = publicIdentity(error, { proof: options.proof })
+  const translated =
+    options.i18n?.t(`errors.${identity.code}`, {}, identity.message) ?? identity.message
+  const message = options.message?.(identity.code, translated) ?? translated
+  const contentType = negotiate(options.accept)
+  const committed = identity.committed ? { committed: true as const } : {}
   return {
-    status,
-    contentType: jsonApi ? 'application/vnd.api+json' : 'application/json',
-    headers: {
-      Vary: 'Accept',
-      ...(error instanceof ThrottledError
-        ? { 'Retry-After': String(Math.max(1, Math.ceil(error.retryAfterSeconds))) }
-        : {}),
-    },
+    status: identity.status,
+    contentType,
+    headers: { Vary: 'Accept', ...publicHeaders(error) },
     body: {
-      errors: [jsonApi ? { code, title: publicMessage } : { code, message: publicMessage }],
+      errors: [
+        contentType === JSON_API
+          ? { code: identity.code, title: message, ...committed }
+          : { code: identity.code, message, ...committed },
+      ],
     },
   }
+}
+
+/** Renders a package error through the request's response, for the AdonisJS exception handler. */
+export async function renderAccountKitError(
+  context: HttpContext,
+  error: AccountKitError
+): Promise<void> {
+  const mapped = managedErrorResponse(error, {
+    accept: context.request.header('accept'),
+    i18n: 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined,
+  })
+  if (!mapped) return
+  applyMappedHeaders(context, mapped)
+  context.response.status(mapped.status).send(mapped.body)
 }

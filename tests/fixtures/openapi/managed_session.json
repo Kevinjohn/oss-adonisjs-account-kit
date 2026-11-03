@@ -156,6 +156,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -176,6 +179,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -204,6 +210,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -226,6 +235,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -283,6 +295,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -305,6 +320,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -395,6 +413,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -415,6 +436,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -435,6 +459,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -463,6 +490,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -485,6 +515,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -569,6 +602,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -597,6 +633,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -619,6 +658,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -1084,6 +1126,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -1112,6 +1157,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -1134,6 +1182,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2718,6 +2769,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2738,6 +2792,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2758,6 +2815,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -2781,6 +2841,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2836,6 +2899,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2856,6 +2922,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2876,6 +2945,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -2899,6 +2971,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -2994,6 +3069,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3014,6 +3092,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3034,6 +3115,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3054,6 +3138,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3082,6 +3169,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -3104,6 +3194,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3204,6 +3297,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3224,6 +3320,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3244,6 +3343,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3272,6 +3374,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -3294,6 +3399,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3363,6 +3471,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3383,6 +3494,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3403,6 +3517,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -3426,6 +3543,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3518,6 +3638,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3538,6 +3661,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3558,6 +3684,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3578,6 +3707,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3606,6 +3738,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -3628,6 +3763,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3692,6 +3830,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3712,6 +3853,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3732,6 +3876,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3760,6 +3907,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -3782,6 +3932,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3860,6 +4013,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3880,6 +4036,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3900,6 +4059,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3920,6 +4082,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -3948,6 +4113,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -3970,6 +4138,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -4032,6 +4203,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -4052,6 +4226,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -4072,6 +4249,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -4092,6 +4272,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -4120,6 +4303,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -4142,6 +4328,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -5304,6 +5493,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -5326,6 +5518,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -5692,6 +5887,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -5712,6 +5910,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -5732,6 +5933,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -5755,6 +5959,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6108,6 +6315,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6128,6 +6338,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6148,6 +6361,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -6171,6 +6387,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6234,6 +6453,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6254,6 +6476,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6274,6 +6499,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6294,6 +6522,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6322,6 +6553,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -6344,6 +6578,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6411,6 +6648,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6431,6 +6671,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6451,6 +6694,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -6474,6 +6720,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6524,6 +6773,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6544,6 +6796,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6564,6 +6819,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -6587,6 +6845,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6666,6 +6927,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6686,6 +6950,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6706,6 +6973,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6734,6 +7004,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -6756,6 +7029,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6828,6 +7104,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6848,6 +7127,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6868,6 +7150,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
@@ -6896,6 +7181,9 @@
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
               },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
               }
@@ -6918,6 +7206,9 @@
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
               }
             },
             "content": {
