@@ -131,7 +131,7 @@ unchanged after the run. Released archive installation is described in the
 
 ```sh
 pnpm test:recipe -- --recipe=hypermedia-password-reset \
-  --candidate-tarball=<default-run-directory>/candidate/kevinjohn-adonisjs-account-kit-0.1.1.tgz \
+  --candidate-tarball=<default-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
   --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 

@@ -52,7 +52,7 @@ The recipe adds no administration UI. The app owner provisions the first owner u
 | Field                               | Recorded evidence                                                                                                                                                                                                  |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Recipe source revision              | `c2708c3dbc881b6a28bf3fcd636a48c0642b40e0` (clean working tree)                                                                                                                                                    |
-| Candidate archive                   | `kevinjohn-adonisjs-account-kit-0.1.1.tgz`; source `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf`; SHA-256 `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                          |
+| Candidate archive                   | `adonisjs-account-kit-0.1.1.tgz`; source `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf`; SHA-256 `fd01e7fcb561f04934c5abb58701271515e9f55afeca1a8465aa913896669227`                                          |
 | P1 creator and starter              | `create-adonisjs` `3.4.0`; API starter `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`                                                                                                                                  |
 | P1 baseline / configured checkpoint | `fbaee98745c65b39107972faaa66d69b31a84b7f` / `76a5b65afe9a7840c29ae1d000911785a4490d99`                                                                                                                            |
 | P1 starter login                    | `pnpm test --files=recipe_starter_login.spec.ts`: `original starter login reaches its protected profile`, 1/1 passed before Account Kit was installed                                                              |
@@ -77,7 +77,7 @@ The creator did not initialize Git. The baseline was recorded with `git init`, `
 
 ```sh
 pnpm test:recipe -- --recipe=invitations-existing-app \
-  --candidate-tarball=<retained-run-directory>/candidate/kevinjohn-adonisjs-account-kit-0.1.1.tgz \
+  --candidate-tarball=<retained-run-directory>/candidate/adonisjs-account-kit-0.1.1.tgz \
   --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
