@@ -160,9 +160,10 @@ async function capturedFlashes<T>(operation: () => Promise<T>) {
   const committing = Session.prototype as unknown as { commit: (this: Session) => Promise<void> }
   const previous = committing.commit
   const flashes: string[] = []
-  committing.commit = function () {
-    flashes.push(JSON.stringify(this.responseFlashMessages.all()))
-    return previous.call(this)
+  committing.commit = async function () {
+    const feedback = JSON.stringify(this.responseFlashMessages.all())
+    await previous.call(this)
+    flashes.push(feedback)
   }
   try {
     return { result: await operation(), flashes }
@@ -331,6 +332,43 @@ test.group('standalone native proof response boundary', (group) => {
     }
 
     if (family !== 'confirm-email') {
+      for (const state of ['malformed', 'expired', 'consumed'] as const) {
+        test(`${family} HTML: ${state} proof validation has visible renewal feedback`, async ({
+          assert,
+        }) => {
+          const proof = await proofFor(family, state === 'expired')
+          if (state === 'consumed') await db.from(proof.table).where('hash', proof.hash).delete()
+          const path = state === 'malformed' ? `/${family}/not-a-proof` : proof.path
+          const before = await db.from('users').where('id', proof.user.id).first()
+          const session = new ProofSession()
+          await session.prime()
+          const observed = await capturedFlashes(() =>
+            session.request(`${path}?token=${proof.token}`, {
+              form: { password, passwordConfirmation: 'MismatchedSecret123!' },
+              referer: 'https://untrusted.example/steal',
+            })
+          )
+          const rejected = observed.result
+          assert.include(observed.flashes.join(), 'passwordConfirmation')
+          protectedResponse(assert, rejected)
+          safeCapturedFeedback(assert, observed.flashes, 'This link is invalid or has expired.', [
+            proof.token,
+            password,
+            'MismatchedSecret123!',
+          ])
+          const recovered = await destination(assert, session, rejected, fallback)
+          const feedback = await recovered.text()
+          assert.include(feedback, 'This link is invalid or has expired.')
+          for (const secret of [proof.token, password, 'MismatchedSecret123!'])
+            assert.notInclude(feedback, secret)
+          assert.deepEqual(await db.from('users').where('id', proof.user.id).first(), before)
+          assert.equal(
+            Boolean(await db.from(proof.table).where('hash', proof.hash).first()),
+            state !== 'consumed'
+          )
+        })
+      }
+
       for (const referer of [undefined, 'https://untrusted.example/steal']) {
         test(`${family}: validation and correction with ${referer ? 'hostile' : 'absent'} Referer`, async ({
           assert,
@@ -346,6 +384,7 @@ test.group('standalone native proof response boundary', (group) => {
           const recovered = await destination(assert, session, rejected, proof.path)
           const feedback = await recovered.text()
           assert.include(feedback, 'Confirm password must match Password.')
+          assert.notInclude(feedback, 'This link is invalid or has expired.')
           assert.notInclude(feedback, password)
           assert.notInclude(feedback, 'MismatchedSecret123!')
           assert.exists(await db.from(proof.table).where('hash', proof.hash).first())
@@ -645,4 +684,46 @@ test.group('standalone native proof response boundary', (group) => {
       }
     }
   })
+  for (const recoveryFamily of ['reset-password', 'verify-email'] as const) {
+    test(`${recoveryFamily}: expired validation renders renewal feedback without JavaScript`, async ({
+      browser,
+      assert,
+    }) => {
+      const proof = await proofFor(recoveryFamily)
+      const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+      try {
+        const page = await context.visit(proof.path)
+        await db
+          .from(proof.table)
+          .where('hash', proof.hash)
+          .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+        await page
+          .getByLabel(recoveryFamily === 'reset-password' ? 'New password' : 'Choose a password', {
+            exact: true,
+          })
+          .fill(password)
+        await page.getByLabel('Confirm password').fill('MismatchedSecret123!')
+        await page
+          .getByRole('button', {
+            name: recoveryFamily === 'reset-password' ? 'Reset password' : 'Confirm email',
+            exact: true,
+          })
+          .click()
+        await page.waitForURL(
+          recoveryFamily === 'reset-password' ? '**/forgot-password' : '**/login'
+        )
+        await page
+          .getByText('This link is invalid or has expired.', { exact: true })
+          .waitFor({ state: 'visible' })
+        assert.equal(new URL(page.url()).search, '')
+        assert.equal(
+          (await User.verifyCredentials(proof.user.email, 'OldPass123!')).id,
+          proof.user.id
+        )
+        assert.exists(await db.from(proof.table).where('hash', proof.hash).first())
+      } finally {
+        await context.close()
+      }
+    })
+  }
 })

@@ -75,7 +75,11 @@ export default class HttpExceptionHandler extends ExceptionHandler {
 
     ctx.session.flashValidationErrors(error, false)
     const destination = await proofRecovery(ctx.request)
-    if (destination) return ctx.response.redirect(destination, false)
+    if (destination) {
+      if (destination === proofRequest(ctx.request)?.fallback)
+        ctx.session.flash('error', 'This link is invalid or has expired.')
+      return ctx.response.redirect(destination, false)
+    }
     ctx.session.flash('input', safeOldInput(ctx.request))
     ctx.response.redirect('back', true)
   }
