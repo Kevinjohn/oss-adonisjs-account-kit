@@ -131,6 +131,10 @@ generation, not inbox delivery or PostgreSQL behavior.
 
 ## Clean application check
 
+After migrations and code generation in a fresh configured scaffold, run `pnpm format` before the
+full-app `pnpm lint` check. Starter/configurator output and generated migration/schema files carry
+formatting differences that this normalizes in the disposable scaffold.
+
 The native `/login` form passed before Account Kit installation: its original credentials opened the
 protected `/dashboard`, which also returned successfully on a second direct request. In the fresh P6
 scaffold, `pnpm test --files=recipe_starter_login.spec.ts` passed 1/1 (444 ms). The pinned official
