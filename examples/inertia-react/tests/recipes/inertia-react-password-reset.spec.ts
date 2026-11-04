@@ -489,13 +489,17 @@ test.group('React reset recipe response boundaries', (group) => {
           referer: 'https://untrusted.example/steal',
         })
         assertProofHeaders(assert, rejected)
-        await assertStoredFlash(assert, 'passwordConfirmation', [
+        await assertStoredFlash(assert, 'This link is invalid or has expired.', [
           proof.token,
           replacementPassword,
           'MismatchedSecret123!',
         ])
         const renewal = await followProtected(assert, session, rejected, '/forgot-password')
-        assert.notInclude(await renewal.text(), proof.token)
+        const feedback = await renewal.text()
+        assert.include(feedback, 'This link is invalid or has expired.')
+        assert.notInclude(feedback, proof.token)
+        assert.notInclude(feedback, replacementPassword)
+        assert.notInclude(feedback, 'MismatchedSecret123!')
         await assertUnchanged(assert, proof)
       })
     }
@@ -607,6 +611,39 @@ test.group('React reset recipe response boundaries', (group) => {
       }
     }
   }
+
+  test('an expired proof validation failure visibly explains renewal in the browser', async ({
+    visit,
+    assert,
+  }) => {
+    const proof = await recipeProof()
+    const page = await visit(`${proof.path}?token=${proof.token}&sentinel=browser-validation`)
+    await page.getByLabel('New password', { exact: true }).fill(replacementPassword)
+    await page.getByLabel('Confirm new password').fill('MismatchedSecret123!')
+    // Expire after rendering so the real mounted form submits a now-unusable proof.
+    await db
+      .from('password_reset_tokens')
+      .where('hash', proof.hash)
+      .update({ expires_at: new Date(Date.now() - 3600000).toISOString() })
+    const [rejected] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === proof.path && response.request().method() === 'POST'
+      ),
+      page.getByRole('button', { name: 'Reset password', exact: true }).click(),
+    ])
+    assert.include([302, 303], rejected.status())
+    assert.equal(rejected.headers()['cache-control'], 'no-store')
+    assert.equal(rejected.headers()['referrer-policy'], 'no-referrer')
+    const destination = new URL(rejected.headers()['location'], recipeOrigin)
+    assert.equal(destination.origin, recipeOrigin)
+    assert.equal(destination.pathname, '/forgot-password')
+    assert.equal(destination.search, '')
+    await page.waitForURL('**/forgot-password')
+    await page.getByRole('heading', { name: 'Forgot your password?' }).waitFor()
+    await page.getByText('This link is invalid or has expired.', { exact: true }).waitFor()
+    await assertUnchanged(assert, proof)
+  })
 
   test('the mounted React form clears secrets and completes the corrected proof', async ({
     visit,

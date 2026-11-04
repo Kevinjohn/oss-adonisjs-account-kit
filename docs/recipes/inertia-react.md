@@ -106,7 +106,9 @@ Do not store either value in session, flash, logs, a URL or application persiste
 The reset-specific exception handler flashes validation errors without request input. It also
 handles Shield's CSRF error before generic submitted-input flashing, retaining only a safe error
 message. Both paths inspect the proof: a still-valid proof recovers at its canonical reset path;
-an invalid or unestablished proof recovers at `/forgot-password`. Recovery never depends on a
+an invalid or unestablished proof recovers at `/forgot-password`. Validation renewal shows the
+safe invalid-link message; CSRF recovery shows the form-expired message. Field-specific validation
+feedback stays on a valid proof form. Recovery never depends on a
 Referer header. Proof redirects suppress query forwarding, including successful completion to
 login, so injected query values cannot travel into recovery or login URLs.
 
