@@ -2,6 +2,12 @@
 import { lstatSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import * as ts from 'typescript'
+import {
+  attestStarter,
+  readStarter,
+  verifySnapshot,
+  type StarterSnapshot,
+} from './starter_contract.js'
 
 export type DemoRole = 'feature-recording' | 'setup-recording'
 
@@ -9,6 +15,7 @@ type DemoIdentity = {
   version: 1
   role: DemoRole
   root: string
+  starter: StarterSnapshot
 }
 
 export type ValidatedDemo = {
@@ -57,17 +64,20 @@ function sqlitePath(root: string) {
   if (!isWithin(root, canonicalTmp))
     throw new Error('demo temporary directory escapes its generated root')
   const databasePath = join(canonicalTmp, 'db.sqlite3')
-  try {
-    const stat = lstatSync(databasePath)
-    if (!stat.isFile() || stat.isSymbolicLink())
-      throw new Error('demo SQLite database must be a regular file inside its generated root')
-    if (stat.nlink !== 1)
-      throw new Error('demo SQLite database must not be hard-linked outside its generated root')
-    const physical = realpathSync(databasePath)
-    if (!isWithin(root, physical))
-      throw new Error('demo SQLite database escapes its generated root')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  for (const suffix of ['', '-journal', '-wal', '-shm']) {
+    const checkedPath = databasePath + suffix
+    try {
+      const stat = lstatSync(checkedPath)
+      if (!stat.isFile() || stat.isSymbolicLink())
+        throw new Error('demo SQLite database must be a regular file inside its generated root')
+      if (stat.nlink !== 1)
+        throw new Error('demo SQLite database must not be hard-linked outside its generated root')
+      const physical = realpathSync(checkedPath)
+      if (!isWithin(root, physical))
+        throw new Error('demo SQLite database escapes its generated root')
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
   }
   return databasePath
 }
@@ -149,35 +159,34 @@ function validateDatabaseConfig(path: string) {
     throw new Error('generated database config contains unsupported executable structure')
   }
   const imports = file.statements.filter(ts.isImportDeclaration)
-  const trustedImports = new Set([
-    '@adonisjs/lucid:defineConfig',
-    '@adonisjs/core/services/app:app',
-  ])
-  const importNames = imports.flatMap((declaration) => {
-    if (!ts.isStringLiteral(declaration.moduleSpecifier) || !declaration.importClause)
-      return ['unsupported']
-    const moduleName = declaration.moduleSpecifier.text
-    if (declaration.importClause.isTypeOnly || declaration.assertClause || declaration.attributes)
-      return ['unsupported']
-    const bindings = declaration.importClause?.namedBindings
-    if (bindings && ts.isNamespaceImport(bindings)) return ['unsupported']
-    const names: string[] = []
-    if (declaration.importClause?.name)
-      names.push(`${moduleName}:${declaration.importClause.name.text}`)
-    if (bindings && ts.isNamedImports(bindings)) {
-      for (const element of bindings.elements) {
-        if (element.propertyName || element.isTypeOnly) return ['unsupported']
-        names.push(`${moduleName}:${element.name.text}`)
-      }
-    }
-    return names
-  })
-  if (
-    importNames.length !== trustedImports.size ||
-    importNames.some((name) => !trustedImports.has(name))
-  ) {
+  const validImports =
+    imports.length === 2 &&
+    imports.every((entry) => {
+      const clause = entry.importClause
+      if (
+        !ts.isStringLiteral(entry.moduleSpecifier) ||
+        !clause ||
+        clause.isTypeOnly ||
+        entry.attributes
+      )
+        return false
+      if (entry.moduleSpecifier.text === '@adonisjs/core/services/app')
+        return clause.name?.text === 'app' && !clause.namedBindings
+      const bindings = clause.namedBindings
+      return (
+        entry.moduleSpecifier.text === '@adonisjs/lucid' &&
+        !clause.name &&
+        bindings &&
+        ts.isNamedImports(bindings) &&
+        bindings.elements.length === 1 &&
+        bindings.elements[0].name.text === 'defineConfig' &&
+        !bindings.elements[0].propertyName &&
+        !bindings.elements[0].isTypeOnly
+      )
+    }) &&
+    new Set(imports.map((entry) => (entry.moduleSpecifier as ts.StringLiteral).text)).size === 2
+  if (!validImports)
     throw new Error('generated database config imports unsupported runtime modules')
-  }
   const [declaration] = variableStatements[0].declarationList.declarations
   const exportedName = exports[0].expression
   if (
@@ -253,7 +262,7 @@ function validateDatabaseConfig(path: string) {
 
 function validateStarterMetadata(root: string) {
   const packagePath = join(root, 'package.json')
-  const acePath = join(root, 'ace')
+  const acePath = join(root, 'ace.js')
   const configDir = join(root, 'config')
   const databaseConfigPath = join(configDir, 'database.ts')
   assertRegularFile(packagePath, 'generated package metadata')
@@ -306,7 +315,9 @@ export function writeDemoIdentity(appDir: string, role: DemoRole) {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-  const identity: DemoIdentity = { version: 1, role, root }
+  validateStarterMetadata(root)
+  const starter = attestStarter(readStarter(root))
+  const identity: DemoIdentity = { version: 1, role, root, starter }
   writeFileSync(markerPath, `${JSON.stringify(identity, null, 2)}\n`, {
     mode: 0o644,
     flag: 'wx',
@@ -316,7 +327,8 @@ export function writeDemoIdentity(appDir: string, role: DemoRole) {
 export function validateDemoIdentity(
   appDir: string,
   role: DemoRole,
-  inheritedEnv: NodeJS.ProcessEnv = process.env
+  inheritedEnv: NodeJS.ProcessEnv = process.env,
+  restoringSetup = false
 ): ValidatedDemo {
   let root: string
   try {
@@ -346,7 +358,10 @@ export function validateDemoIdentity(
   if (role === 'setup-recording')
     assertDirectory(join(root, '.git'), 'setup demo starter repository')
 
-  validateStarterMetadata(root)
+  if (!restoringSetup) {
+    verifySnapshot(readStarter(root), identity.starter)
+    validateStarterMetadata(root)
+  } else if (role !== 'setup-recording') throw new Error('only setup recordings restore a starter')
   const databasePath = sqlitePath(root)
   validateInheritedEnvironment(inheritedEnv, databasePath)
   const childEnv = { ...inheritedEnv }

@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import { Cast } from './cast.js'
+import { shadowPaths, starterPaths, verifySnapshot } from './starter_contract.js'
 import { validateDemoIdentity } from './demo_identity.js'
 type SetupReport = {
   pillars: Record<string, string>
@@ -13,7 +14,7 @@ type SetupReport = {
 
 const [app, outDir] = process.argv.slice(2)
 if (!app || !outDir) throw new Error('Usage: node record_setup.ts <app-dir> <out-dir>')
-const demo = validateDemoIdentity(app, 'setup-recording')
+const demo = validateDemoIdentity(app, 'setup-recording', process.env, true)
 const appDir = demo.root
 
 const run = (command: string, args: string[]) =>
@@ -68,12 +69,36 @@ try {
 }
 if (trackedMarker !== '.account-kit-demo.json')
   throw new Error('setup demo identity marker must be tracked before recording')
+const markerEntry = run('git', ['ls-tree', 'HEAD', '--', '.account-kit-demo.json']).trim()
+if (!markerEntry.startsWith('100644 blob ') && !markerEntry.startsWith('100755 blob '))
+  throw new Error('committed demo marker must be a regular file')
 const committedMarker = run('git', ['show', 'HEAD:.account-kit-demo.json'])
 const workingMarker = readFileSync(join(appDir, '.account-kit-demo.json'), 'utf8')
 if (committedMarker !== workingMarker)
   throw new Error('setup demo identity marker must match its committed starter copy')
+const snapshot = (JSON.parse(committedMarker) as { starter: Record<string, string> }).starter
+const committedFiles = Object.fromEntries(
+  starterPaths.map((path) => {
+    const entry = run('git', ['ls-tree', 'HEAD', '--', path]).trim()
+    if (!entry.startsWith('100644 blob ') && !entry.startsWith('100755 blob '))
+      throw new Error(`committed starter file must be a regular file: ${path}`)
+    return [path, run('git', ['show', `HEAD:${path}`])]
+  })
+)
+verifySnapshot(committedFiles, snapshot)
+for (const path of shadowPaths) {
+  if (run('git', ['ls-tree', 'HEAD', '--', path]).trim())
+    throw new Error(`committed starter has an overriding entrypoint: ${path}`)
+}
+// A tracked tmp symlink would replace the checked directory during reset.
+for (const path of ['tmp', 'bin', 'config']) {
+  const entry = run('git', ['ls-tree', 'HEAD', '--', path]).trim()
+  if (entry && !entry.startsWith('040000 tree '))
+    throw new Error(`committed starter directory must be a tree: ${path}`)
+}
 run('git', ['reset', '-q', '--hard'])
 run('git', ['clean', '-fdq'])
+validateDemoIdentity(appDir, 'setup-recording', demo.childEnv)
 
 const cast = new Cast()
 cast.comment('preview the choices file: nothing is written yet')

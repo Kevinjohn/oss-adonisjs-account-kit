@@ -1,10 +1,12 @@
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdtemp, mkdir, readFile, rm, writeFile, chmod, readdir, realpath } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile, chmod, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
+import { writeDemoIdentity } from '../../bin/demos/demo_identity.js'
 import { recordingFailure, stopServer } from '../../bin/demos/record.js'
 
 const rootDir = fileURLToPath(new URL('../../', import.meta.url))
@@ -28,7 +30,10 @@ async function fixture() {
       },
     })
   )
-  await writeFile(join(app, 'ace'), '// synthetic Ace entrypoint\n')
+  await mkdir(join(app, 'bin'))
+  await writeFile(join(app, 'ace.js'), starterAce)
+  await writeFile(join(app, 'bin/console.ts'), starterConsole)
+  await writeFile(join(app, 'adonisrc.ts'), 'export default {}')
   await writeFile(
     join(app, 'config/database.ts'),
     `import { defineConfig } from '@adonisjs/lucid'
@@ -40,10 +45,7 @@ const dbConfig = defineConfig({
 export default dbConfig
 `
   )
-  await writeFile(
-    join(app, '.account-kit-demo.json'),
-    JSON.stringify({ version: 1, role: 'feature-recording', root: await realpath(app) })
-  )
+  writeDemoIdentity(app, 'feature-recording')
   await writeFile(
     join(bin, 'node'),
     `#!/bin/sh

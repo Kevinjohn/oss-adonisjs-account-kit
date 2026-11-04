@@ -1,3 +1,4 @@
+import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -37,7 +38,9 @@ if (args[0] === 'dlx' && args[1] === 'create-adonisjs@3.4.0') {
   fs.mkdirSync(path.join(app, 'start'), { recursive: true })
   fs.mkdirSync(path.join(app, 'app'), { recursive: true })
   fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ name: path.basename(app), dependencies: { '@adonisjs/core': '^7.0.0', '@adonisjs/lucid': '^22.0.0', 'better-sqlite3': '^13.0.0' } }))
-  fs.writeFileSync(path.join(app, 'ace'), '// synthetic ace entry\\n')
+  fs.mkdirSync(path.join(app, 'bin'), { recursive: true })
+  fs.writeFileSync(path.join(app, 'ace.js'), ${JSON.stringify(starterAce)})
+  fs.writeFileSync(path.join(app, 'bin/console.ts'), ${JSON.stringify(starterConsole)})
   fs.writeFileSync(path.join(app, 'config/database.ts'), "import app from '@adonisjs/core/services/app'\\nimport { defineConfig } from '@adonisjs/lucid'\\nconst dbConfig = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') }, useNullAsDefault: true, migrations: { naturalSort: true, paths: ['database/migrations'] }, schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } } })\\nexport default dbConfig\\n")
   fs.writeFileSync(path.join(app, 'start/routes.ts'), '// synthetic routes\\n')
   fs.writeFileSync(path.join(app, 'adonisrc.ts'), "const commands = [() => import('@adonisjs/mail/commands')]\\nexport default { commands }\\n")
@@ -57,7 +60,7 @@ if (args[0] === 'ace' && args[1] === 'serve') {
   setInterval(() => {}, 1000)
 } else if (args[0] === 'ace' && args[1] === 'account-kit:doctor') console.log('fake doctor')
 else if (args[0] === 'ace' && args[1] === 'account-kit:setup') {
-  if (args.includes('--apply')) fs.writeFileSync('.setup-applied', 'yes')
+  if (args.includes('--apply')) { fs.writeFileSync('.setup-applied', 'yes'); fs.appendFileSync('adonisrc.ts', '\\n// setup-generated changes\\n') }
   console.log('[ info ] {\\n  "pillars": {},\\n  "changes": [],\\n  "prerequisites": []\\n}')
 }
 `
@@ -68,12 +71,13 @@ else if (args[0] === 'ace' && args[1] === 'account-kit:setup') {
 echo "git $*" >> "$DEMO_TRACE"
 case "$1" in
   init) mkdir -p .git ;;
-  add) if [ -f .account-kit-demo.json ]; then cp .account-kit-demo.json .git/staged-demo-marker; fi ;;
+  add) if [ -f .account-kit-demo.json ]; then cp .account-kit-demo.json .git/staged-demo-marker; mkdir -p .git/starter/bin .git/starter/config; cp ace.js adonisrc.ts .git/starter/; cp bin/console.ts .git/starter/bin/; cp config/database.ts .git/starter/config/; fi ;;
   commit) ;;
   rev-parse) pwd ;;
   ls-files) if [ -f .git/staged-demo-marker ]; then echo .account-kit-demo.json; else exit 1; fi ;;
-  show) cat .git/staged-demo-marker ;;
-  reset) rm -f .setup-applied ;;
+  show) case "$2" in HEAD:.account-kit-demo.json) cat .git/staged-demo-marker ;; *) cat ".git/starter/\${2#HEAD:}" ;; esac ;;
+  ls-tree) case "$4" in ace|bin/console.js|adonisrc.js|config/database.js|tmp|bin|config) ;; *) echo "100644 blob synthetic\t$4" ;; esac ;;
+  reset) rm -f .setup-applied; cp .git/starter/ace.js .git/starter/adonisrc.ts .; cp .git/starter/bin/console.ts bin/; cp .git/starter/config/database.ts config/; if [ "$POISON_RESET" = 1 ]; then rm -rf tmp; ln -s "$EXTERNAL_TMP" tmp; fi ;;
   clean) ;;
   status) if [ -f .setup-applied ]; then echo ' M app/created.ts'; fi ;;
 esac
@@ -290,7 +294,7 @@ test.group('demo recording safety', (group) => {
     const appDir = join(f.root, 'external-config-app')
     const prepared = await f.run(createSetup, [appDir])
     assert.equal(prepared.code, 0)
-    const databaseConfig = join(appDir, 'config/database.ts')
+    const databaseConfig = join(appDir, '.git/starter/config/database.ts')
     const original = await readFile(databaseConfig, 'utf8')
     await writeFile(
       databaseConfig,
@@ -300,7 +304,7 @@ test.group('demo recording safety', (group) => {
     await f.clearTrace()
     const result = await f.run(recordSetup, [appDir, join(f.root, 'out')])
     assert.equal(result.code, 1, result.output)
-    assert.match(result.output, /generated database config must select better-sqlite3/)
+    assert.match(result.output, /producer snapshot/)
     assert.doesNotMatch(await f.traceText(), /git reset|git clean|migration:fresh/)
   })
 
@@ -308,6 +312,10 @@ test.group('demo recording safety', (group) => {
     const f = await fixture()
     t.cleanup(f.cleanup)
     const cases = [
+      {
+        name: 'empty-named-import',
+        mutate: (source: string) => `import {} from './override.js'\n${source}`,
+      },
       {
         name: 'side-effect-import',
         mutate: (source: string) => `import './untrusted-config.js'\n${source}`,
@@ -331,7 +339,7 @@ test.group('demo recording safety', (group) => {
       const appDir = join(f.root, item.name)
       const prepared = await f.run(createSetup, [appDir])
       assert.equal(prepared.code, 0, prepared.output)
-      const configPath = join(appDir, 'config/database.ts')
+      const configPath = join(appDir, '.git/starter/config/database.ts')
       const source = await readFile(configPath, 'utf8')
       const mutated = item.mutate(source)
       assert.notEqual(mutated, source, `${item.name} fixture must modify the config`)
@@ -340,7 +348,7 @@ test.group('demo recording safety', (group) => {
 
       const result = await f.run(recordSetup, [appDir, join(f.root, `out-${item.name}`)])
       assert.equal(result.code, 1, result.output)
-      assert.match(result.output, /generated database config/)
+      assert.match(result.output, /producer snapshot/)
       assert.doesNotMatch(await f.traceText(), /git reset|git clean|migration:fresh/)
     }
   })
@@ -361,6 +369,111 @@ test.group('demo recording safety', (group) => {
     assert.equal(result.code, 1, result.output)
     assert.match(result.output, /demo temporary directory must be a real directory/)
     assert.doesNotMatch(await f.traceText(), /migration:fresh/)
+  })
+
+  test('changed root/bootstrap, rc overrides and SQLite sidecars refuse before migration', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    for (const [name, change] of [
+      [
+        'tmp-override',
+        async (app: string) =>
+          writeFile(
+            join(app, 'adonisrc.ts'),
+            "export default { directories: { tmp: '../ordinary-data' } }"
+          ),
+      ],
+      [
+        'config-override',
+        async (app: string) =>
+          writeFile(
+            join(app, 'adonisrc.ts'),
+            "export default { directories: { config: '../ordinary-config' } }"
+          ),
+      ],
+      [
+        'changed-root',
+        async (app: string) =>
+          writeFile(
+            join(app, 'bin/console.ts'),
+            starterConsole.replace("new URL('../',", "new URL('../../',")
+          ),
+      ],
+      [
+        'linked-bootstrap',
+        async (app: string) => {
+          await rm(join(app, 'bin/console.ts'))
+          await symlink(join(app, 'ace.js'), join(app, 'bin/console.ts'))
+        },
+      ],
+      [
+        'linked-bootstrap-root',
+        async (app: string) => {
+          const external = join(f.root, 'external-bin')
+          await mkdir(external)
+          await writeFile(join(external, 'console.ts'), starterConsole)
+          await rm(join(app, 'bin'), { recursive: true })
+          await symlink(external, join(app, 'bin'))
+        },
+      ],
+      [
+        'overriding-ace',
+        async (app: string) => writeFile(join(app, 'ace'), '// overriding entrypoint'),
+      ],
+      ...['-journal', '-wal', '-shm'].map(
+        (suffix) =>
+          [
+            `sidecar${suffix}`,
+            async (app: string) =>
+              symlink('/unused-external-sidecar', join(app, `tmp/db.sqlite3${suffix}`)),
+          ] as const
+      ),
+    ] as const) {
+      const app = join(f.root, name)
+      const prepared = await f.run(createFeature, [app])
+      assert.equal(prepared.code, 0, prepared.output)
+      await change(app)
+      await f.clearTrace()
+      const result = await f.run(recordFeature, [app, join(f.root, 'out'), 'doctor'])
+      assert.equal(result.code, 1, result.output)
+      assert.doesNotMatch(await f.traceText(), /migration:fresh/)
+    }
+  }).timeout(30000)
+
+  test('setup rejects committed unsafe state even when the working copy is safe', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    const app = join(f.root, 'committed-override')
+    const prepared = await f.run(createSetup, [app])
+    assert.equal(prepared.code, 0, prepared.output)
+    await writeFile(
+      join(app, '.git/starter/adonisrc.ts'),
+      "export default { directories: { tmp: '../external' } }"
+    )
+    await f.clearTrace()
+    const result = await f.run(recordSetup, [app, join(f.root, 'out')])
+    assert.equal(result.code, 1, result.output)
+    assert.match(result.output, /producer snapshot/)
+    assert.doesNotMatch(await f.traceText(), /git reset|git clean|command.*node/)
+  })
+
+  test('setup rechecks physical paths after reset before any Ace command', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    const app = join(f.root, 'reset-path')
+    const prepared = await f.run(createSetup, [app])
+    assert.equal(prepared.code, 0, prepared.output)
+    const external = join(f.root, 'external-tmp')
+    await mkdir(external)
+    await f.clearTrace()
+    const result = await f.run(recordSetup, [app, join(f.root, 'out')], {
+      POISON_RESET: '1',
+      EXTERNAL_TMP: external,
+    })
+    assert.equal(result.code, 1, result.output)
+    assert.match(result.output, /temporary directory must be a real directory/)
+    assert.match(await f.traceText(), /git reset/)
+    assert.doesNotMatch(await f.traceText(), /command.*node/)
   })
 
   test('failed preparation leaves no demo marker for either producer', async (t) => {
@@ -388,7 +501,10 @@ async function writeSyntheticApp(appDir: string, role: string, markerRoot: strin
       dependencies: { '@adonisjs/core': '^7', '@adonisjs/lucid': '^22', 'better-sqlite3': '^13' },
     })
   )
-  await writeFile(join(appDir, 'ace'), '')
+  await mkdir(join(appDir, 'bin'))
+  await writeFile(join(appDir, 'ace.js'), starterAce)
+  await writeFile(join(appDir, 'bin/console.ts'), starterConsole)
+  await writeFile(join(appDir, 'adonisrc.ts'), 'export default {}')
   await writeFile(
     join(appDir, 'config/database.ts'),
     `import app from '@adonisjs/core/services/app'
