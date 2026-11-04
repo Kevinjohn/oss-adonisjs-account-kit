@@ -122,10 +122,10 @@ jobs:
   consumer:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
-    env:
-      CONSUMER_EVIDENCE_PATH: ${{ runner.temp }}/consumer-evidence/fresh-sqlite/evidence.json
     steps:
       - uses: actions/checkout@v7
+      - name: Configure consumer evidence path
+        run: printf 'CONSUMER_EVIDENCE_PATH=%s/consumer-evidence/fresh-sqlite/evidence.json\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -147,10 +147,10 @@ jobs:
       fail-fast: false
       matrix:
         mode: [minimum, service-only]
-    env:
-      CONSUMER_EVIDENCE_PATH: ${{ runner.temp }}/consumer-evidence/${{ matrix.mode }}-sqlite/evidence.json
     steps:
       - uses: actions/checkout@v7
+      - name: Configure consumer evidence path
+        run: printf 'CONSUMER_EVIDENCE_PATH=%s/consumer-evidence/${{ matrix.mode }}-sqlite/evidence.json\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -182,9 +182,10 @@ jobs:
       DB_USER: account_kit
       DB_PASSWORD: ''
       DB_DATABASE: account_kit_consumer
-      CONSUMER_EVIDENCE_PATH: ${{ runner.temp }}/consumer-evidence/${{ matrix.mode }}-postgres/evidence.json
     steps:
       - uses: actions/checkout@v7
+      - name: Configure consumer evidence path
+        run: printf 'CONSUMER_EVIDENCE_PATH=%s/consumer-evidence/${{ matrix.mode }}-postgres/evidence.json\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
