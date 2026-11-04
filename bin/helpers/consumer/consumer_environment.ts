@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { createServer } from 'node:net'
 import { database, secret } from './settings.js'
 
-/** A loopback port the OS reports free, so concurrent runs on one machine do not collide. */
+/** Probes a free loopback port to reduce collisions; closing the probe does not reserve it. */
 async function freePort() {
   const server = createServer()
   await new Promise<void>((resolve, reject) => {
