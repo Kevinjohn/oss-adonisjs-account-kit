@@ -689,7 +689,11 @@ test.group('native account journeys', (group) => {
 
       await primary.goto('/settings/profile')
       assert.equal(await primary.getByLabel('Full name').inputValue(), 'Morgan Example')
-      const csrf = await primary.locator('input[name="_csrf"]').inputValue()
+      const csrf = await primary
+        .locator('form')
+        .filter({ has: primary.getByRole('button', { name: 'Save profile', exact: true }) })
+        .locator('input[name="_csrf"]')
+        .inputValue()
       const validation = await primary.request.post(`${origin}/settings/profile`, {
         form: { _csrf: csrf, fullName: '', currentPassword: '' },
         headers: { referer: `${origin}/settings/profile` },
