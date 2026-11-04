@@ -279,3 +279,110 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 })
+
+for (const environment of ['development', 'production'] as const) {
+  test.group(`doctor APP_URL checks in ${environment}`, (group) => {
+    group.setup(() => {
+      const previous = process.env.NODE_ENV
+      process.env.NODE_ENV = environment
+      return () => {
+        if (previous === undefined) delete process.env.NODE_ENV
+        else process.env.NODE_ENV = previous
+      }
+    })
+    const kit = useTestApp(group)
+
+    test('the Ace command applies trusted-origin rules without exercising callbacks', async ({
+      assert,
+    }) => {
+      assert.equal(kit.app.nodeEnvironment, environment)
+      const previous = process.env.APP_URL
+      const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+      let callbackCalls = 0
+      kit.app.config.set(
+        'account_kit',
+        defineConfig({
+          ...base,
+          urls: {
+            ...base.urls,
+            passwordReset: () => {
+              callbackCalls++
+              return 'https://custom.example.test/recovery'
+            },
+          },
+        })
+      )
+      const { kernel } = aceKernel(kit, [AccountKitDoctor])
+      const successes: string[] = []
+      const errors: string[] = []
+      const infos: string[] = []
+      kernel.ui.logger.success = (message) => {
+        successes.push(message)
+      }
+      kernel.ui.logger.error = (message) => {
+        errors.push(String(message))
+      }
+      kernel.ui.logger.info = (message) => {
+        infos.push(String(message))
+      }
+      try {
+        for (const [url, expected] of [
+          ['https://accounts.example.test/portal', null],
+          [
+            'http://localhost:3333/portal',
+            environment === 'production' ? 'must use HTTPS in production' : null,
+          ],
+          [
+            'http://127.0.0.1:3333/portal',
+            environment === 'production' ? 'must use HTTPS in production' : null,
+          ],
+          [
+            'http://[::1]:3333/portal',
+            environment === 'production' ? 'must use HTTPS in production' : null,
+          ],
+          [
+            'http://accounts.example.test/portal',
+            environment === 'production'
+              ? 'must use HTTPS in production'
+              : 'HTTP is restricted to loopback development origins',
+          ],
+          [
+            'https://person:private-secret@accounts.example.test/portal',
+            'invalid configured origin',
+          ],
+          ['https://accounts.example.test/portal?mode=private-query', 'invalid configured origin'],
+          ['https://accounts.example.test/portal#private-fragment', 'invalid configured origin'],
+        ] as const) {
+          successes.length = 0
+          errors.length = 0
+          infos.length = 0
+          process.env.APP_URL = url
+          const command = await kernel.exec('account-kit:doctor', [])
+          assert.equal(command.exitCode, expected === null ? 0 : 1)
+          if (expected === null) {
+            assert.deepEqual(errors, [])
+            assert.include(successes, `APP_URL: ${new URL(url).origin}`)
+            assert.isTrue(
+              infos.some((message) =>
+                message.startsWith('Unverified: notification callbacks and delivery')
+              )
+            )
+          } else {
+            assert.lengthOf(errors, 1)
+            assert.match(errors[0], new RegExp(`^APP_URL: ${expected}`))
+            assert.isFalse(successes.some((message) => message.startsWith('APP_URL:')))
+            assert.deepEqual(infos, [])
+            for (const secret of ['private-secret', 'person:', 'private-query', 'private-fragment'])
+              assert.notInclude(errors.join(' '), secret)
+          }
+        }
+        assert.equal(callbackCalls, 0)
+        assert.isTrue(AccountKitDoctor.options.startApp)
+      } finally {
+        if (previous === undefined) delete process.env.APP_URL
+        else process.env.APP_URL = previous
+        kit.app.config.set('account_kit', undefined)
+      }
+    })
+  })
+}
