@@ -6,10 +6,7 @@ import { proofRequest, proofRecovery } from '#services/token_page_headers'
 import { accountKitSessionGuard } from '#services/session_guard'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 
-/**
- * Messages for Account Kit errors shown as a flash toast. Anything else gets a generic message,
- * so internal causes never reach the page.
- */
+/** Maps Account Kit errors to safe flash messages without exposing private causes. */
 function accountMessage(error: errors.AccountKitError) {
   if (error instanceof errors.InvalidCredentialsError) return 'Invalid email or password.'
   if (error instanceof errors.ThrottledError)
