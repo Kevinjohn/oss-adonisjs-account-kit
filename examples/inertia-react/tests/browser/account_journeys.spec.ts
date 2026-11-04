@@ -29,7 +29,9 @@ test.group('composed account browser journeys', (group) => {
       await page.getByLabel('Confirm password').fill('SignupPass123!')
       await page.getByRole('button', { name: 'Create account' }).click()
       await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
-      await page.getByText('Confirm your email address with the link we sent you.').waitFor()
+      await page
+        .getByText('Confirm your email address with a verification link.', { exact: false })
+        .waitFor()
       const pending = await User.findByOrFail('email', email)
       assert.isNull(pending.emailVerifiedAt)
       assert.equal(pending.unverifiedEmail, email)

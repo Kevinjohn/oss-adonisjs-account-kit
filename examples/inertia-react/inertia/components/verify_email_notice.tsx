@@ -13,7 +13,8 @@ export default function VerifyEmailNotice() {
       <Form route="email_verifications.store">
         {({ processing }) => (
           <p style={{ display: 'flex', gap: 12, alignItems: 'center', margin: 0 }}>
-            Confirm your email address with the link we sent you.
+            Confirm your email address with a verification link. Requests within one minute may
+            reuse your current link.
             <button type="submit" className="btn btn--secondary btn--sm" disabled={processing}>
               Resend link
             </button>
