@@ -98,7 +98,10 @@ With `registerManagedRoutes`, add `sessionManagement` to `enabled`:
 
 ## How it works
 
-![Listing signed-in devices, then signing out every other device](../assets/demos/devices.svg)
+<AnimatedRecording
+  recording="devices"
+  description="Listing signed-in devices, then signing out every other device"
+/>
 
 ### Sessions
 

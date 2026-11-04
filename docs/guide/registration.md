@@ -38,7 +38,10 @@ length and character variety; a long passphrase can score higher without mixed c
 
 ## How it works
 
-![Signup creates an unverified account and emails a verification link; after the link is used, login returns an active account](../assets/demos/signup-verification.svg)
+<AnimatedRecording
+  recording="signup-verification"
+  description="Signup creates an unverified account and emails a verification link; after the link is used, login returns an active account"
+/>
 
 `registration.register({ email, password, registrationData? })` normalizes the address and creates
 an inactive account with `email` and `unverifiedEmail` equal. The account and a hashed one-use

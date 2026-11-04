@@ -3,7 +3,10 @@
 A signed-in user can download the personal data Account Kit holds, merged with your application's
 data, and can permanently delete their account. Both need fresh re-authentication.
 
-![Exporting account data after re-entering the password, then deleting the account; login fails afterwards](../assets/demos/export-deletion.svg)
+<AnimatedRecording
+  recording="export-deletion"
+  description="Exporting account data after re-entering the password, then deleting the account; login fails afterwards"
+/>
 
 The version-1 document keeps its `adonisjs-account-kit/export` format identifier across package
 renames. The identifier describes the document format, independently of the installed package name.

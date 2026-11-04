@@ -12,7 +12,9 @@ Password reset, email verification, invitations and account settings for AdonisJ
 user model, routes and frontend; Account Kit handles tokens, rate limits, session revocation and
 transactions that are easy to get wrong.
 
-![A password reset in a new AdonisJS app: the doctor passes, a reset request returns the generic response, the dev server log prints the email, the link resets the password once and is rejected the second time](docs/assets/demo.svg)
+![Signup creates an unverified account; verifying its email allows active-account login](docs/assets/demos/signup-verification_still.svg)
+
+[Watch the signup and verification recording, with animation controls](https://kevinjohn.github.io/oss-adonisjs-account-kit/guide/recordings#signup-and-email-verification).
 
 - **Forgot password** with single-use, expiring links and the same response for known and unknown
   addresses.
