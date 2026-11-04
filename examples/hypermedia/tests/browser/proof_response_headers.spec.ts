@@ -60,8 +60,8 @@ class ProofSession {
     }
     if (response.headers.get('content-type')?.includes('text/html')) {
       const html = await response.clone().text()
-      const input = html.match(/<input\b[^>]*\bname="_csrf"[^>]*>/)?.[0]
-      const token = input?.match(/\bvalue="([^"]+)"/)?.[1]
+      const input = html.match(/<input\b[^>]*\bname=(["'])_csrf\1[^>]*>/)?.[0]
+      const token = input?.match(/\bvalue=(["'])([^"']+)\1/)?.[2]
       if (token) this.csrf = token
     }
     if (process.env.PROOF_HEADER_EVIDENCE)
@@ -84,6 +84,7 @@ class ProofSession {
 
   async prime() {
     await this.request('/login')
+    if (!this.csrf) throw new Error('The native login form did not render a CSRF token')
   }
 }
 
