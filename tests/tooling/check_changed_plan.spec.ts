@@ -138,10 +138,15 @@ test.group('check_changed_plan.spec', (group) => {
     ])
     assert.ok(plan('bin/pg.sh').tests.skip)
     assert.deepEqual(
-      plan('bin/helpers/pg_service_fixture.ts')['pg-service'].command,
+      plan('tests/helpers/pg_service_fixture.ts')['pg-service'].command,
       plan('bin/pg.sh')['pg-service'].command
     )
-    assert.ok(plan('bin/helpers/pg_service_fixture.ts').tests.skip)
+    assert.ok(plan('tests/helpers/pg_service_fixture.ts').tests.skip)
+    assert.deepEqual(
+      plan('tests/helpers/pg_service_fake_tools.ts')['pg-service'].command,
+      plan('bin/pg.sh')['pg-service'].command
+    )
+    assert.ok(plan('tests/helpers/pg_service_fake_tools.ts').tests.skip)
     assert.deepEqual(plan('bin/helpers/consumer/fixture.ts').tests.command, ['pnpm', 'quick:test'])
     assert.deepEqual(plan('bin/check_changed_plan.ts')['check-changed'].command, [
       'pnpm',
