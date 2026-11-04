@@ -54,7 +54,10 @@ An `emailVerification`-only adapter needs `findById`, `markEmailVerified`, and `
 does not need `setEmail`. Inactive activation replaces the earlier password with a fresh one;
 active-account email changes retain their separate proof behavior.
 
-The service methods accept structured inputs. The usual calls are:
+The service methods accept structured inputs. `emailVerification.send` returns `'sent'` when a
+current activation link is available. During the one-minute resend cooldown it preserves the
+link without sending another message, including after an earlier delivery failure. Wait until
+that cooldown ends before retrying delivery. The usual calls are:
 
 ```ts
 await kit.passwordReset.request({ email, clientKey })
