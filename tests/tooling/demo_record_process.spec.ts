@@ -46,24 +46,37 @@ export default dbConfig
 `
   )
   writeDemoIdentity(app, 'feature-recording')
-  await writeFile(
-    join(bin, 'node'),
-    `#!/bin/sh
-if [ "$2" = "migration:fresh" ]; then echo migration >> "$TRACE"; exit 0; fi
-if [ "$2" = "account-kit:doctor" ]; then echo healthy; exit 0; fi
-if [ "$2" = "serve" ]; then
-  echo server-spawned >> "$TRACE"
-  if [ "${'${FAIL_START:-}'}" = "1" ]; then echo startup-failure; exit 9; fi
-  if [ "${'${HOLD_START:-}'}" = "1" ]; then echo booting; trap 'echo cleaned >> "$TRACE"; exit 0' TERM; while :; do sleep 1; done; fi
-  echo 'started HTTP server'
-  echo server-ready >> "$TRACE"
-  if [ "${'${IGNORE_TERM:-}'}" = "1" ]; then trap '' TERM; sleep 60 & echo $! > "$TRACE.descendant"; wait $!; while :; do sleep 60; done; else trap 'echo cleaned >> "$TRACE"; exit 0' TERM; fi
-  while :; do sleep 1; done
-fi
-exit 0
+  const fakeCommand = `#!${process.execPath}
+const fs = require('node:fs')
+const { spawn } = require('node:child_process')
+const args = process.argv.slice(2)
+const kind = process.env.FAKE_CURL === '1' ? 'curl' : args[1] === 'migration:fresh' ? 'migration' : args[1] === 'serve' ? 'server' : 'doctor'
+const trace = (line) => fs.appendFileSync(process.env.TRACE, line + '\\n')
+if (kind === 'server') {
+  trace('server-spawned')
+  if (process.env.FAIL_START === '1') { trace(kind + '-entered:' + process.pid); console.error('startup-failure'); process.exit(9) }
+  if (process.env.HOLD_START !== '1') { console.log('started HTTP server'); trace('server-ready') }
+}
+if ((kind === 'server' && process.env.IGNORE_TERM === '1') || (process.env.HOLD_COMMAND === kind && process.env.RESIST_COMMAND === '1')) {
+  const descendant = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
+  fs.writeFileSync(process.env.TRACE + '.descendant', String(descendant.pid))
+  trace('descendant:' + descendant.pid)
+}
+if (kind === 'server' || process.env.HOLD_COMMAND === kind) {
+  process.on('SIGTERM', () => {
+    trace(kind + '-term')
+    if ((kind === 'server' && process.env.IGNORE_TERM === '1') || process.env.RESIST_COMMAND === '1') return
+    trace('cleaned'); process.exit(0)
+  })
+  setInterval(() => {}, 1000)
+} else {
+  if (kind === 'doctor') console.log('healthy')
+  if (kind === 'curl') console.log('\\n200')
+}
+trace(kind + '-entered:' + process.pid)
 `
-  )
-  await writeFile(join(bin, 'curl'), '#!/bin/sh\nprintf "\\n200"\n')
+  await writeFile(join(bin, 'node'), fakeCommand)
+  await writeFile(join(bin, 'curl'), fakeCommand.replace("process.env.FAKE_CURL === '1'", 'true'))
   await writeFile(
     join(bin, 'lsof'),
     `#!/bin/sh
@@ -85,10 +98,17 @@ if [ "$count" -gt 1 ] && [ -n "${'${UNRELATED_PID:-}'}" ]; then echo "$UNRELATED
     TRACE: join(root, 'trace'),
     LSOF_CALLS: join(root, 'lsof-calls'),
   }
-  const start = (args: string[], extra: NodeJS.ProcessEnv = {}) => {
+  const start = (args: string[], extra: NodeJS.ProcessEnv = {}, preload?: string) => {
     const child = spawn(
       process.execPath,
-      ['--import=@poppinss/ts-exec', recorder, app, output, ...args],
+      [
+        '--import=@poppinss/ts-exec',
+        ...(preload ? ['--import', preload] : []),
+        recorder,
+        app,
+        output,
+        ...args,
+      ],
       { cwd: rootDir, env: { ...env, ...extra }, stdio: ['ignore', 'pipe', 'pipe'] }
     )
     let outputText = ''
@@ -192,35 +212,68 @@ test.group('demo recording process ownership', (group) => {
     assert.equal(trace.includes('cleaned'), true)
   })
 
-  test('SIGINT during recording returns 130 and does not save or start more scenarios', async (t) => {
-    const f = await fixture()
-    t.cleanup(f.cleanup)
-    const run = f.start(['signup-verification'])
-    await until(async () => {
-      const trace = await readFile(f.trace, 'utf8')
-      return trace.includes('server-ready')
-    }, 'server readiness')
-    run.child.kill('SIGINT')
-    const result = await run.done
-    assert.equal(result.code, 130, result.output)
-    const trace = await readFile(f.trace, 'utf8')
-    assert.equal(trace.includes('cleaned'), true)
-    assert.deepEqual(await readdir(f.output), [])
-  })
+  for (const kind of ['migration', 'doctor', 'curl']) {
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+      test(`${signal} interrupts pending ${kind} after its command barrier`, async (t) => {
+        const f = await fixture()
+        t.cleanup(f.cleanup)
+        const run = f.start([kind === 'curl' ? 'signup-verification' : 'doctor', 'doctor'], {
+          HOLD_COMMAND: kind,
+        })
+        await until(async () => {
+          const trace = await readFile(f.trace, 'utf8')
+          return trace.includes(`${kind}-entered:`)
+        }, `${kind} command entered`)
+        const started = Date.now()
+        run.child.kill(signal)
+        const result = await run.done
+        assert.equal(result.code, signal === 'SIGINT' ? 130 : 143, result.output)
+        assert.ok(Date.now() - started < 11000, result.output)
+        const trace = await readFile(f.trace, 'utf8')
+        assert.equal((trace.match(/migration-entered:/g) ?? []).length, 1)
+        assert.equal((trace.match(new RegExp(`${kind}-entered:`, 'g')) ?? []).length, 1)
+        for (const match of trace.matchAll(/-entered:(\d+)/g))
+          assert.throws(() => process.kill(Number(match[1]), 0), { code: 'ESRCH' })
+        assert.doesNotMatch(result.output, /UnhandledPromiseRejection/)
+        assert.deepEqual(await readdir(f.output), [])
+      })
+    }
+  }
 
-  test('second signal forces owned group escalation without replacing first exit result', async (t) => {
-    const f = await fixture()
-    t.cleanup(f.cleanup)
-    const run = f.start(['doctor'], { IGNORE_TERM: '1' })
-    await until(async () => {
+  for (const kind of ['migration', 'doctor', 'curl']) {
+    test(`second signal immediately escalates pending ${kind} after its TERM barrier`, async (t) => {
+      const f = await fixture()
+      t.cleanup(f.cleanup)
+      const run = f.start([kind === 'curl' ? 'signup-verification' : 'doctor', 'doctor'], {
+        HOLD_COMMAND: kind,
+        RESIST_COMMAND: '1',
+        IGNORE_TERM: '1',
+      })
+      await until(async () => {
+        const trace = await readFile(f.trace, 'utf8')
+        return trace.includes(`${kind}-entered:`)
+      }, `${kind} entered`)
+      run.child.kill('SIGINT')
+      await until(async () => {
+        const trace = await readFile(f.trace, 'utf8')
+        return (
+          trace.includes(`${kind}-term`) && (kind === 'migration' || trace.includes('server-term'))
+        )
+      }, 'command and server TERM handlers')
+      const started = Date.now()
+      run.child.kill('SIGTERM')
+      const result = await run.done
+      assert.equal(result.code, 130, result.output)
+      assert.ok(Date.now() - started < 3000, result.output)
       const trace = await readFile(f.trace, 'utf8')
-      return trace.includes('server-ready')
-    }, 'server readiness')
-    run.child.kill('SIGINT')
-    setTimeout(() => run.child.kill('SIGTERM'), 20)
-    const result = await run.done
-    assert.equal(result.code, 130, result.output)
-  })
+      assert.equal((trace.match(/migration-entered:/g) ?? []).length, 1)
+      for (const match of trace.matchAll(/(?:-entered|descendant):(\d+)/g))
+        assert.throws(() => process.kill(Number(match[1]), 0), { code: 'ESRCH' })
+      const descendant = Number(await readFile(`${f.trace}.descendant`, 'utf8'))
+      assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' })
+      assert.doesNotMatch(result.output, /UnhandledPromiseRejection/)
+    })
+  }
 
   test('TERM resistant descendant is killed and the process group is reaped', async (t) => {
     const f = await fixture()
@@ -230,6 +283,73 @@ test.group('demo recording process ownership', (group) => {
     const descendant = Number(await readFile(`${f.trace}.descendant`, 'utf8'))
     assert.throws(() => process.kill(descendant, 0), { code: 'ESRCH' })
   })
+
+  for (const mode of ['completion', 'startup', 'signal']) {
+    test(`CLI failed reap settles with referenced handles during ${mode}`, async (t) => {
+      const startupFailure = mode === 'startup'
+      const f = await fixture()
+      t.cleanup(f.cleanup)
+      const preload = join(f.root, 'reap_probe.mjs')
+      await writeFile(
+        preload,
+        `
+import cp from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
+import { appendFileSync } from 'node:fs'
+const originalSpawn = cp.spawn
+const originalKill = process.kill.bind(process)
+let serverPid
+cp.spawn = (...args) => {
+  const child = originalSpawn(...args)
+  if (args[1]?.[1] === 'serve') {
+    serverPid = child.pid
+    // Model a referenced child/pipe handle surviving the failed final probe.
+    const reference = setInterval(() => {}, 1000)
+    const originalUnref = child.unref.bind(child)
+    child.unref = () => { clearInterval(reference); appendFileSync(process.env.TRACE, 'released-handle\\n'); return originalUnref() }
+    for (const stream of [child.stdout, child.stderr]) {
+      const destroy = stream.destroy.bind(stream)
+      stream.destroy = (...values) => { appendFileSync(process.env.TRACE, 'released-stream\\n'); return destroy(...values) }
+    }
+  }
+  return child
+}
+process.kill = (pid, signal) => {
+  if (pid === -serverPid && signal === 0) return true
+  return originalKill(pid, signal)
+}
+syncBuiltinESMExports()
+`
+      )
+      const started = Date.now()
+      const run = f.start(
+        ['doctor'],
+        startupFailure ? { FAIL_START: '1' } : mode === 'signal' ? { HOLD_COMMAND: 'doctor' } : {},
+        preload
+      )
+      if (mode === 'signal') {
+        await until(async () => {
+          const trace = await readFile(f.trace, 'utf8')
+          return trace.includes('doctor-entered:')
+        }, 'pending doctor before failed-reap interruption')
+        run.child.kill('SIGINT')
+      }
+      const result = await run.done
+      assert.equal(result.code, mode === 'signal' ? 130 : 1, result.output)
+      assert.ok(Date.now() - started < 13000, result.output)
+      assert.match(result.output, /did not exit after SIGKILL/)
+      if (startupFailure) {
+        assert.match(result.output, /server exited before readiness/)
+        assert.match(result.output, /recording failed and cleanup also failed/)
+      }
+      assert.doesNotMatch(result.output, /UnhandledPromiseRejection/)
+      const trace = await readFile(f.trace, 'utf8')
+      assert.match(trace, /released-handle/)
+      assert.match(trace, /released-stream/)
+      for (const match of trace.matchAll(/-entered:(\d+)/g))
+        assert.throws(() => process.kill(Number(match[1]), 0), { code: 'ESRCH' })
+    })
+  }
 
   test('TERM resistant owned group escalates to KILL and reaps within final bound', async () => {
     const child = { pid: 48123, exitCode: null, signalCode: null } as ChildProcess
@@ -274,8 +394,13 @@ test.group('demo recording process ownership', (group) => {
     )
     assert.deepEqual(signals, ['SIGTERM', 'SIGKILL'])
     assert.ok(error instanceof AggregateError)
-    assert.match(error.message, /failed to clean up owned server process group/)
+    assert.match(error.message, /failed to clean up owned recording process group/)
     assert.match(String(error.errors[0]), /did not exit after SIGKILL/)
+  })
+
+  test('falsy caught failures remain errors', () => {
+    for (const failure of [null, undefined, false, 0, ''])
+      assert.ok(recordingFailure(failure, [], true) instanceof Error)
   })
 
   test('primary startup error and cleanup error remain separately inspectable', () => {
