@@ -347,7 +347,7 @@ test.group('permanent account deletion with SoftDeletes', (group) => {
       unverifiedEmail: null,
       emailVerifiedAt: null,
     })
-    await seedAccountRows(kit, user.id, 'rollback')
+    await seedAccountRows(kit, user.id, 'undo')
     SoftDeletingUser.hookCalls = []
     const original = await kit.db.from('users').where('id', user.id).first()
     const sentinel = new Error('physical deletion afterDelete rollback sentinel')
