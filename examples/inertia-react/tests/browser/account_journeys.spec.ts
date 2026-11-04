@@ -1,7 +1,6 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each browser result beside its assertion. */
 import { test } from '@japa/runner'
 import User from '#models/user'
-import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 import { notifyOverrides } from '../../config/account_kit.js'
 

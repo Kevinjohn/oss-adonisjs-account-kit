@@ -53,7 +53,13 @@ export default function ResetPassword({ token, valid, user }: Props) {
         Any current session will end. Sign in with the new password after resetting it.
       </p>
 
-      <Form route="password_resets.update" routeParams={{ token }} onError={focusFormErrorSummary}>
+      <Form
+        route="password_resets.update"
+        routeParams={{ token }}
+        resetOnError={['password', 'passwordConfirmation']}
+        resetOnSuccess={['password', 'passwordConfirmation']}
+        onError={focusFormErrorSummary}
+      >
         {({ errors, processing }) => (
           <div className="auth__form">
             <FormErrorSummary errors={errors} fields={fields} />

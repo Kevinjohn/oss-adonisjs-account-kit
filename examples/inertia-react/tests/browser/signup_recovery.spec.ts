@@ -6,16 +6,6 @@ import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 import { notifyOverrides } from '../../config/account_kit.js'
 
-type SignupConfig = {
-  deps: {
-    config: {
-      notify: {
-        accountActivationProvision: (...args: never[]) => Promise<void>
-      }
-    }
-  }
-}
-
 test.group('Signup recovery in the browser', (group) => {
   group.each.setup(setupAccountDatabase)
 
