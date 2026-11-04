@@ -2,7 +2,12 @@ import { test } from '@japa/runner'
 import { configProvider } from '@adonisjs/core'
 import { LimiterManager, stores } from '@adonisjs/limiter'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { InvitationManagementDeniedError, ThrottledError } from '../src/errors.js'
+import { accountErrorResponse } from '../src/error_response.js'
+import {
+  InvitationManagementDeniedError,
+  InvitationNotFoundError,
+  ThrottledError,
+} from '../src/errors.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import {
   allowAll,
@@ -114,8 +119,13 @@ test.group('invitation budgets', (group) => {
       invitationThrottle: budget,
       authorize: { ...allowAll, manageInvitation: async () => false },
     }).account
-    await assert.rejects(() =>
-      denied.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
+    const denial = await denied.invitations
+      .resend({ actorId: actor.id, invitationId: invitation.id })
+      .catch((error: unknown) => error)
+    assert.instanceOf(denial, InvitationManagementDeniedError)
+    assert.deepEqual(
+      accountErrorResponse(denial),
+      accountErrorResponse(new InvitationNotFoundError())
     )
     const resent = await account.invitations.resend({
       actorId: actor.id,

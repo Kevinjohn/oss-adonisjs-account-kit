@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { chmod, readFile, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { exists, fixture } from '../../bin/helpers/pg_service_fixture.js'
+import { exists, fixture } from '../helpers/pg_service_fixture.js'
 
 test.group('pg_service_inputs.spec', (group) => {
   group.each.timeout(60_000)

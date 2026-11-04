@@ -1,3 +1,4 @@
+import { DeliveryError } from '@kevinjohn/adonisjs-account-kit'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -15,14 +16,21 @@ export default class NewAccountController {
    */
   async store(ctx: HttpContext) {
     const { fullName, email, password } = await ctx.request.validateUsing(signupValidator)
-    let postCommitFailed = false
+    let followUp: 'delivery' | 'observer' | undefined
     try {
       await kit.registration.register({ email, password, registrationData: { fullName } })
     } catch (error) {
       if (!isDeliveryFailure(error)) throw error
-      postCommitFailed = true
+      followUp = error instanceof DeliveryError ? 'delivery' : 'observer'
       ctx.logger.error({ err: error }, 'Account creation committed but a follow-up failed')
     }
+
+    const committedMessage =
+      followUp === 'delivery'
+        ? 'Your account was created, but the verification email could not be sent.'
+        : followUp === 'observer'
+          ? 'Your account was created, but a follow-up step failed. Check your email for a verification link.'
+          : undefined
 
     try {
       await kit.authentication.login(
@@ -33,8 +41,8 @@ export default class NewAccountController {
       ctx.logger.error({ err: error }, 'Account created but initial sign in failed')
       ctx.session.flash(
         'success',
-        postCommitFailed
-          ? 'Your account was created, but we could not confirm that the verification email was sent or sign you in. Please sign in to request another verification email.'
+        committedMessage
+          ? `${committedMessage} We could not sign you in. Please sign in and use the dashboard resend action after one minute if you need a new link.`
           : 'Your account was created, but we could not sign you in. Please sign in to continue.'
       )
       return ctx.response.redirect().toRoute('session.create')
@@ -42,8 +50,8 @@ export default class NewAccountController {
 
     ctx.session.flash(
       'success',
-      postCommitFailed
-        ? 'Your account was created, but we could not confirm that the verification email was sent. Use the resend link on your dashboard to request another email.'
+      committedMessage
+        ? `${committedMessage} Use the dashboard resend action after one minute if you need a new link.`
         : 'Account created. Check your email for a verification link.'
     )
     return ctx.response.redirect().toRoute('dashboard')

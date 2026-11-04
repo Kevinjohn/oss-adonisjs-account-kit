@@ -8,7 +8,7 @@ if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
 # Compare the version literally: its dots must not match any character.
 awk -v h="## $VERSION - " 'index($0, h) == 1 && substr($0, length(h) + 1) ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ {f=1} END {exit !f}' CHANGELOG.md \
   || { echo "CHANGELOG.md has no '## $VERSION - YYYY-MM-DD' heading" >&2; exit 1; }
-# The tarball is built from HEAD, so anything still under Unreleased would ship undocumented.
+# The tarball is built from the working tree, so Unreleased entries would ship undocumented.
 if awk '/^## Unreleased$/ {u=1; next} /^## / {u=0} u && NF {found=1} END {exit !found}' CHANGELOG.md; then
   echo "CHANGELOG.md has entries under '## Unreleased'; move them into the $VERSION section or bump the version" >&2
   exit 1; fi

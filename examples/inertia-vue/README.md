@@ -113,6 +113,15 @@ application and use its English fallback. Do not add package-level locale detect
 files. Choose and document which routes require verified email and whether a successful credential
 change keeps the current session or ends it.
 
+For reset, verification and email-change proof routes, keep
+`app/middleware/proof_response_headers_middleware.ts` first in `server.use` before body parsing,
+Shield and routing. Include `app/services/token_page_headers.ts` and `app/exceptions/handler.ts`.
+Together they set `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on original proof
+responses, including errors and redirects. Recovery uses an inspected canonical proof form or a
+fixed renewal/sign-in destination, ignores Referer and suppresses query forwarding. Retain field
+feedback for a valid form and a safe general explanation for an invalid link; never flash password
+or proof input. The package does not automatically protect these application-owned pages.
+
 ## Checks and evidence
 
 | Implemented                                                                                                                                                                                        | Automated HTTP                                                                                                                                                                                                          | Browser                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Manual checks and limits                                                                                                                                                                                                                      |

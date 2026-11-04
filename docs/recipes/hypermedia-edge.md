@@ -45,8 +45,18 @@ server middleware matches only `/reset-password/:token` and sets `Cache-Control:
 `Referrer-Policy: no-referrer` before body parsing and CSRF checks, so malformed requests and error
 responses carry the same privacy headers. The completion POST validates the new password twice,
 calls `kit.passwordReset.reset`, and uses POST/redirect/GET for both success and recoverable failure.
-Validation failures flash field errors without password input and return explicitly to the encoded
-reset URL: `no-referrer` deliberately removes the header that a default redirect-back would need.
+Validation failures inspect the proof before choosing recovery: a still-valid proof returns to its
+canonical encoded reset URL with field errors, while an invalid or unestablished proof goes to
+`/forgot-password` with renewal feedback. The proof-specific exception handler handles genuine
+Shield CSRF rejection with safe visible feedback and the same inspected recovery. Neither path
+flashes submitted input, including `passwordConfirmation` or arbitrary extra fields. All proof
+validation, CSRF, invalid-token and success redirects explicitly use `withQs(false)`, so proof
+queries cannot reach recovery or login. `no-referrer` deliberately removes the header that a default
+redirect-back would need.
+
+The pinned starter enables method spoofing. The patch disables it in `config/app.ts` because this
+native application uses GET/POST forms; `_method` input must not change the method between body
+parsing and Shield enforcement. The early middleware still protects parser and CSRF failures.
 
 The starter's alert component normally uses `x-cloak`, which hides reset acknowledgements until
 Alpine runs. Remove that cloak while keeping its `x-show` behavior so server-rendered success and
@@ -83,6 +93,17 @@ tests; the clean-starter spec supplies the JavaScript-disabled malformed/expired
 | Mismatched confirmation | `a mismatched reset submission clears password fields and preserves the current password`    | Field error; both password inputs clear; old credential remains valid.             |
 | Replaced token          | `requesting a replacement reset link invalidates the first without changing credentials`     | The first proof's POST is rejected; the replacement remains active.                |
 
+The supplementary HTML response cases inspect original headers before following redirects, read
+committed database-session flash data, and cover genuine malformed JSON, genuine missing hidden
+CSRF tokens, absent and hostile Referer, query suppression, encoded recovery and body method
+overrides. The no-JavaScript correction case submits the real hidden token, clears both secret
+fields on failure, completes a corrected reset and checks that an unrelated signed-in visitor keeps
+their identity. Separate no-JavaScript cases keep a real reset form loaded while its proof expires
+or is consumed in another session, submit mismatched passwords, and require the renewal page to
+show the general invalid-link message. A same-origin navigation observes an absent Referer. These
+new cases are defined; the historical execution results below do not establish their runtime
+acceptance.
+
 The journey test also signs in two independent browser sessions through the original `/login`
 route, confirms both can load `/dashboard`, completes reset, confirms both now redirect to `/login`,
 rejects the old password through `/login`, and accepts the new password through that same route.
@@ -96,7 +117,8 @@ pnpm test:recipe -- --recipe=hypermedia-password-reset
 
 ## Clean application check
 
-Verified on 22 October 2026. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/hypermedia-password-reset.patch)
+Historical verification on 22 October 2026 predates the supplementary recovery and method-boundary
+changes described above. Their clean-starter runtime acceptance is pending. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/hypermedia-password-reset.patch)
 after configuration; the [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
 uses the pinned starter's native login, dashboard, forms and CSRF protection. The scaffold command is:
 

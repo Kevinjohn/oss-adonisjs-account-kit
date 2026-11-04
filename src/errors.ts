@@ -2,8 +2,9 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { Exception, RuntimeException } from '@adonisjs/core/exceptions'
 
 /**
- * Base class for every error Account Kit throws. Each subclass has a stable `code` and an HTTP
- * `status`; pass any of them to `accountErrorResponse` for a safe response.
+ * Base for package account-operation/request errors, with a stable `code` and HTTP `status`.
+ * InvalidConfigurationError is a separate setup error. Adapter, database and application errors
+ * may propagate unchanged; use `accountErrorResponse` to map a safe response.
  */
 export class AccountKitError extends Exception {
   /** The stable machine-readable code, such as `E_ACCOUNT_KIT_INVALID_TOKEN`. */

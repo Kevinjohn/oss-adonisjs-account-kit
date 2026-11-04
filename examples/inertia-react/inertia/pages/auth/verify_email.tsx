@@ -40,6 +40,8 @@ export default function VerifyEmail({ token, valid, user }: Props) {
       <Form
         route="email_verifications.update"
         routeParams={{ token }}
+        resetOnError={['password', 'passwordConfirmation']}
+        resetOnSuccess={['password', 'passwordConfirmation']}
         onError={focusFormErrorSummary}
       >
         {({ errors, processing }) => (

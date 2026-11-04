@@ -2,7 +2,6 @@ import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 import { lifecycleOverrides } from '../../config/account_kit.js'
 

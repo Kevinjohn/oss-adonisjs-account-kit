@@ -22,8 +22,11 @@ The default. Compare _managed mode_.
 **Client key.** A value that identifies the caller for rate limiting, usually `request.ip()` after
 trusted proxies are configured. Never accept one from the request body.
 
-**Committed.** A `PostCommitError` or `DeliveryError` means the database change already happened.
-Do not run the operation again.
+**Committed.** For a mutating operation, `DeliveryError` means delivery failed after the change
+committed; `PostCommitError` means a follow-up observer failed and does not establish that delivery
+failed. Do not blindly repeat the mutation. Read-only account inspection discards its snapshot on
+`PostCommitError`; retry only when its adapter and policy dependencies satisfy the documented
+read-only, retry-safe contract. See [errors](errors.md).
 
 **Credential revision.** The `users.credentials_changed_at` timestamp. Every credential change
 advances it, and sessions or tokens issued before the change stop working.

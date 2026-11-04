@@ -13,8 +13,8 @@ await import('reflect-metadata')
 const { Ignitor, prettyPrintError } = await import('@adonisjs/core/ignitor')
 
 /**
- * URL to the application root. AdonisJS need it to resolve
- * paths to file and directories for scaffolding commands
+ * URL to the application root. AdonisJS needs it to resolve
+ * paths to files and directories for scaffolding commands
  */
 const APP_ROOT = new URL('../', import.meta.url)
 

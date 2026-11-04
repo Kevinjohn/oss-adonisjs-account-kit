@@ -5,18 +5,12 @@ import type { InferLimiters } from '@adonisjs/limiter/types'
 const limiterConfig = defineConfig({
   default: env.get('LIMITER_STORE'),
   stores: {
-    /**
-     * Database store to save rate limiting data inside a
-     * MYSQL or PostgreSQL database.
-     */
+    /** Stores rate limits in the configured database, including SQLite. */
     database: stores.database({
       tableName: 'rate_limits',
     }),
 
-    /**
-     * Memory store could be used during
-     * testing
-     */
+    /** Keeps rate limits in the current process. */
     memory: stores.memory({}),
   },
 })

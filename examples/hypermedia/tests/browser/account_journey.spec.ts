@@ -371,6 +371,12 @@ test.group('native account journeys', (group) => {
         originalHash
       )
       await assertPreserved()
+      await requester.getByLabel('New password').fill('ReplacementPass123!')
+      await requester.getByLabel('Confirm password').fill('ReplacementPass123!')
+      await requester.getByRole('button', { name: 'Reset password' }).click()
+      await requester.getByRole('heading', { name: 'Sign in' }).waitFor()
+      assert.isNotNull(await User.verifyCredentials(user.email, 'ReplacementPass123!'))
+      assert.notExists(await db.from('password_reset_tokens').where('hash', proofHash).first())
     } finally {
       await context.close()
     }

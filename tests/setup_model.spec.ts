@@ -272,8 +272,9 @@ test.group('setup model inspection', (group) => {
     assert,
   }) => {
     const { root, choices } = await fixture()
-    const outside = join(tmpdir(), `account-kit-model-${Date.now()}.ts`)
-    cleanupRoots.push(outside)
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'account-kit-model-'))
+    cleanupRoots.push(outsideRoot)
+    const outside = join(outsideRoot, 'user.ts')
     await writeFile(outside, 'export default class User extends BaseModel {}\n')
     await rm(join(root, 'app/models/user.ts'))
     await symlink(outside, join(root, 'app/models/user.ts'))

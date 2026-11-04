@@ -55,12 +55,22 @@ and unknown addresses. The controller catches only known post-commit delivery fa
 generic event, and does not disclose whether an address exists.
 
 The controller's reset-link GET calls `passwordReset.inspect` without consuming the proof or ending
-the current browser's session. Set a restrictive `Referrer-Policy` before rendering the page so
-the token is not sent to an unrelated origin. Render an unusable-link state for malformed, expired
-or consumed proofs, with links to request a new one and sign in. The reset POST validates the new
-password and confirmation with the application's existing password policy, calls
-`passwordReset.reset`, handles invalid proofs without changing credentials, then terminates the
-current session and redirects to the existing login route.
+the current browser's session. Register the recipe's proof-response middleware in the server stack
+before body parsing and Shield. On reset GET and POST responses it sets `Cache-Control: no-store`
+and `Referrer-Policy: no-referrer`, including parser, CSRF and validation failures. Keep the same
+headers in the controller response helper so later response handling cannot weaken them. Render an
+unusable-link state for malformed, expired or consumed proofs, with links to request a new one and
+sign in. The reset POST validates the new password and confirmation with the application's existing
+password policy, calls `passwordReset.reset`, handles invalid proofs without changing credentials,
+then terminates the current session and redirects to the existing login route.
+
+For a valid proof with correctable password errors, redirect to the same canonical
+`/reset-password/:token` form, preserve field feedback and clear both password values. Resolve the
+destination from the reset route and validated token; do not depend on the request's `Referer`.
+Invalid, expired or consumed proofs renew at `/forgot-password`. A CSRF failure on a valid reset
+proof returns to its form to obtain a fresh token; malformed or invalid proofs use the fixed renewal
+path. Keep the reset recipe scoped to its implemented routes; this patch does not add verification
+or email-change pages.
 
 Use Inertia Vue's `Form` with the existing named routes, `params` for the token, Shield's CSRF
 protection, and the app's current error-summary and field-error components. Keep validation and
@@ -78,29 +88,31 @@ application-owned user and session migrations and account policy separate from p
 
 Adapt only the files needed for your application:
 
-| Responsibility                                                         | Vue example reference                                                                                                                                                                                        |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Keep login and signup routes and integrate revision-aware login/logout | `app/controllers/session_controller.ts`, `app/controllers/new_account_controller.ts`, `app/services/session_guard.ts`, `app/middleware/session_revision_middleware.ts`, `start/routes.ts`, `start/kernel.ts` |
-| Store addresses trimmed and lowercase, as Account Kit looks them up    | `app/validators/user.ts`                                                                                                                                                                                     |
-| Validate reset request and replacement password                        | `app/validators/account.ts`                                                                                                                                                                                  |
-| Request, inspect and complete proofs                                   | `app/controllers/password_resets_controller.ts`                                                                                                                                                              |
-| Request and reset forms with field errors                              | `inertia/pages/auth/forgot_password.vue`, `inertia/pages/auth/reset_password.vue`                                                                                                                            |
-| Focus and link validation feedback                                     | `inertia/components/form_error_summary.vue`, `inertia/components/form_error_summary.ts`                                                                                                                      |
-| Reset URL and notification callback                                    | `config/account_kit.ts`                                                                                                                                                                                      |
-| Use a server-side session store                                        | `.env.example`, `config/session.ts`, app-owned `sessions` migration                                                                                                                                          |
+| Responsibility                                                             | Vue example reference                                                                                                                                                                                        |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Keep login and signup routes and integrate revision-aware login/logout     | `app/controllers/session_controller.ts`, `app/controllers/new_account_controller.ts`, `app/services/session_guard.ts`, `app/middleware/session_revision_middleware.ts`, `start/routes.ts`, `start/kernel.ts` |
+| Store addresses trimmed and lowercase, as Account Kit looks them up        | `app/validators/user.ts`                                                                                                                                                                                     |
+| Validate reset request and replacement password                            | `app/validators/account.ts`                                                                                                                                                                                  |
+| Request, inspect and complete proofs                                       | `app/controllers/password_resets_controller.ts`                                                                                                                                                              |
+| Protect proof responses before body parsing/Shield and recover canonically | `app/middleware/proof_response_headers_middleware.ts`, `app/services/token_page_headers.ts`, `app/exceptions/handler.ts`, `start/kernel.ts`                                                                  |
+| Request and reset forms with field errors                                  | `inertia/pages/auth/forgot_password.vue`, `inertia/pages/auth/reset_password.vue`                                                                                                                            |
+| Focus and link validation feedback                                         | `inertia/components/form_error_summary.vue`, `inertia/components/form_error_summary.ts`                                                                                                                      |
+| Reset URL and notification callback                                        | `config/account_kit.ts`                                                                                                                                                                                      |
+| Use a server-side session store                                            | `.env.example`, `config/session.ts`, app-owned `sessions` migration                                                                                                                                          |
 
 The committed [recipe patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/inertia-vue-password-reset.patch)
 is the application-owned change set used by the clean-starter check. The accompanying browser spec is
 [`inertia-vue-password-reset.spec.ts`](../../examples/inertia-vue/tests/recipes/inertia-vue-password-reset.spec.ts).
 
-| Failure or invariant                                                                                          | Browser evidence                                                                                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Malformed proof leaves the current password and both sessions unchanged                                       | `account_journeys.spec.ts`: “a signed-in reset ends old sessions and rejects proof replay”; recipe spec: “the original login and two browser sessions obey the complete reset lifecycle” |
-| Expired proof leaves the current password and both sessions unchanged                                         | Both named journeys insert a proof with a past `expires_at`                                                                                                                              |
-| A replaced proof cannot reset the password                                                                    | Recipe spec posts the replaced proof; `account_journeys.spec.ts` also checks the old link's unusable state                                                                               |
-| A confirmation mismatch clears secret fields and leaves credentials unchanged                                 | `account_form_errors.spec.ts`: “reset clears password fields after error and associates the confirmation message”; recipe spec submits a mismatch                                        |
-| A consumed proof cannot change the replacement credential again                                               | The recipe spec replays the consumed proof through the reset POST; `account_journeys.spec.ts` checks the unusable-link page                                                              |
-| Both old sessions fail on the protected dashboard; old password fails and new password works through `/login` | Both named journeys use two independent browser contexts and the original login route                                                                                                    |
+| Failure or invariant                                                                                                           | Browser evidence                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Malformed proof leaves the current password and both sessions unchanged                                                        | `account_journeys.spec.ts`: “a signed-in reset ends old sessions and rejects proof replay”; recipe spec: “the original login and two browser sessions obey the complete reset lifecycle”               |
+| Expired proof leaves the current password and both sessions unchanged                                                          | Both named journeys insert a proof with a past `expires_at`                                                                                                                                            |
+| A replaced proof cannot reset the password                                                                                     | Recipe spec posts the replaced proof; `account_journeys.spec.ts` also checks the old link's unusable state                                                                                             |
+| A confirmation mismatch clears secret fields, returns to the same proof form without Referer, and leaves credentials unchanged | `account_form_errors.spec.ts`: “reset clears password fields after error and associates the confirmation message”; recipe spec checks the original redirect, followed headers and corrected submission |
+| Reset GET, successful POST, validation, parser and CSRF responses protect the original proof response and safe follow-on form  | Recipe spec asserts `no-store` and `no-referrer` before following redirects, then checks protected headers on corrected-form and retry requests                                                        |
+| A consumed proof cannot change the replacement credential again                                                                | The recipe spec replays the consumed proof through the reset POST; `account_journeys.spec.ts` checks the unusable-link page                                                                            |
+| Both old sessions fail on the protected dashboard; old password fails and new password works through `/login`                  | Both named journeys use two independent browser contexts and the original login route                                                                                                                  |
 
 ## Run the example
 
@@ -118,6 +130,10 @@ Browser tests use SQLite and local callback capture. They prove application beha
 generation, not inbox delivery or PostgreSQL behavior.
 
 ## Clean application check
+
+After migrations and code generation in a fresh configured scaffold, run `pnpm format` before the
+full-app `pnpm lint` check. Starter/configurator output and generated migration/schema files carry
+formatting differences that this normalizes in the disposable scaffold.
 
 The native `/login` form passed before Account Kit installation: its original credentials opened the
 protected `/dashboard`, which also returned successfully on a second direct request. In the fresh P6

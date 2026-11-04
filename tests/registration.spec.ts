@@ -1,13 +1,16 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Inspect database results directly in focused registration assertions. */
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
   CapabilityDisabledError,
   DeliveryError,
   RegistrationEmailAlreadyRegisteredError,
   InvalidInputError,
+  InvalidTokenError,
 } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
+import { dbTime } from './helpers/db_time.js'
 import {
   insertUser,
   makeConfig,
@@ -326,10 +329,54 @@ test.group('registration', (group) => {
     )
     const row = await kit.db.from('users').where('email', 'person@example.test').first()
     assert.exists(row)
-    assert.equal((await kit.db.from('email_verification_tokens')).length, 1)
+    const activationCalls = () =>
+      service.recorder.calls.filter((call) => call.method === 'accountActivationProvision')
+    assert.lengthOf(activationCalls(), 1)
+    const failedToken = tokenFrom(activationCalls()[0].args[1])
+    const committedProof = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', row.id)
+      .first()
+    assert.exists(committedProof)
+    assert.isTrue(await service.account.emailVerification.inspect({ token: failedToken }))
     service.recorder.failOn(null)
     assert.equal(await service.account.emailVerification.send({ userId: row.id }), 'sent')
-    assert.equal(tokenFrom(service.recorder.calls.at(-1)?.args[1]).length > 0, true)
+    assert.lengthOf(activationCalls(), 1)
+    assert.equal(
+      (await kit.db.from('email_verification_tokens').where('tokenable_id', row.id).first()).hash,
+      committedProof.hash
+    )
+
+    await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', row.id)
+      .update({ created_at: dbTime(kit, DateTime.utc().minus({ minutes: 2 })) })
+    assert.equal(await service.account.emailVerification.send({ userId: row.id }), 'sent')
+    assert.lengthOf(activationCalls(), 2)
+    const deliveredToken = tokenFrom(activationCalls()[1].args[1])
+    assert.notEqual(deliveredToken, failedToken)
+    assert.notEqual(
+      (await kit.db.from('email_verification_tokens').where('tokenable_id', row.id).first()).hash,
+      committedProof.hash
+    )
+    assert.isFalse(await service.account.emailVerification.inspect({ token: failedToken }))
+    await assert.rejects(
+      () =>
+        service.account.emailVerification.complete({
+          token: failedToken,
+          password: 'newpassword123',
+        }),
+      InvalidTokenError
+    )
+    assert.isTrue(await service.account.emailVerification.inspect({ token: deliveredToken }))
+    assert.equal(
+      await service.account.emailVerification.complete({
+        token: deliveredToken,
+        password: 'newpassword123',
+      }),
+      'verified'
+    )
+    assert.isFalse(await service.account.emailVerification.inspect({ token: deliveredToken }))
   })
 
   test('new-password policy rejects weak registration while defaults accept the service bounds', async ({

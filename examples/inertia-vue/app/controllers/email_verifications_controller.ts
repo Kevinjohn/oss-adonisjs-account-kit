@@ -7,8 +7,13 @@ import { verifyEmailValidator } from '#validators/account'
 
 export default class EmailVerificationsController {
   async store({ auth, response, session }: HttpContext) {
-    await kit.emailVerification.send({ userId: auth.getUserOrFail().id })
-    session.flash('success', 'We have sent a new verification link.')
+    const result = await kit.emailVerification.send({ userId: auth.getUserOrFail().id })
+    session.flash(
+      'success',
+      result === 'already_verified'
+        ? 'Your email address is already confirmed.'
+        : 'A current verification link may already be in your email. Requests within one minute may reuse that link without sending another message. If delivery failed, wait one minute before requesting a new link.'
+    )
     return response.redirect().back()
   }
 
@@ -36,6 +41,6 @@ export default class EmailVerificationsController {
     }
     if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     session.flash('success', 'Email confirmed. Sign in with your new password.')
-    return response.redirect().toRoute('session.create')
+    return response.redirect().withQs(false).toRoute('session.create')
   }
 }
