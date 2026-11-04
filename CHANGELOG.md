@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Restrict destructive demo recording to attested generated SQLite apps and bound cleanup of recorder-owned processes after failure or interruption.
+
 - Publish setup-choice JSON downloads, correct guide anchors and generated API edit links, and clarify recipe imports and trusted-proxy prerequisites.
 - Require literal boolean authentication policy results across password, magic-link and social sign-in, preserving provisional-credential cleanup and callback failures.
 - Reject noncanonical numeric managed-route IDs and unsupported notification-readiness modes.

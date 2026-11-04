@@ -32,3 +32,14 @@ commit, previews and applies the choices, and writes `setup.cast`; it can be run
 
 Remove `tmp/demo-app` or `tmp/setup-demo-app` before running `pnpm demos` or `pnpm demos:setup`
 again; the create scripts refuse an existing directory. Tokens, ids and times differ on every run.
+
+The recorders accept only apps created by their matching producer. Each producer writes a role,
+canonical root and starter snapshot to `.account-kit-demo.json`. Recording validates the bootstrap,
+database configuration and local SQLite path before migrations or reset. Keep this marker intact;
+for setup recording it must also match the committed starter copy. Custom apps, modified starter
+entrypoints, alternate database configuration and inherited database overrides are rejected.
+
+Feature recording owns the processes it starts, waits for readiness, and attempts bounded cleanup
+on failure or interruption. Leave port 3333 free and use disposable local apps: recording resets
+their data. Setup recording validates its own Git root before resetting and can repeat from the
+same committed starter. Keep proof-bearing casts and logs private until reviewed for publication.
