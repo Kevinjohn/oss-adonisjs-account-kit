@@ -132,6 +132,99 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build && pnpm test:consumer
 
+  consumer-sqlite-modes:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [minimum, service-only]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - if: matrix.mode == 'minimum'
+        run: pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=sqlite
+      - if: matrix.mode == 'service-only'
+        run: pnpm test:consumer -- --mode=service-only --database=sqlite
+
+  consumer-postgres:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [fresh, minimum, service-only]
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 55432
+      DB_USER: account_kit
+      DB_PASSWORD: ''
+      DB_DATABASE: account_kit_consumer
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Prepare native PostgreSQL 16
+        run: |
+          bin=/usr/lib/postgresql/16/bin
+          utilities=(pg_ctl postgres initdb pg_isready psql createdb)
+          for utility in "${utilities[@]}"; do
+            if [[ ! -x "$bin/$utility" ]]; then
+              sudo apt-get update
+              sudo apt-get install --no-install-recommends --yes postgresql-16
+              break
+            fi
+          done
+          for utility in "${utilities[@]}"; do
+            if [[ ! -x "$bin/$utility" ]]; then
+              echo "::error::PostgreSQL 16 tool is missing: $bin/$utility"
+              exit 1
+            fi
+          done
+          echo "$bin" >> "$GITHUB_PATH"
+          version="$("$bin/pg_ctl" --version)"
+          printf '%s\n' "$version"
+          if [[ "$version" != "pg_ctl (PostgreSQL) 16."* ]]; then
+            echo "::error::Expected PostgreSQL 16 tools, got: $version"
+            exit 1
+          fi
+      - name: Start managed PostgreSQL cluster
+        id: start_postgres
+        run: |
+          output="$(pnpm pg:start)"
+          printf '%s\n' "$output"
+          if [[ "$output" == *"already running on port"* ]]; then
+            echo "::error::Refusing to claim an already running PostgreSQL cluster"
+            exit 1
+          fi
+          echo "started=true" >> "$GITHUB_OUTPUT"
+      - name: Create dedicated consumer database
+        run: createdb -h 127.0.0.1 -p 55432 -U account_kit account_kit_consumer
+      - if: matrix.mode == 'fresh'
+        run: pnpm test:consumer -- --database=postgres
+      - if: matrix.mode == 'minimum'
+        run: pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=postgres
+      - if: matrix.mode == 'service-only'
+        run: pnpm test:consumer -- --mode=service-only --database=postgres
+      - name: Stop managed PostgreSQL cluster
+        if: ${{ always() && steps.start_postgres.outputs.started == 'true' }}
+        run: |
+          if ! pnpm pg:stop; then
+            echo "::error::Failed to stop this job's managed PostgreSQL cluster"
+            exit 1
+          fi
+
   mysql-experimental:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest

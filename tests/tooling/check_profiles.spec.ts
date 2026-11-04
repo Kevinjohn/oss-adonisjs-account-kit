@@ -20,6 +20,8 @@ test('every check step names an existing script', ({ assert }) => {
 test('the check profiles cover every pnpm script the CI workflows run', ({ assert }) => {
   const covered = new Set(allSteps.map((step) => step.script))
   const ignored = new Set(['install', 'dlx', 'add', 'list', 'update', 'pack', 'exec', '--dir'])
+  // PostgreSQL lifecycle commands provision and clean up the consumer job; they are not gates.
+  const prerequisites = new Set(['pg:start', 'pg:stop'])
   const uncovered = ['checks.yml', 'compat.yml', 'examples.yml', 'docs.yml'].flatMap((workflow) =>
     [
       ...readFileSync(join(root, '.github/workflows', workflow), 'utf8').matchAll(
@@ -27,7 +29,9 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
       ),
     ]
       .map((match) => match[1])
-      .filter((script) => !ignored.has(script) && !covered.has(script))
+      .filter(
+        (script) => !ignored.has(script) && !prerequisites.has(script) && !covered.has(script)
+      )
       .map((script) => `${workflow}: ${script}`)
   )
   assert.deepEqual(uncovered, [])
