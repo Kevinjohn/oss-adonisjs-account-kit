@@ -47,6 +47,6 @@ export default class PasswordResetsController {
     }
     if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     session.flash('success', 'Your password has been reset. Sign in with the new password.')
-    return response.redirect().toRoute('session.create')
+    return response.redirect().withQs(false).toRoute('session.create')
   }
 }

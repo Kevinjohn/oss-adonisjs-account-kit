@@ -40,7 +40,7 @@ export default class EmailVerificationsController {
           'error',
           'This verification link is invalid, already used, or expired. Sign in to request a fresh one.'
         )
-        return ctx.response.redirect().toRoute('session.create')
+        return ctx.response.redirect().withQs(false).toRoute('session.create')
       }
       if (!isDeliveryFailure(error)) throw error
       ctx.logger.error(
@@ -49,6 +49,6 @@ export default class EmailVerificationsController {
       )
     }
     ctx.session.flash('success', 'Email confirmed. Sign in with the password you chose here.')
-    return ctx.response.redirect().toRoute('session.create')
+    return ctx.response.redirect().withQs(false).toRoute('session.create')
   }
 }

@@ -81,13 +81,13 @@ export default class EmailChangesController {
     } catch (error) {
       if (error instanceof errors.InvalidTokenError) {
         ctx.session.flash('error', 'This link is invalid, already used, or expired.')
-        return ctx.response.redirect().back()
+        return ctx.response.redirect().withQs(false).toRoute('session.create')
       }
       if (!isDeliveryFailure(error)) throw error
       ctx.logger.error({ event: 'email_change_follow_up_failed' }, 'email change follow-up failed')
     }
     if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     ctx.session.flash('success', 'Email changed. Sign in with your new address.')
-    return ctx.response.redirect().toRoute('session.create')
+    return ctx.response.redirect().withQs(false).toRoute('session.create')
   }
 }

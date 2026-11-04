@@ -3,7 +3,6 @@ import { test } from '@japa/runner'
 import { errors as authErrors } from '@adonisjs/auth'
 import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
-import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 import { notifyOverrides } from '../../config/account_kit.js'
 

@@ -2,6 +2,7 @@ import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
+import { proofRequest, proofRecovery } from '#services/token_page_headers'
 
 const SAFE_OLD_INPUT_FIELDS = ['fullName', 'email'] as const
 
@@ -53,6 +54,11 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     // store this app's camelCase password fields in the session.
     if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN && ctx.session) {
       const message = error.getResponseMessage(error, ctx)
+      if (proofRequest(ctx.request)) {
+        ctx.session.flash('error', message)
+        ctx.session.flashErrors({ [error.code]: message })
+        return ctx.response.redirect((await proofRecovery(ctx.request))!, false)
+      }
       ctx.session.flash('input', safeOldInput(ctx.request))
       ctx.session.flash('error', message)
       ctx.session.flashErrors({ [error.code]: message })
@@ -68,6 +74,12 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     if (!ctx.session) return super.renderValidationErrorAsHTML(error, ctx)
 
     ctx.session.flashValidationErrors(error, false)
+    const destination = await proofRecovery(ctx.request)
+    if (destination) {
+      if (destination === proofRequest(ctx.request)?.fallback)
+        ctx.session.flash('error', 'This link is invalid or has expired.')
+      return ctx.response.redirect(destination, false)
+    }
     ctx.session.flash('input', safeOldInput(ctx.request))
     ctx.response.redirect('back', true)
   }

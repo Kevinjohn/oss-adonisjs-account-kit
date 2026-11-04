@@ -42,7 +42,11 @@ test.group('reset proof browser journey', (group) => {
     await page.goto(new URL('/dashboard', process.env.APP_URL).href)
     await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
 
-    await page.goto(new URL(`/reset-password/${token}`, process.env.APP_URL).href)
+    const proofResponse = await page.goto(
+      new URL(`/reset-password/${token}`, process.env.APP_URL).href
+    )
+    assert.equal(proofResponse!.headers()['cache-control'], 'no-store')
+    assert.equal(proofResponse!.headers()['referrer-policy'], 'no-referrer')
     await page.getByLabel('New password', { exact: true }).fill('ReplacementPass123!')
     await page.getByLabel('Confirm new password').fill('ReplacementPass123!')
     await page.getByRole('button', { name: 'Reset password' }).click()

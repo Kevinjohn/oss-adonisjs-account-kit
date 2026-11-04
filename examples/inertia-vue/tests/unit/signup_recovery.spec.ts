@@ -80,6 +80,8 @@ test.group('Signup recovery', () => {
     assert.equal(flashes.length, 1)
     assert.include(flashes[0]![1], 'account was created')
     assert.include(flashes[0]![1], 'resend')
+    assert.include(flashes[0]![1], 'verification email could not be sent')
+    assert.include(flashes[0]![1], 'after one minute')
     assert.notInclude(flashes[0]![1], 'private mail transport detail')
     assert.lengthOf(loggedErrors, 1)
   })
@@ -130,9 +132,44 @@ test.group('Signup recovery', () => {
 
     assert.deepEqual(routes, ['dashboard'])
     assert.include(flashes[0]![1], 'account was created')
-    assert.include(flashes[0]![1], 'could not confirm that the verification email was sent')
+    assert.include(flashes[0]![1], 'a follow-up step failed')
+    assert.include(flashes[0]![1], 'Check your email')
+    assert.notInclude(flashes[0]![1], 'could not be sent')
     assert.notInclude(flashes[0]![1], 'private observer detail')
   })
+
+  for (const ErrorClass of [DeliveryError, PostCommitError]) {
+    test(`keeps ${ErrorClass.name} copy accurate when initial sign in also fails`, async ({
+      assert,
+    }) => {
+      const { ctx, flashes, routes } = makeContext()
+      const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
+        throw new ErrorClass('private committed failure detail')
+      })
+      const restoreAuthentication = replaceMethod(kit, 'authentication', {
+        login: async () => {
+          throw new Error('private login detail')
+        },
+      })
+      try {
+        await new NewAccountController().store(ctx)
+      } finally {
+        restoreRegistration()
+        restoreAuthentication()
+      }
+      assert.deepEqual(routes, ['session.create'])
+      const message = flashes[0]![1]
+      assert.include(message, 'Your account was created')
+      assert.include(message, 'Please sign in')
+      assert.include(message, 'after one minute')
+      assert.notInclude(message, 'private')
+      if (ErrorClass === DeliveryError) assert.include(message, 'email could not be sent')
+      else {
+        assert.include(message, 'a follow-up step failed')
+        assert.notInclude(message, 'could not be sent')
+      }
+    })
+  }
 
   test('preserves the account and directs the user to sign in if session login fails', async ({
     assert,

@@ -9,7 +9,8 @@ defineProps<{ emailVerified: boolean }>()
     <div v-if="!emailVerified" class="panel" style="padding: 16px; margin-bottom: 16px">
       <Form v-slot="{ processing }" route="email_verifications.store"
         ><p style="display: flex; gap: 12px; align-items: center; margin: 0">
-          Confirm your email address with the link we sent you.<button
+          Confirm your email address with a verification link. Requests within one minute may reuse
+          your current link.<button
             class="btn btn--secondary btn--sm"
             type="submit"
             :disabled="processing"

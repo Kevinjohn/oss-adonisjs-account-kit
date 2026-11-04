@@ -16,7 +16,7 @@ yourself.
 | Sessions surviving a password change     | Each credential change advances a revision; older sessions and tokens stop working. |
 | Poisoned links in emails                 | Links are built from configured origins only, never from request headers.           |
 | Races and half-finished changes          | One transaction per operation, with the user row locked.                            |
-| Tokens leaking through the browser       | Proof pages send `Referrer-Policy: no-referrer` and `Cache-Control: no-store`.      |
+| Tokens leaking through the browser       | Managed proof routes send `no-referrer` and `no-store`; custom pages must set both. |
 
 ## Proof tokens
 
@@ -131,8 +131,14 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   proof URL, including requests rejected early by the body parser or CSRF. Pinned by
   `managed_proof_headers.spec.ts`: "protects every selected proof URL even when later middleware
   rejects the request".
-- **Your own proof pages** should send a `Referrer-Policy`. Use `same-origin` if the page posts
-  back and relies on `redirect().back()`. The [Inertia recipe](../recipes/inertia-react.md) shows it.
+- **Your own proof pages** must set `Cache-Control: no-store` and
+  `Referrer-Policy: no-referrer` before body parsing, CSRF and routing, so early errors and
+  redirects receive the same protection. Package middleware does not automatically protect
+  application-owned routes. The [Vue reset recipe](../recipes/inertia-vue.md) includes the
+  early middleware, proof helper and exception handler. Build recovery destinations from
+  allowlisted routes and inspected proofs, without relying on Referer or forwarding the query
+  string. Keep field feedback on a still-valid canonical form; send invalid, expired or consumed
+  links to fixed renewal/sign-in recovery with a safe explanation. Never flash passwords or proofs.
 - **Proof URLs are bearer tokens.** Keep them out of access logs, analytics and error reporting.
 
 ## Transactions and races
@@ -144,8 +150,10 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   the revocation roll back together. Pinned by "adapter failure rolls back token consumption and
   password change".
 - **After commit means committed.** Emails and lifecycle hooks run after commit. A `DeliveryError`
-  or `PostCommitError` means the change happened and only a follow-up failed. Do not repeat the
-  operation; see [errors](../reference/errors.md).
+  or `PostCommitError` from a mutating operation means the change happened and only a follow-up
+  failed. Do not blindly repeat that mutation. Read-only inspection can instead discard its
+  snapshot on `PostCommitError`; retry only when its adapters and policy callbacks meet the
+  documented read-only, retry-safe contract. See [errors](../reference/errors.md).
 
 ## Optional features
 

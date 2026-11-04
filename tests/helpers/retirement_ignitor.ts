@@ -13,7 +13,8 @@ export function retirementIgnitor(
     checkedAt: string
     currentProviders?: Array<'google' | 'github'>
     currentPasswordLogin?: boolean
-  }>
+  }>,
+  setupCommand: typeof SetupAccountKit = SetupAccountKit
 ) {
   const provider = async () => ({
     default: class {
@@ -35,7 +36,7 @@ export function retirementIgnitor(
     .merge({
       rcFileContents: {
         providers: [provider],
-        commands: [async () => new ListLoader([SetupAccountKit, RetirementImpact])],
+        commands: [async () => new ListLoader([setupCommand, RetirementImpact])],
       },
     })
     .create(pathToFileURL(`${root}/`))

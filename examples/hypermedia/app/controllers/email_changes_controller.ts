@@ -103,7 +103,7 @@ export default class EmailChangesController {
           'error',
           'This email link is invalid, already used, or expired. Sign in to request another change.'
         )
-        return ctx.response.redirect().toRoute('session.create')
+        return ctx.response.redirect().withQs(false).toRoute('session.create')
       }
       if (!isDeliveryFailure(error)) throw error
       ctx.logger.error(
@@ -112,6 +112,6 @@ export default class EmailChangesController {
       )
     }
     ctx.session.flash('success', 'Email changed. Sign in with your new address.')
-    return ctx.response.redirect().toRoute('session.create')
+    return ctx.response.redirect().withQs(false).toRoute('session.create')
   }
 }

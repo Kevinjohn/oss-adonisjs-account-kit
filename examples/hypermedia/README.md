@@ -132,6 +132,15 @@ Copy the minimum relevant pieces and adapt names to the host app:
 - Native session and auth guard configuration, request limits, CSRF protection and the
   verified-account route policy.
 
+Register `app/middleware/proof_response_headers_middleware.ts` first in `server.use` in
+`start/kernel.ts`, before body parsing, Shield and routing. Copy its proof helper and exception
+handler together: they set `Cache-Control: no-store` and `Referrer-Policy: no-referrer` on original
+proof responses, including early errors and redirects. Recovery uses an inspected canonical proof
+form or fixed renewal/sign-in recovery, with a safe explanation, without Referer or query forwarding.
+Keep proof input and passwords out of flash. Preserve `allowMethodSpoofing: false` in
+`config/app.ts`; these native forms use GET/POST and do not need method spoofing. Package middleware
+does not automatically protect these application-owned routes.
+
 Keep user columns, validation rules, access policy, notification delivery and wording in the
 application. Do not copy the example database or its development key into a deployed app. For the
 shared lifecycle and evidence contract, see

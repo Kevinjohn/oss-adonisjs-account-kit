@@ -20,11 +20,10 @@ export const http = defineConfig({
   generateRequestId: true,
 
   /**
-   * Allow method spoofing via _method query parameter or form field.
-   * Enables using PUT, PATCH, DELETE methods in HTML forms by spoofing
-   * through POST requests with _method field.
+   * Native forms use GET/POST. Keep the transport method stable for routing,
+   * proof recovery and Shield's CSRF checks after body parsing.
    */
-  allowMethodSpoofing: true,
+  allowMethodSpoofing: false,
 
   /**
    * Enabling async local storage will let you access HTTP context
