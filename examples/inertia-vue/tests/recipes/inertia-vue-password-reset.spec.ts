@@ -9,6 +9,83 @@ import { notifyOverrides } from '../../config/account_kit.js'
 
 const originalPassword = 'OriginalPass123!'
 const replacementPassword = 'ReplacementPass123!'
+const recipeOrigin = process.env.APP_URL!
+
+class RecipeProofSession {
+  private cookies = new Map<string, string>()
+  private version?: string
+
+  constructor(private inertia: boolean) {}
+
+  async request(
+    path: string,
+    options: { form?: Record<string, string>; malformed?: boolean; csrf?: boolean } = {}
+  ) {
+    const post = options.form !== undefined || options.malformed
+    const headers = new Headers({
+      accept: 'text/html',
+      cookie: [...this.cookies].map(([key, value]) => `${key}=${value}`).join('; '),
+    })
+    if (this.inertia) {
+      headers.set('x-inertia', 'true')
+      if (this.version) headers.set('x-inertia-version', this.version)
+    }
+    if (post) {
+      headers.set(
+        'content-type',
+        options.malformed ? 'application/json' : 'application/x-www-form-urlencoded'
+      )
+      if (!options.malformed && options.csrf !== false) {
+        headers.set('x-xsrf-token', decodeURIComponent(this.cookies.get('XSRF-TOKEN') ?? ''))
+      }
+    }
+    const response = await fetch(new URL(path, recipeOrigin), {
+      method: post ? 'POST' : 'GET',
+      headers,
+      body: options.malformed
+        ? '{"broken":'
+        : options.form
+          ? new URLSearchParams(options.form)
+          : undefined,
+      redirect: 'manual',
+    })
+    for (const cookie of response.headers.getSetCookie()) {
+      const [name, value] = cookie.split(';')[0].split('=', 2)
+      this.cookies.set(name, value ?? '')
+    }
+    return response
+  }
+
+  async prime() {
+    const response = await this.request('/')
+    if (this.inertia) this.version = ((await response.json()) as { version: string }).version
+  }
+}
+
+function assertProofHeaders(
+  assert: { equal(actual: unknown, expected: unknown): void },
+  response: Response
+) {
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.equal(response.headers.get('referrer-policy'), 'no-referrer')
+}
+
+async function followProtected(
+  assert: Parameters<typeof assertProofHeaders>[0],
+  session: RecipeProofSession,
+  response: Response,
+  path: string
+) {
+  assert.equal([302, 303].includes(response.status), true)
+  const location = response.headers.get('location')!
+  assert.equal(new URL(location, recipeOrigin).origin, recipeOrigin)
+  assert.equal(new URL(location, recipeOrigin).pathname, path)
+  assert.equal(new URL(location, recipeOrigin).search, '')
+  const followed = await session.request(path)
+  assert.equal(followed.status, 200)
+  assertProofHeaders(assert, followed)
+  return followed
+}
 
 test.group('Inertia Vue password reset recipe', (group) => {
   group.each.setup(async () => {
@@ -53,7 +130,6 @@ test.group('Inertia Vue password reset recipe', (group) => {
         },
         headers: {
           'x-xsrf-token': decodeURIComponent(csrfCookie!.value),
-          'referer': new URL(path, process.env.APP_URL).href,
         },
       })
       assert.equal(response.status(), 302)
@@ -189,6 +265,121 @@ test.group('Inertia Vue password reset recipe', (group) => {
       await secondContext.close()
     }
   })
+
+  for (const inertia of [false, true]) {
+    const representation = inertia ? 'Inertia' : 'HTML'
+
+    test(`${representation} reset responses protect success and recoverable errors`, async ({
+      assert,
+    }) => {
+      const email = `headers-${randomUUID()}@example.test`
+      const owner = await User.create({
+        fullName: 'Header Owner',
+        email,
+        password: originalPassword,
+      })
+      const token = randomBytes(40).toString('base64url')
+      const tokenHash = createHash('sha256').update(token).digest('hex')
+      const now = new Date()
+      await db.table('password_reset_tokens').insert({
+        tokenable_id: owner.id,
+        email,
+        hash: tokenHash,
+        created_at: now.toISOString(),
+        expires_at: new Date(now.getTime() + 3600000).toISOString(),
+      })
+      const path = `/reset-password/${token}`
+      const session = new RecipeProofSession(inertia)
+      await session.prime()
+
+      const read = await session.request(path)
+      assert.equal(read.status, 200)
+      assertProofHeaders(assert, read)
+      if (inertia)
+        assert.equal(((await read.json()) as { props: { valid: boolean } }).props.valid, true)
+
+      const invalid = await session.request('/reset-password/not-a-proof', {
+        form: { password: replacementPassword, passwordConfirmation: replacementPassword },
+      })
+      assertProofHeaders(assert, invalid)
+      assert.equal([302, 303].includes(invalid.status), true)
+      assert.equal(
+        new URL(invalid.headers.get('location')!, recipeOrigin).pathname,
+        '/forgot-password'
+      )
+      const renewal = await session.request('/forgot-password')
+      assert.equal(renewal.status, 200)
+      const renewalBody = inertia ? JSON.stringify(await renewal.json()) : await renewal.text()
+      assert.notInclude(renewalBody, token)
+      assert.notInclude(renewalBody, replacementPassword)
+
+      const mismatch = await session.request(path, {
+        form: { password: replacementPassword, passwordConfirmation: 'MismatchedSecret123!' },
+      })
+      assertProofHeaders(assert, mismatch)
+      const correctedForm = await followProtected(assert, session, mismatch, path)
+      const feedback = inertia
+        ? JSON.stringify(await correctedForm.json())
+        : await correctedForm.text()
+      assert.include(feedback, 'passwordConfirmation')
+      assert.notInclude(feedback, replacementPassword)
+      assert.notInclude(feedback, 'MismatchedSecret123!')
+
+      const corrected = await session.request(path, {
+        form: { password: replacementPassword, passwordConfirmation: replacementPassword },
+      })
+      assertProofHeaders(assert, corrected)
+      assert.equal([302, 303].includes(corrected.status), true)
+      assert.equal(new URL(corrected.headers.get('location')!, recipeOrigin).pathname, '/login')
+      assert.equal(new URL(corrected.headers.get('location')!, recipeOrigin).search, '')
+      assert.equal((await User.verifyCredentials(email, replacementPassword)).id, owner.id)
+      assert.notExists(await db.from('password_reset_tokens').where('hash', tokenHash).first())
+    })
+
+    test(`${representation} reset parser and CSRF errors retain protected original responses`, async ({
+      assert,
+    }) => {
+      const email = `early-${randomUUID()}@example.test`
+      const owner = await User.create({
+        fullName: 'Early Error Owner',
+        email,
+        password: originalPassword,
+      })
+      const token = randomBytes(40).toString('base64url')
+      const tokenHash = createHash('sha256').update(token).digest('hex')
+      const now = new Date()
+      await db.table('password_reset_tokens').insert({
+        tokenable_id: owner.id,
+        email,
+        hash: tokenHash,
+        created_at: now.toISOString(),
+        expires_at: new Date(now.getTime() + 3600000).toISOString(),
+      })
+      const path = `/reset-password/${token}`
+      const session = new RecipeProofSession(inertia)
+      await session.prime()
+
+      const malformed = await session.request(path, { malformed: true })
+      assert.equal(malformed.status, 400)
+      assertProofHeaders(assert, malformed)
+      assert.isNull(malformed.headers.get('location'))
+      const retried = await session.request(path)
+      assert.equal(retried.status, 200)
+      assertProofHeaders(assert, retried)
+
+      const csrf = await session.request(path, {
+        form: { password: replacementPassword, passwordConfirmation: replacementPassword },
+        csrf: false,
+      })
+      assertProofHeaders(assert, csrf)
+      const form = await followProtected(assert, session, csrf, path)
+      const feedback = inertia ? JSON.stringify(await form.json()) : await form.text()
+      assert.include(feedback, 'form expired')
+      assert.notInclude(feedback, replacementPassword)
+      assert.exists(await db.from('password_reset_tokens').where('hash', tokenHash).first())
+      assert.equal((await User.verifyCredentials(email, originalPassword)).id, owner.id)
+    })
+  }
 
   test('native signup with a mixed-case address keeps its session', async ({ visit, assert }) => {
     const email = `Signup-${randomUUID()}@Example.test`
