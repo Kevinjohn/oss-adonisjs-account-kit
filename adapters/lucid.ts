@@ -64,7 +64,10 @@ export type LucidCreateAttributes = {
 
 /** The users adapter `createLucidAdapter` returns: the base contract plus creation and metadata. */
 export type LucidUsersAdapter = UsersAdapter & {
-  /** Insert a user through the model, so its hooks (password hashing) run. */
+  /**
+   * Inserts through the model so its save hooks run. Prepared hashes bypass model password
+   * hashing; the verify-only compatibility path lets the model hash the supplied password.
+   */
   create(attrs: LucidCreateAttributes, trx: Trx): Promise<AccountUser>
   /** The model's table name, primary key and email constraint. */
   resolveMetadata(): Promise<UsersAdapterMetadata>
