@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { errors as authErrors } from '@adonisjs/auth'
 import db from '@adonisjs/lucid/services/db'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { DateTime } from 'luxon'
@@ -192,7 +193,10 @@ test.group('Signup recovery in the browser', (group) => {
           assert.equal(notices, 0)
           const unchanged = await User.verifyCredentials(user.email, 'GlobalPass123!')
           assert.equal(unchanged.id, user.id)
-          await assert.rejects(() => User.verifyCredentials(user.email, 'ChangedPass123!'))
+          await assert.rejects(
+            () => User.verifyCredentials(user.email, 'ChangedPass123!'),
+            authErrors.E_INVALID_CREDENTIALS
+          )
           // The ordinary noncommitted error must not end either existing session.
           for (const current of [page, secondPage]) {
             await current.goto('/dashboard')
@@ -214,7 +218,10 @@ test.group('Signup recovery in the browser', (group) => {
         assert.equal(notices, 1)
         const confirmed = await User.verifyCredentials(user.email, 'ChangedPass123!')
         assert.equal(confirmed.id, user.id)
-        await assert.rejects(() => User.verifyCredentials(user.email, 'GlobalPass123!'))
+        await assert.rejects(
+          () => User.verifyCredentials(user.email, 'GlobalPass123!'),
+          authErrors.E_INVALID_CREDENTIALS
+        )
         const body = await page.locator('body').innerText()
         assert.notInclude(body, 'private')
         assert.notInclude(body, 'ChangedPass123!')
