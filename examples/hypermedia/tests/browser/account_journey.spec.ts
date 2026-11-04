@@ -631,7 +631,13 @@ test.group('native account journeys', (group) => {
     await javascriptPage.getByRole('button', { name: 'Sign in' }).click()
     const javascriptError = javascriptPage.getByText(errorMessage)
     await javascriptError.waitFor()
-    // Run dismissal timers without spending wall-clock time waiting for them.
+    await javascriptPage.waitForLoadState('load')
+    const readyThemeToggle = javascriptPage.getByRole('button', {
+      name: /^Switch to (light|dark) theme$/,
+    })
+    await readyThemeToggle.waitFor({ state: 'visible' })
+    assert.isNull(await readyThemeToggle.getAttribute('x-cloak'))
+    // Advance dismissal timers only after the returned document has initialized Alpine.
     await javascriptPage.clock.fastForward(60_000)
     assert.isTrue(await javascriptError.isVisible())
   })
