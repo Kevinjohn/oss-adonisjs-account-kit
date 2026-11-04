@@ -1,5 +1,6 @@
 import type { Database } from '@adonisjs/lucid/database'
 import type { QueryClientContract } from '@adonisjs/lucid/types/database'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { isSqlIdentifier } from '../src/sql_identifier.js'
 import { normalizeEmail } from '../src/email.js'
 import { readTimestamp, sqlTimestamp } from '../src/timestamps.js'
@@ -72,7 +73,10 @@ function toAccountUser(row: Record<string, unknown> | null | undefined): Account
 export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsersAdapter {
   const { table } = options
   if (typeof table !== 'string' || !isSqlIdentifier(table))
-    throw new Error('account_kit: the users table must be a plain SQL identifier')
+    throw new InvalidConfigurationError(
+      'table',
+      'account_kit: the users table must be a plain SQL identifier'
+    )
 
   const database = async (): Promise<Database> => {
     if (typeof options.db === 'function') return options.db()

@@ -1,5 +1,6 @@
 import type { DateTime } from 'luxon'
 import type { LucidModel } from '@adonisjs/lucid/types/model'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { normalizeEmail } from '../src/email.js'
 import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } from '../src/types.js'
 
@@ -137,13 +138,17 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     User.boot()
 
     if (User.connection) {
-      throw new Error('account_kit: Lucid user models must use the default database connection')
+      throw new InvalidConfigurationError(
+        'model.connection',
+        'account_kit: Lucid user models must use the default database connection'
+      )
     }
 
     const primaryKey = User.primaryKey
     const physicalPrimaryKey = User.$getColumn(primaryKey)?.columnName
     if (primaryKey !== 'id' || physicalPrimaryKey !== 'id') {
-      throw new Error(
+      throw new InvalidConfigurationError(
+        'model.primaryKey',
         'account_kit: Lucid user models must use the id attribute mapped to the id column'
       )
     }
@@ -154,12 +159,17 @@ export function createLucidAdapter<Model extends LucidModelRow>(
       ['emailVerifiedAt', 'email_verified_at'],
     ] as const) {
       if (User.$getColumn(attribute)?.columnName !== column) {
-        throw new Error(
+        throw new InvalidConfigurationError(
+          `model.columns.${attribute}`,
           `account_kit: Lucid user models must use the ${attribute} attribute mapped to the ${column} column`
         )
       }
     }
-    if (!User.table) throw new Error('account_kit: Lucid user model must define a table')
+    if (!User.table)
+      throw new InvalidConfigurationError(
+        'model.table',
+        'account_kit: Lucid user model must define a table'
+      )
 
     return {
       table: User.table,
