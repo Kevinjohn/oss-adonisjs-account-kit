@@ -49,9 +49,13 @@ and creates the dedicated `account_kit_consumer` database before starting the co
 configured to upload its `evidence.json` and available `commands.log` even after a failed command;
 missing evidence makes artifact upload fail.
 
-The six compatibility consumer legs and their evidence artifacts are configured but have not yet
-run in hosted CI for this remediation. This section describes workflow coverage, not passing hosted
-results; use the current workflow run and its six artifacts for those outcomes.
+The [4 November 2026 compatibility run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41917496086)
+passed all six consumer legs. Their retained records identify checkout `0a3f88a20c9aea96b2f4bab8f8f717207c2a008c`
+(including source `f71a26ce73dcd051856d2b3ce5388e75c93bbaf7`), candidate SHA-256
+`0cfa93a6692cb44eec0b4785dd6de45264059cd172905d633f81419d95b52343`, Node 24.22.1,
+pnpm 11.23.0, installed package/driver versions and SQLite 3.53.2 or PostgreSQL 16.15.
+Both service-only records confirm that all six optional backend integrations are absent.
+These are dated candidate results; use the current run and all six artifacts for later candidates.
 
 The local full check profile explicitly runs
 `pnpm test:recipe --recipe=api-password-reset`. The changed-file planner rejects a selected test gate
