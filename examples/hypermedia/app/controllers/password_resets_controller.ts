@@ -44,7 +44,7 @@ export default class PasswordResetsController {
           'error',
           'This reset link is invalid, already used, or expired. Request a fresh link.'
         )
-        return ctx.response.redirect().toPath('/forgot-password')
+        return ctx.response.redirect().withQs(false).toPath('/forgot-password')
       }
       if (!isDeliveryFailure(error)) throw error
       ctx.logger.error(
@@ -53,6 +53,6 @@ export default class PasswordResetsController {
       )
     }
     ctx.session.flash('success', 'Your password has been reset. Sign in with the new password.')
-    return ctx.response.redirect().toRoute('session.create')
+    return ctx.response.redirect().withQs(false).toRoute('session.create')
   }
 }
