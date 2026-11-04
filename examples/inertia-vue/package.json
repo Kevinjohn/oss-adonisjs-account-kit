@@ -80,8 +80,7 @@
     "edge.js": "^6.5.1",
     "luxon": "^3.7.2",
     "reflect-metadata": "^0.2.2",
-    "vue": "^3.5.25",
-    "vue-sonner": "^2.0.9"
+    "vue": "^3.5.25"
   },
   "hotHook": {
     "boundaries": [
