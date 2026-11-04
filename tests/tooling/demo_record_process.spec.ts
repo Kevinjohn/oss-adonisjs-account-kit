@@ -33,7 +33,10 @@ async function fixture() {
   await mkdir(join(app, 'bin'))
   await writeFile(join(app, 'ace.js'), starterAce)
   await writeFile(join(app, 'bin/console.ts'), starterConsole)
-  await writeFile(join(app, 'adonisrc.ts'), 'export default {}')
+  await writeFile(
+    join(app, 'adonisrc.ts'),
+    "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({})"
+  )
   await writeFile(
     join(app, 'config/database.ts'),
     `import { defineConfig } from '@adonisjs/lucid'
@@ -350,6 +353,61 @@ syncBuiltinESMExports()
         assert.throws(() => process.kill(Number(match[1]), 0), { code: 'ESRCH' })
     })
   }
+
+  test('interrupted never-ready child cancels readiness even when exit and reap stay pending', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    const preload = join(f.root, 'pending_startup.mjs')
+    await writeFile(
+      preload,
+      `
+import cp from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
+import { EventEmitter } from 'node:events'
+import { PassThrough } from 'node:stream'
+import { appendFileSync } from 'node:fs'
+const spawn = cp.spawn
+const kill = process.kill.bind(process)
+const pendingPid = 498765
+const trace = (line) => appendFileSync(process.env.TRACE, line + '\\n')
+cp.spawn = (...args) => {
+  if (args[1]?.[1] !== 'serve') return spawn(...args)
+  const child = new EventEmitter()
+  child.pid = pendingPid
+  child.exitCode = child.signalCode = null
+  child.stdout = new PassThrough()
+  child.stderr = new PassThrough()
+  const reference = setInterval(() => {}, 1000)
+  child.unref = () => { clearInterval(reference); trace('pending-handle-released') }
+  trace('never-ready-child-created')
+  return child
+}
+process.kill = (pid, signal) => {
+  if (pid !== -pendingPid) return kill(pid, signal)
+  if (signal) trace('pending-child-' + signal)
+  return true
+}
+syncBuiltinESMExports()
+`
+    )
+    const run = f.start(['doctor'], {}, preload)
+    await until(async () => {
+      const trace = await readFile(f.trace, 'utf8')
+      return trace.includes('never-ready-child-created')
+    }, 'never-ready child creation')
+    const started = Date.now()
+    run.child.kill('SIGINT')
+    const result = await run.done
+    assert.equal(result.code, 130, result.output)
+    assert.ok(Date.now() - started < 11500, result.output)
+    assert.match(result.output, /did not exit after SIGKILL/)
+    assert.doesNotMatch(result.output, /UnhandledPromiseRejection/)
+    const trace = await readFile(f.trace, 'utf8')
+    assert.match(trace, /pending-child-SIGTERM/)
+    assert.match(trace, /pending-child-SIGKILL/)
+    assert.match(trace, /pending-handle-released/)
+    assert.doesNotMatch(trace, /doctor-entered/)
+  })
 
   test('TERM resistant owned group escalates to KILL and reaps within final bound', async () => {
     const child = { pid: 48123, exitCode: null, signalCode: null } as ChildProcess

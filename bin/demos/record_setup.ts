@@ -4,7 +4,12 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
 import { Cast } from './cast.js'
-import { shadowPaths, starterPaths, verifySnapshot } from './starter_contract.js'
+import {
+  assertDatabaseInventory,
+  shadowPaths,
+  starterPaths,
+  verifySnapshot,
+} from './starter_contract.js'
 import { validateDemoIdentity } from './demo_identity.js'
 type SetupReport = {
   pillars: Record<string, string>
@@ -85,6 +90,17 @@ const committedFiles = Object.fromEntries(
     return [path, run('git', ['show', `HEAD:${path}`])]
   })
 )
+const configFiles = run('git', ['ls-tree', '-r', '-z', '--name-only', 'HEAD', '--', 'config'])
+  .split('\0')
+  .filter(Boolean)
+  .map((path) => path.slice('config/'.length))
+assertDatabaseInventory(configFiles)
+for (const suffix of ['', '-journal', '-wal', '-shm']) {
+  const path = `tmp/db.sqlite3${suffix}`
+  const entry = run('git', ['ls-tree', 'HEAD', '--', path]).trim()
+  if (entry && !entry.startsWith('100644 blob ') && !entry.startsWith('100755 blob '))
+    throw new Error(`committed SQLite path must be a regular file: ${path}`)
+}
 verifySnapshot(committedFiles, snapshot)
 for (const path of shadowPaths) {
   if (run('git', ['ls-tree', 'HEAD', '--', path]).trim())

@@ -1,3 +1,4 @@
+import { writeDemoIdentity } from '../../bin/demos/demo_identity.js'
 import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
@@ -43,7 +44,7 @@ if (args[0] === 'dlx' && args[1] === 'create-adonisjs@3.4.0') {
   fs.writeFileSync(path.join(app, 'bin/console.ts'), ${JSON.stringify(starterConsole)})
   fs.writeFileSync(path.join(app, 'config/database.ts'), "import app from '@adonisjs/core/services/app'\\nimport { defineConfig } from '@adonisjs/lucid'\\nconst dbConfig = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') }, useNullAsDefault: true, migrations: { naturalSort: true, paths: ['database/migrations'] }, schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } } })\\nexport default dbConfig\\n")
   fs.writeFileSync(path.join(app, 'start/routes.ts'), '// synthetic routes\\n')
-  fs.writeFileSync(path.join(app, 'adonisrc.ts'), "const commands = [() => import('@adonisjs/mail/commands')]\\nexport default { commands }\\n")
+  fs.writeFileSync(path.join(app, 'adonisrc.ts'), "import { defineConfig } from '@adonisjs/core/app'\\nexport default defineConfig({ commands: [() => import('@adonisjs/mail/commands')] })\\n")
 }
 if (args[0] === 'add' && process.env.FAIL_PREPARATION === '1') process.exit(23)
 `
@@ -76,7 +77,7 @@ case "$1" in
   rev-parse) pwd ;;
   ls-files) if [ -f .git/staged-demo-marker ]; then echo .account-kit-demo.json; else exit 1; fi ;;
   show) case "$2" in HEAD:.account-kit-demo.json) cat .git/staged-demo-marker ;; *) cat ".git/starter/\${2#HEAD:}" ;; esac ;;
-  ls-tree) case "$4" in ace|bin/console.js|adonisrc.js|config/database.js|tmp|bin|config) ;; *) echo "100644 blob synthetic\t$4" ;; esac ;;
+  ls-tree) if [ "$2" = -r ]; then printf '%s\\000' config/database.ts; if [ -f .git/head-inventory ]; then while IFS= read -r entry; do printf '%s\\000' "$entry"; done < .git/head-inventory; fi; elif [ -f .git/head-mode ] && [ "$4" = "$(cat .git/head-mode)" ]; then echo "120000 blob synthetic\t$4"; else case "$4" in ace|bin/console.js|adonisrc.js|config/database.js|tmp|tmp/db.sqlite3*|bin|config) ;; *) echo "100644 blob synthetic\t$4" ;; esac; fi ;;
   reset) rm -f .setup-applied; cp .git/starter/ace.js .git/starter/adonisrc.ts .; cp .git/starter/bin/console.ts bin/; cp .git/starter/config/database.ts config/; if [ "$POISON_RESET" = 1 ]; then rm -rf tmp; ln -s "$EXTERNAL_TMP" tmp; fi ;;
   clean) ;;
   status) if [ -f .setup-applied ]; then echo ' M app/created.ts'; fi ;;
@@ -476,6 +477,102 @@ test.group('demo recording safety', (group) => {
     assert.doesNotMatch(await f.traceText(), /command.*node/)
   })
 
+  test('all alternate and nested database namespace inputs refuse in working and committed state', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    for (const [index, path] of [
+      'database.js',
+      'database.mjs',
+      'database.cjs',
+      'database.json',
+      'database/connection.ts',
+    ].entries()) {
+      const app = join(f.root, `namespace-${index}`)
+      const prepared = await f.run(createFeature, [app])
+      assert.equal(prepared.code, 0, prepared.output)
+      if (path.includes('/')) await mkdir(join(app, 'config/database'))
+      await writeFile(join(app, 'config', path), 'synthetic override')
+      await f.clearTrace()
+      const feature = await f.run(recordFeature, [app, join(f.root, 'out'), 'doctor'])
+      assert.equal(feature.code, 1, feature.output)
+      assert.doesNotMatch(await f.traceText(), /migration:fresh/)
+
+      const setup = join(f.root, `namespace-head-${index}`)
+      const setupPrepared = await f.run(createSetup, [setup])
+      assert.equal(setupPrepared.code, 0, setupPrepared.output)
+      await writeFile(join(setup, '.git/head-inventory'), `config/${path}\n`)
+      await f.clearTrace()
+      const result = await f.run(recordSetup, [setup, join(f.root, 'out')])
+      assert.equal(result.code, 1, result.output)
+      assert.match(result.output, /database namespace/)
+      assert.doesNotMatch(await f.traceText(), /git reset|git clean|command.*node/)
+    }
+  }).timeout(30000)
+
+  test('symlinked database namespace entries refuse before feature commands', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    for (const name of ['database.mjs', 'database']) {
+      const app = join(f.root, `linked-${name}`)
+      const prepared = await f.run(createFeature, [app])
+      assert.equal(prepared.code, 0, prepared.output)
+      await symlink('/unused-external-namespace', join(app, 'config', name))
+      await f.clearTrace()
+      const result = await f.run(recordFeature, [app, join(f.root, 'out'), 'doctor'])
+      assert.equal(result.code, 1, result.output)
+      assert.doesNotMatch(await f.traceText(), /migration:fresh/)
+    }
+  })
+
+  test('initial producer rejects indirect rc forms and executable database imports', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    const cases = [
+      "export default defineConfig({ ['direct' + 'ories']: { tmp: '../ordinary' } })",
+      'export default defineConfig({ ...preset })',
+      'export default defineConfig({ presets: [preset] })',
+      'export default defineConfig({ get directories() { return {} } })',
+      'export default defineConfig({ directories() { return {} } })',
+      'const config = {}; export default defineConfig(config)',
+      'export default {}',
+    ]
+    for (const [index, source] of cases.entries()) {
+      const app = join(f.root, `initial-rc-${index}`)
+      const prepared = await f.run(createFeature, [app])
+      assert.equal(prepared.code, 0, prepared.output)
+      await rm(join(app, '.account-kit-demo.json'))
+      await writeFile(
+        join(app, 'adonisrc.ts'),
+        `import { defineConfig } from '@adonisjs/core/app'\n${source}`
+      )
+      assert.throws(() => writeDemoIdentity(app, 'feature-recording'), /generated rc/)
+      await assert.rejects(readFile(join(app, '.account-kit-demo.json')))
+    }
+    const app = join(f.root, 'initial-empty-import')
+    const prepared = await f.run(createFeature, [app])
+    assert.equal(prepared.code, 0, prepared.output)
+    await rm(join(app, '.account-kit-demo.json'))
+    const path = join(app, 'config/database.ts')
+    await writeFile(path, `import {} from './override.js'\n${await readFile(path, 'utf8')}`)
+    assert.throws(() => writeDemoIdentity(app, 'feature-recording'), /unsupported runtime modules/)
+  }).timeout(30000)
+
+  test('committed SQLite database and sidecar symlinks refuse before reset', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    for (const suffix of ['', '-journal', '-wal', '-shm']) {
+      const app = join(f.root, `head-sqlite${suffix}`)
+      const prepared = await f.run(createSetup, [app])
+      assert.equal(prepared.code, 0, prepared.output)
+      await writeFile(join(app, '.git/head-mode'), `tmp/db.sqlite3${suffix}`)
+      await f.clearTrace()
+      const result = await f.run(recordSetup, [app, join(f.root, 'out')])
+      assert.equal(result.code, 1, result.output)
+      assert.match(result.output, /committed SQLite path must be a regular file/)
+      assert.doesNotMatch(await f.traceText(), /git reset|git clean|command.*node/)
+    }
+  })
+
   test('failed preparation leaves no demo marker for either producer', async (t) => {
     const f = await fixture()
     t.cleanup(f.cleanup)
@@ -504,7 +601,10 @@ async function writeSyntheticApp(appDir: string, role: string, markerRoot: strin
   await mkdir(join(appDir, 'bin'))
   await writeFile(join(appDir, 'ace.js'), starterAce)
   await writeFile(join(appDir, 'bin/console.ts'), starterConsole)
-  await writeFile(join(appDir, 'adonisrc.ts'), 'export default {}')
+  await writeFile(
+    join(appDir, 'adonisrc.ts'),
+    "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({})"
+  )
   await writeFile(
     join(appDir, 'config/database.ts'),
     `import app from '@adonisjs/core/services/app'

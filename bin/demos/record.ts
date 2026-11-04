@@ -35,6 +35,7 @@ const cancellation = new AbortController()
 const owned = new Set<ChildProcess>()
 const cleanups = new Map<ChildProcess, Promise<void>>()
 async function startServer() {
+  cancellation.signal.throwIfAborted()
   log = ''
   server = spawn('node', ['ace', 'serve'], {
     cwd: appDir,
@@ -56,7 +57,8 @@ async function startServer() {
   })
   for (let i = 0; i < 80 && !log.includes('started HTTP server'); i++) {
     if (child.exitCode !== null || child.signalCode !== null) break
-    await Promise.race([sleep(250), outcome])
+    cancellation.signal.throwIfAborted()
+    await Promise.race([sleep(250, undefined, { signal: cancellation.signal }), outcome])
   }
   if (log.includes('started HTTP server')) return
   throw new Error(`server did not start:\n${log}`)

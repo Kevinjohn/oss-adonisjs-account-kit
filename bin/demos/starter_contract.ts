@@ -1,6 +1,6 @@
 // The generated starter bootstrap is a deliberately narrow recording contract.
 import { createHash } from 'node:crypto'
-import { lstatSync, readFileSync } from 'node:fs'
+import { lstatSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import * as ts from 'typescript'
 
@@ -56,7 +56,22 @@ export function digest(source: string) {
 
 export const shadowPaths = ['ace', 'bin/console.js', 'adonisrc.js', 'config/database.js']
 
+// ConfigLoader strips these extensions and uses path segments as namespace keys.
+// A nested database tree also contributes to that same namespace.
+export function assertDatabaseInventory(paths: string[]) {
+  for (const path of paths) {
+    if (
+      path === 'database' ||
+      path.startsWith('database/') ||
+      /^database\.(?:ts|js|mjs|cjs|json)$/.test(path)
+    ) {
+      if (path !== 'database.ts') throw new Error(`ambiguous generated database namespace: ${path}`)
+    }
+  }
+}
+
 export function readStarter(root: string) {
+  assertDatabaseInventory(readdirSync(join(root, 'config')))
   for (const path of shadowPaths) {
     try {
       lstatSync(join(root, path))
@@ -90,13 +105,70 @@ export function attestStarter(files: Record<string, string>): StarterSnapshot {
   )
     throw new Error('unsupported generated Ace bootstrap/root')
   const rc = ts.createSourceFile('adonisrc.ts', files['adonisrc.ts'], ts.ScriptTarget.Latest, true)
-  // Generated starters use the Application defaults. No directory override is supported.
-  function inspect(node: ts.Node) {
-    if ((ts.isIdentifier(node) || ts.isStringLiteral(node)) && node.text === 'directories')
-      throw new Error('generated rc directory overrides are unsupported')
-    ts.forEachChild(node, inspect)
+  const exports = rc.statements.filter(ts.isExportAssignment)
+  const configuration = exports[0]?.expression
+  const definition = rc.statements
+    .filter(ts.isImportDeclaration)
+    .find(
+      (entry) =>
+        ts.isStringLiteral(entry.moduleSpecifier) &&
+        entry.moduleSpecifier.text === '@adonisjs/core/app'
+    )
+  const bindings = definition?.importClause?.namedBindings
+  if (
+    rc.statements.some(
+      (statement) => !ts.isImportDeclaration(statement) && !ts.isExportAssignment(statement)
+    ) ||
+    exports.length !== 1 ||
+    exports[0].isExportEquals ||
+    !configuration ||
+    !ts.isCallExpression(configuration) ||
+    !ts.isIdentifier(configuration.expression) ||
+    configuration.expression.text !== 'defineConfig' ||
+    configuration.arguments.length !== 1 ||
+    configuration.typeArguments?.length ||
+    !definition ||
+    definition.importClause?.name ||
+    definition.importClause?.isTypeOnly ||
+    definition.attributes ||
+    !bindings ||
+    !ts.isNamedImports(bindings) ||
+    bindings.elements.length !== 1 ||
+    bindings.elements[0].name.text !== 'defineConfig' ||
+    bindings.elements[0].propertyName ||
+    bindings.elements[0].isTypeOnly ||
+    !ts.isObjectLiteralExpression(configuration.arguments[0])
+  )
+    throw new Error('generated rc must directly export defineConfig with its literal configuration')
+  const names = new Set<string>()
+  const allowed = new Set([
+    'experimental',
+    'commands',
+    'providers',
+    'preloads',
+    'tests',
+    'metaFiles',
+    'hooks',
+  ])
+  for (const member of configuration.arguments[0].properties) {
+    if (
+      !ts.isPropertyAssignment(member) ||
+      (!ts.isIdentifier(member.name) && !ts.isStringLiteral(member.name)) ||
+      !allowed.has(member.name.text) ||
+      names.has(member.name.text)
+    )
+      throw new Error(
+        'generated rc must use supported literal properties without directory overrides or presets'
+      )
+    names.add(member.name.text)
+    const objectValue = ['experimental', 'tests', 'hooks'].includes(member.name.text)
+    if (
+      objectValue
+        ? !ts.isObjectLiteralExpression(member.initializer)
+        : !ts.isArrayLiteralExpression(member.initializer)
+    )
+      throw new Error('generated rc properties must use the generated object/array form')
   }
-  inspect(rc)
   return Object.fromEntries(starterPaths.map((path) => [path, digest(files[path])]))
 }
 
