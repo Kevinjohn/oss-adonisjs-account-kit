@@ -33,7 +33,12 @@ pnpm quick:test
 
 ## Checks
 
-- `pnpm check` runs the quick profile (`--full` adds the rest).
+- `pnpm check` runs formatting, lint, types, SQLite tests, build, built exports and built setup.
+- `pnpm check --full` appends PostgreSQL, coverage, experimental MySQL, the default consumer,
+  a recipe check and the docs build. Compatibility matrices and standalone example journeys
+  remain separate gates.
+- The current full-profile recipe step lacks a selection; use
+  `pnpm test:recipe --recipe=api-password-reset` until that invocation is repaired.
 
 Run the repository scripts, not the bare tools. They carry the flags used by CI.
 

@@ -19,7 +19,11 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 
 ## Checks
 
-- `pnpm check` runs the quick profile (`--full` adds the rest).
+- `pnpm check` runs formatting, lint, types, SQLite tests, build, built exports and built setup.
+- `pnpm check --full` appends PostgreSQL, coverage, experimental MySQL, the default consumer,
+  a recipe check and the docs build. It does not run every compatibility or example scenario.
+- The current full-profile recipe step lacks a selection; use
+  `pnpm test:recipe --recipe=api-password-reset` until that invocation is repaired.
 - `pnpm typecheck` runs TypeScript without emitting.
 - `pnpm lint` runs ESLint with the AdonisJS config.
 - `pnpm format` formats the repository with Prettier.
