@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Protect application-owned proof responses before routing and early rejection, with canonical correction and safe renewal feedback, query suppression and no-referrer handling in the standalone apps and reset cookbooks.
+- Distinguish delivery and observer failures in committed-account feedback, and describe verification resend suppression without promising a new email during the one-minute cooldown.
+
 - Always attempt shutdown of consumer PostgreSQL clients after connection or query failure, preserving operation and shutdown failures together.
 
 - Install each generated demo from its exact uniquely owned package archive and retain archive-derived metadata and SHA-256 evidence beside the app.
