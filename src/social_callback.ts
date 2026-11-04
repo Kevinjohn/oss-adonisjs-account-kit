@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
+import { validateAccountAccessResult } from './account_access_policy.js'
 import { revision } from './authentication.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
 import { consumeRows } from './consume_rows.js'
@@ -184,7 +185,8 @@ export async function socialCallback(
             const user = await deps.config.users.findById(stored.user_id, trx)
             if (!user) throw new SocialUserNotFoundError()
             const auth = deps.config.authentication!
-            if (!(await auth.canAccess(user, trx))) throw new SocialUserNotFoundError()
+            if (!validateAccountAccessResult(await auth.canAccess(user, trx)))
+              throw new SocialUserNotFoundError()
             return {
               status: 'linked',
               userId: user.id,

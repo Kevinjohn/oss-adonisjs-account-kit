@@ -255,3 +255,69 @@ test.group('social continuation and handoff', (group) => {
     assert.lengthOf(await kit.db.from('social_identities'), 1)
   })
 })
+
+test.group('social policy contract routing', (group) => {
+  const kit = useTestApp(group)
+  for (const boundary of ['callback', 'handoff', 'issuance'] as const) {
+    for (const malformed of ['private truthy result', 0]) {
+      test(`${boundary} rejects ${typeof malformed} policy results`, async ({ assert }) => {
+        let value: unknown = true
+        const { account } = makeService(kit, {
+          enabled: ['socialAuthentication', 'emailVerification'],
+          registration: { availability: 'open' },
+          socialAuthentication: {
+            providers: { github: provider('contract-subject', 'contract@example.test', true) },
+          },
+          authentication: {
+            strategy: 'session',
+            guard: 'web',
+            canAccess: async () => value as never,
+          },
+        })
+        const callback = async () => {
+          const start = await account.socialAuthentication.begin({
+            provider: 'github',
+            intent: 'login',
+            clientChallenge,
+          })
+          return account.socialAuthentication.callback({ state: start.state, callback: {} })
+        }
+        const result = await callback()
+        if (!('handoffCode' in result) || !result.handoffCode) throw new Error('Expected handoff')
+        let established = false
+        let active = false
+        let terminated = false
+        const guard = {
+          strategy: 'session' as const,
+          name: 'web',
+          establish: async () => {
+            established = true
+            active = true
+            value = malformed
+            return 'provisional-social-session'
+          },
+          terminate: async (credential?: string) => {
+            assert.equal(credential, 'provisional-social-session')
+            terminated = true
+            active = false
+          },
+        }
+        if (boundary !== 'issuance') value = malformed
+        const error = await (
+          boundary === 'callback'
+            ? callback()
+            : account.socialAuthentication.redeemHandoff({
+                code: result.handoffCode,
+                verifier,
+                guard,
+              })
+        ).catch((caught: unknown) => caught)
+        assert.instanceOf(error, Error)
+        assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
+        assert.equal(established, boundary === 'issuance')
+        assert.equal(terminated, boundary === 'issuance')
+        assert.isFalse(active)
+      })
+    }
+  }
+})
