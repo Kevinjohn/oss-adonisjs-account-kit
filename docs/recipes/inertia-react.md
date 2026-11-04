@@ -124,8 +124,7 @@ The acceptance source also defines HTML and Inertia cases for original and follo
 success, malformed/expired/consumed proofs, parser rejection, CSRF recovery and corrected
 validation submissions. It checks missing/hostile Referer, query suppression, expected committed
 flash without submitted secrets, unchanged credentials before correction, and an actual same-origin
-browser request with no Referer. These supplementary cases require a fresh harness run; the dated
-records below describe earlier executions and do not establish the new matrix's runtime acceptance.
+browser request with no Referer. The 4 November clean-application check below verifies this matrix.
 
 Every row is exercised by `React reset recipe clears failed submissions and revokes both native
 sessions` in the [committed acceptance spec](../../examples/inertia-react/tests/recipes/inertia-react-password-reset.spec.ts).
@@ -150,6 +149,13 @@ also signs in two clients before reset, checks native redirects for each old ses
 old and new passwords through `/login`.
 
 ## Clean application check
+
+**4 November 2026.** The fresh pinned-starter harness passed the original login baseline (1/1)
+and the reset acceptance suite (26/26), including the response and recovery cases above.
+A retained-app rerun also passed 26/26 from the post-cleanup database without migration refresh
+or manual seeding. The acceptance setup restores its required transaction-lock row. The generated
+app's build, typecheck and full lint passed after formatting setup/generated files. These runs cover SQLite,
+Chromium and local notification capture; the earlier dated records below remain historical.
 
 **22 October 2026 — fresh P6 and P7 passed.** The harness scaffolded the pinned official React
 starter, proved native login with its original cookie store, installed the supplied archive,

@@ -100,9 +100,8 @@ overrides. The no-JavaScript correction case submits the real hidden token, clea
 fields on failure, completes a corrected reset and checks that an unrelated signed-in visitor keeps
 their identity. Separate no-JavaScript cases keep a real reset form loaded while its proof expires
 or is consumed in another session, submit mismatched passwords, and require the renewal page to
-show the general invalid-link message. A same-origin navigation observes an absent Referer. These
-new cases are defined; the historical execution results below do not establish their runtime
-acceptance.
+show the general invalid-link message. A same-origin navigation observes an absent Referer. The
+4 November clean-application check below verifies these cases.
 
 The journey test also signs in two independent browser sessions through the original `/login`
 route, confirms both can load `/dashboard`, completes reset, confirms both now redirect to `/login`,
@@ -117,8 +116,14 @@ pnpm test:recipe -- --recipe=hypermedia-password-reset
 
 ## Clean application check
 
+**4 November 2026.** The fresh pinned-starter harness passed the original login baseline (1/1)
+and the reset acceptance suite (33/33), including the response and recovery cases above.
+A migration-initialized evidence replay also passed 33/33. The generated app's build,
+typecheck and full lint passed after formatting setup/generated files. These runs cover SQLite,
+Chromium and local notification capture; the earlier dated records below remain historical.
+
 Historical verification on 22 October 2026 predates the supplementary recovery and method-boundary
-changes described above. Their clean-starter runtime acceptance is pending. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/hypermedia-password-reset.patch)
+changes validated above. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/hypermedia-password-reset.patch)
 after configuration; the [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
 uses the pinned starter's native login, dashboard, forms and CSRF protection. The scaffold command is:
 
