@@ -39,7 +39,7 @@ test('validation old input retains fullName and email independently up to 320 ch
   assert.notProperty(oldInput, 'nonString')
 })
 
-test('validation old input omits nonstring safe fields', ({ assert }) => {
+test('validation old input omits unsupported object values', ({ assert }) => {
   for (const field of ['fullName', 'email'] as const) {
     const oldInput = safeOldInput({
       [field]: { value: 'nested' },

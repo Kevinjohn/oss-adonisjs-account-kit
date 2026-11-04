@@ -625,12 +625,14 @@ test.group('native account journeys', (group) => {
     }
 
     const javascriptPage = await visit('/login')
+    await javascriptPage.clock.install()
     await javascriptPage.getByLabel('Email').fill('unknown@example.test')
     await javascriptPage.getByLabel('Password').fill('UnknownPass123!')
     await javascriptPage.getByRole('button', { name: 'Sign in' }).click()
     const javascriptError = javascriptPage.getByText(errorMessage)
     await javascriptError.waitFor()
-    await javascriptPage.waitForTimeout(5100)
+    // Run dismissal timers without spending wall-clock time waiting for them.
+    await javascriptPage.clock.fastForward(60_000)
     assert.isTrue(await javascriptError.isVisible())
   })
 
