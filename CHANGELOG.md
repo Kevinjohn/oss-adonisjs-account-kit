@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Preserve deliberately cleared native profile fields through validation and password recovery, expose required email fields, and improve theme labels, status contrast and keyboard focus.
+- Show terminal recordings as static previews until playback is requested, with keyboard-operable Show/Hide controls and a static README preview.
 - Protect application-owned proof responses before routing and early rejection, with canonical correction and safe renewal feedback, query suppression and no-referrer handling in the standalone apps and reset cookbooks.
 - Distinguish delivery and observer failures in committed-account feedback, and describe verification resend suppression without promising a new email during the one-minute cooldown.
 

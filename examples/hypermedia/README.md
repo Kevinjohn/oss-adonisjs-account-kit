@@ -148,6 +148,14 @@ shared lifecycle and evidence contract, see
 
 ## Checks and evidence
 
+The 4 November 2026 combined proof-recovery and native-form candidate passed all 120 example
+cases, plus lint, types and the production build. The journeys cover cleared profile fields,
+unverified-account profile/password changes, required emails, theme controls with and without
+JavaScript, rendered light/dark contrast and keyboard focus. A controlled browser clock verifies
+that correction feedback remains visible after one minute; restoring a five-second dismissal
+made that assertion fail. These are local SQLite/Chromium results with notification capture,
+not recipient inbox delivery or PostgreSQL verification. The dated records below remain historical.
+
 | Implemented                                                                                                                                                  | Automated HTTP                                                                                                                                           | Browser                                                                                                                                                                                                                                                                                                                                | Manual checks and limits                                                                                                                                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Signup, verification, login, reset, password/profile/email settings and logout use native Edge forms, CSRF, POST/redirect/GET, and database-backed sessions. | [Native account journey](tests/browser/account_journey.spec.ts) drives the real HTTP routes and checks persistence; there is no separate JSON API suite. | The same [native account journey](tests/browser/account_journey.spec.ts) checks rendered forms, including no-JavaScript recovery. The [clean-starter reset P3](../../docs/recipes/hypermedia-edge.md#clean-application-check) passed 4/4 with JavaScript disabled; expiry mutation failed, then the restored retained spec passed 4/4. | Historical checks below apply only to their recorded revisions. The recipe P3 uses SQLite and local callback capture; no recipient delivery or PostgreSQL claim is made for that run. It records no new viewport or keyboard inspection. |
@@ -168,7 +176,7 @@ The browser suite uses isolated SQLite and in-memory proof capture. It demonstra
 dispatch and link contents, not SMTP delivery or arrival in a recipient inbox. PostgreSQL is not
 configured for this standalone example.
 
-The latest app verification used revision `232a72b126b4d238b6883240d141753adf793829` for
+An earlier app verification used revision `232a72b126b4d238b6883240d141753adf793829` for
 persistent alert feedback with Node 24.21.0 and pnpm 11.23.0. The root frozen install, package
 build, contributor archive pack and example frozen install passed. A fresh `.env.example` setup
 generated a local key and migrated SQLite; the migration scan found all seven tables, including
