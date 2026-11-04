@@ -154,6 +154,35 @@ async function completed(
   else assert.equal((await User.verifyCredentials(proof.user.email, password)).id, proof.user.id)
 }
 
+/** Observe the data real session middleware commits; restore even when a request fails. */
+async function capturedFlashes<T>(operation: () => Promise<T>) {
+  const committing = Session.prototype as unknown as { commit: (this: Session) => Promise<void> }
+  const previous = committing.commit
+  const flashes: string[] = []
+  committing.commit = function () {
+    flashes.push(JSON.stringify(this.responseFlashMessages.all()))
+    return previous.call(this)
+  }
+  try {
+    return { result: await operation(), flashes }
+  } finally {
+    committing.commit = previous
+  }
+}
+
+function safeCapturedFeedback(
+  assert: Assert,
+  flashes: string[],
+  expected: string,
+  secrets: string[]
+) {
+  assert.isNotEmpty(flashes)
+  const persisted = flashes.join()
+  assert.include(persisted, expected)
+  assert.notInclude(persisted, '"input"')
+  for (const secret of secrets) assert.notInclude(persisted, secret)
+}
+
 const form = { password, passwordConfirmation: password }
 
 test.group('standalone native proof response boundary', (group) => {
@@ -327,6 +356,174 @@ test.group('standalone native proof response boundary', (group) => {
       }
     }
 
+    for (const method of ['GET', 'PUT', 'PATCH']) {
+      for (const referer of [
+        undefined,
+        'https://untrusted.example/steal',
+        `${origin}/login?token=private-referer-query`,
+      ]) {
+        test(`${family}: body _method=${method} without CSRF keeps canonical recovery with ${referer === undefined ? 'absent' : referer.startsWith(origin) ? 'same-origin query' : 'hostile'} Referer`, async ({
+          assert,
+        }) => {
+          const proof = await proofFor(family)
+          const session = new ProofSession()
+          await session.prime()
+          const beforeProof = await db.from(proof.table).where('hash', proof.hash).first()
+          const beforeUser = await db.from('users').where('id', proof.user.id).first()
+          const input = {
+            ...form,
+            _method: method,
+            email: proof.token,
+            fullName: 'PrivateOverrideName',
+            currentPassword: 'PrivateOverrideCurrentPassword',
+            token: proof.token,
+          }
+          const observed = await capturedFlashes(() =>
+            session.request(`${proof.path}?token=${proof.token}`, {
+              form: input,
+              csrf: false,
+              referer,
+            })
+          )
+          protectedResponse(assert, observed.result)
+          const recovered = await destination(assert, session, observed.result, proof.path)
+          assert.include(await recovered.text(), csrfMessage)
+          safeCapturedFeedback(assert, observed.flashes, csrfMessage, [
+            proof.token,
+            password,
+            'PrivateOverrideName',
+            'PrivateOverrideCurrentPassword',
+            'private-referer-query',
+          ])
+          assert.include(observed.flashes.join(), 'E_BAD_CSRF_TOKEN')
+          assert.deepEqual(
+            await db.from(proof.table).where('hash', proof.hash).first(),
+            beforeProof
+          )
+          assert.deepEqual(await db.from('users').where('id', proof.user.id).first(), beforeUser)
+          const corrected = await session.request(proof.path, { form })
+          protectedResponse(assert, corrected)
+          await destination(assert, session, corrected, '/login')
+          await completed(assert, family, proof)
+        })
+      }
+    }
+
+    for (const method of ['PUT', 'PATCH']) {
+      test(`${family}: body _method=${method} keeps expired proof recovery fixed and private`, async ({
+        assert,
+      }) => {
+        const proof = await proofFor(family, true)
+        const session = new ProofSession()
+        await session.prime()
+        const beforeProof = await db.from(proof.table).where('hash', proof.hash).first()
+        const beforeUser = await db.from('users').where('id', proof.user.id).first()
+        const input = {
+          ...form,
+          _method: method,
+          email: proof.token,
+          fullName: 'PrivateOverrideName',
+          currentPassword: 'PrivateOverrideCurrentPassword',
+        }
+        const secrets = [
+          proof.token,
+          password,
+          'PrivateOverrideName',
+          'PrivateOverrideCurrentPassword',
+          'private-referer-query',
+        ]
+        const referer = `${origin}/login?token=private-referer-query`
+        const csrf = await capturedFlashes(() =>
+          session.request(`${proof.path}?token=${proof.token}`, {
+            form: input,
+            csrf: false,
+            referer,
+          })
+        )
+        protectedResponse(assert, csrf.result)
+        safeCapturedFeedback(assert, csrf.flashes, csrfMessage, secrets)
+        assert.include(csrf.flashes.join(), 'E_BAD_CSRF_TOKEN')
+        const rejected = await destination(assert, session, csrf.result, fallback)
+        assert.include(await rejected.text(), csrfMessage)
+        const invalid = await capturedFlashes(() =>
+          session.request(`${proof.path}?token=${proof.token}`, { form: input, referer })
+        )
+        protectedResponse(assert, invalid.result)
+        const invalidMessage =
+          family === 'reset-password'
+            ? 'This reset link is invalid'
+            : family === 'verify-email'
+              ? 'This verification link is invalid'
+              : 'This email link is invalid'
+        safeCapturedFeedback(assert, invalid.flashes, invalidMessage, secrets)
+        const recovered = await destination(assert, session, invalid.result, fallback)
+        const feedback = await recovered.text()
+        assert.include(feedback, invalidMessage)
+        for (const secret of secrets) assert.notInclude(feedback, secret)
+        assert.deepEqual(await db.from(proof.table).where('hash', proof.hash).first(), beforeProof)
+        assert.deepEqual(await db.from('users').where('id', proof.user.id).first(), beforeUser)
+      })
+    }
+
+    if (family !== 'confirm-email') {
+      for (const method of ['PUT', 'PATCH']) {
+        for (const referer of [
+          undefined,
+          'https://untrusted.example/steal',
+          `${origin}/login?token=private-referer-query`,
+        ]) {
+          test(`${family}: body _method=${method} with valid CSRF retains validation and correction with ${referer === undefined ? 'absent' : referer.startsWith(origin) ? 'same-origin query' : 'hostile'} Referer`, async ({
+            assert,
+          }) => {
+            const proof = await proofFor(family)
+            const session = new ProofSession()
+            await session.prime()
+            const beforeProof = await db.from(proof.table).where('hash', proof.hash).first()
+            const beforeUser = await db.from('users').where('id', proof.user.id).first()
+            const observed = await capturedFlashes(() =>
+              session.request(`${proof.path}?token=${proof.token}`, {
+                form: {
+                  ...form,
+                  passwordConfirmation: 'MismatchedSecret123!',
+                  _method: method,
+                  email: proof.token,
+                  fullName: 'PrivateOverrideName',
+                  currentPassword: 'PrivateOverrideCurrentPassword',
+                },
+                referer,
+              })
+            )
+            protectedResponse(assert, observed.result)
+            const recovered = await destination(assert, session, observed.result, proof.path)
+            assert.include(await recovered.text(), 'Confirm password must match Password.')
+            safeCapturedFeedback(
+              assert,
+              observed.flashes,
+              'Confirm password must match Password.',
+              [
+                proof.token,
+                password,
+                'MismatchedSecret123!',
+                'PrivateOverrideName',
+                'PrivateOverrideCurrentPassword',
+                'private-referer-query',
+              ]
+            )
+            assert.include(observed.flashes.join(), 'passwordConfirmation')
+            assert.deepEqual(
+              await db.from(proof.table).where('hash', proof.hash).first(),
+              beforeProof
+            )
+            assert.deepEqual(await db.from('users').where('id', proof.user.id).first(), beforeUser)
+            const corrected = await session.request(proof.path, { form })
+            protectedResponse(assert, corrected)
+            await destination(assert, session, corrected, '/login')
+            await completed(assert, family, proof)
+          })
+        }
+      }
+    }
+
     test(`${family}: native correction, identity and referrer protection without JavaScript`, async ({
       browser,
       assert,
@@ -416,36 +613,35 @@ test.group('standalone native proof response boundary', (group) => {
   test('proof correction never commits bearer tokens or submitted secrets as flash input', async ({
     assert,
   }) => {
-    const committing = Session.prototype as unknown as { commit: (this: Session) => Promise<void> }
-    const previous = committing.commit
-    const flashes: string[] = []
-    committing.commit = function () {
-      flashes.push(JSON.stringify(this.responseFlashMessages.all()))
-      return previous.call(this)
-    }
-    try {
-      for (const family of families) {
-        const proof = await proofFor(family)
-        const session = new ProofSession()
-        await session.prime()
-        const input = { ...form, email: proof.token, fullName: proof.token }
-        const csrf = await session.request(proof.path, { form: input, csrf: false })
-        protectedResponse(assert, csrf)
-        const recovered = await destination(assert, session, csrf, proof.path)
-        assert.include(await recovered.text(), csrfMessage)
-        if (family !== 'confirm-email') {
-          const invalid = await session.request(proof.path, {
+    for (const family of families) {
+      const proof = await proofFor(family)
+      const session = new ProofSession()
+      await session.prime()
+      const input = { ...form, email: proof.token, fullName: proof.token }
+      const csrf = await capturedFlashes(() =>
+        session.request(proof.path, { form: input, csrf: false })
+      )
+      protectedResponse(assert, csrf.result)
+      safeCapturedFeedback(assert, csrf.flashes, csrfMessage, [proof.token, password])
+      assert.include(csrf.flashes.join(), 'E_BAD_CSRF_TOKEN')
+      const recovered = await destination(assert, session, csrf.result, proof.path)
+      assert.include(await recovered.text(), csrfMessage)
+      if (family !== 'confirm-email') {
+        const invalid = await capturedFlashes(() =>
+          session.request(proof.path, {
             form: { ...input, passwordConfirmation: 'MismatchedSecret123!' },
           })
-          protectedResponse(assert, invalid)
-          await destination(assert, session, invalid, proof.path)
-        }
-        assert.notInclude(flashes.join(), proof.token)
+        )
+        protectedResponse(assert, invalid.result)
+        safeCapturedFeedback(assert, invalid.flashes, 'Confirm password must match Password.', [
+          proof.token,
+          password,
+          'MismatchedSecret123!',
+        ])
+        assert.include(invalid.flashes.join(), 'passwordConfirmation')
+        const feedback = await destination(assert, session, invalid.result, proof.path)
+        assert.include(await feedback.text(), 'Confirm password must match Password.')
       }
-      assert.notInclude(flashes.join(), password)
-      assert.notInclude(flashes.join(), 'MismatchedSecret123!')
-    } finally {
-      committing.commit = previous
     }
   })
 })
