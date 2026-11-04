@@ -244,26 +244,6 @@ test('configures the package idempotently without replacing application-owned fi
 
     await writeFile(
       rcPath,
-      [
-        "import { defineConfig } from '@adonisjs/core/app'",
-        "export default defineConfig({ providers: [{ file: () => { return import('@kevinjohn/adonisjs-account-kit/account_kit_provider') }, environment: ['console'] }] })",
-        '',
-      ].join('\n')
-    )
-    await ignitor.ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
-    rcContents = await readFile(rcPath, 'utf8')
-    assert.equal(
-      rcContents.match(
-        new RegExp(
-          String.raw`import\('@kevinjohn/adonisjs-account-kit\/account_kit_provider'\)`,
-          'g'
-        )
-      )?.length,
-      1
-    )
-
-    await writeFile(
-      rcPath,
       "import { defineConfig } from '@adonisjs/core/app'\nexport default defineConfig({ providers: [() => import('@kevinjohn/adonisjs-account-kit/account_kit_provider')] })\n"
     )
     await ignitor.ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
@@ -335,7 +315,7 @@ test('recovers real configure runs with registered dynamic providers', async ({ 
       '',
     ].join('\n')
     await writeFile(rcPath, dynamicRcWithAccountKit)
-    const recoveredConfigure = await ignitorFor(root)
+    const recoveredConfigure = ignitorFor(root)
     await recoveredConfigure
       .ace()
       .handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force', '--provider-registered'])

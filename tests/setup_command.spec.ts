@@ -1,23 +1,61 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { ListLoader } from '@adonisjs/core/ace'
+import { ListLoader, type Kernel } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
 import SetupAccountKit from '../commands/setup.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { collectSetupChoices } from '../src/setup/prompts.js'
-import type { SetupChoices } from '../src/setup/types.js'
+import type { SetupChoices, SetupPlan } from '../src/setup/types.js'
 import { retirementIgnitor } from './helpers/retirement_ignitor.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
-function collectFromSavedChoices(
-  ask: (question: string) => Promise<string>,
-  log: (message: string) => void,
-  initialChoices?: SetupChoices
-) {
-  return collectSetupChoices(ask, log, initialChoices)
+/** Capture the actual Ace outcome and unformatted report before restoring the process exit code. */
+async function runSetup(ignitor: ReturnType<typeof retirementIgnitor>, argv: string[]) {
+  let kernel: Kernel | undefined
+  const infos: string[] = []
+  const warnings: string[] = []
+  const previousExitCode = process.exitCode
+  try {
+    process.exitCode = undefined
+    await ignitor
+      .ace()
+      .configure(async (app) => {
+        kernel = await app.container.make('ace')
+        kernel.ui.logger.info = (message) => {
+          infos.push(message)
+        }
+        kernel.ui.logger.warning = (message) => {
+          warnings.push(message)
+        }
+      })
+      .handle(['account-kit:setup', ...argv])
+    const command = kernel?.getMainCommand()
+    return {
+      exitCode: process.exitCode,
+      commandExitCode: command?.exitCode,
+      error: command?.error,
+      reports: infos
+        .filter((message) => message.startsWith('{'))
+        .map(
+          (message) =>
+            JSON.parse(message) as Pick<
+              SetupPlan,
+              | 'readiness'
+              | 'diagnostics'
+              | 'retirementImpact'
+              | 'endpointLocations'
+              | 'pillars'
+              | 'preview'
+            >
+        ),
+      warnings,
+    }
+  } finally {
+    process.exitCode = previousExitCode
+  }
 }
 
 test.group('setup Ace command', (group) => {
@@ -72,7 +110,7 @@ test.group('setup Ace command', (group) => {
         initialChoices?: SetupChoices
       ) {
         receivedSeed = initialChoices
-        promptedChoices = await collectFromSavedChoices(
+        promptedChoices = await collectSetupChoices(
           async (question) => (question.startsWith('New-password minimum length') ? '16' : ''),
           () => {},
           initialChoices
@@ -114,7 +152,9 @@ test.group('setup Ace command', (group) => {
 
   test('--check reads saved choices without prompting or writing', async ({ assert }) => {
     const { root, choices } = await fixture()
+    choices.routePrefix = '/saved-account'
     await writeFile(join(root, 'config/account_kit_setup.json'), `${JSON.stringify(choices)}\n`)
+    const before = await inspectSetup(root)
     let prompted = false
     class NoPromptSetup extends SetupAccountKit {
       override async interactiveChoices(): Promise<never> {
@@ -122,25 +162,42 @@ test.group('setup Ace command', (group) => {
         throw new Error('--check must not start the interactive wizard')
       }
     }
-    const ignitor = new IgnitorFactory()
-      .withCoreProviders()
-      .withCoreConfig()
-      .merge({
-        rcFileContents: {
-          providers: [],
-          commands: [async () => new ListLoader([NoPromptSetup])],
-        },
-      })
-      .create(pathToFileURL(`${root}/`))
-
-    const previousExitCode = process.exitCode
-    try {
-      await ignitor.ace().handle(['account-kit:setup', '--check'])
-    } finally {
-      process.exitCode = previousExitCode
+    const impact = {
+      inspectedAccounts: 0,
+      affectedAccounts: 0,
+      checkedAt: '2026-11-04T00:00:00.000Z',
+      currentPasswordLogin: true,
+      currentProviders: [],
     }
+    const inventoryInputs: unknown[] = []
+    const ignitor = retirementIgnitor(
+      root,
+      async (input) => {
+        inventoryInputs.push(input)
+        return impact
+      },
+      NoPromptSetup
+    )
+    const outcome = await runSetup(ignitor, ['--check'])
+    assert.equal(outcome.exitCode, 0)
+    assert.equal(outcome.commandExitCode, 0)
+    assert.isUndefined(outcome.error)
+    assert.lengthOf(outcome.reports, 1)
+    assert.deepEqual(inventoryInputs, [{ passwordLogin: true, providers: [] }])
+    const report = outcome.reports[0]
+    assert.isTrue(report.preview)
+    assert.isTrue(report.readiness.configurationValid, JSON.stringify(report.diagnostics))
+    assert.deepEqual(report.retirementImpact, impact)
+    assert.isNotEmpty(report.endpointLocations)
+    assert.isTrue(
+      report.endpointLocations.every(({ path }) => path.startsWith(choices.routePrefix))
+    )
+    assert.equal(report.pillars.features, '1 services; 1 managed groups')
 
     assert.isFalse(prompted)
+    const after = await inspectSetup(root)
+    assert.deepEqual(after.files, before.files)
+    assert.deepEqual(after.migrationNames, before.migrationNames)
     assert.deepEqual(
       JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
       choices
@@ -192,7 +249,7 @@ test.group('setup Ace command', (group) => {
         initialChoices?: SetupChoices
       ) {
         receivedSeed = initialChoices
-        promptedChoices = await collectFromSavedChoices(
+        promptedChoices = await collectSetupChoices(
           async () => '',
           () => {},
           initialChoices
@@ -245,24 +302,35 @@ test.group('setup Ace command', (group) => {
     choices.managed = []
     const input = join(root, 'retire.json')
     await writeFile(input, `${JSON.stringify(choices)}\n`)
-    const ignitor = retirementIgnitor(root, async () => ({
+    const impact = {
       inspectedAccounts: 2,
       affectedAccounts: 1,
-      checkedAt: new Date().toISOString(),
-    }))
-    const previousExitCode = process.exitCode
-    try {
-      await ignitor
-        .ace()
-        .handle([
-          'account-kit:setup',
-          `--input=${input}`,
-          '--apply',
-          '--retirement-maintenance-window',
-        ])
-    } finally {
-      process.exitCode = previousExitCode
+      checkedAt: '2026-11-04T00:00:00.000Z',
     }
+    const inventoryInputs: unknown[] = []
+    const ignitor = retirementIgnitor(root, async (value) => {
+      inventoryInputs.push(value)
+      return impact
+    })
+    const outcome = await runSetup(ignitor, [
+      `--input=${input}`,
+      '--apply',
+      '--retirement-maintenance-window',
+    ])
+    assert.deepEqual(inventoryInputs, [{ passwordLogin: false, providers: [] }])
+    assert.equal(outcome.exitCode, 1)
+    assert.equal(outcome.commandExitCode, 1)
+    assert.isUndefined(outcome.error)
+    assert.lengthOf(outcome.reports, 1)
+    assert.deepEqual(outcome.reports[0].retirementImpact, impact)
+    assert.includeDeepMembers(outcome.reports[0].diagnostics, [
+      {
+        field: 'authentication.retirement',
+        severity: 'error',
+        message:
+          '1 of 2 accounts would lose their last usable login; complete an owner-managed credential migration before retrying',
+      },
+    ])
     assert.deepEqual(
       JSON.parse(await readFile(join(root, 'config/account_kit_setup.json'), 'utf8')),
       oldChoices
@@ -279,22 +347,35 @@ test.group('setup Ace command', (group) => {
     choices.managed = []
     const input = join(root, 'retire.json')
     await writeFile(input, `${JSON.stringify(choices)}\n`)
-    const ignitor = retirementIgnitor(root, async () => {
-      throw new Error('database unavailable')
+    const inventoryInputs: unknown[] = []
+    const queryError = new Error('database unavailable')
+    const ignitor = retirementIgnitor(root, async (value) => {
+      inventoryInputs.push(value)
+      throw queryError
     })
-    const previousExitCode = process.exitCode
-    try {
-      await ignitor
-        .ace()
-        .handle([
-          'account-kit:setup',
-          `--input=${input}`,
-          '--apply',
-          '--retirement-maintenance-window',
-        ])
-    } finally {
-      process.exitCode = previousExitCode
-    }
+    const outcome = await runSetup(ignitor, [
+      `--input=${input}`,
+      '--apply',
+      '--retirement-maintenance-window',
+    ])
+    assert.deepEqual(inventoryInputs, [{ passwordLogin: false, providers: [] }])
+    assert.equal(outcome.exitCode, 1)
+    assert.equal(outcome.commandExitCode, 1)
+    assert.isUndefined(outcome.error)
+    assert.lengthOf(outcome.reports, 1)
+    assert.isNull(outcome.reports[0].retirementImpact)
+    assert.include(
+      outcome.warnings,
+      'Read-only account inventory could not query the application database'
+    )
+    assert.includeDeepMembers(outcome.reports[0].diagnostics, [
+      {
+        field: 'authentication.retirement',
+        severity: 'error',
+        message:
+          'Booted login-method inventory is unavailable; verify Account Kit configuration and database access before reconfiguration',
+      },
+    ])
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit.ts')
     const state = await inspectSetup(root)
     assert.isNotNull(state.existingChoices?.authentication)
