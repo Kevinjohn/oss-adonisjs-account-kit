@@ -1,6 +1,6 @@
 // Validates and defaults one throttle budget option.
 import string from '@adonisjs/core/helpers/string'
-import { assertPlainObject } from './config_assert.js'
+import { assertObject } from './config_assert.js'
 import { InvalidConfigurationError } from './errors.js'
 import type { ThrottleBudget } from './types.js'
 import { freezeResolved } from './config_freeze.js'
@@ -11,7 +11,7 @@ export function budget(
   name: string,
   durationField = `${name}.duration`
 ): ThrottleBudget {
-  if (input !== undefined) assertPlainObject(input, name)
+  if (input !== undefined) assertObject(input, name)
   const requests = input?.requests ?? defaults.requests
   const duration = input?.duration ?? defaults.duration
   if (!Number.isSafeInteger(requests) || requests <= 0)
