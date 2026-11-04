@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
@@ -190,7 +190,7 @@ test.group('check_changed_plan.spec', (group) => {
     ]
     const repo = mkdtempSync(join(tmpdir(), 'format-check-'))
     try {
-      const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' })
+      const git = (...args: string[]) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' })
       git('init', '-q')
       writeFileSync(join(repo, 'kept.js'), 'const kept = 1;\n')
       writeFileSync(join(repo, 'deleted.js'), 'const deleted = 1;\n')
