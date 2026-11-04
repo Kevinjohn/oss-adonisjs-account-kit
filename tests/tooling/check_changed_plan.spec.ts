@@ -168,6 +168,13 @@ test.group('check_changed_plan.spec', (group) => {
     assert.equal(stepProblem(tests, { ...ok, code: 1 }), 'exit 1')
     assert.equal(stepProblem(tests, { ...ok, timedOut: true }), 'stopped after 1 minutes')
     assert.equal(stepProblem(tests, { ...ok, output: 'Tests  0 passed (0)' }), 'ran no tests')
+    assert.equal(
+      stepProblem(tests, { ...ok, output: 'Tests  0 passed, 2 skipped (2)' }),
+      'ran no tests'
+    )
+    assert.equal(stepProblem(tests, { ...ok, output: 'Tests  3 todo (3)' }), 'ran no tests')
+    assert.equal(stepProblem(tests, { ...ok, output: 'Tests  1 passed, 2 skipped (3)' }), undefined)
+    assert.equal(stepProblem(tests, { ...ok, output: 'Tests  1 regression (1)' }), undefined)
     assert.equal(stepProblem(tests, { ...ok, output: '' }), 'ran no tests')
     assert.equal(stepProblem({ timeoutMs: 60_000 }, { ...ok, output: '' }), undefined)
     assert.equal(

@@ -148,6 +148,18 @@ export function countTests(output: string) {
   return match ? Number(match[1]) : undefined
 }
 
+/** Count executed test cases, excluding Japa's skipped and todo cases. */
+function countExecutedTests(output: string) {
+  // Strip terminal ANSI escapes before reading the runner summary.
+  // eslint-disable-next-line no-control-regex
+  const text = output.replace(/\u001b\[[0-9;]*m/g, '')
+  const summary = /^\s*Tests\s+(.+)\(\d+\)\s*$/m.exec(text)?.[1] ?? ''
+  return [...summary.matchAll(/(?:^|,\s*)(\d+)\s+(passed|failed|regression)\b/g)].reduce(
+    (total, match) => total + Number(match[1]),
+    0
+  )
+}
+
 /**
  * Why a step that ran failed, or undefined when it passed.
  * @param {{ timeoutMs: number, tests?: 'japa' }} step
@@ -159,6 +171,7 @@ export function stepProblem(
 ) {
   if (result.timedOut) return `stopped after ${step.timeoutMs / minute} minutes`
   if (result.code !== 0) return `exit ${result.code}`
-  if (step.tests && !countTests(result.output)) return 'ran no tests'
+  if (step.tests && (!countTests(result.output) || !countExecutedTests(result.output)))
+    return 'ran no tests'
   if (result.generatedChanged) return 'committed generated output is stale'
 }
