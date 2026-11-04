@@ -642,7 +642,7 @@ test.group('native account journeys', (group) => {
     assert.isTrue(await javascriptError.isVisible())
   })
 
-  test('profile, email change, password change, and logout follow session policy', async ({
+  test('separate profile, email, and password owners follow session and logout policy', async ({
     browser,
     visit,
     assert,
@@ -659,6 +659,13 @@ test.group('native account journeys', (group) => {
       fullName: 'Email Owner',
       email: 'email-owner@example.test',
       password: 'EmailOwnerPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const passwordOwner = await User.create({
+      fullName: 'Password Owner',
+      email: 'password-owner@example.test',
+      password: 'PasswordOwnerPassword123!',
       emailVerifiedAt: DateTime.now(),
       unverifiedEmail: null,
     })
@@ -819,16 +826,16 @@ test.group('native account journeys', (group) => {
       const passwordContext = await browser.newContext({ baseURL: origin })
       contexts.push(passwordContext)
       const otherPasswordSession = await passwordContext.visit('/login')
-      await otherPasswordSession.getByLabel('Email').fill(user.email)
-      await otherPasswordSession.getByLabel('Password').fill('OldPassword123!')
+      await otherPasswordSession.getByLabel('Email').fill(passwordOwner.email)
+      await otherPasswordSession.getByLabel('Password').fill('PasswordOwnerPassword123!')
       await otherPasswordSession.getByRole('button', { name: 'Sign in' }).click()
       await otherPasswordSession.getByRole('heading', { name: 'Your account' }).waitFor()
 
       const passwordPrimaryContext = await browser.newContext({ baseURL: origin })
       contexts.push(passwordPrimaryContext)
       const passwordPrimary = await passwordPrimaryContext.visit('/login')
-      await passwordPrimary.getByLabel('Email').fill(user.email)
-      await passwordPrimary.getByLabel('Password').fill('OldPassword123!')
+      await passwordPrimary.getByLabel('Email').fill(passwordOwner.email)
+      await passwordPrimary.getByLabel('Password').fill('PasswordOwnerPassword123!')
       await passwordPrimary.getByRole('button', { name: 'Sign in' }).click()
       await passwordPrimary.getByRole('heading', { name: 'Your account' }).waitFor()
       await passwordPrimary.goto('/settings/password')
@@ -840,14 +847,14 @@ test.group('native account journeys', (group) => {
         .getByText('Your current password is incorrect. Check it and try again.')
         .waitFor()
       assert.equal(await passwordPrimary.getByLabel('Current password').inputValue(), '')
-      await passwordPrimary.getByLabel('Current password').fill('OldPassword123!')
+      await passwordPrimary.getByLabel('Current password').fill('PasswordOwnerPassword123!')
       await passwordPrimary.getByLabel('New password', { exact: true }).fill('NewPassword123!')
       await passwordPrimary.getByLabel('Confirm new password').fill('NewPassword123!')
       await passwordPrimary.getByRole('button', { name: 'Change password' }).click()
       await passwordPrimary
         .getByText('Password changed. Other sessions have been signed out.')
         .waitFor()
-      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      assert.isNotNull(await User.verifyCredentials(passwordOwner.email, 'NewPassword123!'))
       await otherPasswordSession.goto('/account')
       await otherPasswordSession.getByRole('heading', { name: 'Sign in' }).waitFor()
       const newEmailContext = await browser.newContext({ baseURL: origin })
