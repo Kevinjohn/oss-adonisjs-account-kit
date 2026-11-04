@@ -9,38 +9,66 @@ import { test } from '@japa/runner'
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
 const consumerHarness = join(repoRoot, 'bin/test_consumer.ts')
 
-test('rejects minimum compatibility for modes that do not support it before setup', ({
+test('rejects minimum compatibility for modes that do not support it before setup', async ({
   assert,
 }) => {
-  for (const mode of ['fresh', 'service-only']) {
-    const result = spawnSync(
-      process.execPath,
-      [
-        '--import=@poppinss/ts-exec',
-        consumerHarness,
-        `--mode=${mode}`,
-        '--compatibility=minimum',
-        '--candidate-tarball=/does/not/exist.tgz',
-      ],
-      { cwd: repoRoot, encoding: 'utf8' }
-    )
+  const directory = await mkdtemp(join(tmpdir(), 'consumer-invalid-compatibility-'))
+  try {
+    for (const mode of ['fresh', 'service-only']) {
+      const evidencePath = join(directory, `${mode}.json`)
+      const result = spawnSync(
+        process.execPath,
+        [
+          '--import=@poppinss/ts-exec',
+          consumerHarness,
+          `--mode=${mode}`,
+          '--compatibility=minimum',
+          '--candidate-tarball=/does/not/exist.tgz',
+        ],
+        {
+          cwd: repoRoot,
+          encoding: 'utf8',
+          env: { ...process.env, CONSUMER_EVIDENCE_PATH: evidencePath },
+        }
+      )
 
-    assert.notEqual(result.status, 0)
-    assert.include(result.stderr, '--compatibility=minimum requires --mode=minimum')
-    assert.notInclude(result.stdout + result.stderr, 'Consumer run directory:')
+      assert.notEqual(result.status, 0)
+      assert.include(result.stderr, '--compatibility=minimum requires --mode=minimum')
+      const evidence = JSON.parse(await readFile(evidencePath, 'utf8'))
+      assert.equal(evidence.status, 'failed')
+      assert.deepEqual(evidence.commands, [])
+      assert.deepEqual(evidence.runs, [])
+      assert.notProperty(evidence, 'candidateSha256')
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true })
   }
 })
 
-test('keeps minimum mode restricted to minimum compatibility', ({ assert }) => {
-  const result = spawnSync(
-    process.execPath,
-    ['--import=@poppinss/ts-exec', consumerHarness, '--mode=minimum', '--compatibility=latest'],
-    { cwd: repoRoot, encoding: 'utf8' }
-  )
+test('keeps minimum mode restricted to minimum compatibility', async ({ assert }) => {
+  const directory = await mkdtemp(join(tmpdir(), 'consumer-invalid-mode-'))
+  try {
+    const evidencePath = join(directory, 'evidence.json')
+    const result = spawnSync(
+      process.execPath,
+      ['--import=@poppinss/ts-exec', consumerHarness, '--mode=minimum', '--compatibility=latest'],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        env: { ...process.env, CONSUMER_EVIDENCE_PATH: evidencePath },
+      }
+    )
 
-  assert.notEqual(result.status, 0)
-  assert.include(result.stderr, '--mode=minimum requires --compatibility=minimum')
-  assert.notInclude(result.stdout + result.stderr, 'Consumer run directory:')
+    assert.notEqual(result.status, 0)
+    assert.include(result.stderr, '--mode=minimum requires --compatibility=minimum')
+    const evidence = JSON.parse(await readFile(evidencePath, 'utf8'))
+    assert.equal(evidence.status, 'failed')
+    assert.deepEqual(evidence.commands, [])
+    assert.deepEqual(evidence.runs, [])
+    assert.notProperty(evidence, 'candidateSha256')
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
 })
 
 test('fresh consumer copies exclude local databases, secrets and installed artifacts', async ({
