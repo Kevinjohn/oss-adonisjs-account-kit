@@ -36,6 +36,6 @@ export default class EmailVerificationsController {
     }
     if (await ctx.auth.use('web').check()) await accountKitSessionGuard(ctx).terminate()
     session.flash('success', 'Email confirmed. Sign in with your new password.')
-    return response.redirect().toRoute('session.create')
+    return response.redirect().withQs(false).toRoute('session.create')
   }
 }

@@ -1,6 +1,8 @@
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
+import { errors as shieldErrors } from '@adonisjs/shield'
+import { proofRequest, proofRecovery } from '#services/token_page_headers'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 import { isDeliveryFailure } from '#services/delivery_failure'
 
@@ -53,6 +55,8 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     if (!ctx.session) return super.renderValidationErrorAsHTML(error, ctx)
 
     ctx.session.flashValidationErrors(error, false)
+    const destination = await proofRecovery(ctx.request)
+    if (destination) return ctx.response.redirect(destination, false)
     if (!ctx.request.header('X-Inertia')) ctx.session.flashOnly(['fullName', 'email'])
     ctx.response.redirect('back', true)
   }
@@ -62,6 +66,10 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * response to the client
    */
   async handle(error: unknown, ctx: HttpContext) {
+    if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN && proofRequest(ctx.request)) {
+      ctx.session.flash('error', 'The form expired. Please try again.')
+      return ctx.response.redirect((await proofRecovery(ctx.request))!, false)
+    }
     if (error instanceof errors.InvalidSessionError) {
       await ctx.auth.use('web').logout()
       ctx.session.clear()
@@ -70,6 +78,8 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     }
     if (error instanceof errors.AccountKitError) {
       ctx.session.flash('error', accountMessage(error))
+      const proof = proofRequest(ctx.request)
+      if (proof) return ctx.response.redirect(proof.fallback, false)
       return ctx.response.redirect().back()
     }
     return super.handle(error, ctx)
