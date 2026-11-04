@@ -7,6 +7,9 @@
   type="button"
   class="iconbtn"
   data-initial-theme="{{ currentTheme }}"
+  x-cloak
+  aria-label="{{ currentTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme' }}"
+  title="{{ currentTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme' }}"
   x-data="themeToggle"
   x-bind:aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
   x-bind:title="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"

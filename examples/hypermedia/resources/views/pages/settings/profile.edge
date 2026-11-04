@@ -9,7 +9,7 @@
         @!field.label({ text: 'Full name (optional)' })
         @!input.control({
           autocomplete: 'name',
-          value: old('fullName') || fullName || '',
+          value: fullName ?? '',
         })
         @!field.error()
       @end

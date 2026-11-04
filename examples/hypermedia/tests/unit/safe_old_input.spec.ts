@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { safeOldInput } from '#exceptions/handler'
+import { safeOldInput } from '#services/safe_old_input'
 
 test('validation old input retains fullName and email independently up to 320 characters', ({
   assert,
@@ -17,15 +17,16 @@ test('validation old input retains fullName and email independently up to 320 ch
   }
 
   const oldInput = safeOldInput({
-    all: () => ({ ...input, nonString: { value: 'nested' } }),
-  } as never)
+    ...input,
+    nonString: { value: 'nested' },
+  })
 
   assert.deepEqual(oldInput, { fullName: input.fullName, email: input.email })
 
   for (const field of ['fullName', 'email'] as const) {
     const tooLong = safeOldInput({
-      all: () => ({ [field]: 'x'.repeat(321) }),
-    } as never)
+      [field]: 'x'.repeat(321),
+    })
     assert.notProperty(tooLong, field)
   }
 
@@ -41,8 +42,15 @@ test('validation old input retains fullName and email independently up to 320 ch
 test('validation old input omits nonstring safe fields', ({ assert }) => {
   for (const field of ['fullName', 'email'] as const) {
     const oldInput = safeOldInput({
-      all: () => ({ [field]: { value: 'nested' } }),
-    } as never)
+      [field]: { value: 'nested' },
+    })
     assert.notProperty(oldInput, field)
   }
+})
+
+test('safe old input distinguishes absent fields from cleared fields', ({ assert }) => {
+  assert.deepEqual(safeOldInput({}), {})
+  assert.deepEqual(safeOldInput({ fullName: null, email: '' }), { fullName: '', email: '' })
+  assert.deepEqual(safeOldInput({ fullName: '', email: null }), { fullName: '', email: '' })
+  assert.deepEqual(safeOldInput({ fullName: undefined, email: 42, password: null }), {})
 })

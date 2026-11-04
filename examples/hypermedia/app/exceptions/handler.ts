@@ -1,22 +1,9 @@
+import { safeOldInput } from '#services/safe_old_input'
 import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { proofRequest, proofRecovery } from '#services/token_page_headers'
-
-const SAFE_OLD_INPUT_FIELDS = ['fullName', 'email'] as const
-
-export function safeOldInput(request: HttpContext['request']) {
-  const body = request.all()
-  const oldInput: Record<string, string> = {}
-
-  for (const field of SAFE_OLD_INPUT_FIELDS) {
-    const value = body[field]
-    if (typeof value === 'string' && value.length <= 320) oldInput[field] = value
-  }
-
-  return oldInput
-}
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -59,7 +46,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         ctx.session.flashErrors({ [error.code]: message })
         return ctx.response.redirect((await proofRecovery(ctx.request))!, false)
       }
-      ctx.session.flash('input', safeOldInput(ctx.request))
+      ctx.session.flash('input', safeOldInput(ctx.request.all()))
       ctx.session.flash('error', message)
       ctx.session.flashErrors({ [error.code]: message })
       return ctx.response.redirect().back()
@@ -80,7 +67,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         ctx.session.flash('error', 'This link is invalid or has expired.')
       return ctx.response.redirect(destination, false)
     }
-    ctx.session.flash('input', safeOldInput(ctx.request))
+    ctx.session.flash('input', safeOldInput(ctx.request.all()))
     ctx.response.redirect('back', true)
   }
 
