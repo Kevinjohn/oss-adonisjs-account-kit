@@ -101,14 +101,16 @@ export default class PasswordResetsController {
 
 ## Tested against
 
-|                         | Every pull request | Weekly and before each release          |
-| ----------------------- | ------------------ | --------------------------------------- |
-| Node.js                 | 24                 | 24                                      |
-| AdonisJS core           | locked version     | lowest supported (7.0.0) and latest 7.x |
-| Lucid                   | locked version     | lowest supported and latest 22.x        |
-| SQLite (better-sqlite3) | yes                | yes                                     |
-| PostgreSQL 16           | yes                | yes                                     |
-| MySQL 8.4               | no (experimental)  | experimental                            |
+This table describes configured CI coverage, not the result of a pending workflow run.
+
+| Check                          | Checks workflow (pull requests) | Compatibility workflow (scheduled, pre-release, matching pull requests) |
+| ------------------------------ | ------------------------------- | ----------------------------------------------------------------------- |
+| Node.js                        | 24                              | 24                                                                      |
+| AdonisJS core, Lucid and peers | Locked versions                 | Minimum and latest peer versions                                        |
+| Package test suite             | SQLite and PostgreSQL 16        | PostgreSQL 16 at minimum and latest peer versions                       |
+| Built exports and setup        | SQLite leg after build          | —                                                                       |
+| Packed consumers               | —                               | Fresh/latest, minimum, and service-only on SQLite and PostgreSQL 16     |
+| MySQL 8.4                      | —                               | Experimental                                                            |
 
 ## Documentation
 
