@@ -240,6 +240,62 @@ test('final candidate evidence redacts secret metadata without changing its JSON
   }
 })
 
+test('redaction preserves evidence keys and tool-owned status enums', () => {
+  const expectedKeys = [
+    'candidateRevision',
+    'commands',
+    'compatibility',
+    'database',
+    'error',
+    'logs',
+    'mode',
+    'packageManager',
+    'prepareOnly',
+    'revision',
+    'runs',
+    'runtime',
+    'sourceChanges',
+    'status',
+    'userIdType',
+    'usersTable',
+  ]
+  for (const password of ['status', 'failed']) {
+    const directory = mkdtempSync(join(tmpdir(), 'consumer-evidence-schema-'))
+    const evidencePath = join(directory, 'evidence.json')
+    try {
+      const result = spawnSync(
+        process.execPath,
+        [
+          '--import=@poppinss/ts-exec',
+          '--enable-source-maps',
+          join(root, 'bin/test_consumer.ts'),
+          '--mode=unknown',
+          '--candidate-revision=' + password,
+        ],
+        {
+          cwd: root,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            DB_PASSWORD: password,
+            CONSUMER_EVIDENCE_PATH: evidencePath,
+          },
+        }
+      )
+      assert.notEqual(result.status, 0, result.stdout + result.stderr)
+      assert.equal(result.error, undefined)
+      const evidence = JSON.parse(readFileSync(evidencePath, 'utf8'))
+      assert.deepEqual(Object.keys(evidence).sort(), expectedKeys)
+      assert.equal(evidence.status, 'failed')
+      assert.equal(evidence.candidateRevision, '[REDACTED]')
+      assert.match(result.stdout, /Candidate revision: \[REDACTED\]/)
+      assert.match(result.stdout, /Status: failed/)
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  }
+})
+
 test('a candidate evidence failure writes a failed record with collected source metadata', () => {
   const directory = mkdtempSync(join(tmpdir(), 'consumer-evidence-candidate-'))
   const evidencePath = join(directory, 'evidence.json')

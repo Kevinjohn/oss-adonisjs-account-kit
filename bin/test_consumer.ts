@@ -59,10 +59,16 @@ function redactStrings(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(redactStrings)
   if (value !== null && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [redact(key), redactStrings(entry)])
+      Object.entries(value).map(([key, entry]) => [key, redactStrings(entry)])
     )
   }
   return value
+}
+
+function redactedEvidence(value: ConsumerEvidence): ConsumerEvidence {
+  const sanitized = redactStrings(value) as ConsumerEvidence
+  sanitized.status = value.status
+  return sanitized
 }
 
 const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
@@ -219,7 +225,7 @@ try {
     }
 
     try {
-      await writeFile(evidencePath, JSON.stringify(redactStrings(evidence), null, 2) + '\n')
+      await writeFile(evidencePath, JSON.stringify(redactedEvidence(evidence), null, 2) + '\n')
     } catch (error) {
       collectionErrors.push(error instanceof Error ? error : new Error(String(error)))
     }
