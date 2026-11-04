@@ -139,7 +139,10 @@ test.group('Signup recovery in the browser', (group) => {
       browser,
       assert,
     }) => {
+      // Database truncation reuses low IDs; the in-memory limiter survives between cases.
+      const ownerId = failure === 'delivery' ? 1001 : failure === 'observer' ? 1002 : 1003
       const user = await User.create({
+        id: ownerId,
         email: `global-${failure.replace(' ', '-')}@example.test`,
         password: 'GlobalPass123!',
       })
