@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { mkdtemp, mkdir, readFile, rm, writeFile, chmod, readdir, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { recordingFailure, stopServer } from '../../bin/demos/record.js'
 
@@ -35,7 +35,7 @@ async function fixture() {
 import app from '@adonisjs/core/services/app'
 const dbConfig = defineConfig({
   connection: 'sqlite',
-  connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') } } },
+  connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') }, useNullAsDefault: true, migrations: { naturalSort: true, paths: ['database/migrations'] }, schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } },
 })
 export default dbConfig
 `
@@ -234,7 +234,10 @@ test.group('demo recording process ownership', (group) => {
     const signals: NodeJS.Signals[] = []
     let waits = 0
     const error = await stopServer(child, false, {
-      signal: (_pid, signal) => signals.push(signal as NodeJS.Signals),
+      signal: (_pid, signal) => {
+        signals.push(signal as NodeJS.Signals)
+        return true
+      },
       wait: async (_pid, timeout) => {
         assert.equal(timeout, 5000)
         waits++
@@ -254,7 +257,10 @@ test.group('demo recording process ownership', (group) => {
     const child = { pid: 48124, exitCode: null, signalCode: null } as ChildProcess
     const signals: NodeJS.Signals[] = []
     const error = await stopServer(child, false, {
-      signal: (_pid, signal) => signals.push(signal as NodeJS.Signals),
+      signal: (_pid, signal) => {
+        signals.push(signal as NodeJS.Signals)
+        return true
+      },
       wait: async (_pid, timeout) => {
         assert.equal(timeout, 5000)
         return false

@@ -38,7 +38,7 @@ if (args[0] === 'dlx' && args[1] === 'create-adonisjs@3.4.0') {
   fs.mkdirSync(path.join(app, 'app'), { recursive: true })
   fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ name: path.basename(app), dependencies: { '@adonisjs/core': '^7.0.0', '@adonisjs/lucid': '^22.0.0', 'better-sqlite3': '^13.0.0' } }))
   fs.writeFileSync(path.join(app, 'ace'), '// synthetic ace entry\\n')
-  fs.writeFileSync(path.join(app, 'config/database.ts'), "import app from '@adonisjs/core/services/app'\\nimport { defineConfig } from '@adonisjs/lucid'\\nconst dbConfig = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') } } } })\\nexport default dbConfig\\n")
+  fs.writeFileSync(path.join(app, 'config/database.ts'), "import app from '@adonisjs/core/services/app'\\nimport { defineConfig } from '@adonisjs/lucid'\\nconst dbConfig = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') }, useNullAsDefault: true, migrations: { naturalSort: true, paths: ['database/migrations'] }, schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } } })\\nexport default dbConfig\\n")
   fs.writeFileSync(path.join(app, 'start/routes.ts'), '// synthetic routes\\n')
   fs.writeFileSync(path.join(app, 'adonisrc.ts'), "const commands = [() => import('@adonisjs/mail/commands')]\\nexport default { commands }\\n")
 }
@@ -304,6 +304,47 @@ test.group('demo recording safety', (group) => {
     assert.doesNotMatch(await f.traceText(), /git reset|git clean|migration:fresh/)
   })
 
+  test('unsafe database config structure refuses before reset or migration', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    const cases = [
+      {
+        name: 'side-effect-import',
+        mutate: (source: string) => `import './untrusted-config.js'\n${source}`,
+      },
+      {
+        name: 'computed-override',
+        mutate: (source: string) =>
+          source.replace("connection: 'sqlite',", "connection: 'sqlite', ['connection']: 'pg',"),
+      },
+      {
+        name: 'extra-executable-argument',
+        mutate: (source: string) =>
+          source.replace(
+            "schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } } })",
+            "schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } } }, { connection: 'pg' })"
+          ),
+      },
+    ]
+
+    for (const item of cases) {
+      const appDir = join(f.root, item.name)
+      const prepared = await f.run(createSetup, [appDir])
+      assert.equal(prepared.code, 0, prepared.output)
+      const configPath = join(appDir, 'config/database.ts')
+      const source = await readFile(configPath, 'utf8')
+      const mutated = item.mutate(source)
+      assert.notEqual(mutated, source, `${item.name} fixture must modify the config`)
+      await writeFile(configPath, mutated)
+      await f.clearTrace()
+
+      const result = await f.run(recordSetup, [appDir, join(f.root, `out-${item.name}`)])
+      assert.equal(result.code, 1, result.output)
+      assert.match(result.output, /generated database config/)
+      assert.doesNotMatch(await f.traceText(), /git reset|git clean|migration:fresh/)
+    }
+  })
+
   test('a symlinked temporary directory refuses before destructive commands', async (t) => {
     const f = await fixture()
     t.cleanup(f.cleanup)
@@ -352,7 +393,7 @@ async function writeSyntheticApp(appDir: string, role: string, markerRoot: strin
     join(appDir, 'config/database.ts'),
     `import app from '@adonisjs/core/services/app'
 import { defineConfig } from '@adonisjs/lucid'
-const dbConfig = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') } } } })
+const dbConfig = defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') }, useNullAsDefault: true, migrations: { naturalSort: true, paths: ['database/migrations'] }, schemaGeneration: { enabled: true, rulesPaths: ['database/schema_rules.js'] } } } })
 export default dbConfig
 `
   )

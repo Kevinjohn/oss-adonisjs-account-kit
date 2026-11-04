@@ -72,12 +72,54 @@ function sqlitePath(root: string) {
   return databasePath
 }
 
-function property(object: ts.ObjectLiteralExpression, name: string) {
-  const found = object.properties.filter(
-    (item): item is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(item) && ts.isIdentifier(item.name) && item.name.text === name
+function safeStaticValue(expression: ts.Expression): boolean {
+  if (
+    ts.isStringLiteral(expression) ||
+    ts.isNumericLiteral(expression) ||
+    ts.isNoSubstitutionTemplateLiteral(expression) ||
+    expression.kind === ts.SyntaxKind.TrueKeyword ||
+    expression.kind === ts.SyntaxKind.FalseKeyword ||
+    expression.kind === ts.SyntaxKind.NullKeyword
   )
-  return found.length === 1 ? found[0].initializer : undefined
+    return true
+  if (ts.isArrayLiteralExpression(expression))
+    return expression.elements.every(
+      (element) => !ts.isSpreadElement(element) && safeStaticValue(element)
+    )
+  if (
+    ts.isCallExpression(expression) &&
+    ts.isPropertyAccessExpression(expression.expression) &&
+    ts.isIdentifier(expression.expression.expression) &&
+    expression.expression.expression.text === 'app' &&
+    expression.expression.name.text === 'tmpPath' &&
+    expression.arguments.length === 1 &&
+    ts.isStringLiteral(expression.arguments[0]) &&
+    expression.arguments[0].text === 'db.sqlite3'
+  )
+    return true
+  if (!ts.isObjectLiteralExpression(expression)) return false
+
+  const names = new Set<string>()
+  for (const member of expression.properties) {
+    if (!ts.isPropertyAssignment(member) || !ts.isIdentifier(member.name)) return false
+    if (names.has(member.name.text) || !safeStaticValue(member.initializer)) return false
+    names.add(member.name.text)
+  }
+  return true
+}
+
+function properties(object: ts.ObjectLiteralExpression) {
+  const found = new Map<string, ts.Expression>()
+  for (const member of object.properties) {
+    if (!ts.isPropertyAssignment(member) || !ts.isIdentifier(member.name))
+      throw new Error('generated database config must use static named properties')
+    if (found.has(member.name.text))
+      throw new Error(`generated database config repeats ${member.name.text}`)
+    if (!safeStaticValue(member.initializer))
+      throw new Error(`generated database config contains executable ${member.name.text} data`)
+    found.set(member.name.text, member.initializer)
+  }
+  return found
 }
 
 function stringValue(node: ts.Expression | undefined) {
@@ -87,10 +129,14 @@ function stringValue(node: ts.Expression | undefined) {
 function validateDatabaseConfig(path: string) {
   const source = readFileSync(path, 'utf8')
   const file = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const syntax = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ESNext },
+    reportDiagnostics: true,
+  })
   const exports = file.statements.filter(ts.isExportAssignment)
   const variableStatements = file.statements.filter(ts.isVariableStatement)
   if (
-    file.parseDiagnostics.length ||
+    syntax.diagnostics?.some((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error) ||
     exports.length !== 1 ||
     variableStatements.length !== 1 ||
     file.statements.some(
@@ -108,8 +154,11 @@ function validateDatabaseConfig(path: string) {
     '@adonisjs/core/services/app:app',
   ])
   const importNames = imports.flatMap((declaration) => {
-    if (!ts.isStringLiteral(declaration.moduleSpecifier)) return ['unsupported']
+    if (!ts.isStringLiteral(declaration.moduleSpecifier) || !declaration.importClause)
+      return ['unsupported']
     const moduleName = declaration.moduleSpecifier.text
+    if (declaration.importClause.isTypeOnly || declaration.assertClause || declaration.attributes)
+      return ['unsupported']
     const bindings = declaration.importClause?.namedBindings
     if (bindings && ts.isNamespaceImport(bindings)) return ['unsupported']
     const names: string[] = []
@@ -117,7 +166,7 @@ function validateDatabaseConfig(path: string) {
       names.push(`${moduleName}:${declaration.importClause.name.text}`)
     if (bindings && ts.isNamedImports(bindings)) {
       for (const element of bindings.elements) {
-        if (element.propertyName) return ['unsupported']
+        if (element.propertyName || element.isTypeOnly) return ['unsupported']
         names.push(`${moduleName}:${element.name.text}`)
       }
     }
@@ -147,30 +196,45 @@ function validateDatabaseConfig(path: string) {
   if (
     !ts.isCallExpression(assignment) ||
     !ts.isIdentifier(assignment.expression) ||
-    assignment.expression.text !== 'defineConfig'
+    assignment.expression.text !== 'defineConfig' ||
+    assignment.arguments.length !== 1 ||
+    assignment.typeArguments?.length
   )
     throw new Error('generated database config must directly export defineConfig')
   const [argument] = assignment.arguments
   if (!argument || !ts.isObjectLiteralExpression(argument))
     throw new Error('generated database config must use a literal config object')
-  if (argument.properties.some(ts.isSpreadAssignment))
-    throw new Error('generated database config cannot spread database selections')
-
-  const selectedConnection = stringValue(property(argument, 'connection'))
-  const connections = property(argument, 'connections')
-  if (!ts.isObjectLiteralExpression(connections))
+  const configProperties = properties(argument)
+  if ([...configProperties.keys()].some((name) => !['connection', 'connections'].includes(name)))
+    throw new Error('generated database config contains unsupported selection properties')
+  const selectedConnection = stringValue(configProperties.get('connection'))
+  const connections = configProperties.get('connections')
+  if (!connections || !ts.isObjectLiteralExpression(connections))
     throw new Error('generated database connections must be a literal object')
-  const sqlite = property(connections, 'sqlite')
-  if (!ts.isObjectLiteralExpression(sqlite) || sqlite.properties.some(ts.isSpreadAssignment))
+  const connectionProperties = properties(connections)
+  if ([...connectionProperties.keys()].some((name) => name !== 'sqlite'))
+    throw new Error('generated database config contains unsupported database connections')
+  const sqlite = connectionProperties.get('sqlite')
+  if (!sqlite || !ts.isObjectLiteralExpression(sqlite))
     throw new Error('generated SQLite connection must be a literal object')
-  const client = stringValue(property(sqlite, 'client'))
-  const connection = property(sqlite, 'connection')
+  const sqliteProperties = properties(sqlite)
   if (
-    !ts.isObjectLiteralExpression(connection) ||
-    connection.properties.some(ts.isSpreadAssignment)
+    [...sqliteProperties.keys()].some(
+      (name) =>
+        !['client', 'connection', 'useNullAsDefault', 'migrations', 'schemaGeneration'].includes(
+          name
+        )
+    )
   )
+    throw new Error('generated SQLite connection contains unsupported selection properties')
+  const client = stringValue(sqliteProperties.get('client'))
+  const connection = sqliteProperties.get('connection')
+  if (!connection || !ts.isObjectLiteralExpression(connection))
     throw new Error('generated SQLite file settings must be a literal object')
-  const filename = property(connection, 'filename')
+  const fileProperties = properties(connection)
+  if ([...fileProperties.keys()].some((name) => name !== 'filename'))
+    throw new Error('generated SQLite file settings contain unsupported properties')
+  const filename = fileProperties.get('filename')
   const validFilename =
     filename &&
     ts.isCallExpression(filename) &&
