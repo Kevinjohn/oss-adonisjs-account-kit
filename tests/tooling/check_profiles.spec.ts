@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { test } from '@japa/runner'
@@ -35,11 +35,28 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
 
 test('full adds to the quick profile and unknown flags are rejected', ({ assert }) => {
   assert.deepEqual(selectedSteps([]), checkProfiles.quick)
-  assert.equal(
-    selectedSteps(['--full']).length,
-    checkProfiles.quick.length + checkProfiles.full.length
-  )
+  assert.deepEqual(selectedSteps(['--full']), [...checkProfiles.quick, ...checkProfiles.full])
   assert.throws(() => selectedSteps(['--fast']), /pnpm check/)
+})
+
+test('the full recipe step selects committed inputs and check forwards its arguments', ({
+  assert,
+}) => {
+  const recipe = checkProfiles.full.find((step) => step.script === 'test:recipe')
+  assert.isDefined(recipe)
+  assert.deepEqual(recipe.args, ['--recipe=api-password-reset'])
+  assert.isTrue(
+    existsSync(join(root, 'docs/recipes/patches/api-password-reset.patch')),
+    'the selected recipe patch is committed'
+  )
+  assert.isTrue(
+    existsSync(join(root, 'examples/api/tests/recipes/api-password-reset.spec.ts')),
+    'the selected recipe acceptance spec is committed'
+  )
+
+  const checkRunner = readFileSync(join(root, 'bin/check.ts'), 'utf8')
+  assert.match(checkRunner, /\['pnpm', step\.script, \.\.\.\(step\.args \?\? \[\]\)\]/)
+  assert.match(checkRunner, /spawnSync\('pnpm', \[step\.script, \.\.\.\(step\.args \?\? \[\]\)\]/)
 })
 
 test('format:check covers tracked files only and tolerates an unstaged deletion', ({ assert }) => {
