@@ -18,8 +18,13 @@ It runs three steps, which can also be run alone:
 2. `record.ts tmp/demo-app tmp/demo-casts [scenario ...]` runs each scenario with real `curl`
    and `node ace` commands and writes one asciicast v2 file per scenario. Each scenario starts
    from `migration:fresh`, which also empties the limiter store. It needs port 3333 free.
-3. `render.ts tmp/demo-casts docs/assets/demos` converts the casts to SVG with
-   `svg-term-cli@2.1.1`.
+3. `render.ts tmp/demo-casts docs/assets/demos` converts each cast to `<stem>.svg` and `<stem>_still.svg` with
+   `svg-term-cli@2.1.1`. The animated filename stays unchanged. Both outputs use the same cast,
+   terminal dimensions, window decorations and default theme. The still uses `--at` in milliseconds
+   at the last nonblank output event (ignoring terminal control sequences and the final empty hold),
+   with `--no-cursor`. This captures the completed flow without an animated cursor. Casts without
+   visible output fail instead of producing blank previews. Renderer failures stop the command;
+   rerun it to regenerate the complete pair after resolving a failure.
 
 The setup recording uses its own starter app, because setup needs an app without the overlay:
 
