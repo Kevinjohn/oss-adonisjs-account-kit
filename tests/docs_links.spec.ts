@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, posix } from 'node:path'
 import { test } from '@japa/runner'
+import { createMarkdownRenderer } from 'vitepress'
 import { repoRoot, trackedMarkdown } from './helpers/tracked_markdown.js'
 
 /** Tracked Markdown outside dependencies; ignored local notes are not published. */
@@ -93,9 +94,21 @@ test('absolute links to the main branch point at tracked paths', async ({ assert
   assert.deepEqual(broken, [])
 })
 
-/** GitHub's heading anchors: lowercase, punctuation dropped, spaces as hyphens. */
-async function headingAnchors(document: string): Promise<Set<string>> {
+const siteMarkdown = createMarkdownRenderer(join(repoRoot, 'docs'))
+
+/** Published guides use VitePress anchors; repository-only readers use GitHub anchors. */
+async function headingAnchors(document: string, onSite: boolean): Promise<Set<string>> {
   const source = await readFile(join(repoRoot, document), 'utf8')
+  if (onSite) {
+    const markdown = await siteMarkdown
+    const tokens = markdown.parse(source, { path: join(repoRoot, document) })
+    return new Set(
+      tokens
+        .filter((token) => token.type === 'heading_open')
+        .map((token) => token.attrGet('id'))
+        .filter((id): id is string => id !== null)
+    )
+  }
   const headings = source.replace(/```[\s\S]*?```/g, '').matchAll(/^#{1,6} (.+)$/gm)
   return new Set(
     [...headings].map(([, heading]) =>
@@ -110,6 +123,9 @@ async function headingAnchors(document: string): Promise<Set<string>> {
 test('every anchor in a relative Markdown link names a heading', async ({ assert }) => {
   const broken: string[] = []
   let checked = 0
+  const anchorsByDocument = new Map<string, Promise<Set<string>>>()
+  const isSiteDocument = (path: string) =>
+    path.startsWith('docs/') && !path.startsWith('docs/maintainers/')
   for (const document of trackedDocuments()) {
     const source = await readFile(join(repoRoot, document), 'utf8')
     const text = source.replace(/```[\s\S]*?```/g, '')
@@ -119,7 +135,12 @@ test('every anchor in a relative Markdown link names a heading', async ({ assert
       const linked = path ? posix.join(posix.dirname(document), path) : document
       if (!linked.endsWith('.md') || !existsSync(join(repoRoot, linked))) continue
       checked++
-      const anchors = await headingAnchors(linked)
+      const onSite = isSiteDocument(document) && isSiteDocument(linked)
+      const key = `${onSite}:${linked}`
+      if (!anchorsByDocument.has(key)) {
+        anchorsByDocument.set(key, headingAnchors(linked, onSite))
+      }
+      const anchors = await anchorsByDocument.get(key)!
       if (!anchors.has(decodeURIComponent(anchor))) broken.push(`${document}: ${target}`)
     }
   }
