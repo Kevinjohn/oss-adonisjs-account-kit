@@ -95,8 +95,13 @@ if [ "$count" -gt 1 ] && [ -n "${'${UNRELATED_PID:-}'}" ]; then echo "$UNRELATED
     chmod(join(bin, 'curl'), 0o755),
     chmod(join(bin, 'lsof'), 0o755),
   ])
+  // Fixtures own their database settings; refusal cases inject overrides explicitly.
   const env = {
-    ...process.env,
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([name]) => !/^(?:DB_|DATABASE_)/i.test(name) && name !== 'NODE_OPTIONS'
+      )
+    ),
     PATH: `${bin}:${process.env.PATH}`,
     TRACE: join(root, 'trace'),
     LSOF_CALLS: join(root, 'lsof-calls'),

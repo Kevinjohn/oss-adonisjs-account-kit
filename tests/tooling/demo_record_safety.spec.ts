@@ -86,8 +86,13 @@ esac
   )
   await Promise.all(['pnpm', 'node', 'git'].map((name) => chmod(join(bin, name), 0o755)))
 
+  // Fixtures own their database settings; refusal cases inject overrides explicitly.
   const env = {
-    ...process.env,
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([name]) => !/^(?:DB_|DATABASE_)/i.test(name) && name !== 'NODE_OPTIONS'
+      )
+    ),
     PATH: `${bin}:${process.env.PATH}`,
     DEMO_TRACE: trace,
   }
