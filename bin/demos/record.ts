@@ -264,7 +264,7 @@ async function http(
   path: string | undefined,
   { body, token, tokenName = 'TOKEN' }: HttpOptions & { tokenName?: string } = {}
 ) {
-  let shown = `curl -X ${method} :3333${path}`
+  let shown = `curl -X ${method} ${base}${path}`
   if (token) shown += ` -H "authorization: Bearer $${tokenName}"`
   if (body) shown += ` -d '${shorten(JSON.stringify(body))}'`
   cast.type(fit(shorten(shown)))
