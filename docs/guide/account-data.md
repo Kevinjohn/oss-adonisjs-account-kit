@@ -151,6 +151,16 @@ In one transaction under the user lock:
    with no inviter.
 6. Delete the user row through `users.delete`.
 
+The Lucid adapter physically deletes an active user composed with
+`@kevinjohn/adonisjs-lucid-soft-delete`'s `SoftDeletes`. It calls the model's `forceDelete()`
+when available, otherwise `delete()`, through the same transaction with model delete hooks.
+A delete-hook failure rolls back the user deletion and package-row changes. Ordinary model
+`delete()` calls outside this operation still soft-delete the user.
+
+Account deletion uses the model's ordinary scoped lookups and re-authenticates the active account;
+it does not look up already soft-deleted users for purging. The invitation retention option above
+still applies: `keep` retains sent invitations with no inviter.
+
 After the commit, `notify.accountDeleted({ id, email })` and the lifecycle event `account.deleted`
 (`userId`, `operationId`) both run, even if one fails. A failed email throws `DeliveryError`; a
 failed observer throws `PostCommitError`. Either way the account is gone: do not retry the

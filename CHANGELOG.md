@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fix permanent account deletion through the Lucid adapter for active user models composed with
+  `SoftDeletes`, preserving model delete hooks, transaction rollback and invitation retention options.
+
 ## 0.2.0 - 2026-11-03
 
 - Changed: managed-route setup and argument errors throw `InvalidArgumentsException` instead of a bare `Error`, and route-collision errors do the same; messages are unchanged.
