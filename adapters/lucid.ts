@@ -18,6 +18,8 @@ export type LucidModelRow = {
   save(): Promise<unknown>
   /** Delete the row. */
   delete(): Promise<unknown>
+  /** Physically delete the row through its bound transaction, preserving model hooks. */
+  forceDelete?(): Promise<unknown>
 }
 
 type Query = {
@@ -329,7 +331,8 @@ export function createLucidAdapter<Model extends LucidModelRow>(
       const user = await find(query(await model(), trx), 'id', id)
       if (!user) return
       user.useTransaction(trx)
-      await user.delete()
+      if (typeof user.forceDelete === 'function') await user.forceDelete()
+      else await user.delete()
     },
   }
 
