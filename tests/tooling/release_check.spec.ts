@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -22,8 +23,20 @@ async function releaseCheck(changelog: string) {
       encoding: 'utf8',
       env: environment,
     })
-    const notes = await readFile(join(directory, 'tmp/release/notes.md'), 'utf8').catch(() => '')
-    return { ...result, notes }
+    const notes = await readFile(join(directory, 'tmp/release/notes.md'), 'utf8').catch((error) => {
+      if (error.code !== 'ENOENT') throw error
+      return ''
+    })
+    let archiveSha256: string | undefined
+    if (result.status === 0) {
+      const files = await readdir(join(directory, 'tmp/release'))
+      const archives = files.filter((name) => name.endsWith('.tgz'))
+      if (archives.length !== 1) throw new Error('Release fixture did not produce one archive')
+      archiveSha256 = createHash('sha256')
+        .update(await readFile(join(directory, 'tmp/release', archives[0])))
+        .digest('hex')
+    }
+    return { ...result, notes, archiveSha256 }
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
@@ -37,6 +50,8 @@ test('release gate accepts an empty Unreleased section above the released versio
   )
   assert.equal(result.status, 0, result.stderr)
   assert.include(result.stdout, 'ready: v9.9.9')
+  assert.match(result.archiveSha256 ?? '', /^[a-f0-9]{64}$/)
+  assert.include(result.notes, `SHA-256: \`${result.archiveSha256}\``)
 })
 
 test('release gate refuses entries under Unreleased, which the tarball would ship', async ({
