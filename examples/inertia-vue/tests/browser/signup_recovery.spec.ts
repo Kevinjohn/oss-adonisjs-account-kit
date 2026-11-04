@@ -173,7 +173,12 @@ test.group('Signup recovery in the browser', (group) => {
       assert,
     }) => {
       const email = `global-${failure}-${Date.now()}@example.test`
-      const owner = await User.create({ email, password: 'GlobalPass123!' })
+      // Distinct ids isolate the test-mode memory limiter from truncated fixtures.
+      const owner = await User.create({
+        id: failure === 'delivery' ? 1001 : 1002,
+        email,
+        password: 'GlobalPass123!',
+      })
       const previousLifecycle = lifecycleOverrides.run
       const previousNotify = notifyOverrides.passwordChanged
       let deliveries = 0
@@ -269,7 +274,7 @@ test.group('Signup recovery in the browser', (group) => {
     assert,
   }) => {
     const email = `password-control-${Date.now()}@example.test`
-    const owner = await User.create({ email, password: 'GlobalPass123!' })
+    const owner = await User.create({ id: 1003, email, password: 'GlobalPass123!' })
     const context = await browser.newContext({ baseURL: process.env.APP_URL })
     const otherContext = await browser.newContext({ baseURL: process.env.APP_URL })
     try {
