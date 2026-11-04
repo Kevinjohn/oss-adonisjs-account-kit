@@ -45,7 +45,7 @@ authentication, then `session_revision_middleware`. The revision middleware call
 explicit null before the first change), and terminates missing/stale sessions. The native auth
 middleware subsequently redirects protected requests to `/login`. Put proof-response headers in
 the early server stack so proof failures also receive `Cache-Control: no-store` and
-`Referrer-Policy: same-origin`. Exclude proof URLs from access logs, analytics and error reports.
+`Referrer-Policy: no-referrer`. Exclude proof URLs from access logs, analytics and error reports.
 
 ## Controllers, pages and forms
 
@@ -91,7 +91,7 @@ import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 
 async function edit({ inertia, params, response }: HttpContext) {
   response.header('Cache-Control', 'no-store')
-  response.header('Referrer-Policy', 'same-origin')
+  response.header('Referrer-Policy', 'no-referrer')
   const valid = await kit.passwordReset.inspect({ token: params.token })
   return inertia.render('auth/reset_password', { token: params.token, valid })
 }
@@ -99,20 +99,33 @@ async function edit({ inertia, params, response }: HttpContext) {
 
 ### Failed-submission password policy
 
-Keep both password fields in the mounted reset form after a confirmation error, so the user can
-correct the confirmation without retyping the new password. Do not store either value in session,
-flash, logs, a URL or application persistence. A page navigation/reload creates empty inputs.
-The patch's reset-path HTML validation handler flashes errors without request input. This also
-protects ordinary HTML submissions without an `X-Inertia` header; camel-case confirmation fields
-must not fall through to the session middleware's default input flashing.
-The error summary receives focus, links to the invalid field, and connects field feedback using
-`aria-invalid` and `aria-describedby`. The reference app's
-[form-error spec](../../examples/inertia-react/tests/browser/account_form_errors.spec.ts) checks
-retention of both values and keyboard-accessible recovery.
+Clear both password fields after validation errors and successful submissions using React Form's
+`resetOnError` and `resetOnSuccess` controls. The user re-enters both fields to correct the form.
+Do not store either value in session, flash, logs, a URL or application persistence.
+
+The reset-specific exception handler flashes validation errors without request input. It also
+handles Shield's CSRF error before generic submitted-input flashing, retaining only a safe error
+message. Both paths inspect the proof: a still-valid proof recovers at its canonical reset path;
+an invalid or unestablished proof recovers at `/forgot-password`. Recovery never depends on a
+Referer header. Proof redirects suppress query forwarding, including successful completion to
+login, so injected query values cannot travel into recovery or login URLs.
+
+The first server middleware and `sendTokenPageHeaders` apply `no-store` and `no-referrer` before
+body parsing and Shield. `proofRequest` matches the reset route, while `proofRecovery` inspects
+its allowlisted token before retaining a correctable URL. Other forms retain their existing
+exception handling. The error summary receives focus, links to invalid fields, and connects
+feedback using `aria-invalid` and `aria-describedby`.
 
 ## Failure and credential matrix
 
-Every row is exercised by `React reset recipe preserves failed submissions and revokes both native
+The acceptance source also defines HTML and Inertia cases for original and followed responses:
+success, malformed/expired/consumed proofs, parser rejection, CSRF recovery and corrected
+validation submissions. It checks missing/hostile Referer, query suppression, expected committed
+flash without submitted secrets, unchanged credentials before correction, and an actual same-origin
+browser request with no Referer. These supplementary cases require a fresh harness run; the dated
+records below describe earlier executions and do not establish the new matrix's runtime acceptance.
+
+Every row is exercised by `React reset recipe clears failed submissions and revokes both native
 sessions` in the [committed acceptance spec](../../examples/inertia-react/tests/recipes/inertia-react-password-reset.spec.ts).
 The spec signs two distinct native sessions in before reset and verifies each reaches the native
 protected dashboard. “Unchanged” means byte-identical stored hash and successful protected
@@ -122,7 +135,7 @@ requests from both saved sessions, rather than a reset response or database toke
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Known / unknown request | Same visible generic acknowledgement; only known account emits captured proof                                              |
 | Valid proof GET twice   | Both pages allow a new password; proof still completes later                                                               |
-| Confirmation mismatch   | Field error; both entered values retained; hash and both sessions unchanged                                                |
+| Confirmation mismatch   | Field error; both password inputs cleared; hash and both sessions unchanged                                                |
 | Native HTML mismatch    | Validation errors recorded without either password in database sessions; reload clears inputs; hash and sessions unchanged |
 | Malformed proof         | Invalid page and rejected POST; hash and both sessions unchanged                                                           |
 | Expired proof           | Insert a past-expiry proof row; invalid page and rejected POST; hash and both sessions unchanged                           |
