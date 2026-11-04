@@ -338,6 +338,7 @@ test.group('registration', (group) => {
       .where('tokenable_id', row.id)
       .first()
     assert.exists(committedProof)
+    assert.isTrue(await service.account.emailVerification.inspect({ token: failedToken }))
     service.recorder.failOn(null)
     assert.equal(await service.account.emailVerification.send({ userId: row.id }), 'sent')
     assert.lengthOf(activationCalls(), 1)
