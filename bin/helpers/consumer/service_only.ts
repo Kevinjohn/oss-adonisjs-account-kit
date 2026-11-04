@@ -129,7 +129,7 @@ import { AccountAccessDeniedError, InvalidInputError } from '@kevinjohn/adonisjs
 const require = createRequire(import.meta.url)
 for (const name of ${JSON.stringify(optionalBackendIntegrations)}) {
   try { require.resolve(name); throw new Error('Backend-only dependency installed: ' + name) }
-  catch (error) { if ((error as { code? }).code !== 'MODULE_NOT_FOUND') throw error }
+  catch (error) { if ((error as { code?: unknown }).code !== 'MODULE_NOT_FOUND') throw error }
 }
 const connection = ${connection}
 const ignitor = new IgnitorFactory().withCoreProviders().withCoreConfig().merge({
@@ -172,7 +172,9 @@ try {
   try { await inspect({ userId: '', requireActive: true }); throw new Error('Inspection accepted invalid input') }
   catch (error) { if (!(error instanceof InvalidInputError)) throw error }
   let databaseVersion: string
-  if (${JSON.stringify(selectedDatabase)} === 'sqlite') {
+${
+  selectedDatabase === 'sqlite'
+    ? `  {
     const Database = require('better-sqlite3')
     const sqlite = new Database('./service.sqlite')
     try {
@@ -180,7 +182,8 @@ try {
       if (!result?.version) throw new Error('Could not read the SQLite server version')
       databaseVersion = 'SQLite ' + result.version
     } finally { sqlite.close() }
-  } else {
+  }`
+    : `  {
     const { Client } = require('pg')
     const client = new Client({
       host: process.env.DB_HOST ?? '127.0.0.1',
@@ -195,7 +198,8 @@ try {
       if (!result.rows[0]?.server_version) throw new Error('Could not read the PostgreSQL server version')
       databaseVersion = 'PostgreSQL ' + result.rows[0].server_version
     } finally { await client.end() }
-  }
+  }`
+}
   const versionEvidencePath = process.env.ACCOUNT_KIT_SERVICE_EVIDENCE_PATH
   if (!versionEvidencePath) throw new Error('Service-only version evidence path is missing')
   await writeFile(versionEvidencePath, JSON.stringify({ runtime: process.versions.node, databaseVersion }, null, 2) + '\\n')
