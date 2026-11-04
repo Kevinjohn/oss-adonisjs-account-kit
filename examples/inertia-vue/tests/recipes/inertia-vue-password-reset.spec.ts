@@ -420,6 +420,49 @@ test.group('Inertia Vue password reset recipe', (group) => {
       })
     }
 
+    for (const state of ['malformed', 'expired', 'consumed'] as const) {
+      test(`${representation}: ${state} proof validation visibly explains fixed renewal`, async ({
+        assert,
+      }) => {
+        const proof = await recipeProof(state === 'expired')
+        if (state === 'consumed')
+          await db.from('password_reset_tokens').where('hash', proof.hash).delete()
+        const path = state === 'malformed' ? '/reset-password/not-a-proof' : proof.path
+        const session = new RecipeProofSession(inertia)
+        await session.prime()
+        const rejected = await session.request(`${path}?token=${proof.token}`, {
+          form: { password: replacementPassword, passwordConfirmation: 'MismatchedSecret123!' },
+          referer: 'https://untrusted.example/steal',
+        })
+        assertProofHeaders(assert, rejected)
+        await assertStoredFlash(assert, 'passwordConfirmation', [
+          proof.token,
+          replacementPassword,
+          'MismatchedSecret123!',
+        ])
+        await assertStoredFlash(assert, 'This link is invalid or has expired.', [
+          proof.token,
+          replacementPassword,
+          'MismatchedSecret123!',
+        ])
+        const renewal = await followProtected(assert, session, rejected, '/forgot-password')
+        const feedback = await renewal.text()
+        assert.include(feedback, 'This link is invalid or has expired.')
+        for (const secret of [proof.token, replacementPassword, 'MismatchedSecret123!'])
+          assert.notInclude(feedback, secret)
+        await proof.owner.refresh()
+        assert.equal(proof.owner.password, proof.originalHash)
+        assert.equal(
+          (await User.verifyCredentials(proof.owner.email, originalPassword)).id,
+          proof.owner.id
+        )
+        assert.equal(
+          Boolean(await db.from('password_reset_tokens').where('hash', proof.hash).first()),
+          state !== 'consumed'
+        )
+      })
+    }
+
     test(`${representation}: malformed JSON fails before CSRF and allows protected retry`, async ({
       assert,
     }) => {
@@ -527,6 +570,27 @@ test.group('Inertia Vue password reset recipe', (group) => {
       }
     }
   }
+
+  test('expired validation shows renewal feedback in the rendered browser', async ({
+    visit,
+    assert,
+  }) => {
+    const proof = await recipeProof()
+    const page = await visit(proof.path)
+    await db
+      .from('password_reset_tokens')
+      .where('hash', proof.hash)
+      .update({ expires_at: new Date(Date.now() - 1000).toISOString() })
+    await page.getByLabel('New password', { exact: true }).fill(replacementPassword)
+    await page.getByLabel('Confirm new password').fill('MismatchedSecret123!')
+    await page.getByRole('button', { name: 'Reset password', exact: true }).click()
+    await page.waitForURL('**/forgot-password')
+    await page
+      .getByText('This link is invalid or has expired.', { exact: true })
+      .waitFor({ state: 'visible' })
+    assert.equal(new URL(page.url()).search, '')
+    await assertUnchanged(assert, proof)
+  })
 
   test('reset page suppresses the actual same-origin browser follow-on Referer', async ({
     visit,
