@@ -2,9 +2,9 @@ import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
+import { accountKitSessionGuard } from '#services/session_guard'
 import { proofRequest, proofRecovery } from '#services/token_page_headers'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
-import { isDeliveryFailure } from '#services/delivery_failure'
 
 /**
  * Messages for Account Kit errors shown as a flash toast. Anything else gets a generic message,
@@ -16,8 +16,10 @@ function accountMessage(error: errors.AccountKitError) {
     return `Too many attempts. Try again in ${error.retryAfterSeconds} seconds.`
   if (error instanceof errors.InvalidTokenError) return 'This link is invalid or has expired.'
   if (error instanceof errors.IdentityNotConfirmedError) return 'The password is incorrect.'
-  if (isDeliveryFailure(error))
-    return 'Your change was saved, but we could not send the email. Try again later.'
+  if (error instanceof errors.DeliveryError)
+    return 'Your change was saved, but the email could not be sent. If you need a verification link, wait one minute before requesting another.'
+  if (error instanceof errors.PostCommitError)
+    return 'Your change was saved, but a follow-up step failed. Check your email if you were expecting a link. If you need a new verification link, wait one minute before requesting another.'
   return 'Something went wrong. Please try again.'
 }
 
@@ -75,6 +77,19 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       ctx.session.clear()
       ctx.session.flash('error', 'Your session has ended. Please sign in again.')
       return ctx.response.redirect().toRoute('session.create')
+    }
+    if (
+      ctx.route?.name === 'passwords.update' &&
+      (error instanceof errors.DeliveryError || error instanceof errors.PostCommitError)
+    ) {
+      await accountKitSessionGuard(ctx).terminate()
+      ctx.session.flash(
+        'error',
+        error instanceof errors.DeliveryError
+          ? 'Your password was changed, but the notification email could not be sent. Sign in again with your new password.'
+          : 'Your password was changed, but a follow-up step failed. Sign in again with your new password.'
+      )
+      return ctx.response.redirect().withQs(false).toRoute('session.create')
     }
     if (error instanceof errors.AccountKitError) {
       ctx.session.flash('error', accountMessage(error))
