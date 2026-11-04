@@ -98,8 +98,11 @@ committed database-session flash data, and cover genuine malformed JSON, genuine
 CSRF tokens, absent and hostile Referer, query suppression, encoded recovery and body method
 overrides. The no-JavaScript correction case submits the real hidden token, clears both secret
 fields on failure, completes a corrected reset and checks that an unrelated signed-in visitor keeps
-their identity. A same-origin navigation observes an absent Referer. These new cases are defined;
-the historical execution results below do not establish their runtime acceptance.
+their identity. Separate no-JavaScript cases keep a real reset form loaded while its proof expires
+or is consumed in another session, submit mismatched passwords, and require the renewal page to
+show the general invalid-link message. A same-origin navigation observes an absent Referer. These
+new cases are defined; the historical execution results below do not establish their runtime
+acceptance.
 
 The journey test also signs in two independent browser sessions through the original `/login`
 route, confirms both can load `/dashboard`, completes reset, confirms both now redirect to `/login`,

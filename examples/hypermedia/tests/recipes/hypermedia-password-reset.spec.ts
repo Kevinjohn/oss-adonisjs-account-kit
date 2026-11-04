@@ -1,4 +1,5 @@
 /* eslint-disable @unicorn/no-await-expression-member, @unicorn/filename-case -- The recipe harness requires the filename to match its selector. */
+// The recipe harness copies one spec: keep its lifecycle and table-driven response cases together.
 import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
 import type { Assert } from '@japa/assert'
@@ -564,6 +565,27 @@ test.group('native reset recipe response boundary', (group) => {
     const renewed = await destination(assert, session, replay, '/forgot-password')
     assert.include(await renewed.text(), 'This reset link is invalid')
     assert.deepEqual(await db.from('users').where('id', proof.owner.id).first(), user)
+    const invalidReplay = await session.request(
+      `${proof.path}?token=${proof.token}&sentinel=validation`,
+      {
+        form: {
+          ...resetForm,
+          passwordConfirmation: 'MismatchSecret123!',
+          extra: 'PrivateExtraField',
+        },
+      }
+    )
+    protectedResponse(assert, invalidReplay)
+    await storedFeedback(assert, 'This reset link is invalid', [
+      proof.token,
+      resetForm.password,
+      'MismatchSecret123!',
+      'PrivateExtraField',
+    ])
+    const validationRenewal = await destination(assert, session, invalidReplay, '/forgot-password')
+    assert.include(await validationRenewal.text(), 'This reset link is invalid')
+    assert.deepEqual(await db.from('users').where('id', proof.owner.id).first(), user)
+    assert.notExists(await db.from('password_reset_tokens').where('hash', proof.hash).first())
   })
 
   for (const state of ['malformed', 'expired'] as const) {
@@ -725,6 +747,76 @@ test.group('native reset recipe response boundary', (group) => {
       beforeProof
     )
   })
+
+  for (const state of ['expired', 'consumed'] as const) {
+    test(`no-JavaScript ${state} proof validation shows renewal feedback`, async ({
+      browser,
+      assert,
+    }) => {
+      const proof = await recipeProof()
+      const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+      try {
+        const page = await context.visit(proof.path)
+        await page.getByLabel('New password').fill(resetForm.password)
+        await page.getByLabel('Confirm password').fill('MismatchSecret123!')
+        await page
+          .locator('form')
+          .evaluate(
+            (form, action) => form.setAttribute('action', action),
+            `${proof.path}?token=${proof.token}&sentinel=stale-validation`
+          )
+        // Keep the genuine loaded form while its proof expires or another browser consumes it.
+        if (state === 'expired') {
+          await db
+            .from('password_reset_tokens')
+            .where('hash', proof.hash)
+            .update({
+              expires_at: new Date(Date.now() - 1000).toISOString(),
+            })
+        } else {
+          const completing = new ProofSession()
+          await completing.prime()
+          const done = await completing.request(proof.path, { form: resetForm })
+          protectedResponse(assert, done)
+          await destination(assert, completing, done, '/login')
+        }
+        const beforeUser = await db.from('users').where('id', proof.owner.id).first()
+        const beforeProof = await db.from('password_reset_tokens').where('hash', proof.hash).first()
+        const submission = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname === proof.path
+        )
+        await page.getByRole('button', { name: 'Reset password' }).click()
+        const response = await submission
+        assert.equal(response.status(), 302)
+        assert.equal(response.headers()['cache-control'], 'no-store')
+        assert.equal(response.headers()['referrer-policy'], 'no-referrer')
+        const location = new URL(response.headers()['location'], origin)
+        assert.equal(location.origin, origin)
+        assert.equal(location.pathname, '/forgot-password')
+        assert.equal(location.search, '')
+        await page.waitForURL('**/forgot-password')
+        await page
+          .getByText(
+            'This reset link is invalid, already used, or expired. Request a fresh link.',
+            { exact: true }
+          )
+          .waitFor()
+        const body = await page.locator('body').innerText()
+        for (const secret of [proof.token, resetForm.password, 'MismatchSecret123!']) {
+          assert.notInclude(body, secret)
+        }
+        assert.deepEqual(await db.from('users').where('id', proof.owner.id).first(), beforeUser)
+        assert.deepEqual(
+          await db.from('password_reset_tokens').where('hash', proof.hash).first(),
+          beforeProof
+        )
+      } finally {
+        await context.close()
+      }
+    })
+  }
 
   test('no-JavaScript correction retains the unrelated visitor and sends no same-origin referrer', async ({
     browser,
