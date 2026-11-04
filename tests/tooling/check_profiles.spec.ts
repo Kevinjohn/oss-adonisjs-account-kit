@@ -47,7 +47,7 @@ test('the full recipe step selects committed inputs and check forwards its argum
   assert,
 }) => {
   const recipe = checkProfiles.full.find((step) => step.script === 'test:recipe')
-  assert.isDefined(recipe)
+  if (!recipe) throw new Error('The full profile recipe step is missing')
   assert.deepEqual(recipe.args, ['--recipe=api-password-reset'])
   assert.isTrue(
     existsSync(join(root, 'docs/recipes/patches/api-password-reset.patch')),
