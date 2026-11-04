@@ -16,7 +16,7 @@ export class Cast {
   comment(text: string) {
     this.emit(`\x1b[90m# ${text}\x1b[0m\n`, 0.7)
   }
-  /** Prints output, cutting each line to the terminal width as a real terminal would wrap it. */
+  /** Prints output, truncating long lines with an ellipsis to fit the recording width. */
   print(text: string, gap = 0.4) {
     const lines = text.replace(/\n$/, '').split('\n').map(fit)
     this.emit(lines.join('\n') + '\n', gap)
