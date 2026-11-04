@@ -131,6 +131,13 @@ generation, not inbox delivery or PostgreSQL behavior.
 
 ## Clean application check
 
+**4 November 2026.** The fresh pinned-starter harness passed the original login baseline (1/1)
+and the reset acceptance suite (28/28), including the response and recovery cases above.
+A retained-app rerun also passed 28/28 from the post-cleanup database without migration refresh
+or manual seeding. The acceptance setup restores its required transaction-lock row. The generated
+app's build, typecheck and full lint passed after formatting setup/generated files. These runs cover SQLite,
+Chromium and local notification capture; the earlier dated records below remain historical.
+
 After migrations and code generation in a fresh configured scaffold, run `pnpm format` before the
 full-app `pnpm lint` check. Starter/configurator output and generated migration/schema files carry
 formatting differences that this normalizes in the disposable scaffold.

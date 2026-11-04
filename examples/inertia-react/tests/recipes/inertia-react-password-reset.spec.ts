@@ -205,6 +205,8 @@ test('React reset recipe clears failed submissions and revokes both native sessi
   browser,
   assert,
 }) => {
+  // Restore the migration-owned singleton for direct retained-app reruns.
+  await db.table('account_transaction_lock').insert({ id: 1, version: 0 }).onConflict('id').ignore()
   const owner = await User.create({
     fullName: 'Recipe Owner',
     email: `recipe-${randomUUID()}@example.test`,
