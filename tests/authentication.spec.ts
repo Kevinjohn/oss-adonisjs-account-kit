@@ -199,22 +199,34 @@ test.group('authentication contract', (group) => {
     )
   })
 
-  test('logout calls only the selected current guard and has an idempotent service result', async ({
+  test('logout terminates each supplied guard with its supplied credential and returns void', async ({
     assert,
   }) => {
-    await insertUser(kit)
     const { account } = makeService(kit, {
       authentication: { strategy: 'access_tokens', guard: 'api' },
     })
-    let calls = 0
-    const guard = {
-      terminate: async () => {
-        calls++
+    const firstCredential = { tokenId: 'first' }
+    const secondCredential = { tokenId: 'second' }
+    const firstCalls: Array<typeof firstCredential | undefined> = []
+    const secondCalls: Array<typeof secondCredential | undefined> = []
+    const firstGuard = {
+      terminate: async (credential?: typeof firstCredential) => {
+        firstCalls.push(credential)
       },
     }
-    await account.authentication.logout(guard)
-    await account.authentication.logout(guard)
-    assert.equal(calls, 2)
+    const secondGuard = {
+      terminate: async (credential?: typeof secondCredential) => {
+        secondCalls.push(credential)
+      },
+    }
+    assert.isUndefined(await account.authentication.logout(firstGuard, firstCredential))
+    assert.lengthOf(firstCalls, 1)
+    assert.strictEqual(firstCalls[0], firstCredential)
+    assert.isEmpty(secondCalls)
+    assert.isUndefined(await account.authentication.logout(secondGuard, secondCredential))
+    assert.lengthOf(firstCalls, 1)
+    assert.lengthOf(secondCalls, 1)
+    assert.strictEqual(secondCalls[0], secondCredential)
   })
 })
 

@@ -87,22 +87,40 @@ test.group('admission gate', (group) => {
   test('reads the account and its admission in one transaction', async ({ assert }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const seen: Array<Trx | undefined> = []
+    const admissionReads: Trx[] = []
+    const restore: Array<() => void> = []
     const { admission } = makeAdmission(kit, approvalOnly, {
       authentication: strategies.session.authentication,
       users: {
         ...users,
         findById: (id, trx, options) => {
+          if (trx && !seen.includes(trx)) {
+            const from = trx.from
+            trx.from = function (...args: Parameters<typeof trx.from>) {
+              if (args[0] === 'account_admissions') admissionReads.push(this)
+              return from.apply(this, args)
+            }
+            restore.push(() => {
+              trx.from = from
+            })
+          }
           seen.push(trx)
           return users.findById(id, trx, options)
         },
       },
     })
-    const person = await insertUser(kit)
-    await writeAdmissionRow(kit, person.id, { approval: 'approved' })
-    await admission.require({ userId: person.id, revision: null })
-    assert.isAtLeast(seen.length, 2)
-    assert.isDefined(seen[0])
-    assert.isTrue(seen.every((trx) => trx === seen[0]))
+    try {
+      const person = await insertUser(kit)
+      await writeAdmissionRow(kit, person.id, { approval: 'approved' })
+      await admission.require({ userId: person.id, revision: null })
+      assert.isAtLeast(seen.length, 2)
+      assert.isDefined(seen[0])
+      assert.isTrue(seen.every((trx) => trx === seen[0]))
+      assert.lengthOf(admissionReads, 1)
+      assert.strictEqual(admissionReads[0], seen[0])
+    } finally {
+      for (const reset of restore.reverse()) reset()
+    }
   })
 
   test('maps a refusal to 403 with the code, and keeps the decision on the error', async ({
