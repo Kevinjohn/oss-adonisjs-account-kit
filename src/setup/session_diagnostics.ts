@@ -1,3 +1,4 @@
+import { envName } from './diagnostics.js'
 import { resolveSelectedEnvironment } from './selected_environment_values.js'
 import {
   defaultImportName,
@@ -22,7 +23,8 @@ function envVariable(source: SetupSource, expression: TypeScript.Expression): st
     !source.ts.isStringLiteral(expression.arguments[0])
   )
     return null
-  return expression.arguments[0].text
+  const variable = expression.arguments[0].text
+  return envName.test(variable) && variable.trim() === variable ? variable : null
 }
 
 /** A diagnostic-only classifier; it never authorizes automatic attestation. */

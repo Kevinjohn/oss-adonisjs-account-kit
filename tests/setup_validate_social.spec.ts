@@ -1,4 +1,6 @@
 import { test } from '@japa/runner'
+import ts from 'typescript'
+import { allyConfigSource } from '../src/setup/generated_ally_config.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { validateSocial } from '../src/setup/validate_social.js'
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from '../src/setup/types.js'
@@ -87,15 +89,57 @@ test.group('setup social validation', () => {
       '/account/../{provider}',
       '/account\\{provider}',
       '//account/{provider}',
+      '/auth/{provider}/{provider}',
+      '/auth/{provider}{provider}',
+      '/auth/%2e%2e/admin/{provider}',
+      '/auth/%2E/admin/{provider}',
+      '/auth/.%2e/admin/{provider}',
+      '/auth/%2Fadmin/{provider}',
+      '/auth/%5cadmin/{provider}',
+      '/auth/{provider}/white space',
+      '/auth/{provider}/white%20space',
+      '/auth/{provider}/tab\tpath',
+      '/auth/{provider}/end\n',
+      '/auth/{provider}/%00',
+      '/auth/{provider}/%',
     ]) {
       const choices = socialChoices()
       choices.authentication!.strategy = 'access_tokens'
       social(choices).callbackPath = callbackPath
       assert.include(
         run(choices).map(({ message }) => message),
-        'Use a safe absolute path containing {provider}',
+        'Use a safe absolute path containing exactly one {provider}',
         callbackPath
       )
+    }
+  })
+
+  test('flexible token callbacks preserve the exact generated Ally path', ({ assert }) => {
+    for (const path of [
+      '/custom/token/oauth/{provider}/done',
+      '/v2/{provider}-callback',
+      '/oauth/{provider}/callback/',
+    ]) {
+      const choices = socialChoices()
+      choices.authentication!.strategy = 'access_tokens'
+      social(choices).callbackPath = path
+      assert.deepEqual(run(choices), [], path)
+      const executable = allyConfigSource(choices)
+        .replace(/^import .*\n/gm, '')
+        .replace('export default allyConfig', 'return allyConfig')
+      const compiled = ts.transpileModule(executable, {
+        compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+      }).outputText
+      const result = new Function('process', 'defineConfig', 'services', compiled)(
+        { env },
+        (config: unknown) => config,
+        { github: (config: unknown) => config }
+      ) as { github: { callbackUrl: string } }
+      const expected = path.replace('{provider}', 'github')
+      assert.equal(result.github.callbackUrl, `https://app.example.test${expected}`)
+      assert.equal(new URL(result.github.callbackUrl).pathname, expected)
+      assert.notInclude(result.github.callbackUrl, '{provider}')
+      assert.notInclude(result.github.callbackUrl, '%7Bprovider%7D')
     }
   })
 

@@ -1,6 +1,11 @@
 import { readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
+import { selectedSessionDiagnostic } from '../src/setup/session_diagnostics.js'
+import {
+  resolveSelectedEnvironment,
+  resolveSelectedEnvironmentValue,
+} from '../src/setup/selected_environment_values.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
@@ -155,6 +160,67 @@ test.group('setup config diagnostics', (group) => {
       if (previous === undefined) delete process.env.SESSION_DRIVER
       else process.env.SESSION_DRIVER = previous
     }
+  })
+
+  test('invalid inspected environment names remain generically unresolved without scanning assignments', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(join(root, '.env'), 'SESSION_DRIVER=cookie\nOTHER_DRIVER=database\n')
+    for (const variable of [
+      '[',
+      'SESSION.*',
+      'SESSION|OTHER',
+      '(a+)+',
+      'SESSION_DRIVER)',
+      'lower',
+      '0BAD',
+      'SESSION_DRIVER\n',
+      '',
+    ]) {
+      const text = `import env from '#start/env'\nexport default { store: env.get(${JSON.stringify(variable)}, unknownFallback), stores: { cookie: stores.cookie(), database: stores.database() } }\n`
+      assert.deepEqual(await selectedSessionDiagnostic(text, root), { name: null, kind: null })
+      for (const resolve of [resolveSelectedEnvironment, resolveSelectedEnvironmentValue]) {
+        assert.isNull(await resolve(root, variable, {}))
+        assert.isNull(await resolve(root, variable, { [variable]: 'cookie' }))
+      }
+      await writeFile(join(root, 'config/session.ts'), text)
+      const plan = await planSetup(choices, await inspectSetup(root))
+      const diagnostics = plan.diagnostics.filter(({ field }) => field === 'config/session.ts')
+      assert.isTrue(
+        diagnostics.some(
+          ({ message }) =>
+            message ===
+            'Verify the selected runtime session store resolves to a server-side implementation and preserves logout revocation across requests'
+        )
+      )
+      assert.isFalse(diagnostics.some(({ message }) => message.includes('Cookie-only sessions')))
+      if (variable) assert.isFalse(diagnostics.some(({ message }) => message.includes(variable)))
+    }
+  })
+
+  test('valid inspected environment names resolve exact selected assignments', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    await writeFile(
+      join(root, '.env'),
+      'B02_SELECTED_STORE_EXTRA=database\nB02_SELECTED_STORE=cookie\n'
+    )
+    const text =
+      "import env from '#start/env'\nexport default { store: env.get('B02_SELECTED_STORE', unknownFallback), stores: { cookie: stores.cookie(), database: stores.database() } }\n"
+    assert.deepEqual(await selectedSessionDiagnostic(text, root), {
+      name: 'cookie',
+      kind: 'cookie',
+    })
+    assert.equal(await resolveSelectedEnvironment(root, 'B02_SELECTED_STORE', {}), 'cookie')
+    assert.equal(await resolveSelectedEnvironmentValue(root, 'B02_SELECTED_STORE', {}), 'cookie')
+    assert.equal(
+      await resolveSelectedEnvironment(root, 'B02_SELECTED_STORE', {
+        B02_SELECTED_STORE: 'database',
+      }),
+      'database'
+    )
   })
 
   test('planner checks installed versions, guard driver, and named default connection', async ({

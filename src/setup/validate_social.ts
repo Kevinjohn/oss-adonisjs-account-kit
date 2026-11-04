@@ -4,6 +4,40 @@ import type { SocialProviderName } from '../types.js'
 import { envName, diagnostic, validateOrigin } from './shared.js'
 import type { SelectedSetupOrigins } from './diagnostics.js'
 
+/** The substituted path must survive URL parsing without traversal or encoded separators. */
+function safeCallbackPath(path: string): boolean {
+  if (
+    !path.startsWith('/') ||
+    path.startsWith('//') ||
+    path.split('{provider}').length !== 2 ||
+    path.includes('?') ||
+    path.includes('#') ||
+    path.includes('..') ||
+    path.includes('\\')
+  )
+    return false
+  const substituted = path.replace('{provider}', 'github')
+  try {
+    for (const segment of substituted.split('/')) {
+      const decoded = decodeURIComponent(segment)
+      if (
+        decoded === '.' ||
+        decoded === '..' ||
+        decoded.includes('/') ||
+        decoded.includes('\\') ||
+        [...decoded].some(
+          (character) =>
+            /\s/u.test(character) || character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127
+        )
+      )
+        return false
+    }
+    return new URL(substituted, 'https://callback.example.test').pathname === substituted
+  } catch {
+    return false
+  }
+}
+
 /** Social providers, callbacks, credential references and Ally prerequisites. */
 export function validateSocial(
   diagnostics: SetupDiagnostic[],
@@ -54,19 +88,11 @@ export function validateSocial(
       selectedOrigins?.values[choices.social.callbackOriginEnv],
       selectedOrigins?.errors[choices.social.callbackOriginEnv]
     )
-    if (
-      !choices.social.callbackPath.startsWith('/') ||
-      !choices.social.callbackPath.includes('{provider}') ||
-      choices.social.callbackPath.includes('?') ||
-      choices.social.callbackPath.includes('#') ||
-      choices.social.callbackPath.includes('..') ||
-      choices.social.callbackPath.includes('\\') ||
-      choices.social.callbackPath.startsWith('//')
-    )
+    if (!safeCallbackPath(choices.social.callbackPath))
       diagnostic(
         diagnostics,
         'social.callbackPath',
-        'Use a safe absolute path containing {provider}'
+        'Use a safe absolute path containing exactly one {provider}'
       )
     if (
       choices.authentication?.strategy === 'session' &&

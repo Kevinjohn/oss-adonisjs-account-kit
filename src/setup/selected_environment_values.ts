@@ -4,6 +4,7 @@ import { relative } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseEnv } from 'node:util'
 import { EnvLoader } from '@adonisjs/core/env'
+import { envName } from './diagnostics.js'
 import { safeSetupPath } from './safe_path.js'
 
 /** A selected assignment refers to other values, so reading it would mean evaluating it. */
@@ -31,6 +32,10 @@ async function resolveEnvironmentValue(
   validate: (value: string | null) => boolean,
   expected: string
 ): Promise<string | null> {
+  if (!envName.test(variable) || variable.trim() !== variable) return null
+  const escapedVariable = variable.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const assignmentStart = new RegExp(`^\\s*(?:export\\s+)?${escapedVariable}\\b`)
+  const assignmentValue = new RegExp(`^\\s*(?:export\\s+)?${escapedVariable}\\s*=`)
   if (Object.hasOwn(env, variable)) return env[variable] ?? null
   for (const candidate of new EnvLoader(root).getPaths()) {
     const name = relative(root, candidate)
@@ -51,7 +56,7 @@ async function resolveEnvironmentValue(
     try {
       for await (const line of lines) {
         if (multilineQuote) {
-          if (new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line))
+          if (assignmentStart.test(line))
             throw new Error('Selected environment assignment is inside a multiline value')
           if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
           continue
@@ -62,8 +67,8 @@ async function resolveEnvironmentValue(
           if (!hasClosingQuote(rest, quotedAssignment[1]))
             multilineQuote = quotedAssignment[1] as '"' | "'" | '`'
         }
-        if (!new RegExp(`^\\s*(?:export\\s+)?${variable}\\b`).test(line)) continue
-        if (found || !new RegExp(`^\\s*(?:export\\s+)?${variable}\\s*=`).test(line))
+        if (!assignmentStart.test(line)) continue
+        if (found || !assignmentValue.test(line))
           throw new Error('Selected environment assignment is ambiguous')
         found = true
         if (line.includes('$') || line.includes('`')) throw new IndirectEnvironmentValueError()
