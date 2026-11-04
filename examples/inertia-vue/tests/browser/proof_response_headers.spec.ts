@@ -1,5 +1,6 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep raw response assertions beside their requests. */
 import { createHash, randomBytes } from 'node:crypto'
+import { appendFileSync } from 'node:fs'
 import { test } from '@japa/runner'
 import type { Assert } from '@japa/assert'
 import db from '@adonisjs/lucid/services/db'
@@ -59,6 +60,23 @@ class ProofSession {
     for (const cookie of response.headers.getSetCookie()) {
       const [name, value] = cookie.split(';')[0].split('=', 2)
       this.cookies.set(name, value ?? '')
+    }
+    if (process.env.PROOF_HEADER_EVIDENCE) {
+      appendFileSync(
+        process.env.PROOF_HEADER_EVIDENCE,
+        JSON.stringify({
+          method: post ? 'POST' : 'GET',
+          path,
+          inertia: this.inertia,
+          status: response.status,
+          headers: Object.fromEntries(
+            ['cache-control', 'referrer-policy', 'location', 'content-type'].map((name) => [
+              name,
+              response.headers.get(name),
+            ])
+          ),
+        }) + '\n'
+      )
     }
     return response
   }
@@ -169,7 +187,8 @@ test.group('standalone Vue proof response boundary', (group) => {
           )
         const replay = await session.request(proof.path, { form })
         protectedResponse(assert, replay)
-        await destination(assert, session, replay, fallback)
+        const replayed = await destination(assert, session, replay, fallback)
+        assert.include(await replayed.text(), 'This link is invalid')
       })
 
       for (const expired of [false, true]) {
@@ -192,7 +211,40 @@ test.group('standalone Vue proof response boundary', (group) => {
           })
           protectedResponse(assert, failed)
           const followed = await destination(assert, session, failed, fallback)
-          assert.notInclude(await followed.text(), proof.token)
+          const feedback = await followed.text()
+          assert.include(feedback, 'This link is invalid')
+          assert.notInclude(feedback, proof.token)
+          assert.exists(await db.from(proof.table).where('hash', proof.hash).first())
+        })
+      }
+
+      for (const variant of ['encoded', 'trailing-slash', 'encoded-separator'] as const) {
+        test(`${family} ${representation}: ${variant} canonical recovery`, async ({ assert }) => {
+          const proof = await proofFor(family)
+          const session = new ProofSession(inertia)
+          await session.prime()
+          const encodedToken = `%${proof.token.charCodeAt(0).toString(16)}${proof.token.slice(1)}`
+          const path =
+            variant === 'encoded'
+              ? `/${family}/${encodedToken}`
+              : variant === 'trailing-slash'
+                ? `${proof.path}/`
+                : `/${family}/${proof.token}%2Fextra`
+          const rejected = await session.request(`${path}?token=${proof.token}`, {
+            form,
+            csrf: false,
+            referer: 'https://untrusted.example/steal',
+          })
+          protectedResponse(assert, rejected)
+          const recovered = await destination(
+            assert,
+            session,
+            rejected,
+            variant === 'encoded-separator' ? fallback : proof.path
+          )
+          const feedback = await recovered.text()
+          assert.include(feedback, 'The form expired.')
+          assert.notInclude(feedback, password)
           assert.exists(await db.from(proof.table).where('hash', proof.hash).first())
         })
       }
@@ -209,7 +261,9 @@ test.group('standalone Vue proof response boundary', (group) => {
         })
         protectedResponse(assert, rejected)
         const recovered = await destination(assert, session, rejected, fallback)
-        assert.notInclude(await recovered.text(), password)
+        const feedback = await recovered.text()
+        assert.include(feedback, 'The form expired.')
+        assert.notInclude(feedback, password)
       })
 
       test(`${family} ${representation}: genuine malformed body rejection precedes CSRF`, async ({
@@ -245,9 +299,18 @@ test.group('standalone Vue proof response boundary', (group) => {
           const feedback = await recovered.text()
           assert.include(feedback, 'The form expired.')
           assert.notInclude(feedback, password)
+          assert.exists(await db.from(proof.table).where('hash', proof.hash).first())
           const corrected = await session.request(proof.path, { form })
           protectedResponse(assert, corrected)
           await destination(assert, session, corrected, '/login')
+          assert.notExists(await db.from(proof.table).where('hash', proof.hash).first())
+          if (family === 'confirm-email')
+            assert.equal((await User.findOrFail(proof.user.id)).email, 'changed@example.test')
+          else
+            assert.equal(
+              (await User.verifyCredentials(proof.user.email, password)).id,
+              proof.user.id
+            )
         })
       }
 
@@ -310,7 +373,19 @@ test.group('standalone Vue proof response boundary', (group) => {
         return (await dashboard.json()) as { props: { user: { id: number } } }
       })
       assert.equal(current.props.user.id, other.id)
-      assert.isUndefined((await followOn).headers()['referer'])
+      const referrer = (await followOn).headers()['referer']
+      assert.equal(referrer ?? '', '')
+      if (process.env.PROOF_HEADER_EVIDENCE)
+        appendFileSync(
+          process.env.PROOF_HEADER_EVIDENCE,
+          JSON.stringify({
+            browser: true,
+            family,
+            referrer: referrer ?? null,
+            existingUserId: current.props.user.id,
+            proofOwnerId: proof.user.id,
+          }) + '\n'
+        )
       assert.equal((await User.findOrFail(other.id)).email, other.email)
       if (family !== 'confirm-email') {
         const passwordLabel = family === 'reset-password' ? 'New password' : 'Password'
