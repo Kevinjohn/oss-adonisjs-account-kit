@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { pathToFileURL } from 'node:url'
 import { Cast, fit } from './cast.js'
+import { validateDemoIdentity } from './demo_identity.js'
 import type { HttpOptions } from './scenarios.js'
 import { createScenarios } from './scenarios.js'
 
@@ -28,10 +29,12 @@ const shorten = (text: string) =>
 let server: ReturnType<typeof spawn> | undefined
 let log = ''
 let appDir = ''
+let childEnv: NodeJS.ProcessEnv = process.env
 async function startServer() {
   log = ''
   server = spawn('node', ['ace', 'serve'], {
     cwd: appDir,
+    env: childEnv,
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -155,7 +158,7 @@ export function recordingFailure(primary: unknown, cleanupErrors: Error[]) {
   return undefined
 }
 const ace = (...args: string[]) =>
-  execFileSync('node', ['ace', ...args], { cwd: appDir, encoding: 'utf8' })
+  execFileSync('node', ['ace', ...args], { cwd: appDir, env: childEnv, encoding: 'utf8' })
 
 // ---- HTTP --------------------------------------------------------------------------------------
 
@@ -255,7 +258,9 @@ const scenarios: Record<string, (cast: Cast) => Promise<void>> = createScenarios
 async function main() {
   const [app, outDir, ...only] = process.argv.slice(2)
   if (!app || !outDir) throw new Error('Usage: node record.ts <app-dir> <out-dir> [scenario ...]')
-  appDir = app
+  const demo = validateDemoIdentity(app, 'feature-recording')
+  appDir = demo.root
+  childEnv = demo.childEnv
   let firstSignal: NodeJS.Signals | undefined
   let forceCleanup = false
   let cleanupPromise: Promise<void> | undefined

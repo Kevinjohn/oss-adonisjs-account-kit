@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdtemp, mkdir, readFile, rm, writeFile, chmod, readdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile, chmod, readdir, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +16,34 @@ async function fixture() {
   const app = join(root, 'app')
   const output = join(root, 'casts')
   await Promise.all([mkdir(bin), mkdir(app)])
+  await Promise.all([mkdir(join(app, 'config')), mkdir(join(app, 'tmp'))])
+  await writeFile(
+    join(app, 'package.json'),
+    JSON.stringify({
+      name: 'fake-demo-app',
+      dependencies: {
+        '@adonisjs/core': '^7.0.0',
+        '@adonisjs/lucid': '^22.0.0',
+        'better-sqlite3': '^13.0.0',
+      },
+    })
+  )
+  await writeFile(join(app, 'ace'), '// synthetic Ace entrypoint\n')
+  await writeFile(
+    join(app, 'config/database.ts'),
+    `import { defineConfig } from '@adonisjs/lucid'
+import app from '@adonisjs/core/services/app'
+const dbConfig = defineConfig({
+  connection: 'sqlite',
+  connections: { sqlite: { client: 'better-sqlite3', connection: { filename: app.tmpPath('db.sqlite3') } } },
+})
+export default dbConfig
+`
+  )
+  await writeFile(
+    join(app, '.account-kit-demo.json'),
+    JSON.stringify({ version: 1, role: 'feature-recording', root: await realpath(app) })
+  )
   await writeFile(
     join(bin, 'node'),
     `#!/bin/sh
