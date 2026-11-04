@@ -33,7 +33,7 @@ function pauseNextSessionLookup(userId: number | string) {
   }
 }
 
-test.group('Session guard races', (group) => {
+test.group('Paused session guard races', (group) => {
   group.each.setup(truncateDatabase)
 
   test('a committed reset rejects a login paused inside the real session guard', async ({
