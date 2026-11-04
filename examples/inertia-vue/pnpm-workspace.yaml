@@ -14,7 +14,5 @@ minimumReleaseAgeExclude:
   - lucide-react@1.48.0
 onlyBuiltDependencies:
   - better-sqlite3
-overrides:
-  eslint-plugin-react>eslint: ^10.11.0
 # kit:pack creates the vendor tarball the install needs, so scripts must run before the first install.
 verifyDepsBeforeRun: false
