@@ -69,7 +69,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # Formatting, lint, types, build and the built exports do not depend on the database, so
+      # Formatting, lint, types, build and built-package checks do not depend on the database, so
       # only the SQLite leg runs them.
       - name: Check formatting
         if: matrix.database == 'better-sqlite3'
@@ -83,3 +83,5 @@ jobs:
         run: pnpm build
       - if: matrix.database == 'better-sqlite3'
         run: pnpm test:built-exports
+      - if: matrix.database == 'better-sqlite3'
+        run: pnpm test:built-setup

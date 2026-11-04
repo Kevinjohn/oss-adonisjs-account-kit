@@ -4,6 +4,19 @@ Validation uses Node 24 and pnpm. Dated candidate records below identify the rev
 configurations tested; historical totals do not describe the latest candidate. Check each pull
 request for its current automated workflow results.
 
+## Changelog link policy
+
+The default relative-path and heading checks in `tests/docs_links.spec.ts` exclude
+`CHANGELOG.md`, because historical relative destinations can age out. The separate check of
+GitHub links into this repository's `main` tree still includes the changelog. These checks do
+not fetch external URLs.
+
+Preserve dated release prose and external artifact URLs. Review changed current-relative
+changelog links against their actual destinations and headings; correct a proven broken link,
+or use an immutable historical source when its artifact was intentionally removed. Run
+`pnpm quick:test --files=docs_links.spec.ts` for the applicable checked links, without claiming
+it validates the excluded relative changelog links.
+
 ## Checklist
 
 Run from the checkout on Node 24 (`nvm use`). One line per gate; the link gives the detail and the
@@ -21,6 +34,33 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 10. Confirm the failure-path evidence still holds on the candidate: [credential and invitation failure coverage](#credential-and-invitation-failure-coverage).
 11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
 12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
+
+## Current CI coverage — 2026-11-04
+
+The checks workflow runs the full package suite on SQLite and PostgreSQL 16. Formatting, lint,
+typecheck, build, built exports, and built setup run on the SQLite leg; built setup follows build
+and verifies the packaged migration templates through the compiled Ace command.
+
+The compatibility workflow runs the minimum and latest peer suites on PostgreSQL 16, plus the
+experimental MySQL 8.4 suite. Its packed-consumer coverage consists of six separate invocations:
+fresh/latest, minimum, and service-only on SQLite and PostgreSQL. Each PostgreSQL invocation uses
+an isolated Ubuntu 24.04 runner, verifies native PostgreSQL 16 tools, starts the managed cluster,
+and creates the dedicated `account_kit_consumer` database before starting the consumer. Each leg is
+configured to upload its `evidence.json` and available `commands.log` even after a failed command;
+missing evidence makes artifact upload fail.
+
+The [4 November 2026 compatibility run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41917496086)
+passed all six consumer legs. Their retained records identify checkout `0a3f88a20c9aea96b2f4bab8f8f717207c2a008c`
+(including source `f71a26ce73dcd051856d2b3ce5388e75c93bbaf7`), candidate SHA-256
+`0cfa93a6692cb44eec0b4785dd6de45264059cd172905d633f81419d95b52343`, Node 24.22.1,
+pnpm 11.23.0, installed package/driver versions and SQLite 3.53.2 or PostgreSQL 16.15.
+Both service-only records confirm that all six optional backend integrations are absent.
+These are dated candidate results; use the current run and all six artifacts for later candidates.
+
+The local full check profile explicitly runs
+`pnpm test:recipe --recipe=api-password-reset`. The changed-file planner rejects a selected test gate
+when its summary contains only skipped or todo cases; passed, failed, and expected-failure
+regression cases count as executed. Record source-gate, consumer, and hosted CI evidence separately.
 
 ## Scoped package candidate — 2026-11-03
 

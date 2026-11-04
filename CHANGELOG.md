@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Always attempt shutdown of consumer PostgreSQL clients after connection or query failure, preserving operation and shutdown failures together.
+
+- Install each generated demo from its exact uniquely owned package archive and retain archive-derived metadata and SHA-256 evidence beside the app.
+
+- Restrict destructive demo recording to attested generated SQLite apps and bound cleanup of recorder-owned processes after failure or interruption.
+
+- Publish setup-choice JSON downloads, correct guide anchors and generated API edit links, and clarify recipe imports and trusted-proxy prerequisites.
 - Require literal boolean authentication policy results across password, magic-link and social sign-in, preserving provisional-credential cleanup and callback failures.
 - Reject noncanonical numeric managed-route IDs and unsupported notification-readiness modes.
 - Validate social callback paths without URL normalization changes, and bound inspected environment-variable names before resolving them.
@@ -12,6 +19,8 @@
 
 - Fix permanent account deletion through the Lucid adapter for active user models composed with
   `SoftDeletes`, preserving model delete hooks, transaction rollback and invitation retention options.
+- Pass an explicit recipe key from the full check profile to the recipe test.
+- Reject selected changed-file test gates that execute no cases; skipped and todo-only summaries do not count as execution, while expected-failure regressions do.
 
 ## 0.2.0 - 2026-11-03
 

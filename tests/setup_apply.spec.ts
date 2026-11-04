@@ -17,7 +17,21 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+import type { SetupPlan } from '../src/setup/types.js'
 import { stock } from './helpers/native_starter_fixture.js'
+
+async function snapshotDestinations(root: string, changes: SetupPlan['changes']) {
+  return Promise.all(
+    changes.map(async ({ path }) => {
+      try {
+        return { path, content: await readFile(join(root, path)) }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+        return { path, content: null }
+      }
+    })
+  )
+}
 
 test.group('setup apply', (group) => {
   registerSetupTeardown(group)
@@ -31,7 +45,14 @@ test.group('setup apply', (group) => {
       plan.diagnostics.map(({ field }) => field),
       '.env.account-kit.example'
     )
+    for (const prefix of ['start/', 'app/', 'config/', 'database/migrations/'])
+      assert.isTrue(
+        plan.changes.some(({ path }) => path.startsWith(prefix)),
+        prefix
+      )
+    const before = await snapshotDestinations(root, plan.changes)
     await assert.rejects(() => applySetup(root, plan), /Setup has blocking diagnostics/)
+    assert.deepEqual(await snapshotDestinations(root, plan.changes), before)
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
     assert.equal(await readFile(join(root, '.env.account-kit.example'), 'utf8'), 'owner value\n')
   })
@@ -184,7 +205,9 @@ test.group('setup apply', (group) => {
     const last = plan.changes.find(({ path }) => path.includes('_account_kit_'))!
     await mkdir(join(root, 'database/migrations'), { recursive: true })
     await writeFile(join(root, last.path), '// owner changed this migration\n')
+    const before = await snapshotDestinations(root, plan.changes)
     await assert.rejects(() => applySetup(root, plan), /Setup conflict/)
+    assert.deepEqual(await snapshotDestinations(root, plan.changes), before)
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit_setup.json')
     assert.equal(await readFile(join(root, last.path), 'utf8'), '// owner changed this migration\n')
   })

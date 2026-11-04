@@ -1,7 +1,10 @@
 import { cp } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 
-/** Copy source without a developer's database, secrets or installed/build artifacts. */
+/**
+ * Copies working-tree source, filtering top-level local artifact directories and .env/.env.* files.
+ * Keeps .env.example and nested application paths; excludes recipe acceptance tests.
+ */
 export async function copyFixture(source: string, destination: string) {
   const localDirectories = new Set(['node_modules', 'tmp', 'build', 'vendor', '.adonisjs'])
   // Recipe acceptance specs import the example's own config seam, which the generated consumer
