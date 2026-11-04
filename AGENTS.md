@@ -21,9 +21,8 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 
 - `pnpm check` runs formatting, lint, types, SQLite tests, build, built exports and built setup.
 - `pnpm check --full` appends PostgreSQL, coverage, experimental MySQL, the default consumer,
-  a recipe check and the docs build. It does not run every compatibility or example scenario.
-- The current full-profile recipe step lacks a selection; use
-  `pnpm test:recipe --recipe=api-password-reset` until that invocation is repaired.
+  the API password-reset recipe and the docs build. It does not run every compatibility or
+  example scenario.
 - `pnpm typecheck` runs TypeScript without emitting.
 - `pnpm lint` runs ESLint with the AdonisJS config.
 - `pnpm format` formats the repository with Prettier.
@@ -32,6 +31,7 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 - `pnpm pretest` runs lint before the test suite.
 - `pnpm test` runs the SQLite suite with coverage thresholds.
 - `pnpm test:built-exports` checks the package's built exports.
+- `pnpm test:built-setup` checks the built Ace setup command and packaged migration templates.
 - `pnpm test:consumer` packs and checks the package in a consumer application.
 - `pnpm test:pg` runs the suite against a local PostgreSQL 16 database.
 - `pnpm pg:start` starts the local PostgreSQL 16 service.

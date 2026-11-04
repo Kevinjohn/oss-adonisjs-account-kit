@@ -1,27 +1,47 @@
-# 0.2.0 candidate release gate
+# Release gate and historical candidate evidence
 
-The release candidate is the archive built from source `1ef240c72c4445482baf8f30b806b9128550d811`, with SHA-256 `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. The required source, distribution, recipe and reference-example checks passed against that unchanged archive. The dated [second-alpha verification record](verification.md#second-alpha-020-candidate) records the initial test-source failure, correction, successful reruns and remaining owner checks; historical totals do not substitute for this evidence. See the [compatibility assessment](../reference/compatibility.md) for supported dependency floors and boundaries.
+Follow [Releasing](releasing.md) for the current GitHub release procedure. The release workflow
+runs `checks`, `compat` and `examples` as prerequisites, then runs `bin/release_check.sh` before
+creating the prerelease. The documentation site build is a separate workflow gate.
 
-## Owner release decision
+The local release script checks that the version tag does not already exist, requires a dated
+changelog section for that version and an empty Unreleased section, then builds and packs the
+working-tree candidate. It writes the archive path, version and release notes with the archive's
+SHA-256. Running the local script alone does not execute the workflow's prerequisite jobs.
 
-Distribution is through GitHub release tarballs only. Until the GitHub release workflow is restored, prepare a release manually:
+## Reviewed starting baseline — 4 November 2026
 
-```sh
-pnpm build && pnpm pack
-gh release create <tag> kevinjohn-adonisjs-account-kit-<version>.tgz \
-  --notes "SHA-256: $(shasum -a 256 kevinjohn-adonisjs-account-kit-<version>.tgz | cut -d ' ' -f 1)"
-```
+The remediation review started at source `8a60eee1b6f2b5ccd9c9a74e9f488d6bbadcd3a5`, with
+manifest and changelog version `0.2.0`. No archive hash or present check result is assigned to
+that baseline here. Each later candidate needs its own source revision, actual consumed archive,
+checksum and applicable check results. A version label alone does not identify its bytes.
 
-Publish `0.2.0` through that route only after the exact candidate checks and final review are complete and recorded.
+## Historical second-alpha candidate — 22 October 2026
 
-Merge and publish actions belong to the repository owner. After publication, the owner must separately install the advertised release using the root [README install instructions](../../README.md#install) in a fresh application and verify that the documented install path resolves the published artifact. That post-publication smoke check is not satisfied by candidate archive tests.
-
-The owner also performs any manual viewport, keyboard, or other checks outside the automated suites. They remain owner checks and are not represented as completed by the candidate test runs.
+The [dated second-alpha record](verification.md#second-alpha-020-candidate) identifies archive
+source `1ef240c72c4445482baf8f30b806b9128550d811` and SHA-256
+`3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693`. It preserves the initial
+test-source failure, correction, reruns and remaining owner checks. Keep its execution and
+publication boundaries with that historical candidate.
 
 ## Upgrade and rollback
 
-The comparison with the actual published `0.1.1` tarball found all 313 files under `package/build/` byte-identical, including 14 configuration and migration templates. There is no source delta in `src/`, `adapters/`, `commands/`, `providers/`, `services/`, `http/`, `testing/`, `stubs/`, `configure.ts`, or `index.ts`. Version `0.2.0` therefore adds no package-generated configuration or migration; follow the existing configuration and migration guidance in [usage](../guide/usage.md).
+The historical record compared the published `0.1.1` tarball with its identified candidate and found all
+313 files under `package/build/` byte-identical, including 14 configuration and migration
+templates. That comparison applies only to those archives. Assess current upgrades against the
+[current changelog](../../CHANGELOG.md), [usage](../guide/usage.md) and
+[compatibility assessment](../reference/compatibility.md), including their configuration and
+migration requirements.
 
-Application-owned policies and configuration remain authoritative during an upgrade and rollback. Credentials and committed outbox entries also remain authoritative: rolling back to `0.1.1` does not undo committed credential changes or make delivered or pending outbox work disappear. Recover pending effects through the application's existing outbox process; do not replay consumed bearer credentials.
+Application policies, credentials and committed outbox entries remain application-owned during
+an upgrade or rollback. A package rollback does not undo committed credential changes or
+remove delivered or pending outbox work. Recover pending effects through the application's
+existing outbox process and preserve consumed-proof boundaries.
 
-The pre-`0.1.0` schema caveat is historical: unreleased migration stubs were squashed to create the final schema directly, so a database made by those earlier unreleased builds has no in-place upgrade path. Reset that database and run the current migrations. This caveat does not describe an upgrade from the published `0.1.1` package to `0.2.0`.
+The pre-`0.1.0` schema caveat is historical: unreleased migration stubs were squashed into the
+final schema, so a database created from those earlier unreleased builds needs a reset rather
+than an in-place upgrade. The dated verification record retains that context.
+
+After a release is published, verify the advertised README install path in a fresh application
+using the published bytes. Candidate archive tests establish their own inputs and do not
+establish this post-publication install result.

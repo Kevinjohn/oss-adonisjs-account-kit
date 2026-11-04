@@ -35,10 +35,8 @@ pnpm quick:test
 
 - `pnpm check` runs formatting, lint, types, SQLite tests, build, built exports and built setup.
 - `pnpm check --full` appends PostgreSQL, coverage, experimental MySQL, the default consumer,
-  a recipe check and the docs build. Compatibility matrices and standalone example journeys
+  the API password-reset recipe and the docs build. Compatibility matrices and standalone example journeys
   remain separate gates.
-- The current full-profile recipe step lacks a selection; use
-  `pnpm test:recipe --recipe=api-password-reset` until that invocation is repaired.
 
 Run the repository scripts, not the bare tools. They carry the flags used by CI.
 
@@ -52,6 +50,7 @@ Run the repository scripts, not the bare tools. They carry the flags used by CI.
 | `pnpm test:pg`            | Runs the suite against a local PostgreSQL 16 database     |
 | `pnpm build`              | Compiles to `build/`                                      |
 | `pnpm test:built-exports` | Checks the package's built exports                        |
+| `pnpm test:built-setup`   | Checks built Ace setup and packaged migration templates   |
 | `pnpm test:consumer`      | Packs the package and checks it in a consumer application |
 
 `pnpm test:pg` needs PostgreSQL 16 binaries (`brew install postgresql@16` on macOS). To use your

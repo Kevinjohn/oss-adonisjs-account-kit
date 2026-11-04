@@ -4,6 +4,19 @@ Validation uses Node 24 and pnpm. Dated candidate records below identify the rev
 configurations tested; historical totals do not describe the latest candidate. Check each pull
 request for its current automated workflow results.
 
+## Changelog link policy
+
+The default relative-path and heading checks in `tests/docs_links.spec.ts` exclude
+`CHANGELOG.md`, because historical relative destinations can age out. The separate check of
+GitHub links into this repository's `main` tree still includes the changelog. These checks do
+not fetch external URLs.
+
+Preserve dated release prose and external artifact URLs. Review changed current-relative
+changelog links against their actual destinations and headings; correct a proven broken link,
+or use an immutable historical source when its artifact was intentionally removed. Run
+`pnpm quick:test --files=docs_links.spec.ts` for the applicable checked links, without claiming
+it validates the excluded relative changelog links.
+
 ## Checklist
 
 Run from the checkout on Node 24 (`nvm use`). One line per gate; the link gives the detail and the
