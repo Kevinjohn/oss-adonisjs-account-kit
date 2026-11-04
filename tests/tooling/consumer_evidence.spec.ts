@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import {
   existsSync,
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -12,8 +13,10 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
+import * as ts from 'typescript'
 import {
   collectServiceOnlyEvidence,
+  generateServiceSource,
   optionalBackendIntegrations,
 } from '../../bin/helpers/consumer/service_only.js'
 
@@ -37,6 +40,27 @@ function appFixture(driver = 'better-sqlite3') {
   }
   return appRoot
 }
+
+test('generated service source parses for SQLite and PostgreSQL', ({ assert: japaAssert }) => {
+  for (const database of ['sqlite', 'postgres'] as const) {
+    const result = ts.transpileModule(generateServiceSource(database), {
+      fileName: 'service.ts',
+      compilerOptions: {
+        module: ts.ModuleKind.NodeNext,
+        target: ts.ScriptTarget.ES2022,
+      },
+      reportDiagnostics: true,
+    })
+    const errors = (result.diagnostics ?? []).filter(
+      (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error
+    )
+    japaAssert.deepEqual(
+      errors.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')),
+      [],
+      `${database} service source should have no TypeScript syntax diagnostics`
+    )
+  }
+})
 
 test('service-only evidence collector rejects missing or unreadable required versions', async () => {
   const appRoot = appFixture()
@@ -130,11 +154,16 @@ test('a failure before settings initialize writes a failed incomplete evidence r
         '--enable-source-maps',
         join(root, 'bin/test_consumer.ts'),
         '--mode=unknown',
+        '--candidate-revision=cli-revision',
       ],
       {
         cwd: root,
         encoding: 'utf8',
-        env: { ...process.env, CONSUMER_EVIDENCE_PATH: evidencePath },
+        env: {
+          ...process.env,
+          CONSUMER_EVIDENCE_PATH: evidencePath,
+          CANDIDATE_REVISION: 'environment-revision',
+        },
       }
     )
     assert.notEqual(result.status, 0, result.stdout + result.stderr)
@@ -146,8 +175,66 @@ test('a failure before settings initialize writes a failed incomplete evidence r
     assert.match(evidence.error, /Unknown mode: unknown/)
     assert.equal(evidence.revision, 'unavailable')
     assert.equal(evidence.packageManager, 'unavailable')
+    assert.equal(evidence.candidateRevision, 'cli-revision')
     assert.equal('candidateSha256' in evidence, false)
     assert.equal(existsSync(join(directory, 'nested', 'commands.log')), true)
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
+  }
+})
+
+test('final candidate evidence redacts secret metadata without changing its JSON types', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'consumer-evidence-redaction-'))
+  const evidencePath = join(directory, 'evidence.json')
+  const secret = 'fictional-db-password-marker'
+  const candidatePath = join(directory, `missing-${secret}.tgz`)
+  const candidateRevision = `revision-${secret}`
+  const commandDirectory = join(directory, 'bin')
+  const pnpmPath = join(commandDirectory, 'pnpm')
+  mkdirSync(commandDirectory)
+  writeFileSync(pnpmPath, `#!/bin/sh\nprintf '%s\\n' '${secret}'\n`)
+  chmodSync(pnpmPath, 0o755)
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--import=@poppinss/ts-exec',
+        '--enable-source-maps',
+        join(root, 'bin/test_consumer.ts'),
+        '--candidate-tarball=' + candidatePath,
+        '--candidate-revision=' + candidateRevision,
+      ],
+      {
+        cwd: root,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          DB_PASSWORD: secret,
+          CONSUMER_EVIDENCE_PATH: evidencePath,
+          PATH: `${commandDirectory}:${process.env.PATH ?? ''}`,
+        },
+      }
+    )
+    assert.notEqual(result.status, 0, result.stdout + result.stderr)
+    assert.equal(result.error, undefined)
+    const serialized = readFileSync(evidencePath, 'utf8')
+    const evidence = JSON.parse(serialized)
+    const commandLog = readFileSync(join(directory, 'commands.log'), 'utf8')
+    assert.equal(evidence.status, 'failed')
+    assert.equal(typeof evidence.candidateTarball, 'string')
+    assert.equal(evidence.candidateTarball.includes('[REDACTED]'), true)
+    assert.equal(evidence.candidateRevision, `revision-[REDACTED]`)
+    assert.equal(evidence.packageManager, '[REDACTED]')
+    assert.equal(typeof evidence.commands, 'object')
+    assert.equal(Array.isArray(evidence.commands), true)
+    assert.equal(typeof evidence.runs, 'object')
+    assert.equal(Array.isArray(evidence.runs), true)
+    assert.equal(typeof evidence.prepareOnly, 'boolean')
+    assert.equal(typeof evidence.error, 'string')
+    assert.equal(serialized.includes(secret), false)
+    assert.equal(commandLog.includes(secret), false)
+    assert.equal(commandLog.includes('[REDACTED]'), true)
+    assert.equal((result.stdout + result.stderr).includes(secret), false)
   } finally {
     rmSync(directory, { recursive: true, force: true })
   }

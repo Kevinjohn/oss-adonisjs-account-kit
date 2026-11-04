@@ -37,7 +37,9 @@ interface ConsumerEvidence {
   logs?: LogRecord[]
 }
 
-function option(name: string, fallback: string) {
+function option(name: string, fallback: string): string
+function option(name: string, fallback?: string): string | undefined
+function option(name: string, fallback?: string) {
   const prefix = '--' + name + '='
   return process.argv.find((value) => value.startsWith(prefix))?.slice(prefix.length) ?? fallback
 }
@@ -51,9 +53,20 @@ const redact = (value: unknown) => {
   const text = String(value)
   return secret ? text.split(secret).join('[REDACTED]') : text
 }
-const candidateInput = process.env.CANDIDATE_TARBALL ?? option('candidate-tarball', '')
-const configuredCandidateRevision =
-  process.env.CANDIDATE_REVISION ?? option('candidate-revision', '')
+
+function redactStrings(value: unknown): unknown {
+  if (typeof value === 'string') return redact(value)
+  if (Array.isArray(value)) return value.map(redactStrings)
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [redact(key), redactStrings(entry)])
+    )
+  }
+  return value
+}
+
+const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
+const configuredCandidateRevision = option('candidate-revision', process.env.CANDIDATE_REVISION)
 
 let evidencePath = process.env.CONSUMER_EVIDENCE_PATH
   ? resolve(process.env.CONSUMER_EVIDENCE_PATH)
@@ -68,7 +81,7 @@ const evidence: ConsumerEvidence = {
   revision: 'unavailable',
   sourceChanges: 'unavailable',
   candidateRevision:
-    configuredCandidateRevision || (candidateInput ? 'unknown external archive revision' : null),
+    configuredCandidateRevision ?? (candidateInput ? 'unknown external archive revision' : null),
   runtime: process.versions.node,
   packageManager: 'unavailable',
   database: option('database', 'sqlite'),
@@ -184,7 +197,9 @@ try {
       evidence.commands = commands
       evidence.logs = logs
       try {
-        const commandLog = logs.map((entry) => '$ ' + entry.command + '\n' + entry.text).join('\n')
+        const commandLog = redact(
+          logs.map((entry) => '$ ' + entry.command + '\n' + entry.text).join('\n')
+        )
         await writeFile(join(dirname(evidencePath), 'commands.log'), commandLog + '\n')
       } catch (error) {
         collectionErrors.push(error instanceof Error ? error : new Error(String(error)))
@@ -204,7 +219,7 @@ try {
     }
 
     try {
-      await writeFile(evidencePath, JSON.stringify(evidence, null, 2) + '\n')
+      await writeFile(evidencePath, JSON.stringify(redactStrings(evidence), null, 2) + '\n')
     } catch (error) {
       collectionErrors.push(error instanceof Error ? error : new Error(String(error)))
     }
@@ -221,13 +236,14 @@ try {
   }
 
   if (evidencePath) {
-    console.log('Consumer evidence: ' + evidencePath)
-    console.log('Consumer run directory: ' + (tempRoot ?? dirname(evidencePath)))
-    console.log('Candidate revision: ' + (evidence.candidateRevision ?? evidence.revision))
-    if (evidence.candidateSha256) console.log('Candidate SHA-256: ' + evidence.candidateSha256)
+    console.log('Consumer evidence: ' + redact(evidencePath))
+    console.log('Consumer run directory: ' + redact(tempRoot ?? dirname(evidencePath)))
+    console.log('Candidate revision: ' + redact(evidence.candidateRevision ?? evidence.revision))
+    if (evidence.candidateSha256)
+      console.log('Candidate SHA-256: ' + redact(evidence.candidateSha256))
     console.log('Status: ' + evidence.status)
   }
 }
 
-if (collectionFailure) throw collectionFailure
-if (failure) throw failure
+if (collectionFailure) throw new Error(redact(errorMessage(collectionFailure)))
+if (failure) throw new Error(redact(errorMessage(failure)))
