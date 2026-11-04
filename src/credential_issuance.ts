@@ -28,7 +28,8 @@ export interface IssuanceOptions {
  * Adonis token issuance and session writes do not share the package transaction, so a
  * post-issuance lock closes the gap before the credential is returned. Session guards with
  * `sessionManagement` receive a fresh handle; only its hash is stored, in that same transaction.
- * Any failure terminates the credential.
+ * A failure attempts to terminate the credential. If termination also fails, both errors are
+ * reported and the credential may remain active.
  */
 export async function establishCredential<Credential>(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
