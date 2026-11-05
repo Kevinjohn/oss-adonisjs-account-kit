@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type { Group } from '@japa/runner/core'
 import { defaultSetupChoices } from '../../src/setup/defaults.js'
 import { setupVersions } from './setup_versions.js'
+import { clearSelectorEnv } from './selector_env.js'
 
 export const cleanupRoots: string[] = []
 
@@ -89,6 +90,7 @@ export async function fixture() {
 }
 
 export function registerSetupTeardown(group: Group) {
+  group.each.setup(() => clearSelectorEnv())
   group.teardown(async () => {
     for (const root of cleanupRoots) await rm(root, { recursive: true, force: true })
   })

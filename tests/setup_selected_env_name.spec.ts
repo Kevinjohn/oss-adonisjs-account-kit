@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { selectedEnvName } from '../src/setup/selected_environment.js'
 import { defaultExpression, defaultImportName, parseSetupSource } from '../src/setup/ts_source.js'
+import { clearSelectorEnv } from './helpers/selector_env.js'
 
 async function select(root: string, expression: string, variable?: string, extra = '') {
   const source = await parseSetupSource(
@@ -20,10 +21,12 @@ async function select(root: string, expression: string, variable?: string, extra
 
 async function withEnv(contents: string, run: (root: string) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), 'account-setup-env-name-'))
+  const restoreEnv = clearSelectorEnv()
   try {
     await writeFile(join(root, '.env'), contents)
     await run(root)
   } finally {
+    restoreEnv()
     await rm(root, { recursive: true, force: true })
   }
 }

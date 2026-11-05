@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { defaultSetupChoices } from '../../src/setup/defaults.js'
 import type { SetupChoices, SetupInspection } from '../../src/setup/types.js'
 import { setupVersions } from './setup_versions.js'
+import { clearSelectorEnv } from './selector_env.js'
 
 export const versions: Record<string, string> = { ...setupVersions, '@adonisjs/mail': '10.0.0' }
 
@@ -60,9 +61,11 @@ export async function withFixture(
   run: (choices: SetupChoices, state: SetupInspection, root: string) => Promise<void>
 ) {
   const { root, choices, state } = await prerequisiteFixture()
+  const restoreEnv = clearSelectorEnv()
   try {
     await run(choices, state, root)
   } finally {
+    restoreEnv()
     await rm(root, { recursive: true, force: true })
   }
 }
