@@ -9,6 +9,9 @@ changelog section for that version and an empty Unreleased section, then builds 
 working-tree candidate. It writes the archive path, version and release notes with the archive's
 SHA-256. Running the local script alone does not execute the workflow's prerequisite jobs.
 
+Before running the release workflow, the owner performs any manual viewport, keyboard or other
+checks outside the automated suites. Candidate test runs do not record those checks as completed.
+
 ## Reviewed starting baseline — 4 November 2026
 
 The remediation review started at source `8a60eee1b6f2b5ccd9c9a74e9f488d6bbadcd3a5`, with
