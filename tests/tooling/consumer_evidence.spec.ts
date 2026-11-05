@@ -240,7 +240,7 @@ test('final candidate evidence redacts secret metadata without changing its JSON
   }
 })
 
-test('redaction preserves evidence keys and tool-owned status enums', () => {
+test('redaction preserves evidence keys and tool-owned values', () => {
   const expectedKeys = [
     'candidateRevision',
     'commands',
@@ -259,7 +259,7 @@ test('redaction preserves evidence keys and tool-owned status enums', () => {
     'userIdType',
     'usersTable',
   ]
-  for (const password of ['status', 'failed']) {
+  for (const password of ['status', 'failed', 'sqlite']) {
     const directory = mkdtempSync(join(tmpdir(), 'consumer-evidence-schema-'))
     const evidencePath = join(directory, 'evidence.json')
     try {
@@ -287,6 +287,7 @@ test('redaction preserves evidence keys and tool-owned status enums', () => {
       const evidence = JSON.parse(readFileSync(evidencePath, 'utf8'))
       assert.deepEqual(Object.keys(evidence).sort(), expectedKeys)
       assert.equal(evidence.status, 'failed')
+      assert.equal(evidence.database, 'sqlite')
       assert.equal(evidence.candidateRevision, '[REDACTED]')
       assert.match(result.stdout, /Candidate revision: \[REDACTED\]/)
       assert.match(result.stdout, /Status: failed/)
