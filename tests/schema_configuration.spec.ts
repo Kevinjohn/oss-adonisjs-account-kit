@@ -157,8 +157,8 @@ for (const userIdType of idTypes) {
       assert.lengthOf(await kit.db.from('social_identities').where('user_id', created.id), 0)
 
       const accountColumns = ['email_verified_at', 'unverified_email', 'credentials_changed_at']
-      for (const column of accountColumns)
-        assert.isTrue(await kit.db.connection().schema.hasColumn(usersTable, column), column)
+      for (const name of accountColumns)
+        assert.isTrue(await kit.db.connection().schema.hasColumn(usersTable, name), name)
       const down = new MigrationRunner(kit.db, kit.app, {
         direction: 'down',
         step: migrationNames.length,
@@ -170,8 +170,8 @@ for (const userIdType of idTypes) {
         assert.isFalse(await tableExists(kit, table))
       }
       assert.isTrue(await tableExists(kit, usersTable))
-      for (const column of accountColumns)
-        assert.isFalse(await kit.db.connection().schema.hasColumn(usersTable, column), column)
+      for (const name of accountColumns)
+        assert.isFalse(await kit.db.connection().schema.hasColumn(usersTable, name), name)
     } finally {
       await dropPackageTables(kit.db.connection().schema)
       await kit.db.connection().schema.dropTableIfExists(usersTable)
