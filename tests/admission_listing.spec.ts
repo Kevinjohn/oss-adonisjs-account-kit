@@ -110,12 +110,8 @@ test.group('admission listing', (group) => {
 
   test('pages past rows whose created_at was written in SQL format', async ({ assert }) => {
     const { actor } = await seed()
-    await kit.db.from('account_admissions').update({
-      created_at:
-        kit.db.connection().dialect.name === 'better-sqlite3'
-          ? '2026-01-01 00:00:00'
-          : '2026-01-01T00:00:00Z',
-    })
+    // Every engine accepts this form; SQLite keeps it as text, where it sorts below ISO values.
+    await kit.db.from('account_admissions').update({ created_at: '2026-01-01 00:00:00' })
     const { admission } = makeAdmission(kit, approvalOnly)
     const first = await admission.list({ actorId: actor.id, limit: 2 })
     assert.isString(first.nextCursor)
