@@ -66,6 +66,8 @@ export async function establishCredential<Credential>(
     })
     return credential
   } catch (error) {
+    // With no token, `terminate()` would revoke the one that authenticated this request.
+    if (guard.strategy === 'access_tokens' && credential === undefined) throw error
     try {
       await guard.terminate(credential)
     } catch (cleanupError) {
