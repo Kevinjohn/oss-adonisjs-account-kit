@@ -7,6 +7,27 @@ import { protectManagedSessionConfig } from '../src/http/session_store_protectio
 import { protectedContext, ServerStore } from './helpers/protected_context.js'
 
 test.group('managed existing-guard adapters', () => {
+  test('refuses a missing verifier or a selected store that is not configured', async ({
+    assert,
+  }) => {
+    const config = (store: string) =>
+      configProvider.create(async () => ({ store, stores: { database: () => new ServerStore() } }))
+    const resolve = (provider: ReturnType<typeof config>, verifyStore: unknown) =>
+      configProvider.resolve(
+        {} as never,
+        protectManagedSessionConfig(provider, { verifyStore: verifyStore as never })
+      )
+    await assert.rejects(
+      () => resolve(config('database'), undefined),
+      /requires protectManagedSessionConfig/
+    )
+    await assert.rejects(
+      () => resolve(config('redis'), () => true),
+      /requires protectManagedSessionConfig/
+    )
+    assert.isNotNull(await resolve(config('database'), () => true))
+  })
+
   test('rejects cookie ancestry on the actual selected instance before custom attestation', async ({
     assert,
   }) => {

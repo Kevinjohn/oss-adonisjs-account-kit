@@ -408,9 +408,12 @@ test.group('authentication.withCurrent', (group) => {
     await insertUser(kit)
     const { account } = service()
     const input = await signIn(account)
+    let ran = false
     await account.authentication.withCurrent(input, async ({ account: current }) => {
       await assertUserLockIsHeld(kit, assert, current.id)
+      ran = true
     })
+    assert.isTrue(ran)
   })
     .skip(!locksRows, 'only engines that lock rows')
     .timeout(10_000)
