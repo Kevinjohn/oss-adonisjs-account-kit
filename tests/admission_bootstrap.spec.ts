@@ -99,6 +99,21 @@ test.group('admission bootstrap', (group) => {
     assert.isFalse(await admission.operator.cancelBootstrap({ email: 'boss@example.test' }))
   })
 
+  test('a bootstrap whose approval vanished while inviting prints no link', async ({ assert }) => {
+    const { admission } = makeAdmission(kit, allRequirements, {
+      onInvitationAccepted: withInvitationEvidence(),
+      // Stands in for a concurrent cancel or second bootstrap while the invitation is issued.
+      onLifecycleEvent: async (event) => {
+        if (event.type === 'invitation.sent')
+          await kit.db.from('account_admissions').whereNull('user_id').delete()
+      },
+    })
+    await assert.rejects(
+      () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' }),
+      /replaced or cancelled/
+    )
+  })
+
   test('list and decisions never see a waiting approval', async ({ assert }) => {
     const { admission } = setup()
     // Listing needs an admitted actor; its row sorts last so it never hides the order under test.
