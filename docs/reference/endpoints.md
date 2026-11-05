@@ -105,6 +105,8 @@ See [account export and deletion](../guide/account-data.md) for bodies and respo
 
 ## `socialAuthentication`
 
+`auth.oauth.complete` and `auth.oauth.token` are mounted only for the `access_tokens` strategy.
+
 | Method   | Path                                 | Name                              | Access  |
 | -------- | ------------------------------------ | --------------------------------- | ------- |
 | `POST`   | `/auth/oauth/:provider/redirect`     | `auth.oauth.redirect`             | public  |

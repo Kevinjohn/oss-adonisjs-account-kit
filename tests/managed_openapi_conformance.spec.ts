@@ -73,7 +73,11 @@ function mount(
       validateUsing: (validator: { validate(data: unknown): Promise<unknown> }) =>
         validator.validate(body),
     })
-    return (routes.get(key) as Handler)(ctx)
+    const output = await (routes.get(key) as Handler)(ctx)
+    // The response headers ride along, hidden from the body and status comparisons.
+    if (output && typeof output === 'object')
+      Object.defineProperty(output, 'headers', { value: (ctx as { headers?: unknown }).headers })
+    return output
   }
   return { call, document }
 }
@@ -148,6 +152,12 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
         outputs.map(([, output]) => (output as { status: number }).status),
         strategy === 'session' ? [200, 201, 422, 200, 204, 200] : [200, 201, 422, 200, 204]
       )
+      // Login and signup bodies can carry a bearer token, so no cache may keep them.
+      for (const [, output] of outputs.slice(0, 2))
+        assert.equal(
+          (output as { headers: Record<string, string> }).headers['Cache-Control'],
+          'no-store'
+        )
       if (strategy === 'access_tokens')
         assert.equal((outputs[0][1] as { body: { token: string } }).body.token, 'opaque-token')
       for (const [operation, output] of outputs)
