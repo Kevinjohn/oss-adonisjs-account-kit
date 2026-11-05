@@ -271,6 +271,9 @@ async function http(
   const result = await curl(method, path, { body, token })
   const colour = result.status < 300 ? 32 : result.status < 500 ? 33 : 31
   cast.print(`\x1b[${colour}mHTTP ${result.status}\x1b[0m ${shorten(result.raw)}`)
+  // Scenarios show refusals on purpose, but never a server error or a request that never landed.
+  if (result.status === 0 || result.status >= 500)
+    throw new Error(`${method} ${path} returned HTTP ${result.status}: ${result.raw}`)
   return result
 }
 
@@ -313,14 +316,26 @@ async function showMail(cast: Cast, to: string) {
 
 /** Creates a verified account off screen and returns a bearer token for it. */
 async function verifiedUser(email: string) {
-  await curl('POST', '/api/auth/signup', {
-    body: { email, password, passwordConfirmation: password },
-  })
+  const expect = (step: string, result: { status: number; raw: string }, status: number) => {
+    if (result.status !== status)
+      throw new Error(`${step} for ${email} returned HTTP ${result.status}: ${result.raw}`)
+  }
+  expect(
+    'signup',
+    await curl('POST', '/api/auth/signup', {
+      body: { email, password, passwordConfirmation: password },
+    }),
+    201
+  )
   const mail = await nextMail(email)
   const path = new URL(mail.match(/https?:\/\/\S+/)![0]).pathname
-  await curl('POST', path, { body: { password, passwordConfirmation: password } })
+  const verified = await curl('POST', path, { body: { password, passwordConfirmation: password } })
+  if (verified.status >= 300)
+    throw new Error(`verification for ${email} returned HTTP ${verified.status}: ${verified.raw}`)
   const login = await curl('POST', '/api/auth/login', { body: { email, password } })
-  return login.body.token
+  expect('login', login, 200)
+  if (typeof login.body?.token !== 'string') throw new Error(`login for ${email} returned no token`)
+  return login.body.token as string
 }
 
 // ---- scenarios ---------------------------------------------------------------------------------

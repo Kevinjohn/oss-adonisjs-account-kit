@@ -37,14 +37,19 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 - `pnpm pg:start` starts the local PostgreSQL 16 service.
 - `pnpm pg:stop` stops the local PostgreSQL 16 service.
 - `pnpm test:mysql` runs the experimental MySQL suite.
+- `pnpm test:adapter` runs the Lucid adapter spec.
+- `pnpm test:recipe` checks the API password-reset recipe against the API example.
 - `pnpm check:changed` runs checks for files changed from the selected base.
 - `pnpm precompile` runs lint before compilation.
 - `pnpm compile` compiles JavaScript and type declarations.
 - `pnpm postcompile` copies templates into `build/`.
+- `pnpm copy:templates` copies the stub templates into `build/`; `postcompile` runs it.
 - `pnpm build` runs the package compilation scripts.
 - `pnpm docs:api` generates the API reference.
 - `pnpm docs:dev` generates the API reference and serves the documentation site.
 - `pnpm docs:build` generates the API reference and builds the documentation site.
+- `pnpm demos` records the API demo casts and renders them into `docs/assets/demos`.
+- `pnpm demos:setup` records the setup demo cast and renders it into `docs/assets/demos`.
 
 ## Single Responsibility Principle (files)
 
