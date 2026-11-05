@@ -33,6 +33,18 @@ test.group('Account invitations', (group) => {
       role: 'editor',
     })
     assert.equal(inviteResponse.status(), 201)
+    // Roles come from an allowlist: case variants of owner and control roles are refused.
+    for (const role of ['owner', 'Owner', 'disabled', 'made-up'])
+      assert.equal(
+        (
+          await client
+            .post('/api/v1/account/invitations')
+            .loginAs(inviter)
+            .json({ email: `role-${role.toLowerCase()}@example.test`, role })
+        ).status(),
+        403,
+        role
+      )
     assert.equal((await client.get('/api/v1/account/invitations')).status(), 401)
     const invitationList = await client
       .get('/api/v1/account/invitations')

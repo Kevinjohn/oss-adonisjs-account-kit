@@ -27,13 +27,16 @@ export async function canAccess(user: AccountUser, trx: Trx): Promise<boolean> {
     .first())
 }
 
+/** Roles an owner may grant by invitation. An allowlist: `Owner` or `disabled` are never granted. */
+export const invitableRoles: readonly string[] = ['member', 'editor', 'viewer']
+
 /**
- * Admitted owners may invite non-owners, and manage and list invitations. The invitation routes
- * accept any valid credential, so admission is checked here, not by route middleware.
+ * Admitted owners may invite to an allowed role, and manage and list invitations. The invitation
+ * routes accept any valid credential, so admission is checked here, not by route middleware.
  */
 export const authorize: AuthorizationCallbacks = {
   invite: async (actor, role, context) =>
-    role !== 'owner' && isAdmittedOwner(actor.id, context?.trx),
+    invitableRoles.includes(role) && isAdmittedOwner(actor.id, context?.trx),
   manageInvitation: async (actor, _invitation, context) => isAdmittedOwner(actor.id, context?.trx),
   listInvitations: async (actor, context) => isAdmittedOwner(actor.id, context?.trx),
 }
