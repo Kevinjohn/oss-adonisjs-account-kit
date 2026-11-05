@@ -21,7 +21,6 @@ export default await Env.create(new URL('../', import.meta.url), {
   // App
   APP_KEY: Env.schema.secret(),
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
-  TRUSTED_PROXIES: Env.schema.string.optional(),
 
   // Session
   // Server-side sessions only: a saved cookie session would replay after logout.
