@@ -2,7 +2,8 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { safeAccount } from '../authentication.js'
-import { PostCommitError } from '../errors.js'
+import { DeliveryError, PostCommitError } from '../errors.js'
+import { normalizeEmail } from '../email.js'
 import { passwordChangeRevision } from '../password_change_revision.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
@@ -23,6 +24,7 @@ export const emailPasswordManagementHandlers = {
     kit,
     options,
     actorId,
+    account,
     accountInput,
     representIssued,
   }) => {
@@ -33,8 +35,13 @@ export const emailPasswordManagementHandlers = {
     const guard = options.guard.forRequest(context)
     // A new address on an account that is not yet active advances the credential revision; the
     // caller keeps this sign-in, so a session stores the new revision.
+    const correctsUnconfirmedAddress =
+      input.email !== undefined &&
+      account !== undefined &&
+      account.unverifiedEmail === account.email &&
+      normalizeEmail(input.email) !== account.email
     const keepSession = async () => {
-      if (guard.strategy !== 'session' || input.email === undefined) return
+      if (guard.strategy !== 'session' || !correctsUnconfirmedAddress) return
       const { revision } = await kit.authentication.inspectAccountAccess({
         userId: actorId!,
         requireActive: false,
@@ -56,7 +63,8 @@ export const emailPasswordManagementHandlers = {
         },
       })
       .catch(async (error: unknown) => {
-        if (error instanceof PostCommitError) await keepSession()
+        // The correction committed; only a follow-up or its message failed.
+        if (error instanceof PostCommitError || error instanceof DeliveryError) await keepSession()
         throw error
       })
     await keepSession()
