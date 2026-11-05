@@ -16,7 +16,7 @@ const stateFrom = (url: string) => new URL(url).searchParams.get('state')!
 
 type Body = Record<string, unknown>
 const body = (response: { body(): unknown }) => response.body() as Body
-test.group('Social reference', (group) => {
+test.group('Social reference policy', (group) => {
   group.each.setup(truncateDatabase)
 
   test('social request input is rejected by VineJS validators', async ({ client, assert }) => {

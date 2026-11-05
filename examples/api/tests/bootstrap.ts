@@ -17,10 +17,6 @@ declare module '@japa/api-client/types' {
 }
 
 /**
- * This file is imported by the "bin/test.ts" entrypoint file
- */
-
-/**
  * Configure Japa plugins in the plugins array.
  * Learn more - https://japa.dev/docs/runner-config#plugins-optional
  */

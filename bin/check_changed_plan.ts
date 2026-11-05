@@ -15,20 +15,19 @@ const pgService =
 const checkChanged =
   /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_plan\.spec\.ts)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
-// Markdown never qualifies: tests/docs_links.spec.ts reads every tracked Markdown file.
+// Markdown never qualifies: tests/docs_links.spec.ts reads tracked Markdown except changelogs.
 const outsideJapa =
   /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
 
 const minute = 60_000
 
-/**
- * @param {{ path: string, deleted: boolean }[]} files changed since the merge base
- * @param {{ static?: boolean }} options `static` leaves the full Japa suite out
- * @returns {({ id: string, command: string[], tests?: 'japa', timeoutMs: number } | { id: string, skip: string })[]}
- */
 export type CheckStep =
   | { id: string; command: string[]; tests?: 'japa'; timeoutMs: number; skip?: never }
   | { id: string; skip: string; command?: never; tests?: never; timeoutMs?: never }
+/**
+ * Plans checks for files changed since the merge base, including deleted paths.
+ * The static option leaves out the full Japa suite.
+ */
 export function planChecks(
   files: { path: string; deleted: boolean }[],
   options: { static?: boolean } = {}

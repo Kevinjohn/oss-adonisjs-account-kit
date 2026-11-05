@@ -6,10 +6,7 @@ import { accountKitSessionGuard } from '#services/session_guard'
 import { proofRequest, proofRecovery } from '#services/token_page_headers'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 
-/**
- * Messages for Account Kit errors shown as a flash toast. Anything else gets a generic message,
- * so internal causes never reach the page.
- */
+/** Maps Account Kit errors to safe flash messages without exposing private causes. */
 function accountMessage(error: errors.AccountKitError) {
   if (error instanceof errors.InvalidCredentialsError) return 'Invalid email or password.'
   if (error instanceof errors.ThrottledError)
@@ -31,14 +28,14 @@ export default class HttpExceptionHandler extends ExceptionHandler {
   protected debug = !app.inProduction
 
   /**
-   * Status pages are used to display a custom HTML pages for certain error
+   * Status pages are used to display custom HTML pages for certain error
    * codes. You might want to enable them in production only, but feel
    * free to enable them in development as well.
    */
   protected renderStatusPages = app.inProduction
 
   /**
-   * Status pages is a collection of error code range and a callback
+   * Status pages are a collection of error code ranges and callbacks
    * to return the HTML contents to send as a response.
    */
   protected statusPages: Record<StatusPageRange, StatusPageRenderer> = {
@@ -106,7 +103,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
 
   /**
    * The method is used to report error to the logging service or
-   * the a third party error monitoring service.
+   * a third-party error monitoring service.
    *
    * @note You should not attempt to send a response from this method.
    */

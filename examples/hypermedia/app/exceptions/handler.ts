@@ -26,14 +26,14 @@ export default class HttpExceptionHandler extends ExceptionHandler {
   protected debug = !app.inProduction
 
   /**
-   * Status pages are used to display a custom HTML pages for certain error
+   * Status pages are used to display custom HTML pages for certain error
    * codes. You might want to enable them in production only, but feel
    * free to enable them in development as well.
    */
   protected renderStatusPages = app.inProduction
 
   /**
-   * Status pages is a collection of error code range and a callback
+   * Status pages are a collection of error code ranges and callbacks
    * to return the HTML contents to send as a response.
    */
   protected statusPages: Record<StatusPageRange, StatusPageRenderer> = {
@@ -86,7 +86,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
 
   /**
    * The method is used to report error to the logging service or
-   * the a third party error monitoring service.
+   * a third-party error monitoring service.
    *
    * @note You should not attempt to send a response from this method.
    */
