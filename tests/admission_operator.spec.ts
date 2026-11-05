@@ -113,4 +113,24 @@ test.group('admission operator', (group) => {
       CapabilityDisabledError
     )
   })
+
+  test('refusals arrive as rejected promises, not synchronous throws', async ({ assert }) => {
+    const person = await insertUser(kit)
+    const { admission } = makeAdmission(kit, { domain: { allowed: ['example.test'] } })
+    const { admission: invited } = makeAdmission(kit)
+    // Calling without awaiting must not throw: callers chain `.catch()` on the returned promise.
+    const refusals = [
+      () => admission.operator.approve({ email: person.email }),
+      () => admission.operator.revoke({ email: person.email }),
+      () => admission.operator.grantInvitation({ email: person.email }),
+      () => invited.operator.grantInvitation({ email: person.email, role: '' }),
+    ]
+    for (const call of refusals) {
+      let pending: Promise<unknown> | undefined
+      assert.doesNotThrow(() => {
+        pending = call()
+      })
+      await assert.rejects(() => pending!)
+    }
+  })
 })
