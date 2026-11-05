@@ -1,5 +1,6 @@
 // Deletes single-use rows and returns them, on engines with and without DELETE ... RETURNING.
 import type { Database } from '@adonisjs/lucid/database'
+import { readTimestamp } from './timestamps.js'
 import type { Trx } from './types.js'
 
 /**
@@ -39,11 +40,24 @@ export async function consumeRows<Row>(
       `delete from ${table} where ${columns.map((column) => `${column} = ?`).join(' and ')} and expires_at > ? returning *`,
       [...Object.values(where), after]
     )
-  const rows: Array<Row & { id: number }> = await trx
-    .from(table)
-    .where(where)
-    .where('expires_at', '>', after)
-    .forUpdate()
+  // Find the ids without locking, then lock by primary key only. A locking read through the
+  // token index would hold that index entry while waiting, and deadlock with a writer that holds
+  // the row and is replacing the token.
+  const ids = (await trx.from(table).where(where).where('expires_at', '>', after).select('id')).map(
+    (row: { id: number }) => row.id
+  )
+  if (ids.length === 0) return []
+  const deadline = readTimestamp(after)!.toMillis()
+  const rows = (
+    (await trx.from(table).whereIn('id', ids).forUpdate()) as Array<
+      Row & { id: number } & Record<string, unknown>
+    >
+  ).filter(
+    // The locked read is the latest committed row; recheck what the unlocked lookup matched.
+    (row) =>
+      columns.every((column) => row[column] === where[column]) &&
+      readTimestamp(row.expires_at)!.toMillis() > deadline
+  )
   if (rows.length === 0) return []
   const deleted = await trx
     .from(table)
