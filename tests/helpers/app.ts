@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { Encryption } from '@adonisjs/core/encryption'
 import { defineConfig as defineHashConfig, drivers as hashDrivers } from '@adonisjs/core/hash'
 import type { Group } from '@japa/runner/core'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
@@ -19,7 +18,6 @@ export interface TestApp {
   app: ApplicationService
   db: Database
   hash: Hash
-  encryption: Encryption
   limiter: LimiterService
   appRootPath: string
   migrationDirectory: string
@@ -87,7 +85,6 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
     await app.boot()
     const db = await app.container.make('lucid.db')
     const hash = await app.container.make(Hash)
-    const encryption = await app.container.make(Encryption)
     const limiter = await app.container.make('limiter.manager')
     if (sqliteFilename) {
       await db.connection().rawQuery('PRAGMA journal_mode = WAL').exec()
@@ -97,7 +94,6 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
       app,
       db,
       hash,
-      encryption,
       limiter,
       appRootPath,
       migrationDirectory,

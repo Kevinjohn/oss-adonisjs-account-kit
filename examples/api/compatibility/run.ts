@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { IgnitorFactory } from '@adonisjs/core/factories'
-import { Encryption } from '@adonisjs/core/encryption'
 import { defineConfig as defineHashConfig, drivers } from '@adonisjs/core/hash'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
@@ -57,7 +56,6 @@ await app.init()
 await app.boot()
 
 const db = await app.container.make('lucid.db')
-const encryption = await app.container.make(Encryption)
 const limiter = await app.container.make('limiter.manager')
 const [{ default: User }, { default: hash }] = await Promise.all([
   import('./user.js'),
@@ -147,7 +145,6 @@ const account = new AccountKit({
     },
   }),
   db,
-  encryption,
   limiter,
 })
 

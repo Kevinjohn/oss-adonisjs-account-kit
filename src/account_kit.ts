@@ -82,7 +82,6 @@ export class AccountKit {
   private readonly deps: {
     config: ResolvedConfig
     db: Database
-    encryption?: Encryption
     limiter: LimiterService
     throttler: Throttler
   }
@@ -90,11 +89,14 @@ export class AccountKit {
   constructor(deps: {
     config: ResolvedConfig
     db: Database
+    /** @deprecated Ignored; accepted for source compatibility. */
     encryption?: Encryption
     limiter: LimiterService
   }) {
     this.deps = {
-      ...deps,
+      config: deps.config,
+      db: deps.db,
+      limiter: deps.limiter,
       throttler: makeThrottler({
         limiter: deps.limiter,
         secret: deps.config.limiterSecret,

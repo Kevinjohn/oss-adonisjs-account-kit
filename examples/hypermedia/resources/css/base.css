@@ -1,0 +1,295 @@
+/* ==========================================================================
+   AdonisJS Starter Kit
+   Tokens are the only thing you need to touch to re-theme.
+   ========================================================================== */
+
+:root {
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+
+  --paper: #f5f5f6;
+  --card: #ffffff;
+  --ink: #0a0a0b;
+  --ink-2: #2a2c30;
+  --muted: #6b6f76;
+  --subtle: #a4a8af;
+  --line: #ededee;
+  --line-2: #dddfe2;
+  --btn: #0a0a0b;
+  --btn-fg: #ffffff;
+  --ring: rgba(10, 10, 11, 0.13);
+  --focus: #1d4ed8;
+  --field: #ffffff;
+  --ok: #18794e;
+
+  --r: 8px;
+  --r-lg: 14px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --paper: #08080a;
+  --card: #111114;
+  --ink: #ededee;
+  --ink-2: #c4c6ca;
+  --muted: #8b8f97;
+  --subtle: #585c64;
+  --line: #1e1f23;
+  --line-2: #2c2e33;
+  --btn: #ededee;
+  --btn-fg: #0a0a0b;
+  --ring: rgba(237, 237, 238, 0.14);
+  --focus: #60a5fa;
+  --field: #0c0c0f;
+  --ok: #3ecf8e;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+input {
+  font: inherit;
+}
+::selection {
+  background: var(--ink);
+  color: var(--paper);
+}
+[x-cloak] {
+  display: none !important;
+}
+
+/* --- type helpers --- */
+.mono {
+  font-family: var(--mono);
+}
+.tag {
+  /* Status labels also reference this token inline; keep their text contrast local. */
+  --subtle: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+
+/* --- buttons --- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 15px;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    opacity 0.15s,
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    scale 0.15s;
+}
+.btn:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.btn:active:not(:disabled) {
+  scale: 0.96;
+}
+.btn--primary {
+  background: var(--btn);
+  color: var(--btn-fg);
+}
+.btn--primary:hover {
+  opacity: 0.88;
+}
+.btn--secondary {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+.btn--secondary:hover {
+  background: var(--paper);
+}
+.btn--ghost {
+  color: var(--ink);
+}
+.btn--ghost:hover {
+  color: var(--muted);
+}
+.btn--block {
+  width: 100%;
+}
+.btn--sm {
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+/* extend the hit area to 40px tall without growing the visual */
+.btn--sm::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+}
+
+/* --- fields --- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.field__input {
+  height: 40px;
+  padding: 0 12px;
+  background: var(--field);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+  color: var(--ink);
+  font-size: 14px;
+  box-shadow: 0 1px 1px rgba(10, 10, 11, 0.03);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.field__input::placeholder {
+  color: var(--subtle);
+}
+.field__input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.field__input:-webkit-autofill,
+.field__input:-webkit-autofill:hover,
+.field__input:-webkit-autofill:focus,
+.field__input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--field) inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+  font-family: var(--sans);
+  transition: background-color 9999s ease-in-out 0s;
+}
+.field__input[aria-invalid='true'],
+.field__input[data-invalid='true'] {
+  border-color: #c0392b;
+}
+:root[data-theme='dark'] .field__input[aria-invalid='true'],
+:root[data-theme='dark'] .field__input[data-invalid='true'] {
+  border-color: #e0685c;
+}
+.field__hint {
+  font-size: 12.5px;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+.field__error {
+  font-size: 12.5px;
+  color: #c0392b;
+}
+:root[data-theme='dark'] .field__error {
+  color: #e0685c;
+}
+
+/* --- inline link --- */
+.il {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 0.15s;
+}
+.il:hover {
+  text-decoration-color: var(--ink);
+}
+
+/* --- icon button --- */
+.iconbtn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    scale 0.15s;
+}
+/* extend the hit area to 40px without growing the visual */
+.iconbtn::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+}
+.iconbtn:hover {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+.iconbtn:active {
+  scale: 0.96;
+}
+.iconbtn > svg {
+  grid-area: 1 / 1;
+}
+
+/* theme toggle icons cross-fade in place, driven by html[data-theme] */
+.themetoggle__icon {
+  opacity: 0;
+  scale: 0.25;
+  filter: blur(4px);
+  transition:
+    opacity 0.3s cubic-bezier(0.2, 0, 0, 1),
+    scale 0.3s cubic-bezier(0.2, 0, 0, 1),
+    filter 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+:root[data-theme='dark'] .themetoggle__icon--sun,
+:root[data-theme='light'] .themetoggle__icon--moon {
+  opacity: 1;
+  scale: 1;
+  filter: blur(0px);
+}

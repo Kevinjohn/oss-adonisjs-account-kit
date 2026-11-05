@@ -41,7 +41,6 @@ test.group('capability configuration', (group) => {
     const account = new AccountKit({
       config,
       db: kit.db,
-      encryption: kit.encryption,
       limiter: kit.limiter,
     })
     const knex = kit.db.connection().getWriteClient()
