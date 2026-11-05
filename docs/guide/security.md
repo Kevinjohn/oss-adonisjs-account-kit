@@ -79,7 +79,7 @@ Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 
 | Invitation send                    | actor (10 per hour), recipient (3/hour)  | as listed                            | `invitationThrottle`           |
 | Invitation resend                  | actor (10 per hour), invitation (3/hour) | as listed                            | `invitationThrottle`           |
 | Login, per client                  | client, failures only                    | 10 per minute                        | `authentication.clientLimit`   |
-| Login, per identity                | email, failures only                     | 5 per minute, then a 20-minute block | `authentication.identityLimit` |
+| Login, per identity                | client and email, failures only          | 5 per minute, then a 20-minute block | `authentication.identityLimit` |
 
 Request limits are checked before the user lookup, so a throttled request reveals nothing. Pinned
 by "the sixth client request is throttled before user lookup".

@@ -23,7 +23,10 @@ export default class NewAccountController {
       if (!isDeliveryFailure(error)) throw error
       followUp = error instanceof DeliveryError ? 'delivery' : 'observer'
       // Log the event, not the error: its cause can carry the transport's message and proof URL.
-      ctx.logger.error({ event: 'signup_follow_up_failed' }, 'Account creation committed but a follow-up failed')
+      ctx.logger.error(
+        { event: 'signup_follow_up_failed' },
+        'Account creation committed but a follow-up failed'
+      )
     }
 
     const committedMessage =
