@@ -2,8 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+
 - Fix permanent account deletion through the Lucid adapter for active user models composed with
   `SoftDeletes`, preserving model delete hooks, transaction rollback and invitation retention options.
+
+### Changed
+
+- Breaking: account deletion through the Lucid adapter now removes the user row of a model composed
+  with `SoftDeletes` instead of soft-deleting it. Application tables whose foreign keys reference
+  users must cascade or be cleared in `onAccountDeletingTransaction`, or the deletion rolls back.
 
 ## 0.2.0 - 2026-11-03
 
