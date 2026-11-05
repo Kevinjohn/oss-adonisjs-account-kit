@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { run } from './pack_checkout.js'
 import { createAdonisApp } from './scaffold_app.js'
+import { writeDemoIdentity } from './demo_identity.js'
 
 const choices = fileURLToPath(
   new URL('../../docs/reference/setup_choices.api.example.json', import.meta.url)
@@ -58,7 +59,9 @@ copyFileSync(choices, join(appDir, 'choices.json'))
 
 // A first commit lets the recording show what setup writes.
 if (!existsSync(join(appDir, '.git'))) run('git', ['init', '-q'], appDir)
+writeDemoIdentity(appDir, 'setup-recording')
 run('git', ['add', '-A'], appDir)
+run('git', ['add', '-f', '.account-kit-demo.json'], appDir)
 const identity = ['-c', 'user.name=demo', '-c', 'user.email=demo@example.com']
 run('git', [...identity, 'commit', '-qm', 'Starter app'], appDir)
 console.log(`Setup demo app ready in ${appDir}`)
