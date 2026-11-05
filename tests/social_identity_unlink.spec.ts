@@ -74,6 +74,31 @@ test.group('social unlink atomicity', (group) => {
     assert.lengthOf(await kit.db.from('social_transactions').where('user_id', user.id), 0)
   })
 
+  test("a valid unlink proof cannot remove another account's identity", async ({ assert }) => {
+    const owner = await insertUser(kit)
+    const other = await insertUser(kit, { email: 'other@example.test' })
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: { providers: { google: provider('owner-subject', owner.email, true) } },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const relation = await linkGoogle(account, owner.id)
+    for (const identityId of [relation.id, 999_999]) {
+      const proof = await account.socialAuthentication.provePassword({
+        current: current(other.id),
+        password: 'password123',
+        purpose: 'social_unlink',
+      })
+      await assert.rejects(
+        () =>
+          account.socialAuthentication.unlink({ current: current(other.id), identityId, proof }),
+        'Social account was not found'
+      )
+    }
+    assert.lengthOf(await kit.db.from('social_identities').where('id', relation.id), 1)
+  })
+
   test('unlink runs the post-commit credential hook after the relationship is removed', async ({
     assert,
   }) => {
