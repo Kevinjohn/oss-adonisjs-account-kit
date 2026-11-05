@@ -83,13 +83,23 @@ export async function planSetup(
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
   })
-  // Generators assume valid choices. When validation has already reported an error, a generator
-  // that throws on the same input leaves its file out instead of hiding the report.
-  const generated = async (build: () => string | Promise<string>): Promise<string | null> => {
+  // Generators assume valid choices. When validation has already reported an error for the
+  // choices a generator reads, its failure leaves the file out instead of hiding that report.
+  // Any other failure is a setup bug and still throws.
+  const generated = async (
+    reads: string[],
+    build: () => string | Promise<string>
+  ): Promise<string | null> => {
     try {
       return await build()
     } catch (error) {
-      if (diagnostics.some(({ severity }) => severity === 'error')) return null
+      if (
+        diagnostics.some(
+          ({ field, severity }) =>
+            severity === 'error' && reads.some((prefix) => field.startsWith(prefix))
+        )
+      )
+        return null
       throw error
     }
   }
@@ -119,7 +129,7 @@ export async function planSetup(
   await planSessionConfigIntegration(changes, state, choices, diagnostics)
   if (choices.social.status === 'enabled') {
     if (state.files['config/ally.ts'] === undefined) {
-      const ally = await generated(() => allyConfigSource(choices))
+      const ally = await generated(['social.'], () => allyConfigSource(choices))
       if (ally !== null)
         addChange(
           changes,
@@ -129,7 +139,7 @@ export async function planSetup(
           'Configure selected Ally providers using deployment references and exact callbacks'
         )
     } else if (await ownsAllyConfig(state, choices)) {
-      const ally = await generated(() => allyConfigSource(choices))
+      const ally = await generated(['social.'], () => allyConfigSource(choices))
       if (ally !== null)
         ownedChange(
           changes,
@@ -177,7 +187,7 @@ export async function planSetup(
     const suffix = `_account_kit_${name}.ts`
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
     const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
-    const content = await generated(() => migrationContent(name, choices))
+    const content = await generated(['user.', 'database.'], () => migrationContent(name, choices))
     if (content === null) continue
     addChange(
       changes,
