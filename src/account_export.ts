@@ -9,7 +9,7 @@ import { throttlerOf } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
-import { sessionTable } from './session_registry.js'
+import { sessionRegistryEnabled, sessionTable } from './session_registry.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
 
@@ -136,7 +136,7 @@ export async function exportAccountData(
         ...(config.authentication?.strategy === 'access_tokens'
           ? { accessTokens: await accessTokens(trx, config, user.id) }
           : {}),
-        ...(config.authentication?.strategy === 'session'
+        ...(sessionRegistryEnabled(config)
           ? { sessions: await signedInSessions(trx, user.id) }
           : {}),
         pending: await pending(trx, user.id),

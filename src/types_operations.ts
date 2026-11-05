@@ -301,7 +301,7 @@ export interface AccountExport {
     lastUsedAt: string | null
     expiresAt: string | null
   }>
-  /** Present only for the session strategy: the signed-in devices the registry records. */
+  /** Present only for the session strategy with `sessionManagement`: the recorded signed-in devices. */
   sessions?: Array<{
     id: number
     label: string | null

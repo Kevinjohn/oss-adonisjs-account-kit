@@ -120,7 +120,9 @@ test.group('account data export', (group) => {
     assert.notProperty(sessions, 'accessTokens')
   })
 
-  test('signed-in devices are listed only for the session strategy', async ({ assert }) => {
+  test('signed-in devices are listed only for the session strategy with sessionManagement', async ({
+    assert,
+  }) => {
     const user = await insertUser(kit)
     const other = await insertUser(kit, { email: 'other@example.test' })
     for (const [userId, label] of [
@@ -137,6 +139,7 @@ test.group('account data export', (group) => {
       })
     const input = { actorId: user.id, currentPassword: 'password123' }
     const sessions = await service({
+      enabled: ['dataExport', 'sessionManagement'],
       authentication: { strategy: 'session', guard: 'web' },
     }).account.accountData.export(input)
     assert.deepEqual(
@@ -150,7 +153,12 @@ test.group('account data export', (group) => {
         },
       ]
     )
+    const unmanaged = await service({
+      authentication: { strategy: 'session', guard: 'web' },
+    }).account.accountData.export(input)
+    assert.notProperty(unmanaged, 'sessions')
     const tokens = await service({
+      enabled: ['dataExport', 'sessionManagement'],
       authentication: { strategy: 'access_tokens', guard: 'api' },
     }).account.accountData.export(input)
     assert.notProperty(tokens, 'sessions')
