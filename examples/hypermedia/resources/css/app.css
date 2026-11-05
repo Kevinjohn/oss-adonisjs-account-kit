@@ -541,6 +541,13 @@
   z-index: 50;
   pointer-events: none;
 }
+/* On narrow screens a fixed alert would sit over the header controls, so it joins the page flow. */
+@media (max-width: 640px) {
+  .flash-container {
+    position: static;
+    padding-top: 12px;
+  }
+}
 .alert {
   display: flex;
   flex-direction: row;

@@ -43,7 +43,10 @@ export default class NewAccountController {
         accountKitSessionGuard(ctx)
       )
     } catch (error) {
-      ctx.logger.error({ err: error }, 'Account created but initial sign in failed')
+      ctx.logger.error(
+        { event: 'signup_sign_in_failed', code: (error as { code?: unknown }).code },
+        'Account created but initial sign in failed'
+      )
       ctx.session.flash(
         'success',
         'Your account was created. Sign in to request a verification link.'

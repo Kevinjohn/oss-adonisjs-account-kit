@@ -588,7 +588,7 @@ test.group('native account journeys', (group) => {
         .update({ created_at: DateTime.now().minus({ minutes: 2 }).toSQL() })
       accountKitNotifications.notify.accountActivationProvision = notify
       await page.getByRole('button', { name: 'Send a fresh verification link' }).click()
-      await page.getByText(/A fresh verification link was sent/).waitFor()
+      await page.getByText(/A verification link is on its way/).waitFor()
       const token = accountKitNotifications.tokenFor('accountActivationProvision', user.email)
       await page.goto(`/verify-email/${encodeURIComponent(token)}`)
       await page.getByLabel('Choose a password').fill('RecoveryPass123!')
@@ -651,18 +651,27 @@ test.group('native account journeys', (group) => {
       emailVerifiedAt: null,
       unverifiedEmail: 'expired@example.test',
     })
-    const token = 'expired-proof-token'
+    // A well-formed token, so only its expiry can refuse it.
+    const token = 'e'.repeat(43)
+    const hash = createHash('sha256').update(token).digest('hex')
     await db.table('email_verification_tokens').insert({
       tokenable_id: user.id,
       email: user.email,
-      current_email: '',
+      current_email: user.email,
       purpose: 'activation',
-      hash: createHash('sha256').update(token).digest('hex'),
-      expires_at: DateTime.now().minus({ minutes: 1 }).toSQL(),
-      created_at: DateTime.now().minus({ minutes: 2 }).toSQL(),
+      hash,
+      expires_at: DateTime.utc().minus({ minutes: 1 }).toISO(),
+      created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
     })
     const page = await visit(`/verify-email/${encodeURIComponent(token)}`)
     await page.getByText(/This link is invalid, already used, or expired/).waitFor()
     assert.isNull((await User.findByOrFail('id', user.id)).emailVerifiedAt)
+    // The same row with a future expiry is accepted.
+    await db
+      .from('email_verification_tokens')
+      .where('hash', hash)
+      .update({ expires_at: DateTime.utc().plus({ hours: 1 }).toISO() })
+    await page.goto(`/verify-email/${encodeURIComponent(token)}`)
+    await page.getByRole('button', { name: 'Confirm email' }).waitFor()
   })
 })

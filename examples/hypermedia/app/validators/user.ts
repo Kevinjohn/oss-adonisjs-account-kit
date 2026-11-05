@@ -28,7 +28,8 @@ export const accountMessages = new SimpleMessagesProvider(
  */
 // Account Kit stores addresses trimmed and lowercase, so the unique check must compare them that way.
 export const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
-export const password = () => vine.string().minLength(8).maxLength(32)
+// Matches Account Kit's default passwordPolicy of 8 to 256 characters.
+export const password = () => vine.string().minLength(8).maxLength(256)
 
 /**
  * Validator to use when performing self-signup.

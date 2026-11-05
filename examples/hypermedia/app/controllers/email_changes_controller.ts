@@ -2,6 +2,7 @@ import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { isDeliveryFailure } from '#services/delivery_failure'
+import { accountKitSessionGuard } from '#services/session_guard'
 import { sendTokenPageHeaders } from '#services/token_page_headers'
 import { cancelEmailChangeValidator, requestEmailChangeValidator } from '#validators/email_change'
 
@@ -12,17 +13,15 @@ export default class EmailChangesController {
       email: user.email,
       pendingEmail:
         user.unverifiedEmail && user.unverifiedEmail !== user.email ? user.unverifiedEmail : null,
-      canRequestChange: user.unverifiedEmail !== user.email,
+      unconfirmed: user.unverifiedEmail === user.email,
     })
   }
 
   async store(ctx: HttpContext) {
     const { email, currentPassword } = await ctx.request.validateUsing(requestEmailChangeValidator)
     const user = ctx.auth.getUserOrFail()
-    if (user.unverifiedEmail === user.email) {
-      ctx.session.flash('error', 'Confirm your current email before requesting another change.')
-      return ctx.response.redirect().back()
-    }
+    // An unconfirmed address is corrected in place, which ends every session for the account.
+    const correction = user.unverifiedEmail === user.email
     if (email === user.email) {
       ctx.session.flash('error', 'Enter a different address from your current email.')
       ctx.session.flashOnly(['email'])
@@ -58,6 +57,14 @@ export default class EmailChangesController {
         'The request was saved, but we could not confirm that the email was sent. Check the new address for a link.'
       )
       return ctx.response.redirect().back()
+    }
+    if (correction) {
+      await accountKitSessionGuard(ctx).terminate()
+      ctx.session.flash(
+        'success',
+        'Address corrected. Check the development server output for a confirmation link, then sign in.'
+      )
+      return ctx.response.redirect().toRoute('session.create')
     }
     ctx.session.flash(
       'success',

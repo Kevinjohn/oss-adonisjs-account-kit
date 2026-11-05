@@ -20,7 +20,12 @@
         @end
         @!button({ text: 'Cancel pending change', type: 'submit' })
       @end
-    @elseif(canRequestChange)
+    @else
+      @if(unconfirmed)
+        <p>
+          Your address is not confirmed yet. If it is mistyped, enter the right one: the confirmation link goes there and you sign in again.
+        </p>
+      @end
       @form({ route: 'email_changes.store', method: 'POST', class: 'auth__form' })
         @field.root({ name: 'email' })
           @!field.label({ text: 'New email' })
@@ -43,10 +48,10 @@
         @end
         @!button({ text: 'Request email change', type: 'submit' })
       @end
-    @else
-      <p>Confirm your current email address before requesting a change.</p>
-      @form({ route: 'email_verifications.store', method: 'POST' })
-        @!button({ text: 'Send verification link', type: 'submit' })
+      @if(unconfirmed)
+        @form({ route: 'email_verifications.store', method: 'POST' })
+          @!button({ text: 'Send verification link', type: 'submit' })
+        @end
       @end
     @end
 
