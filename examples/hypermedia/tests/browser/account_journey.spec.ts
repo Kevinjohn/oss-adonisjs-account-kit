@@ -2,7 +2,7 @@
 
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
 import { Session } from '@adonisjs/session'
@@ -652,7 +652,7 @@ test.group('native account journeys', (group) => {
       unverifiedEmail: 'expired@example.test',
     })
     // A well-formed token, so only its expiry can refuse it.
-    const token = 'e'.repeat(43)
+    const token = randomBytes(32).toString('base64url')
     const hash = createHash('sha256').update(token).digest('hex')
     await db.table('email_verification_tokens').insert({
       tokenable_id: user.id,
