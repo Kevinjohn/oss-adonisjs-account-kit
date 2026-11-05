@@ -17,7 +17,7 @@ test.group('admission events', (group) => {
         onAdmissionEvent: async (event) => {
           // After commit: the change is visible outside the operation's transaction.
           const row = await kit.db.from('account_admissions').where('user_id', event.userId).first()
-          assert.isDefined(row)
+          assert.isNotNull(row)
           events.push(event)
         },
       },
