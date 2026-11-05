@@ -298,7 +298,8 @@ test.group('managed sign-in management routes', (group) => {
 
   test('logout without a signed-in user is refused', async ({ assert }) => {
     const { call, terminated } = mount('session')
-    assert.equal((await call('POST /api/v1/account/logout')).status, 401)
+    const output = await call('POST /api/v1/account/logout')
+    assert.equal(output.status, 401)
     assert.lengthOf(terminated, 0)
   })
 

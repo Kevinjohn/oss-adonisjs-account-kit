@@ -154,7 +154,7 @@ function requireUtcMysqlClient(db: Database, connectionName: string): void {
  * MySQL runs at READ COMMITTED so reads after a row lock see the latest committed rows; InnoDB's
  * default REPEATABLE READ would keep serving the snapshot taken before the lock was granted.
  */
-async function beginTransaction(
+function beginTransaction(
   db: Database,
   connection: ReturnType<Database['connection']>
 ): Promise<Trx> {
@@ -165,26 +165,7 @@ async function beginTransaction(
     callback: undefined,
     options: { isolationLevel: 'read committed' }
   ) => Promise<Trx>
-  const trx = await begin(undefined, { isolationLevel: 'read committed' })
-  // A zone with daylight saving moves UTC wall times in its spring-forward hour on write.
-  let zone: unknown
-  try {
-    const [rows] = await trx.rawQuery('select @@session.time_zone as zone')
-    zone = (rows as Array<{ zone?: unknown }>)[0]?.zone
-  } catch (error) {
-    // The transaction is open; release it before reporting the failed probe.
-    try {
-      await trx.rollback()
-    } catch (failure) {
-      throw combineFailures(error, [failure])
-    }
-    throw error
-  }
-  if (zone === '+00:00' || zone === 'UTC') return trx
-  await trx.rollback()
-  throw new Error(
-    `Account kit requires time_zone '+00:00' on every session of the MySQL connection "${connection.connectionName}" (found ${JSON.stringify(zone)})`
-  )
+  return begin(undefined, { isolationLevel: 'read committed' })
 }
 
 type Connection = ReturnType<Database['connection']>
@@ -291,11 +272,6 @@ export async function transaction<T>(db: Database, callback: (trx: Trx) => Promi
   const connection = db.connection()
   if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
   if (connection.dialect.name === 'better-sqlite3') return sqliteTransaction(connection, callback)
-  // Other SQLite drivers get none of the write lock or busy retry, so concurrent writers race.
-  if (connection.dialect.name === 'sqlite3' || connection.dialect.name === 'libsql')
-    throw new Error(
-      `Account kit supports SQLite through better-sqlite3 only; the connection "${connection.connectionName}" uses ${connection.dialect.name}`
-    )
 
   const commit = trackCommit<T>()
   try {
