@@ -6,7 +6,6 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import type { SocialProvider, VerifiedSocialAuthentication } from '../src/types.js'
 import { clientChallenge, current, provider } from './helpers/social_identity.js'
-import { dbTime } from './helpers/db_time.js'
 
 test.group('social reauthentication proof atomicity', (group) => {
   const kit = useTestApp(group)
@@ -62,11 +61,12 @@ test.group('social reauthentication proof atomicity', (group) => {
       subject,
       authenticatedAt: new Date().toISOString(),
     })
+    // Provider evidence is ISO 8601 on every engine, so stale and future cases fail on time alone.
     const cases: Array<VerifiedSocialAuthentication | null> = [
       null,
-      { ...valid(), authenticatedAt: dbTime(kit, DateTime.utc().minus({ milliseconds: 60_000 })) },
+      { ...valid(), authenticatedAt: DateTime.utc().minus({ milliseconds: 60_000 }).toISO()! },
       { ...valid(), authenticatedAt: 'yesterday' },
-      { ...valid(), authenticatedAt: dbTime(kit, DateTime.utc().plus({ milliseconds: 1_000 })) },
+      { ...valid(), authenticatedAt: DateTime.utc().plus({ milliseconds: 1_000 }).toISO()! },
       { ...valid(), subject: 'other-subject' },
       { ...valid(), verified: false } as unknown as VerifiedSocialAuthentication,
       {

@@ -5,7 +5,7 @@ import { allowAll, denyAll, makeConfig, makeNotify, makeUsersAdapter } from './h
 test.group('test fakes', (group) => {
   const kit = useTestApp(group)
 
-  test('creates normalized verified users with a hashed password and reads under a lock', async ({
+  test('creates normalized verified users with a hashed password and reads them with forUpdate', async ({
     assert,
   }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)

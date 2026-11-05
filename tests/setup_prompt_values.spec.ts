@@ -260,10 +260,7 @@ test.group('setup prompt values', () => {
     assert.equal(choices.policy.invitationPermissionHook, false)
     assert.equal(choices.social.status, 'not-applicable')
     assert.isFalse(questions.some((question) => question.startsWith('Registration policy')))
-    assert.notInclude(
-      questions,
-      'Additional profile fields for registration, invitations, email changes or social sign-in as JSON array (current: [{"name":"legacyProfile","type":"string","required":false}])'
-    )
+    assert.isFalse(questions.some((question) => question.startsWith('Additional profile fields')))
     assert.isFalse(questions.some((question) => question.startsWith('Require verified email')))
     assert.deepEqual(parseSetupChoices(choices), choices)
   })

@@ -141,7 +141,9 @@ test.group('social unlink atomicity', (group) => {
     assert.deepEqual(seen, [{ operation: 'social_unlink', remaining: 0 }])
   })
 
-  test('unlink invalidates proof issued through the removed provider', async ({ assert }) => {
+  test('unlink advances the revision, so proof issued through the removed provider is refused', async ({
+    assert,
+  }) => {
     const user = await insertUser(kit, { email: 'unlink-proof@example.test', password: null })
     const timestamp = dbTime(kit)
     await kit.db.table('social_identities').insert([
