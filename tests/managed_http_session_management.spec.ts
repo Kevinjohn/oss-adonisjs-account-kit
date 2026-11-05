@@ -285,7 +285,8 @@ test.group('managed sign-in management routes', (group) => {
     const mine = await signIn()
     // Revoked elsewhere: the sign-in row is gone, so the session is no longer current.
     await kit.db.from('account_sessions').delete()
-    assert.equal((await call('GET /api/v1/account/sessions', { as: mine })).status, 401)
+    const listed = await call('GET /api/v1/account/sessions', { as: mine })
+    assert.equal(listed.status, 401)
     assert.deepEqual(await call('POST /api/v1/account/logout', { as: mine }), { status: 204 })
     assert.lengthOf(terminated, 1)
   })
