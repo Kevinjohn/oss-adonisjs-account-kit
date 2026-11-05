@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
+import { makeUsersAdapter } from './helpers/users_adapter.js'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -112,5 +113,67 @@ test.group('authentication contract', (group) => {
         ),
       'Too many requests'
     )
+  })
+
+  test('parallel guesses against one identity check at most the identity budget', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let checks = 0
+    const { account } = makeService(kit, {
+      users: {
+        ...users,
+        verifyPassword: async (...args) => {
+          checks++
+          return users.verifyPassword(...args)
+        },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 20 }, () =>
+        account.authentication.login(
+          { email: user.email, password: 'wrong', clientKey: 'burst' },
+          sessionGuard()
+        )
+      )
+    )
+    assert.isTrue(attempts.every((result) => result.status === 'rejected'))
+    assert.isAtMost(checks, 5)
+  })
+
+  test('failures unrelated to the credentials spend no login budget', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let outage = true
+    const { account } = makeService(kit, {
+      users: {
+        ...users,
+        verifyPassword: async (...args) => {
+          if (outage) throw new Error('database offline')
+          return users.verifyPassword(...args)
+        },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
+    for (let attempt = 0; attempt < 12; attempt++) {
+      await assert.rejects(
+        () =>
+          account.authentication.login(
+            { email: user.email, password: 'password123', clientKey: 'outage' },
+            sessionGuard()
+          ),
+        'database offline'
+      )
+    }
+    outage = false
+    const { account: signedIn } = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'outage' },
+      sessionGuard()
+    )
+    assert.equal(signedIn.id, user.id)
   })
 })

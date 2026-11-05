@@ -111,6 +111,20 @@ async function lockSignIn(
     throw new InvalidSessionError()
 }
 
+/** Atomically take one attempt from a budget, or throw `ThrottledError` when none is left. */
+async function reserveAttempt(
+  limiter: ReturnType<ServiceDependencies['limiter']['use']>,
+  key: string
+): Promise<void> {
+  try {
+    await limiter.consume(key)
+  } catch (error) {
+    if (error instanceof errors.E_TOO_MANY_REQUESTS)
+      throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
+    throw error
+  }
+}
+
 export function authenticationService(deps: ServiceDependencies) {
   return {
     /** Read-only impact of the login methods that remain after a proposed change. */
@@ -158,45 +172,53 @@ export function authenticationService(deps: ServiceDependencies) {
       // The limiter normalises the options it receives in place; give it copies of the frozen budgets.
       const clientLimiter = deps.limiter.use({ ...auth.clientLimit })
       const identityLimiter = deps.limiter.use({ ...auth.identityLimit })
-      const clientState = await clientLimiter.get(clientKey)
-      if (clientState && clientState.remaining <= 0)
-        throw new ThrottledError(clientState.availableIn)
+      // Reserve one attempt from each budget before checking the password. Consuming is atomic, so
+      // parallel requests cannot all pass a read-then-increment check. Only credential failures
+      // keep their reservation; success and unrelated errors give it back.
+      await reserveAttempt(clientLimiter, clientKey)
+      try {
+        await reserveAttempt(identityLimiter, identityKey)
+      } catch (error) {
+        await clientLimiter.decrement(clientKey)
+        throw error
+      }
       let verified: { account: CurrentAccount; revision: string | null }
       const started = performance.now()
       try {
-        const [limitError, result] = await identityLimiter.penalize(identityKey, () =>
-          transaction(deps.db, async (trx) => {
-            const candidate = await deps.config.users.findByEmail(email, trx)
-            if (!candidate?.hasPassword) throw new InvalidCredentialsError()
-            await lockUser(trx, deps.config, candidate.id)
-            const user = await deps.config.users.findById(candidate.id, trx)
-            if (
-              !user ||
-              user.email !== email ||
-              !user.hasPassword ||
-              !(await deps.config.users.verifyPassword(user.id, input.password, trx)) ||
-              !validateAccountAccessResult(await auth.canAccess(user, trx))
-            )
-              throw new InvalidCredentialsError()
-            return {
-              account: safeAccount(user),
-              revision: await revision(trx, deps.config, user.id),
-            }
-          })
-        )
-        if (limitError) throw limitError
-        verified = result!
+        verified = await transaction(deps.db, async (trx) => {
+          const candidate = await deps.config.users.findByEmail(email, trx)
+          if (!candidate?.hasPassword) throw new InvalidCredentialsError()
+          await lockUser(trx, deps.config, candidate.id)
+          const user = await deps.config.users.findById(candidate.id, trx)
+          if (
+            !user ||
+            user.email !== email ||
+            !user.hasPassword ||
+            !(await deps.config.users.verifyPassword(user.id, input.password, trx)) ||
+            !validateAccountAccessResult(await auth.canAccess(user, trx))
+          )
+            throw new InvalidCredentialsError()
+          return {
+            account: safeAccount(user),
+            revision: await revision(trx, deps.config, user.id),
+          }
+        })
       } catch (error) {
         if (error instanceof InvalidCredentialsError) {
-          await clientLimiter.increment(clientKey)
+          const identity = await identityLimiter.get(identityKey)
+          if (identity && identity.consumed >= identity.limit)
+            await identityLimiter.block(identityKey, auth.identityLimit.blockDuration)
           // Unknown and passwordless emails skip password hashing. Wait out the configured floor
           // so failure timing does not reveal which addresses have usable accounts.
           await waitForFloor(started, deps.config.minRequestMs)
+        } else {
+          await clientLimiter.decrement(clientKey)
+          await identityLimiter.decrement(identityKey)
         }
-        if (error instanceof errors.E_TOO_MANY_REQUESTS)
-          throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
         throw error
       }
+      await clientLimiter.decrement(clientKey)
+      await identityLimiter.delete(identityKey)
 
       const credential = await establishCredential(deps, auth, guard, verified, {
         label: typeof input.sessionLabel === 'string' ? input.sessionLabel : undefined,
