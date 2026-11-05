@@ -184,7 +184,9 @@ test.group('account-kit:doctor', (group) => {
       'email_verification_tokens',
     ]) {
       try {
-        await kit.db.connection().schema.dropTable(table)
+        // PostgreSQL refuses to drop a table other tables reference; CASCADE drops only their keys.
+        if (testEngine === 'pg') await kit.db.rawQuery(`drop table ${table} cascade`)
+        else await kit.db.connection().schema.dropTable(table)
         assert.deepEqual(failures(await runDoctor(input({ config: exportOnly }))), [
           `Package tables: missing ${table}`,
         ])
