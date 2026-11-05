@@ -55,6 +55,10 @@ export function accountKitSessionGuard(ctx: HttpContext) {
 
 ## 3. Log in
 
+Configure the application's trusted proxies before deriving `clientKey` from `ctx.request.ip()`.
+Follow the [application security requirements](../guide/security.md#what-the-application-must-do);
+Account Kit does not configure proxy trust.
+
 ```ts
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 

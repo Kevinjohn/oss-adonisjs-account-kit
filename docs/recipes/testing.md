@@ -18,6 +18,7 @@ export const accountMail = captureNotifications()
 ```ts
 // config/account_kit.ts
 import app from '@adonisjs/core/services/app'
+import { createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
 
 notify: app.inTest
   ? (await import('#tests/helpers/account_mail')).accountMail.notify
