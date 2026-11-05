@@ -86,7 +86,7 @@ test.group('invitations.resend', (group) => {
     assert,
   }) => {
     const actor = await createActor()
-    const { account, recorder } = service()
+    const { account, recorder } = service({ expiresIn: { invitation: '2d' } })
     const { invitation, token } = await issue(account, recorder, actor.id)
     await kit.db
       .from('account_invitations')
@@ -96,7 +96,9 @@ test.group('invitations.resend', (group) => {
       actorId: actor.id,
       invitationId: invitation.id,
     })
-    assert.isTrue(renewed.expiresAt > DateTime.utc())
+    const renewedBefore = DateTime.utc()
+    assert.isTrue(renewed.expiresAt > renewedBefore.plus({ days: 2, minutes: -1 }))
+    assert.isTrue(renewed.expiresAt <= renewedBefore.plus({ days: 2 }))
     assert.isNull(await account.invitations.inspect({ token }))
     await account.invitations.accept({
       token: tokenFrom(recorder.calls[1].args[1]),

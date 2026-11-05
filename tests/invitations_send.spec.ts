@@ -75,6 +75,7 @@ test.group('invitations.send', (group) => {
     assert.isTrue(invitation.createdAt >= before)
     assert.isTrue(invitation.updatedAt >= before)
     assert.isTrue(invitation.expiresAt >= before.plus({ days: 2 }))
+    assert.isTrue(invitation.expiresAt <= DateTime.utc().plus({ days: 2 }))
   })
 
   test('rejects missing actor and denied invite before writing or notifying', async ({
