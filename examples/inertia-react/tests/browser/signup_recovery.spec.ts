@@ -46,7 +46,7 @@ test.group('Signup recovery in the browser', (group) => {
           .getByText(
             failure === 'delivery'
               ? 'Your account was created, but the verification email could not be sent. Use the dashboard resend action after one minute if you need a new link.'
-              : 'Your account was created, but a follow-up step failed. Check your email for a verification link. Use the dashboard resend action after one minute if you need a new link.'
+              : 'Your account was created, but a follow-up step failed. A verification email may not have been sent. Use the dashboard resend action after one minute if you need a new link.'
           )
           .waitFor()
         assert.notInclude(await page.locator('body').innerText(), 'private ')
