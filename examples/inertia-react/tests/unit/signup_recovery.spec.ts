@@ -131,6 +131,7 @@ test.group('Signup recovery', () => {
     assert.deepEqual(routes, ['dashboard'])
     assert.include(flashes[0]![1], 'account was created')
     assert.include(flashes[0]![1], 'follow-up step failed')
+    assert.include(flashes[0]![1], 'may not have been sent')
     assert.notInclude(flashes[0]![1], 'could not be sent')
     assert.notInclude(flashes[0]![1], 'private observer detail')
   })
