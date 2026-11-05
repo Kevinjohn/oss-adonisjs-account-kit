@@ -11,6 +11,8 @@ const PROTECTED_FIELDS = new Set([
   'password_hash',
   'emailverifiedat',
   'email_verified_at',
+  'credentialschangedat',
+  'credentials_changed_at',
   'role',
   'roles',
 ])
