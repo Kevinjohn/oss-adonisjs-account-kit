@@ -162,9 +162,10 @@ separates this disposable run from those reference fixtures.
 
 ## Hashing and alternate adapters
 
-The Lucid adapter hashes a new password before the write transaction, with the model's
-`withAuthFinder` hasher when it has one and the AdonisJS hash service otherwise, and writes the
-hash with a query, so a custom `beforeSave` hashing hook does not run on it. Account Kit never
+The Lucid adapter hashes a new password before the write transaction with the AdonisJS hash
+service, and writes the hash with a query, so a custom `beforeSave` hashing hook does not run on it.
+When the model's `withAuthFinder` uses a different hasher, pass matching `hashPassword` and
+`verifyPassword` options to the adapter. Account Kit never
 writes a plain password to the database. For a different
 table or ID type, see [custom user table or ID type](../guide/custom-schema.md). For Drizzle, Prisma or
 plain SQL, write an adapter that satisfies the [custom adapter](custom-adapter.md) contract.
