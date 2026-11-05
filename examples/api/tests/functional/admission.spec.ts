@@ -215,6 +215,8 @@ test.group('Admission', (group) => {
       [email]
     )
 
+    const malformed = await as(client.post('/api/v1/account/admissions/abc/approve'), owner)
+    assert.equal(malformed.status(), 422, JSON.stringify(malformed.body()))
     const approved = await as(client.post(`/api/v1/account/admissions/${person.id}/approve`), owner)
     assert.equal(approved.status(), 200, JSON.stringify(approved.body()))
     assert.equal((await as(client.get('/api/v1/reports'), session)).status(), 200)
@@ -306,7 +308,8 @@ test.group('Admission', (group) => {
     const invitations = await as(client.get('/api/v1/account/invitations'), owner).qs({ limit: 10 })
     assert.equal(invitations.status(), 200)
     assert.lengthOf((invitations.body() as { items: unknown[] }).items, 0)
-    assert.notEqual((await acceptInvitation(client, link)).status(), 201)
+    const accepted = await acceptInvitation(client, link)
+    assert.equal(accepted.status(), 0, JSON.stringify(accepted.body()))
   })
 
   test('an approved and invited person outside the allowed domains stays out', async ({

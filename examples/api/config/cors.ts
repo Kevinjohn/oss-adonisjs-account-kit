@@ -14,11 +14,13 @@ const corsConfig = defineConfig({
   enabled: true,
 
   /**
-   * In development, allow every origin to simplify local front/backend setup.
-   * In production, keep an explicit allowlist (empty by default, so no
-   * cross-origin browser access is allowed until configured).
+   * In development, allow local front-end servers only: with credentials on, any allowed origin
+   * can read the session CSRF token. In production, keep an explicit allowlist (empty by
+   * default, so no cross-origin browser access is allowed until configured).
    */
-  origin: app.inDev ? true : [],
+  origin: app.inDev
+    ? (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)
+    : [],
 
   /**
    * HTTP methods accepted for cross-origin requests.

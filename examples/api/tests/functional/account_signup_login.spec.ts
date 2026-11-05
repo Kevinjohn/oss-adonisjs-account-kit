@@ -12,7 +12,7 @@ import { truncateDatabase } from '#tests/helpers/database'
 test.group('Account signup login', (group) => {
   group.each.setup(truncateDatabase)
 
-  test('signup and login over HTTP normalize email, require verification, and hide duplicates', async ({
+  test('signup and login over HTTP normalize email, require verification, and reject duplicates', async ({
     client,
     assert,
   }) => {
