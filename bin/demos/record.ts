@@ -407,8 +407,13 @@ async function main() {
   } finally {
     beginCleanup()
     const settled = await Promise.allSettled(cleanups.values())
+    // A command's cleanup failure may already be the primary error or one of its members.
+    const reported = new Set<unknown>([
+      primary,
+      ...(primary instanceof AggregateError ? primary.errors : []),
+    ])
     for (const result of settled) {
-      if (result.status === 'rejected' && result.reason !== primary)
+      if (result.status === 'rejected' && !reported.has(result.reason))
         cleanupErrors.push(
           result.reason instanceof Error ? result.reason : new Error(String(result.reason))
         )
