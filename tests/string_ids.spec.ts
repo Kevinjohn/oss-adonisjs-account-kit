@@ -77,6 +77,18 @@ test('account workflows support string user IDs with matching application-owned 
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: emailToken })
     assert.equal(changed.id, actor.id)
     assert.equal(changed.email, 'changed@example.test')
+    // Leave live rows keyed by the text ID, so only the foreign-key cascade can remove them.
+    await account.passwordReset.request({ email: changed.email, clientKey: 'text-id-cascade' })
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: actor.id,
+      currentPassword: 'resetPassword123',
+      newEmail: 'later@example.test',
+    })
+    assert.lengthOf(await kit.db.from('password_reset_tokens').where('tokenable_id', actor.id), 1)
+    assert.lengthOf(
+      await kit.db.from('email_verification_tokens').where('tokenable_id', actor.id),
+      1
+    )
     await kit.db.from('users').where('id', actor.id).delete()
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
