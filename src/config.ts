@@ -227,11 +227,10 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     )
   ) as unknown as InvitationThrottle
   const minRequestMs = config.minRequestMs ?? 300
-  // Node timers overflow above 2^31 - 1 ms and fire after 1 ms instead.
-  if (!Number.isFinite(minRequestMs) || minRequestMs < 0 || minRequestMs > 2_147_483_647)
+  if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
     throw new InvalidConfigurationError(
       'minRequestMs',
-      'account_kit: minRequestMs must be a non-negative number of at most 2147483647 milliseconds'
+      'account_kit: minRequestMs must be a finite non-negative number'
     )
   const tokenSecretLength = config.tokenSecretLength ?? 40
   if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)

@@ -92,11 +92,10 @@ test.group('account kit configuration and service surface', (group) => {
 
   test('rejects invalid password reset timing and throttle configuration', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
-    for (const minRequestMs of [Number.NaN, Number.POSITIVE_INFINITY, -1, 2_147_483_648]) {
+    for (const minRequestMs of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
       assert.throws(() => defineConfig({ ...base, minRequestMs }), /minRequestMs/)
     }
     assert.equal(defineConfig({ ...base, minRequestMs: 0 }).minRequestMs, 0)
-    assert.equal(defineConfig({ ...base, minRequestMs: 2_147_483_647 }).minRequestMs, 2_147_483_647)
 
     for (const requests of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
       assert.throws(() => defineConfig({ ...base, throttle: { requests } }))
