@@ -36,6 +36,26 @@
 - Breaking: `authentication.canAccess` must resolve to `true` or `false` on every sign-in and
   session check. Any other value, such as `1`, `0` or a row, now throws instead of allowing or
   denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
+- Breaking: managed routes on an access-token guard with `authentication` enabled throw
+  `InvalidArgumentsException` at registration unless the guard sets `logoutCredential`. Before,
+  logout answered 204 and left the bearer token valid.
+- Breaking: transactions refuse a MySQL session whose `@@session.time_zone` is not `+00:00` or
+  `UTC`, including `SYSTEM`. Set the server or session time zone to UTC.
+- Breaking: transactions refuse SQLite connections that do not use `better-sqlite3`, and setup
+  reports the `sqlite` and `sqlite3` clients as unsupported.
+- Breaking: the Drizzle adapter refuses a PostgreSQL `email_verified_at` column declared without
+  `timestamp({ withTimezone: true })`.
+- Breaking: listing admissions requires an admitted actor. A revoked or undecided approver gets
+  `AuthorizationError`, and `authorize.list` receives `(actor, {})`.
+- Breaking: `defineConfig` rejects unknown keys in `expiresIn` and `invitationThrottle` with
+  `InvalidConfigurationError` instead of ignoring them.
+- Changed: package 422 responses from managed routes follow the request's `Accept` header, so a
+  JSON:API client receives `{ errors: [{ code, title, source: { pointer } }] }`, with
+  `Cache-Control: no-store` and `Vary: Accept`.
+- Changed: `node ace account-kit:setup` writes warnings and progress to stderr and only the report
+  to stdout.
+- Changed: account export reports `credentialsChangedAt` as `null` when the configuration has no
+  `authentication`.
 - Deprecated: the `encryption` input to `new AccountKit(...)` is ignored. Remove it from direct
   constructor calls; it is still accepted for source compatibility.
 
