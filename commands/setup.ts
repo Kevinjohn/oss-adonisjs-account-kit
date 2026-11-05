@@ -157,7 +157,9 @@ export default class SetupAccountKit extends BaseCommand {
     if (!plan.preview) {
       const written = await applySetup(root, plan)
       this.logger.logError(
-        `[ info ] Wrote ${written.length} files. Run migrations separately after review.`
+        this.logger.prepareInfo(
+          `Wrote ${written.length} files. Run migrations separately after review.`
+        )
       )
     }
   }

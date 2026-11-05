@@ -3,6 +3,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 import { Cast } from './cast.js'
 import {
   assertDatabaseInventory,
@@ -35,7 +36,9 @@ function setup(args: string[]) {
   if (result.status !== 0) throw new Error(`setup failed:\n${result.stdout}${result.stderr}`)
   return {
     report: JSON.parse(result.stdout) as SetupReport,
-    after: result.stderr.split('\n').filter((line) => line.startsWith('[ info ]')),
+    after: stripVTControlCharacters(result.stderr)
+      .split('\n')
+      .filter((line) => line.startsWith('[ info ]')),
   }
 }
 

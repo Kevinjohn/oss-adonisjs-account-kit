@@ -4,6 +4,7 @@ import { test } from '@japa/runner'
 import { ListLoader, type Kernel } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
+import { stripVTControlCharacters } from 'node:util'
 import SetupAccountKit from '../commands/setup.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
 import { inspectSetup } from '../src/setup/inspect.js'
@@ -29,7 +30,8 @@ async function runSetup(ignitor: ReturnType<typeof retirementIgnitor>, argv: str
           infos.push(message)
         }
         kernel.ui.logger.logError = (message) => {
-          if (message.startsWith('[ warn ] ')) warnings.push(message.slice('[ warn ] '.length))
+          const plain = stripVTControlCharacters(message)
+          if (plain.startsWith('[ warn ] ')) warnings.push(plain.slice('[ warn ] '.length))
         }
       })
       .handle(['account-kit:setup', ...argv])
