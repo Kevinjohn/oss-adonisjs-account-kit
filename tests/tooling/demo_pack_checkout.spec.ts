@@ -173,7 +173,8 @@ test.group('demo checkout archive', (group) => {
     const appDir = join(f.root, 'tmp', 'demo-app')
     const result = await f.run(createFeature, [appDir])
     assert.equal(result.code, 0, result.output)
-    assert.ok((await readFile(join(appDir, 'package.json'))).length > 0)
+    const appPackage = await readFile(join(appDir, 'package.json'))
+    assert.ok(appPackage.length > 0)
   })
 
   test('pack failure leaves its owned archive folder for diagnosis', async (t) => {
