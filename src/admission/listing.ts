@@ -1,9 +1,12 @@
 // Pages through admission records for an approver.
+import { afterCreation, orderByCreation } from '../creation_order.js'
 import { AuthorizationError, InvalidInputError } from '../errors.js'
+import { readIsoTimestamp } from '../timestamps.js'
 import type { UserId } from '../types.js'
 import { requireApproval } from './capability.js'
 import { decodeAdmissionCursor, encodeAdmissionCursor } from './cursor.js'
-import { admissionTable, toAdmissionRecord, type AdmissionRow } from './rows.js'
+import { evaluateAdmission } from './decision.js'
+import { admissionTable, readAdmissionRow, toAdmissionRecord, type AdmissionRow } from './rows.js'
 import type { AdmissionContext } from './service.js'
 import type { AdmissionApprovalStatus, AdmissionRecord } from './types.js'
 
@@ -33,24 +36,22 @@ export async function listAdmissions(
   const { users } = deps.accountConfig
   const actor = await users.findById(input.actorId)
   if (!actor) throw new InvalidInputError('Unknown actor')
-  if ((await authorize.list(actor)) !== true) throw new AuthorizationError()
+  // Like a decision, listing needs an admitted actor: a revoked approver loses read access too.
+  if (
+    !evaluateAdmission(deps.config, actor, await readAdmissionRow(deps.db.connection(), actor.id))
+      .admitted
+  )
+    throw new AuthorizationError()
+  if ((await authorize.list(actor, {})) !== true) throw new AuthorizationError()
 
   const query = deps.db
     .from(admissionTable)
     .whereNotNull('user_id')
-    .orderBy('created_at', 'asc')
-    .orderBy('id', 'asc')
     .limit(limit + 1)
+  orderByCreation(query, deps.db)
   if (input.status === 'pending') query.whereNotNull('requested_at').whereNull('approval_status')
   else if (input.status) query.where('approval_status', input.status)
-  if (position)
-    query.where((builder) =>
-      builder
-        .where('created_at', '>', position.createdAt)
-        .orWhere((nested) =>
-          nested.where('created_at', position.createdAt).where('id', '>', position.id)
-        )
-    )
+  if (position) afterCreation(query, deps.db, position)
   const rows = (await query) as AdmissionRow[]
   const page = rows.slice(0, limit)
   const items: AdmissionRecord[] = []
@@ -62,6 +63,7 @@ export async function listAdmissions(
   const last = rows.length > limit ? page.at(-1)! : null
   return {
     items,
-    nextCursor: last ? encodeAdmissionCursor(last.created_at, last.id) : null,
+    // The driver may return a Date or an SQL string; the cursor always carries ISO 8601 UTC.
+    nextCursor: last ? encodeAdmissionCursor(readIsoTimestamp(last.created_at), last.id) : null,
   }
 }

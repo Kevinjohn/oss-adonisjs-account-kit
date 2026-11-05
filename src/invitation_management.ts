@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon'
-import { sqlTimestamp } from './timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { lockRow, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
@@ -15,6 +15,7 @@ import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import { decodeInvitationCursor, encodeInvitationCursor } from './invitation_cursor.js'
+import { afterCreation, orderByCreation } from './creation_order.js'
 import type {
   Invitation,
   InvitationPage,
@@ -165,22 +166,15 @@ export async function listInvitations(
   const query = deps.db
     .from('account_invitations')
     .where('expires_at', '>', sqlTimestamp(deps.db))
-    .orderBy('created_at', 'asc')
-    .orderBy('id', 'asc')
     .limit(limit + 1)
-  if (position)
-    query.where((builder) =>
-      builder
-        .where('created_at', '>', position!.createdAt)
-        .orWhere((nested) =>
-          nested.where('created_at', position!.createdAt).where('id', '>', position!.id)
-        )
-    )
+  orderByCreation(query, deps.db)
+  if (position) afterCreation(query, deps.db, position)
   const rows = await query
   const items = rows.slice(0, limit).map(toInvitation)
   const last = rows.length > limit ? rows[limit - 1] : null
   return {
     items,
-    nextCursor: last ? encodeInvitationCursor(last.created_at, last.id) : null,
+    // The driver may return a Date or an SQL string; the cursor always carries ISO 8601 UTC.
+    nextCursor: last ? encodeInvitationCursor(readIsoTimestamp(last.created_at), last.id) : null,
   }
 }

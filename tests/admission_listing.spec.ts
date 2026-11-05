@@ -13,6 +13,7 @@ test.group('admission listing', (group) => {
 
   async function seed() {
     const actor = await insertUser(kit, { email: 'actor@example.test' })
+    await writeAdmissionRow(kit, actor.id, { approval: 'approved' })
     const people = {
       pending: await insertUser(kit, { email: 'pending@example.test' }),
       silent: await insertUser(kit, { email: 'silent@example.test' }),
@@ -34,13 +35,13 @@ test.group('admission listing', (group) => {
     const emails = async (status?: 'pending' | 'approved' | 'rejected' | 'revoked') =>
       (await admission.list({ actorId: actor.id, status })).items.map((item) => item.email)
     assert.deepEqual(await emails('pending'), [people.pending.email])
-    assert.deepEqual(await emails('approved'), [people.approved.email])
+    assert.deepEqual(await emails('approved'), [actor.email, people.approved.email])
     assert.deepEqual(await emails('rejected'), [people.rejected.email])
     assert.deepEqual(await emails('revoked'), [people.revoked.email])
-    assert.sameMembers(
-      await emails(),
-      Object.values(people).map((person) => person.email)
-    )
+    assert.sameMembers(await emails(), [
+      actor.email,
+      ...Object.values(people).map((person) => person.email),
+    ])
     await assert.rejects(
       () => admission.list({ actorId: actor.id, status: 'archived' as never }),
       InvalidInputError
@@ -60,9 +61,14 @@ test.group('admission listing', (group) => {
       pages++
     } while (cursor)
     assert.equal(pages, 3)
-    assert.lengthOf(new Set(seen), 5)
-    const all = (await admission.list({ actorId: actor.id })).items.map((item) => item.email)
-    assert.deepEqual(seen, all)
+    assert.deepEqual(seen, [
+      'actor@example.test',
+      'pending@example.test',
+      'silent@example.test',
+      'approved@example.test',
+      'rejected@example.test',
+      'revoked@example.test',
+    ])
 
     for (const bad of ['nope', Buffer.from('[1,2]').toString('base64url'), 'x'.repeat(600)])
       await assert.rejects(
@@ -91,5 +97,29 @@ test.group('admission listing', (group) => {
     await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
     assert.deepEqual(calls, [actor.id])
     await assert.rejects(() => admission.list({ actorId: 999_999 }), 'Unknown actor')
+  })
+
+  test('a revoked or undecided approver cannot list', async ({ assert }) => {
+    const { actor } = await seed()
+    const { admission } = makeAdmission(kit, approvalOnly)
+    await writeAdmissionRow(kit, actor.id, { approval: 'revoked' })
+    await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
+    await kit.db.from('account_admissions').where('user_id', actor.id).delete()
+    await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
+  })
+
+  test('pages past rows whose created_at was written in SQL format', async ({ assert }) => {
+    const { actor } = await seed()
+    await kit.db.from('account_admissions').update({
+      created_at:
+        kit.db.connection().dialect.name === 'better-sqlite3'
+          ? '2026-01-01 00:00:00'
+          : '2026-01-01T00:00:00Z',
+    })
+    const { admission } = makeAdmission(kit, approvalOnly)
+    const first = await admission.list({ actorId: actor.id, limit: 2 })
+    assert.isString(first.nextCursor)
+    const second = await admission.list({ actorId: actor.id, limit: 2, cursor: first.nextCursor! })
+    assert.lengthOf(second.items, 2)
   })
 })
