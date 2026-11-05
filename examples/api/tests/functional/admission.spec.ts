@@ -309,7 +309,8 @@ test.group('Admission', (group) => {
     assert.equal(invitations.status(), 200)
     assert.lengthOf((invitations.body() as { items: unknown[] }).items, 0)
     const accepted = await acceptInvitation(client, link)
-    assert.equal(accepted.status(), 0, JSON.stringify(accepted.body()))
+    assert.equal(accepted.status(), 400, JSON.stringify(accepted.body()))
+    assert.equal(refusal(accepted).errors[0].code, 'E_ACCOUNT_KIT_INVALID_TOKEN')
   })
 
   test('an approved and invited person outside the allowed domains stays out', async ({
