@@ -403,9 +403,10 @@ test.group('invitations.resend', (group) => {
       )
         attempted()
     }
-    knex.on('query', onQuery)
     try {
       await ready
+      // Listen only once resend holds its lock, so its own lock query cannot count as the accept.
+      knex.on('query', onQuery)
       const accepting = account.invitations.accept({ token, password: 'password123' })
       void accepting.catch(() => {})
       await attemptedDelete
