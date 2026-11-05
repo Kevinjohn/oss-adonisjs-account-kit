@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Leave `ctx.auth.user`, `isAuthenticated` and `getUserOrFail()` set for the selected guard after `managedAccountMiddleware` and `admissionMiddleware`, without a second credential lookup.
 - Preserve SIGINT and SIGTERM exit status in changed-file checks.
 - Preserve deliberately cleared native profile fields through validation and password recovery, expose required email fields, and improve theme labels, status contrast and keyboard focus.
 - Show terminal recordings as static previews until playback is requested, with keyboard-operable Show/Hide controls and a static README preview.

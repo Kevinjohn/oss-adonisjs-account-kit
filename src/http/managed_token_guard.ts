@@ -3,6 +3,7 @@ import { InvalidSessionError } from '../errors.js'
 import type { UserId } from '../types.js'
 import type { ManagedGuard } from './managed_types.js'
 import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.js'
+import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
 
 function managedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
@@ -36,7 +37,7 @@ async function authenticate<User>(guard: { authenticate(): Promise<User> }): Pro
   }
 }
 type TokenContext<User> = HttpContext & {
-  auth: { use(name: string): { authenticate(): Promise<User> } }
+  auth: MarkableAuthenticator & { use(name: string): { authenticate(): Promise<User> } }
 }
 
 export function createTokenGuard<User>(
@@ -51,7 +52,9 @@ export function createTokenGuard<User>(
       return credential.value
     },
     async current(context) {
-      const user = await authenticate((context as TokenContext<User>).auth.use(options.name))
+      const auth = (context as TokenContext<User>).auth
+      const user = await authenticate(auth.use(options.name))
+      await markAuthenticated(auth, options.name)
       return { userId: managedUser(user).id, tokenId: tokenIdentifier(user) }
     },
     async logoutCredential(context) {

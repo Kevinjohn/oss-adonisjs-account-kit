@@ -100,3 +100,29 @@ export function stubGuard<Credential = unknown>(
     ...overrides,
   }
 }
+
+/**
+ * A stand-in for `@adonisjs/auth`'s Authenticator: `use(name).authenticate()` resolves `user` and
+ * counts lookups, `authenticateUsing` records the marked guards, and `user` answers only once a
+ * guard was marked, as the real one does.
+ */
+export function fakeAuthenticator<User extends object>(user: User) {
+  const auth = {
+    lookups: 0,
+    marked: undefined as string[] | undefined,
+    use: (_name: string) => ({
+      authenticate: async () => {
+        auth.lookups++
+        return user
+      },
+    }),
+    authenticateUsing: async (guards: string[]) => {
+      auth.marked = guards
+      return user
+    },
+    get user(): User | undefined {
+      return auth.marked ? user : undefined
+    },
+  }
+  return auth
+}

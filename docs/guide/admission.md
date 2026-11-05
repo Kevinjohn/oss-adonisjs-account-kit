@@ -177,6 +177,11 @@ Pass `active: false` to skip the activation check. Without `createManagedGuard`,
 `admission.require(input)` from your own middleware, as you would `requireActive`. The managed
 routes cannot carry this middleware; they stay the limited surface.
 
+After the middleware, `ctx.auth.user`, `ctx.auth.isAuthenticated` and `ctx.auth.getUserOrFail()`
+answer for the selected guard, as they do after `middleware.auth({ guards: [name] })`, so the
+default Bouncer initializer and application code see the signed-in user without a second
+`auth` middleware. `managedAccountMiddleware` does the same.
+
 ### Errors
 
 Both errors extend `AccountKitError` and are exported from `@kevinjohn/adonisjs-account-kit/admission` only.
