@@ -53,7 +53,13 @@ export async function planArrayImports(
     return
   }
   const array = providers.initializer
-  const present = new Set(array.elements.map((entry) => lazyImportPath(source!, entry)))
+  // Providers may also be written `{ file: () => import('x'), environment: [...] }`.
+  const providerPath = (entry: (typeof array.elements)[number]) => {
+    const file =
+      source!.ts.isObjectLiteralExpression(entry) && directProperty(source!, entry, 'file')
+    return lazyImportPath(source!, file ? file.initializer : entry)
+  }
+  const present = new Set(array.elements.map(providerPath))
   const missing = imports.filter((name) => !present.has(name))
   if (!missing.length) {
     changes.push({

@@ -350,10 +350,19 @@ export function walk(source: SetupSource, visitor: (node: TypeScript.Node) => vo
   visit(source.file)
 }
 
+/** The path of `() => import('x')`, also written with a block body that returns the import. */
 export function lazyImportPath(source: SetupSource, node: TypeScript.Node): string | null {
   const { ts } = source
-  if (!ts.isArrowFunction(node) || !ts.isCallExpression(node.body)) return null
-  const call = node.body
+  if (!ts.isArrowFunction(node)) return null
+  let call: TypeScript.Expression | undefined = node.body as TypeScript.Expression
+  if (ts.isBlock(node.body)) {
+    const [statement] = node.body.statements
+    call =
+      node.body.statements.length === 1 && ts.isReturnStatement(statement)
+        ? statement.expression
+        : undefined
+  }
+  if (!call || !ts.isCallExpression(call)) return null
   if (
     call.expression.kind !== ts.SyntaxKind.ImportKeyword ||
     call.arguments.length !== 1 ||
