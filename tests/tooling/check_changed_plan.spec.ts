@@ -40,6 +40,17 @@ test.group('check_changed_plan.spec', (group) => {
     ])
   })
 
+  test('package sources build and check the built package; stubs/main.ts builds the docs', () => {
+    for (const path of ['src/http/guard.ts', 'stubs/config/account_kit.stub', 'package.json']) {
+      const steps = plan(path)
+      assert.deepEqual(steps.build.command, ['pnpm', 'build'], path)
+      assert.deepEqual(steps['built-exports'].command, ['pnpm', 'test:built-exports'], path)
+      assert.deepEqual(steps['built-setup'].command, ['pnpm', 'test:built-setup'], path)
+    }
+    assert.ok(plan('tests/email.spec.ts').build.skip)
+    assert.deepEqual(plan('stubs/main.ts').docs.command, ['pnpm', 'docs:build'])
+  })
+
   test('formatting runs first, then lint, then type-checking and tests', () => {
     const ids = planChecks([{ path: 'src/http/guard.ts', deleted: false }]).map((step) => step.id)
     assert.deepEqual(ids.slice(0, 4), ['format', 'lint', 'typecheck', 'tests'])
