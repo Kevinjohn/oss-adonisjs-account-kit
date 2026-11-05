@@ -14,11 +14,13 @@ test.group('setup session prerequisites', () => {
   }) => {
     await withFixture(async (choices, state) => {
       state.files['config/session.ts'] = 'export default defineConfig({\n'
-      const reported = async () =>
-        (await planSetup(choices, state)).diagnostics.some(
+      const reported = async () => {
+        const plan = await planSetup(choices, state)
+        return plan.diagnostics.some(
           ({ field, message }) =>
             field === 'config/session.ts' && message.includes('TypeScript errors')
         )
+      }
       assert.isTrue(await reported())
       choices.authentication!.strategy = 'access_tokens'
       assert.isFalse(await reported())
