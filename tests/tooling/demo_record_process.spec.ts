@@ -451,6 +451,7 @@ syncBuiltinESMExports()
     const originalDateNow = Date.now
     let clock = 1000
     let error: unknown
+    let closeTimeout: number | undefined
     try {
       Date.now = () => clock++
       error = await stopServer(child, false, {
@@ -463,7 +464,9 @@ syncBuiltinESMExports()
           waits++
           return waits > 1
         },
-        close: async () => undefined,
+        close: async (_child, timeout) => {
+          closeTimeout = timeout
+        },
       }).then(
         () => undefined,
         (failure: unknown) => failure
@@ -475,6 +478,7 @@ syncBuiltinESMExports()
     assert.equal(waits, 2)
     assert.deepEqual(timeouts, [5000, 4999])
     assert.equal(error, undefined)
+    assert.equal(closeTimeout, 4998)
   })
 
   test('failed final reap remains an explicit cleanup failure', async () => {
@@ -484,6 +488,7 @@ syncBuiltinESMExports()
     const originalDateNow = Date.now
     let clock = 1000
     let error: unknown
+    let closeCalls = 0
     try {
       Date.now = () => clock++
       error = await stopServer(child, false, {
@@ -495,7 +500,9 @@ syncBuiltinESMExports()
           timeouts.push(timeout)
           return false
         },
-        close: async () => undefined,
+        close: async () => {
+          closeCalls++
+        },
       }).then(
         () => undefined,
         (failure: unknown) => failure
@@ -505,6 +512,7 @@ syncBuiltinESMExports()
     }
     assert.deepEqual(signals, ['SIGTERM', 'SIGKILL'])
     assert.deepEqual(timeouts, [5000, 4999])
+    assert.equal(closeCalls, 0)
     assert.ok(error instanceof AggregateError)
     assert.match(error.message, /failed to clean up owned recording process group/)
     assert.match(String(error.errors[0]), /did not exit after SIGKILL/)
