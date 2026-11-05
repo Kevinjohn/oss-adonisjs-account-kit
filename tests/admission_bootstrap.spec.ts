@@ -8,7 +8,7 @@ import { EmailAlreadyRegisteredError, InvalidInputError } from '../src/errors.js
 import type { Invitation } from '../src/types.js'
 import { dbTime } from './helpers/db_time.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
-import { allRequirements, makeAdmission } from './helpers/admission.js'
+import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser, tokenFrom } from './helpers/fakes.js'
 
 test.group('admission bootstrap', (group) => {
@@ -101,19 +101,27 @@ test.group('admission bootstrap', (group) => {
 
   test('list and decisions never see a waiting approval', async ({ assert }) => {
     const { admission } = setup()
+    // Listing needs an admitted actor; its row sorts last so it never hides the order under test.
     const actor = await insertUser(kit, { email: 'actor@example.test' })
+    await writeAdmissionRow(kit, actor.id, { invited: true, approval: 'approved' })
+    await kit.db
+      .from('account_admissions')
+      .where('user_id', actor.id)
+      .update({ created_at: dbTime(kit, DateTime.utc().plus({ days: 1 })) })
     await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
-    assert.lengthOf((await admission.list({ actorId: actor.id })).items, 0)
-    assert.lengthOf((await admission.list({ actorId: actor.id, status: 'approved' })).items, 0)
+    const emails = (page: { items: Array<{ email: string }> }) => page.items.map((i) => i.email)
+    assert.deepEqual(emails(await admission.list({ actorId: actor.id })), [actor.email])
+    assert.deepEqual(emails(await admission.list({ actorId: actor.id, status: 'approved' })), [
+      actor.email,
+    ])
     // The waiting row is older than the account's row, yet the first page of one holds the account.
     const person = await insertUser(kit, { email: 'person@example.test' })
     await admission.operator.approve({ email: person.email })
     const page = await admission.list({ actorId: actor.id, limit: 1 })
-    assert.deepEqual(
-      page.items.map((item) => item.email),
-      [person.email]
-    )
-    assert.isNull(page.nextCursor)
+    assert.deepEqual(emails(page), [person.email])
+    const next = await admission.list({ actorId: actor.id, limit: 1, cursor: page.nextCursor! })
+    assert.deepEqual(emails(next), [actor.email])
+    assert.isNull(next.nextCursor)
   })
 
   test('an account that already has a record keeps it and leaves the waiting approval', async ({
