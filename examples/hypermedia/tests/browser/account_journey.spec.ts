@@ -67,6 +67,45 @@ test.group('native account journeys', (group) => {
     assert.isFalse((await User.findByOrFail('id', user.id)).emailVerifiedAt === null)
   })
 
+  test('new unverified accounts can confirm their password for profile and password changes', async ({
+    visit,
+    assert,
+  }) => {
+    const page = await visit('/signup')
+    await page.getByLabel('Full name').fill('Unverified Example')
+    await page.getByLabel('Email').fill('unverified-settings@example.test')
+    await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
+    await page.getByLabel('Confirm password').fill('SignupPass123!')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await page.getByRole('heading', { name: 'Your account' }).waitFor()
+    const user = await User.findByOrFail('email', 'unverified-settings@example.test')
+    assert.isNull(user.emailVerifiedAt)
+    assert.equal(user.unverifiedEmail, user.email)
+
+    await page.goto('/settings/profile')
+    await page.getByLabel('Full name').fill('Updated Unverified Example')
+    await page.getByLabel('Current password').fill('SignupPass123!')
+    await page.getByRole('button', { name: 'Save profile' }).click()
+    await page.getByText('Your profile has been updated.').waitFor()
+    assert.notInclude(await page.locator('body').innerText(), 'Your current password is incorrect.')
+    assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Updated Unverified Example')
+
+    await page.goto('/settings/password')
+    await page.getByLabel('Current password').fill('SignupPass123!')
+    await page.getByLabel('New password', { exact: true }).fill('ChangedPass123!')
+    await page.getByLabel('Confirm new password').fill('ChangedPass123!')
+    await page.getByRole('button', { name: 'Change password' }).click()
+    await page.getByText('Password changed. Other sessions have been signed out.').waitFor()
+    assert.notInclude(await page.locator('body').innerText(), 'Your current password is incorrect.')
+    assert.equal((await User.verifyCredentials(user.email, 'ChangedPass123!')).id, user.id)
+    const unchanged = await User.findByOrFail('id', user.id)
+    assert.isNull(unchanged.emailVerifiedAt)
+    assert.equal(unchanged.unverifiedEmail, user.email)
+    await page.goto('/account')
+    await page.getByRole('heading', { name: 'Your account' }).waitFor()
+    assert.equal(new URL(page.url()).pathname, '/dashboard')
+  })
+
   test('reset acknowledgement is generic and revokes both old sessions through the original login', async ({
     browser,
     visit,
@@ -586,16 +625,24 @@ test.group('native account journeys', (group) => {
     }
 
     const javascriptPage = await visit('/login')
+    await javascriptPage.clock.install()
     await javascriptPage.getByLabel('Email').fill('unknown@example.test')
     await javascriptPage.getByLabel('Password').fill('UnknownPass123!')
     await javascriptPage.getByRole('button', { name: 'Sign in' }).click()
     const javascriptError = javascriptPage.getByText(errorMessage)
     await javascriptError.waitFor()
-    await javascriptPage.waitForTimeout(5100)
+    await javascriptPage.waitForLoadState('load')
+    const readyThemeToggle = javascriptPage.getByRole('button', {
+      name: /^Switch to (light|dark) theme$/,
+    })
+    await readyThemeToggle.waitFor({ state: 'visible' })
+    assert.isNull(await readyThemeToggle.getAttribute('x-cloak'))
+    // Advance dismissal timers only after the returned document has initialized Alpine.
+    await javascriptPage.clock.fastForward(60_000)
     assert.isTrue(await javascriptError.isVisible())
   })
 
-  test('profile, email change, password change, and logout follow session policy', async ({
+  test('separate profile, email, and password owners follow session and logout policy', async ({
     browser,
     visit,
     assert,
@@ -612,6 +659,13 @@ test.group('native account journeys', (group) => {
       fullName: 'Email Owner',
       email: 'email-owner@example.test',
       password: 'EmailOwnerPassword123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const passwordOwner = await User.create({
+      fullName: 'Password Owner',
+      email: 'password-owner@example.test',
+      password: 'PasswordOwnerPassword123!',
       emailVerifiedAt: DateTime.now(),
       unverifiedEmail: null,
     })
@@ -641,6 +695,28 @@ test.group('native account journeys', (group) => {
       await emailPrimary.getByRole('heading', { name: 'Your account' }).waitFor()
 
       await primary.goto('/settings/profile')
+      assert.equal(await primary.getByLabel('Full name').inputValue(), 'Morgan Example')
+      const csrf = await primary
+        .locator('form')
+        .filter({ has: primary.getByRole('button', { name: 'Save profile', exact: true }) })
+        .locator('input[name="_csrf"]')
+        .inputValue()
+      const validation = await primary.request.post(`${origin}/settings/profile`, {
+        form: { _csrf: csrf, fullName: '', currentPassword: '' },
+        headers: { referer: `${origin}/settings/profile` },
+        maxRedirects: 0,
+      })
+      assert.equal(validation.status(), 302)
+      await primary.goto('/settings/profile')
+      await primary.locator('#currentPassword-error').waitFor()
+      assert.equal(
+        await primary.getByLabel('Current password').getAttribute('aria-invalid'),
+        'true'
+      )
+      assert.equal(await primary.getByLabel('Full name').inputValue(), '')
+      assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Morgan Example')
+      await primary.goto('/settings/profile')
+      assert.equal(await primary.getByLabel('Full name').inputValue(), 'Morgan Example')
       await primary.getByLabel('Full name').fill('  Morgan Updated  ')
       await primary.getByLabel('Current password').fill('wrong-password')
       await primary.getByRole('button', { name: 'Save profile' }).click()
@@ -653,7 +729,15 @@ test.group('native account journeys', (group) => {
       await primary.getByRole('button', { name: 'Save profile' }).click()
       await primary.getByText('Your profile has been updated.').waitFor()
       assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Morgan Updated')
-      await primary.getByLabel('Full name').fill('   ')
+      await primary.getByLabel('Full name').fill('')
+      await primary.getByLabel('Current password').fill('wrong-password')
+      await primary.getByRole('button', { name: 'Save profile' }).click()
+      await primary
+        .getByText('Your current password is incorrect. Check it and try again.')
+        .waitFor()
+      assert.equal(await primary.getByLabel('Full name').inputValue(), '')
+      assert.equal(await primary.getByLabel('Current password').inputValue(), '')
+      assert.equal((await User.findByOrFail('id', user.id)).fullName, 'Morgan Updated')
       await primary.getByLabel('Current password').fill('OldPassword123!')
       await primary.getByRole('button', { name: 'Save profile' }).click()
       await primary.getByText('Your profile has been updated.').waitFor()
@@ -742,16 +826,16 @@ test.group('native account journeys', (group) => {
       const passwordContext = await browser.newContext({ baseURL: origin })
       contexts.push(passwordContext)
       const otherPasswordSession = await passwordContext.visit('/login')
-      await otherPasswordSession.getByLabel('Email').fill(user.email)
-      await otherPasswordSession.getByLabel('Password').fill('OldPassword123!')
+      await otherPasswordSession.getByLabel('Email').fill(passwordOwner.email)
+      await otherPasswordSession.getByLabel('Password').fill('PasswordOwnerPassword123!')
       await otherPasswordSession.getByRole('button', { name: 'Sign in' }).click()
       await otherPasswordSession.getByRole('heading', { name: 'Your account' }).waitFor()
 
       const passwordPrimaryContext = await browser.newContext({ baseURL: origin })
       contexts.push(passwordPrimaryContext)
       const passwordPrimary = await passwordPrimaryContext.visit('/login')
-      await passwordPrimary.getByLabel('Email').fill(user.email)
-      await passwordPrimary.getByLabel('Password').fill('OldPassword123!')
+      await passwordPrimary.getByLabel('Email').fill(passwordOwner.email)
+      await passwordPrimary.getByLabel('Password').fill('PasswordOwnerPassword123!')
       await passwordPrimary.getByRole('button', { name: 'Sign in' }).click()
       await passwordPrimary.getByRole('heading', { name: 'Your account' }).waitFor()
       await passwordPrimary.goto('/settings/password')
@@ -763,14 +847,14 @@ test.group('native account journeys', (group) => {
         .getByText('Your current password is incorrect. Check it and try again.')
         .waitFor()
       assert.equal(await passwordPrimary.getByLabel('Current password').inputValue(), '')
-      await passwordPrimary.getByLabel('Current password').fill('OldPassword123!')
+      await passwordPrimary.getByLabel('Current password').fill('PasswordOwnerPassword123!')
       await passwordPrimary.getByLabel('New password', { exact: true }).fill('NewPassword123!')
       await passwordPrimary.getByLabel('Confirm new password').fill('NewPassword123!')
       await passwordPrimary.getByRole('button', { name: 'Change password' }).click()
       await passwordPrimary
         .getByText('Password changed. Other sessions have been signed out.')
         .waitFor()
-      assert.isNotNull(await User.verifyCredentials(user.email, 'NewPassword123!'))
+      assert.isNotNull(await User.verifyCredentials(passwordOwner.email, 'NewPassword123!'))
       await otherPasswordSession.goto('/account')
       await otherPasswordSession.getByRole('heading', { name: 'Sign in' }).waitFor()
       const newEmailContext = await browser.newContext({ baseURL: origin })

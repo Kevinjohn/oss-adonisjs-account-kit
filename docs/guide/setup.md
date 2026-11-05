@@ -76,10 +76,12 @@ preserve an earlier setup in that case, correct or remove `config/account_kit_se
 reviewed, valid choices file with `--input=choices.json`. An explicit `--input` always takes
 precedence and does not start the interview; `--check` reads saved choices without prompting.
 
-![Recording of account-kit:setup previewing and applying an earlier 13-migration inventory](../assets/demos/setup.svg)
+<AnimatedRecording
+  recording="setup"
+  description="account-kit:setup previewing and applying the API choices and 11-migration inventory"
+/>
 
-This recording predates the current migration inventory. A fresh setup currently generates 11
-migrations.
+The API choices shown here generate 11 migrations.
 
 The generated migrations assume the application users table already exists. On a fresh application,
 create that table with the application's own migration before running Account Kit migrations. The

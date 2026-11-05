@@ -19,6 +19,7 @@
   --btn: #0a0a0b;
   --btn-fg: #ffffff;
   --ring: rgba(10, 10, 11, 0.13);
+  --focus: #1d4ed8;
   --field: #ffffff;
   --ok: #18794e;
 
@@ -39,6 +40,7 @@
   --btn: #ededee;
   --btn-fg: #0a0a0b;
   --ring: rgba(237, 237, 238, 0.14);
+  --focus: #60a5fa;
   --field: #0c0c0f;
   --ok: #3ecf8e;
   color-scheme: dark;
@@ -89,6 +91,8 @@ input {
   font-family: var(--mono);
 }
 .tag {
+  /* Status labels also reference this token inline; keep their text contrast local. */
+  --subtle: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.09em;
@@ -118,8 +122,8 @@ input {
     scale 0.15s;
 }
 .btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--ring);
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
 }
 .btn:active:not(:disabled) {
   scale: 0.96;

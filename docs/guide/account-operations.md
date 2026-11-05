@@ -17,11 +17,20 @@ both creation and updates.
 
 ## How it works
 
-![An invitation with a role is sent, the invitee checks the link and sets a password, and a second use of the link fails](../assets/demos/invitations.svg)
+<AnimatedRecording
+  recording="invitations"
+  description="An invitation with a role is sent, the invitee checks the link and sets a password, and a second use of the link fails"
+/>
 
-![An email change sends a confirmation link to the new address; once it is used the address changes and the old address is told](../assets/demos/email-change.svg)
+<AnimatedRecording
+  recording="email-change"
+  description="An email change sends a confirmation link to the new address; once it is used the address changes and the old address is told"
+/>
 
-![A password change on one device signs out the other: its token is rejected with 401](../assets/demos/password-change.svg)
+<AnimatedRecording
+  recording="password-change"
+  description="A password change on one device signs out the other: its token is rejected with 401"
+/>
 
 ### A link inspection does not consume proof
 

@@ -121,7 +121,10 @@ create passwordless users. Its final **Unverified** summary is informational: it
 notification callbacks, application policy, or credential revocation. The reset and protected-route
 checks below supply that smoke test.
 
-![account-kit:doctor checking the configuration, limiter, APP_URL and tables in a new app](../assets/demos/doctor.svg)
+<AnimatedRecording
+  recording="doctor"
+  description="account-kit:doctor checking the configuration, limiter, APP_URL and tables in a new app"
+/>
 
 ## 5. Validate input and add the routes
 

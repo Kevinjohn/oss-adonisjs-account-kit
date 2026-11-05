@@ -102,7 +102,10 @@ const clientChallenge = base64url(
 
 ## How it works
 
-![A magic link opened without the right verifier fails and is used up; a new link completes in the app that asked for it](../assets/demos/magic-link.svg)
+<AnimatedRecording
+  recording="magic-link"
+  description="A magic link opened without the right verifier fails and is used up; a new link completes in the app that asked for it"
+/>
 
 ### One live link per account
 

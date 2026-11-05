@@ -62,7 +62,10 @@ The maintained [token API reference](../reference/token-reference.md) shows the 
 
 ## How it works
 
-![Five wrong passwords get one generic error, then the address is blocked with 429 even for the right password](../assets/demos/login-throttling.svg)
+<AnimatedRecording
+  recording="login-throttling"
+  description="Five wrong passwords get one generic error, then the address is blocked with 429 even for the right password"
+/>
 
 ### Login
 
