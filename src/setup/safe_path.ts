@@ -8,6 +8,8 @@ export async function safeSetupPath(root: string, name: string): Promise<string>
   if (
     !name ||
     isAbsolute(name) ||
+    // On Windows a drive-relative name on another drive gives an absolute `relative()` result.
+    isAbsolute(fromRoot) ||
     fromRoot === '..' ||
     fromRoot.startsWith(`..${sep}`) ||
     path === root

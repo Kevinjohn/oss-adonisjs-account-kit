@@ -3,6 +3,28 @@ import { planSetup } from '../src/setup/plan.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup shield prerequisites', () => {
+  test('CSRF route or method exemptions ask for review; starter defaults do not', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      const csrfReview = async (csrf: string) => {
+        state.files['config/shield.ts'] =
+          `import { defineConfig } from '@adonisjs/shield'\nexport default defineConfig({ csrf: { ${csrf} } })`
+        const plan = await planSetup(choices, state)
+        return plan.diagnostics.some(
+          ({ field, message }) => field === 'config/shield.ts' && message.includes('exceptRoutes')
+        )
+      }
+      assert.isFalse(
+        await csrfReview(
+          "enabled: true, exceptRoutes: [], methods: ['POST', 'PUT', 'PATCH', 'DELETE']"
+        )
+      )
+      assert.isTrue(await csrfReview("enabled: true, exceptRoutes: ['/account/*']"))
+      assert.isTrue(await csrfReview("enabled: true, methods: ['PUT']"))
+    })
+  })
+
   test('comments do not certify Shield and empty Limiter configuration fails', async ({
     assert,
   }) => {

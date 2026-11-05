@@ -2,9 +2,27 @@ import { rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { planSetup } from '../src/setup/plan.js'
+import {
+  nativeSessionConfiguration,
+  renderManagedSessionConfig,
+} from '../src/setup/session_config.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup session prerequisites', () => {
+  test('the session export is wrapped whatever spacing or comments it carries', async ({
+    assert,
+  }) => {
+    const source = [
+      "import { defineConfig, stores } from '@adonisjs/session'",
+      "const sessionConfig = defineConfig({ store: 'database', stores: { database: stores.database() } })",
+      'export  default /* session */ sessionConfig',
+      '',
+    ].join('\n')
+    const inspected = await nativeSessionConfiguration(source, '/nonexistent')
+    const rendered = renderManagedSessionConfig(source, inspected!)
+    assert.equal(rendered.split('// account-kit:session-export:end\n')[1], '\n')
+  })
+
   test('rejects an aliased cookie session and leaves dynamic custom stores unverified', async ({
     assert,
   }) => {

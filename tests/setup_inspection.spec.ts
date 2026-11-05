@@ -518,6 +518,16 @@ test('selected scalar environment follows Adonis file precedence without evaluat
   }
 })
 
+test('a backslash before a closing quote does not open a multiline value', async ({ assert }) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(join(root, '.env'), 'PATH_X="C:\\dir\\"\nAPP_URL=https://private.test\n')
+    assert.equal(await resolveSelectedEnvironmentValue(root, 'APP_URL', {}), 'https://private.test')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('selected environment values inside backtick multiline assignments are rejected', async ({
   assert,
 }) => {

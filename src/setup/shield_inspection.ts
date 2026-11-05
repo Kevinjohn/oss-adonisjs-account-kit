@@ -1,3 +1,4 @@
+import type * as TypeScript from 'typescript'
 import {
   defaultExpression,
   directProperty,
@@ -8,7 +9,7 @@ import {
 
 export async function shieldCsrfState(
   text: string
-): Promise<'true' | 'false' | 'dynamic' | 'missing'> {
+): Promise<'true' | 'false' | 'dynamic' | 'exempted' | 'missing'> {
   let source: SetupSource
   try {
     source = await parseSetupSource(text)
@@ -34,7 +35,31 @@ export async function shieldCsrfState(
   if (!csrf || !source.ts.isObjectLiteralExpression(csrf.initializer)) return 'missing'
   const enabled = directProperty(source, csrf.initializer, 'enabled')
   if (!enabled) return 'missing'
-  if (enabled.initializer.kind === source.ts.SyntaxKind.TrueKeyword) return 'true'
+  if (enabled.initializer.kind === source.ts.SyntaxKind.TrueKeyword)
+    return exemptsNothing(source, csrf.initializer) ? 'true' : 'exempted'
   if (enabled.initializer.kind === source.ts.SyntaxKind.FalseKeyword) return 'false'
   return 'dynamic'
+}
+
+const unsafeMethods = ['POST', 'PUT', 'PATCH', 'DELETE']
+
+/**
+ * True when `exceptRoutes` is absent or an empty array and `methods` is absent or lists every
+ * unsafe method, as the starter kits write them. Anything else may exempt managed routes.
+ */
+function exemptsNothing(source: SetupSource, csrf: TypeScript.ObjectLiteralExpression): boolean {
+  const { ts } = source
+  const exceptRoutes = directProperty(source, csrf, 'exceptRoutes')?.initializer
+  if (
+    exceptRoutes &&
+    !(ts.isArrayLiteralExpression(exceptRoutes) && exceptRoutes.elements.length === 0)
+  )
+    return false
+  const methods = directProperty(source, csrf, 'methods')?.initializer
+  if (!methods) return true
+  if (!ts.isArrayLiteralExpression(methods)) return false
+  const listed = methods.elements.map((element) =>
+    ts.isStringLiteral(element) ? element.text.toUpperCase() : null
+  )
+  return unsafeMethods.every((method) => listed.includes(method))
 }

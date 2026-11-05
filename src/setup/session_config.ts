@@ -26,6 +26,8 @@ const exportEnd = '// account-kit:session-export:end\n'
 export interface NativeSessionConfiguration {
   configStart: number
   exportStartIndex: number
+  /** End of the exported `sessionConfig` name, whatever spacing or comments precede it. */
+  exportNameEnd: number
   originalStore: string
   originalSelection: string
   storeStart: number
@@ -120,6 +122,7 @@ export async function nativeSessionConfiguration(
   return {
     configStart: declaration.parent.parent.getStart(file),
     exportStartIndex: target.exportAssignment.getStart(file),
+    exportNameEnd: target.exportAssignment.expression.getEnd(),
     originalStore: store.initializer.getText(file),
     originalSelection: store.getText(file),
     storeStart: store.getStart(file),
@@ -137,6 +140,7 @@ export function renderManagedSessionConfig(
   const {
     configStart,
     exportStartIndex,
+    exportNameEnd,
     originalStore,
     originalSelection,
     storeStart,
@@ -169,7 +173,7 @@ ${exportEnd}`
     `store: ${selector}` +
     source.slice(storeStart + originalSelection.length, exportStartIndex) +
     wrappedExport +
-    source.slice(exportStartIndex + 'export default sessionConfig'.length)
+    source.slice(exportNameEnd)
   )
 }
 

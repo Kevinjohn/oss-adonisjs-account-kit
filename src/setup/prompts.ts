@@ -53,7 +53,10 @@ export async function collectSetupChoices(
   initialChoices?: SetupChoices
 ): Promise<SetupChoices> {
   // Every answer is trimmed, so a blank or whitespace answer keeps the current value everywhere.
-  const ask = async (question: string) => (await askRaw(question)).trim()
+  const ask = async (question: string) => {
+    const answer = await askRaw(question)
+    return answer.trim()
+  }
   const hasSavedChoices = initialChoices !== undefined
   const choices = parseSetupChoices(structuredClone(initialChoices ?? defaultSetupChoices()))
   const savedRoutePrefix = choices.routePrefix

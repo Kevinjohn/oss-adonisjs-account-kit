@@ -17,15 +17,9 @@ export class IndirectEnvironmentValueError extends SelectedEnvironmentValueError
   }
 }
 
+/** Node's `parseEnv` treats no character as an escape: the next matching quote closes the value. */
 function hasClosingQuote(text: string, quote: string): boolean {
-  for (let index = 0; index < text.length; index++) {
-    if (text[index] === '\\') {
-      index++
-      continue
-    }
-    if (text[index] === quote) return true
-  }
-  return false
+  return text.includes(quote)
 }
 
 async function resolveEnvironmentValue(
