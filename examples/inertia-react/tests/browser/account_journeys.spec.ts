@@ -262,6 +262,8 @@ test.group('composed account browser journeys', (group) => {
         await page.getByText('Confirm your email address before opening this page.').waitFor()
         assert.equal(new URL(page.url()).pathname, '/dashboard')
       }
+      await page.getByRole('button', { name: 'Log out' }).click()
+      await page.waitForURL('**/login')
     }
   })
 
