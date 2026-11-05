@@ -12,7 +12,7 @@ import type { SetupChoices, SetupPlan } from '../src/setup/types.js'
 import { retirementIgnitor } from './helpers/retirement_ignitor.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
-/** Capture the actual Ace outcome and unformatted report before restoring the process exit code. */
+/** Capture the actual Ace outcome, the stdout report and stderr warnings before restoring the exit code. */
 async function runSetup(ignitor: ReturnType<typeof retirementIgnitor>, argv: string[]) {
   let kernel: Kernel | undefined
   const infos: string[] = []
@@ -24,11 +24,12 @@ async function runSetup(ignitor: ReturnType<typeof retirementIgnitor>, argv: str
       .ace()
       .configure(async (app) => {
         kernel = await app.container.make('ace')
-        kernel.ui.logger.info = (message) => {
+        // The report is the only stdout line; warnings go to stderr.
+        kernel.ui.logger.log = (message) => {
           infos.push(message)
         }
-        kernel.ui.logger.warning = (message) => {
-          warnings.push(message)
+        kernel.ui.logger.logError = (message) => {
+          if (message.startsWith('[ warn ] ')) warnings.push(message.slice('[ warn ] '.length))
         }
       })
       .handle(['account-kit:setup', ...argv])

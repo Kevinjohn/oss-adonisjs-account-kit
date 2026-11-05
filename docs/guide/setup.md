@@ -293,4 +293,4 @@ export const accountKitNotifications: NotificationCallbacks = {
      reset, sign in with it, then re-enter it.
    - Retire a provider only after a read-only inventory shows every affected account keeps another
      way to sign in.
-8. Run `node ace account-kit:setup --check --production` after the application integration and exercise the selected workflows over HTTP. The command's static report cannot substitute for those end-to-end checks.
+8. Run `node ace account-kit:setup --check --production` after the application integration and exercise the selected workflows over HTTP. The command's static report cannot substitute for those end-to-end checks. The report is the only output on stdout, so it can be piped to a JSON tool; warnings go to stderr.
