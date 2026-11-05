@@ -446,45 +446,73 @@ syncBuiltinESMExports()
   test('TERM resistant owned group escalates to KILL and reaps within final bound', async () => {
     const child = { pid: 48123, exitCode: null, signalCode: null } as ChildProcess
     const signals: NodeJS.Signals[] = []
+    const timeouts: number[] = []
     let waits = 0
-    const error = await stopServer(child, false, {
-      signal: (_pid, signal) => {
-        signals.push(signal as NodeJS.Signals)
-        return true
-      },
-      wait: async (_pid, timeout) => {
-        assert.equal(timeout, 5000)
-        waits++
-        return waits > 1
-      },
-      close: async () => undefined,
-    }).then(
-      () => undefined,
-      (failure: unknown) => failure
-    )
+    const originalDateNow = Date.now
+    let clock = 1000
+    let error: unknown
+    let closeTimeout: number | undefined
+    try {
+      Date.now = () => clock++
+      error = await stopServer(child, false, {
+        signal: (_pid, signal) => {
+          signals.push(signal as NodeJS.Signals)
+          return true
+        },
+        wait: async (_pid, timeout) => {
+          timeouts.push(timeout)
+          waits++
+          return waits > 1
+        },
+        close: async (_child, timeout) => {
+          closeTimeout = timeout
+        },
+      }).then(
+        () => undefined,
+        (failure: unknown) => failure
+      )
+    } finally {
+      Date.now = originalDateNow
+    }
     assert.deepEqual(signals, ['SIGTERM', 'SIGKILL'])
     assert.equal(waits, 2)
+    assert.deepEqual(timeouts, [5000, 4999])
     assert.equal(error, undefined)
+    assert.equal(closeTimeout, 4998)
   })
 
   test('failed final reap remains an explicit cleanup failure', async () => {
     const child = { pid: 48124, exitCode: null, signalCode: null } as ChildProcess
     const signals: NodeJS.Signals[] = []
-    const error = await stopServer(child, false, {
-      signal: (_pid, signal) => {
-        signals.push(signal as NodeJS.Signals)
-        return true
-      },
-      wait: async (_pid, timeout) => {
-        assert.equal(timeout, 5000)
-        return false
-      },
-      close: async () => undefined,
-    }).then(
-      () => undefined,
-      (failure: unknown) => failure
-    )
+    const timeouts: number[] = []
+    const originalDateNow = Date.now
+    let clock = 1000
+    let error: unknown
+    let closeCalls = 0
+    try {
+      Date.now = () => clock++
+      error = await stopServer(child, false, {
+        signal: (_pid, signal) => {
+          signals.push(signal as NodeJS.Signals)
+          return true
+        },
+        wait: async (_pid, timeout) => {
+          timeouts.push(timeout)
+          return false
+        },
+        close: async () => {
+          closeCalls++
+        },
+      }).then(
+        () => undefined,
+        (failure: unknown) => failure
+      )
+    } finally {
+      Date.now = originalDateNow
+    }
     assert.deepEqual(signals, ['SIGTERM', 'SIGKILL'])
+    assert.deepEqual(timeouts, [5000, 4999])
+    assert.equal(closeCalls, 0)
     assert.ok(error instanceof AggregateError)
     assert.match(error.message, /failed to clean up owned recording process group/)
     assert.match(String(error.errors[0]), /did not exit after SIGKILL/)
