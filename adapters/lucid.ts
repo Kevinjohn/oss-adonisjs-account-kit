@@ -123,6 +123,7 @@ function assertSafeRegistrationMapping(
     'id' | 'email' | 'unverifiedEmail' | 'password' | 'emailVerifiedAt'
   > & {
     role: unknown
+    credentialsChangedAt: unknown
   }
 ): void {
   const values = user as unknown as Record<string, unknown>
@@ -132,10 +133,11 @@ function assertSafeRegistrationMapping(
     user.unverifiedEmail !== before.unverifiedEmail ||
     user.password !== before.password ||
     user.emailVerifiedAt !== before.emailVerifiedAt ||
-    values.role !== before.role
+    values.role !== before.role ||
+    values.credentialsChangedAt !== before.credentialsChangedAt
   ) {
     throw new Error(
-      'account_kit: mapRegistrationData cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role'
+      'account_kit: mapRegistrationData cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role'
     )
   }
 }
@@ -279,6 +281,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
         password: user.password,
         emailVerifiedAt: user.emailVerifiedAt,
         role: (user as unknown as Record<string, unknown>).role,
+        credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
       }
 
       if (attrs.registrationData !== undefined) {
@@ -343,6 +346,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
         password: user.password,
         emailVerifiedAt: user.emailVerifiedAt,
         role: (user as unknown as Record<string, unknown>).role,
+        credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
       }
       await options.mapRegistrationData(data, user as Model)
       assertSafeRegistrationMapping(user, before)

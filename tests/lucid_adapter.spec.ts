@@ -184,31 +184,36 @@ test.group('maintained Lucid adapter', (group) => {
     assert.isNull(await adapter.findByEmail('missing-mapper@example.test'))
   })
 
-  test('rejects a registration mapper that assigns a package controlled role', async ({
+  test('rejects a registration mapper that assigns a package controlled column', async ({
     assert,
   }) => {
-    const adapter = createLucidAdapter(async () => LucidUser, {
-      mapRegistrationData(_data, user) {
+    const assignments: Array<(user: Record<string, unknown>) => void> = [
+      (user) => {
         user.role = 'admin'
       },
-    })
-
-    await assert.rejects(
-      () =>
-        transaction(kit.db, (trx) =>
-          adapter.create(
-            {
-              email: 'role-mapper@example.test',
-              password: 'password',
-              unverifiedEmail: null,
-              registrationData: {},
-            },
-            trx
-          )
-        ),
-      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role/
-    )
-    assert.isNull(await adapter.findByEmail('role-mapper@example.test'))
+      (user) => {
+        user.credentialsChangedAt = DateTime.utc()
+      },
+    ]
+    for (const [index, assign] of assignments.entries()) {
+      const adapter = createLucidAdapter(async () => LucidUser, {
+        mapRegistrationData(_data, user) {
+          assign(user as unknown as Record<string, unknown>)
+        },
+      })
+      const email = `role-mapper-${index}@example.test`
+      await assert.rejects(
+        () =>
+          transaction(kit.db, (trx) =>
+            adapter.create(
+              { email, password: 'password', unverifiedEmail: null, registrationData: {} },
+              trx
+            )
+          ),
+        /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role/
+      )
+      assert.isNull(await adapter.findByEmail(email))
+    }
   })
 
   test('profile mapping persists configured fields and rejects protected writes', async ({
@@ -244,7 +249,7 @@ test.group('maintained Lucid adapter', (group) => {
     })
     await assert.rejects(
       () => transaction(kit.db, (trx) => unsafe.updateRegistrationData!(user.id, {}, trx)),
-      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role/
+      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role/
     )
     row = await kit.db.from('users').where('id', user.id).first()
     assert.equal(row.full_name, 'New Name')
