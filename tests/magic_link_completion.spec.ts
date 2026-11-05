@@ -4,7 +4,7 @@ import { InvalidCredentialsError, InvalidTokenError } from '../src/errors.js'
 import { clientChallengeFor } from '../src/magic_link.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService, tokenFrom } from './helpers/fakes.js'
+import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 const verifier = 'v'.repeat(43)
@@ -51,6 +51,54 @@ test.group('magicLink.complete', (group) => {
     })
     return { user, account, token: tokenFrom(recorder.calls.at(-1)!.args[1]) }
   }
+
+  test('an address changed while the sign-in is established refuses it and ends it', async ({
+    assert,
+  }) => {
+    const { user, account, token } = await issue()
+    const events: unknown[] = []
+    const guard = sessionGuard(events)
+    await assert.rejects(
+      () =>
+        account.magicLink.complete(
+          { token, verifier },
+          {
+            ...guard,
+            establish: async (id: UserId, revision: string | null) => {
+              await kit.db
+                .from('users')
+                .where('id', user.id)
+                .update({ email: 'moved@example.test' })
+              return guard.establish(id, revision)
+            },
+          }
+        ),
+      InvalidCredentialsError
+    )
+    assert.deepEqual(events.at(-1), ['terminate', `session:${user.id}`])
+  })
+
+  test('a request for an address that moves before its lock issues no link', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const { account, recorder } = service({
+      users: {
+        ...users,
+        async findByEmail(...args) {
+          const found = await users.findByEmail(...args)
+          await kit.db.from('users').where('id', user.id).update({ email: 'moved@example.test' })
+          return found
+        },
+      },
+    })
+    await account.magicLink.request({
+      email: user.email,
+      clientKey: 'client',
+      clientChallenge: challenge,
+    })
+    assert.lengthOf(await kit.db.from('login_link_tokens'), 0)
+    assert.lengthOf(recorder.calls, 0)
+  })
 
   test('inspection does not consume and completion signs in once', async ({ assert }) => {
     const { user, account, token } = await issue()
