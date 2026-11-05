@@ -83,6 +83,16 @@ export async function planSetup(
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
   })
+  // Generators assume valid choices. When validation has already reported an error, a generator
+  // that throws on the same input leaves its file out instead of hiding the report.
+  const generated = async (build: () => string | Promise<string>): Promise<string | null> => {
+    try {
+      return await build()
+    } catch (error) {
+      if (diagnostics.some(({ severity }) => severity === 'error')) return null
+      throw error
+    }
+  }
   await planMail(choices, state, diagnostics)
   await planUserModel(choices, state, diagnostics)
   const changes: SetupFileChange[] = []
@@ -108,15 +118,17 @@ export async function planSetup(
   )
   await planSessionConfigIntegration(changes, state, choices, diagnostics)
   if (choices.social.status === 'enabled') {
-    if (state.files['config/ally.ts'] === undefined)
-      addChange(
-        changes,
-        state,
-        'config/ally.ts',
-        allyConfigSource(choices),
-        'Configure selected Ally providers using deployment references and exact callbacks'
-      )
-    else
+    if (state.files['config/ally.ts'] === undefined) {
+      const ally = await generated(() => allyConfigSource(choices))
+      if (ally !== null)
+        addChange(
+          changes,
+          state,
+          'config/ally.ts',
+          ally,
+          'Configure selected Ally providers using deployment references and exact callbacks'
+        )
+    } else
       diagnostic(
         diagnostics,
         'config/ally.ts',
@@ -154,7 +166,8 @@ export async function planSetup(
     const suffix = `_account_kit_${name}.ts`
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
     const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
-    const content = await migrationContent(name, choices)
+    const content = await generated(() => migrationContent(name, choices))
+    if (content === null) continue
     addChange(
       changes,
       state,
