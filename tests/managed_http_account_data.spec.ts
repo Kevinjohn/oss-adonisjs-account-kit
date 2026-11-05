@@ -186,6 +186,7 @@ test.group('managed account data routes', (group) => {
     failTerminate()
     const output = await call('DELETE /api/v1/account', as(user))
     assert.equal(output.status, 204)
+    assert.lengthOf(await kit.db.from('users').where('id', user.id), 0)
     assert.deepEqual(warnings, [
       [
         { operation: 'account.delete', outcome: 'session_end_failed' },

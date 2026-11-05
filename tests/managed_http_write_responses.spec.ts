@@ -274,14 +274,18 @@ test.group('managed HTTP dispatch', () => {
     ])
   })
 
-  test('invitation query contract is separate from its empty request body', ({ assert }) => {
+  // Type contracts: `pnpm typecheck` fails if an accepted shape stops compiling or a refused one
+  // starts to. The runtime body only keeps the values in use.
+  test('invitation query contract is separate from its empty request body', () => {
     const query: ManagedQuery<'account.invitation.list'> = { limit: 25, cursor: 'opaque' }
-    assert.deepEqual(query, { limit: 25, cursor: 'opaque' })
+    // @ts-expect-error the list query takes no body fields
+    const body: ManagedQuery<'account.invitation.list'> = { email: 'person@example.test' }
+    // @ts-expect-error the cursor is opaque text
+    const cursor: ManagedQuery<'account.invitation.list'> = { cursor: 1 }
+    void [query, body, cursor]
   })
 
-  test('social GET callback query contract represents success and provider denial', ({
-    assert,
-  }) => {
+  test('social GET callback query contract represents success and provider denial', () => {
     const success: ManagedQuery<'auth.oauth.callback'> = {
       code: 'provider-code',
       state: 'bound-state',
@@ -290,8 +294,9 @@ test.group('managed HTTP dispatch', () => {
       error: 'access_denied',
       state: 'bound-state',
     }
-    assert.deepEqual(success, { code: 'provider-code', state: 'bound-state' })
-    assert.deepEqual(denial, { error: 'access_denied', state: 'bound-state' })
+    // @ts-expect-error a success needs its state
+    const unbound: ManagedQuery<'auth.oauth.callback'> = { code: 'provider-code' }
+    void [success, denial, unbound]
   })
 
   test('negotiated errors preserve an existing Vary value', async ({ assert }) => {

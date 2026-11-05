@@ -255,9 +255,16 @@ test.group('expired-token pruning', (group) => {
   })
 
   test('rejects invalid batch sizes before querying', async ({ assert }) => {
+    // Any use of this database fails with a different error, so a RangeError proves no query ran.
+    const untouched = new Proxy({} as typeof kit.db, {
+      get() {
+        throw new Error('database used')
+      },
+    })
     for (const batchSize of [0, -1, 1.5, 1001, Number.NaN])
-      await assert.rejects(() => pruneExpired(kit.db, { batchSize }), RangeError)
+      await assert.rejects(() => pruneExpired(untouched, { batchSize }), RangeError)
     for (const maxBatches of [0, -1, 1.5, 1001, Number.NaN])
-      await assert.rejects(() => pruneExpired(kit.db, { maxBatches }), RangeError)
+      await assert.rejects(() => pruneExpired(untouched, { maxBatches }), RangeError)
+    await assert.rejects(() => pruneExpired(untouched, {}), 'database used')
   })
 })
