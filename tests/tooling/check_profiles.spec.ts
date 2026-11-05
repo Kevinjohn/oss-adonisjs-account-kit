@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
@@ -75,10 +75,10 @@ test('format:check covers tracked files only and tolerates an unstaged deletion'
     }).status
 
   try {
-    spawnSync('git', ['init', '-q'], { cwd: directory })
+    execFileSync('git', ['init', '-q'], { cwd: directory })
     writeFileSync(join(directory, 'kept.ts'), 'export const kept = 1;\n')
     writeFileSync(join(directory, 'deleted.ts'), 'export const deleted = 1;\n')
-    spawnSync('git', ['add', '.'], { cwd: directory })
+    execFileSync('git', ['add', '.'], { cwd: directory })
     rmSync(join(directory, 'deleted.ts'))
     writeFileSync(join(directory, 'untracked.ts'), 'export   const untracked={a:1}\n')
     assert.equal(formatCheck(), 0)

@@ -2,12 +2,16 @@ import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { exists, fixture } from '../../bin/helpers/pg_service_fixture.js'
+import { exists, fixture } from '../helpers/pg_service_fixture.js'
 
 test.group('pg_service.spec', (group) => {
   group.each.timeout(60_000)
   test('managed test succeeds, forwards selectors, isolates environment and runs at root', async (t) => {
     const f = await fixture(t)
+    assert.equal(
+      await readFile(join(f.bin, 'pg.sh'), 'utf8'),
+      await readFile(new URL('../../bin/pg.sh', import.meta.url), 'utf8')
+    )
     const result = await f.run(['test', '--files=db.spec.ts'], {
       cwd: join(f.root, 'tests'),
       env: {

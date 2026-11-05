@@ -281,8 +281,6 @@ test('database selection uses process, dotenv, then literal default without gues
     )
     const unresolved = await inspectSetup(root)
     assert.equal(unresolved.database, 'unknown')
-    await writeFile(join(root, '.env'), 'DB_CONNECTION=sqlite\n')
-    await rm(join(root, '.env'))
     const outsideRoot = await mkdtemp(join(tmpdir(), 'account-env-outside-'))
     const outside = join(outsideRoot, '.env')
     try {
