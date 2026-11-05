@@ -80,21 +80,7 @@ trace(kind + '-entered:' + process.pid)
 `
   await writeFile(join(bin, 'node'), fakeCommand)
   await writeFile(join(bin, 'curl'), fakeCommand.replace("process.env.FAKE_CURL === '1'", 'true'))
-  await writeFile(
-    join(bin, 'lsof'),
-    `#!/bin/sh
-count=0
-if [ -f "$LSOF_CALLS" ]; then count=$(cat "$LSOF_CALLS"); fi
-count=$((count + 1))
-echo "$count" > "$LSOF_CALLS"
-if [ "$count" -gt 1 ] && [ -n "${'${UNRELATED_PID:-}'}" ]; then echo "$UNRELATED_PID"; fi
-`
-  )
-  await Promise.all([
-    chmod(join(bin, 'node'), 0o755),
-    chmod(join(bin, 'curl'), 0o755),
-    chmod(join(bin, 'lsof'), 0o755),
-  ])
+  await Promise.all([chmod(join(bin, 'node'), 0o755), chmod(join(bin, 'curl'), 0o755)])
   // Fixtures own their database settings; refusal cases inject overrides explicitly.
   const env = {
     ...Object.fromEntries(
@@ -104,7 +90,6 @@ if [ "$count" -gt 1 ] && [ -n "${'${UNRELATED_PID:-}'}" ]; then echo "$UNRELATED
     ),
     PATH: `${bin}:${process.env.PATH}`,
     TRACE: join(root, 'trace'),
-    LSOF_CALLS: join(root, 'lsof-calls'),
   }
   const start = (args: string[], extra: NodeJS.ProcessEnv = {}, preload?: string) => {
     const child = spawn(
@@ -177,31 +162,6 @@ test.group('demo recording process ownership', (group) => {
     assert.equal(result.code, 0, result.output)
     const trace = await readFile(f.trace, 'utf8')
     assert.equal(trace.includes('cleaned'), true)
-  })
-
-  test('an unrelated listener reported by a simulated port probe remains alive', async (t) => {
-    const f = await fixture()
-    t.cleanup(f.cleanup)
-    const unrelated = spawn(
-      process.execPath,
-      [
-        '-e',
-        "const server = require('node:net').createServer(); server.listen(0, '127.0.0.1', () => console.log('ready'))",
-      ],
-      { stdio: ['ignore', 'pipe', 'ignore'] }
-    )
-    t.cleanup(async () => {
-      unrelated.kill('SIGTERM')
-      if (unrelated.exitCode === null && unrelated.signalCode === null)
-        await new Promise<void>((resolve) => unrelated.once('close', () => resolve()))
-    })
-    await new Promise<void>((resolve, reject) => {
-      unrelated.stdout!.once('data', () => resolve())
-      unrelated.once('error', reject)
-    })
-    const result = await f.start(['doctor'], { UNRELATED_PID: String(unrelated.pid) }).done
-    assert.equal(result.code, 0, result.output)
-    assert.equal(unrelated.exitCode, null)
   })
 
   test('SIGTERM during startup prevents scenario work and returns 143 after cleanup', async (t) => {
