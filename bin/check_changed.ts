@@ -54,7 +54,7 @@ const stop = (pid: number | undefined) => {
 for (const signal of ['SIGINT', 'SIGTERM'])
   process.on(signal, () => {
     if (active) stop(active)
-    process.exit(130)
+    process.exit(signal === 'SIGINT' ? 130 : 143)
   })
 
 /** Run a command in its own process group, killing the group when it outlives its limit. */
