@@ -1,4 +1,5 @@
-import { DeliveryError } from '@kevinjohn/adonisjs-account-kit'
+import { DeliveryError, errors } from '@kevinjohn/adonisjs-account-kit'
+import { errors as vineErrors } from '@vinejs/vine'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { signupValidator } from '#validators/user'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -20,6 +21,11 @@ export default class NewAccountController {
     try {
       await kit.registration.register({ email, password, registrationData: { fullName } })
     } catch (error) {
+      // A signup for the same address committed after this one passed the unique rule.
+      if (error instanceof errors.RegistrationEmailAlreadyRegisteredError)
+        throw new vineErrors.E_VALIDATION_ERROR([
+          { field: 'email', rule: 'unique', message: 'This email address is already in use.' },
+        ])
       if (!isDeliveryFailure(error)) throw error
       followUp = error instanceof DeliveryError ? 'delivery' : 'observer'
       // Log the event, not the error: its cause can carry the transport's message and proof URL.

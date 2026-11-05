@@ -228,13 +228,14 @@ test.group('Signup recovery in the browser', (group) => {
         assert.equal(response.status(), 302)
         const destination = new URL(response.headers().location, process.env.APP_URL)
         assert.equal(destination.origin, new URL(process.env.APP_URL!).origin)
-        assert.equal(destination.pathname, '/login')
+        // The change committed, so this session stays on its new revision and the others end.
+        assert.equal(destination.pathname, '/settings/password')
         assert.equal(destination.search, '')
         await page.goto(destination.href)
         const message =
           failure === 'delivery'
-            ? 'Your password was changed, but the notification email could not be sent. Sign in again with your new password.'
-            : 'Your password was changed, but a follow-up step failed. Sign in again with your new password.'
+            ? 'Password changed. Other devices have been signed out. The notification email could not be sent.'
+            : 'Password changed. Other devices have been signed out. A follow-up step failed.'
         await page.getByText(message, { exact: true }).waitFor()
         const visible = await page.locator('body').innerText()
         assert.notInclude(visible, 'private global')
@@ -249,14 +250,10 @@ test.group('Signup recovery in the browser', (group) => {
         )
         const changedUser = await User.verifyCredentials(email, 'ChangedPass123!')
         assert.equal(changedUser.id, owner.id)
-        for (const current of [page, otherPage]) {
-          await current.goto('/dashboard')
-          await current.waitForURL('**/login')
-          await current.getByRole('heading', { name: 'Welcome back' }).waitFor()
-        }
-        await page.getByLabel('Email').fill(email)
-        await page.getByLabel('Password').fill('ChangedPass123!')
-        await page.getByRole('button', { name: 'Sign in' }).click()
+        await otherPage.goto('/dashboard')
+        await otherPage.waitForURL('**/login')
+        await otherPage.getByRole('heading', { name: 'Welcome back' }).waitFor()
+        await page.goto('/dashboard')
         await page.waitForURL('**/dashboard')
         await page.goto('/settings/profile')
         await page.getByText(email, { exact: true }).waitFor()

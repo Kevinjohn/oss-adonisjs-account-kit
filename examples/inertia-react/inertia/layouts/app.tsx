@@ -12,7 +12,7 @@ import NavLink, { type NavItem } from '~/components/nav_link'
  */
 const nav: NavItem[] = [
   { label: 'Dashboard', route: 'dashboard', icon: House },
-  { label: 'Settings', route: 'passwords.edit', icon: Settings },
+  { label: 'Settings', route: 'passwords.edit', icon: Settings, section: '/settings' },
 ]
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -34,8 +34,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       <nav className="subnav" aria-label="Primary">
         <div className="subnav__inner">
-          {nav.map(({ label, route, icon: Icon }) => (
-            <NavLink key={label} route={route} className="subnav__item">
+          {nav.map(({ label, route, icon: Icon, section }) => (
+            <NavLink key={label} route={route} section={section} className="subnav__item">
               {Icon && <Icon size={14} />}
               {label}
             </NavLink>

@@ -1,7 +1,6 @@
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
-import { errors } from '@kevinjohn/adonisjs-account-kit'
+import { errors, passwordChangeRevision } from '@kevinjohn/adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
-import { accountKitSessionGuard } from '#services/session_guard'
 import { changePasswordValidator } from '#validators/account'
 
 export default class PasswordsController {
@@ -10,30 +9,37 @@ export default class PasswordsController {
   }
 
   /**
-   * Changing the password ends every session, this one included. Signing in again with the new
-   * password keeps the user here while other devices are signed out.
+   * Changing the password ends every session. Storing the revision it returns keeps this one;
+   * regenerating gives it a new id, so a copied cookie for the old id does not survive.
    */
   async update(ctx: HttpContext) {
     const { currentPassword, password } = await ctx.request.validateUsing(changePasswordValidator)
     const user = ctx.auth.getUserOrFail()
-    await kit.emailPasswordManagement.changePassword({
-      actorId: user.id,
-      currentPassword,
-      newPassword: password,
-    })
+    let revision: string | null
+    let followUp = ''
     try {
-      await kit.authentication.login(
-        { email: user.email, password, clientKey: ctx.request.ip() },
-        accountKitSessionGuard(ctx)
-      )
+      ;({ revision } = await kit.emailPasswordManagement.changePassword({
+        actorId: user.id,
+        currentPassword,
+        newPassword: password,
+      }))
     } catch (error) {
-      // The password has changed; only signing in again was refused.
-      if (!(error instanceof errors.ThrottledError)) throw error
-      await accountKitSessionGuard(ctx).terminate()
-      ctx.session.flash('success', 'Password changed. Sign in again with the new password.')
-      return ctx.response.redirect().toRoute('session.create')
+      // A follow-up failed after commit: the change stands, so keep this session on its revision.
+      const committed = passwordChangeRevision(error)
+      if (committed === undefined) throw error
+      revision = committed
+      ctx.logger.error(
+        { event: 'password_change_follow_up_failed' },
+        'Password changed but a follow-up failed'
+      )
+      followUp =
+        error instanceof errors.DeliveryError
+          ? ' The notification email could not be sent.'
+          : ' A follow-up step failed.'
     }
-    ctx.session.flash('success', 'Password changed. Other devices have been signed out.')
-    return ctx.response.redirect().back()
+    ctx.session.regenerate()
+    ctx.session.put('accountKitRevision', revision ?? '')
+    ctx.session.flash('success', `Password changed. Other devices have been signed out.${followUp}`)
+    return ctx.response.redirect().withQs(false).toPath('/settings/password')
   }
 }

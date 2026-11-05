@@ -32,7 +32,9 @@ const users = createLucidAdapter(loadUser, {
 
 /**
  * Test seam: the kit freezes the notification callbacks it resolves from this file, so tests
- * replace entries in `notifyOverrides`. The kit calls through it at call time.
+ * replace entries in `notifyOverrides`. The kit calls through it at call time. When copying this
+ * file, drop `notifyOverrides`, `lifecycleOverrides` and the wrappers built from them, and pass
+ * the application's callbacks to `defineConfig` directly.
  */
 export const notifyOverrides: NotificationCallbacks = createLogNotifications({
   brandName: 'My App',

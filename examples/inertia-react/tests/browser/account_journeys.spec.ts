@@ -237,4 +237,48 @@ test.group('composed account browser journeys', (group) => {
       await secondContext.close()
     }
   })
+
+  test('the protected account page requires a confirmed address', async ({ visit, assert }) => {
+    for (const [email, confirmed] of [
+      ['gate-pending@example.test', false],
+      ['gate-confirmed@example.test', true],
+    ] as const) {
+      await User.create({
+        fullName: 'Gate Journey',
+        email,
+        password: 'GatePass123!',
+        unverifiedEmail: confirmed ? null : email,
+      })
+      const page = await visit('/login')
+      await page.getByLabel('Email').fill(email)
+      await page.getByLabel('Password').fill('GatePass123!')
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.waitForURL('**/dashboard')
+      await page.goto('/account')
+      if (confirmed) {
+        await page.getByRole('heading', { name: 'Your account is confirmed' }).waitFor()
+        assert.equal(new URL(page.url()).pathname, '/account')
+      } else {
+        await page.getByText('Confirm your email address before opening this page.').waitFor()
+        assert.equal(new URL(page.url()).pathname, '/dashboard')
+      }
+    }
+  })
+
+  test('Back after logout cannot restore a signed-in page', async ({ visit }) => {
+    const email = 'history-journey@example.test'
+    await User.create({ fullName: 'History Journey', email, password: 'HistoryPass123!' })
+    const page = await visit('/login')
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password').fill('HistoryPass123!')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.waitForURL('**/dashboard')
+    await page.goto('/settings/profile')
+    await page.getByText(email, { exact: true }).first().waitFor()
+    await page.getByRole('button', { name: 'Log out' }).click()
+    await page.waitForURL('**/login')
+    await page.goBack()
+    // The cleared history key forces a server visit, which sends a signed-out browser to sign in.
+    await page.waitForURL('**/login')
+  })
 })

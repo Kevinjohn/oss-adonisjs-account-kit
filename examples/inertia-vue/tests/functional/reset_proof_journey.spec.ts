@@ -43,7 +43,11 @@ class HttpSession {
   async login(user: User) {
     const loginPage = await this.request('/login')
     this.version = ((await loginPage.json()) as { version: string }).version
-    return this.request('/login', { email: user.email, password: 'OldPass123!' })
+    const response = await this.request('/login', { email: user.email, password: 'OldPass123!' })
+    // A refused login also answers 302, back to the form; only the dashboard means signed in.
+    if (!response.headers.get('location')?.endsWith('/dashboard'))
+      throw new Error(`Login for ${user.email} did not sign in`)
+    return response
   }
 }
 
