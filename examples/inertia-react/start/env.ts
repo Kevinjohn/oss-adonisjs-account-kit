@@ -21,6 +21,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   // App
   APP_KEY: Env.schema.secret(),
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
+  TRUSTED_PROXIES: Env.schema.string.optional(),
 
   // Session
   // Session login needs a server-side store, so the cookie store is not allowed.

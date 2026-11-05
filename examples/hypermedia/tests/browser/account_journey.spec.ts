@@ -196,6 +196,37 @@ test.group('native account journeys', (group) => {
     assert.equal(await page.getByLabel('Password').inputValue(), '')
   })
 
+  test('throttled signup and reset requests answer with a page, not JSON', async ({
+    browser,
+    assert,
+  }) => {
+    const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+    const throttled = 'Too many attempts. Wait a few minutes and try again.'
+    try {
+      const page = await context.visit('/forgot-password')
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await page.getByLabel('Email').fill('unknown@example.test')
+        await page.getByRole('button', { name: 'Send reset link' }).click()
+        await page.getByRole('heading', { name: 'Reset your password' }).waitFor()
+      }
+      assert.include(await page.locator('body').innerText(), throttled)
+
+      // Each signup attempt spends the client budget before validation runs.
+      await page.goto('/signup')
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await page.getByLabel('Full name').fill('Taylor Example')
+        await page.getByLabel('Email').fill('throttled@example.test')
+        await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
+        await page.getByLabel('Confirm password').fill('DifferentPass123!')
+        await page.getByRole('button', { name: 'Create account' }).click()
+        await page.getByRole('button', { name: 'Create account' }).waitFor()
+      }
+      assert.include(await page.locator('body').innerText(), throttled)
+    } finally {
+      await context.close()
+    }
+  })
+
   test('failure and recovery feedback work without JavaScript and errors persist with JavaScript', async ({
     browser,
     visit,

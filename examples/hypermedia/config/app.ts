@@ -20,6 +20,18 @@ export const http = defineConfig({
   generateRequestId: true,
 
   /**
+   * request.ip() is the client key for every Account Kit throttle. Behind a load balancer, list
+   * its addresses in TRUSTED_PROXIES (comma separated) so each client gets its own budget;
+   * otherwise every request shares the balancer's address. Loopback is always trusted.
+   */
+  trustProxy: (address: string) =>
+    ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address) ||
+    (env.get('TRUSTED_PROXIES') ?? '')
+      .split(',')
+      .map((entry) => entry.trim())
+      .includes(address),
+
+  /**
    * Native forms use GET/POST. Keep the transport method stable for routing,
    * proof recovery and Shield's CSRF checks after body parsing.
    */
