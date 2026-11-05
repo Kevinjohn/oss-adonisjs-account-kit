@@ -245,6 +245,30 @@ test.group('setup model and schema safety', (group) => {
     await assert.rejects(() => applySetup(root, changedFactory), /blocking diagnostics/)
   }).timeout(10_000)
 
+  test('relation and computed decorators do not block setup', async ({ assert }) => {
+    const { root, choices, user } = await stockFixture()
+    for (const [imports, member] of [
+      ['hasMany', '@hasMany(() => User) declare posts: unknown'],
+      ['belongsTo, column', '@belongsTo(() => User) declare owner: unknown'],
+      ['computed', '@computed() get initials() { return 1 }'],
+      ['manyToMany', "@manyToMany(() => User, { pivotTable: 'friends' }) declare friends: unknown"],
+    ] as const) {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        `import { ${imports} } from '@adonisjs/lucid/orm'\n` +
+          user.replace('static accessTokens =', `${member}\n  static accessTokens =`)
+      )
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isFalse(
+        plan.diagnostics.some(({ field }) => field === 'user.idType'),
+        `${member}: ${JSON.stringify(plan.diagnostics)}`
+      )
+    }
+  }).timeout(10_000)
+
   test('string and uuid user ids must match the schema id column', async ({ assert }) => {
     const { root, choices, schema } = await stockFixture()
     for (const idType of ['string', 'uuid'] as const) {
