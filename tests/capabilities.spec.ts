@@ -52,6 +52,7 @@ test.group('capability configuration', (group) => {
       () => account.passwordReset.inspect({ token: '' }),
       () => account.passwordReset.reset({ token: '', password: '' }),
       () => account.emailVerification.send({ userId: 0 }),
+      () => account.emailVerification.inspect({ token: '' }),
       () => account.emailVerification.complete({ token: '', password: 'NewPassword123' }),
       () => account.invitations.send({ actorId: 0, email: '', role: '' }),
       () => account.invitations.list({ actorId: 0 }),
@@ -71,6 +72,8 @@ test.group('capability configuration', (group) => {
           currentPassword: '',
           newEmail: '',
         }),
+      () => account.emailPasswordManagement.updateProfile({ actorId: 0 }),
+      () => account.emailPasswordManagement.inspectEmailChange({ token: '' }),
       () => account.emailPasswordManagement.completeEmailChange({ token: '' }),
     ]
     try {

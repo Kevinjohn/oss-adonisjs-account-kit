@@ -18,7 +18,7 @@ test.group('maintained notifications', () => {
       'https://user:secret@example.test/reset',
       'https://user@example.test/reset',
     ])
-      assert.throws(render(unsafe), 'trusted HTTP(S) URL', unsafe)
+      assert.throws(render(unsafe), /trusted HTTP\(S\) URL/)
     assert.doesNotThrow(render('https://example.test/reset'))
   })
 
