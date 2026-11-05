@@ -108,4 +108,25 @@ test.group('Account signup login', (group) => {
     })
     assert.equal(normalizedLogin.status(), 200)
   })
+
+  test('signup is rate limited per client before it creates accounts', async ({
+    client,
+    assert,
+  }) => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await client.post('/api/v1/auth/signup').json({
+        email: `limited-${attempt}@example.test`,
+        password: 'LimitedPass123!',
+        passwordConfirmation: 'LimitedPass123!',
+      })
+      assert.equal(response.status(), 200)
+    }
+    const limited = await client.post('/api/v1/auth/signup').json({
+      email: 'limited-over@example.test',
+      password: 'LimitedPass123!',
+      passwordConfirmation: 'LimitedPass123!',
+    })
+    assert.equal(limited.status(), 429)
+    assert.isNull(await User.findBy('email', 'limited-over@example.test'))
+  })
 })

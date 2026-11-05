@@ -11,6 +11,11 @@
 
 import limiter from '@adonisjs/limiter/services/main'
 
-export const throttle = limiter.define('global', () => {
-  return limiter.allowRequests(10).every('1 minute')
-})
+/**
+ * Client budget for public account writes that Account Kit does not throttle itself: signup and
+ * the proof completions. Separate names keep each route's budget independent.
+ */
+export const accountPublicLimit = (name: string) =>
+  limiter.define(`account-${name}`, (ctx) =>
+    limiter.allowRequests(5).every('15 minutes').usingKey(ctx.request.ip())
+  )
