@@ -17,7 +17,7 @@ import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { isRecentIssue } from './token_reuse.js'
+import { isRecentIssue, reopenResendOnFailure } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
   AccountUser,
@@ -181,16 +181,18 @@ export async function updateProfile(
       {
         kind: 'delivery',
         run: () =>
-          changedConfirmedEmail
-            ? deps.config.notify.accountActivationProvision(
-                actor,
-                deps.config.urls.emailVerification(token)
-              )
-            : deps.config.notify.emailChangeProvision(
-                actor,
-                newEmail,
-                deps.config.urls.emailChange(token)
-              ),
+          reopenResendOnFailure(deps.db, token, () =>
+            changedConfirmedEmail
+              ? deps.config.notify.accountActivationProvision(
+                  actor,
+                  deps.config.urls.emailVerification(token)
+                )
+              : deps.config.notify.emailChangeProvision(
+                  actor,
+                  newEmail,
+                  deps.config.urls.emailChange(token)
+                )
+          ),
       },
       lifecycle(deps.config, {
         type: 'email_change.requested',
