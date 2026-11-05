@@ -62,9 +62,10 @@ this. The hash goes to `create` as `passwordHash`, with `password` null, or to
 without `setPasswordHash`.
 
 The Lucid, SQL, Drizzle and Prisma adapters implement both methods with their `hashPassword`
-option. By default the Lucid adapter hashes and verifies with the model's `withAuthFinder` hasher
-when the model uses that mixin, and with the AdonisJS hash service otherwise. It writes the hash
-with a query, so the model's hashing hook does not run on it. When it is given `verifyPassword` alone, it leaves both methods out and the model hook
+option. By default the Lucid adapter hashes and verifies with the AdonisJS hash service; when the
+model's `withAuthFinder` uses a different hasher, pass matching `hashPassword` and `verifyPassword`
+options. It writes the hash with a query, so the model's hashing hook does not run on it. When it
+is given `verifyPassword` alone, it leaves both methods out and the model hook
 hashes inside the transaction, as before. Two trade-offs: a sign-up with an address that is already
 registered now hashes before it is refused, and completing a password reset or an activation hashes
 before the token is checked, so a request with a bogus token also costs a hash. Account Kit does

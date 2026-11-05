@@ -43,15 +43,12 @@ export interface LucidAdapterOptions<Model extends LucidModelRow = LucidModelRow
    * never spread it onto the model.
    */
   mapRegistrationData?: (data: unknown, user: Model) => void | Promise<void>
-  /**
-   * Checks a password against the stored hash. Defaults to the model's `withAuthFinder` hasher
-   * when the model uses it, otherwise the AdonisJS hash service.
-   */
+  /** Checks a password against the stored hash. Defaults to the AdonisJS hash service. */
   verifyPassword?: (hashedPassword: string, password: string) => Promise<boolean>
   /**
-   * Hashes a new password before Account Kit opens its write transaction. Defaults to the model's
-   * `withAuthFinder` hasher when the model uses it, otherwise the AdonisJS hash service, unless
-   * `verifyPassword` is set alone: then the model's own hook hashes inside the transaction.
+   * Hashes a new password before Account Kit opens its write transaction. Defaults to the AdonisJS
+   * hash service, unless `verifyPassword` is set alone: then the model's own hook hashes inside
+   * the transaction, as before.
    */
   hashPassword?: (password: string) => Promise<string>
 }
@@ -83,23 +80,6 @@ export type LucidUsersAdapter = UsersAdapter & {
 export type LucidModelLoader<Model extends LucidModelRow = LucidModelRow> = () => Promise<
   LucidModel & (new () => Model)
 >
-
-/** The statics `withAuthFinder` from `@adonisjs/auth` adds to a model. */
-type AuthFinderModel = {
-  hashPassword(user: { $dirty: Record<string, unknown>; password: string }): Promise<void>
-  findForAuth(...args: unknown[]): unknown
-  verifyCredentials(...args: unknown[]): unknown
-}
-
-/** The `withAuthFinder` statics, when the model uses that mixin. */
-function authFinder(User: unknown): AuthFinderModel | null {
-  const model = User as Partial<AuthFinderModel>
-  return typeof model.hashPassword === 'function' &&
-    typeof model.findForAuth === 'function' &&
-    typeof model.verifyCredentials === 'function'
-    ? (model as AuthFinderModel)
-    : null
-}
 
 function toAccountUser(user: LucidModelRow): AccountUser {
   return {
@@ -240,13 +220,6 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     (options.verifyPassword
       ? undefined
       : async (password: string): Promise<string> => {
-          // Hash with the model's own hasher, so the application's `verifyCredentials` agrees.
-          const finder = authFinder(await model())
-          if (finder) {
-            const row = { $dirty: { password: true }, password }
-            await finder.hashPassword(row)
-            return row.password
-          }
           const { default: hash } = await import('@adonisjs/core/services/hash')
           return hash.make(password)
         })
@@ -373,11 +346,6 @@ export function createLucidAdapter<Model extends LucidModelRow>(
       const user = await find(query(await model(), trx), 'id', id)
       if (typeof user?.password !== 'string') return false
       if (options.verifyPassword) return options.verifyPassword(user.password, password)
-      const withFinder = user as LucidModelRow & {
-        verifyPassword?(plain: string): Promise<boolean>
-      }
-      if (authFinder(await model()) && typeof withFinder.verifyPassword === 'function')
-        return withFinder.verifyPassword(password)
       const { default: hash } = await import('@adonisjs/core/services/hash')
       return hash.verify(user.password, password)
     },
