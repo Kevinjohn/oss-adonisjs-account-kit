@@ -421,11 +421,13 @@ test.group('registration', (group) => {
       }
     )
     assert.equal(result.account.id, user.id)
-    await assert.rejects(() =>
-      service.account.registration.register({
-        email: 'new@example.test',
-        password: 'lowercase123',
-      })
+    await assert.rejects(
+      () =>
+        service.account.registration.register({
+          email: 'new@example.test',
+          password: 'lowercase123',
+        }),
+      InvalidInputError
     )
   })
 })
