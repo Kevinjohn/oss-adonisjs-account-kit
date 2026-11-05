@@ -1,3 +1,4 @@
+import { AssertionError } from 'node:assert'
 import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
@@ -65,12 +66,14 @@ test.group('maintained Lucid adapter', (group) => {
       ...overrides,
     })
     const rejectsBrokenAdapter = (broken: UsersAdapter, suffix: string) =>
-      assert.rejects(() =>
-        assertUsersAdapterContract({
-          ...contractFixture,
-          adapter: broken,
-          emailPrefix: `broken-${suffix}-${Date.now()}`,
-        })
+      assert.rejects(
+        () =>
+          assertUsersAdapterContract({
+            ...contractFixture,
+            adapter: broken,
+            emailPrefix: `broken-${suffix}-${Date.now()}`,
+          }),
+        AssertionError
       )
 
     const verificationShadows = new WeakMap<Trx, { id: number | string; at: DateTime }>()

@@ -384,7 +384,7 @@ test.group('managed transaction wrapper', (group) => {
       await started
       const reading = customKit.db.from('users').first()
       resume()
-      await assert.rejects(() => writing)
+      await assert.rejects(() => writing, /work failed/)
       assert.isNull(await reading)
       await customKit.db
         .table('users')

@@ -476,7 +476,7 @@ test.group('emailVerification.complete', (group) => {
             }
           }
         })
-      })
+      }, /lock/i)
     } finally {
       releaseLookup()
       await verifying

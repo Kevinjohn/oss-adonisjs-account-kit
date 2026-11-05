@@ -1,6 +1,11 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Inspect database results directly in focused registration assertions. */
 import { test } from '@japa/runner'
-import { UnverifiedEmailError, InvalidInputError } from '../src/errors.js'
+import {
+  UnverifiedEmailError,
+  InvalidInputError,
+  InvalidCredentialsError,
+  InvalidSessionError,
+} from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { makeService, tokenFrom } from './helpers/fakes.js'
 
@@ -93,16 +98,20 @@ test.group('registration', (group) => {
         },
       }
     )
-    await assert.rejects(() => inFlight)
+    await assert.rejects(() => inFlight, InvalidCredentialsError)
     assert.lengthOf(await kit.db.from('auth_access_tokens'), 0)
-    await assert.rejects(() =>
-      service.account.authentication.current({ userId: user.id, tokenId: limited.credential.id })
+    await assert.rejects(
+      () =>
+        service.account.authentication.current({ userId: user.id, tokenId: limited.credential.id }),
+      InvalidSessionError
     )
-    await assert.rejects(() =>
-      service.account.authentication.login(
-        { email: user.email, password: 'attackerPassword123', clientKey: 'third' },
-        guard
-      )
+    await assert.rejects(
+      () =>
+        service.account.authentication.login(
+          { email: user.email, password: 'attackerPassword123', clientKey: 'third' },
+          guard
+        ),
+      InvalidCredentialsError
     )
   })
 
@@ -139,14 +148,18 @@ test.group('registration', (group) => {
       UnverifiedEmailError
     )
     await service.account.emailVerification.complete({ token, password: 'VictimPassword123' })
-    await assert.rejects(() =>
-      service.account.authentication.current({ userId: user.id, revision: limited.credential })
+    await assert.rejects(
+      () =>
+        service.account.authentication.current({ userId: user.id, revision: limited.credential }),
+      InvalidSessionError
     )
-    await assert.rejects(() =>
-      service.account.authentication.login(
-        { email: user.email, password: 'attackerPassword123', clientKey: 'second' },
-        guard
-      )
+    await assert.rejects(
+      () =>
+        service.account.authentication.login(
+          { email: user.email, password: 'attackerPassword123', clientKey: 'second' },
+          guard
+        ),
+      InvalidCredentialsError
     )
   })
 })
