@@ -23,7 +23,7 @@ export const checkProfiles: Record<CheckProfile, CheckStep[]> = {
     { script: 'test' },
     { script: 'test:mysql' },
     { script: 'test:consumer' },
-    { script: 'test:recipe' },
+    { script: 'test:recipe', args: ['--recipe=api-password-reset'] },
     { script: 'docs:build' },
   ],
 }

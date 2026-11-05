@@ -12,6 +12,8 @@
 
 - Fix permanent account deletion through the Lucid adapter for active user models composed with
   `SoftDeletes`, preserving model delete hooks, transaction rollback and invitation retention options.
+- Pass an explicit recipe key from the full check profile to the recipe test.
+- Reject selected changed-file test gates that execute no cases; skipped and todo-only summaries do not count as execution, while expected-failure regressions do.
 
 ### Changed
 

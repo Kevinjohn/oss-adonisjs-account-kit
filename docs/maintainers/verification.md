@@ -22,6 +22,33 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
 12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
 
+## Current CI coverage — 2026-11-04
+
+The checks workflow runs the full package suite on SQLite and PostgreSQL 16. Formatting, lint,
+typecheck, build, built exports, and built setup run on the SQLite leg; built setup follows build
+and verifies the packaged migration templates through the compiled Ace command.
+
+The compatibility workflow runs the minimum and latest peer suites on PostgreSQL 16, plus the
+experimental MySQL 8.4 suite. Its packed-consumer coverage consists of six separate invocations:
+fresh/latest, minimum, and service-only on SQLite and PostgreSQL. Each PostgreSQL invocation uses
+an isolated Ubuntu 24.04 runner, verifies native PostgreSQL 16 tools, starts the managed cluster,
+and creates the dedicated `account_kit_consumer` database before starting the consumer. Each leg is
+configured to upload its `evidence.json` and available `commands.log` even after a failed command;
+missing evidence makes artifact upload fail.
+
+The [4 November 2026 compatibility run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41917496086)
+passed all six consumer legs. Their retained records identify checkout `0a3f88a20c9aea96b2f4bab8f8f717207c2a008c`
+(including source `f71a26ce73dcd051856d2b3ce5388e75c93bbaf7`), candidate SHA-256
+`0cfa93a6692cb44eec0b4785dd6de45264059cd172905d633f81419d95b52343`, Node 24.22.1,
+pnpm 11.23.0, installed package/driver versions and SQLite 3.53.2 or PostgreSQL 16.15.
+Both service-only records confirm that all six optional backend integrations are absent.
+These are dated candidate results; use the current run and all six artifacts for later candidates.
+
+The local full check profile explicitly runs
+`pnpm test:recipe --recipe=api-password-reset`. The changed-file planner rejects a selected test gate
+when its summary contains only skipped or todo cases; passed, failed, and expected-failure
+regression cases count as executed. Record source-gate, consumer, and hosted CI evidence separately.
+
 ## Scoped package candidate — 2026-11-03
 
 This is local candidate evidence for `@kevinjohn/adonisjs-account-kit@0.1.5`; naming confirmation,
