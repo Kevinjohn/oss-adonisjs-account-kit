@@ -352,7 +352,10 @@ test.group('social reauthentication proof atomicity', (group) => {
       intent: 'login',
       clientChallenge,
     })
-    const created = await account.socialAuthentication.callback({ state: login.state, callback: {} })
+    const created = await account.socialAuthentication.callback({
+      state: login.state,
+      callback: {},
+    })
     if (created.status !== 'new' || !('userId' in created))
       throw new Error('Expected social account')
     const actor = current(created.userId)
@@ -370,7 +373,8 @@ test.group('social reauthentication proof atomicity', (group) => {
         current: actor,
       })
     }
-    assert.equal((await reauth()).status, 'reauthenticated')
+    const accepted = await reauth()
+    assert.equal(accepted.status, 'reauthenticated')
     await kit.db.from('social_sensitive_proofs').delete()
 
     const refused = async (label: string) => {

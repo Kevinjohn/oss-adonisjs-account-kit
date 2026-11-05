@@ -334,7 +334,10 @@ test('workspace store links and hoisted packages count as installed', async ({ a
     )
     const store = join(workspace, 'node_modules/.pnpm/linked-package@1.2.3/node_modules')
     await mkdir(join(store, 'linked-package'), { recursive: true })
-    await writeFile(join(store, 'linked-package/package.json'), JSON.stringify({ version: '1.2.3' }))
+    await writeFile(
+      join(store, 'linked-package/package.json'),
+      JSON.stringify({ version: '1.2.3' })
+    )
     await mkdir(join(root, 'node_modules'))
     await symlink(join(store, 'linked-package'), join(root, 'node_modules/linked-package'))
     await mkdir(join(workspace, 'node_modules/hoisted-package'), { recursive: true })

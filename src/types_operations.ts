@@ -296,6 +296,14 @@ export interface AccountExport {
     lastUsedAt: string | null
     expiresAt: string | null
   }>
+  /** Present only for the session strategy: the signed-in devices the registry records. */
+  sessions?: Array<{
+    id: number
+    label: string | null
+    createdAt: string
+    lastSeenAt: string
+    expiresAt: string
+  }>
   pending: { passwordReset: boolean; emailVerification: boolean; emailChange: string | null }
   application: unknown
 }

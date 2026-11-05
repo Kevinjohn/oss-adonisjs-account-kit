@@ -7796,6 +7796,13 @@
             },
             "description": "Present only for the access-token strategy."
           },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Present only for the session strategy."
+          },
           "pending": {
             "type": "object"
           },

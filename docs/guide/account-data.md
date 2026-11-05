@@ -112,7 +112,10 @@ The document, version 1 (timestamps are ISO 8601 UTC strings):
 }
 ```
 
-- `accessTokens` is present only for the `access_tokens` strategy.
+- `accessTokens` is present only for the `access_tokens` strategy. The `session` strategy has
+  `sessions` instead: each signed-in device's `id`, `label`, `createdAt`, `lastSeenAt` and
+  `expiresAt`.
+- `credentialsChangedAt` is `null` when no `authentication` block is configured.
 - `pending` says whether an unexpired password reset or email confirmation exists, and the address
   of a pending email change.
 - `application` is what `exportAccountData` returned, passed through JSON, or `null` without the

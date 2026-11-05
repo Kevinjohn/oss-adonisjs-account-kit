@@ -12,7 +12,9 @@ test.group('setup mail prerequisites', () => {
       choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
       state.files['config/mail.ts'] = 'export default defineConfig({ mailers: {} })'
       const prior = process.env.ACCOUNT_MAIL_FROM
-      const unsafeSender = (diagnostics: Array<{ field: string; message: string; severity: string }>) =>
+      const unsafeSender = (
+        diagnostics: Array<{ field: string; message: string; severity: string }>
+      ) =>
         diagnostics.some(
           ({ field, message, severity }) =>
             field === 'mail.senderEnv' &&
@@ -212,7 +214,8 @@ test.group('setup mail prerequisites', () => {
       try {
         state.files['config/mail.ts'] =
           "import { defineConfig, transports } from '@adonisjs/mail'\nimport env from '#start/env'\nexport default defineConfig({ default: env.get('MAIL_MAILER'), mailers: { smtp: transports.smtp({}) } })"
-        const baseline = blocking((await planSetup(choices, state, { apply: true })).diagnostics)
+        const baselinePlan = await planSetup(choices, state, { apply: true })
+        const baseline = blocking(baselinePlan.diagnostics)
         assert.notInclude(baseline, 'config/mail.ts')
         for (const mail of cases) {
           state.files['config/mail.ts'] = mail

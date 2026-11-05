@@ -120,6 +120,59 @@ test.group('account data export', (group) => {
     assert.notProperty(sessions, 'accessTokens')
   })
 
+  test('signed-in devices are listed only for the session strategy', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const other = await insertUser(kit, { email: 'other@example.test' })
+    for (const [userId, label] of [
+      [user.id, 'Laptop'],
+      [other.id, 'Other'],
+    ] as const)
+      await kit.db.table('account_sessions').insert({
+        user_id: userId,
+        handle_hash: `${label}`.padEnd(64, '0'),
+        label,
+        created_at: dbTime(kit, '2026-10-01T00:00:00.000Z'),
+        last_seen_at: dbTime(kit, '2026-10-02T00:00:00.000Z'),
+        expires_at: dbTime(kit, '2026-12-01T00:00:00.000Z'),
+      })
+    const input = { actorId: user.id, currentPassword: 'password123' }
+    const sessions = await service({
+      authentication: { strategy: 'session', guard: 'web' },
+    }).account.accountData.export(input)
+    assert.deepEqual(
+      sessions.sessions!.map(({ id: _id, ...session }) => session),
+      [
+        {
+          label: 'Laptop',
+          createdAt: '2026-10-01T00:00:00.000Z',
+          lastSeenAt: '2026-10-02T00:00:00.000Z',
+          expiresAt: '2026-12-01T00:00:00.000Z',
+        },
+      ]
+    )
+    const tokens = await service({
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+    }).account.accountData.export(input)
+    assert.notProperty(tokens, 'sessions')
+  })
+
+  test('the credential revision is exported only when login is configured', async ({ assert }) => {
+    const user = await insertUser(kit)
+    await kit.db
+      .from('users')
+      .where('id', user.id)
+      .update({ credentials_changed_at: dbTime(kit, '2026-10-03T00:00:00.000Z') })
+    const input = { actorId: user.id, currentPassword: 'password123' }
+    const withLogin = await service({
+      authentication: { strategy: 'session', guard: 'web' },
+    }).account.accountData.export(input)
+    assert.equal(withLogin.account.credentialsChangedAt, '2026-10-03T00:00:00.000Z')
+    const withoutLogin = await service({ authentication: undefined }).account.accountData.export(
+      input
+    )
+    assert.isNull(withoutLogin.account.credentialsChangedAt)
+  })
+
   test('reads access-token times stored as epoch milliseconds', async ({ assert }) => {
     // AdonisJS access tokens on SQLite store their timestamps as integer milliseconds.
     const user = await insertUser(kit)

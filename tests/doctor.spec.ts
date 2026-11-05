@@ -7,6 +7,7 @@ import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
 import { provider } from './helpers/social_identity.js'
+import { testEngine } from './helpers/dialect.js'
 
 test.group('account-kit:doctor', (group) => {
   const kit = useTestApp(group)
@@ -168,6 +169,59 @@ test.group('account-kit:doctor', (group) => {
       await resetSchema(kit)
     }
   })
+
+  test('export requires every table it reads', async ({ assert }) => {
+    const exportOnly = defineConfig(
+      makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['dataExport'] })
+    )
+    for (const table of [
+      'social_identities',
+      'account_invitations',
+      'password_reset_tokens',
+      'email_verification_tokens',
+    ]) {
+      try {
+        await kit.db.connection().schema.dropTable(table)
+        assert.deepEqual(failures(await runDoctor(input({ config: exportOnly }))), [
+          `Package tables: missing ${table}`,
+        ])
+      } finally {
+        await resetSchema(kit)
+      }
+    }
+  })
+
+  test('names users-table columns the configuration needs', async ({ assert }) => {
+    const withLogin = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+    )
+    const withoutLogin = defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
+    try {
+      await kit.db.connection().schema.alterTable('users', (table) => {
+        table.dropColumn('credentials_changed_at')
+      })
+      assert.deepEqual(failures(await runDoctor(input({ config: withLogin }))), [
+        'Users table: users is missing credentials_changed_at',
+      ])
+      assert.deepEqual(failures(await runDoctor(input({ config: withoutLogin }))), [])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
+  test('SQLite requires the transaction lock table', async ({ assert }) => {
+    try {
+      await kit.db.connection().schema.dropTable('account_transaction_lock')
+      assert.deepEqual(failures(await runDoctor(input())), [
+        'Package tables: missing account_transaction_lock',
+      ])
+    } finally {
+      await resetSchema(kit)
+    }
+  }).skip(testEngine !== 'sqlite', 'Only SQLite serializes writers through the lock table')
 
   test('passwordless social registration requires a nullable password', async ({ assert }) => {
     try {

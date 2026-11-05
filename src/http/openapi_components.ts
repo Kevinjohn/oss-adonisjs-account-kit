@@ -43,6 +43,11 @@ export function sharedSchemas(): Record<string, JsonSchema> {
           items: { type: 'object' },
           description: 'Present only for the access-token strategy.',
         },
+        sessions: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Present only for the session strategy.',
+        },
         pending: { type: 'object' },
         application: {
           description: "What the application's `exportAccountData` returned, or null.",

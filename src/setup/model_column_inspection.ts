@@ -29,7 +29,9 @@ function isNonColumnDecorator(
 ): boolean {
   const call = decorator.expression
   return (
-    ts.isCallExpression(call) && ts.isIdentifier(call.expression) && bindings.has(call.expression.text)
+    ts.isCallExpression(call) &&
+    ts.isIdentifier(call.expression) &&
+    bindings.has(call.expression.text)
   )
 }
 
