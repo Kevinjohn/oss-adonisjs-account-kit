@@ -177,6 +177,58 @@ test.group('managed HTTP verification policy with live account state', (group) =
     assert.equal(current.email, 'fixed@example.test')
   })
 
+  for (const messageFails of [false, true]) {
+    test(`a credential change during the correction message still ends the session (message fails: ${messageFails})`, async ({
+      assert,
+    }) => {
+      const user = await insertUser(app, { verified: false })
+      let kit: ReturnType<typeof makeService>['account'] | undefined
+      const notify = makeNotify().notify
+      const { account } = makeService(app, {
+        authentication: { strategy: 'session', guard: 'web' },
+        notify: {
+          ...notify,
+          accountActivationProvision: async () => {
+            // A password reset elsewhere advances the revision while the message is in flight.
+            await kit!.authentication.changeRestriction({ userId: user.id, change: async () => {} })
+            if (messageFails) throw new Error('mail down')
+          },
+        },
+      })
+      kit = account
+      let stored: string | null = null
+      const { router, routes, context } = fakeManagedHttp()
+      registerManagedRoutes(router, {
+        prefix: '/api/v1',
+        kit: async () => account,
+        guard: stubGuard({
+          current: async () => ({ userId: user.id, revision: stored }),
+          forRequest: () =>
+            ({
+              strategy: 'session',
+              refresh: async (revision: string | null) => {
+                stored = revision
+              },
+            }) as never,
+        }),
+        enabled: ['emailPasswordManagement'],
+        verificationRequired: false,
+      })
+      const ctx = context()
+      Object.assign(ctx.request, {
+        csrfToken: 'proof',
+        validateUsing: async () => ({
+          currentPassword: 'password123',
+          email: 'fixed@example.test',
+        }),
+      })
+      await routes.get('PATCH /api/v1/account/profile')!(ctx).catch(() => {})
+      await assert.rejects(() =>
+        account.authentication.current({ userId: user.id, revision: stored })
+      )
+    })
+  }
+
   test('wrong current password has an identity-proof error on profile and password writes', async ({
     assert,
   }) => {

@@ -14,6 +14,8 @@ import { confirmActor, requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { isRecentIssue, reopenResendOnFailure } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
+import { revision } from './credential_revision.js'
+import { rememberCorrectionRevision } from './profile_correction_revision.js'
 import type { AccountUser, RequestEmailChangeInput, UpdateProfileInput } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
@@ -46,7 +48,12 @@ export async function updateProfile(
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
-  let issued: { user: AccountUser; changedConfirmedEmail: boolean; send: boolean }
+  let issued: {
+    user: AccountUser
+    changedConfirmedEmail: boolean
+    send: boolean
+    revision?: string | null
+  }
   let fault: PostCommitError | undefined
   try {
     ;({ value: issued, fault } = await settleCommitted(
@@ -127,7 +134,12 @@ export async function updateProfile(
           )
         }
         const issuedUser = await requireUser(deps.config, current.id, trx)
-        return { user: issuedUser, changedConfirmedEmail: inactive, send: true }
+        return {
+          user: issuedUser,
+          changedConfirmedEmail: inactive,
+          send: true,
+          ...(inactive ? { revision: await revision(trx, deps.config, current.id) } : {}),
+        }
       })
     ))
   } catch (error) {
@@ -143,35 +155,44 @@ export async function updateProfile(
   const { user: actor, changedConfirmedEmail } = issued
   if (newEmail === undefined) throw new Error('Missing email for issued profile proof')
   const context = { operation: 'email_change' as const, operationId, userId: actor.id }
-  await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
-    postCommit('Email change follow-up failed', [
-      {
-        kind: 'observer',
-        run: () =>
-          changedConfirmedEmail ? deps.config.onCredentialsChanged?.(actor, context) : undefined,
-      },
-      {
-        kind: 'delivery',
-        run: () =>
-          reopenResendOnFailure(deps.db, token, () =>
-            changedConfirmedEmail
-              ? deps.config.notify.accountActivationProvision(
-                  actor,
-                  deps.config.urls.emailVerification(token)
-                )
-              : deps.config.notify.emailChangeProvision(
-                  actor,
-                  newEmail,
-                  deps.config.urls.emailChange(token)
-                )
-          ),
-      },
-      lifecycle(deps.config, {
-        type: 'email_change.requested',
-        userId: actor.id,
-        operationId,
-      }),
-    ])
-  )
+  const committed = issued.revision
+  if (committed !== undefined) rememberCorrectionRevision(actor, committed)
+  try {
+    await finishCommitted(fault, 'Email change committed but follow-ups failed', () =>
+      postCommit('Email change follow-up failed', [
+        {
+          kind: 'observer',
+          run: () =>
+            changedConfirmedEmail ? deps.config.onCredentialsChanged?.(actor, context) : undefined,
+        },
+        {
+          kind: 'delivery',
+          run: () =>
+            reopenResendOnFailure(deps.db, token, () =>
+              changedConfirmedEmail
+                ? deps.config.notify.accountActivationProvision(
+                    actor,
+                    deps.config.urls.emailVerification(token)
+                  )
+                : deps.config.notify.emailChangeProvision(
+                    actor,
+                    newEmail,
+                    deps.config.urls.emailChange(token)
+                  )
+            ),
+        },
+        lifecycle(deps.config, {
+          type: 'email_change.requested',
+          userId: actor.id,
+          operationId,
+        }),
+      ])
+    )
+  } catch (error) {
+    // The correction committed: the caller still needs the revision to keep its own session.
+    if (committed !== undefined && error !== null && typeof error === 'object')
+      rememberCorrectionRevision(error, committed)
+    throw error
+  }
   return actor
 }
