@@ -1,5 +1,5 @@
 // Scaffolds a fresh AdonisJS API app beside a tarball of this checkout, for the demo scripts.
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { packCheckout, run } from './pack_checkout.js'
 
@@ -11,6 +11,8 @@ export function createAdonisApp(script: string) {
   if (existsSync(appDir))
     throw new Error(`${appDir} already exists; remove it or pick another path`)
 
+  // The default targets live under the gitignored tmp/, which a fresh clone does not have.
+  mkdirSync(dirname(appDir), { recursive: true })
   const archiveDir = mkdtempSync(join(dirname(appDir), `${basename(appDir)}.account-kit-archive-`))
   const { archivePath } = packCheckout(join(archiveDir, 'candidate.tgz'))
   run(

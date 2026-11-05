@@ -28,7 +28,7 @@ export default class NewAccountController {
     const committedMessage =
       followUp === 'delivery'
         ? 'Your account was created, but the verification email could not be sent.'
-        : 'Your account was created, but a follow-up step failed. Check your email for a verification link.'
+        : 'Your account was created, but a follow-up step failed. A verification email may not have been sent.'
 
     try {
       await kit.authentication.login(

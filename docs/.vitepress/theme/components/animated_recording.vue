@@ -23,19 +23,15 @@ onMounted(() => {
 
 <template>
   <figure class="recording">
-    <img v-if="showAnimation" :src="sources.animation" :alt="description" />
-    <img v-else :src="sources.still" :alt="description" />
+    <!-- The visible caption is the text alternative, so the image is not announced twice. -->
+    <img v-if="showAnimation" :src="sources.animation" alt="" />
+    <img v-else :src="sources.still" alt="" />
     <figcaption>
       <p>{{ description }}</p>
-      <button
-        v-if="hydrated"
-        type="button"
-        :aria-pressed="showAnimation"
-        @click="showAnimation = !showAnimation"
-      >
-        {{ showAnimation ? 'Hide animation' : 'Show animation' }}
-      </button>
     </figcaption>
+    <button v-if="hydrated" type="button" @click="showAnimation = !showAnimation">
+      {{ showAnimation ? 'Hide animation' : 'Show animation' }}
+    </button>
   </figure>
 </template>
 
