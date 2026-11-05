@@ -9,16 +9,19 @@ import {
 import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup session prerequisites', () => {
-  test('an uncompilable session config is reported against the file', async ({ assert }) => {
+  test('an uncompilable session config is reported only when setup needs it', async ({
+    assert,
+  }) => {
     await withFixture(async (choices, state) => {
       state.files['config/session.ts'] = 'export default defineConfig({\n'
-      const plan = await planSetup(choices, state)
-      assert.isTrue(
-        plan.diagnostics.some(
+      const reported = async () =>
+        (await planSetup(choices, state)).diagnostics.some(
           ({ field, message }) =>
             field === 'config/session.ts' && message.includes('TypeScript errors')
         )
-      )
+      assert.isTrue(await reported())
+      choices.authentication!.strategy = 'access_tokens'
+      assert.isFalse(await reported())
     })
   })
 

@@ -27,6 +27,8 @@ export async function planSessionConfigIntegration(
   const wantsManagedSession =
     choices.managed.length > 0 && choices.authentication?.strategy === 'session'
   const wasManaged = previous.includes('account-kit:session-import:start')
+  // An application without the managed session integration never needs this file read.
+  if (!wantsManagedSession && !wasManaged) return
   let base: string | null
   let parsed: SetupSource
   try {
@@ -45,7 +47,6 @@ export async function planSessionConfigIntegration(
     )
     return
   }
-  if (!wantsManagedSession && !wasManaged) return
   const existingWrapper = defaultExpression(parsed)
   const wrapperBinding = importedName(
     parsed,

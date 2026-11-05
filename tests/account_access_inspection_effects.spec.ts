@@ -278,9 +278,7 @@ test.group('account access inspection side effects and dependency failures', (gr
     } finally {
       await kit.db.connection().schema.dropTableIfExists('test_inspection_deferred_commit')
     }
-  })
-    .skip(testEngine !== 'pg', 'PostgreSQL only')
-    .skip(testEngine !== 'pg')
+  }).skip(testEngine !== 'pg', 'PostgreSQL only')
 
   test('INS-09 reports a SQLite cleanup failure without returning a snapshot', async ({
     assert,
@@ -315,7 +313,5 @@ test.group('account access inspection side effects and dependency failures', (gr
       if (native && original) native.pragma = original
       await customKit.close()
     }
-  })
-    .skip(testEngine !== 'sqlite', 'SQLite only')
-    .skip(testEngine !== 'sqlite')
+  }).skip(testEngine !== 'sqlite', 'SQLite only')
 })
