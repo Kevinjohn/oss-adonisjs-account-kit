@@ -27,6 +27,7 @@ export default class EmailChangesController {
       ctx.session.flashOnly(['email'])
       return ctx.response.redirect().back()
     }
+    let delivered = true
     try {
       await kit.emailPasswordManagement.requestEmailChange({
         actorId: user.id,
@@ -52,19 +53,25 @@ export default class EmailChangesController {
         { event: 'email_change_follow_up_failed' },
         'Email change saved but a follow-up failed'
       )
+      delivered = false
+    }
+    // The change is saved either way; a correction ended this session, so finish it here.
+    if (correction) {
+      await accountKitSessionGuard(ctx).terminate()
+      ctx.session.flash(
+        delivered ? 'success' : 'error',
+        delivered
+          ? 'Address corrected. Check the development server output for a confirmation link, then sign in.'
+          : 'Address corrected, but we could not confirm that the email was sent. Sign in to send a new link.'
+      )
+      return ctx.response.redirect().toRoute('session.create')
+    }
+    if (!delivered) {
       ctx.session.flash(
         'error',
         'The request was saved, but we could not confirm that the email was sent. Check the new address for a link.'
       )
       return ctx.response.redirect().back()
-    }
-    if (correction) {
-      await accountKitSessionGuard(ctx).terminate()
-      ctx.session.flash(
-        'success',
-        'Address corrected. Check the development server output for a confirmation link, then sign in.'
-      )
-      return ctx.response.redirect().toRoute('session.create')
     }
     ctx.session.flash(
       'success',
