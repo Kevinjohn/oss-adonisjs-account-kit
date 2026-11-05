@@ -2,7 +2,11 @@ import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import InertiaMiddleware from '#middleware/inertia_middleware'
 
-function sharedFor(user: { email: string; unverifiedEmail: string | null; emailVerifiedAt: unknown }) {
+function sharedFor(user: {
+  email: string
+  unverifiedEmail: string | null
+  emailVerifiedAt: unknown
+}) {
   const ctx = {
     auth: { user: { id: 1, fullName: null, ...user } },
     request: { plainCookie: () => 'light' },
