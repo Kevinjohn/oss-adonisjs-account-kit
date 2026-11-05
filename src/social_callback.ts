@@ -182,7 +182,20 @@ export async function socialCallback(
             .where('provider_user_id', profile.subject)
             .first()
           if (stored) {
-            if (!stored.confirmed_at) throw new SocialUserNotFoundError()
+            if (!stored.confirmed_at) {
+              // The account this identity created was never activated: send activation again
+              // instead of refusing this provider subject for good.
+              const owner = await deps.config.users.findById(stored.user_id, trx)
+              if (
+                owner &&
+                owner.unverifiedEmail !== null &&
+                owner.unverifiedEmail === owner.email
+              ) {
+                unverified = owner.id
+                return { status: 'new', emailVerificationRequired: true }
+              }
+              throw new SocialUserNotFoundError()
+            }
             const user = await deps.config.users.findById(stored.user_id, trx)
             if (!user) throw new SocialUserNotFoundError()
             const auth = deps.config.authentication!

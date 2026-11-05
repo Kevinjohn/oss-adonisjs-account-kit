@@ -220,17 +220,23 @@ test.group('social link and proof binding atomicity', (group) => {
       intent: 'login',
       clientChallenge,
     })
-    await assert.rejects(
-      () => account.socialAuthentication.callback({ state: retry.state, callback: {} }),
-      'Social account was not found'
+    // The quarantined identity never signs in; a retry only asks for activation again.
+    assert.deepEqual(
+      await account.socialAuthentication.callback({ state: retry.state, callback: {} }),
+      { status: 'new', emailVerificationRequired: true }
     )
     const sent = recorder.calls.find((call) => call.method === 'accountActivationProvision')
     if (!sent) throw new Error('Expected activation proof')
     const token = new URL(sent.args[1] as string).pathname.split('/').at(-1)!
     await account.emailVerification.complete({ token, password: 'New-Owner-Password-9!' })
     assert.lengthOf(await kit.db.from('social_identities'), 0)
+    const afterClaimStart = await account.socialAuthentication.begin({
+      provider: 'github',
+      intent: 'login',
+      clientChallenge,
+    })
     const afterClaim = await account.socialAuthentication.callback({
-      state: retry.state,
+      state: afterClaimStart.state,
       callback: {},
     })
     assert.deepEqual(afterClaim, { status: 'link_required' })
