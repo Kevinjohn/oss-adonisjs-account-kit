@@ -296,7 +296,8 @@ test.group('setup session prerequisites', () => {
         process.env.NODE_ENV = 'development'
         state.files['config/session.ts'] =
           "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER'), stores: { database: stores.database(), memory: stores.memory() } })\nexport default sessionConfig\n"
-        await writeFile(join(root, '.env'), 'SESSION_DRIVER=memory\nPRIVATE_VALUE=hidden-value\n')
+        // Each step puts the unsupported `custom` store in the file that should lose.
+        await writeFile(join(root, '.env'), 'SESSION_DRIVER=custom\nPRIVATE_VALUE=hidden-value\n')
         await writeFile(join(root, '.env.development'), 'SESSION_DRIVER=database\n')
         const fromFile = await planSetup(choices, state)
         assert.isFalse(
@@ -305,6 +306,7 @@ test.group('setup session prerequisites', () => {
           )
         )
         assert.isFalse(JSON.stringify(fromFile).includes('hidden-value'))
+        await writeFile(join(root, '.env.development'), 'SESSION_DRIVER=custom\n')
         await writeFile(join(root, '.env.development.local'), 'SESSION_DRIVER="memory"\n')
         const local = await planSetup(choices, state)
         assert.isFalse(
@@ -312,6 +314,7 @@ test.group('setup session prerequisites', () => {
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
           )
         )
+        await writeFile(join(root, '.env.development.local'), 'SESSION_DRIVER=custom\n')
         process.env.SESSION_DRIVER = 'database'
         const override = await planSetup(choices, state)
         assert.isFalse(
