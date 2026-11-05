@@ -48,7 +48,7 @@ export async function planSession(
         if (baseline) {
           inspected = await nativeSessionConfiguration(baseline, state.root)
           diagnosticSelection = inspected
-            ? { name: inspected.selectedName, kind: inspected.selected?.kind ?? null }
+            ? { name: inspected.selectedName, kind: inspected.selectedKind }
             : await selectedSessionDiagnostic(baseline, state.root)
         }
       } catch {

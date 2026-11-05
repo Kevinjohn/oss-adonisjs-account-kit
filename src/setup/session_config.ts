@@ -29,10 +29,16 @@ export interface NativeSessionConfiguration {
   originalStore: string
   originalSelection: string
   storeStart: number
-  allowedStores: Array<{ name: string; kind: 'database' | 'memory' }>
+  /** Server-side stores the managed wrapper accepts; the cookie store is never one. */
+  allowedStores: Array<{ name: string; kind: string }>
   selectedName: string | null
-  selected: { name: string; kind: 'database' | 'memory' } | null
+  selected: { name: string; kind: string } | null
+  /** The `stores.<kind>()` factory of the selected entry, cookie included. */
+  selectedKind: string | null
 }
+
+/** The `stores` factories that keep session data on the server. */
+const serverStores = ['database', 'dynamodb', 'file', 'memory', 'redis']
 
 export async function nativeSessionConfiguration(
   text: string,
@@ -54,6 +60,7 @@ export async function nativeSessionConfiguration(
   if (!store || !stores || !ts.isObjectLiteralExpression(stores.initializer)) return null
   if (hasUnsafeObjectEntries(source, stores.initializer)) return null
   const allowedStores: NativeSessionConfiguration['allowedStores'] = []
+  const kinds = new Map<string, string>()
   for (const property of stores.initializer.properties) {
     if (!ts.isPropertyAssignment(property)) return null
     const name =
@@ -61,9 +68,10 @@ export async function nativeSessionConfiguration(
         ? property.name.text
         : null
     if (!name) return null
-    for (const kind of ['database', 'memory'] as const) {
-      if (exactCall(source, property.initializer, storesName, kind))
-        allowedStores.push({ name, kind })
+    for (const kind of [...serverStores, 'cookie']) {
+      if (!exactCall(source, property.initializer, storesName, kind)) continue
+      kinds.set(name, kind)
+      if (kind !== 'cookie') allowedStores.push({ name, kind })
     }
   }
   let selectedName: string | null = null
@@ -118,6 +126,7 @@ export async function nativeSessionConfiguration(
     allowedStores,
     selectedName,
     selected,
+    selectedKind: (selectedName && kinds.get(selectedName)) ?? null,
   }
 }
 

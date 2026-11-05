@@ -38,6 +38,41 @@ test.group('setup session prerequisites', () => {
     })
   })
 
+  test('conventional session configs report cookie and accept redis selections', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      const conventional = (store: string) =>
+        [
+          "import { defineConfig, stores } from '@adonisjs/session'",
+          'const sessionConfig = defineConfig({',
+          `  store: '${store}',`,
+          '  stores: { cookie: stores.cookie(), redis: stores.redis({ connection: "main" }) },',
+          '})',
+          'export default sessionConfig',
+          '',
+        ].join('\n')
+      state.files['config/session.ts'] = conventional('cookie')
+      const cookie = await planSetup(choices, state)
+      assert.isTrue(
+        cookie.diagnostics.some(
+          ({ field, message, severity }) =>
+            field === 'config/session.ts' && severity === 'error' && message.includes('Cookie-only')
+        ),
+        JSON.stringify(cookie.diagnostics)
+      )
+      state.files['config/session.ts'] = conventional('redis')
+      choices.authentication!.session!.persistentStore = true
+      const redis = await planSetup(choices, state, { production: true })
+      assert.isFalse(
+        redis.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        ),
+        JSON.stringify(redis.diagnostics)
+      )
+    })
+  })
+
   test('production memory sessions conflict with persistence claims', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       state.files['config/session.ts'] =

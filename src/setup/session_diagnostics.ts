@@ -50,6 +50,7 @@ export async function selectedSessionDiagnostic(
     if (variable) name = await resolveSelectedEnvironment(root, variable)
   }
   if (!name) return { name: null, kind: null }
+  const storesName = importedName(source, '@adonisjs/session', 'stores') ?? 'stores'
   const selected = directProperty(source, stores.initializer, name)
   const initializer = selected?.initializer
   const kind =
@@ -57,7 +58,7 @@ export async function selectedSessionDiagnostic(
     source.ts.isCallExpression(initializer) &&
     source.ts.isPropertyAccessExpression(initializer.expression) &&
     source.ts.isIdentifier(initializer.expression.expression) &&
-    initializer.expression.expression.text === 'stores'
+    initializer.expression.expression.text === storesName
       ? initializer.expression.name.text
       : null
   return { name, kind }
