@@ -6,6 +6,12 @@ import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
+/** The severity of the diagnostic on `field`; retirement must block with `error`. */
+const blocking = (
+  plan: { diagnostics: Array<{ field: string; severity: string }> },
+  field: string
+) => plan.diagnostics.find((diagnostic) => diagnostic.field === field)?.severity
+
 test.group('setup social providers', (group) => {
   registerSetupTeardown(group)
 
@@ -320,10 +326,7 @@ test.group('setup social providers', (group) => {
       },
     }
     const missing = await planSetup(next, state)
-    assert.include(
-      missing.diagnostics.map(({ field }) => field),
-      'social.retirement'
-    )
+    assert.equal(blocking(missing, 'social.retirement'), 'error')
     const impact = {
       inspectedAccounts: 5,
       affectedAccounts: 1,
@@ -337,6 +340,7 @@ test.group('setup social providers', (group) => {
       affected.diagnostics.find(({ field }) => field === 'social.retirement')!.message,
       '1 of 5'
     )
+    assert.equal(blocking(affected, 'social.retirement'), 'error')
     const zero = await planSetup(next, state, {
       retirementImpact: { ...impact, affectedAccounts: 0 },
     })
@@ -344,6 +348,7 @@ test.group('setup social providers', (group) => {
       zero.diagnostics.find(({ field }) => field === 'social.retirement')!.message,
       '--retirement-maintenance-window'
     )
+    assert.equal(blocking(zero, 'social.retirement'), 'error')
     const allowed = await planSetup(next, state, {
       retirementImpact: { ...impact, affectedAccounts: 0 },
       retirementMaintenanceWindow: true,
@@ -375,12 +380,10 @@ test.group('setup social providers', (group) => {
       blocked.diagnostics.find(({ field }) => field === 'authentication.retirement')!.message,
       '3 of 9'
     )
+    assert.equal(blocking(blocked, 'authentication.retirement'), 'error')
     const zero = { ...impact, affectedAccounts: 0 }
     const withoutWindow = await planSetup(choices, state, { retirementImpact: zero })
-    assert.include(
-      withoutWindow.diagnostics.map(({ field }) => field),
-      'authentication.retirement'
-    )
+    assert.equal(blocking(withoutWindow, 'authentication.retirement'), 'error')
     const allowed = await planSetup(choices, state, {
       retirementImpact: zero,
       retirementMaintenanceWindow: true,
