@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
-import { type DateTime } from 'luxon'
+import { DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import { InvalidConfigurationError } from '../src/errors.js'
 import { transaction } from '../src/db.js'
@@ -375,5 +375,54 @@ test.group('identity creation contract', (group) => {
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.equal(row.unverified_email, 'pending@example.test')
     assert.isNull(row.password)
+  })
+
+  test('hashes and verifies with the model withAuthFinder hasher', async ({ assert }) => {
+    class FinderUser extends LucidUser {
+      static table = 'users'
+    }
+    Object.assign(FinderUser, {
+      hashPassword: async (row: { password: string }) => {
+        row.password = `finder:${row.password}`
+      },
+      findForAuth: () => null,
+      verifyCredentials: () => null,
+    })
+    Object.assign(FinderUser.prototype, {
+      async verifyPassword(this: LucidUser, plain: string) {
+        return this.password === `finder:${plain}`
+      },
+    })
+    const adapter = createLucidAdapter(async () => FinderUser)
+    const hashed = await adapter.hashPassword!('finder-password')
+    assert.equal(hashed, 'finder:finder-password')
+    const user = await transaction(kit.db, (trx) =>
+      adapter.create({ email: 'finder@example.test', unverifiedEmail: null, password: null }, trx)
+    )
+    await transaction(kit.db, (trx) => adapter.setPasswordHash!(user.id, hashed, trx))
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.password, 'finder:finder-password')
+    await transaction(kit.db, async (trx) => {
+      assert.isTrue(await adapter.verifyPassword(user.id, 'finder-password', trx))
+      assert.isFalse(await adapter.verifyPassword(user.id, 'other-password', trx))
+    })
+  })
+
+  test('a verification time round-trips outside UTC', async ({ assert }) => {
+    const previous = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const adapter = createLucidAdapter(async () => LucidUser)
+      const user = await transaction(kit.db, (trx) =>
+        adapter.create({ email: 'zone@example.test', unverifiedEmail: null, password: null }, trx)
+      )
+      const at = DateTime.utc(2026, 7, 1, 10, 0, 0)
+      await transaction(kit.db, (trx) => adapter.markEmailVerified(user.id, at, trx))
+      const read = await adapter.findById(user.id)
+      assert.equal(read?.emailVerifiedAt?.toMillis(), at.toMillis())
+    } finally {
+      if (previous === undefined) delete process.env.TZ
+      else process.env.TZ = previous
+    }
   })
 })
