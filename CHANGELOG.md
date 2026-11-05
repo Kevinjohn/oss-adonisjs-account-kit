@@ -18,6 +18,9 @@
 - Breaking: account deletion through the Lucid adapter now removes the user row of a model composed
   with `SoftDeletes` instead of soft-deleting it. Application tables whose foreign keys reference
   users must cascade or be cleared in `onAccountDeletingTransaction`, or the deletion rolls back.
+- Breaking: `authentication.canAccess` must resolve to `true` or `false` on every sign-in and
+  session check. Any other value, such as `1`, `0` or a row, now throws instead of allowing or
+  denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
 
 ## 0.2.0 - 2026-11-03
 
