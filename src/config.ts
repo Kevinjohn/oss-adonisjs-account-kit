@@ -73,6 +73,16 @@ function bindTopLevelHooks<T extends AccountKitConfig>(config: T): T {
   ) as T
 }
 
+/** A misspelt key would otherwise leave its default in place without a word. */
+function rejectUnknownKeys(value: object | undefined, path: string, known: string[]): void {
+  for (const key of Object.keys(value ?? {}))
+    if (!known.includes(key))
+      throw new InvalidConfigurationError(
+        `${path}.${key}`,
+        `account_kit: ${path}.${key} is not a setting`
+      )
+}
+
 /**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
  * a missing callback an enabled capability needs or an out-of-range value.
@@ -134,6 +144,14 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
         throw new InvalidConfigurationError(path, `account_kit: ${path} must be a function`)
     }
   }
+  // Login is not a capability, so check the adapter methods it calls when it is configured.
+  if (config.authentication)
+    for (const method of ['findByEmail', 'findById', 'verifyPassword'] as const)
+      if (typeof config.users[method] !== 'function')
+        throw new InvalidConfigurationError(
+          `users.${method}`,
+          `account_kit: users.${method} must be a function`
+        )
   if (
     !config.registration ||
     !['open', 'closed', 'application'].includes(config.registration.availability)
@@ -196,6 +214,19 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'limiterNamespace',
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
+  rejectUnknownKeys(config.expiresIn, 'expiresIn', [
+    'passwordReset',
+    'emailVerification',
+    'invitation',
+    'emailChange',
+    'magicLink',
+  ])
+  rejectUnknownKeys(config.invitationThrottle, 'invitationThrottle', [
+    'sendActor',
+    'sendRecipient',
+    'resendActor',
+    'resendInvitation',
+  ])
   const expiresIn = freezeResolved({
     passwordReset: config.expiresIn?.passwordReset ?? '1h',
     emailVerification: config.expiresIn?.emailVerification ?? '1h',
@@ -219,10 +250,11 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     )
   ) as unknown as InvitationThrottle
   const minRequestMs = config.minRequestMs ?? 300
-  if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
+  // Node timers overflow above 2^31 - 1 ms and fire after 1 ms instead.
+  if (!Number.isFinite(minRequestMs) || minRequestMs < 0 || minRequestMs > 2_147_483_647)
     throw new InvalidConfigurationError(
       'minRequestMs',
-      'account_kit: minRequestMs must be a finite non-negative number'
+      'account_kit: minRequestMs must be a non-negative number of at most 2147483647 milliseconds'
     )
   const tokenSecretLength = config.tokenSecretLength ?? 40
   if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)
@@ -267,8 +299,14 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'account_kit: usersTable must be a plain SQL identifier'
     )
   const hooks = bindTopLevelHooks(config)
+  const { mapFields } = config.registration
   return freezeResolved({
     ...hooks,
+    // A copy, so a later write to the application's object cannot skip the checks above.
+    registration: freezeResolved({
+      ...config.registration,
+      ...(mapFields ? { mapFields: mapFields.bind(config.registration) } : {}),
+    }),
     enabled: freezeResolved([...enabled]),
     delivery: config.delivery ?? 'best-effort',
     expiresIn,

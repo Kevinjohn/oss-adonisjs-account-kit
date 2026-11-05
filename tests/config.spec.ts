@@ -92,10 +92,11 @@ test.group('account kit configuration and service surface', (group) => {
 
   test('rejects invalid password reset timing and throttle configuration', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
-    for (const minRequestMs of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
-      assert.throws(() => defineConfig({ ...base, minRequestMs }))
+    for (const minRequestMs of [Number.NaN, Number.POSITIVE_INFINITY, -1, 2_147_483_648]) {
+      assert.throws(() => defineConfig({ ...base, minRequestMs }), /minRequestMs/)
     }
     assert.equal(defineConfig({ ...base, minRequestMs: 0 }).minRequestMs, 0)
+    assert.equal(defineConfig({ ...base, minRequestMs: 2_147_483_647 }).minRequestMs, 2_147_483_647)
 
     for (const requests of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
       assert.throws(() => defineConfig({ ...base, throttle: { requests } }))
@@ -298,8 +299,41 @@ test.group('account kit configuration and service surface', (group) => {
     assert.isTrue(Object.isFrozen(resolved.authentication?.clientLimit))
     assert.isTrue(Object.isFrozen(resolved.authentication?.identityLimit))
     assert.isTrue(Object.isFrozen(resolved.authentication?.tokenAbilities))
+    assert.isTrue(Object.isFrozen(resolved.registration))
     assert.isFalse(Object.isFrozen(input))
     assert.isFalse(Object.isFrozen(input.users))
+    assert.isFalse(Object.isFrozen(input.registration))
     assert.strictEqual(resolved.users, input.users)
+    // A later write to the application's object does not reach the checked copy.
+    input.registration.availability = 'bogus' as never
+    assert.equal(resolved.registration.availability, 'open')
+  })
+
+  test('rejects misspelt expiry and invitation throttle settings', ({ assert }) => {
+    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+    assert.throws(
+      () => defineConfig({ ...base, expiresIn: { passwordRest: '10m' } as never }),
+      /expiresIn.passwordRest is not a setting/
+    )
+    assert.throws(
+      () => defineConfig({ ...base, invitationThrottle: { sendActr: { requests: 1 } } as never }),
+      /invitationThrottle.sendActr is not a setting/
+    )
+  })
+
+  test('login requires the adapter methods it calls', ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const withoutVerify = { ...users, verifyPassword: undefined } as never
+    assert.throws(
+      () =>
+        defineConfig(
+          makeConfig({
+            users: withoutVerify,
+            enabled: ['passwordReset'],
+            authentication: { strategy: 'session', guard: 'web' },
+          })
+        ),
+      /users.verifyPassword must be a function/
+    )
   })
 })
