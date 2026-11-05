@@ -2,10 +2,6 @@ import env from '#start/env'
 import app from '@adonisjs/core/services/app'
 import { defineConfig, stores } from '@adonisjs/session'
 
-// The memory store is for tests: it lives in one process and never expires.
-if (app.inProduction && env.get('SESSION_DRIVER') === 'memory')
-  throw new Error('SESSION_DRIVER=memory is for tests; use database in production')
-
 const sessionConfig = defineConfig({
   /**
    * Enable or disable session support globally.
