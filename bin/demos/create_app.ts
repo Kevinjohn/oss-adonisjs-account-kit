@@ -8,9 +8,9 @@ import { createAdonisApp } from './scaffold_app.js'
 import { writeDemoIdentity } from './demo_identity.js'
 
 const overlay = fileURLToPath(new URL('overlay', import.meta.url))
-const { appDir, tarball } = createAdonisApp('create_app.ts')
+const { appDir, archivePath } = createAdonisApp('create_app.ts')
 
-run('pnpm', ['add', join('..', tarball), '@adonisjs/limiter', 'typescript@^5.9.3'], appDir)
+run('pnpm', ['add', archivePath, '@adonisjs/limiter', 'typescript@^5.9.3'], appDir)
 run('node', ['ace', 'configure', '@adonisjs/limiter', '--store=database'], appDir)
 run('node', ['ace', 'configure', '@kevinjohn/adonisjs-account-kit'], appDir)
 

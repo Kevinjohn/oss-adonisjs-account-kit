@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Install each generated demo from its exact uniquely owned package archive and retain archive-derived metadata and SHA-256 evidence beside the app.
+
 - Restrict destructive demo recording to attested generated SQLite apps and bound cleanup of recorder-owned processes after failure or interruption.
 
 - Publish setup-choice JSON downloads, correct guide anchors and generated API edit links, and clarify recipe imports and trusted-proxy prerequisites.

@@ -26,11 +26,15 @@ async function fixture() {
     `#!${process.execPath}
 const fs = require('node:fs')
 const path = require('node:path')
+const { execFileSync } = require('node:child_process')
 const args = process.argv.slice(2)
 fs.appendFileSync(process.env.DEMO_TRACE, 'pnpm ' + args.join(' ') + '\\n')
 if (args.includes('pack')) {
-  const destination = args[args.indexOf('--pack-destination') + 1]
-  fs.writeFileSync(path.join(destination, 'kevinjohn-adonisjs-account-kit-synthetic.tgz'), 'synthetic archive')
+  const archive = args[args.indexOf('--out') + 1]
+  const source = path.join(path.dirname(archive), 'package')
+  fs.mkdirSync(source, { recursive: true })
+  fs.writeFileSync(path.join(source, 'package.json'), JSON.stringify({ name: '@kevinjohn/adonisjs-account-kit', version: '0.2.0-test' }))
+  execFileSync('tar', ['-czf', archive, '-C', path.dirname(archive), 'package'])
 }
 if (args[0] === 'dlx' && args[1] === 'create-adonisjs@3.4.0') {
   const app = path.join(process.cwd(), args[2])

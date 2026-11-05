@@ -12,6 +12,9 @@ It runs three steps, which can also be run alone:
 1. `create_app.ts tmp/demo-app` builds and packs this checkout, creates a new AdonisJS API app
    with `create-adonisjs@3.4.0`, installs the tarball and the limiter, and copies `overlay/` in:
    every capability except social sign-in, managed routes under `/api`, emails printed to the log.
+   The producer packs to a unique sibling directory and installs its exact absolute `candidate.tgz`
+   path. Keep that archive and `candidate.json` beside the app: the manifest keeps a file dependency
+   on those bytes. The JSON records the archive path, package name/version and compressed-byte SHA-256.
 2. `record.ts tmp/demo-app tmp/demo-casts [scenario ...]` runs each scenario with real `curl`
    and `node ace` commands and writes one asciicast v2 file per scenario. Each scenario starts
    from `migration:fresh`, which also empties the limiter store. It needs port 3333 free.
