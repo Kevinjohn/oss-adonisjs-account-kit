@@ -24,13 +24,6 @@ export async function planSession(
         'config/shield.ts',
         'Session managed POSTs require configured Shield CSRF protection'
       )
-    else if (csrf === 'exempted')
-      diagnostic(
-        diagnostics,
-        'config/shield.ts',
-        'Verify that Shield csrf.exceptRoutes and csrf.methods do not exempt the managed session routes',
-        'action'
-      )
     else if (csrf === 'dynamic')
       diagnostic(
         diagnostics,
