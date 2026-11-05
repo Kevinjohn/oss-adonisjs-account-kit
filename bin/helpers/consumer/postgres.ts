@@ -16,6 +16,37 @@ export function pgClient(appRoot: string, databaseName: string) {
   })
 }
 
+/** Owns shutdown, including a failed connect that may have allocated a socket.
+ * Operation failures precede shutdown failures in AggregateError.errors.
+ */
+export async function withPostgresClient<T>(
+  appRoot: string,
+  databaseName: string,
+  operation: (client: ReturnType<typeof pgClient>) => Promise<T>
+): Promise<T> {
+  const client = pgClient(appRoot, databaseName)
+  let result: T
+  let failed = false
+  let failure: unknown
+  try {
+    await client.connect()
+    result = await operation(client)
+  } catch (error) {
+    failed = true
+    failure = error
+  }
+  try {
+    await client.end()
+  } catch (error) {
+    if (failed) {
+      throw new AggregateError([failure, error], 'PostgreSQL operation and shutdown failed')
+    }
+    throw error
+  }
+  if (failed) throw failure
+  return result!
+}
+
 export async function resetExclusivePostgresSchema(appRoot: string) {
   if (database !== 'postgres') return
   const databaseName = process.env.DB_DATABASE ?? 'account_kit_consumer'
@@ -24,11 +55,10 @@ export async function resetExclusivePostgresSchema(appRoot: string) {
       'PostgreSQL consumer runs only reset the dedicated account_kit_consumer database'
     )
   }
-  const client = pgClient(appRoot, databaseName)
-  await client.connect()
-  await client.query('DROP SCHEMA public CASCADE')
-  await client.query('CREATE SCHEMA public')
-  await client.end()
+  await withPostgresClient(appRoot, databaseName, async (client) => {
+    await client.query('DROP SCHEMA public CASCADE')
+    await client.query('CREATE SCHEMA public')
+  })
 }
 
 export async function ensureExclusivePostgresDatabase(appRoot: string) {
@@ -37,14 +67,10 @@ export async function ensureExclusivePostgresDatabase(appRoot: string) {
   if (databaseName !== 'account_kit_consumer') {
     throw new Error('PostgreSQL consumer runs require the dedicated account_kit_consumer database')
   }
-  const client = pgClient(appRoot, 'postgres')
-  await client.connect()
-  try {
+  await withPostgresClient(appRoot, 'postgres', async (client) => {
     const existing = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
       databaseName,
     ])
     if (existing.rowCount === 0) await client.query('CREATE DATABASE account_kit_consumer')
-  } finally {
-    await client.end()
-  }
+  })
 }

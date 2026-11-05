@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Always attempt shutdown of consumer PostgreSQL clients after connection or query failure, preserving operation and shutdown failures together.
+
 - Install each generated demo from its exact uniquely owned package archive and retain archive-derived metadata and SHA-256 evidence beside the app.
 
 - Restrict destructive demo recording to attested generated SQLite apps and bound cleanup of recorder-owned processes after failure or interruption.

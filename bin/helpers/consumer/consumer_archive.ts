@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { run } from './harness.js'
-import { ensureExclusivePostgresDatabase, pgClient } from './postgres.js'
+import { ensureExclusivePostgresDatabase, withPostgresClient } from './postgres.js'
 import { compatibility, database, repoRoot } from './settings.js'
 
 function setCompatibilityVersions(manifest: {
@@ -77,11 +77,19 @@ export async function installArchive(appRoot: string, archive: string) {
 
   let databaseVersion = `SQLite ${sqliteVersion}`
   if (database === 'postgres') {
-    const client = pgClient(appRoot, process.env.DB_DATABASE ?? 'account_kit_consumer')
-    await client.connect()
-    const result = await client.query('SHOW server_version')
-    databaseVersion = `PostgreSQL ${result.rows[0].server_version}`
-    await client.end()
+    databaseVersion = await postgresVersion(appRoot)
   }
   return { installedPath, version: packageMetadata.version, dependencyVersions, databaseVersion }
+}
+
+/** Read the installed consumer server version while owning its client lifetime. */
+export async function postgresVersion(appRoot: string): Promise<string> {
+  return withPostgresClient(
+    appRoot,
+    process.env.DB_DATABASE ?? 'account_kit_consumer',
+    async (client) => {
+      const result = await client.query('SHOW server_version')
+      return `PostgreSQL ${result.rows[0].server_version}`
+    }
+  )
 }
