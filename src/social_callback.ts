@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { validateAccountAccessResult } from './account_access_policy.js'
-import { revision } from './authentication.js'
+import { isActiveAccount, revision } from './authentication.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
@@ -15,6 +15,7 @@ import {
   SocialProofError,
   SocialTransactionError,
   SocialUserNotFoundError,
+  UnverifiedEmailError,
 } from './errors.js'
 import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -308,6 +309,8 @@ export async function socialCallback(
         const proofHash = state.proof_hash ?? (input.proof ? hashToken(input.proof) : null)
         if (!proofHash) throw new SocialProofError()
         await consumeSocialSensitiveProofHash(trx, deps.config, user.id, 'social_link', proofHash)
+        // A confirmed link survives the email-owner claim, so an unconfirmed account cannot link.
+        if (!isActiveAccount(user)) throw new UnverifiedEmailError()
         const existing = await trx
           .from('social_identities')
           .where('provider', name)

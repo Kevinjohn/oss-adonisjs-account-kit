@@ -1,9 +1,14 @@
 import { completeRegistration } from './social_registration.js'
 import { lockUser, transaction } from './db.js'
-import { revision } from './authentication.js'
+import { isActiveAccount, revision } from './authentication.js'
 import { redeemSocialHandoff } from './social_handoff.js'
 import { consumeSocialSensitiveProof, proveSocialPassword } from './social_proofs.js'
-import { SocialProofError, SocialTransactionError, SocialUserNotFoundError } from './errors.js'
+import {
+  SocialProofError,
+  SocialTransactionError,
+  SocialUserNotFoundError,
+  UnverifiedEmailError,
+} from './errors.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { provider, socialCallback } from './social_callback.js'
 import { listSocialIdentities, unlinkSocialIdentity } from './social_links.js'
@@ -43,6 +48,9 @@ export function socialIdentityService(deps: Dependencies) {
       const state = generateToken()
       await transaction(deps.db, async (trx) => {
         const user = input.intent === 'login' ? null : await authenticated(deps, input.current, trx)
+        // A confirmed link outlives the email-owner claim, so only a confirmed owner may link.
+        if (input.intent === 'link' && user && !isActiveAccount(user))
+          throw new UnverifiedEmailError()
         await trx.table('social_transactions').insert({
           hash: hashToken(state),
           provider: input.provider,
