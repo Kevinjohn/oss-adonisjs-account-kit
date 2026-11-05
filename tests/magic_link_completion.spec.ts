@@ -74,7 +74,7 @@ test.group('magicLink.complete', (group) => {
     await kit.db
       .from('users')
       .where('id', user.id)
-      .update({ credentials_changed_at: '2026-01-02 03:04:05.678' })
+      .update({ credentials_changed_at: dbTime(kit, '2026-01-02T03:04:05.678Z') })
     const events: unknown[] = []
     await account.magicLink.complete({ token, verifier }, sessionGuard(events))
     assert.deepEqual(events, [['establish', user.id, '2026-01-02T03:04:05.678Z']])
