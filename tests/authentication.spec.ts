@@ -273,6 +273,28 @@ test.group('authentication.withCurrent', (group) => {
     }
   }
 
+  test('signing in again in the same session replaces its sign-in row', async ({ assert }) => {
+    await insertUser(kit)
+    const { account } = service()
+    const first = await signIn(account)
+    let second: CurrentAccountInput | undefined
+    await account.authentication.login(
+      { email: 'person@example.test', password: 'password123', clientKey: 'client' },
+      {
+        strategy: 'session',
+        name: 'web',
+        previousHandle: () => first.sessionHandle,
+        establish: async (userId: UserId, revision: string | null, handle?: string) => {
+          second = { userId, revision, sessionHandle: handle }
+        },
+        terminate: async () => {},
+      }
+    )
+    const rows = await account.authentication.sessions.list({ current: second! })
+    assert.lengthOf(rows, 1)
+    assert.isTrue(rows[0].current)
+  })
+
   test('passes current’s account and the caller’s sign-in id to run', async ({ assert }) => {
     await insertUser(kit)
     const { account } = service()

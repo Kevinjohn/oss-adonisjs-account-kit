@@ -82,6 +82,10 @@ export function createSessionGuard<User>(
           ctx.session.clear()
           ctx.session.regenerate()
         },
+        previousHandle() {
+          const handle = ctx.session.get(handleKey)
+          return typeof handle === 'string' && handle !== '' ? handle : undefined
+        },
         async refresh(revision) {
           // A new session id, so a copied cookie for this session does not survive the change.
           ctx.session.regenerate()

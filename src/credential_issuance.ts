@@ -2,7 +2,13 @@
 import { validateAccountAccessResult } from './account_access_policy.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
-import { newSessionHandle, recordSession, sessionRegistryEnabled } from './session_registry.js'
+import {
+  newSessionHandle,
+  recordSession,
+  sessionRegistryEnabled,
+  sessionTable,
+} from './session_registry.js'
+import { hashToken } from './tokens.js'
 import type {
   AccountUser,
   AuthenticationGuard,
@@ -40,6 +46,7 @@ export async function establishCredential<Credential>(
 ): Promise<Credential> {
   const label = options.label?.slice(0, 255) || null
   const handle = sessionRegistryEnabled(deps.config) ? newSessionHandle() : undefined
+  const replaced = handle && guard.strategy === 'session' ? guard.previousHandle?.() : undefined
   let credential: Credential | undefined
   try {
     if (guard.strategy === 'session')
@@ -63,6 +70,7 @@ export async function establishCredential<Credential>(
       )
         throw options.rejected()
       if (handle) await recordSession(trx, deps.config, user.id, handle, label)
+      if (replaced) await trx.from(sessionTable).where('handle_hash', hashToken(replaced)).delete()
     })
     return credential
   } catch (error) {
