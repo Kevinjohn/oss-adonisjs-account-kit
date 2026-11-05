@@ -45,4 +45,61 @@ test.group('package transaction isolation', (group) => {
     for (const timezone of ['Z', '+00:00'])
       await assert.rejects(() => transaction(fakeDb(timezone), async () => {}), /transaction began/)
   })
+
+  test('every MySQL session must run at UTC', async ({ assert }) => {
+    const fakeDb = (zone: string) => {
+      const calls: string[] = []
+      const trx = {
+        rawQuery: async () => [[{ zone }]],
+        rollback: async () => void calls.push('rollback'),
+        // Reached only once the zone check lets the transaction through.
+        getWriteClient: () => {
+          throw new Error('zone accepted')
+        },
+      }
+      const db = {
+        connection: () => ({
+          isTransaction: false,
+          connectionName: 'mysql',
+          dialect: { name: 'mysql' },
+          transaction: async () => trx,
+        }),
+        manager: { get: () => ({ config: { connection: { timezone: 'Z' } } }) },
+      } as unknown as Database
+      return { db, calls }
+    }
+    for (const zone of ['SYSTEM', 'Europe/London', '+01:00']) {
+      const { db, calls } = fakeDb(zone)
+      await assert.rejects(
+        () => transaction(db, async () => {}),
+        /requires time_zone '\+00:00' on every session of the MySQL connection "mysql"/
+      )
+      assert.deepEqual(calls, ['rollback'])
+    }
+    for (const zone of ['+00:00', 'UTC']) {
+      const { db } = fakeDb(zone)
+      await assert.rejects(() => transaction(db, async () => {}), /zone accepted/)
+    }
+  })
+
+  test('a SQLite connection must use better-sqlite3', async ({ assert }) => {
+    for (const name of ['sqlite3', 'libsql'])
+      await assert.rejects(
+        () =>
+          transaction(
+            {
+              connection: () => ({
+                isTransaction: false,
+                connectionName: 'sqlite',
+                dialect: { name },
+                transaction: async () => {
+                  throw new Error('transaction began')
+                },
+              }),
+            } as unknown as Database,
+            async () => {}
+          ),
+        new RegExp(`better-sqlite3 only; the connection "sqlite" uses ${name}`)
+      )
+  })
 })

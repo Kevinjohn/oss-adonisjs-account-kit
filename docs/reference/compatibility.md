@@ -39,7 +39,9 @@ duplicate classification discovers a single-column email unique index from the c
 configure `emailConstraint` when relying on a custom constraint name. The Lucid adapter derives the
 model's table and requires the physical primary-key column to be `id` on the default connection.
 
-SQLite applications must enable foreign keys on every connection. Package writes acquire a
+SQLite is supported through the `better-sqlite3` client only; a `sqlite3` or `libsql` connection is
+refused when Account Kit starts a transaction. SQLite applications must enable foreign keys on every
+connection. Package writes acquire a
 package-owned transaction lock using `account_transaction_lock`; the fifth configure migration
 creates this table. SQLite write-contention retries can rerun transaction callbacks, so callbacks
 must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
@@ -48,7 +50,7 @@ must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
 ### MySQL 8.4 (experimental)
 
 - Use the `mysql2` client with `timezone: 'Z'`, and run every connection at the UTC session time
-  zone, either with `default-time-zone = '+00:00'` on the server or in the pool's `afterCreate`:
+  zone. Account Kit checks both when it starts a transaction. Set the zone either with `default-time-zone = '+00:00'` on the server or in the pool's `afterCreate`:
 
   ```ts
   mysql: {
