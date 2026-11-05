@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
   AuthorizationError,
+  EmailAlreadyRegisteredError,
   DeliveryError,
   InvalidInputError,
   InvitationNotFoundError,
@@ -16,6 +17,7 @@ import { invitationHelpers } from './helpers/invitations.js'
 import {
   accountKit,
   allowAll,
+  insertUser,
   makeConfig,
   makeNotify,
   makeUsersAdapter,
@@ -80,6 +82,18 @@ test.group('invitations.resend', (group) => {
     )
     const accepted = await account.invitations.accept({ token: newToken, password: 'password123' })
     assert.equal(accepted.email, original.email)
+  })
+
+  test('resend refuses an address that has since signed up', async ({ assert }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    const { invitation } = await issue(account, recorder, actor.id)
+    await insertUser(kit, { email: invitation.email })
+    await assert.rejects(
+      () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      EmailAlreadyRegisteredError
+    )
+    assert.lengthOf(recorder.calls, 1)
   })
 
   test('resend renews an expired invitation and rejects accepted or missing ids', async ({

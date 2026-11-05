@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { lockRow, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import {
+  EmailAlreadyRegisteredError,
   AuthorizationError,
   InvalidInputError,
   InvitationNotFoundError,
@@ -94,7 +95,10 @@ export async function resendInvitation(
   )
   const { value: invitation, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      await lockResendable(deps.config, trx, input.actorId, input.invitationId)
+      const current = await lockResendable(deps.config, trx, input.actorId, input.invitationId)
+      // The address may have signed up since; acceptance would refuse the new link.
+      if (await deps.config.users.findByEmail(current.email, trx))
+        throw new EmailAlreadyRegisteredError()
 
       const now = DateTime.utc()
       await trx
