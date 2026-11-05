@@ -69,7 +69,8 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     fixture.emailPrefix ?? `adapter-${Date.now()}-${Math.random().toString(36).slice(2)}`
   const email = `${prefix}@example.test`
   const password = 'contract-password-one'
-  const verifiedAt = DateTime.local().startOf('second')
+  // UTC, like every value the package writes; a local value would hide a zone shift on read.
+  const verifiedAt = DateTime.utc().startOf('second')
   /** Padded and upper-cased, so the adapter has to normalize it. */
   const messy = (address: string) => ` ${address.toUpperCase()} `
   /** Create attributes with the fixture's registration data, when it has any. */
@@ -109,14 +110,23 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   assertSameUser(byId, created)
   assertSameUser(await fixture.adapter.findByEmail(messy(email)), created)
 
-  await assert.rejects(
-    fixture.transaction((trx) =>
+  const duplicate = await fixture
+    .transaction((trx) =>
       fixture.adapter.create(
         createAttrs({ email: email.toUpperCase(), password, unverifiedEmail: null }),
         trx
       )
+    )
+    .then(
+      () => null,
+      (error: unknown) => error
+    )
+  // The package recognises a duplicate signup by the driver's own unique-violation code.
+  assert.ok(
+    ['23505', 'SQLITE_CONSTRAINT_UNIQUE', 'ER_DUP_ENTRY'].includes(
+      String((duplicate as { code?: unknown } | null)?.code)
     ),
-    'normalized duplicate addresses should violate the unique constraint'
+    'normalized duplicate addresses should fail with the driver unique-violation error'
   )
 
   const rolledBackEmail = `${prefix}-create-rollback@example.test`
@@ -385,6 +395,14 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     await fixture.transaction((trx) => remove(inactive.id, trx))
     assert.equal(await fixture.adapter.findById(inactive.id), null, 'delete removes the user')
     assert.equal(await fixture.adapter.findByEmail(inactiveEmail), null)
+    // A soft delete would keep the unique address and refuse this.
+    const recreated = await fixture.transaction((trx) =>
+      fixture.adapter.create(
+        createAttrs({ email: inactiveEmail, password, unverifiedEmail: null }),
+        trx
+      )
+    )
+    assert.equal(recreated.email, inactiveEmail, 'delete frees the address for a new account')
     assertSameUser(await fixture.adapter.findById(created.id), committedVerification)
   }
 }
