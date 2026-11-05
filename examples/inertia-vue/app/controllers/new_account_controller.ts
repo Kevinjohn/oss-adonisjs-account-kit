@@ -22,7 +22,8 @@ export default class NewAccountController {
     } catch (error) {
       if (!isDeliveryFailure(error)) throw error
       followUp = error instanceof DeliveryError ? 'delivery' : 'observer'
-      ctx.logger.error({ err: error }, 'Account creation committed but a follow-up failed')
+      // Log the event, not the error: its cause can carry the transport's message and proof URL.
+      ctx.logger.error({ event: 'signup_follow_up_failed' }, 'Account creation committed but a follow-up failed')
     }
 
     const committedMessage =
@@ -36,7 +37,10 @@ export default class NewAccountController {
         accountKitSessionGuard(ctx)
       )
     } catch (error) {
-      ctx.logger.error({ err: error }, 'Account created but initial sign in failed')
+      ctx.logger.error(
+        { event: 'signup_sign_in_failed', code: (error as { code?: unknown }).code },
+        'Account created but initial sign in failed'
+      )
       ctx.session.flash(
         'success',
         followUp

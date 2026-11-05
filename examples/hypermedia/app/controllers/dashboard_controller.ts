@@ -5,7 +5,8 @@ export default class DashboardController {
     const user = auth.getUserOrFail()
     return view.render('pages/dashboard', {
       user,
-      verified: !!user.emailVerifiedAt,
+      // Account Kit's rule: active once the pending address is not the account's own address.
+      verified: user.unverifiedEmail !== user.email,
     })
   }
 
