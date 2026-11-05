@@ -146,11 +146,13 @@ export async function updateProfile(
           .merge(['email', 'current_email', 'purpose', 'hash', 'expires_at', 'created_at'])
         if (inactive) {
           const reloaded = await requireUser(deps.config, current.id, trx)
-          await credentialsChanged(trx, deps.config, reloaded, {
-            operation: 'email_change',
-            operationId,
-            userId: current.id,
-          })
+          await credentialsChanged(
+            trx,
+            deps.config,
+            reloaded,
+            { operation: 'email_change', operationId, userId: current.id },
+            input.keepCurrent
+          )
         }
         const issuedUser = await requireUser(deps.config, current.id, trx)
         return { user: issuedUser, changedConfirmedEmail: inactive, send: true }

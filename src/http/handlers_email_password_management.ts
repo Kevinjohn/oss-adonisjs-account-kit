@@ -2,6 +2,7 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { safeAccount } from '../authentication.js'
+import { PostCommitError } from '../errors.js'
 import { passwordChangeRevision } from '../password_change_revision.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
@@ -17,18 +18,48 @@ export const emailPasswordManagementHandlers = {
     })
     return context.response.ok({ account: await representIssued(safeAccount(user)) })
   },
-  'account.profile.update': async ({ context, kit, options, actorId, representIssued }) => {
+  'account.profile.update': async ({
+    context,
+    kit,
+    options,
+    actorId,
+    accountInput,
+    representIssued,
+  }) => {
     const { request, response } = context
     const input = options.extensions?.profile
       ? await options.extensions.profile.validate(context)
       : await request.validateUsing(profileUpdateValidator)
-    const user = await kit.emailPasswordManagement.updateProfile({
-      actorId: actorId!,
-      currentPassword: input.currentPassword,
-      recentProof: input.recentProof,
-      email: input.email,
-      ...('registrationData' in input ? { registrationData: input.registrationData } : {}),
-    })
+    const guard = options.guard.forRequest(context)
+    // A new address on an account that is not yet active advances the credential revision; the
+    // caller keeps this sign-in, so a session stores the new revision.
+    const keepSession = async () => {
+      if (guard.strategy !== 'session' || input.email === undefined) return
+      const { revision } = await kit.authentication.inspectAccountAccess({
+        userId: actorId!,
+        requireActive: false,
+      })
+      await guard.refresh?.(revision)
+    }
+    const user = await kit.emailPasswordManagement
+      .updateProfile({
+        actorId: actorId!,
+        currentPassword: input.currentPassword,
+        recentProof: input.recentProof,
+        email: input.email,
+        ...('registrationData' in input ? { registrationData: input.registrationData } : {}),
+        keepCurrent: {
+          ...(accountInput?.sessionHandle === undefined
+            ? {}
+            : { sessionHandle: accountInput.sessionHandle }),
+          ...(accountInput?.tokenId === undefined ? {} : { tokenId: accountInput.tokenId }),
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (error instanceof PostCommitError) await keepSession()
+        throw error
+      })
+    await keepSession()
     return response.ok({ account: await representIssued(safeAccount(user)) })
   },
   'account.password.change': async ({ context, kit, options, actorId, accountInput }) => {

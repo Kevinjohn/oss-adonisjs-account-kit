@@ -238,6 +238,11 @@ export interface UpdateProfileInput {
   email?: string
   /** Untrusted extra fields, passed to `registration.mapFields`. */
   registrationData?: unknown
+  /**
+   * The caller's own sign-in, from `authentication.current` input. A new address on an account
+   * that is not yet active ends every other sign-in and keeps this one.
+   */
+  keepCurrent?: { sessionHandle?: string; tokenId?: UserId }
 }
 
 /** Input for `emailPasswordManagement.completeEmailChange`. */

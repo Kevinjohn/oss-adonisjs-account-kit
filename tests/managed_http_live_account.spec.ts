@@ -92,6 +92,45 @@ test.group('managed HTTP verification policy with live account state', (group) =
     assert.isFalse(mapped)
   })
 
+  test('an unconfirmed user who corrects the address stays signed in', async ({ assert }) => {
+    const user = await insertUser(app, { verified: false })
+    const { account } = makeService(app, {
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    let stored: string | null = null
+    const refreshed: Array<string | null> = []
+    const { router, routes, context } = fakeManagedHttp()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => account,
+      guard: stubGuard({
+        current: async () => ({ userId: user.id, revision: stored }),
+        forRequest: () =>
+          ({
+            strategy: 'session',
+            refresh: async (revision: string | null) => {
+              refreshed.push(revision)
+              stored = revision
+            },
+          }) as never,
+      }),
+      enabled: ['emailPasswordManagement'],
+      verificationRequired: false,
+    })
+    const ctx = context()
+    Object.assign(ctx.request, {
+      csrfToken: 'proof',
+      validateUsing: async () => ({ currentPassword: 'password123', email: 'fixed@example.test' }),
+    })
+    const profile = routes.get('PATCH /api/v1/account/profile')!
+    assert.equal(((await profile(ctx)) as { status: number }).status, 200)
+    assert.lengthOf(refreshed, 1)
+    assert.isString(refreshed[0])
+    // The next request with the refreshed session still authenticates.
+    const current = await account.authentication.current({ userId: user.id, revision: stored })
+    assert.equal(current.email, 'fixed@example.test')
+  })
+
   test('wrong current password has an identity-proof error on profile and password writes', async ({
     assert,
   }) => {
