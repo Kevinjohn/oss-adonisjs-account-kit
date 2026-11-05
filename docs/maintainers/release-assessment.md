@@ -330,7 +330,7 @@ The issue's acceptance table contains twelve Phase 2 scenarios. The names below 
 
 #### Identity relationship notice selected
 
-- **Existing deterministic evidence to rerun on the integrated candidate:** `tests/social_identity_post_commit_races.spec.ts`: “link notice failure happens after the association commits”; `tests/social_identity_unlink.spec.ts`: “unlink notice failure occurs after relationship removal”; `tests/social_identity_link.spec.ts`: “an unconfirmed address receives no relationship notice” `tests/managed_social_http.spec.ts` and mounted managed route tests cover committed-success handling; mutating GET callback uses a typed 202 `{ committed: true }` when post-commit delivery fails.
+- **Existing deterministic evidence to rerun on the integrated candidate:** `tests/social_identity_post_commit_races.spec.ts`: “link notice failure happens after the association commits”; `tests/social_identity_unlink.spec.ts`: “unlink notice failure occurs after relationship removal”; `tests/social_identity_link.spec.ts`: “an unconfirmed account cannot start a provider link”, which replaced the earlier no-notice test when unconfirmed accounts lost the ability to link; `tests/managed_social_http.spec.ts` and mounted managed route tests cover committed-success handling; mutating GET callback uses a typed 202 `{ committed: true }` when post-commit delivery fails.
 - **Remaining boundary:** Configure a production transport and a confirmed-address delivery callback. Fixture post-commit behavior does not establish deliverability or retry operations. Avoid returning a failed mutation after its association committed.
 
 #### Social-only first password

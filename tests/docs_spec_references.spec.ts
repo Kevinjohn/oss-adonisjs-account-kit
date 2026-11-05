@@ -51,5 +51,5 @@ test('every test title quoted after a spec citation is in that spec', async ({ a
     }
   }
   assert.isAbove(checked, 0)
-  assert.deepEqual(misplaced, [])
+  assert.deepEqual(misplaced, [], misplaced.join('\n'))
 })

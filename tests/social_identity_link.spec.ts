@@ -131,7 +131,9 @@ test.group('social link and proof binding atomicity', (group) => {
     )
   })
 
-  test('refuses a proof after the revision it was issued for changes, and the wrong purpose, then preserves a password login on unlink', async ({
+  // The replayed proof is refused because linking advanced the credential revision, not because
+  // the proof row was consumed.
+  test('rejects proof replay and wrong purpose, then preserves a password login on unlink', async ({
     assert,
   }) => {
     const user = await insertUser(kit)
