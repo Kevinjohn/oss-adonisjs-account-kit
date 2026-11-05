@@ -357,13 +357,20 @@ test.group('managed transaction wrapper', (group) => {
     const client = customKit.db.connection().getWriteClient().client
     const native = (await client.acquireConnection()) as {
       exec(sql: string): void
+      prepare(sql: string): unknown
       inTransaction: boolean
     }
     const original = native.exec.bind(native)
+    const originalPrepare = native.prepare.bind(native)
     const rollbackFault = new Error('native rollback failed')
+    // Knex rolls back through prepare(); account kit's cleanup then retries through exec().
     native.exec = (sql) => {
-      if (sql === 'ROLLBACK') throw rollbackFault
+      if (/^rollback/i.test(sql)) throw rollbackFault
       original(sql)
+    }
+    native.prepare = (sql) => {
+      if (/^rollback/i.test(sql)) throw rollbackFault
+      return originalPrepare(sql)
     }
     await client.releaseConnection(native)
     let entered!: () => void
@@ -384,7 +391,14 @@ test.group('managed transaction wrapper', (group) => {
       await started
       const reading = customKit.db.from('users').first()
       resume()
-      await assert.rejects(() => writing, /work failed/)
+      const failure = await writing.then(
+        () => null,
+        (error: unknown) => error
+      )
+      assert.instanceOf(failure, AggregateError)
+      const reasons = (failure as AggregateError).errors.map((error: Error) => error.message)
+      assert.equal(reasons[0], 'work failed')
+      assert.isTrue(reasons.some((reason: string) => reason.endsWith('native rollback failed')))
       assert.isNull(await reading)
       await customKit.db
         .table('users')
@@ -392,8 +406,13 @@ test.group('managed transaction wrapper', (group) => {
       assert.isNotNull(
         await customKit.db.from('users').where('email', 'bruce@example.test').first()
       )
+      // The connection left inside its transaction was discarded, not handed back to the pool.
+      const next = await client.acquireConnection()
+      await client.releaseConnection(next)
+      assert.notStrictEqual(next, native)
     } finally {
       native.exec = original
+      native.prepare = originalPrepare
       await customKit.close()
     }
   }).timeout(5000)
