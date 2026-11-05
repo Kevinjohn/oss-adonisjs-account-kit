@@ -35,6 +35,15 @@ function drizzleUsersTable(usersTable: object): string {
         `account_kit: the Drizzle users table must map the ${property} property to the ${column} column`
       )
   }
+  // node-pg reads a zone-less timestamp in the host's zone, which shifts the instant off UTC hosts.
+  if (
+    columns.emailVerifiedAt.columnType === 'PgTimestamp' &&
+    !(columns.emailVerifiedAt as { withTimezone?: boolean }).withTimezone
+  )
+    throw new InvalidConfigurationError(
+      'usersTable.columns.emailVerifiedAt',
+      'account_kit: declare email_verified_at with timestamp({ withTimezone: true }) on PostgreSQL'
+    )
   if (columns.emailVerifiedAt.columnType === 'SQLiteTimestamp')
     throw new InvalidConfigurationError(
       'usersTable.columns.emailVerifiedAt',
