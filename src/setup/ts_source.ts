@@ -3,6 +3,13 @@ import type * as TypeScript from 'typescript'
 export type SetupSource = { ts: typeof TypeScript; file: TypeScript.SourceFile; text: string }
 
 /** TypeScript is a setup-time dependency. Other package entries do not load it. */
+/** The source does not compile, so setup cannot inspect it. Planners report it against the file. */
+export class InvalidSetupSourceError extends Error {
+  constructor() {
+    super('Setup cannot inspect invalid TypeScript source')
+  }
+}
+
 export async function parseSetupSource(text: string): Promise<SetupSource> {
   let ts: typeof TypeScript
   try {
@@ -23,7 +30,7 @@ export async function parseSetupSource(text: string): Promise<SetupSource> {
     reportDiagnostics: true,
   }).diagnostics
   if (diagnostics?.some((item) => item.category === ts.DiagnosticCategory.Error))
-    throw new Error('Setup cannot inspect invalid TypeScript source')
+    throw new InvalidSetupSourceError()
   return { ts, file, text }
 }
 

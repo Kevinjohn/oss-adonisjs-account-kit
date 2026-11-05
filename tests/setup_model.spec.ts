@@ -20,6 +20,17 @@ import { withFixture } from './helpers/setup_prerequisites.js'
 test.group('setup model inspection', (group) => {
   registerSetupTeardown(group)
 
+  test('an uncompilable model is reported against the model', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await writeFile(join(root, 'app/models/user.ts'), 'export default class User {\n')
+    const plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.isTrue(
+      plan.diagnostics.some(
+        ({ field, message }) => field === 'user.model' && message.includes('app/models/user.ts')
+      )
+    )
+  })
+
   test('requires manual resolution for a model with unproven inherited mapping', async ({
     assert,
   }) => {

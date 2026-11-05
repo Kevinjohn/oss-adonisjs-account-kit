@@ -1,6 +1,12 @@
 // Setup planning phase: wrap or retire the managed session store verification in config/session.ts.
 import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
-import { defaultExpression, importedName, parseSetupSource } from './ts_source.js'
+import {
+  defaultExpression,
+  importedName,
+  InvalidSetupSourceError,
+  parseSetupSource,
+  type SetupSource,
+} from './ts_source.js'
 import { diagnostic } from './shared.js'
 import {
   type NativeSessionConfiguration,
@@ -21,7 +27,16 @@ export async function planSessionConfigIntegration(
   const wantsManagedSession =
     choices.managed.length > 0 && choices.authentication?.strategy === 'session'
   const wasManaged = previous.includes('account-kit:session-import:start')
-  const base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root) : previous
+  let base: string | null
+  let parsed: SetupSource
+  try {
+    base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root) : previous
+    parsed = await parseSetupSource(previous)
+  } catch (error) {
+    if (!(error instanceof InvalidSetupSourceError)) throw error
+    diagnostic(diagnostics, path, `Setup cannot inspect ${path}; fix its TypeScript errors first`)
+    return
+  }
   if (base === null) {
     diagnostic(
       diagnostics,
@@ -31,7 +46,6 @@ export async function planSessionConfigIntegration(
     return
   }
   if (!wantsManagedSession && !wasManaged) return
-  const parsed = await parseSetupSource(previous)
   const existingWrapper = defaultExpression(parsed)
   const wrapperBinding = importedName(
     parsed,
