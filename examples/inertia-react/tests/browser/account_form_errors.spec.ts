@@ -90,7 +90,7 @@ test.group('account form errors', (group) => {
     )
   })
 
-  test('reset associates its confirmation error and preserves the entered password', async ({
+  test('reset associates its confirmation error and clears password fields', async ({
     visit,
     assert,
   }) => {
@@ -140,10 +140,7 @@ test.group('account form errors', (group) => {
       await page.locator('#reset-passwordConfirmation-error').innerText(),
       'passwordConfirmation'
     )
-    assert.equal(
-      await page.getByLabel('New password', { exact: true }).inputValue(),
-      'Replacement123!'
-    )
-    assert.equal(await confirmation.inputValue(), 'Different123!')
+    assert.equal(await page.getByLabel('New password', { exact: true }).inputValue(), '')
+    assert.equal(await confirmation.inputValue(), '')
   })
 })

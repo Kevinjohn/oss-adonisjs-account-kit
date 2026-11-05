@@ -79,7 +79,7 @@ test.group('Signup recovery', () => {
     assert.deepEqual(routes, ['dashboard'])
     assert.equal(flashes.length, 1)
     assert.include(flashes[0]![1], 'account was created')
-    assert.include(flashes[0]![1], 'resend')
+    assert.include(flashes[0]![1], 'resend action')
     assert.notInclude(flashes[0]![1], 'private mail transport detail')
     assert.lengthOf(loggedErrors, 1)
   })
@@ -130,9 +130,39 @@ test.group('Signup recovery', () => {
 
     assert.deepEqual(routes, ['dashboard'])
     assert.include(flashes[0]![1], 'account was created')
-    assert.include(flashes[0]![1], 'could not confirm that the verification email was sent')
+    assert.include(flashes[0]![1], 'follow-up step failed')
+    assert.include(flashes[0]![1], 'may not have been sent')
+    assert.notInclude(flashes[0]![1], 'could not be sent')
     assert.notInclude(flashes[0]![1], 'private observer detail')
   })
+
+  for (const Failure of [DeliveryError, PostCommitError]) {
+    test(`${Failure.name} preserves truthful signup feedback when sign in also fails`, async ({
+      assert,
+    }) => {
+      const { ctx, flashes, routes } = makeContext()
+      const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
+        throw new Failure('private follow-up detail')
+      })
+      const restoreAuthentication = replaceMethod(kit, 'authentication', {
+        login: async () => {
+          throw new Error('private login detail')
+        },
+      })
+      try {
+        await new NewAccountController().store(ctx)
+      } finally {
+        restoreRegistration()
+        restoreAuthentication()
+      }
+      assert.deepEqual(routes, ['session.create'])
+      assert.include(flashes[0]![1], 'Your account was created')
+      assert.include(flashes[0]![1], 'Please sign in')
+      assert.notInclude(flashes[0]![1], 'private')
+      if (Failure === PostCommitError) assert.notInclude(flashes[0]![1], 'could not be sent')
+      else assert.include(flashes[0]![1], 'after one minute')
+    })
+  }
 
   test('preserves the account and directs the user to sign in if session login fails', async ({
     assert,
