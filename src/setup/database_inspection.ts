@@ -63,8 +63,7 @@ export async function databaseKind(
     return 'unknown'
   const client = directProperty(source, selectedConnection, 'client')?.initializer
   if (!client || !ts.isStringLiteral(client)) return 'unknown'
-  // Runtime SQLite support is the better-sqlite3 dialect; `sqlite` and `sqlite3` use another driver.
-  if (client.text === 'better-sqlite3') return 'sqlite'
+  if (['better-sqlite3', 'sqlite3'].includes(client.text)) return 'sqlite'
   if (['pg', 'postgres', 'postgresql'].includes(client.text)) return 'postgres'
   if (client.text === 'mysql2') return 'mysql'
   return 'unsupported'

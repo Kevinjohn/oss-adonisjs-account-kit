@@ -39,10 +39,6 @@
 - Breaking: managed routes on an access-token guard with `authentication` enabled throw
   `InvalidArgumentsException` at registration unless the guard sets `logoutCredential`. Before,
   logout answered 204 and left the bearer token valid.
-- Breaking: transactions refuse a MySQL session whose `@@session.time_zone` is not `+00:00` or
-  `UTC`, including `SYSTEM`. Set the server or session time zone to UTC.
-- Breaking: transactions refuse SQLite connections that do not use `better-sqlite3`, and setup
-  reports the `sqlite` and `sqlite3` clients as unsupported.
 - Breaking: listing admissions requires an admitted actor. A revoked or undecided approver gets
   `AuthorizationError`, and `authorize.list` receives `(actor, {})`.
 - Changed: package 422 responses from managed routes follow the request's `Accept` header, so a

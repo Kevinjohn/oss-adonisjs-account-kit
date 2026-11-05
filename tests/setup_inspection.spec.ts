@@ -417,7 +417,7 @@ test.group('setup database selection', (group) => {
       ['postgresql', 'postgres'],
       ['postgres', 'postgres'],
       ['better-sqlite3', 'sqlite'],
-      ['sqlite3', 'unsupported'],
+      ['sqlite3', 'sqlite'],
       ['sqlite', 'unsupported'],
     ]) {
       await writeFile(
