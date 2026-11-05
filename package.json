@@ -61,6 +61,7 @@
     "compile": "tsdown && tsc --emitDeclarationOnly --declaration",
     "postcompile": "pnpm copy:templates",
     "build": "pnpm compile",
+    "prepare": "node --import=@poppinss/ts-exec bin/prepare.ts",
     "docs:api": "typedoc",
     "docs:dev": "pnpm docs:api && vitepress dev docs",
     "docs:build": "pnpm docs:api && vitepress build docs",

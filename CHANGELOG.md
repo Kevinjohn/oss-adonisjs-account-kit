@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Compile the package on install when `build/` is missing, so a git commit pin installs a built package.
+
 ### Fixed
 
 - Preserve SIGINT and SIGTERM exit status in changed-file checks.
