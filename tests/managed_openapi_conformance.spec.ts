@@ -49,6 +49,7 @@ function mount(
       }),
       current: async () => ({ userId: account?.id ?? 0, tokenId: 1 }),
       publicCredential: () => 'opaque-token',
+      logoutCredential: async () => 'token-credential',
     },
     enabled: allCapabilities,
     extensions: { social: { providers: ['google'] }, ...options.extensions },

@@ -186,6 +186,7 @@ test.group('managed HTTP dispatch', () => {
           currentPassword: undefined,
           recentProof: 'email-proof',
           email: 'new@example.test',
+          keepCurrent: { tokenId: 11 },
         },
       },
     ])
