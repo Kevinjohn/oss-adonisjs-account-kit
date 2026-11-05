@@ -674,4 +674,48 @@ test.group('native account journeys', (group) => {
     await page.goto(`/verify-email/${encodeURIComponent(token)}`)
     await page.getByRole('button', { name: 'Confirm email' }).waitFor()
   })
+
+  test('an unconfirmed account corrects a mistyped address and signs in again', async ({
+    visit,
+    assert,
+  }) => {
+    const user = await User.create({
+      fullName: 'Typo Example',
+      email: 'typo@example.tset',
+      password: 'TypoPass123!',
+      emailVerifiedAt: null,
+      unverifiedEmail: 'typo@example.tset',
+    })
+    const page = await visit('/login')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByLabel('Password').fill('TypoPass123!')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page
+      .getByText('You are signed in. Confirm your email to access protected account pages.')
+      .waitFor()
+    await page.goto('/settings/email')
+    await page.getByLabel('New email').fill('typo@example.test')
+    await page.getByLabel('Current password').fill('TypoPass123!')
+    await page.getByRole('button', { name: 'Request email change' }).click()
+    await page.getByText(/Address corrected/).waitFor()
+    await page.getByRole('heading', { name: 'Sign in' }).waitFor()
+    const corrected = await User.findByOrFail('id', user.id)
+    assert.equal(corrected.email, 'typo@example.test')
+    assert.equal(corrected.unverifiedEmail, 'typo@example.test')
+  })
+
+  test('a confirmed account signs in without the confirmation reminder', async ({ visit }) => {
+    const user = await User.create({
+      fullName: 'Confirmed Example',
+      email: 'confirmed@example.test',
+      password: 'ConfirmedPass123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const page = await visit('/login')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByLabel('Password').fill('ConfirmedPass123!')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByText('You are signed in.', { exact: true }).waitFor()
+  })
 })
