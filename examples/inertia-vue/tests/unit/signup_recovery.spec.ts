@@ -84,6 +84,8 @@ test.group('Signup recovery', () => {
     assert.include(flashes[0]![1], 'after one minute')
     assert.notInclude(flashes[0]![1], 'private mail transport detail')
     assert.lengthOf(loggedErrors, 1)
+    // The event is logged, not the error: its cause can carry transport details.
+    assert.notProperty((loggedErrors[0] as unknown[])[0] as object, 'err')
   })
 
   test('does not claim account creation when registration fails before commit', async ({
