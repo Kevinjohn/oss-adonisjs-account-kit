@@ -20,7 +20,7 @@ test.group('setup choice validation', (group) => {
       'user.table'
     )
 
-    const social = (await fixture()).choices
+    const { choices: social } = await fixture()
     social.features = ['authentication', 'registration', 'socialAuthentication']
     social.managed = ['socialAuthentication']
     social.policy.registration = 'open'
