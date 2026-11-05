@@ -411,6 +411,24 @@ test.group('setup database selection', (group) => {
     )
   })
 
+  test('client aliases map to the driver Account Kit runs on', async ({ assert }) => {
+    const { root } = await fixture()
+    for (const [client, kind] of [
+      ['postgresql', 'postgres'],
+      ['postgres', 'postgres'],
+      ['better-sqlite3', 'sqlite'],
+      ['sqlite3', 'unsupported'],
+      ['sqlite', 'unsupported'],
+    ]) {
+      await writeFile(
+        join(root, 'config/database.ts'),
+        `import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'main', connections: { main: { client: '${client}' } } })\n`
+      )
+      const state = await inspectSetup(root)
+      assert.equal(state.database, kind, client)
+    }
+  })
+
   test('a MySQL 8.4 default connection is supported', async ({ assert }) => {
     const { root, choices } = await fixture()
     await writeFile(
