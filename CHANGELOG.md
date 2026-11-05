@@ -4,6 +4,7 @@
 
 ### Added
 
+- Export `transaction`, `lockRow`, `sqlTimestamp` and `readTimestamp` from `@kevinjohn/adonisjs-account-kit/transaction` for packages built on Account Kit.
 - Compile the package on install when `build/` is missing, so a git commit pin installs a built package.
 
 ### Fixed

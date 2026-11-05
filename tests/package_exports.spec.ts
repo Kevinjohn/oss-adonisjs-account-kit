@@ -22,6 +22,7 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     const contract = await import('@kevinjohn/adonisjs-account-kit/testing/adapter_contract')
     const commands = await import('@kevinjohn/adonisjs-account-kit/commands')
     const http = await import('@kevinjohn/adonisjs-account-kit/http')
+    const transactionHelpers = await import('@kevinjohn/adonisjs-account-kit/transaction')
     const ally = await import('@kevinjohn/adonisjs-account-kit/ally')
     const capture = await import('@kevinjohn/adonisjs-account-kit/testing/notifications')
     const admission = await import('@kevinjohn/adonisjs-account-kit/admission')
@@ -54,6 +55,10 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     assert.isFunction(commands.getCommand)
     assert.isFunction(http.registerManagedRoutes)
     assert.isFunction(http.createManagedGuard)
+    assert.isFunction(transactionHelpers.transaction)
+    assert.isFunction(transactionHelpers.lockRow)
+    assert.isFunction(transactionHelpers.sqlTimestamp)
+    assert.isFunction(transactionHelpers.readTimestamp)
     assert.isFunction(admission.defineAdmission)
     assert.isFunction(admission.AccountAdmission)
     assert.isFunction(admission.admissionMiddleware)
@@ -70,6 +75,20 @@ if (process.env.TEST_BUILT_EXPORTS === '1')
     try {
       await resetSchema(built)
       await built.limiter.clear()
+      const stamped = await transactionHelpers.transaction(built.db, async (trx) => {
+        const [inserted] = await trx
+          .table('users')
+          .insert({
+            email: 'built@example.test',
+            password: null,
+            created_at: transactionHelpers.sqlTimestamp(trx),
+          })
+          .returning('id')
+        const id = typeof inserted === 'object' ? inserted.id : inserted
+        await transactionHelpers.lockRow(trx, 'users', id)
+        return transactionHelpers.readTimestamp(transactionHelpers.sqlTimestamp(trx))
+      })
+      assert.isTrue(stamped!.isValid)
       built.app.config.set(
         'account_kit',
         root.defineConfig(

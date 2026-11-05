@@ -79,6 +79,27 @@ reference guides document CSRF, session revision checks, token revocation, and r
 Account Kit owns the account transaction: tokens, locking, revocation and events. Your app owns the
 HTTP layer, validation, authorization and the user model.
 
+### Transaction helpers for packages built on Account Kit
+
+A package that stores its own rows next to accounts, such as team memberships, needs the same
+transaction behaviour as the package's hooks. `@kevinjohn/adonisjs-account-kit/transaction` exports
+the helpers the package uses itself; they are stable public API.
+
+- `transaction(db, callback)` runs `callback(trx)` in a root transaction. On SQLite it takes the
+  `account_transaction_lock` writer lock first, so the package's transactions and yours serialise,
+  and it may retry the callback on write contention. On MySQL it runs at `READ COMMITTED` on a UTC
+  connection. On every engine a commit failure is reported instead of swallowed. It refuses to run
+  inside a Lucid global transaction, and it must never be nested inside another package
+  transaction: on SQLite the inner call would wait for the outer call's writer lock.
+- `lockRow(trx, table, id)` locks the row with that `id` with `select ... for update` on PostgreSQL
+  and MySQL, and does nothing on SQLite, whose writer lock is already held.
+- `sqlTimestamp(client, at?)` is the UTC value to write or compare for a timestamp column on the
+  client's dialect, and `readTimestamp(value)` reads a timestamp column back as a UTC Luxon
+  `DateTime` whatever the driver returned.
+
+Callbacks are database-only and must be repeatable: no mail, no network, and nothing that cannot
+run twice on SQLite.
+
 ### Validate requests before calling account operations
 
 Use AdonisJS validators to normalize and validate request bodies, query values, and route
