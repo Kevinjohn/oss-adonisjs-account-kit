@@ -98,6 +98,20 @@ test.group('maintained Lucid adapter', (group) => {
     )
   })
 
+  test('physically deletes plain models and ignores missing users', async ({ assert }) => {
+    const user = await LucidUser.create({
+      email: 'plain-delete@example.test',
+      password: null,
+      unverifiedEmail: null,
+      emailVerifiedAt: null,
+      fullName: 'Plain User',
+    })
+    const adapter = createLucidAdapter(async () => LucidUser)
+    await transaction(kit.db, (trx) => adapter.delete!(user.id, trx))
+    assert.isNull(await kit.db.from('users').where('id', user.id).first())
+    await transaction(kit.db, (trx) => adapter.delete!(user.id, trx))
+  })
+
   test('maps only trusted registration fields before controlled account fields', async ({
     assert,
   }) => {

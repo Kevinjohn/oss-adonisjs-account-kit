@@ -1,4 +1,6 @@
 import { test } from '@japa/runner'
+import { createLucidAdapter } from '../adapters/lucid.js'
+import SoftDeletingUser from './fixtures/soft_deleting_user.js'
 import { defineConfig } from '../src/config.js'
 import {
   CapabilityDisabledError,
@@ -259,5 +261,119 @@ test.group('account deletion', (group) => {
         () => config({ [hook]: 'yes' as never }),
         new RegExp(`${hook} must be a function`)
       )
+  })
+})
+
+test.group('permanent account deletion with SoftDeletes', (group) => {
+  const kit = useTestApp(group)
+  const events: LifecycleEvent[] = []
+  group.setup(async () => {
+    await kit.db.connection().schema.alterTable('users', (table) => {
+      table.timestamp('deleted_at').nullable()
+      table.string('full_name').nullable()
+      table.string('role').nullable()
+    })
+  })
+  group.each.setup(() => {
+    events.length = 0
+    SoftDeletingUser.hookCalls = []
+    SoftDeletingUser.observeAfterDelete = undefined
+  })
+  group.each.teardown(() => {
+    SoftDeletingUser.observeAfterDelete = undefined
+  })
+  const service = (invitations: 'keep' | 'revoke' = 'revoke') =>
+    makeService(kit, {
+      enabled: ['accountDeletion', 'invitations'],
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+      users: createLucidAdapter(async () => SoftDeletingUser, {
+        verifyPassword: async (stored, password) => stored === `hashed:${password}`,
+      }),
+      accountDeletion: { invitations },
+      onLifecycleEvent: async (event) => void events.push(event),
+    })
+
+  for (const invitations of ['revoke', 'keep'] as const) {
+    test(`physically deletes an active account with invitations ${invitations}`, async ({
+      assert,
+    }) => {
+      const user = await SoftDeletingUser.create({
+        email: 'person@example.test',
+        password: 'password123',
+        unverifiedEmail: null,
+        emailVerifiedAt: null,
+      })
+      await seedAccountRows(kit, user.id, 'soft')
+      SoftDeletingUser.hookCalls = []
+      SoftDeletingUser.observeAfterDelete = async (model) => {
+        assert.isTrue(model.$trx!.isTransaction)
+        assert.isNull(await model.$trx!.from('users').where('id', user.id).first())
+        assert.deepEqual(await userRowCounts(model.$trx!, user.id), none)
+      }
+      const { account, recorder } = service(invitations)
+      await account.accountData.delete({ actorId: user.id, currentPassword: 'password123' })
+      assert.isNull(await kit.db.from('users').where('id', user.id).first())
+      assert.deepEqual(await userRowCounts(kit.db, user.id), none)
+      const kept = await kit.db
+        .from('account_invitations')
+        .where('email', 'invitee-soft@example.test')
+      assert.lengthOf(kept, invitations === 'keep' ? 1 : 0)
+      if (invitations === 'keep') assert.isNull(kept[0].inviter_id)
+      assert.deepEqual(SoftDeletingUser.hookCalls, ['beforeDelete', 'afterDelete'])
+      assert.lengthOf(recorder.calls, 1)
+      assert.lengthOf(events, 1)
+    })
+  }
+
+  test('ordinary model deletion retains its soft-deleted row', async ({ assert }) => {
+    const user = await SoftDeletingUser.create({
+      email: 'person@example.test',
+      password: 'password123',
+      unverifiedEmail: null,
+      emailVerifiedAt: null,
+    })
+    const model = await SoftDeletingUser.findOrFail(user.id)
+    await model.delete()
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isNotNull(row)
+    assert.isNotNull(row.deleted_at)
+    assert.isNull(await SoftDeletingUser.find(user.id))
+  })
+
+  test('afterDelete failure restores the physical row and all package rows', async ({ assert }) => {
+    const user = await SoftDeletingUser.create({
+      email: 'person@example.test',
+      password: 'password123',
+      unverifiedEmail: null,
+      emailVerifiedAt: null,
+    })
+    await seedAccountRows(kit, user.id, 'undo')
+    SoftDeletingUser.hookCalls = []
+    const original = await kit.db.from('users').where('id', user.id).first()
+    const sentinel = new Error('physical deletion afterDelete rollback sentinel')
+    let observedPhysicalWrite = false
+    SoftDeletingUser.observeAfterDelete = async (model) => {
+      assert.isTrue(model.$trx!.isTransaction)
+      assert.isNull(await model.$trx!.from('users').where('id', user.id).first())
+      assert.deepEqual(await userRowCounts(model.$trx!, user.id), none)
+      observedPhysicalWrite = true
+      throw sentinel
+    }
+    const { account, recorder } = service()
+    const error = await account.accountData
+      .delete({ actorId: user.id, currentPassword: 'password123' })
+      .catch((caught: unknown) => caught)
+    assert.strictEqual(error, sentinel)
+    assert.isTrue(observedPhysicalWrite)
+    const restored = await kit.db.from('users').where('id', user.id).first()
+    assert.deepEqual(restored, original)
+    assert.isNull(restored.deleted_at)
+    assert.deepEqual(
+      await userRowCounts(kit.db, user.id),
+      Object.fromEntries(userTables.map(([table]) => [table, 1]))
+    )
+    assert.deepEqual(SoftDeletingUser.hookCalls, ['beforeDelete', 'afterDelete'])
+    assert.lengthOf(recorder.calls, 0)
+    assert.lengthOf(events, 0)
   })
 })
