@@ -128,6 +128,17 @@ export async function planSetup(
           ally,
           'Configure selected Ally providers using deployment references and exact callbacks'
         )
+    } else if (await ownsAllyConfig(state, choices)) {
+      const ally = await generated(() => allyConfigSource(choices))
+      if (ally !== null)
+        ownedChange(
+          changes,
+          state,
+          'config/ally.ts',
+          ally,
+          state.files['config/ally.ts']!,
+          'Configure selected Ally providers using deployment references and exact callbacks'
+        )
     } else
       diagnostic(
         diagnostics,
@@ -255,4 +266,18 @@ export async function planSetup(
     missingPackages,
     env,
   })
+}
+
+/** Setup owns `config/ally.ts` while it is exactly what setup generates for these or the saved choices. */
+async function ownsAllyConfig(state: SetupInspection, choices: SetupChoices): Promise<boolean> {
+  const existing = state.files['config/ally.ts']
+  for (const selection of [choices, state.existingChoices]) {
+    if (selection?.social.status !== 'enabled') continue
+    try {
+      if (allyConfigSource(selection) === existing) return true
+    } catch {
+      // Saved choices this version cannot render do not claim the file.
+    }
+  }
+  return false
 }
