@@ -29,7 +29,7 @@ export default class NewAccountController {
       followUp === 'delivery'
         ? 'Your account was created, but the verification email could not be sent.'
         : followUp === 'observer'
-          ? 'Your account was created, but a follow-up step failed. Check your email for a verification link.'
+          ? 'Your account was created, but a follow-up step failed. A verification email may not have been sent.'
           : undefined
 
     try {
