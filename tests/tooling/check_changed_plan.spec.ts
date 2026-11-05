@@ -152,8 +152,13 @@ test.group('check_changed_plan.spec', (group) => {
       'pnpm',
       'quick:test',
       '--files=tests/tooling/check_changed_plan.spec.ts',
+      '--files=tests/tooling/check_changed_process.spec.ts',
     ])
     assert.ok(plan('bin/check_changed_plan.ts').tests.skip)
+    assert.deepEqual(
+      plan('tests/tooling/check_changed_process.spec.ts')['check-changed'].command,
+      plan('bin/check_changed_plan.ts')['check-changed'].command
+    )
     assert.ok(plan('src/index.ts')['pg-service'].skip)
   })
 

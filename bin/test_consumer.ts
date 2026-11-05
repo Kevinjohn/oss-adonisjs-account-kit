@@ -65,10 +65,23 @@ function redactStrings(value: unknown): unknown {
   return value
 }
 
+/** Values the harness selects or computes; a short password must not rewrite them. */
+const ownedFields = [
+  'status',
+  'database',
+  'compatibility',
+  'userIdType',
+  'usersTable',
+  'prepareOnly',
+  'mode',
+  'runtime',
+  'candidateSha256',
+] as const
+
 function redactedEvidence(value: ConsumerEvidence): ConsumerEvidence {
-  const sanitized = redactStrings(value) as ConsumerEvidence
-  sanitized.status = value.status
-  return sanitized
+  const sanitized = redactStrings(value) as Record<string, unknown>
+  for (const key of ownedFields) if (key in value) sanitized[key] = value[key]
+  return sanitized as unknown as ConsumerEvidence
 }
 
 const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)
