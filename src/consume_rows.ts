@@ -43,16 +43,19 @@ export async function consumeRows<Row>(
   // Find the ids without locking, then lock by primary key only. A locking read through the
   // token index would hold that index entry while waiting, and deadlock with a writer that holds
   // the row and is replacing the token.
-  const ids = (await trx.from(table).where(where).where('expires_at', '>', after).select('id')).map(
-    (row: { id: number }) => row.id
-  )
-  if (ids.length === 0) return []
+  const matches: Array<{ id: number }> = await trx
+    .from(table)
+    .where(where)
+    .where('expires_at', '>', after)
+    .select('id')
+  if (matches.length === 0) return []
+  const ids = matches.map((row) => row.id)
   const deadline = readTimestamp(after)!.toMillis()
-  const rows = (
-    (await trx.from(table).whereIn('id', ids).forUpdate()) as Array<
-      Row & { id: number } & Record<string, unknown>
-    >
-  ).filter(
+  const locked: Array<Row & { id: number } & Record<string, unknown>> = await trx
+    .from(table)
+    .whereIn('id', ids)
+    .forUpdate()
+  const rows = locked.filter(
     // The locked read is the latest committed row; recheck what the unlocked lookup matched.
     (row) =>
       columns.every((column) => row[column] === where[column]) &&
