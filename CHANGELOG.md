@@ -43,8 +43,6 @@
   `UTC`, including `SYSTEM`. Set the server or session time zone to UTC.
 - Breaking: transactions refuse SQLite connections that do not use `better-sqlite3`, and setup
   reports the `sqlite` and `sqlite3` clients as unsupported.
-- Breaking: the Drizzle adapter refuses a PostgreSQL `email_verified_at` column declared without
-  `timestamp({ withTimezone: true })`.
 - Breaking: listing admissions requires an admitted actor. A revoked or undecided approver gets
   `AuthorizationError`, and `authorize.list` receives `(actor, {})`.
 - Changed: package 422 responses from managed routes follow the request's `Accept` header, so a

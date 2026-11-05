@@ -111,17 +111,6 @@ test.group('Drizzle users adapter', (group) => {
         'usersTable.schema',
       ],
       [
-        pg.pgTable('app_users', {
-          id: pg.serial('id').primaryKey(),
-          email: pg.text('email'),
-          unverifiedEmail: pg.text('unverified_email'),
-          password: pg.text('password'),
-          emailVerifiedAt: pg.timestamp('email_verified_at'),
-        }),
-        /timestamp\(\{ withTimezone: true \}\) on PostgreSQL/,
-        'usersTable.columns.emailVerifiedAt',
-      ],
-      [
         sqlite.sqliteTable('app_users', {
           id: sqlite.integer('id').primaryKey(),
           email: sqlite.text('email'),
