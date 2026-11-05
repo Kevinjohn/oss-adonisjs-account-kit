@@ -32,10 +32,9 @@ export async function executeManagedRequest<Credential>(
   const kit = await options.kit()
   kit.managedHttp.assertGuard(options.guard)
   if (route.proof) await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
-  let accountInput: Awaited<ReturnType<typeof options.guard.current>> | undefined
+  const accountInput = route.access === 'public' ? undefined : await options.guard.current(context)
   let account: CurrentAccount | undefined
   try {
-    accountInput = route.access === 'public' ? undefined : await options.guard.current(context)
     account = accountInput
       ? route.access === 'active' && options.verificationRequired !== false
         ? await kit.authentication.requireActive(accountInput)
