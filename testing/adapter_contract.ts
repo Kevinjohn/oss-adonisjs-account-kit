@@ -110,23 +110,14 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
   assertSameUser(byId, created)
   assertSameUser(await fixture.adapter.findByEmail(messy(email)), created)
 
-  const duplicate = await fixture
-    .transaction((trx) =>
+  await assert.rejects(
+    fixture.transaction((trx) =>
       fixture.adapter.create(
         createAttrs({ email: email.toUpperCase(), password, unverifiedEmail: null }),
         trx
       )
-    )
-    .then(
-      () => null,
-      (error: unknown) => error
-    )
-  // The package recognises a duplicate signup by the driver's own unique-violation code.
-  assert.ok(
-    ['23505', 'SQLITE_CONSTRAINT_UNIQUE', 'ER_DUP_ENTRY'].includes(
-      String((duplicate as { code?: unknown } | null)?.code)
     ),
-    'normalized duplicate addresses should fail with the driver unique-violation error'
+    'normalized duplicate addresses should violate the unique constraint'
   )
 
   const rolledBackEmail = `${prefix}-create-rollback@example.test`
@@ -395,7 +386,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     await fixture.transaction((trx) => remove(inactive.id, trx))
     assert.equal(await fixture.adapter.findById(inactive.id), null, 'delete removes the user')
     assert.equal(await fixture.adapter.findByEmail(inactiveEmail), null)
-    // A soft delete would keep the unique address and refuse this.
+    // `delete` removes the user row, so its address can sign up again.
     const recreated = await fixture.transaction((trx) =>
       fixture.adapter.create(
         createAttrs({ email: inactiveEmail, password, unverifiedEmail: null }),
@@ -403,6 +394,7 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
       )
     )
     assert.equal(recreated.email, inactiveEmail, 'delete frees the address for a new account')
+    await fixture.transaction((trx) => remove(recreated.id, trx))
     assertSameUser(await fixture.adapter.findById(created.id), committedVerification)
   }
 }

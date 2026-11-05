@@ -3,7 +3,10 @@ import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
-import { InvalidConfigurationError } from '../src/errors.js'
+import {
+  InvalidConfigurationError,
+  RegistrationEmailAlreadyRegisteredError,
+} from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import type { Trx, UsersAdapter } from '../src/types.js'
 import type { AdapterContractFixture } from '../testing/adapter_contract.js'
@@ -100,6 +103,18 @@ test.group('maintained Lucid adapter', (group) => {
       }),
       'non-normalizing-email-setter'
     )
+    // An adapter that checks for the address itself and throws the package's error conforms.
+    await assertUsersAdapterContract({
+      ...contractFixture,
+      adapter: brokenAdapter({
+        async create(attributes, trx) {
+          if (await adapter.findByEmail(attributes.email, trx))
+            throw new RegistrationEmailAlreadyRegisteredError()
+          return adapter.create(attributes, trx)
+        },
+      }),
+      emailPrefix: `prechecked-${Date.now()}`,
+    })
   })
 
   test('physically deletes plain models and ignores missing users', async ({ assert }) => {
