@@ -160,12 +160,16 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
   }) => {
     const { kit, account, recorder } = await realKit()
     const { call, document } = mount('access_tokens', kit, account)
-    const check = (operation: string, output: unknown) =>
+    // A documented error status would also conform, so pin the status each flow should reach.
+    const check = (operation: string, output: unknown, status = 200) => {
+      assert.equal((output as { status: number }).status, status, operation)
       assert.deepEqual(conformance(document, operation, output), [], operation)
+    }
 
     check(
       'auth.passwordReset.request',
-      await call('POST /api/v1/auth/password-reset', { body: { email: 'actor@example.test' } })
+      await call('POST /api/v1/auth/password-reset', { body: { email: 'actor@example.test' } }),
+      202
     )
     const resetToken = tokenFrom(recorder.calls.at(-1)!.args[1])
     check(
@@ -210,7 +214,7 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
     const sent = await call('POST /api/v1/account/invitations', {
       body: { email: 'invitee@example.test', role: 'member' },
     })
-    check('account.invitation.send', sent)
+    check('account.invitation.send', sent, 201)
     const id = String((sent as { body: { id: number } }).body.id)
     const listed = await call('GET /api/v1/account/invitations')
     assert.lengthOf((listed as { body: { items: unknown[] } }).body.items, 1)
@@ -229,7 +233,8 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
       await call('POST /api/v1/auth/invitations/:token', {
         params: { token: invitationToken },
         body: { password: 'password123', passwordConfirmation: 'password123' },
-      })
+      }),
+      201
     )
     const second = await call('POST /api/v1/account/invitations', {
       body: { email: 'other@example.test', role: 'member' },
@@ -238,11 +243,13 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
       'account.invitation.revoke',
       await call('DELETE /api/v1/account/invitations/:id', {
         params: { id: String((second as { body: { id: number } }).body.id) },
-      })
+      }),
+      204
     )
     check(
       'account.invitation.revoke',
-      await call('DELETE /api/v1/account/invitations/:id', { params: { id: '999' } })
+      await call('DELETE /api/v1/account/invitations/:id', { params: { id: '999' } }),
+      404
     )
   })
 
@@ -379,8 +386,11 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
       },
     } as unknown as AccountKit
     const { call, document } = mount('access_tokens', kit, account)
-    const check = (operation: string, output: unknown) =>
+    // A documented error status would also conform, so pin the status each flow should reach.
+    const check = (operation: string, output: unknown, status = 200) => {
+      assert.equal((output as { status: number }).status, status, operation)
       assert.deepEqual(conformance(document, operation, output), [], operation)
+    }
     const callback = { params: { provider: 'google' }, body: { code: 'c', state: 's' } }
     for (let index = 0; index < 6; index++)
       check(
