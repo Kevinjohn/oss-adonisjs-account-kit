@@ -90,11 +90,16 @@ test.group('check_changed_plan.spec', (group) => {
   })
 
   test('files no spec reads skip the Japa suite', () => {
-    const steps = plan('.github/workflows/checks.yml')
+    const steps = plan('.github/dependabot.yml')
     assert.ok(steps.tests.skip)
     assert.ok(steps.typecheck.skip)
     assert.ok(steps.lint.skip)
-    assert.deepEqual(steps.format.command!.slice(-2), ['--', '.github/workflows/checks.yml'])
+    assert.deepEqual(steps.format.command!.slice(-2), ['--', '.github/dependabot.yml'])
+  })
+
+  test('workflow files run the Japa suite because workflow specs read them', () => {
+    const steps = plan('.github/workflows/checks.yml')
+    assert.deepEqual(steps.tests.command, ['pnpm', 'quick:test'])
   })
 
   for (const path of ['LICENSE.md', '.github/pull_request_template.md', '-LICENSE.md'])

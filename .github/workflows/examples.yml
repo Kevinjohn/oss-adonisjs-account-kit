@@ -4,6 +4,15 @@ on:
   pull_request:
     paths:
       - 'examples/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'index.ts'
+      - 'configure.ts'
+      - 'src/**'
+      - 'adapters/**'
+      - 'services/**'
+      - 'providers/**'
+      - 'commands/**'
       - 'stubs/**'
       - 'docs/guide/**'
       - 'docs/recipes/patches/**'

@@ -16,8 +16,9 @@ const checkChanged =
   /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_(?:plan|process)\.spec\.ts)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
 // Markdown never qualifies: tests/docs_links.spec.ts reads tracked Markdown except changelogs.
+// Workflows do not qualify either: workflow specs read `.github/workflows/*.yml`.
 const outsideJapa =
-  /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
+  /^(?!.*\.md$)(?:\.github\/(?!workflows\/).+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
 
 const minute = 60_000
 
