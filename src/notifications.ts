@@ -104,8 +104,10 @@ function resolveTranslator(
 async function resolveMail(option: MailNotificationOptions['mail']): Promise<AccountMailService> {
   if (typeof option === 'function') return option()
   if (option) return option
-  const { default: mail } = await import('@adonisjs/mail/services/main')
-  return mail
+  // Resolve the binding per send: `@adonisjs/mail/services/main` keeps the manager of the first
+  // app that imported it, which is stale after the application restarts in the same process.
+  const { default: app } = await import('@adonisjs/core/services/app')
+  return (await app.container.make('mail.manager' as never)) as AccountMailService
 }
 
 /**
