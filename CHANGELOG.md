@@ -20,6 +20,15 @@
 - Pass an explicit recipe key from the full check profile to the recipe test.
 - Reject selected changed-file test gates that execute no cases; skipped and todo-only summaries do not count as execution, while expected-failure regressions do.
 
+### Changed
+
+- Breaking: account deletion through the Lucid adapter now removes the user row of a model composed
+  with `SoftDeletes` instead of soft-deleting it. Application tables whose foreign keys reference
+  users must cascade or be cleared in `onAccountDeletingTransaction`, or the deletion rolls back.
+- Breaking: `authentication.canAccess` must resolve to `true` or `false` on every sign-in and
+  session check. Any other value, such as `1`, `0` or a row, now throws instead of allowing or
+  denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
+
 ## 0.2.0 - 2026-11-03
 
 - Changed: managed-route setup and argument errors throw `InvalidArgumentsException` instead of a bare `Error`, and route-collision errors do the same; messages are unchanged.

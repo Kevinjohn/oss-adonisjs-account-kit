@@ -9,8 +9,9 @@
 3. Merge the PR.
 4. Actions → release → Run workflow (on `main`).
 
-Nothing else is manual. The release is a GitHub prerelease with the tarball attached; its notes
-carry the install command and the SHA-256. `bash bin/release_check.sh` runs the same gate locally.
+Apart from the owner checks in the [release gate](release-gate.md), nothing else is manual. The
+release is a GitHub prerelease with the tarball attached; its notes carry the install command and
+the SHA-256. `bash bin/release_check.sh` runs the same gate locally.
 The workflow does not rewrite version-bearing documentation for you. It requires successful
 `checks`, `compat` and `examples` jobs before running the local gate and creating the release.
 
