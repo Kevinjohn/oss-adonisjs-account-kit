@@ -309,16 +309,19 @@ test.group('account kit configuration and service surface', (group) => {
     assert.equal(resolved.registration.availability, 'open')
   })
 
-  test('rejects misspelt expiry and invitation throttle settings', ({ assert }) => {
-    const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
-    assert.throws(
-      () => defineConfig({ ...base, expiresIn: { passwordRest: '10m' } as never }),
-      /expiresIn.passwordRest is not a setting/
+  test('keeps a registration availability defined on a class', async ({ assert }) => {
+    class Registration {
+      get availability() {
+        return 'closed' as const
+      }
+    }
+    const resolved = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        registration: new Registration(),
+      })
     )
-    assert.throws(
-      () => defineConfig({ ...base, invitationThrottle: { sendActr: { requests: 1 } } as never }),
-      /invitationThrottle.sendActr is not a setting/
-    )
+    assert.equal(resolved.registration.availability, 'closed')
   })
 
   test('login requires the adapter methods it calls', ({ assert }) => {

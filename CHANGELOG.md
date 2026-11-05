@@ -47,8 +47,6 @@
   `timestamp({ withTimezone: true })`.
 - Breaking: listing admissions requires an admitted actor. A revoked or undecided approver gets
   `AuthorizationError`, and `authorize.list` receives `(actor, {})`.
-- Breaking: `defineConfig` rejects unknown keys in `expiresIn` and `invitationThrottle` with
-  `InvalidConfigurationError` instead of ignoring them.
 - Changed: package 422 responses from managed routes follow the request's `Accept` header, so a
   JSON:API client receives `{ errors: [{ code, title, source: { pointer } }] }`, with
   `Cache-Control: no-store` and `Vary: Accept`.

@@ -73,16 +73,6 @@ function bindTopLevelHooks<T extends AccountKitConfig>(config: T): T {
   ) as T
 }
 
-/** A misspelt key would otherwise leave its default in place without a word. */
-function rejectUnknownKeys(value: object | undefined, path: string, known: string[]): void {
-  for (const key of Object.keys(value ?? {}))
-    if (!known.includes(key))
-      throw new InvalidConfigurationError(
-        `${path}.${key}`,
-        `account_kit: ${path}.${key} is not a setting`
-      )
-}
-
 /**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
  * a missing callback an enabled capability needs or an out-of-range value.
@@ -214,19 +204,6 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'limiterNamespace',
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
-  rejectUnknownKeys(config.expiresIn, 'expiresIn', [
-    'passwordReset',
-    'emailVerification',
-    'invitation',
-    'emailChange',
-    'magicLink',
-  ])
-  rejectUnknownKeys(config.invitationThrottle, 'invitationThrottle', [
-    'sendActor',
-    'sendRecipient',
-    'resendActor',
-    'resendInvitation',
-  ])
   const expiresIn = freezeResolved({
     passwordReset: config.expiresIn?.passwordReset ?? '1h',
     emailVerification: config.expiresIn?.emailVerification ?? '1h',
@@ -303,8 +280,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   return freezeResolved({
     ...hooks,
     // A copy, so a later write to the application's object cannot skip the checks above.
+    // Read by name: a spread would drop an availability defined on a class or prototype.
     registration: freezeResolved({
-      ...config.registration,
+      availability: config.registration.availability,
       ...(mapFields ? { mapFields: mapFields.bind(config.registration) } : {}),
     }),
     enabled: freezeResolved([...enabled]),
