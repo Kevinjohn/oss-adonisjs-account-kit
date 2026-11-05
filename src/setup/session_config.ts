@@ -1,5 +1,4 @@
 import { selectedEnvName } from './selected_environment.js'
-export { selectedSessionDiagnostic } from './session_diagnostics.js'
 import {
   defaultImportName,
   directProperty,
@@ -10,6 +9,8 @@ import {
   topLevelConfig,
   walk,
 } from './ts_source.js'
+
+export { selectedSessionDiagnostic } from './session_diagnostics.js'
 
 const sessionImport =
   "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from '@kevinjohn/adonisjs-account-kit/http'\n// account-kit:session-import:end\n"

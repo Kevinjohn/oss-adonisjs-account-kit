@@ -216,7 +216,6 @@ test.group('invitations.resend', (group) => {
       config,
       db: kit.db,
       limiter: limiter as never,
-      encryption: kit.encryption,
     })
     const { invitation, token } = await issue(account, recorder, actor.id)
     const originalRow = await kit.db.from('account_invitations').where('id', invitation.id).first()
