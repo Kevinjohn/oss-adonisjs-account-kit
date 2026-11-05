@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { CurrentAccount } from '../types.js'
+import { InvalidSessionError } from '../errors.js'
 import { applyProofHeaders } from './proof_headers.js'
 import { recoveryDiagnostic, publicAccount } from './response_helpers.js'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
@@ -31,12 +32,26 @@ export async function executeManagedRequest<Credential>(
   const kit = await options.kit()
   kit.managedHttp.assertGuard(options.guard)
   if (route.proof) await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
-  const accountInput = route.access === 'public' ? undefined : await options.guard.current(context)
-  const account = accountInput
-    ? route.access === 'active' && options.verificationRequired !== false
-      ? await kit.authentication.requireActive(accountInput)
-      : await kit.authentication.current(accountInput)
-    : undefined
+  let accountInput: Awaited<ReturnType<typeof options.guard.current>> | undefined
+  let account: CurrentAccount | undefined
+  try {
+    accountInput = route.access === 'public' ? undefined : await options.guard.current(context)
+    account = accountInput
+      ? route.access === 'active' && options.verificationRequired !== false
+        ? await kit.authentication.requireActive(accountInput)
+        : await kit.authentication.current(accountInput)
+      : undefined
+  } catch (error) {
+    // A stale session can still sign out: end it here instead of refusing the logout.
+    if (
+      route.name !== 'account.logout' ||
+      options.guard.strategy !== 'session' ||
+      !(error instanceof InvalidSessionError)
+    )
+      throw error
+    await options.guard.forRequest(context).terminate()
+    return context.response.noContent()
+  }
   const actorId = account?.id
   const represent = (value: CurrentAccount) =>
     options.extensions?.representAccount?.(value, context) ?? publicAccount(value)
