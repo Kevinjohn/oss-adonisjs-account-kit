@@ -19,8 +19,6 @@ export default class SessionController {
 
   async destroy(ctx: HttpContext) {
     await kit.authentication.logout(accountKitSessionGuard(ctx))
-    // Rotates the history key after the session is cleared, so Back cannot restore signed-in pages.
-    ctx.inertia.clearHistory()
     return ctx.response.redirect().toRoute('session.create')
   }
 }

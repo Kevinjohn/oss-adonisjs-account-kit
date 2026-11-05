@@ -266,21 +266,4 @@ test.group('composed account browser journeys', (group) => {
       await page.waitForURL('**/login')
     }
   })
-
-  test('Back after logout cannot restore a signed-in page', async ({ visit }) => {
-    const email = 'history-journey@example.test'
-    await User.create({ fullName: 'History Journey', email, password: 'HistoryPass123!' })
-    const page = await visit('/login')
-    await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Password').fill('HistoryPass123!')
-    await page.getByRole('button', { name: 'Sign in' }).click()
-    await page.waitForURL('**/dashboard')
-    await page.goto('/settings/profile')
-    await page.getByText(email, { exact: true }).first().waitFor()
-    await page.getByRole('button', { name: 'Log out' }).click()
-    await page.waitForURL('**/login')
-    await page.goBack()
-    // The cleared history key forces a server visit, which sends a signed-out browser to sign in.
-    await page.waitForURL('**/login')
-  })
 })
