@@ -168,5 +168,5 @@ Tested on SQLite and PostgreSQL 16. MySQL 8.4 is experimental. See the
 The managed-route paths are relative to the prefix configured with `registerManagedRoutes`. For
 example, with `prefix: '/api/v1'`, `POST auth/password-reset` is `POST /api/v1/auth/password-reset`.
 The `account-kit:prune` command and public `PruneCounts` result retain the legacy key `recovery`
-for expired password-reset tokens. The full route lists are in [usage](usage.md) and the
+for expired password-reset tokens. The full route lists are in the
 [endpoint reference](../reference/endpoints.md).

@@ -348,5 +348,5 @@ withAdmissionCleanup()` in `config/account_kit.ts`.
 
 ## Changelog
 
-Admission arrived in the Unreleased section of the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md):
+Admission arrived in the 0.1.0 section of the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md):
 the module, decisions and commands, and the example application.

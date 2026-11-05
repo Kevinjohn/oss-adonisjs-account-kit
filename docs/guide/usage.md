@@ -16,6 +16,7 @@ expiresIn: {
   emailVerification: '1h',
   invitation: '7d',
   emailChange: '1h',
+  magicLink: '15m',
 }
 ```
 

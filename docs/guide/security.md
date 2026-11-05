@@ -43,7 +43,7 @@ token.
 Magic links add a client check: the browser or app that asked for the link keeps a PKCE-style
 verifier, and the link only completes with it. A wrong verifier burns the link, because it may have
 been forwarded. The verifier's challenge is compared with `timingSafeEqual` ([`client_challenge.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/client_challenge.ts)). Pinned
-by `magic_link.spec.ts`: "a wrong verifier fails and burns the link; a malformed one consumes
+by `magic_link_completion.spec.ts`: "a wrong verifier fails and burns the link; a malformed one consumes
 nothing". See [magic-link sign-in](magic-link.md).
 
 ## Account enumeration
@@ -117,7 +117,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   destinations. The request `Host` and forwarded headers are never used, so a forged header cannot
   redirect a link.
 - **HTTPS in production.** A production origin must be HTTPS. Plain HTTP is accepted only for
-  loopback development origins. Pinned by `notifications.spec.ts`: "rejects untrusted and insecure
+  loopback development origins. Pinned by `notifications_rendering.spec.ts`: "rejects untrusted and insecure
   action origins while preserving base paths".
 - **Safe email content.** Built-in templates escape every value, and action URLs must be absolute
   HTTP(S) URLs without credentials. Sender and brand values with line breaks are rejected before
