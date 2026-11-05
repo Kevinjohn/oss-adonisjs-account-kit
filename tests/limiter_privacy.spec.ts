@@ -137,7 +137,6 @@ test.group('limiter privacy', (group) => {
         config: defineConfig(makeConfig({ users, limiterNamespace })),
         db: kit.db,
         limiter: limiter as never,
-        encryption: kit.encryption,
       })
       await account.managedHttp.consume({ endpoint: 'password_reset', clientKey: '192.0.2.14' })
     }
