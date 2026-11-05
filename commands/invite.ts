@@ -15,6 +15,9 @@ export default class InviteAccount extends BaseCommand {
   @flags.string({ description: 'Role stored on the invitation (1-64 characters)', required: true })
   declare role: string
 
+  @flags.string({ description: 'Team or workspace the invitation is for (1-255 characters)' })
+  declare scope?: string
+
   @flags.boolean({ description: 'Print the acceptance link instead of emailing it' })
   declare print: boolean
 
@@ -27,6 +30,7 @@ export default class InviteAccount extends BaseCommand {
       const result = await kit.operator.invite({
         email: this.email,
         role: this.role,
+        scope: this.scope,
         deliver: this.print ? 'print' : 'send',
       })
       this.result = result
@@ -37,6 +41,7 @@ export default class InviteAccount extends BaseCommand {
           id: result.invitation.id,
           email: result.invitation.email,
           role: result.invitation.role,
+          scope: result.invitation.scope,
           expiresAt: result.invitation.expiresAt.toISO(),
         },
         faultLabel: 'Invitation',

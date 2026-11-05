@@ -68,8 +68,8 @@ await kit.emailVerification.send({ userId })
 const activationValid = await kit.emailVerification.inspect({ token })
 await kit.emailVerification.complete({ token, password: freshPassword })
 
-const invitation = await kit.invitations.send({ actorId, email, role })
-const page = await kit.invitations.list({ actorId, limit: 25 })
+const invitation = await kit.invitations.send({ actorId, email, role, scope })
+const page = await kit.invitations.list({ actorId, limit: 25, scope })
 const preview = await kit.invitations.inspect({ token })
 const newUser = await kit.invitations.accept({ token, password, registrationData })
 await kit.invitations.resend({ actorId, invitationId: invitation.id })
@@ -142,11 +142,15 @@ for the known proxy addresses and forwarded-header policy. Do not accept a clien
 trust arbitrary `X-Forwarded-For` headers. Keep `APP_URL` set to the public HTTPS origin and build
 links from that configured value, not from request `Host` or forwarded-host headers.
 
-Invitation email uniqueness is global to this package's invitation table, not tenant-scoped. Sending
-an invitation to an address that already belongs to a user is rejected; a normalized address can
-have only one pending invitation. Acceptance does not recheck the inviter's authorization. The
-application's `onInvitationAccepted` callback assigns the opaque invitation role; the package does
-not create tenant or team membership records unless the application callback does so.
+An invitation carries an opaque `scope` (a team or workspace, or null) next to its opaque `role`.
+A normalized address can hold one pending invitation per scope; a second send for the same address
+and scope throws `InvitationPendingError`. Sending an invitation to an address that already belongs
+to a user is rejected. `authorize.invite` and `authorize.listInvitations` receive the scope in
+`context.scope`; `invitations.list` filters by `scope` when given and lists every scope otherwise.
+Accepting any invitation applies every pending invitation for the address in the same transaction,
+in ascending `scope` order, calling `onInvitationAccepted` once per invitation. Acceptance does not
+recheck the inviter's authorization. The application's `onInvitationAccepted` callback assigns the
+role; the package does not create tenant or team membership records unless the callback does so.
 
 ## Adapter and registration data
 

@@ -28,7 +28,7 @@ export async function completeRegistration(
   }
 ): Promise<SocialCallbackResult> {
   let unverified: UserId | undefined
-  let accepted: { invitationId: number; userId: UserId } | undefined
+  let accepted: { invitationIds: number[]; userId: UserId } | undefined
   let settled: Awaited<ReturnType<typeof settleCommitted<SocialCallbackResult>>>
   try {
     settled = await settleCommitted(
@@ -58,8 +58,8 @@ export async function completeRegistration(
           input.registrationData,
           input.admit
         )
-        if (created.invitationId !== null)
-          accepted = { invitationId: created.invitationId, userId: created.user.id }
+        if (created.invitationIds.length > 0)
+          accepted = { invitationIds: created.invitationIds, userId: created.user.id }
         if (!profile.emailVerified) {
           unverified = created.user.id
           return { status: 'new' as const, emailVerificationRequired: true as const }
@@ -90,7 +90,7 @@ export async function completeRegistration(
       if (accepted)
         await postCommit(
           'Invitation follow-up failed',
-          invitationAccepted(deps.config, accepted.invitationId, accepted.userId, randomUUID())
+          invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
         await sendVerification(deps, { userId: unverified })

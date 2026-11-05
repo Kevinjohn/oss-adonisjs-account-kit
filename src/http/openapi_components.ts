@@ -106,6 +106,7 @@ export function sharedSchemas(): Record<string, JsonSchema> {
       id: { type: 'integer' },
       email: string(),
       role: string(),
+      scope: { type: ['string', 'null'] },
       inviterId: { type: ['integer', 'string', 'null'] },
       expiresAt: timestamp,
       createdAt: timestamp,

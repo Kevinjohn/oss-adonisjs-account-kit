@@ -133,7 +133,7 @@ export async function completeVerification(
         activationMatches
       )
       await storePassword(deps.config.users, user.id, password, trx)
-      const invitationId = await activateClaim(trx, deps.config, user)
+      const invitationIds = await activateClaim(trx, deps.config, user)
       const reloaded = await deps.config.users.findById(user.id, trx)
       if (!reloaded) throw new InvalidTokenError()
       await credentialsChanged(trx, deps.config, reloaded, {
@@ -141,7 +141,7 @@ export async function completeVerification(
         operationId,
         userId: user.id,
       })
-      return { user: reloaded, invitationId }
+      return { user: reloaded, invitationIds }
     })
   )
   const outcome = claimed.user
@@ -161,7 +161,7 @@ export async function completeVerification(
         userId: outcome.id,
         operationId,
       }),
-      ...invitationAccepted(deps.config, claimed.invitationId, outcome.id, operationId),
+      ...invitationAccepted(deps.config, claimed.invitationIds, outcome.id, operationId),
     ])
   )
   return 'verified'

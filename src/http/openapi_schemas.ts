@@ -230,7 +230,18 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'account.invitation.send': {
     summary: 'Invite someone by email',
     body: () =>
-      body({ email: email(), role: string({ minLength: 1, maxLength: 64 }) }, ['email', 'role']),
+      body(
+        {
+          email: email(),
+          role: string({ minLength: 1, maxLength: 64 }),
+          scope: string({
+            minLength: 1,
+            maxLength: 255,
+            description: 'The team or workspace the invitation is for.',
+          }),
+        },
+        ['email', 'role']
+      ),
     success: () => ({
       201: { description: 'Invitation sent.', schema: closed({ id: { type: 'integer' } }) },
     }),
@@ -248,6 +259,11 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         name: 'cursor',
         description: 'The `nextCursor` of the previous page.',
         schema: string(),
+      },
+      {
+        name: 'scope',
+        description: 'Only invitations for this team or workspace.',
+        schema: string({ minLength: 1, maxLength: 255 }),
       },
     ],
     success: ok('One page of invitations.', ref('InvitationPage')),

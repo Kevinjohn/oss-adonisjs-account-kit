@@ -1,6 +1,7 @@
 import type { DateTime } from 'luxon'
 import type { Invitation, UserId } from './types.js'
 import { readTimestamp } from './timestamps.js'
+import { scopeFromColumn } from './invitation_scope.js'
 
 type DatabaseDate = Date | string
 
@@ -8,6 +9,7 @@ export interface InvitationDatabaseRow {
   id: number
   email: string
   role: string
+  scope: string
   inviter_id: UserId | null
   token_hash: string
   expires_at: DatabaseDate
@@ -24,6 +26,7 @@ export function toInvitation(row: InvitationDatabaseRow): Invitation {
     id: row.id,
     email: row.email,
     role: row.role,
+    scope: scopeFromColumn(row.scope),
     inviterId: row.inviter_id,
     expiresAt: toDateTime(row.expires_at),
     createdAt: toDateTime(row.created_at),

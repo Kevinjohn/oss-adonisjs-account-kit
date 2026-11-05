@@ -45,6 +45,8 @@ export interface UsersAdapterMetadata {
 export interface AuthorizationContext {
   /** The account transaction, when the check runs inside one. */
   trx?: Trx
+  /** The invitation's scope on `invite` and `listInvitations`; absent when listing every scope. */
+  scope?: string | null
 }
 
 /**
@@ -119,6 +121,11 @@ export interface Invitation {
    * The role to grant on acceptance. Account Kit stores it; your `onInvitationAccepted` applies it.
    */
   role: string
+  /**
+   * Which team or workspace the invitation is for, or null. Account Kit stores it, passes it to
+   * your callbacks and keeps one pending invitation per address and scope; it never interprets it.
+   */
+  scope: string | null
   /** Who sent it, or null for an operator invitation or a deleted inviter. */
   inviterId: UserId | null
   /** When the link stops working. */
@@ -199,7 +206,7 @@ export type LifecycleEvent =
 
 /** Your rules for invitations. Each callback must return exactly `true` to allow. */
 export interface AuthorizationCallbacks {
-  /** Whether `actor` may invite someone with `role`. */
+  /** Whether `actor` may invite someone with `role` into `context.scope`. */
   invite(actor: AccountUser, role: string, context?: AuthorizationContext): Promise<boolean>
   /** Whether `actor` may resend or revoke this invitation. */
   manageInvitation(
@@ -207,7 +214,7 @@ export interface AuthorizationCallbacks {
     invitation: Invitation,
     context?: AuthorizationContext
   ): Promise<boolean>
-  /** Whether `actor` may list invitations. */
+  /** Whether `actor` may list invitations in `context.scope`, or every scope when it is absent. */
   listInvitations(actor: AccountUser, context?: AuthorizationContext): Promise<boolean>
 }
 

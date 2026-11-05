@@ -24,6 +24,9 @@ import { isPasswordAllowed } from './password.js'
 import { passwordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
+import { normalizeScope, scopeColumn } from './invitation_scope.js'
+import { applyInvitations, invitationAccepted } from './invitation_match.js'
+import { consumeRows } from './consume_rows.js'
 import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -50,7 +53,7 @@ export async function acceptInvitation(
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
 
-  let result: { user: AccountUser; invitationId: number }
+  let result: { user: AccountUser; invitationIds: number[] }
   let fault: PostCommitError | undefined
   try {
     ;({ value: result, fault } = await settleCommitted(
@@ -65,6 +68,13 @@ export async function acceptInvitation(
         if (!row) throw new InvalidTokenError()
         if (await deps.config.users.findByEmail(row.email, trx))
           throw new EmailAlreadyRegisteredError()
+        // The other scopes' pending invitations for the address join the same acceptance.
+        const others = await consumeRows<InvitationDatabaseRow>(
+          trx,
+          'account_invitations',
+          { email: row.email },
+          sqlTimestamp(trx, now)
+        )
 
         const user = await deps.config.users.create(
           {
@@ -78,10 +88,10 @@ export async function acceptInvitation(
         await deps.config.users.markEmailVerified(user.id, now, trx)
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
-        await deps.config.onInvitationAccepted(reloaded, toInvitation(row), trx)
+        const invitationIds = await applyInvitations(deps.config, trx, reloaded, [row, ...others])
         const accepted = await deps.config.users.findById(user.id, trx)
         if (!accepted) throw new InvalidTokenError()
-        return { user: accepted, invitationId: row.id }
+        return { user: accepted, invitationIds }
       })
     ))
   } catch (error) {
@@ -90,14 +100,10 @@ export async function acceptInvitation(
     throw error
   }
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
-    postCommit('Invitation follow-up failed', [
-      lifecycle(deps.config, {
-        type: 'invitation.accepted',
-        invitationId: result.invitationId,
-        userId: result.user.id,
-        operationId,
-      }),
-    ])
+    postCommit(
+      'Invitation follow-up failed',
+      invitationAccepted(deps.config, result.invitationIds, result.user.id, operationId)
+    )
   )
   return result.user
 }
@@ -123,9 +129,10 @@ export async function sendInvitation(
   if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
   if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
     throw new InvalidInputError('Invalid role')
+  const scope = normalizeScope(input.scope)
   const email = normalizeEmail(input.email)
   const actor = await requireUser(deps.config, input.actorId)
-  if ((await deps.config.authorize.invite(actor, input.role)) !== true)
+  if ((await deps.config.authorize.invite(actor, input.role, { scope })) !== true)
     throw new AuthorizationError()
   if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
   await throttlerOf(deps).consume(
@@ -144,6 +151,7 @@ export async function sendInvitation(
   const { invitation, fault } = await storeInvitation(deps, {
     email,
     role: input.role,
+    scope,
     inviterId: actor.id,
     token,
     replacePending: false,
@@ -168,17 +176,18 @@ export async function sendInvitation(
 }
 
 /**
- * Insert an invitation row for a normalized email. Expired rows for the address are removed first;
- * `replacePending` also removes a live one (operator reissue). Shared by the actor and operator
- * paths; a pending invitation otherwise surfaces as InvitationPendingError. `recheckInvite` locks
- * the inviter row and runs `authorize.invite` again with `trx`. Lock order: inviter, invitation,
- * then whatever the application locks in `invite`.
+ * Insert an invitation row for a normalized email and scope. Expired rows for the address and
+ * scope are removed first; `replacePending` also removes a live one (operator reissue). Shared by
+ * the actor and operator paths; a pending invitation otherwise surfaces as InvitationPendingError.
+ * `recheckInvite` locks the inviter row and runs `authorize.invite` again with `trx` and the
+ * scope. Lock order: inviter, invitation, then whatever the application locks in `invite`.
  */
 export async function storeInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: {
     email: string
     role: string
+    scope: string | null
     inviterId: UserId | null
     token: string
     replacePending: boolean
@@ -195,27 +204,43 @@ export async function storeInvitation(
           if (!inviter) throw new AuthorizationError()
         }
         const now = DateTime.utc()
-        const stale = trx.from('account_invitations').where('email', input.email)
+        const scope = scopeColumn(input.scope)
+        const stale = trx
+          .from('account_invitations')
+          .where('email', input.email)
+          .where('scope', scope)
         if (!input.replacePending) stale.where('expires_at', '<=', sqlTimestamp(trx, now))
         await stale.delete()
-        if (inviter && (await deps.config.authorize.invite(inviter, input.role, { trx })) !== true)
+        if (
+          inviter &&
+          (await deps.config.authorize.invite(inviter, input.role, {
+            trx,
+            scope: input.scope,
+          })) !== true
+        )
           throw new AuthorizationError()
         await trx.table('account_invitations').insert({
           email: input.email,
           role: input.role,
+          scope,
           inviter_id: input.inviterId,
           token_hash: hashToken(input.token),
           expires_at: sqlTimestamp(trx, expiresAt(now, deps.config.expiresIn.invitation)),
           created_at: sqlTimestamp(trx, now),
           updated_at: sqlTimestamp(trx, now),
         })
-        // Email is unique; re-read rather than use RETURNING, which MySQL lacks.
-        const row = await trx.from('account_invitations').where('email', input.email).first()
+        // Email and scope are unique together; re-read rather than use RETURNING, which MySQL lacks.
+        const row = await trx
+          .from('account_invitations')
+          .where('email', input.email)
+          .where('scope', scope)
+          .first()
         return toInvitation(row)
       })
     ).then(({ value, fault }) => ({ invitation: value, fault }))
   } catch (error) {
-    if (isUniqueViolation(error, 'account_invitations', 'email')) throw new InvitationPendingError()
+    if (isUniqueViolation(error, 'account_invitations', ['email', 'scope']))
+      throw new InvitationPendingError()
     throw error
   }
 }

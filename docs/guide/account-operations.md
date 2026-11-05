@@ -67,12 +67,13 @@ an explicit HTTP representation instead of serializing adapter or model internal
 
 Send, resend, list, and revoke require configured application permission. Acceptance is
 password-based and consumes the invitation once. It does not recheck the inviter's later
-permission or disabled state. The `role` is opaque application data; use
+permission or disabled state. The `role` and `scope` are opaque application data; use
 `onInvitationAccepted(user, invitation, trx)` for required membership or role writes in the
 acceptance transaction. Closed ordinary registration does not disable invitation acceptance.
-For workspace membership, the application must also scope invitation listing in its own database
-query. The [workspace invitation recipe](../recipes/multi-tenant.md) shows the exact managed-route
-replacement and keeps creation and management permissions bound to the selected workspace.
+Listing takes a `scope` and passes it to `authorize.listInvitations`, so one workspace's pending
+invitations can be listed without an application query. The
+[workspace invitation recipe](../recipes/multi-tenant.md) keeps creation, listing and management
+permissions bound to the selected workspace.
 
 ### Signing in with the invited address
 
@@ -86,10 +87,11 @@ it accepts that invitation the way the link would. That happens in three places:
 - a password reset (`passwordReset.reset`) that confirms an account whose address was never
   confirmed.
 
-In the same transaction, the invitation is deleted and `onInvitationAccepted(user, invitation, trx)`
-runs. After commit, `invitation.accepted` is reported with the same fields as for the link. If the
-callback throws, the new account, the activation or the reset is rolled back and the invitation stays. A
-missing or expired invitation changes nothing. The emailed link then answers `InvalidTokenError`,
+In the same transaction, every pending invitation for the address is deleted and
+`onInvitationAccepted(user, invitation, trx)` runs once per invitation, in ascending `scope` order.
+After commit, `invitation.accepted` is reported for each, with the same fields as for the link. If a
+callback throws, the new account, the activation or the reset is rolled back and the invitations
+stay. A missing or expired invitation changes nothing. The emailed link then answers `InvalidTokenError`,
 because the invitation was already accepted by signing in.
 
 An existing account never accepts an invitation, and changing the account's email to an invited

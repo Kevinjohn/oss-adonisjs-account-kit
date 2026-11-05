@@ -153,7 +153,7 @@ export async function socialCallback(
   }
   let linkedNotice: { user: AccountUser; relation: SocialIdentity } | undefined
   let unverified: UserId | undefined
-  let accepted: { invitationId: number; userId: UserId } | undefined
+  let accepted: { invitationIds: number[]; userId: UserId } | undefined
   let settled: Awaited<ReturnType<typeof settleCommitted<SocialCallbackResult>>>
   try {
     settled = await settleCommitted(
@@ -230,8 +230,8 @@ export async function socialCallback(
             }
           }
           const created = await createAccount(deps, trx, name, profile)
-          if (created.invitationId !== null)
-            accepted = { invitationId: created.invitationId, userId: created.user.id }
+          if (created.invitationIds.length > 0)
+            accepted = { invitationIds: created.invitationIds, userId: created.user.id }
           if (!profile.emailVerified) {
             unverified = created.user.id
             return { status: 'new', emailVerificationRequired: true }
@@ -264,13 +264,13 @@ export async function socialCallback(
             .whereNull('confirmed_at')
             .first()
           if (!pending) throw new SocialTransactionError()
-          const { userId, invitationId } = await completeActivationByHash(
+          const { userId, invitationIds } = await completeActivationByHash(
             trx,
             deps.config,
             state.verification_hash!,
             pending.id
           )
-          if (invitationId !== null) accepted = { invitationId, userId }
+          if (invitationIds.length > 0) accepted = { invitationIds, userId }
           return {
             status: 'linked',
             userId,
@@ -338,7 +338,7 @@ export async function socialCallback(
       if (accepted)
         await postCommit(
           'Invitation follow-up failed',
-          invitationAccepted(deps.config, accepted.invitationId, accepted.userId, randomUUID())
+          invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
         await sendVerification(deps, { userId: unverified })

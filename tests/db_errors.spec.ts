@@ -34,6 +34,14 @@ test.group('database helper error recognition', (group) => {
         'email'
       )
     )
+
+    const composite = {
+      code: 'SQLITE_CONSTRAINT_UNIQUE',
+      message: 'UNIQUE constraint failed: account_invitations.email, account_invitations.scope',
+    }
+    assert.isTrue(isUniqueViolation(composite, 'account_invitations', ['email', 'scope']))
+    assert.isFalse(isUniqueViolation(composite, 'account_invitations', 'email'))
+    assert.isFalse(isUniqueViolation(composite, 'account_invitations', ['scope', 'email']))
   })
 
   test('does not confuse an email-prefixed unique column with users.email', async ({ assert }) => {
@@ -79,6 +87,13 @@ test.group('database helper error recognition', (group) => {
     assert.isTrue(isUniqueViolation(duplicate('users.users_email_unique'), 'users', 'email'))
     assert.isFalse(isUniqueViolation(duplicate('users.users_email_alias_unique'), 'users', 'email'))
     assert.isFalse(isUniqueViolation(duplicate('accounts.users_email_unique'), 'users', 'email'))
+    assert.isTrue(
+      isUniqueViolation(
+        duplicate('account_invitations.account_invitations_email_scope_unique'),
+        'account_invitations',
+        ['email', 'scope']
+      )
+    )
   })
 
   test('recognizes only the documented PostgreSQL email constraint identity', ({ assert }) => {
@@ -90,6 +105,13 @@ test.group('database helper error recognition', (group) => {
     )
     assert.isFalse(
       isUniqueViolation({ code: '23505', constraint: 'other_users_email_unique' }, 'users', 'email')
+    )
+    assert.isTrue(
+      isUniqueViolation(
+        { code: '23505', constraint: 'account_invitations_email_scope_unique' },
+        'account_invitations',
+        ['email', 'scope']
+      )
     )
   })
 })

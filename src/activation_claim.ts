@@ -38,11 +38,11 @@ export async function activateClaim(
   config: ResolvedConfig,
   user: AccountUser,
   confirmedSocialIdentityId?: number
-): Promise<number | null> {
+): Promise<number[]> {
   const userId = user.id
   const now = DateTime.utc()
   await config.users.markEmailVerified(userId, now, trx)
-  const invitationId = await matchInvitation(config, trx, user, now)
+  const invitationIds = await matchInvitation(config, trx, user, now)
   await clearRecoveryTokens(trx, userId, ['password_reset_tokens'])
   if (config.enabled.includes('socialAuthentication')) {
     await clearPendingSocialIdentities(trx, userId, confirmedSocialIdentityId)
@@ -55,7 +55,7 @@ export async function activateClaim(
         .update({ confirmed_at: sqlTimestamp(trx) })
     await clearSocialTransactions(trx, userId)
   }
-  return invitationId
+  return invitationIds
 }
 
 /** Consume email ownership proof under the user lock. Only a matched provider can be confirmed. */
@@ -64,7 +64,7 @@ export async function completeActivationByHash(
   config: ResolvedConfig,
   tokenHash: string,
   confirmedSocialIdentityId?: number
-): Promise<{ userId: UserId; invitationId: number | null }> {
+): Promise<{ userId: UserId; invitationIds: number[] }> {
   const { user } = await consumeUserTokenHash<ActivationRow>(
     trx,
     config,
@@ -72,6 +72,6 @@ export async function completeActivationByHash(
     tokenHash,
     activationMatches
   )
-  const invitationId = await activateClaim(trx, config, user, confirmedSocialIdentityId)
-  return { userId: user.id, invitationId }
+  const invitationIds = await activateClaim(trx, config, user, confirmedSocialIdentityId)
+  return { userId: user.id, invitationIds }
 }

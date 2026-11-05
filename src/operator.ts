@@ -15,6 +15,7 @@ import {
   type PostCommitError,
 } from './errors.js'
 import { storeInvitation } from './invitations.js'
+import { normalizeScope } from './invitation_scope.js'
 import { issueResetToken } from './password_reset.js'
 import { generateToken } from './tokens.js'
 import type {
@@ -69,6 +70,7 @@ export async function operatorInvite(
   const { invitation, fault } = await storeInvitation(deps, {
     email,
     role: input.role,
+    scope: normalizeScope(input.scope),
     inviterId: null,
     token,
     replacePending: true,
