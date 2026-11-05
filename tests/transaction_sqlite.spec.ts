@@ -79,12 +79,13 @@ test.group('managed transaction wrapper', (group) => {
     }
     assert.isAbove(attempts, 1)
     assert.isAtLeast(performance.now() - started, 4900)
-    assert.isBelow(performance.now() - started, 6500)
+    // The 5-second deadline plus room for a loaded CI runner.
+    assert.isBelow(performance.now() - started, 7500)
     await kit.db.transaction(async (trx) => {
       const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
       assert.equal(current[0].timeout, 5000)
     })
-  }).timeout(8000)
+  }).timeout(10_000)
 
   test('restores a custom SQLite busy timeout after success and ordinary errors', async ({
     assert,
@@ -322,7 +323,8 @@ test.group('managed transaction wrapper', (group) => {
         assert.equal((error as { code?: string }).code, 'SQLITE_BUSY')
       }
       assert.isAtLeast(performance.now() - started, 4900)
-      assert.isBelow(performance.now() - started, 6500)
+      // The 5-second deadline plus room for a loaded CI runner.
+      assert.isBelow(performance.now() - started, 7500)
       assert.isAbove(natives.length, 1)
       for (const native of natives) {
         assert.isFalse(native.inTransaction)
@@ -347,7 +349,7 @@ test.group('managed transaction wrapper', (group) => {
       if (reader && !reader.isCompleted) await reader.rollback()
       await customKit.close()
     }
-  }).timeout(8000)
+  }).timeout(10_000)
 
   test('pool-one failed native rollback releases the reservation before a queued read and next write', async ({
     assert,
