@@ -144,6 +144,33 @@ test.group('authentication contract', (group) => {
     assert.isAtMost(checks, 5)
   })
 
+  test('a burst of correct logins on one client leaves no budget spent', async ({ assert }) => {
+    const users = await Promise.all(
+      Array.from({ length: 20 }, (_, index) =>
+        insertUser(kit, { email: `office-${index}@example.test` })
+      )
+    )
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
+    const attempts = await Promise.allSettled(
+      users.map((user) =>
+        account.authentication.login(
+          { email: user.email, password: 'password123', clientKey: 'office' },
+          sessionGuard()
+        )
+      )
+    )
+    assert.isTrue(attempts.some((result) => result.status === 'rejected'))
+    for (const user of users) {
+      await account.authentication.login(
+        { email: user.email, password: 'password123', clientKey: 'office' },
+        sessionGuard()
+      )
+    }
+  })
+
   test('failures unrelated to the credentials spend no login budget', async ({ assert }) => {
     const user = await insertUser(kit)
     const users = makeUsersAdapter(kit.db, kit.hash)

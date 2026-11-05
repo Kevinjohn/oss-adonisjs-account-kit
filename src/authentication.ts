@@ -119,8 +119,11 @@ async function reserveAttempt(
   try {
     await limiter.consume(key)
   } catch (error) {
-    if (error instanceof errors.E_TOO_MANY_REQUESTS)
+    if (error instanceof errors.E_TOO_MANY_REQUESTS) {
+      // A refused consume still counts the attempt; give it back so only failures stay counted.
+      await limiter.decrement(key)
       throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
+    }
     throw error
   }
 }
