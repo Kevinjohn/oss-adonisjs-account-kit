@@ -269,6 +269,16 @@ test('database selection uses process, dotenv, then literal default without gues
         )
       )
     }
+    // Indirect, empty and repeated values are unresolved diagnostics, not setup crashes.
+    for (const contents of [
+      'DB_CONNECTION=$OTHER\n',
+      'DB_CONNECTION=\n',
+      'DB_CONNECTION=pg\nDB_CONNECTION=sqlite\n',
+    ]) {
+      await writeFile(join(root, '.env'), contents)
+      const unresolvedValue = await inspectSetup(root)
+      assert.equal(unresolvedValue.database, 'unknown', contents)
+    }
     await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
     process.env.DB_CONNECTION = 'sqlite'
     const processSelected = await inspectSetup(root)

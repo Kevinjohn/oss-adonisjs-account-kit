@@ -100,6 +100,28 @@ test.group('setup session prerequisites', () => {
     })
   })
 
+  test('an indirect SESSION_DRIVER is a diagnostic, not a crash', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER'), stores: { database: stores.database() } })\nexport default sessionConfig\n"
+      const oldDriver = process.env.SESSION_DRIVER
+      delete process.env.SESSION_DRIVER
+      await writeFile(join(state.root, '.env'), 'SESSION_DRIVER=$OTHER\n')
+      try {
+        const plan = await planSetup(choices, state)
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+          )
+        )
+      } finally {
+        await rm(join(state.root, '.env'), { force: true })
+        if (oldDriver === undefined) delete process.env.SESSION_DRIVER
+        else process.env.SESSION_DRIVER = oldDriver
+      }
+    })
+  })
+
   test('managed session wrapper is replayable, reversible, and protects owner edits', async ({
     assert,
   }) => {

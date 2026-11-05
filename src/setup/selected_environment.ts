@@ -6,6 +6,7 @@ export {
   IndirectEnvironmentValueError,
   resolveSelectedEnvironment,
   resolveSelectedEnvironmentValue,
+  SelectedEnvironmentValueError,
 } from './selected_environment_values.js'
 
 /**
