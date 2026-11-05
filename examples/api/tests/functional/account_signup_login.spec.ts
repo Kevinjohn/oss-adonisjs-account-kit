@@ -2,6 +2,7 @@
 
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { tokenFrom } from '#tests/helpers/link_tokens'
@@ -51,6 +52,8 @@ test.group('Account signup login', (group) => {
     })
     assert.equal(tooLongSignup.status(), 422)
     notifications.reset()
+    // Five signups spent this client's signup budget; start the next journey with a fresh one.
+    await limiter.clear()
 
     const registration = await client.post('/api/v1/auth/signup').json({
       fullName: 'Registration User',
