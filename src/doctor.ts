@@ -1,4 +1,5 @@
 import type { Database } from '@adonisjs/lucid/database'
+import { trustedOrigin } from './action_urls.js'
 import { userMetadata } from './db.js'
 import { packageTables } from './package_tables.js'
 import { userOwnedRows } from './user_rows.js'
@@ -63,6 +64,16 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
     }
   if (environment === 'production' && url.protocol !== 'https:')
     return { name, ok: false, detail: 'must use HTTPS in production', fix: 'Use an https:// URL' }
+  try {
+    trustedOrigin(appUrl, environment)
+  } catch (error) {
+    return {
+      name,
+      ok: false,
+      detail: (error as Error).message.replace('account_kit: ', ''),
+      fix: 'Use an HTTPS base URL without credentials, a query or a fragment; HTTP is allowed only for loopback outside production',
+    }
+  }
   return { name, ok: true, detail: url.origin }
 }
 

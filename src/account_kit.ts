@@ -197,7 +197,10 @@ export class AccountKit {
   }
   /** Account activation links, for `emailVerification`. */
   readonly emailVerification = {
-    /** Sends a new activation link, or returns `already_verified`. */
+    /**
+     * Ensures an activation link is current, or returns `already_verified`. A `sent` result
+     * inside the one-minute resend cooldown reuses the link without delivering another message.
+     */
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
       this.enabled('emailVerification', () => sendVerification(this.deps, input)),
     /** Whether an activation link is still usable, without using it up. */

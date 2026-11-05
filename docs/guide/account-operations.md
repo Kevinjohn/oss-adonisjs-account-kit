@@ -36,6 +36,9 @@ reconcile the account's credentials through the configured hook.
 
 Activation resend and a repeated request for the same pending address return the same successful
 acknowledgement inside one minute. They do not issue another message or replace the link. A
+`'sent'` result from `emailVerification.send` means a current activation link is available; it
+does not prove this invocation delivered a message. If an earlier delivery failed, wait until
+the one-minute cooldown ends before requesting another message. A
 later resend, or one after the link has expired, replaces the proof. An active account's pending email change leaves its confirmed
 address usable until completion. Requesting that confirmed address cancels a pending change;
 requesting another pending address supersedes it. An inactive account's new address changes both

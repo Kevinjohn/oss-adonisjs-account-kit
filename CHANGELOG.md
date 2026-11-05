@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- Require literal boolean authentication policy results across password, magic-link and social sign-in, preserving provisional-credential cleanup and callback failures.
+- Reject noncanonical numeric managed-route IDs and unsupported notification-readiness modes.
+- Validate social callback paths without URL normalization changes, and bound inspected environment-variable names before resolving them.
+- Apply the existing trusted-origin rules to the doctor's `APP_URL` check without claiming to exercise custom URL callbacks.
+- Report static adapter configuration faults with `InvalidConfigurationError` and precise fields while preserving lazy resolution and operational failures.
+
 - Fix permanent account deletion through the Lucid adapter for active user models composed with
   `SoftDeletes`, preserving model delete hooks, transaction rollback and invitation retention options.
 
@@ -12,6 +18,9 @@
 - Breaking: account deletion through the Lucid adapter now removes the user row of a model composed
   with `SoftDeletes` instead of soft-deleting it. Application tables whose foreign keys reference
   users must cascade or be cleared in `onAccountDeletingTransaction`, or the deletion rolls back.
+- Breaking: `authentication.canAccess` must resolve to `true` or `false` on every sign-in and
+  session check. Any other value, such as `1`, `0` or a row, now throws instead of allowing or
+  denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
 
 ## 0.2.0 - 2026-11-03
 

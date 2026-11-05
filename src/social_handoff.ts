@@ -1,4 +1,5 @@
 // Social handoff codes: issuing a one-time code after a social callback and redeeming it for a credential.
+import { validateAccountAccessResult } from './account_access_policy.js'
 import { sqlTimestamp } from './timestamps.js'
 import { establishCredential } from './credential_issuance.js'
 import { createHash } from 'node:crypto'
@@ -96,7 +97,8 @@ export async function redeemSocialHandoff<Credential>(
     )
       throw new SocialTransactionError()
     const user = await deps.config.users.findById(row.user_id, trx)
-    if (!user || !(await auth.canAccess(user, trx))) throw new SocialTransactionError()
+    if (!user || !validateAccountAccessResult(await auth.canAccess(user, trx)))
+      throw new SocialTransactionError()
     const currentRevision = await revision(trx, deps.config, user.id)
     const establishedProvider = await usableHandoffAssociation(
       trx,

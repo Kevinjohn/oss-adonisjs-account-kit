@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { InvalidInputError } from '../src/errors.js'
 import { managedHandlers, type ManagedHandler } from '../src/http/managed.js'
 import { planManagedRoutes, type ManagedEndpointName } from '../src/http/routes.js'
 
@@ -276,4 +277,83 @@ test.group('managed route plan', () => {
     assert.isTrue(session.find(({ name }) => name === 'auth.oauth.callback')?.proof)
     assert.isTrue(session.find(({ name }) => name === 'account.socialIdentities.unlink')?.proof)
   })
+})
+
+test.group('managed numeric route parameters', () => {
+  for (const name of [
+    'account.invitation.resend',
+    'account.invitation.revoke',
+    'account.socialIdentities.unlink',
+  ] as const) {
+    test(`${name} accepts only canonical positive safe decimal IDs`, async ({ assert }) => {
+      const calls: number[] = []
+      let responses = 0
+      const context = {
+        params: { id: '' },
+        request: { validateUsing: async () => ({ proof: 'valid-proof' }) },
+        response: {
+          ok: () => {
+            responses++
+          },
+          noContent: () => {
+            responses++
+          },
+        },
+      }
+      const invitation = async ({ invitationId }: { invitationId: number }) => {
+        calls.push(invitationId)
+        return { id: invitationId }
+      }
+      const request = {
+        route: { name },
+        context,
+        actorId: 7,
+        kit: {
+          invitations: { resend: invitation, revoke: invitation },
+          socialAuthentication: {
+            unlink: async ({ identityId }: { identityId: number }) => {
+              calls.push(identityId)
+            },
+          },
+        },
+        options: {
+          guard: { current: async () => ({ userId: 7, revision: null }) },
+          extensions: { social: { providers: [] } },
+        },
+        methodsEnabled: true,
+      } as unknown as Parameters<ManagedHandler>[0]
+      for (const id of ['1', '42', '9007199254740991']) {
+        context.params.id = id
+        const before = calls.length
+        await managedHandlers[name](request)
+        assert.equal(calls.length, before + 1)
+        assert.equal(calls.at(-1), Number(id))
+      }
+      assert.equal(responses, 3)
+      for (const id of [
+        '0x10',
+        '1e2',
+        '+1',
+        '-1',
+        ' 1',
+        '1 ',
+        '1\n',
+        '0',
+        '01',
+        '00',
+        '9007199254740992',
+        '1.0',
+        '',
+        'Infinity',
+      ]) {
+        context.params.id = id
+        const before = calls.length
+        const error = await managedHandlers[name](request).catch((caught: unknown) => caught)
+        assert.instanceOf(error, InvalidInputError, id)
+        assert.equal((error as InvalidInputError).code, 'E_ACCOUNT_KIT_INVALID_INPUT')
+        assert.equal(calls.length, before, id)
+        assert.equal(responses, 3, id)
+      }
+    })
+  }
 })

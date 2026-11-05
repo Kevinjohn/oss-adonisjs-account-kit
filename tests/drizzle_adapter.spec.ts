@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import * as pg from 'drizzle-orm/pg-core'
 import * as sqlite from 'drizzle-orm/sqlite-core'
 import { createDrizzleAdapter } from '../adapters/drizzle.js'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
 import { useTestApp } from './helpers/app.js'
 import { createAppUsersTable } from './helpers/app_users_table.js'
@@ -49,9 +50,34 @@ test.group('Drizzle users adapter', (group) => {
       )
     })
 
+  test('table getters remain lazy and their faults are not configuration errors', async ({
+    assert,
+  }) => {
+    const fault = new Error('Drizzle table getter failed')
+    let reads = 0
+    const table = Object.defineProperty({}, Symbol.for('drizzle:Name'), {
+      get() {
+        reads++
+        throw fault
+      },
+    })
+    const adapter = createDrizzleAdapter(table, { db: kit.db })
+    assert.equal(reads, 0)
+    assert.strictEqual(await adapter.resolveMetadata().catch((caught: unknown) => caught), fault)
+    assert.equal(reads, 1)
+    const databaseFault = new Error('Drizzle database factory failed')
+    const valid = createDrizzleAdapter(pgUsers, {
+      db: async () => {
+        throw databaseFault
+      },
+    })
+    assert.deepEqual(await valid.resolveMetadata(), { table: 'app_users', primaryKey: 'id' })
+    assert.strictEqual(await valid.findById(1).catch((caught: unknown) => caught), databaseFault)
+  })
+
   test('validates the table definition on first use, naming the problem', async ({ assert }) => {
-    const cases: Array<[object, RegExp]> = [
-      [{}, /expects a Drizzle table/],
+    const cases: Array<[object, RegExp, string]> = [
+      [{}, /expects a Drizzle table/, 'usersTable'],
       [
         pg.pgTable('app_users', {
           id: pg.serial('id').primaryKey(),
@@ -61,6 +87,7 @@ test.group('Drizzle users adapter', (group) => {
           emailVerifiedAt: pg.timestamp('email_verified_at'),
         }),
         /map the email property to the email column/,
+        'usersTable.columns.email',
       ],
       [
         pg.pgTable('app_users', {
@@ -70,6 +97,7 @@ test.group('Drizzle users adapter', (group) => {
           emailVerifiedAt: pg.timestamp('email_verified_at'),
         }),
         /map the unverifiedEmail property to the unverified_email column/,
+        'usersTable.columns.unverifiedEmail',
       ],
       [
         pg.pgSchema('accounts').table('app_users', {
@@ -80,6 +108,7 @@ test.group('Drizzle users adapter', (group) => {
           emailVerifiedAt: pg.timestamp('email_verified_at'),
         }),
         /must be in the default schema/,
+        'usersTable.schema',
       ],
       [
         sqlite.sqliteTable('app_users', {
@@ -90,6 +119,7 @@ test.group('Drizzle users adapter', (group) => {
           emailVerifiedAt: sqlite.integer('email_verified_at', { mode: 'timestamp' }),
         }),
         /store email_verified_at as text on SQLite/,
+        'usersTable.columns.emailVerifiedAt',
       ],
       [
         pg.pgTable('app users', {
@@ -100,13 +130,23 @@ test.group('Drizzle users adapter', (group) => {
           emailVerifiedAt: pg.timestamp('email_verified_at'),
         }),
         /plain SQL identifier/,
+        'table',
       ],
     ]
-    for (const [table, message] of cases) {
+    for (const [table, message, field] of cases) {
       // Building the adapter never throws; a config file can import it safely.
       const adapter = createDrizzleAdapter(table, { db: kit.db })
-      await assert.rejects(() => adapter.resolveMetadata(), message)
-      await assert.rejects(() => adapter.findById(1), message)
+      for (const run of [() => adapter.resolveMetadata(), () => adapter.findById(1)]) {
+        const error = await run().catch((caught: unknown) => caught)
+        assert.instanceOf(error, InvalidConfigurationError)
+        assert.equal(
+          (error as InvalidConfigurationError).code,
+          'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
+        )
+        assert.equal((error as InvalidConfigurationError).field, field)
+        assert.match((error as Error).message, message)
+        assert.isUndefined((error as Error).cause)
+      }
     }
   })
 })

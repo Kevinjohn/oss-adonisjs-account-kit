@@ -37,6 +37,12 @@ export interface NotificationReadinessInput {
  */
 export function notificationReadiness(input: NotificationReadinessInput) {
   const problems: string[] = []
+  if (!['development', 'test', 'production'].includes(input.environment))
+    problems.push('environment must be development, test or production')
+  if (!['best-effort', 'durable', 'capture'].includes(input.delivery))
+    problems.push('delivery must be best-effort, durable or capture')
+  if (!['delivery', 'capture', 'discard'].includes(input.transport))
+    problems.push('transport must be delivery, capture or discard')
   for (const [label, origin] of [
     ['backend', input.backendOrigin],
     ['action', input.actionOrigin],

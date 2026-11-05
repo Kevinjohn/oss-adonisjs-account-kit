@@ -118,7 +118,7 @@ export interface MagicLinkCompleteInput {
 
 /** Input for `emailVerification.send`. */
 export interface VerificationSendInput {
-  /** The account to send a new activation link to. */
+  /** The account whose activation link is issued or reused during the one-minute cooldown. */
   userId: UserId
 }
 

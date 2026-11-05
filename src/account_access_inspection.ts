@@ -1,4 +1,5 @@
 // Account access inspection: eligibility and credential revision of one account, read under its lock, with no credential for it.
+import { validateAccountAccessResult } from './account_access_policy.js'
 import { transaction, userMetadata } from './db.js'
 import { readIsoTimestamp } from './timestamps.js'
 import { requireAuthentication } from './authentication_config.js'
@@ -54,9 +55,7 @@ export async function inspectAccountAccess(
     if (String(user.id) !== String(witness.id))
       throw new Error('account_kit: users adapter returned a different account than requested')
     const allowed = await guardDependency(() => auth.canAccess(user, trx))
-    if (typeof allowed !== 'boolean')
-      throw new Error('account_kit: canAccess must resolve to a boolean')
-    if (!allowed) throw new AccountAccessDeniedError()
+    if (!validateAccountAccessResult(allowed)) throw new AccountAccessDeniedError()
     const account = safeAccount(user)
     if (requireActive && !account.active) throw new AccountAccessDeniedError()
     return { account, revision }

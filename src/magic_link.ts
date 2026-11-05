@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
+import { validateAccountAccessResult } from './account_access_policy.js'
 import { isActiveAccount, requireAuthentication, revision, safeAccount } from './authentication.js'
 import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
@@ -59,7 +60,7 @@ export async function requestMagicLink(
         await lockUser(trx, deps.config, user.id)
         const current = await deps.config.users.findById(user.id, trx)
         if (!current || current.email !== email || !isActiveAccount(current)) return null
-        if (!(await auth.canAccess(current, trx))) return null
+        if (!validateAccountAccessResult(await auth.canAccess(current, trx))) return null
         await trx
           .table('login_link_tokens')
           .insert({
@@ -146,7 +147,7 @@ export async function completeMagicLink<Credential>(
     if (
       !verifierMatches(input.verifier, row.client_challenge) ||
       !isActiveAccount(user) ||
-      !(await auth.canAccess(user, trx))
+      !validateAccountAccessResult(await auth.canAccess(user, trx))
     )
       return null
     return {

@@ -1,4 +1,5 @@
 import type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { deferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
 import { canonicalUserColumns } from '../src/user_columns.js'
 
@@ -18,17 +19,25 @@ function drizzleUsersTable(usersTable: object): string {
   const name = table[nameKey]
   const columns = table[columnsKey] as Record<string, DrizzleColumn> | undefined
   if (typeof name !== 'string' || !columns || typeof columns !== 'object')
-    throw new Error('account_kit: createDrizzleAdapter expects a Drizzle table')
+    throw new InvalidConfigurationError(
+      'usersTable',
+      'account_kit: createDrizzleAdapter expects a Drizzle table'
+    )
   if (table[schemaKey] !== undefined)
-    throw new Error('account_kit: the Drizzle users table must be in the default schema')
+    throw new InvalidConfigurationError(
+      'usersTable.schema',
+      'account_kit: the Drizzle users table must be in the default schema'
+    )
   for (const [property, column] of canonicalUserColumns) {
     if (columns[property]?.name !== column)
-      throw new Error(
+      throw new InvalidConfigurationError(
+        `usersTable.columns.${property}`,
         `account_kit: the Drizzle users table must map the ${property} property to the ${column} column`
       )
   }
   if (columns.emailVerifiedAt.columnType === 'SQLiteTimestamp')
-    throw new Error(
+    throw new InvalidConfigurationError(
+      'usersTable.columns.emailVerifiedAt',
       'account_kit: store email_verified_at as text on SQLite; integer-mode Drizzle timestamps are not supported'
     )
   return name

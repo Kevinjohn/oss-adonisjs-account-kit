@@ -5,6 +5,7 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
+import { InvalidCredentialsError, InvalidSessionError } from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 
 const sessionGuard = (events: string[] = []) => ({
@@ -439,6 +440,160 @@ test.group('authentication contract', (group) => {
           'Invalid session'
         )
       }
+    })
+  }
+})
+
+test.group('authentication policy result contract', (group) => {
+  const kit = useTestApp(group)
+  const callbackFault = new Error('policy callback failed')
+  const cases: Array<{ name: string; value?: unknown; error?: Error }> = [
+    { name: 'true', value: true },
+    { name: 'false', value: false },
+    { name: 'truthy string', value: 'private policy result' },
+    { name: 'truthy object', value: {} },
+    { name: 'falsy string', value: '' },
+    { name: 'zero', value: 0 },
+    { name: 'null', value: null },
+    { name: 'undefined', value: undefined },
+    { name: 'callback throw', error: callbackFault },
+  ]
+
+  for (const boundary of ['login', 'current', 'issuance'] as const) {
+    for (const policy of cases) {
+      test(`${boundary} preserves the ${policy.name} outcome`, async ({ assert }) => {
+        const user = await insertUser(kit)
+        let provisional = false
+        let terminated = false
+        let policyChecks = 0
+        const { account } = makeService(kit, {
+          minRequestMs: 0,
+          authentication: {
+            strategy: 'access_tokens',
+            guard: 'api',
+            canAccess: async () => {
+              policyChecks++
+              if (boundary === 'issuance' && !provisional) return true
+              if (policy.error) throw policy.error
+              return policy.value as never
+            },
+          },
+        })
+        const [inserted] = await kit.db
+          .table('auth_access_tokens')
+          .insert({ tokenable_id: user.id, hash: 'existing-credential' })
+          .returning('id')
+        const existingId = unwrapId(inserted)
+        const guard = {
+          strategy: 'access_tokens' as const,
+          name: 'api',
+          establish: async () => {
+            provisional = true
+            const [token] = await kit.db
+              .table('auth_access_tokens')
+              .insert({ tokenable_id: user.id, hash: 'provisional-credential' })
+              .returning('id')
+            return unwrapId(token)
+          },
+          terminate: async (id?: number | string) => {
+            terminated = true
+            assert.isDefined(id)
+            await kit.db.from('auth_access_tokens').where('id', id!).delete()
+          },
+        }
+        const result = await (
+          boundary === 'current'
+            ? account.authentication.current({ userId: user.id, tokenId: existingId })
+            : account.authentication.login(
+                { email: user.email, password: 'password123', clientKey: 'policy' },
+                guard
+              )
+        ).then(
+          (value) => ({ value, error: undefined }),
+          (error: unknown) => ({ value: undefined, error })
+        )
+        if (policy.value === true) {
+          assert.isUndefined(result.error)
+          assert.isDefined(result.value)
+        } else {
+          assert.isUndefined(result.value)
+          if (policy.error) assert.strictEqual(result.error, callbackFault)
+          else if (policy.value === false) {
+            assert.instanceOf(
+              result.error,
+              boundary === 'current' ? InvalidSessionError : InvalidCredentialsError
+            )
+          } else {
+            assert.instanceOf(result.error, Error)
+            assert.notInstanceOf(result.error, InvalidCredentialsError)
+            assert.notInstanceOf(result.error, InvalidSessionError)
+            assert.equal(
+              (result.error as Error).message,
+              'account_kit: canAccess must resolve to a boolean'
+            )
+          }
+        }
+        assert.equal(
+          policyChecks,
+          boundary === 'current' || (boundary === 'login' && policy.value !== true) ? 1 : 2
+        )
+        assert.equal(
+          provisional,
+          boundary === 'issuance' || (boundary === 'login' && policy.value === true)
+        )
+        assert.equal(terminated, boundary === 'issuance' && policy.value !== true)
+        assert.isNotNull(await kit.db.from('auth_access_tokens').where('id', existingId).first())
+        const expectedRows = policy.value === true && boundary !== 'current' ? 2 : 1
+        assert.lengthOf(
+          await kit.db.from('auth_access_tokens').where('tokenable_id', user.id),
+          expectedRows
+        )
+      })
+    }
+  }
+
+  for (const value of ['malformed truthy', 0]) {
+    test(`post-issuance ${String(value)} and cleanup failure preserve both causes`, async ({
+      assert,
+    }) => {
+      const user = await insertUser(kit)
+      let issuedId: number | string | undefined
+      const cleanupFault = new Error('credential termination failed')
+      const { account } = makeService(kit, {
+        minRequestMs: 0,
+        authentication: {
+          strategy: 'access_tokens',
+          guard: 'api',
+          canAccess: async () => (issuedId === undefined ? true : (value as never)),
+        },
+      })
+      const error = await account.authentication
+        .login(
+          { email: user.email, password: 'password123', clientKey: 'cleanup-failure' },
+          {
+            strategy: 'access_tokens',
+            name: 'api',
+            establish: async () => {
+              const [token] = await kit.db
+                .table('auth_access_tokens')
+                .insert({ tokenable_id: user.id, hash: 'cleanup-failed-token' })
+                .returning('id')
+              issuedId = unwrapId(token)
+              return issuedId
+            },
+            terminate: async (credential) => {
+              assert.equal(credential, issuedId)
+              throw cleanupFault
+            },
+          }
+        )
+        .catch((caught: unknown) => caught)
+      assert.instanceOf(error, AggregateError)
+      const causes = (error as AggregateError).errors
+      assert.lengthOf(causes, 2)
+      assert.equal(causes[0].message, 'account_kit: canAccess must resolve to a boolean')
+      assert.strictEqual(causes[1], cleanupFault)
+      assert.isNotNull(await kit.db.from('auth_access_tokens').where('id', issuedId!).first())
     })
   }
 })

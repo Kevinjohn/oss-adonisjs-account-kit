@@ -336,3 +336,69 @@ test.group('magic links and credential changes', (group) => {
     )
   })
 })
+
+test.group('magic-link policy contract routing', (group) => {
+  const kit = useTestApp(group)
+  for (const boundary of ['request', 'complete', 'issuance'] as const) {
+    for (const malformed of ['private truthy result', 0]) {
+      test(`${boundary} rejects ${typeof malformed} policy results`, async ({ assert }) => {
+        const user = await insertUser(kit)
+        let value: unknown = boundary === 'request' ? malformed : true
+        const { account, recorder } = makeService(kit, {
+          enabled,
+          minRequestMs: 0,
+          authentication: {
+            guard: 'web',
+            strategy: 'session',
+            canAccess: async () => value as never,
+          },
+        })
+        let established = false
+        let active = false
+        let terminated = false
+        const guard = {
+          strategy: 'session' as const,
+          name: 'web',
+          establish: async () => {
+            established = true
+            active = true
+            value = malformed
+            return 'provisional-magic-session'
+          },
+          terminate: async (credential?: string) => {
+            assert.equal(credential, 'provisional-magic-session')
+            terminated = true
+            active = false
+          },
+        }
+        const request = () =>
+          account.magicLink.request({
+            email: user.email,
+            clientKey: 'contract',
+            clientChallenge: challenge,
+          })
+        let error: unknown
+        if (boundary === 'request') error = await request().catch((caught: unknown) => caught)
+        else {
+          await request()
+          const token = tokenFrom(recorder.calls.at(-1)!.args[1])
+          if (boundary === 'complete') value = malformed
+          error = await account.magicLink
+            .complete({ token, verifier }, guard)
+            .catch((caught: unknown) => caught)
+        }
+        assert.instanceOf(error, Error)
+        assert.notInstanceOf(error, InvalidTokenError)
+        assert.notInstanceOf(error, InvalidCredentialsError)
+        assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
+        assert.equal(established, boundary === 'issuance')
+        assert.equal(terminated, boundary === 'issuance')
+        assert.isFalse(active)
+        if (boundary === 'request') {
+          assert.lengthOf(recorder.calls, 0)
+          assert.lengthOf(await kit.db.from('login_link_tokens'), 0)
+        }
+      })
+    }
+  }
+})

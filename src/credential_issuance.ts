@@ -1,4 +1,5 @@
 // Issues a guard credential after a verified sign-in and re-checks the account under its lock.
+import { validateAccountAccessResult } from './account_access_policy.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
 import { newSessionHandle, recordSession, sessionRegistryEnabled } from './session_registry.js'
@@ -27,7 +28,8 @@ export interface IssuanceOptions {
  * Adonis token issuance and session writes do not share the package transaction, so a
  * post-issuance lock closes the gap before the credential is returned. Session guards with
  * `sessionManagement` receive a fresh handle; only its hash is stored, in that same transaction.
- * Any failure terminates the credential.
+ * A failure attempts to terminate the credential. If termination also fails, both errors are
+ * reported and the credential may remain active.
  */
 export async function establishCredential<Credential>(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -57,7 +59,7 @@ export async function establishCredential<Credential>(
         !user ||
         (await revision(trx, deps.config, user.id)) !== verified.revision ||
         (options.stillValid && !(await options.stillValid(trx, user))) ||
-        !(await auth.canAccess(user, trx))
+        !validateAccountAccessResult(await auth.canAccess(user, trx))
       )
         throw options.rejected()
       if (handle) await recordSession(trx, deps.config, user.id, handle, label)

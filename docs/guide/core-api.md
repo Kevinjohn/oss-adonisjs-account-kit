@@ -268,6 +268,8 @@ export default class AccountJourneyController {
     })
   }
 
+  // A repeated request inside one minute preserves the current link without sending mail.
+  // Keep the public acknowledgement independent of whether this invocation delivered it.
   async requestVerification(ctx: HttpContext) {
     const { email } = await ctx.request.validateUsing(recoveryRequestValidator)
     const user = await User.findBy('email', email)

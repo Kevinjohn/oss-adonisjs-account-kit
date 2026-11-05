@@ -340,3 +340,38 @@ test.group('maintained notifications', () => {
     }
   })
 })
+
+test.group('notification readiness runtime modes', () => {
+  const valid = {
+    environment: 'production' as const,
+    delivery: 'best-effort' as const,
+    transport: 'delivery' as const,
+    backendOrigin: 'https://api.example.test',
+    actionOrigin: 'https://app.example.test',
+    enabled: [],
+    destinations: {},
+  }
+  for (const field of ['environment', 'delivery', 'transport'] as const) {
+    test(`unsupported ${field} never reports ready`, ({ assert }) => {
+      for (const value of ['unsupported-private-value', '', null, undefined, 0, false, {}]) {
+        const result = notificationReadiness({ ...valid, [field]: value } as never)
+        assert.isFalse(result.ready)
+        assert.include(result.problems.join(' '), `${field} must be`)
+        assert.notInclude(result.problems.join(' '), 'unsupported-private-value')
+      }
+    })
+  }
+  test('test environment remains supported and invalid modes retain URL diagnostics', ({
+    assert,
+  }) => {
+    assert.isTrue(notificationReadiness({ ...valid, environment: 'test' }).ready)
+    const result = notificationReadiness({
+      ...valid,
+      delivery: 'unsupported' as never,
+      actionOrigin: 'not a URL',
+    })
+    assert.isFalse(result.ready)
+    assert.include(result.problems.join(' '), 'delivery must be')
+    assert.include(result.problems.join(' '), 'action: account_kit: invalid configured origin')
+  })
+})

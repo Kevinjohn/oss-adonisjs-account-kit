@@ -1,4 +1,5 @@
 import type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { deferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
 import { canonicalUserColumns } from '../src/user_columns.js'
 
@@ -16,11 +17,15 @@ export interface PrismaModelDefinition {
 /** Resolve `@@map` and `@map` and check the user columns. */
 function prismaUsersTable(model: PrismaModelDefinition): string {
   if (!model || typeof model.name !== 'string' || !Array.isArray(model.fields))
-    throw new Error('account_kit: createPrismaAdapter expects a Prisma DMMF model')
+    throw new InvalidConfigurationError(
+      'model',
+      'account_kit: createPrismaAdapter expects a Prisma DMMF model'
+    )
   for (const [property, column] of canonicalUserColumns) {
     const field = model.fields.find((candidate) => candidate.name === property)
     if (!field || field.kind !== 'scalar' || (field.dbName ?? field.name) !== column)
-      throw new Error(
+      throw new InvalidConfigurationError(
+        `model.fields.${property}`,
         `account_kit: the Prisma ${model.name} model must map the ${property} field to the ${column} column`
       )
   }

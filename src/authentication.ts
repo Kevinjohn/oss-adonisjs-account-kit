@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
+import { validateAccountAccessResult } from './account_access_policy.js'
 import { inspectAccountAccess } from './account_access_inspection.js'
 import { requireAuthentication } from './authentication_config.js'
 import { safeAccount } from './account_projection.js'
@@ -83,7 +84,7 @@ export async function currentWithSessionInTransaction(
     )
       throw new InvalidSessionError()
   }
-  if (!(await auth.canAccess(user, trx))) throw new InvalidSessionError()
+  if (!validateAccountAccessResult(await auth.canAccess(user, trx))) throw new InvalidSessionError()
   if (session) await touchSession(trx, deps.config, session)
   return { account: safeAccount(user), session }
 }
@@ -174,7 +175,7 @@ export function authenticationService(deps: ServiceDependencies) {
               user.email !== email ||
               !user.hasPassword ||
               !(await deps.config.users.verifyPassword(user.id, input.password, trx)) ||
-              !(await auth.canAccess(user, trx))
+              !validateAccountAccessResult(await auth.canAccess(user, trx))
             )
               throw new InvalidCredentialsError()
             return {

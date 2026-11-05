@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
 import { type DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import type { Trx, UsersAdapter } from '../src/types.js'
 import type { AdapterContractFixture } from '../testing/adapter_contract.js'
@@ -247,6 +248,46 @@ test.group('maintained Lucid adapter', (group) => {
     assert.isNull(row.role)
   })
 
+  test('loader, model boot and application callback failures preserve their identities', async ({
+    assert,
+  }) => {
+    const loaderFault = new Error('Lucid model loader failed')
+    let loads = 0
+    const lazy = createLucidAdapter(async () => {
+      loads++
+      throw loaderFault
+    })
+    assert.equal(loads, 0)
+    assert.strictEqual(await lazy.resolveMetadata().catch((caught: unknown) => caught), loaderFault)
+    assert.equal(loads, 1)
+    const bootFault = new Error('Lucid model boot failed')
+    class BrokenBootUser extends LucidUser {
+      static boot() {
+        throw bootFault
+      }
+    }
+    const broken = createLucidAdapter(async () => BrokenBootUser)
+    assert.strictEqual(await broken.resolveMetadata().catch((caught: unknown) => caught), bootFault)
+    const mapperFault = new Error('Lucid registration mapper failed')
+    const mapped = createLucidAdapter(async () => LucidUser, {
+      mapRegistrationData: () => {
+        throw mapperFault
+      },
+    })
+    const error = await transaction(kit.db, (trx) =>
+      mapped.create(
+        {
+          email: 'callback-fault@example.test',
+          password: null,
+          unverifiedEmail: null,
+          registrationData: {},
+        },
+        trx
+      )
+    ).catch((caught: unknown) => caught)
+    assert.strictEqual(error, mapperFault)
+  })
+
   test('rejects named connections and physical primary keys other than id', async ({ assert }) => {
     class NamedConnectionUser extends LucidUser {
       static connection = 'tenant'
@@ -255,17 +296,39 @@ test.group('maintained Lucid adapter', (group) => {
       static primaryKey = 'userId'
     }
 
-    const namedConnectionAdapter = createLucidAdapter(async () => NamedConnectionUser)
-    await assert.rejects(
-      () => namedConnectionAdapter.resolveMetadata(),
-      /must use the default database connection/
-    )
-
-    const alternatePrimaryKeyAdapter = createLucidAdapter(async () => AlternatePrimaryKeyUser)
-    await assert.rejects(
-      () => alternatePrimaryKeyAdapter.resolveMetadata(),
-      /must use the id attribute mapped to the id column/
-    )
+    class MissingTableUser extends LucidUser {
+      static boot() {
+        super.boot()
+        this.table = ''
+      }
+    }
+    for (const [Model, field, message] of [
+      [
+        NamedConnectionUser,
+        'model.connection',
+        'account_kit: Lucid user models must use the default database connection',
+      ],
+      [
+        AlternatePrimaryKeyUser,
+        'model.primaryKey',
+        'account_kit: Lucid user models must use the id attribute mapped to the id column',
+      ],
+      [MissingTableUser, 'model.table', 'account_kit: Lucid user model must define a table'],
+    ] as const) {
+      let loaded = false
+      const adapter = createLucidAdapter(async () => {
+        loaded = true
+        return Model
+      })
+      assert.isFalse(loaded)
+      const error = await adapter.resolveMetadata().catch((caught: unknown) => caught)
+      assert.isTrue(loaded)
+      assert.instanceOf(error, InvalidConfigurationError)
+      assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
+      assert.equal((error as InvalidConfigurationError).field, field)
+      assert.equal((error as Error).message, message)
+      assert.isUndefined((error as Error).cause)
+    }
   })
 
   test('diagnoses a user model whose pending email maps to an unsupported column', async ({
@@ -276,10 +339,15 @@ test.group('maintained Lucid adapter', (group) => {
       declare unverifiedEmail: string | null
     }
     const adapter = createLucidAdapter(async () => AlternatePendingColumnUser)
-    await assert.rejects(
-      () => adapter.resolveMetadata(),
-      /unverifiedEmail attribute mapped to the unverified_email column/
+    const error = await adapter.resolveMetadata().catch((caught: unknown) => caught)
+    assert.instanceOf(error, InvalidConfigurationError)
+    assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
+    assert.equal((error as InvalidConfigurationError).field, 'model.columns.unverifiedEmail')
+    assert.equal(
+      (error as Error).message,
+      'account_kit: Lucid user models must use the unverifiedEmail attribute mapped to the unverified_email column'
     )
+    assert.isUndefined((error as Error).cause)
   })
 })
 

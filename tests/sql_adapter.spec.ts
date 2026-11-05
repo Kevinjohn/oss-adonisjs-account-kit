@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { createSqlUsersAdapter, type SqlUsersAdapterOptions } from '../adapters/sql.js'
+import { InvalidConfigurationError } from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import { assertUsersAdapterContract } from '../testing/adapter_contract.js'
 import { useTestApp } from './helpers/app.js'
@@ -203,8 +204,52 @@ test.group('SQL users adapter', (group) => {
     assert.equal(read?.emailVerifiedAt?.zoneName, 'UTC')
   })
 
-  test('refuses a table name that is not a plain identifier', ({ assert }) => {
-    for (const table of ['users; drop table users', 'public.users', ''])
-      assert.throws(() => createSqlUsersAdapter({ table }), /plain SQL identifier/)
+  test('refuses a table name that is not a plain identifier with a configuration field', async ({
+    assert,
+  }) => {
+    for (const table of ['users; drop table users', 'public.users', '']) {
+      const error = await Promise.resolve()
+        .then(() => createSqlUsersAdapter({ table }))
+        .catch((caught: unknown) => caught)
+      assert.instanceOf(error, InvalidConfigurationError)
+      assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
+      assert.equal((error as InvalidConfigurationError).field, 'table')
+      assert.equal(
+        (error as Error).message,
+        'account_kit: the users table must be a plain SQL identifier'
+      )
+      assert.isUndefined((error as Error).cause)
+    }
+  })
+
+  test('database and application callback faults preserve their original identities', async ({
+    assert,
+  }) => {
+    const databaseFault = new Error('SQL database factory failed')
+    const users = adapter({
+      db: async () => {
+        throw databaseFault
+      },
+    })
+    assert.deepEqual(await users.resolveMetadata(), { table: 'app_users', primaryKey: 'id' })
+    assert.strictEqual(await users.findById(1).catch((caught: unknown) => caught), databaseFault)
+    const mapperFault = new Error('SQL registration mapper failed')
+    const mapped = adapter({
+      mapRegistrationData: () => {
+        throw mapperFault
+      },
+    })
+    const error = await transaction(kit.db, (trx) =>
+      mapped.create(
+        {
+          email: 'mapper-fault@example.test',
+          password: null,
+          unverifiedEmail: null,
+          registrationData: {},
+        },
+        trx
+      )
+    ).catch((caught: unknown) => caught)
+    assert.strictEqual(error, mapperFault)
   })
 })
