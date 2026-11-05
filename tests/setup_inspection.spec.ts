@@ -323,6 +323,33 @@ test('resolved package metadata must be a regular in-application file', async ({
   }
 })
 
+test('workspace store links and hoisted packages count as installed', async ({ assert }) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'account-setup-workspace-'))
+  try {
+    const root = join(workspace, 'apps/web')
+    await mkdir(join(root, 'config'), { recursive: true })
+    await writeFile(
+      join(root, 'package.json'),
+      JSON.stringify({ dependencies: { 'linked-package': '1.0.0', 'hoisted-package': '2.0.0' } })
+    )
+    const store = join(workspace, 'node_modules/.pnpm/linked-package@1.2.3/node_modules')
+    await mkdir(join(store, 'linked-package'), { recursive: true })
+    await writeFile(join(store, 'linked-package/package.json'), JSON.stringify({ version: '1.2.3' }))
+    await mkdir(join(root, 'node_modules'))
+    await symlink(join(store, 'linked-package'), join(root, 'node_modules/linked-package'))
+    await mkdir(join(workspace, 'node_modules/hoisted-package'), { recursive: true })
+    await writeFile(
+      join(workspace, 'node_modules/hoisted-package/package.json'),
+      JSON.stringify({ version: '2.0.1' })
+    )
+    const { installedVersions } = await inspectSetup(root)
+    assert.equal(installedVersions['linked-package'], '1.2.3')
+    assert.equal(installedVersions['hoisted-package'], '2.0.1')
+  } finally {
+    await rm(workspace, { recursive: true, force: true })
+  }
+})
+
 test.group('setup database selection', (group) => {
   registerSetupTeardown(group)
 
