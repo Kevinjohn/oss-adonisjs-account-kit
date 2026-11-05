@@ -1,6 +1,6 @@
 import type { socialProviderNames } from './social_providers.js'
 import type { sensitivePurposes, socialIntents } from './social_enums.js'
-import type { AccountUser, UserId, CurrentAccountInput } from './types.js'
+import type { AccountUser, UserId, CurrentAccountInput, Trx } from './types.js'
 
 /** A supported social provider: `google` or `github`. */
 export type SocialProviderName = (typeof socialProviderNames)[number]
@@ -107,6 +107,14 @@ export interface SocialCallbackInput {
   proof?: string
   /** The email proof that confirms a pending identity. */
   verificationToken?: string
+  /**
+   * Application creation policy for an account the callback creates directly, as for
+   * `completeRegistration`.
+   */
+  admit?: (
+    profile: { provider: SocialProviderName; subject: string; email: string },
+    trx: Trx
+  ) => Promise<void>
 }
 
 /**

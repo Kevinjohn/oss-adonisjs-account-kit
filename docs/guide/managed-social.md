@@ -30,7 +30,8 @@ Guard requirements:
   email is not an account-merging authority.
 - If registration is `application`, exclude `auth.oauth.registration` until a trusted server
   `extensions.social.admit(profile, trx)` callback applies the application's creation policy
-  inside the service transaction.
+  inside the service transaction. With `open` registration, `admit` also runs for an account the
+  callback creates directly from a provider-verified email.
 - The explicit invitation link remains password-based. A new social account can also consume a
   matching invitation automatically when its provider-verified email matches the invitation and
   the registration policy allows account creation. Linking a provider to an existing account does

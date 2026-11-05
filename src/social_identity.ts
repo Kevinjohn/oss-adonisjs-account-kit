@@ -164,7 +164,7 @@ export function socialIdentityService(deps: Dependencies) {
       current: CurrentAccountInput
       identityId: number
     }): Promise<SocialIdentity> {
-      const relations = await this.list({ current: input.current })
+      const relations = await listSocialIdentities(deps, { current: input.current })
       const found = relations.find((item) => item.id === input.identityId)
       if (!found) throw new SocialUserNotFoundError()
       return found

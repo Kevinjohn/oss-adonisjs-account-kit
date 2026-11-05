@@ -133,8 +133,6 @@ const oauthCallback: SocialHandler = async ({
   const saved = guard.strategy === 'session' ? sessionState(context, input.state) : null
   if (saved && saved.provider !== provider) throw new SocialTransactionError()
   const intent = saved?.intent ?? (input.intent as SocialIntent | undefined) ?? 'login'
-  if (guard.strategy === 'access_tokens' && !isPost && intent !== 'login')
-    throw new SocialTransactionError()
   const current: CurrentAccountInput | undefined =
     intent === 'login' || intent === 'confirm' ? undefined : await guard.current(context)
   const result = await social.callback({
@@ -143,11 +141,17 @@ const oauthCallback: SocialHandler = async ({
     intent,
     current,
     callback: context,
+    admit: extension.admit,
   })
   if (saved) {
     forgetSessionState(context, input.state)
+    // The continuation gets a fresh lifetime, like its database row; it does not inherit begin's.
     if ('continuation' in result && result.continuation)
-      rememberSessionState(context, result.continuation, saved)
+      rememberSessionState(context, result.continuation, {
+        verifier: saved.verifier,
+        intent: saved.intent,
+        provider: saved.provider,
+      })
   }
   return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
 }

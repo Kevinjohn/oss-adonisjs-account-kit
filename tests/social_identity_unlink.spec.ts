@@ -33,6 +33,19 @@ test.group('social unlink atomicity', (group) => {
     return relation
   }
 
+  test('get works when taken off the service object', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: { providers: { google: provider('detached-get', user.email, true) } },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const relation = await linkGoogle(account, user.id)
+    const { get } = account.socialAuthentication
+    assert.deepEqual(await get({ current: current(user.id), identityId: relation.id }), relation)
+  })
+
   test('unlink advances the credential revision and ends the caller session', async ({
     assert,
   }) => {

@@ -243,7 +243,7 @@ export async function socialCallback(
               continuation,
             }
           }
-          const created = await createAccount(deps, trx, name, profile)
+          const created = await createAccount(deps, trx, name, profile, undefined, input.admit)
           if (created.invitationId !== null)
             accepted = { invitationId: created.invitationId, userId: created.user.id }
           if (!profile.emailVerified) {
