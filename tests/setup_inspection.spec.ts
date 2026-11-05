@@ -159,6 +159,36 @@ test('quoted and template examples cannot invent guards or models', async ({ ass
   }
 })
 
+test('route inventory applies literal group prefixes and skips unknown ones', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  try {
+    await mkdir(join(root, 'start'))
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      [
+        "import router from '@adonisjs/core/services/router'",
+        'router',
+        '  .group(() => {',
+        "    router.post('/auth/login', handler)",
+        "    router.group(() => { router.get('/', handler) }).prefix('/inner/')",
+        '  })',
+        "  .prefix('/api/v1')",
+        '  .use(middleware.auth())',
+        "router.group(() => { router.get('/hidden', handler) }).prefix(dynamic)",
+      ].join('\n')
+    )
+    const state = await inspectSetup(root)
+    assert.deepEqual(state.routeDefinitions, [
+      { method: 'POST', path: '/api/v1/auth/login' },
+      { method: 'GET', path: '/api/v1/inner' },
+    ])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('route inventory reads actual router calls, not quoted examples', async ({ assert }) => {
   const root = await applicationRoot()
   try {
