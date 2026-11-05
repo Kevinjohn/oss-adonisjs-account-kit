@@ -359,6 +359,35 @@ syncBuiltinESMExports()
     })
   }
 
+  test('a failed command reap is reported once', async (t) => {
+    const f = await fixture()
+    t.cleanup(f.cleanup)
+    const preload = join(f.root, 'command_reap_probe.mjs')
+    await writeFile(
+      preload,
+      `
+import cp from 'node:child_process'
+import { syncBuiltinESMExports } from 'node:module'
+const originalSpawn = cp.spawn
+const originalKill = process.kill.bind(process)
+let migrationPid
+cp.spawn = (...args) => {
+  const child = originalSpawn(...args)
+  if (args[1]?.[1] === 'migration:fresh') migrationPid = child.pid
+  return child
+}
+process.kill = (pid, signal) => {
+  if (pid === -migrationPid && signal === 0) return true
+  return originalKill(pid, signal)
+}
+syncBuiltinESMExports()
+`
+    )
+    const result = await f.start(['doctor'], {}, preload).done
+    assert.equal(result.code, 1, result.output)
+    assert.equal(result.output.match(/did not exit after SIGKILL/g)?.length, 1, result.output)
+  })
+
   test('interrupted never-ready child cancels readiness even when exit and reap stay pending', async (t) => {
     const f = await fixture()
     t.cleanup(f.cleanup)

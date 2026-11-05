@@ -182,6 +182,9 @@ in 778 ms on an explicit password-hash mismatch after the expired POST:
 pnpm test --files=account_journey.spec.ts --tests='malformed and expired reset POSTs are rejected without changing credentials or proof state'
 ```
 
+That test has since moved to `password_reset_journey.spec.ts`; pass
+`--files=password_reset_journey.spec.ts` to repeat the check, or the command selects no tests.
+
 The original vendor archive was reinstalled; its digest and installed member were checked against
 the original bytes. The same command then passed 1/1 in 991 ms. The candidate archive itself was
 never changed. These tests capture notifications in process and prove link generation and

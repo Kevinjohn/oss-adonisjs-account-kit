@@ -13,7 +13,7 @@ const docsInput = /^(?!tests\/|examples\/|stubs\/|bin\/).+\.(?:ts|mts|cts)$/
 const pgService =
   /^(?:bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.ts)$/
 const checkChanged =
-  /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_plan\.spec\.ts)$/
+  /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_(?:plan|process)\.spec\.ts)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
 // Markdown never qualifies: tests/docs_links.spec.ts reads tracked Markdown except changelogs.
 const outsideJapa =
@@ -122,7 +122,12 @@ export function planChecks(
   step(
     'check-changed',
     any(checkChanged),
-    ['pnpm', 'quick:test', '--files=tests/tooling/check_changed_plan.spec.ts'],
+    [
+      'pnpm',
+      'quick:test',
+      '--files=tests/tooling/check_changed_plan.spec.ts',
+      '--files=tests/tooling/check_changed_process.spec.ts',
+    ],
     {
       tests: 'japa',
       skip: 'check:changed and its tests unchanged',
