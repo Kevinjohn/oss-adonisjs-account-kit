@@ -63,6 +63,9 @@ test.group('account-kit:doctor', (group) => {
       failures(await runDoctor(input({ appUrl: 'localhost:3333', environment: 'development' }))),
       ['APP_URL: must start with http:// or https://']
     )
+    assert.deepEqual(failures(await runDoctor(input({ appUrl: '/relative' }))), [
+      'APP_URL: is not an absolute URL',
+    ])
   })
 
   test('names each missing table for the enabled capabilities', async ({ assert }) => {
@@ -252,6 +255,41 @@ test.group('account-kit:doctor', (group) => {
         makeConfig({ users: options.users, enabled: ['registration'] })
       )
       assert.deepEqual(failures(await runDoctor(input({ config: passwordOnly }))), [])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
+  test('reports user metadata that cannot be resolved', async ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const config = defineConfig(
+      makeConfig({
+        users: {
+          ...users,
+          resolveMetadata: async () => {
+            throw new Error('metadata unavailable')
+          },
+        },
+      })
+    )
+    assert.deepEqual(failures(await runDoctor(input({ config }))), [
+      'Users table: metadata unavailable',
+    ])
+  })
+
+  test('sign-in requires the session registry table', async ({ assert }) => {
+    const withLogin = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+    )
+    try {
+      await kit.db.connection().schema.dropTable('account_sessions')
+      assert.deepEqual(failures(await runDoctor(input({ config: withLogin }))), [
+        'Package tables: missing account_sessions',
+      ])
+      assert.deepEqual(failures(await runDoctor(input())), [])
     } finally {
       await resetSchema(kit)
     }
