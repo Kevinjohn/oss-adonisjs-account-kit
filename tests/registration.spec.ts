@@ -46,7 +46,6 @@ test.group('registration', (group) => {
     const account = new AccountKit({
       config,
       db: kit.db,
-      encryption: kit.encryption,
       limiter: kit.limiter,
     })
     const user = await account.registration.register({

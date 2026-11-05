@@ -175,7 +175,6 @@ test.group('invitation budgets', (group) => {
         config,
         db: kit.db,
         limiter: limiter as never,
-        encryption: kit.encryption,
       })
       await assert.rejects(
         () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
@@ -212,7 +211,6 @@ test.group('invitation budgets', (group) => {
           config,
           db: single.db,
           limiter: limiter as never,
-          encryption: single.encryption,
         })
         const actor = await insertUser(single, { email: 'actor@example.test' })
         const invitation = await account.invitations.send({

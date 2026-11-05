@@ -36,6 +36,8 @@
 - Breaking: `authentication.canAccess` must resolve to `true` or `false` on every sign-in and
   session check. Any other value, such as `1`, `0` or a row, now throws instead of allowing or
   denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
+- Deprecated: the `encryption` input to `new AccountKit(...)` is ignored. Remove it from direct
+  constructor calls; it is still accepted for source compatibility.
 
 ## 0.2.0 - 2026-11-03
 
