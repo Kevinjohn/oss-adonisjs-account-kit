@@ -167,8 +167,19 @@ async function beginTransaction(
   ) => Promise<Trx>
   const trx = await begin(undefined, { isolationLevel: 'read committed' })
   // A zone with daylight saving moves UTC wall times in its spring-forward hour on write.
-  const [rows] = await trx.rawQuery('select @@session.time_zone as zone')
-  const zone = (rows as Array<{ zone?: unknown }>)[0]?.zone
+  let zone: unknown
+  try {
+    const [rows] = await trx.rawQuery('select @@session.time_zone as zone')
+    zone = (rows as Array<{ zone?: unknown }>)[0]?.zone
+  } catch (error) {
+    // The transaction is open; release it before reporting the failed probe.
+    try {
+      await trx.rollback()
+    } catch (failure) {
+      throw combineFailures(error, [failure])
+    }
+    throw error
+  }
   if (zone === '+00:00' || zone === 'UTC') return trx
   await trx.rollback()
   throw new Error(

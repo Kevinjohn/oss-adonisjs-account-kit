@@ -47,10 +47,13 @@ test.group('package transaction isolation', (group) => {
   })
 
   test('every MySQL session must run at UTC', async ({ assert }) => {
-    const fakeDb = (zone: string) => {
+    const fakeDb = (zone: string | Error) => {
       const calls: string[] = []
       const trx = {
-        rawQuery: async () => [[{ zone }]],
+        rawQuery: async () => {
+          if (zone instanceof Error) throw zone
+          return [[{ zone }]]
+        },
         rollback: async () => void calls.push('rollback'),
         // Reached only once the zone check lets the transaction through.
         getWriteClient: () => {
@@ -80,6 +83,10 @@ test.group('package transaction isolation', (group) => {
       const { db } = fakeDb(zone)
       await assert.rejects(() => transaction(db, async () => {}), /zone accepted/)
     }
+    // A probe that fails still releases the transaction it opened.
+    const { db, calls } = fakeDb(new Error('probe failed'))
+    await assert.rejects(() => transaction(db, async () => {}), /probe failed/)
+    assert.deepEqual(calls, ['rollback'])
   })
 
   test('a SQLite connection must use better-sqlite3', async ({ assert }) => {
