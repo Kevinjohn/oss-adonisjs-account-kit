@@ -323,23 +323,42 @@ test.group('managed existing-guard adapters', () => {
   test('application-owned route middleware enforces the same account revision gate', async ({
     assert,
   }) => {
-    let next = false
-    const handler = managedAccountMiddleware({
-      kit: async () =>
-        ({
-          managedHttp: { assertGuard: () => {} },
-          authentication: {
-            requireActive: async (input: unknown) => {
-              assert.deepEqual(input, { userId: 42, revision: 'stamp' })
+    const calls: string[] = []
+    const middleware = (active: boolean, refuse: boolean) =>
+      managedAccountMiddleware({
+        kit: async () =>
+          ({
+            managedHttp: { assertGuard: () => calls.push('assertGuard') },
+            authentication: {
+              requireActive: async (input: unknown) => {
+                calls.push(`requireActive:${JSON.stringify(input)}`)
+                if (refuse) throw new Error('refused')
+              },
+              current: async (input: unknown) => {
+                calls.push(`current:${JSON.stringify(input)}`)
+                if (refuse) throw new Error('refused')
+              },
             },
-          },
-        }) as never,
-      guard: { current: async () => ({ userId: 42, revision: 'stamp' }) } as never,
-      active: true,
-    })
-    await handler({} as never, async () => {
-      next = true
-    })
-    assert.isTrue(next)
+          }) as never,
+        guard: { current: async () => ({ userId: 42, revision: 'stamp' }) } as never,
+        active,
+      })
+    const next = async () => {
+      calls.push('next')
+    }
+    const input = JSON.stringify({ userId: 42, revision: 'stamp' })
+
+    await middleware(true, false)({} as never, next)
+    assert.deepEqual(calls, ['assertGuard', `requireActive:${input}`, 'next'])
+
+    calls.length = 0
+    await middleware(false, false)({} as never, next)
+    assert.deepEqual(calls, ['assertGuard', `current:${input}`, 'next'])
+
+    for (const active of [true, false]) {
+      calls.length = 0
+      await assert.rejects(() => middleware(active, true)({} as never, next), 'refused')
+      assert.notInclude(calls, 'next')
+    }
   })
 })
