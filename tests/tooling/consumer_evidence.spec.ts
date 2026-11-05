@@ -161,6 +161,7 @@ test('a failure before settings initialize writes a failed incomplete evidence r
         encoding: 'utf8',
         env: {
           ...process.env,
+          TMPDIR: directory,
           CONSUMER_EVIDENCE_PATH: evidencePath,
           CANDIDATE_REVISION: 'environment-revision',
         },
@@ -209,6 +210,7 @@ test('final candidate evidence redacts secret metadata without changing its JSON
         encoding: 'utf8',
         env: {
           ...process.env,
+          TMPDIR: directory,
           DB_PASSWORD: secret,
           CONSUMER_EVIDENCE_PATH: evidencePath,
           PATH: `${commandDirectory}:${process.env.PATH ?? ''}`,
@@ -277,6 +279,7 @@ test('redaction preserves evidence keys and tool-owned values', () => {
           encoding: 'utf8',
           env: {
             ...process.env,
+            TMPDIR: directory,
             DB_PASSWORD: password,
             CONSUMER_EVIDENCE_PATH: evidencePath,
           },
@@ -313,7 +316,7 @@ test('a candidate evidence failure writes a failed record with collected source 
       {
         cwd: root,
         encoding: 'utf8',
-        env: { ...process.env, CONSUMER_EVIDENCE_PATH: evidencePath },
+        env: { ...process.env, TMPDIR: directory, CONSUMER_EVIDENCE_PATH: evidencePath },
       }
     )
     assert.notEqual(result.status, 0, result.stdout + result.stderr)
