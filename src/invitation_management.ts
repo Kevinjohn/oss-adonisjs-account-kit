@@ -16,7 +16,6 @@ import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import { decodeInvitationCursor, encodeInvitationCursor } from './invitation_cursor.js'
-import { afterCreation, orderByCreation } from './creation_order.js'
 import type {
   Invitation,
   InvitationPage,
@@ -170,9 +169,18 @@ export async function listInvitations(
   const query = deps.db
     .from('account_invitations')
     .where('expires_at', '>', sqlTimestamp(deps.db))
+    .orderBy('created_at', 'asc')
+    .orderBy('id', 'asc')
     .limit(limit + 1)
-  orderByCreation(query, deps.db)
-  if (position) afterCreation(query, deps.db, position)
+  if (position) {
+    // The cursor carries ISO 8601 UTC; compare in the form this engine stores.
+    const createdAt = sqlTimestamp(deps.db, DateTime.fromISO(position.createdAt, { zone: 'utc' }))
+    query.where((builder) =>
+      builder
+        .where('created_at', '>', createdAt)
+        .orWhere((nested) => nested.where('created_at', createdAt).where('id', '>', position.id))
+    )
+  }
   const rows = await query
   const items = rows.slice(0, limit).map(toInvitation)
   const last = rows.length > limit ? rows[limit - 1] : null

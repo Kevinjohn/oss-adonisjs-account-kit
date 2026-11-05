@@ -1,7 +1,7 @@
 // Pages through admission records for an approver.
-import { afterCreation, orderByCreation } from '../creation_order.js'
+import { DateTime } from 'luxon'
 import { AuthorizationError, InvalidInputError } from '../errors.js'
-import { readIsoTimestamp } from '../timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from '../timestamps.js'
 import type { UserId } from '../types.js'
 import { requireApproval } from './capability.js'
 import { decodeAdmissionCursor, encodeAdmissionCursor } from './cursor.js'
@@ -47,11 +47,20 @@ export async function listAdmissions(
   const query = deps.db
     .from(admissionTable)
     .whereNotNull('user_id')
+    .orderBy('created_at', 'asc')
+    .orderBy('id', 'asc')
     .limit(limit + 1)
-  orderByCreation(query, deps.db)
   if (input.status === 'pending') query.whereNotNull('requested_at').whereNull('approval_status')
   else if (input.status) query.where('approval_status', input.status)
-  if (position) afterCreation(query, deps.db, position)
+  if (position) {
+    // The cursor carries ISO 8601 UTC; compare in the form this engine stores.
+    const createdAt = sqlTimestamp(deps.db, DateTime.fromISO(position.createdAt, { zone: 'utc' }))
+    query.where((builder) =>
+      builder
+        .where('created_at', '>', createdAt)
+        .orWhere((nested) => nested.where('created_at', createdAt).where('id', '>', position.id))
+    )
+  }
   const rows = (await query) as AdmissionRow[]
   const page = rows.slice(0, limit)
   const items: AdmissionRecord[] = []

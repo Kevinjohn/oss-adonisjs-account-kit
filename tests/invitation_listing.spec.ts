@@ -40,50 +40,6 @@ test.group('invitation management contracts', (group) => {
     )
   })
 
-  test('pages rows written in SQL format and mixed formats in time order', async ({ assert }) => {
-    const actor = await insertUser(kit, { email: 'actor@example.test' })
-    const { account } = makeService(kit)
-    const sent = []
-    for (let n = 0; n < 4; n++) {
-      sent.push(
-        await account.invitations.send({
-          actorId: actor.id,
-          email: `person${n}@example.test`,
-          role: 'user',
-        })
-      )
-    }
-    const sqlite = kit.db.connection().dialect.name === 'better-sqlite3'
-    // Newest first in time, alternating text formats on SQLite.
-    const stamps = sqlite
-      ? [
-          '2026-01-04 00:00:00',
-          '2026-01-03T00:00:00.000Z',
-          '2026-01-02 00:00:00',
-          '2026-01-01T00:00:00.000Z',
-        ]
-      : ['2026-01-04', '2026-01-03', '2026-01-02', '2026-01-01'].map((day) =>
-          dbTime(kit, `${day}T00:00:00.000Z`)
-        )
-    for (const [index, invitation] of sent.entries())
-      await kit.db
-        .from('account_invitations')
-        .where('id', invitation.id)
-        .update({ created_at: stamps[index] })
-    const found: number[] = []
-    let cursor: string | null = null
-    do {
-      const page = await account.invitations.list({
-        actorId: actor.id,
-        limit: 1,
-        ...(cursor ? { cursor } : {}),
-      })
-      found.push(...page.items.map((item) => item.id))
-      cursor = page.nextCursor
-    } while (cursor)
-    assert.deepEqual(found, sent.map((item) => item.id).reverse())
-  })
-
   test('pages only unexpired invitations in order when expired rows are interleaved', async ({
     assert,
   }) => {

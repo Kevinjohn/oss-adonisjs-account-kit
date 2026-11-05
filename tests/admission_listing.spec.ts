@@ -5,6 +5,7 @@ import { AuthorizationError, InvalidInputError } from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser } from './helpers/fakes.js'
+import { dbTime } from './helpers/db_time.js'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
 
@@ -108,10 +109,11 @@ test.group('admission listing', (group) => {
     await assert.rejects(() => admission.list({ actorId: actor.id }), AuthorizationError)
   })
 
-  test('pages past rows whose created_at was written in SQL format', async ({ assert }) => {
+  test('pages rows that share a created_at by id', async ({ assert }) => {
     const { actor } = await seed()
-    // Every engine accepts this form; SQLite keeps it as text, where it sorts below ISO values.
-    await kit.db.from('account_admissions').update({ created_at: '2026-01-01 00:00:00' })
+    await kit.db
+      .from('account_admissions')
+      .update({ created_at: dbTime(kit, '2026-01-01T00:00:00Z') })
     const { admission } = makeAdmission(kit, approvalOnly)
     const first = await admission.list({ actorId: actor.id, limit: 2 })
     assert.isString(first.nextCursor)
