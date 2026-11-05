@@ -3,12 +3,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import HttpExceptionHandler from '#exceptions/handler'
 
-/** A plain form post: no X-Inertia header, camelCase secrets in the body. */
-function plainFormContext() {
+/** A form post with camelCase secrets in the body, sent by Inertia or as a plain form. */
+function formContext(inertia: boolean) {
   const flashed: unknown[] = []
   const ctx = {
     request: {
-      header: () => undefined,
+      header: (name: string) => (inertia && name === 'X-Inertia' ? 'true' : undefined),
       method: () => 'POST',
       url: () => '/settings/password',
       all: () => ({
@@ -30,13 +30,16 @@ function plainFormContext() {
 }
 
 test.group('CSRF failure flash', () => {
-  test('a plain form post keeps only non-secret fields', async ({ assert }) => {
-    const { ctx, flashed } = plainFormContext()
-    await new HttpExceptionHandler().handle(new shieldErrors.E_BAD_CSRF_TOKEN(), ctx)
-    assert.notInclude(
-      flashed.map((entry) => (entry as unknown[])[0]),
-      'flashExcept'
-    )
-    assert.deepInclude(flashed, ['flashOnly', ['fullName', 'email']])
-  })
+  for (const inertia of [true, false])
+    test(`${inertia ? 'an Inertia' : 'a plain'} form post keeps only non-secret fields`, async ({
+      assert,
+    }) => {
+      const { ctx, flashed } = formContext(inertia)
+      await new HttpExceptionHandler().handle(new shieldErrors.E_BAD_CSRF_TOKEN(), ctx)
+      assert.notInclude(
+        flashed.map((entry) => (entry as unknown[])[0]),
+        'flashExcept'
+      )
+      assert.deepInclude(flashed, ['flashOnly', ['fullName', 'email']])
+    })
 })

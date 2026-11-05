@@ -73,8 +73,8 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       return ctx.response.redirect((await proofRecovery(ctx.request))!, false)
     }
     // Shield re-flashes every field except snake_case password names, which would store this
-    // app's camelCase password fields in the session for a plain form post.
-    if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN && !ctx.request.header('X-Inertia')) {
+    // app's camelCase password fields in the session.
+    if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN) {
       ctx.session.flashOnly(['fullName', 'email'])
       ctx.session.flash('error', 'The form expired. Please try again.')
       return ctx.response.redirect().back()
@@ -101,11 +101,6 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * @note You should not attempt to send a response from this method.
    */
   async report(error: unknown, ctx: HttpContext) {
-    // Account Kit wraps transport and observer failures as `cause`; log the code, not the cause.
-    if (error instanceof errors.AccountKitError) {
-      if (error.status >= 500) ctx.logger.error({ code: error.code }, error.message)
-      return
-    }
     return super.report(error, ctx)
   }
 }

@@ -18,7 +18,7 @@ const loggerConfig = defineConfig({
       /**
        * Logger name shown in log records.
        */
-      name: env.get('APP_NAME', 'account-kit-example'),
+      name: env.get('APP_NAME'),
 
       /**
        * Minimum level to output (trace, debug, info, warn, error, fatal).
