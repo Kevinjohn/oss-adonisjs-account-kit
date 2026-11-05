@@ -277,6 +277,32 @@ test.group('invitations.send', (group) => {
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })
 
+  test('probing registered addresses spends the inviter budget', async ({ assert }) => {
+    const actor = await createActor()
+    await createActor('registered@example.test')
+    const { account } = service()
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await assert.rejects(
+        () =>
+          account.invitations.send({
+            actorId: actor.id,
+            email: 'registered@example.test',
+            role: 'user',
+          }),
+        EmailAlreadyRegisteredError
+      )
+    }
+    await assert.rejects(
+      () =>
+        account.invitations.send({
+          actorId: actor.id,
+          email: 'registered@example.test',
+          role: 'user',
+        }),
+      'Too many requests'
+    )
+  })
+
   test('independent concurrent sends yield one invitation and one pending error', async ({
     assert,
   }) => {

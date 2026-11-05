@@ -127,12 +127,13 @@ export async function sendInvitation(
   const actor = await requireUser(deps.config, input.actorId)
   if ((await deps.config.authorize.invite(actor, input.role)) !== true)
     throw new AuthorizationError()
-  if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
+  // Spend the actor's budget first: the registered-address answer below must not be free to probe.
   await throttlerOf(deps).consume(
     'invitation:send:actor',
     String(actor.id),
     deps.config.invitationThrottle.sendActor
   )
+  if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
   await throttlerOf(deps).consume(
     'invitation:send:recipient',
     email,
