@@ -175,7 +175,28 @@ export async function planSetup(
     state.files['config/account_kit_setup.json'] ?? null,
     'Persist six-pillar application choices without secrets'
   )
+  // With the saved choices unchanged, a differing generated config or an existing migration was
+  // edited by the owner or written by an earlier version. Keep it and say so; blocking would turn
+  // every upgrade or config edit into a permanent `--check` failure.
+  const choicesUnchanged =
+    state.existingChoices !== null &&
+    JSON.stringify(state.existingChoices) === JSON.stringify(choices)
   for (const change of changes) {
+    const keptGenerated =
+      change.path === 'config/account_kit.ts' || change.path === '.env.account-kit.example'
+    const keptMigration = /^database\/migrations\/[^/]+_account_kit_[a-z_]+\.ts$/.test(change.path)
+    if (change.action === 'conflict' && choicesUnchanged && (keptMigration || keptGenerated)) {
+      change.action = 'unchanged'
+      change.content = state.files[change.path]!
+      diagnostic(
+        diagnostics,
+        change.path,
+        keptMigration
+          ? 'Existing migration differs from this version; setup keeps it. Add a new migration for any schema change'
+          : 'Existing file differs from what setup generates for the saved choices; setup keeps it',
+        'action'
+      )
+    }
     if (change.action === 'conflict')
       diagnostic(
         diagnostics,
