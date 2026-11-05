@@ -13,7 +13,6 @@ test.group('managed transaction wrapper', (group) => {
   test('waits asynchronously for the SQLite writer before entering the callback', async ({
     assert,
   }) => {
-    if (locksRows) return
     let releaseFirst!: () => void
     let firstWrote!: () => void
     const firstReady = new Promise<void>((resolve) => {
@@ -42,12 +41,11 @@ test.group('managed transaction wrapper', (group) => {
     await Promise.all([first, second])
     assert.equal(attempts, 1)
     assert.lengthOf(await kit.db.from('users'), 2)
-  })
+  }).skip(locksRows, 'SQLite serializes writers instead of locking rows')
 
   test('rolls back partial writes before retry and restores each connection timeout', async ({
     assert,
   }) => {
-    if (locksRows) return
     let attempts = 0
     await transaction(kit.db, async (trx) => {
       attempts++
@@ -62,10 +60,9 @@ test.group('managed transaction wrapper', (group) => {
       const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
       assert.equal(current[0].timeout, 5000)
     })
-  })
+  }).skip(locksRows, 'SQLite serializes writers instead of locking rows')
 
   test('stops SQLite busy retries at a bounded deadline', async ({ assert }) => {
-    if (locksRows) return
     let attempts = 0
     const started = performance.now()
     try {
@@ -85,12 +82,13 @@ test.group('managed transaction wrapper', (group) => {
       const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
       assert.equal(current[0].timeout, 5000)
     })
-  }).timeout(10_000)
+  })
+    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+    .timeout(10_000)
 
   test('restores a custom SQLite busy timeout after success and ordinary errors', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 321, sqlitePoolMax: 1 })
     try {
       await resetSchema(customKit)
@@ -120,12 +118,11 @@ test.group('managed transaction wrapper', (group) => {
     } finally {
       await customKit.close()
     }
-  })
+  }).skip(locksRows, 'SQLite serializes writers instead of locking rows')
 
   test('requires the installed SQLite lock singleton before entering a one-connection callback', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
     try {
       await resetSchema(customKit)
@@ -152,12 +149,11 @@ test.group('managed transaction wrapper', (group) => {
     } finally {
       await customKit.close()
     }
-  })
+  }).skip(locksRows, 'SQLite serializes writers instead of locking rows')
 
   test('DELETE-journal commit contention yields to a reader and commits before returning', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 5000, sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     let native:
@@ -271,12 +267,13 @@ test.group('managed transaction wrapper', (group) => {
       if (native?.inTransaction) native.exec('ROLLBACK')
       await customKit.close()
     }
-  }).timeout(8000)
+  })
+    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+    .timeout(8000)
 
   test('DELETE-journal commit exhaustion rolls back and releases its pooled connection', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqliteBusyTimeout: 5000, sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     const natives: Array<{
@@ -349,12 +346,13 @@ test.group('managed transaction wrapper', (group) => {
       if (reader && !reader.isCompleted) await reader.rollback()
       await customKit.close()
     }
-  }).timeout(10_000)
+  })
+    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+    .timeout(10_000)
 
   test('pool-one failed native rollback releases the reservation before a queued read and next write', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
     const client = customKit.db.connection().getWriteClient().client
     const native = (await client.acquireConnection()) as {
@@ -417,12 +415,13 @@ test.group('managed transaction wrapper', (group) => {
       native.prepare = originalPrepare
       await customKit.close()
     }
-  }).timeout(5000)
+  })
+    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+    .timeout(5000)
 
   test('pool-one committed timeout restoration fault keeps outcome known and drains queued work', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 1 })
     const client = customKit.db.connection().getWriteClient().client
     await resetSchema(customKit)
@@ -474,12 +473,13 @@ test.group('managed transaction wrapper', (group) => {
       native.pragma = original
       await customKit.close()
     }
-  }).timeout(5000)
+  })
+    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+    .timeout(5000)
 
   test('a busy-coded commit listener error does not replay committed writes', async ({
     assert,
   }) => {
-    if (locksRows) return
     const failure = Object.assign(new Error('after commit failed'), { code: 'SQLITE_BUSY' })
     let attempts = 0
     try {
@@ -500,5 +500,5 @@ test.group('managed transaction wrapper', (group) => {
     }
     assert.equal(attempts, 1)
     assert.lengthOf(await kit.db.from('users').where('email', 'once@example.test'), 1)
-  })
+  }).skip(locksRows, 'SQLite serializes writers instead of locking rows')
 })

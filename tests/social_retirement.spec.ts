@@ -9,8 +9,14 @@ test.group('social provider retirement inventory', (group) => {
 
   test('uses configured user table and string IDs while excluding pending identities', async ({
     assert,
+    cleanup,
   }) => {
     await resetSchema(kit, { usersTable: 'account_users', stringUserIds: true })
+    // Restore the default schema the group's other tests and hooks expect.
+    cleanup(async () => {
+      await resetSchema(kit)
+      await kit.db.connection().schema.dropTableIfExists('account_users')
+    })
     const now = dbTime(kit)
     await kit.db.table('account_users').insert([
       { id: 'acct-google', email: 'google@example.test', password: null, created_at: now },

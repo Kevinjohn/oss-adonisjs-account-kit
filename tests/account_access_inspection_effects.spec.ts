@@ -252,7 +252,6 @@ test.group('account access inspection side effects and dependency failures', (gr
   test('INS-09 propagates a PostgreSQL COMMIT rejection without returning a snapshot', async ({
     assert,
   }) => {
-    if (testEngine !== 'pg') return
     await kit.db
       .rawQuery(
         'CREATE TABLE test_inspection_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
@@ -279,12 +278,13 @@ test.group('account access inspection side effects and dependency failures', (gr
     } finally {
       await kit.db.connection().schema.dropTableIfExists('test_inspection_deferred_commit')
     }
-  }).skip(testEngine !== 'pg')
+  })
+    .skip(testEngine !== 'pg', 'PostgreSQL only')
+    .skip(testEngine !== 'pg')
 
   test('INS-09 reports a SQLite cleanup failure without returning a snapshot', async ({
     assert,
   }) => {
-    if (testEngine !== 'sqlite') return
     const customKit = await bootTestApp()
     let native: { pragma(sql: string, options?: { simple: boolean }): unknown } | undefined
     let original: ((sql: string, options?: { simple: boolean }) => unknown) | undefined
@@ -315,5 +315,7 @@ test.group('account access inspection side effects and dependency failures', (gr
       if (native && original) native.pragma = original
       await customKit.close()
     }
-  }).skip(testEngine !== 'sqlite')
+  })
+    .skip(testEngine !== 'sqlite', 'SQLite only')
+    .skip(testEngine !== 'sqlite')
 })

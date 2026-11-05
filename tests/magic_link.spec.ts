@@ -241,7 +241,10 @@ test.group('magicLink config', (group) => {
         defineConfig({ ...base(), notify: { ...base().notify, magicLinkProvision: undefined } }),
       /notify\.magicLinkProvision must be a function/
     )
-    assert.throws(() => defineConfig({ ...base(), expiresIn: { magicLink: 'soon' } }))
+    assert.throws(
+      () => defineConfig({ ...base(), expiresIn: { magicLink: 'soon' } }),
+      /TTL must be a positive duration/
+    )
     // Off by default.
     assert.notInclude(defineConfig({ ...base(), enabled: undefined }).enabled, 'magicLinkLogin')
   })

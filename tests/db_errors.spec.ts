@@ -36,11 +36,14 @@ test.group('database helper error recognition', (group) => {
     )
   })
 
-  test('does not confuse an email-prefixed unique column with users.email', async ({ assert }) => {
+  test('does not confuse an email-prefixed unique column with users.email', async ({
+    assert,
+    cleanup,
+  }) => {
+    cleanup(() => resetSchema(kit))
     await kit.db.connection().schema.alterTable('users', (table) => {
       table.string('email_alias').unique()
     })
-    group.each.teardown(() => resetSchema(kit))
     await kit.db.table('users').insert({
       email: 'first@example.test',
       email_alias: 'same-alias',

@@ -405,17 +405,17 @@ test.group('authentication.withCurrent', (group) => {
   })
 
   test('holds the account row lock while run executes', async ({ assert }) => {
-    if (!locksRows) return
     await insertUser(kit)
     const { account } = service()
     const input = await signIn(account)
     await account.authentication.withCurrent(input, async ({ account: current }) => {
       await assertUserLockIsHeld(kit, assert, current.id)
     })
-  }).timeout(10_000)
+  })
+    .skip(!locksRows, 'only engines that lock rows')
+    .timeout(10_000)
 
   test('a revocation waits for run and then invalidates the sign-in', async ({ assert }) => {
-    if (!locksRows) return
     await insertUser(kit)
     const { account } = service()
     const input = await signIn(account)
@@ -448,10 +448,11 @@ test.group('authentication.withCurrent', (group) => {
     await Promise.all([writer, revoke])
     assert.deepEqual(order, ['run', 'revoke'])
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
-  }).timeout(10_000)
+  })
+    .skip(!locksRows, 'only engines that lock rows')
+    .timeout(10_000)
 
   test('a logout waits for run and then invalidates the sign-in', async ({ assert }) => {
-    if (!locksRows) return
     await insertUser(kit)
     const { account } = service()
     const input = await signIn(account)
@@ -483,10 +484,11 @@ test.group('authentication.withCurrent', (group) => {
     await Promise.all([writer, logout])
     assert.deepEqual(order, ['run', 'logout'])
     await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
-  }).timeout(10_000)
+  })
+    .skip(!locksRows, 'only engines that lock rows')
+    .timeout(10_000)
 
   test('rejects a sign-in deleted after current read it', async ({ assert }) => {
-    if (!locksRows) return
     await insertUser(kit)
     let input: CurrentAccountInput | undefined
     const { account } = makeService(kit, {
@@ -511,5 +513,7 @@ test.group('authentication.withCurrent', (group) => {
       InvalidSessionError
     )
     assert.isFalse(ran)
-  }).timeout(10_000)
+  })
+    .skip(!locksRows, 'only engines that lock rows')
+    .timeout(10_000)
 })
