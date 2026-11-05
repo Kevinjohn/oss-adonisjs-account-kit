@@ -13,7 +13,10 @@ export class AccountKitError extends Exception {
   static status = 500
   declare code: string
 
-  /** The translation key for this error's current machine-readable code. */
+  /**
+   * `errors.<code>` for this error's own code. Responses from `accountErrorResponse` and the
+   * managed routes use the public code instead, which can differ; translate those keys.
+   */
   get identifier(): string {
     return `errors.${this.code}`
   }
