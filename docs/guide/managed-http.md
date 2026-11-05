@@ -62,11 +62,18 @@ For a local API walkthrough, replace the generated `notify` block with the maint
 log callback before starting the server:
 
 ```ts
+import app from '@adonisjs/core/services/app'
 import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 
-notify: createLogNotifications({ brandName: 'My App', environment: 'development' }),
+notify: createLogNotifications({
+  brandName: 'My App',
+  environment: app.inProduction ? 'production' : 'development',
+}),
 onCredentialsChangedTransaction: async () => {},
 ```
+
+Pass the real environment: `createLogNotifications` refuses to run in production only when it is
+told it is in production.
 
 See the [development-mail recipe](../recipes/development-mail.md) for the full generated-config
 edit. The generated `onCredentialsChangedTransaction` throws until replaced. Account Kit already
