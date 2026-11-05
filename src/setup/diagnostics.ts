@@ -1,5 +1,6 @@
 import type { SetupDiagnostic } from './types.js'
 
+/** Selected environment values read from the process or the application's `.env` files. */
 export type SelectedSetupOrigins = {
   values: Record<string, string | null>
   errors: Record<string, { message: string; indirect: boolean }>

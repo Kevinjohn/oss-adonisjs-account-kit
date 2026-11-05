@@ -1,4 +1,5 @@
-import { readdir } from 'node:fs/promises'
+import { readdir, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
@@ -39,6 +40,37 @@ test.group('setup mail prerequisites', () => {
       } finally {
         if (prior === undefined) delete process.env.ACCOUNT_MAIL_FROM
         else process.env.ACCOUNT_MAIL_FROM = prior
+      }
+    })
+  })
+
+  test('sender and transport set only in .env count before the app boots', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      choices.mail.integration = 'adonisjs-mail'
+      choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
+      choices.mail.transportEnv = 'MAIL_MAILER'
+      const prior = { from: process.env.ACCOUNT_MAIL_FROM, mailer: process.env.MAIL_MAILER }
+      delete process.env.ACCOUNT_MAIL_FROM
+      delete process.env.MAIL_MAILER
+      const readinessActions = (plan: Awaited<ReturnType<typeof planSetup>>) =>
+        plan.diagnostics.filter(
+          ({ field, message }) =>
+            (field === 'mail.senderEnv' || field === 'mail.transportEnv') &&
+            message.includes('must be set before readiness')
+        )
+      try {
+        assert.lengthOf(readinessActions(await planSetup(choices, state)), 2)
+        await writeFile(
+          join(state.root, '.env'),
+          'ACCOUNT_MAIL_FROM=person@example.test\nMAIL_MAILER=smtp\n'
+        )
+        assert.lengthOf(readinessActions(await planSetup(choices, state)), 0)
+      } finally {
+        await rm(join(state.root, '.env'), { force: true })
+        if (prior.from === undefined) delete process.env.ACCOUNT_MAIL_FROM
+        else process.env.ACCOUNT_MAIL_FROM = prior.from
+        if (prior.mailer === undefined) delete process.env.MAIL_MAILER
+        else process.env.MAIL_MAILER = prior.mailer
       }
     })
   })

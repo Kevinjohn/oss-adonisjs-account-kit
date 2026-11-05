@@ -51,6 +51,10 @@ export async function planSetup(
   if (hasEmailFlow(choices)) {
     originNames.add(choices.mail.backendOriginEnv)
     originNames.add(choices.mail.frontendOriginEnv)
+    // Setup does not boot the app, so read mail references from `.env` like the origins.
+    if (choices.mail.integration === 'adonisjs-mail')
+      for (const name of [choices.mail.senderEnv, choices.mail.transportEnv])
+        if (name) originNames.add(name)
   }
   if (choices.social.status === 'enabled') originNames.add(choices.social.callbackOriginEnv)
   await Promise.all(
