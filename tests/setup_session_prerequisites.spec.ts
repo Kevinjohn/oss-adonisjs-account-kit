@@ -28,6 +28,16 @@ test.group('setup session prerequisites', () => {
         )
       )
       state.files['config/session.ts'] =
+        "import { defineConfig, stores as s } from '@adonisjs/session'\nexport default defineConfig({ store: 'browser', stores: { browser: s.cookie() } })"
+      const importedAlias = await planSetup(choices, state)
+      assert.isTrue(
+        importedAlias.diagnostics.some(
+          ({ field, message, severity }) =>
+            field === 'config/session.ts' && severity === 'error' && message.includes('Cookie-only')
+        ),
+        JSON.stringify(importedAlias.diagnostics)
+      )
+      state.files['config/session.ts'] =
         "export default { store: 'custom', stores: { custom: makeCustomStore() } }"
       const custom = await planSetup(choices, state)
       assert.isTrue(
