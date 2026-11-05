@@ -17,6 +17,26 @@ test.group('social continuation and handoff', (group) => {
     terminate: async () => {},
   }
 
+  test('begin refuses a provider that is not configured or not supported', async ({ assert }) => {
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: { google: provider('subject', 'person@example.test', true) },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    for (const name of ['github', 'twitter'])
+      await assert.rejects(
+        () =>
+          account.socialAuthentication.begin({
+            provider: name as 'github',
+            intent: 'login',
+            clientChallenge,
+          }),
+        'Unsupported social provider'
+      )
+  })
+
   test('PKCE handoff issues one guard credential and rejects replay or a wrong verifier', async ({
     assert,
   }) => {
