@@ -9,9 +9,9 @@ function sharedFor(user: {
 }) {
   const ctx = {
     auth: { user: { id: 1, fullName: null, ...user } },
-    request: { plainCookie: () => 'light' },
+    request: { plainCookie: () => 'light', header: () => undefined },
     inertia: { always: (value: unknown) => value },
-    session: { flashMessages: { get: () => undefined, has: () => false } },
+    session: { flashMessages: { get: (_key: string, fallback: unknown) => fallback } },
   } as unknown as HttpContext
   return new InertiaMiddleware().share(ctx) as unknown as { emailVerified: boolean }
 }
