@@ -29,7 +29,12 @@ async function releaseCheck(changelog: string, repository: 'clean' | 'tagged' | 
       git('commit', '-q', '--allow-empty', '-m', 'fixture')
       if (repository === 'tagged') git('tag', 'v9.9.9')
     }
-    const environment: NodeJS.ProcessEnv = { ...process.env, GITHUB_REPOSITORY: 'owner/repo' }
+    const outputs = join(directory, 'github_output')
+    const environment: NodeJS.ProcessEnv = {
+      ...process.env,
+      GITHUB_REPOSITORY: 'owner/repo',
+      GITHUB_OUTPUT: outputs,
+    }
     delete environment.GITHUB_ENV
     const result = spawnSync('bash', [join(root, 'bin/release_check.sh')], {
       cwd: directory,
@@ -49,7 +54,11 @@ async function releaseCheck(changelog: string, repository: 'clean' | 'tagged' | 
         .update(await readFile(join(directory, 'tmp/release', archives[0])))
         .digest('hex')
     }
-    return { ...result, notes, archiveSha256 }
+    const output = await readFile(outputs, 'utf8').catch((error) => {
+      if (error.code !== 'ENOENT') throw error
+      return ''
+    })
+    return { ...result, notes, archiveSha256, output }
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
@@ -65,6 +74,12 @@ test('release gate accepts an empty Unreleased section above the released versio
   assert.include(result.stdout, 'ready: v9.9.9')
   assert.match(result.archiveSha256 ?? '', /^[a-f0-9]{64}$/)
   assert.include(result.notes, `SHA-256: \`${result.archiveSha256}\``)
+})
+
+test('release gate gives the release job its version and tarball name', async ({ assert }) => {
+  const result = await releaseCheck('# Changelog\n\n## 9.9.9 - 2026-01-01\n\n- A\n')
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.output, 'version=9.9.9\ntarball=release-fixture-9.9.9.tgz\n')
 })
 
 test('release gate refuses entries under Unreleased, which the tarball would ship', async ({

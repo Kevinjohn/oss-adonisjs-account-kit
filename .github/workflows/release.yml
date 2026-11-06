@@ -22,13 +22,15 @@ jobs:
   examples:
     needs: main-only
     uses: ./.github/workflows/examples.yml
-  release:
+  # Installing and building run dependency code, so they hold a read-only token.
+  package:
     needs: [checks, compat, examples]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      tarball: ${{ steps.check.outputs.tarball }}
     steps:
-      # No stored token: install and build scripts cannot push. Only `gh` gets the token.
       - uses: actions/checkout@v7
         with: { fetch-depth: 0, persist-credentials: false }
       - uses: pnpm/action-setup@v6
@@ -36,7 +38,26 @@ jobs:
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Release checks (tag, changelog, build, pack)
+        id: check
         run: bash bin/release_check.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: tmp/release/
+          if-no-files-found: error
+  # Only this job can write, and it runs no repository or dependency code.
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with: { name: release, path: tmp/release }
       - name: Create release
-        env: { GH_TOKEN: '${{ github.token }}' }
-        run: gh release create "v$VERSION" "$TARBALL" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file tmp/release/notes.md
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          VERSION: '${{ needs.package.outputs.version }}'
+          TARBALL: '${{ needs.package.outputs.tarball }}'
+        run: gh release create "v$VERSION" "tmp/release/$TARBALL" --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file tmp/release/notes.md
