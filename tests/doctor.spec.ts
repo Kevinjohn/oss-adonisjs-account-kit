@@ -184,9 +184,19 @@ test.group('account-kit:doctor', (group) => {
       'email_verification_tokens',
     ]) {
       try {
-        // PostgreSQL refuses to drop a table other tables reference; CASCADE drops only their keys.
+        // PostgreSQL and MySQL refuse to drop a table other tables reference; drop only their keys.
         if (testEngine === 'pg') await kit.db.rawQuery(`drop table ${table} cascade`)
-        else await kit.db.connection().schema.dropTable(table)
+        else {
+          if (testEngine === 'mysql') {
+            const [references] = await kit.db.rawQuery(
+              'select table_name as owner, constraint_name as name from information_schema.referential_constraints where constraint_schema = database() and referenced_table_name = ?',
+              [table]
+            )
+            for (const { owner, name } of references as Array<{ owner: string; name: string }>)
+              await kit.db.rawQuery(`alter table \`${owner}\` drop foreign key \`${name}\``)
+          }
+          await kit.db.connection().schema.dropTable(table)
+        }
         assert.deepEqual(failures(await runDoctor(input({ config: exportOnly }))), [
           `Package tables: missing ${table}`,
         ])
