@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-06
+
 ### Added
 
 - Scope invitations: `scope` on `Invitation`, `invitations.send`, `invitations.list`, the managed send and list routes and `account-kit:invite --scope`; one pending invitation per address and scope; acceptance applies every pending invitation for the address in ascending scope order; `authorize.invite` and `authorize.listInvitations` receive `context.scope`. The `add_scope_to_account_invitations` migration adds the column and the per-scope unique index. Existing installations re-run `node ace configure @kevinjohn/adonisjs-account-kit` to add the migration, then `node ace migration:run`; `account-kit:doctor` reports the missing column.
