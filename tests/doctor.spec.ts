@@ -82,6 +82,22 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
+  test('names the invitation scope column an older installation lacks', async ({ assert }) => {
+    try {
+      await kit.db.connection().schema.alterTable('account_invitations', (table) => {
+        table.dropUnique(['email', 'scope'])
+      })
+      await kit.db.connection().schema.alterTable('account_invitations', (table) => {
+        table.dropColumn('scope')
+      })
+      assert.deepEqual(failures(await runDoctor(input())), [
+        'Package tables: missing account_invitations.scope',
+      ])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
   test('requires the sign-in link table even while magic links are off', async ({ assert }) => {
     try {
       await kit.db.connection().schema.dropTable('login_link_tokens')
