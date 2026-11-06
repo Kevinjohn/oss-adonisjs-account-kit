@@ -19,6 +19,8 @@ export interface OperatorInviteInput {
   email: string
   /** The role to grant on acceptance. */
   role: string
+  /** The team or workspace the invitation is for; omit for an unscoped invitation. */
+  scope?: string | null
   /** `send` notifies the invitee; `print` returns the acceptance URL instead. */
   deliver: OperatorDelivery
 }
@@ -144,6 +146,8 @@ export interface InvitationsSendInput {
   email: string
   /** The role to grant on acceptance. */
   role: string
+  /** The team or workspace the invitation is for; omit for an unscoped invitation. */
+  scope?: string | null
 }
 
 /** Input for `invitations.list`. `limit` defaults to 25, at most 100. */
@@ -154,6 +158,8 @@ export interface InvitationsListInput {
   limit?: number
   /** `nextCursor` from the previous page. */
   cursor?: string
+  /** Only this scope (`null` for unscoped invitations); omit to list every scope. */
+  scope?: string | null
 }
 
 /** Input for `invitations.inspect`. */

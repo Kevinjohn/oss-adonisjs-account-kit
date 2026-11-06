@@ -29,6 +29,7 @@ const baseSchemaMigrations = [
   '1791906378313_account_kit_create_login_link_tokens.ts',
   '1791906378314_account_kit_create_account_sessions.ts',
   '1791906378315_account_kit_admission_create_account_admissions.ts',
+  '1791906378316_account_kit_add_scope_to_account_invitations.ts',
   '1791906405253_create_rate_limits_table.ts',
   '1800000000001_create_notifications_outbox.ts',
   '1800000000002_create_sessions_table.ts',

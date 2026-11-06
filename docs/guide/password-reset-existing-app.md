@@ -118,6 +118,7 @@ table and key type for foreign keys.
 | `create_social_handoff_codes`      | `social_handoff_codes`: `id`, `hash`, `user_id`, `social_identity_id`, `credential_revision`, `client_challenge`, `expires_at`, `created_at`.                                                                                                                               |
 | `create_login_link_tokens`         | `login_link_tokens`: `id`, `tokenable_id`, `email`, `hash`, `client_challenge`, `expires_at`, `created_at`.                                                                                                                                                                 |
 | `create_account_sessions`          | `account_sessions`: `id`, `user_id`, `handle_hash`, `label`, `created_at`, `last_seen_at`, `expires_at`.                                                                                                                                                                    |
+| `add_scope_to_account_invitations` | Adds `scope` to `account_invitations` (empty for unscoped) and makes `email` unique per scope.                                                                                                                                                                              |
 
 The [migration stubs](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tree/main/stubs/migrations)
 carry types, nullability, indexes and constraints. Admission is a separate opt-in installer; its

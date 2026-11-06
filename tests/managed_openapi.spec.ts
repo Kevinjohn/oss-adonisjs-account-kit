@@ -167,7 +167,7 @@ test.group('managed OpenAPI document', () => {
     const list = document.paths['/api/v1/account/invitations'].get as any
     assert.deepEqual(
       list.parameters.map((parameter: { name: string; in: string }) => parameter.in),
-      ['query', 'query']
+      ['query', 'query', 'query']
     )
   })
 

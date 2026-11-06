@@ -44,10 +44,12 @@ export const profileUpdateValidator = vine.compile(
     registrationData: registrationData(),
   })
 )
+const scope = () => vine.string().minLength(1).maxLength(255).optional()
 export const invitationSendValidator = vine.compile(
   vine.object({
     email: email(),
     role: vine.string().trim().minLength(1).maxLength(64),
+    scope: scope(),
   })
 )
 export const invitationAcceptValidator = vine.compile(
@@ -61,6 +63,7 @@ export const invitationListValidator = vine.compile(
   vine.object({
     limit: vine.number().withoutDecimals().min(1).max(100).optional(),
     cursor: vine.string().optional(),
+    scope: scope(),
   })
 )
 

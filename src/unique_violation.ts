@@ -14,15 +14,22 @@ export function mysqlDuplicateKey(error: unknown): string | undefined {
   return details.sqlMessage.slice(start + marker.length, -1)
 }
 
-export function isUniqueViolation(error: unknown, table: string, column: string): boolean {
+/** Whether `error` is a duplicate on the unique index over `column` (one name or several). */
+export function isUniqueViolation(
+  error: unknown,
+  table: string,
+  column: string | string[]
+): boolean {
   if (typeof error !== 'object' || error === null) return false
+  const columns = Array.isArray(column) ? column : [column]
+  const index = `${table}_${columns.join('_')}_unique`
   const mysqlKey = mysqlDuplicateKey(error)
-  if (mysqlKey !== undefined) return mysqlKey === `${table}.${table}_${column}_unique`
+  if (mysqlKey !== undefined) return mysqlKey === `${table}.${index}`
 
   const details = error as { code?: unknown; constraint?: unknown; message?: unknown }
   if (details.code === '23505') {
     // PostgreSQL stores at most 63 bytes of an identifier; configured table names are ASCII.
-    return details.constraint === `${table}_${column}_unique`.slice(0, 63)
+    return details.constraint === index.slice(0, 63)
   }
 
   if (details.code !== 'SQLITE_CONSTRAINT_UNIQUE' || typeof details.message !== 'string')
@@ -30,8 +37,11 @@ export function isUniqueViolation(error: unknown, table: string, column: string)
   const prefix = 'UNIQUE constraint failed: '
   const start = details.message.lastIndexOf(prefix)
   if (start < 0) return false
-  // A multi-column index lists its columns comma-separated, so this only matches a single column.
-  return details.message.slice(start + prefix.length).trim() === `${table}.${column}`
+  // A multi-column index lists its columns comma-separated, in index order.
+  return (
+    details.message.slice(start + prefix.length).trim() ===
+    columns.map((name) => `${table}.${name}`).join(', ')
+  )
 }
 
 /** Identify only the actual unique email index; unrelated unique failures retain their identity. */

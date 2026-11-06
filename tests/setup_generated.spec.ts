@@ -116,7 +116,7 @@ test.group('setup generated sources', (group) => {
     ])
     assert.lengthOf(
       plan.changes.filter(({ action }) => action === 'create'),
-      18
+      19
     )
     assert.isFalse(plan.readiness.productionReady)
     assert.isFalse(plan.readiness.migrationsApplied)

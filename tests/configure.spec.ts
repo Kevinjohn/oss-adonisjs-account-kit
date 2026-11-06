@@ -106,13 +106,14 @@ test('configures the package idempotently without replacing application-owned fi
 
     const firstMigrationFiles = await readdir(migrationsDirectory)
     let migrationFiles = firstMigrationFiles.sort()
-    assert.lengthOf(migrationFiles, 11)
+    assert.lengthOf(migrationFiles, 12)
     assert.deepEqual(
       migrationFiles
         .map((filename) => filename.replace(/^.*_account_kit_/, '').replace(/\.ts$/, ''))
         .sort(),
       [
         'add_account_columns_to_users',
+        'add_scope_to_account_invitations',
         'create_account_invitations',
         'create_account_sessions',
         'create_account_transaction_lock',

@@ -17,6 +17,7 @@ export const migrationNames = [
   'create_social_handoff_codes',
   'create_login_link_tokens',
   'create_account_sessions',
+  'add_scope_to_account_invitations',
 ]
 
 function isMissing(error: unknown): boolean {
