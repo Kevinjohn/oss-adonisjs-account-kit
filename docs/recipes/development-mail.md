@@ -5,6 +5,10 @@ with the AdonisJS Mail service already configured by your application. Account K
 message templates and calls `sendLater`; the application selects the sender, transport, queue,
 worker and failure policy.
 
+### Mail dependency status
+
+The assessed `@adonisjs/mail@10.4.0` resolves Nodemailer `^9.0.3` to `9.1.1`; that version has the advisories recorded in the [current dependency assessment](../reference/compatibility.md#dependency-audit-assessment). This package accepting Mail 10 as an integration version describes API compatibility, not security clearance for its complete dependency tree. As of 2026-11-05, upstream [issue #188](https://github.com/adonisjs/mail/issues/188) and [PR #187](https://github.com/adonisjs/mail/pull/187) are open. Do not force Nodemailer 10 into Mail 10.4.0: the Postmark transport's default `mimeFuncs` import from `nodemailer/lib/mime-funcs/index.js` is incompatible with Nodemailer 10, as documented by [PR #187](https://github.com/adonisjs/mail/pull/187/files). Recheck the supported Mail release and its transport tests when upstream changes.
+
 ## Log messages during local development
 
 Before Mail is configured, print account emails, links included, to the application log instead

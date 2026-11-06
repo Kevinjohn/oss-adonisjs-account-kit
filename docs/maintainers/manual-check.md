@@ -1,5 +1,7 @@
 # Manual consumer verification
 
+Current dependency findings and dispositions are recorded in the [2026-11-05 audit assessment](../reference/compatibility.md#dependency-audit-assessment). The assessment covers AK root and examples E0–E3, including the E1 lockfile candidate at `01d270aed86483995963c1a0ff7da5c8ac44ae98`; it does not rewrite or retroactively certify the dated checks below.
+
 ## T8.1: fresh API-kit install
 
 Verified on 2026-10-13 against source commit `64e154203c0bf1aaf36957e97f39f2d440aa2ccb`. The candidate archive SHA-256 was `5c79076a154be648fe5923a2ecfef6b3d33daaf48cb57bad0eebf49d472473e2`. A new official AdonisJS API-kit app was generated with `pnpm create adonisjs@3.4.0 scratch --kit=api --pkg=pnpm`; the local dependency resolved to `@kevinjohn/adonisjs-account-kit@0.0.0` from that candidate archive.
