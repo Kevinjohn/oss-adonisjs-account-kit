@@ -1,6 +1,8 @@
 import { test } from '@japa/runner'
 import { InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
+import { admissionMiddleware } from '../src/admission/middleware.js'
+import { fakeAuthenticator } from './helpers/managed_http_fakes.js'
 import { protectedContext } from './helpers/protected_context.js'
 
 test.group('managed existing-guard adapters', () => {
@@ -341,5 +343,90 @@ test.group('managed existing-guard adapters', () => {
       next = true
     })
     assert.isTrue(next)
+  })
+})
+
+test.group('managed guard adapters leave ctx.auth authenticated', () => {
+  const user = { id: 42, currentAccessToken: { identifier: 17 } }
+  const loadUser = async () => ({
+    findOrFail: async () => user,
+    accessTokens: {
+      create: async () => ({ identifier: 17, value: { release: () => 'token' } }),
+      delete: async () => undefined,
+    },
+  })
+  async function sessionContext() {
+    const { context, config } = await protectedContext()
+    const auth = fakeAuthenticator(user)
+    return { auth, ctx: Object.assign(context, { auth, session: { config, get: () => '' } }) }
+  }
+
+  test('the session adapter marks its guard once without a second lookup', async ({ assert }) => {
+    const adapter = createManagedGuard({ strategy: 'session', name: 'web', loadUser })
+    const { auth, ctx } = await sessionContext()
+    assert.isUndefined(auth.user)
+    const input = await adapter.current(ctx as never)
+    assert.deepEqual(input, { userId: 42, revision: null })
+    assert.deepEqual(auth.marked, ['web'])
+    assert.equal(auth.lookups, 1)
+    assert.strictEqual(auth.user, user)
+  })
+
+  test('the token adapter marks its guard once without a second lookup', async ({ assert }) => {
+    const adapter = createManagedGuard({ strategy: 'access_tokens', name: 'api', loadUser })
+    const auth = fakeAuthenticator(user)
+    const input = await adapter.current({ auth } as never)
+    assert.deepEqual(input, { userId: 42, tokenId: 17 })
+    assert.deepEqual(auth.marked, ['api'])
+    assert.equal(auth.lookups, 1)
+    assert.strictEqual(auth.user, user)
+  })
+
+  test('a refused credential marks nothing', async ({ assert }) => {
+    const adapter = createManagedGuard({ strategy: 'access_tokens', name: 'api', loadUser })
+    const auth = fakeAuthenticator(user)
+    auth.use = () => ({
+      authenticate: async () => {
+        throw Object.assign(new Error('nope'), { code: 'E_UNAUTHORIZED_ACCESS' })
+      },
+    })
+    await assert.rejects(() => adapter.current({ auth } as never), InvalidSessionError)
+    assert.isUndefined(auth.marked)
+    assert.isUndefined(auth.user)
+  })
+
+  test('a bare guard object without authenticateUsing still works', async ({ assert }) => {
+    const adapter = createManagedGuard({ strategy: 'access_tokens', name: 'api', loadUser })
+    const auth = { use: () => ({ authenticate: async () => user }) }
+    assert.deepEqual(await adapter.current({ auth } as never), { userId: 42, tokenId: 17 })
+  })
+
+  test('ctx.auth.user is set after managedAccountMiddleware and admissionMiddleware', async ({
+    assert,
+  }) => {
+    const guard = createManagedGuard({ strategy: 'session', name: 'web', loadUser })
+    const managed = managedAccountMiddleware({
+      kit: async () =>
+        ({
+          managedHttp: { assertGuard: () => {} },
+          authentication: { requireActive: async () => {} },
+        }) as never,
+      guard,
+      active: true,
+    })
+    const admitted = admissionMiddleware({
+      admission: async () =>
+        ({ kit: { managedHttp: { assertGuard: () => {} } }, require: async () => {} }) as never,
+      guard,
+    })
+    for (const handler of [managed, admitted]) {
+      const { auth, ctx } = await sessionContext()
+      let seen: unknown
+      await handler(ctx as never, async () => {
+        seen = auth.user
+      })
+      assert.strictEqual(seen, user)
+      assert.equal(auth.lookups, 1)
+    }
   })
 })

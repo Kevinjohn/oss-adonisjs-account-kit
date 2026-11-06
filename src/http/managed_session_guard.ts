@@ -3,6 +3,7 @@ import { InvalidSessionError } from '../errors.js'
 import type { ManagedGuard } from './managed_types.js'
 import type { ManagedSessionGuardOptions, ManagedUser } from './guard.js'
 import { assertManagedSessionStore } from './session_store_protection.js'
+import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
 
 function managedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
@@ -25,7 +26,7 @@ async function authenticate<User>(guard: { authenticate(): Promise<User> }): Pro
   }
 }
 type SessionContext<User> = HttpContext & {
-  auth: {
+  auth: MarkableAuthenticator & {
     use(name: string): {
       authenticate(): Promise<User>
       login(user: User): Promise<void>
@@ -53,6 +54,7 @@ export function createSessionGuard<User>(
       const ctx = context as SessionContext<User>
       assertManagedSessionStore(ctx)
       const user = await authenticate(ctx.auth.use(options.name))
+      await markAuthenticated(ctx.auth, options.name)
       const stored = ctx.session.get(revisionKey)
       if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
       const handle = ctx.session.get(handleKey)
