@@ -142,7 +142,9 @@ paths.
 not yet active advances the revision, so an unconfirmed user can fix a mistyped address and
 resend the link without signing in again. Read the new revision with
 `authentication.inspectAccountAccess`; the managed profile route passes `keepCurrent` and
-refreshes the session. Password reset, a confirmed email change, restriction, social unlink and
+refreshes the session with the revision the correction committed. `updateProfile` returns after
+sending the confirmation email, so a password reset that lands while it is sending advances the
+revision again, and reading it then would keep a session the reset meant to end. Password reset, a confirmed email change, restriction, social unlink and
 sign out everywhere still end every sign-in.
 
 ### Custom guard adapters
