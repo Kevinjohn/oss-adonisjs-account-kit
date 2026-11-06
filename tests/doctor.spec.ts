@@ -173,6 +173,7 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
+  // Four schema rebuilds outlast Japa's 2s default on MySQL.
   test('export requires every table it reads', async ({ assert }) => {
     const exportOnly = defineConfig(
       makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['dataExport'] })
@@ -204,7 +205,7 @@ test.group('account-kit:doctor', (group) => {
         await resetSchema(kit)
       }
     }
-  })
+  }).timeout(10_000)
 
   test('names users-table columns the configuration needs', async ({ assert }) => {
     const withLogin = defineConfig(
