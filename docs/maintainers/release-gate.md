@@ -3,7 +3,7 @@
 Follow [Releasing](releasing.md) for the current GitHub release procedure. The release workflow
 runs `checks`, `compat` and `examples` as prerequisites, then runs `bin/release_check.sh` in a
 read-only `package` job and creates the prerelease from the uploaded artifact in a separate
-write-only `release` job. The documentation site build is a separate workflow gate.
+`release` job, the only one with `contents: write`. The documentation site build is a separate workflow gate.
 
 The local release script checks that the version tag does not already exist, requires a dated
 changelog section for that version and an empty Unreleased section, then builds and packs the
