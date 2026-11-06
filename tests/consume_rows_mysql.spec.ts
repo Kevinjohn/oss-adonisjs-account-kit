@@ -53,9 +53,12 @@ test.group('consuming single-use rows on MySQL', () => {
     const { trx, log } = mysqlTrx(rows, [2])
     const result = await consumeRows(trx, 'password_reset_tokens', { hash: 'a' }, '2026-01-01')
     assert.deepEqual(result, rows)
+    // Locks first, then deletes exactly the locked ids.
     const steps = log.map(([step]) => step)
-    assert.include(steps, 'forUpdate')
-    assert.include(steps, 'delete')
+    const deleted = steps.lastIndexOf('delete')
+    assert.isAbove(deleted, steps.indexOf('forUpdate'))
+    assert.isAbove(steps.indexOf('forUpdate'), -1)
+    assert.deepEqual(log[deleted - 1], ['whereIn', ['id', [7, 9]]])
   })
 
   test('drops a locked row that changed after the unlocked lookup', async ({ assert }) => {
