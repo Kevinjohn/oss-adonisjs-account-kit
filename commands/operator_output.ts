@@ -13,7 +13,7 @@ export function writeResult(command: BaseCommand, value: Record<string, unknown>
 
 /** Write a warning to stderr so stdout stays parseable. */
 export function writeWarning(command: BaseCommand, message: string): void {
-  command.logger.logError(`[ warn ] ${message}`)
+  command.logger.logError(command.logger.prepareWarning(message))
 }
 
 /** Report a failure on stderr without causes, stacks or URLs, and fail the command. */

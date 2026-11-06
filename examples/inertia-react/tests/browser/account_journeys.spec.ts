@@ -237,4 +237,33 @@ test.group('composed account browser journeys', (group) => {
       await secondContext.close()
     }
   })
+
+  test('the protected account page requires a confirmed address', async ({ visit, assert }) => {
+    for (const [email, confirmed] of [
+      ['gate-pending@example.test', false],
+      ['gate-confirmed@example.test', true],
+    ] as const) {
+      await User.create({
+        fullName: 'Gate Journey',
+        email,
+        password: 'GatePass123!',
+        unverifiedEmail: confirmed ? null : email,
+      })
+      const page = await visit('/login')
+      await page.getByLabel('Email').fill(email)
+      await page.getByLabel('Password').fill('GatePass123!')
+      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.waitForURL('**/dashboard')
+      await page.goto('/account')
+      if (confirmed) {
+        await page.getByRole('heading', { name: 'Your account is confirmed' }).waitFor()
+        assert.equal(new URL(page.url()).pathname, '/account')
+      } else {
+        await page.getByText('Confirm your email address before opening this page.').waitFor()
+        assert.equal(new URL(page.url()).pathname, '/dashboard')
+      }
+      await page.getByRole('button', { name: 'Log out' }).click()
+      await page.waitForURL('**/login')
+    }
+  })
 })

@@ -131,6 +131,43 @@ test.group('social continuation and handoff', (group) => {
     assert.lengthOf(await kit.db.from('users'), 1)
   })
 
+  test('open registration runs admit for an account the callback creates directly', async ({
+    assert,
+  }) => {
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: {
+        providers: { google: provider('direct-subject', 'direct@example.test', true) },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const admitted: unknown[] = []
+    const run = async (admit: (profile: unknown) => Promise<void>) => {
+      const start = await account.socialAuthentication.begin({
+        provider: 'google',
+        intent: 'login',
+        clientChallenge,
+      })
+      return account.socialAuthentication.callback({ state: start.state, callback: {}, admit })
+    }
+    await assert.rejects(
+      () =>
+        run(async () => {
+          throw new Error('Not on the allowlist')
+        }),
+      /Not on the allowlist/
+    )
+    assert.lengthOf(await kit.db.from('users'), 0)
+    const created = await run(async (profile) => void admitted.push(profile))
+    assert.equal(created.status, 'new')
+    assert.isString((created as { handoffCode?: unknown }).handoffCode)
+    assert.deepEqual(admitted, [
+      { provider: 'google', subject: 'direct-subject', email: 'direct@example.test' },
+    ])
+    assert.lengthOf(await kit.db.from('users'), 1)
+  })
+
   test('fresh provider proof cannot remove a social-only account’s final login method', async ({
     assert,
   }) => {

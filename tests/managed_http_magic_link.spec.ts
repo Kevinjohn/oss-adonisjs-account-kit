@@ -269,4 +269,24 @@ test.group('managed magic-link routes', (group) => {
       /require publicCredential/
     )
   })
+
+  test('access-token mounts with logout require logoutCredential', ({ assert }) => {
+    const { router } = fakeManagedHttp()
+    assert.throws(
+      () =>
+        registerManagedRoutes(router, {
+          prefix: '/api/v1',
+          kit: async () => ({}) as never,
+          guard: {
+            strategy: 'access_tokens',
+            name: 'api',
+            forRequest: () => ({}) as never,
+            current: async () => ({ userId: 1, tokenId: 1 }),
+            publicCredential: () => 'token',
+          },
+          enabled: ['authentication'],
+        }),
+      /logout requires logoutCredential/
+    )
+  })
 })

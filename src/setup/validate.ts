@@ -58,7 +58,7 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     diagnostic(
       diagnostics,
       'database.client',
-      'Only SQLite, PostgreSQL 16 and MySQL 8.4 (mysql2) are supported'
+      'Only SQLite (better-sqlite3), PostgreSQL 16 and MySQL 8.4 (mysql2) are supported'
     )
   if (state.database === 'unknown')
     diagnostic(

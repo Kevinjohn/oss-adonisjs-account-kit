@@ -159,6 +159,36 @@ test('quoted and template examples cannot invent guards or models', async ({ ass
   }
 })
 
+test('route inventory applies literal group prefixes and skips unknown ones', async ({
+  assert,
+}) => {
+  const root = await applicationRoot()
+  try {
+    await mkdir(join(root, 'start'))
+    await writeFile(
+      join(root, 'start/routes.ts'),
+      [
+        "import router from '@adonisjs/core/services/router'",
+        'router',
+        '  .group(() => {',
+        "    router.post('/auth/login', handler)",
+        "    router.group(() => { router.get('/', handler) }).prefix('/inner/')",
+        '  })',
+        "  .prefix('/api/v1')",
+        '  .use(middleware.auth())',
+        "router.group(() => { router.get('/hidden', handler) }).prefix(dynamic)",
+      ].join('\n')
+    )
+    const state = await inspectSetup(root)
+    assert.deepEqual(state.routeDefinitions, [
+      { method: 'POST', path: '/api/v1/auth/login' },
+      { method: 'GET', path: '/api/v1/inner' },
+    ])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('route inventory reads actual router calls, not quoted examples', async ({ assert }) => {
   const root = await applicationRoot()
   try {
@@ -269,6 +299,16 @@ test('database selection uses process, dotenv, then literal default without gues
         )
       )
     }
+    // Indirect, empty and repeated values are unresolved diagnostics, not setup crashes.
+    for (const contents of [
+      'DB_CONNECTION=$OTHER\n',
+      'DB_CONNECTION=\n',
+      'DB_CONNECTION=pg\nDB_CONNECTION=sqlite\n',
+    ]) {
+      await writeFile(join(root, '.env'), contents)
+      const unresolvedValue = await inspectSetup(root)
+      assert.equal(unresolvedValue.database, 'unknown', contents)
+    }
     await writeFile(join(root, '.env'), 'DB_CONNECTION=pg\n')
     process.env.DB_CONNECTION = 'sqlite'
     const processSelected = await inspectSetup(root)
@@ -323,6 +363,36 @@ test('resolved package metadata must be a regular in-application file', async ({
   }
 })
 
+test('workspace store links and hoisted packages count as installed', async ({ assert }) => {
+  const workspace = await mkdtemp(join(tmpdir(), 'account-setup-workspace-'))
+  try {
+    const root = join(workspace, 'apps/web')
+    await mkdir(join(root, 'config'), { recursive: true })
+    await writeFile(
+      join(root, 'package.json'),
+      JSON.stringify({ dependencies: { 'linked-package': '1.0.0', 'hoisted-package': '2.0.0' } })
+    )
+    const store = join(workspace, 'node_modules/.pnpm/linked-package@1.2.3/node_modules')
+    await mkdir(join(store, 'linked-package'), { recursive: true })
+    await writeFile(
+      join(store, 'linked-package/package.json'),
+      JSON.stringify({ version: '1.2.3' })
+    )
+    await mkdir(join(root, 'node_modules'))
+    await symlink(join(store, 'linked-package'), join(root, 'node_modules/linked-package'))
+    await mkdir(join(workspace, 'node_modules/hoisted-package'), { recursive: true })
+    await writeFile(
+      join(workspace, 'node_modules/hoisted-package/package.json'),
+      JSON.stringify({ version: '2.0.1' })
+    )
+    const { installedVersions } = await inspectSetup(root)
+    assert.equal(installedVersions['linked-package'], '1.2.3')
+    assert.equal(installedVersions['hoisted-package'], '2.0.1')
+  } finally {
+    await rm(workspace, { recursive: true, force: true })
+  }
+})
+
 test.group('setup database selection', (group) => {
   registerSetupTeardown(group)
 
@@ -339,6 +409,24 @@ test.group('setup database selection', (group) => {
       plan.diagnostics.map(({ field }) => field),
       'database.client'
     )
+  })
+
+  test('client aliases map to the driver Account Kit runs on', async ({ assert }) => {
+    const { root } = await fixture()
+    for (const [client, kind] of [
+      ['postgresql', 'postgres'],
+      ['postgres', 'postgres'],
+      ['better-sqlite3', 'sqlite'],
+      ['sqlite3', 'sqlite'],
+      ['sqlite', 'unsupported'],
+    ]) {
+      await writeFile(
+        join(root, 'config/database.ts'),
+        `import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'main', connections: { main: { client: '${client}' } } })\n`
+      )
+      const state = await inspectSetup(root)
+      assert.equal(state.database, kind, client)
+    }
   })
 
   test('a MySQL 8.4 default connection is supported', async ({ assert }) => {
@@ -426,6 +514,16 @@ test('selected scalar environment follows Adonis file precedence without evaluat
   } finally {
     if (previousNodeEnv === undefined) delete process.env.NODE_ENV
     else process.env.NODE_ENV = previousNodeEnv
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('a backslash before a closing quote does not open a multiline value', async ({ assert }) => {
+  const root = await applicationRoot()
+  try {
+    await writeFile(join(root, '.env'), 'PATH_X="C:\\dir\\"\nAPP_URL=https://private.test\n')
+    assert.equal(await resolveSelectedEnvironmentValue(root, 'APP_URL', {}), 'https://private.test')
+  } finally {
     await rm(root, { recursive: true, force: true })
   }
 })

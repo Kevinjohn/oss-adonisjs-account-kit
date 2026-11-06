@@ -4,6 +4,17 @@ import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
   async up() {
+    if (this.db.dialect.name === 'better-sqlite3') {
+      // ALTER COLUMN ... DROP NOT NULL needs SQLite 3.53, bundled from better-sqlite3 12.10.
+      const [{ version }] = await this.db.rawQuery('select sqlite_version() as version')
+      const [major, minor] = String(version).split('.').map(Number)
+      if (major < 3 || (major === 3 && minor < 53))
+        throw new Error(
+          'account_kit: SQLite ' +
+            version +
+            ' cannot make the users password column nullable; upgrade better-sqlite3 to 12.10 or later (SQLite 3.53)'
+        )
+    }
     this.schema.alterTable({{{ migration.usersTable }}}, (table) => {
       table.timestamp('email_verified_at', { useTz: true, precision: 3 }).nullable()
       table.string('unverified_email', 254).nullable()

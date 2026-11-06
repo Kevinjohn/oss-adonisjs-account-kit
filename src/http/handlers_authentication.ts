@@ -13,6 +13,8 @@ export const authenticationHandlers = {
   },
   'auth.login': async ({ context, kit, options, methodsEnabled, representIssued }) => {
     const { request, response } = context
+    // The body can carry a bearer token; no cache may keep it.
+    response.header('Cache-Control', 'no-store')
     const { email, password } = await request.validateUsing(loginValidator)
     const result = await kit.authentication.login(
       { email, password, clientKey: request.ip(), sessionLabel: signInLabel(context) },

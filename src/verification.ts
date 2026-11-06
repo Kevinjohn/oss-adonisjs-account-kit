@@ -10,7 +10,7 @@ import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
 import { throttlerOf } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
-import { isRecentIssue } from './token_reuse.js'
+import { isRecentIssue, reopenResendOnFailure } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
 import type {
   VerificationCompleteInput,
@@ -104,10 +104,12 @@ export async function sendVerification(
     return 'already_verified'
   }
   await finishCommitted(fault, 'Verification issued but follow-up failed', () =>
-    deliver('Verification notification failed', () =>
-      deps.config.notify.accountActivationProvision(
-        issuedUser,
-        deps.config.urls.emailVerification(token)
+    reopenResendOnFailure(deps.db, token, () =>
+      deliver('Verification notification failed', () =>
+        deps.config.notify.accountActivationProvision(
+          issuedUser,
+          deps.config.urls.emailVerification(token)
+        )
       )
     )
   )

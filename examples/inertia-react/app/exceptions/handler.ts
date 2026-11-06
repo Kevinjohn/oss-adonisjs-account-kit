@@ -3,7 +3,6 @@ import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
 import { proofRequest, proofRecovery } from '#services/token_page_headers'
-import { accountKitSessionGuard } from '#services/session_guard'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 
 /** Maps Account Kit errors to safe flash messages without exposing private causes. */
@@ -73,24 +72,18 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       ctx.session.flash('error', 'The form expired. Please try again.')
       return ctx.response.redirect((await proofRecovery(ctx.request))!, false)
     }
+    // Shield re-flashes every field except snake_case password names, which would store this
+    // app's camelCase password fields in the session.
+    if (error instanceof shieldErrors.E_BAD_CSRF_TOKEN) {
+      ctx.session.flashOnly(['fullName', 'email'])
+      ctx.session.flash('error', 'The form expired. Please try again.')
+      return ctx.response.redirect().back()
+    }
     if (error instanceof errors.InvalidSessionError) {
       await ctx.auth.use('web').logout()
       ctx.session.clear()
       ctx.session.flash('error', 'Your session has ended. Please sign in again.')
       return ctx.response.redirect().toRoute('session.create')
-    }
-    if (
-      ctx.route?.name === 'passwords.update' &&
-      (error instanceof errors.DeliveryError || error instanceof errors.PostCommitError)
-    ) {
-      await accountKitSessionGuard(ctx).terminate()
-      ctx.session.flash(
-        'error',
-        error instanceof errors.DeliveryError
-          ? 'Your password was changed, but the notification email could not be sent. Sign in again with your new password.'
-          : 'Your password was changed, but a follow-up step failed. Sign in again with your new password.'
-      )
-      return ctx.response.redirect().withQs(false).toRoute('session.create')
     }
     if (error instanceof errors.AccountKitError) {
       ctx.session.flash('error', accountMessage(error))

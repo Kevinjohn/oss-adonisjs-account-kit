@@ -75,6 +75,7 @@ test.group('invitations.send', (group) => {
     assert.isTrue(invitation.createdAt >= before)
     assert.isTrue(invitation.updatedAt >= before)
     assert.isTrue(invitation.expiresAt >= before.plus({ days: 2 }))
+    assert.isTrue(invitation.expiresAt <= DateTime.utc().plus({ days: 2 }))
   })
 
   test('rejects missing actor and denied invite before writing or notifying', async ({
@@ -275,6 +276,32 @@ test.group('invitations.send', (group) => {
     assert.notEqual(replacement.id, first.id)
     assert.equal(replacement.role, 'admin')
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
+  })
+
+  test('probing registered addresses spends the inviter budget', async ({ assert }) => {
+    const actor = await createActor()
+    await createActor('registered@example.test')
+    const { account } = service()
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await assert.rejects(
+        () =>
+          account.invitations.send({
+            actorId: actor.id,
+            email: 'registered@example.test',
+            role: 'user',
+          }),
+        EmailAlreadyRegisteredError
+      )
+    }
+    await assert.rejects(
+      () =>
+        account.invitations.send({
+          actorId: actor.id,
+          email: 'registered@example.test',
+          role: 'user',
+        }),
+      'Too many requests'
+    )
   })
 
   test('independent concurrent sends yield one invitation and one pending error', async ({

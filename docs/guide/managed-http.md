@@ -62,11 +62,18 @@ For a local API walkthrough, replace the generated `notify` block with the maint
 log callback before starting the server:
 
 ```ts
+import app from '@adonisjs/core/services/app'
 import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 
-notify: createLogNotifications({ brandName: 'My App', environment: 'development' }),
+notify: createLogNotifications({
+  brandName: 'My App',
+  environment: app.inProduction ? 'production' : 'development',
+}),
 onCredentialsChangedTransaction: async () => {},
 ```
+
+Pass the real environment: `createLogNotifications` refuses to run in production only when it is
+told it is in production.
 
 See the [development-mail recipe](../recipes/development-mail.md) for the full generated-config
 edit. The generated `onCredentialsChangedTransaction` throws until replaced. Account Kit already
@@ -113,7 +120,7 @@ needs the `config/session.ts` wrapper described below.
 
 Import `registerManagedRoutes` from `@kevinjohn/adonisjs-account-kit/http` in the application's routes file. Calling it is the activation step; importing the package or configuring services registers no route. The HTTP entry requires AdonisJS Core and VineJS. Service-only applications do not import it and do not need VineJS.
 
-Call the function once with a static absolute `prefix` such as `/api/v1`, a `kit` resolver, one existing `guard`, an explicit `enabled` capability list, and an optional `except` list of endpoint names. The guard name and strategy must match `defineConfig({ authentication })`. The `guard.forRequest(context)` callback adapts the selected AdonisJS guard to the public `AuthenticationGuard` service contract. `guard.current(context)` must authenticate that same guard and return a trusted `CurrentAccountInput`, including the captured session revision or current token identifier; it must never take identity from a body or URL. Token logout also supplies `logoutCredential(context)`. Account Kit does not create, replace, or select a guard implicitly. For session guards, protect the selected session configuration before Adonis creates its session middleware. The wrapper checks the exact store instance used by the request and rejects native cookie-backed stores, including aliases and subclasses: an old self-contained cookie can replay after logout. The required `verifyStore` callback is trusted application configuration that attests central revocation for the actual non-cookie store. It must reject unknown or unverified custom stores. Use a shared server-side store across application instances. An unprotected session configuration fails closed with a setup error.
+Call the function once with a static absolute `prefix` such as `/api/v1`, a `kit` resolver, one existing `guard`, an explicit `enabled` capability list, and an optional `except` list of endpoint names. The guard name and strategy must match `defineConfig({ authentication })`. The `guard.forRequest(context)` callback adapts the selected AdonisJS guard to the public `AuthenticationGuard` service contract. `guard.current(context)` must authenticate that same guard and return a trusted `CurrentAccountInput`, including the captured session revision or current token identifier; it must never take identity from a body or URL. Access-token guards with `authentication` enabled must supply `logoutCredential(context)`; registration fails without it, so logout never answers 204 while the token stays valid. Account Kit does not create, replace, or select a guard implicitly. For session guards, protect the selected session configuration before Adonis creates its session middleware. The wrapper checks the exact store instance used by the request and rejects native cookie-backed stores, including aliases and subclasses: an old self-contained cookie can replay after logout. The required `verifyStore` callback is trusted application configuration that attests central revocation for the actual non-cookie store. It must reject unknown or unverified custom stores. Use a shared server-side store across application instances. An unprotected session configuration fails closed with a setup error.
 
 In `config/session.ts`, wrap the `defineConfig(...)` provider before exporting it:
 

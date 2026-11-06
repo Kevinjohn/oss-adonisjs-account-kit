@@ -1,4 +1,5 @@
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
+import limiter from '@adonisjs/limiter/services/main'
 import { errors } from '@kevinjohn/adonisjs-account-kit'
 import type { HttpContext } from '@adonisjs/core/http'
 import { signupValidator } from '#validators/user'
@@ -11,6 +12,10 @@ export default class NewAccountController {
   }
 
   async store(ctx: HttpContext) {
+    // Registration has no throttle of its own: bound account creation and activation mail per client.
+    await limiter
+      .use({ requests: 5, duration: '15 minutes' })
+      .consume(`account-signup:${ctx.request.ip()}`)
     const { fullName, email, password } = await ctx.request.validateUsing(signupValidator)
     let followUpFailed = false
     try {
@@ -38,7 +43,10 @@ export default class NewAccountController {
         accountKitSessionGuard(ctx)
       )
     } catch (error) {
-      ctx.logger.error({ err: error }, 'Account created but initial sign in failed')
+      ctx.logger.error(
+        { event: 'signup_sign_in_failed', code: (error as { code?: unknown }).code },
+        'Account created but initial sign in failed'
+      )
       ctx.session.flash(
         'success',
         'Your account was created. Sign in to request a verification link.'

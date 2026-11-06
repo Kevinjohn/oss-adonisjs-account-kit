@@ -184,6 +184,30 @@ test.group('password change keeps the current token', (group) => {
     })
     assert.lengthOf(await kit.db.from('auth_access_tokens').where('tokenable_id', user.id), 0)
   })
+
+  test('an unconfirmed address fix keeps the current token and deletes every other', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit, { verified: false })
+    const { account } = makeService(kit, {
+      enabled: ['emailVerification', 'emailPasswordManagement'],
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+      minRequestMs: 0,
+    })
+    const mine = await token(user.id, 'Phone')
+    await token(user.id, 'Laptop')
+    await account.emailPasswordManagement.updateProfile({
+      actorId: user.id,
+      currentPassword: 'password123',
+      email: 'fixed@example.test',
+      keepCurrent: { tokenId: mine.tokenId },
+    })
+    const left = await kit.db.from('auth_access_tokens').where('tokenable_id', user.id)
+    assert.deepEqual(
+      left.map((row) => String(row.id)),
+      [String(mine.tokenId)]
+    )
+  })
 })
 
 test.group('managed password change keeps the caller signed in', (group) => {

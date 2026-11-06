@@ -23,6 +23,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
 
   // Session
-  SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
+  // Server-side sessions only: a saved cookie session would replay after logout.
+  SESSION_DRIVER: Env.schema.enum(['database'] as const),
   LIMITER_STORE: Env.schema.enum(['database', 'memory'] as const),
 })

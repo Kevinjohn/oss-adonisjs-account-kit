@@ -6,6 +6,22 @@ import {
 } from '../src/notifications.js'
 
 test.group('maintained notifications', () => {
+  test('action links must be present, absolute and plain HTTP(S)', ({ assert }) => {
+    const render = (actionUrl?: string) => () =>
+      renderAccountMessage('passwordResetProvision', { brandName: 'Example', actionUrl })
+    assert.throws(render(), 'requires an action URL')
+    assert.throws(render('/relative/path'), 'action URL must be absolute')
+    for (const unsafe of [
+      'javascript:alert(1)',
+      'data:text/html,hi',
+      'ftp://example.test/reset',
+      'https://user:secret@example.test/reset',
+      'https://user@example.test/reset',
+    ])
+      assert.throws(render(unsafe), /trusted HTTP\(S\) URL/)
+    assert.doesNotThrow(render('https://example.test/reset'))
+  })
+
   test('renders equivalent safe HTML and text for every action and security notice', ({
     assert,
   }) => {

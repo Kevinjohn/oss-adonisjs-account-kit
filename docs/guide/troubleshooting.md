@@ -26,3 +26,9 @@ records supported database and integration versions.
 Some failures happen after the database change has committed. Follow the recovery steps in
 [operations](operations.md#recover-from-committed-notification-or-observer-failures), and do not
 repeat signup, invitation acceptance, or another operation that already committed.
+
+## The users migration fails on SQLite
+
+The users migration makes `password` nullable with `ALTER COLUMN ... DROP NOT NULL`, which needs
+SQLite 3.53. `better-sqlite3` bundles SQLite 3.53 from version 12.10; upgrade it and run the
+migration again.

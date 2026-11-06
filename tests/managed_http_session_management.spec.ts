@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { registerManagedRoutes } from '../src/http/managed.js'
+import { InvalidSessionError } from '../src/errors.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -51,7 +52,11 @@ test.group('managed sign-in management routes', (group) => {
             terminated.push(credential ?? 'session')
           },
         }) as never,
-      current: async () => caller!,
+      // Like the managed session guard: no signed-in user is an invalid session.
+      current: async () => {
+        if (!caller) throw new InvalidSessionError()
+        return caller
+      },
       publicCredential: (credential: string) => `public:${credential}`,
     })
     const { router, routes, context } = fakeManagedHttp()
@@ -277,6 +282,25 @@ test.group('managed sign-in management routes', (group) => {
     assert.lengthOf(await kit.db.from('account_sessions'), 1)
     const listed = await call('GET /api/v1/account/sessions', { as: mine })
     assert.equal(listed.status, 401)
+  })
+
+  test('a stale session can still log out', async ({ assert }) => {
+    await insertUser(kit)
+    const { call, signIn, terminated } = mount('session')
+    const mine = await signIn()
+    // Revoked elsewhere: the sign-in row is gone, so the session is no longer current.
+    await kit.db.from('account_sessions').delete()
+    const listed = await call('GET /api/v1/account/sessions', { as: mine })
+    assert.equal(listed.status, 401)
+    assert.deepEqual(await call('POST /api/v1/account/logout', { as: mine }), { status: 204 })
+    assert.lengthOf(terminated, 1)
+  })
+
+  test('logout without a signed-in user is refused', async ({ assert }) => {
+    const { call, terminated } = mount('session')
+    const output = await call('POST /api/v1/account/logout')
+    assert.equal(output.status, 401)
+    assert.lengthOf(terminated, 0)
   })
 
   test('session writes require Shield CSRF middleware', async ({ assert }) => {

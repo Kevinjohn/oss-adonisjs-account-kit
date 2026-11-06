@@ -110,7 +110,7 @@ pnpm exec node ace account-kit:prune
 ```
 
 The command captures one expiry cutoff for the run, selects IDs in bounded batches, and rechecks
-that each row is still expired at deletion time. Output reports all seven row counts, showing rows
+that each row is still expired at deletion time. Output reports all eight row counts, showing rows
 actually deleted (or rows eligible in dry-run mode). It does not delete users, social identities,
 access tokens, web sessions, team memberships, or application-owned records. If a run reaches its
 batch cap, schedule another run rather than raising the cap without considering database load.

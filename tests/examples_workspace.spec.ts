@@ -31,11 +31,13 @@ test('examples that pack the local archive do not install it with a frozen lockf
   assert,
 }) => {
   const frozen: string[] = []
+  let packing = 0
   for (const entry of await readdir(examplesRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
     const directory = join(examplesRoot, entry.name)
     const manifest = await readFile(join(directory, 'package.json'), 'utf8').catch(() => undefined)
     if (!manifest || !JSON.parse(manifest).scripts?.['kit:pack']) continue
+    packing++
     const readme = await readFile(join(directory, 'README.md'), 'utf8')
     // The root install is frozen; the archive's integrity changes with every local build.
     for (const line of readme.split('\n'))
@@ -45,5 +47,6 @@ test('examples that pack the local archive do not install it with a frozen lockf
       )
         frozen.push(`${entry.name}: ${line.trim()}`)
   }
+  assert.isAbove(packing, 0, 'no example packs the local archive')
   assert.deepEqual(frozen, [])
 })

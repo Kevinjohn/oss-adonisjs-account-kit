@@ -158,6 +158,7 @@ test.group('managed social HTTP', () => {
           intent: 'login',
           current: undefined,
           callback: ctx,
+          admit: undefined,
         })
         return { status: 'linked', userId: 7, handoffCode: 'once' }
       },
@@ -245,6 +246,33 @@ test.group('managed social HTTP', () => {
     assert.isUndefined(
       (ctx as unknown as { session: { get(key: string): unknown } }).session.get(key)
     )
+  })
+
+  test('a session continuation gets a fresh lifetime and the callback receives admit', async ({
+    assert,
+  }) => {
+    const ctx = context({ state: 'begin-state', code: 'provider-code' }, { provider: 'google' })
+    // The begin state has a minute left; the continuation must not inherit that deadline.
+    seedSessionState(ctx, 'begin-state', {
+      verifier: 'server-verifier',
+      intent: 'login',
+      provider: 'google',
+      expiresAt: Date.now() + 60_000,
+    })
+    const admit = async () => {}
+    const service = {
+      callback: async (input: { admit?: unknown }) => {
+        assert.strictEqual(input.admit, admit)
+        return { status: 'new', continuation: 'continuation-state' }
+      },
+    } as unknown as SocialAuthentication
+    const before = Date.now()
+    await executeManagedSocial('auth.oauth.callback', ctx, service, guard(), { ...social, admit })
+    const key = `accountKit.social.${createHash('sha256').update('continuation-state').digest('hex')}`
+    const stored = (
+      ctx as unknown as { session: { get(key: string): { expiresAt: number } } }
+    ).session.get(key)
+    assert.isAtLeast(stored.expiresAt, before + 10 * 60 * 1000)
   })
 
   test('session callback rejects a provider different from the initiating transaction', async ({

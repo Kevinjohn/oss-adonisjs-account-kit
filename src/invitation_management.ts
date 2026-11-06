@@ -1,9 +1,10 @@
 import { DateTime } from 'luxon'
-import { sqlTimestamp } from './timestamps.js'
+import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { lockRow, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import {
+  EmailAlreadyRegisteredError,
   AuthorizationError,
   InvalidInputError,
   InvitationNotFoundError,
@@ -94,7 +95,10 @@ export async function resendInvitation(
   )
   const { value: invitation, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      await lockResendable(deps.config, trx, input.actorId, input.invitationId)
+      const current = await lockResendable(deps.config, trx, input.actorId, input.invitationId)
+      // The address may have signed up since; acceptance would refuse the new link.
+      if (await deps.config.users.findByEmail(current.email, trx))
+        throw new EmailAlreadyRegisteredError()
 
       const now = DateTime.utc()
       await trx
@@ -172,19 +176,21 @@ export async function listInvitations(
     .orderBy('created_at', 'asc')
     .orderBy('id', 'asc')
     .limit(limit + 1)
-  if (position)
+  if (position) {
+    // The cursor carries ISO 8601 UTC; compare in the form this engine stores.
+    const createdAt = sqlTimestamp(deps.db, DateTime.fromISO(position.createdAt, { zone: 'utc' }))
     query.where((builder) =>
       builder
-        .where('created_at', '>', position!.createdAt)
-        .orWhere((nested) =>
-          nested.where('created_at', position!.createdAt).where('id', '>', position!.id)
-        )
+        .where('created_at', '>', createdAt)
+        .orWhere((nested) => nested.where('created_at', createdAt).where('id', '>', position.id))
     )
+  }
   const rows = await query
   const items = rows.slice(0, limit).map(toInvitation)
   const last = rows.length > limit ? rows[limit - 1] : null
   return {
     items,
-    nextCursor: last ? encodeInvitationCursor(last.created_at, last.id) : null,
+    // The driver may return a Date or an SQL string; the cursor always carries ISO 8601 UTC.
+    nextCursor: last ? encodeInvitationCursor(readIsoTimestamp(last.created_at), last.id) : null,
   }
 }

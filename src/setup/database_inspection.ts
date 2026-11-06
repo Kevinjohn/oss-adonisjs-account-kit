@@ -8,7 +8,7 @@ import {
   parseSetupSource,
   topLevelConfig,
 } from './ts_source.js'
-import { selectedEnvName } from './selected_environment.js'
+import { SelectedEnvironmentValueError, selectedEnvName } from './selected_environment.js'
 
 export async function databaseKind(
   sourceText: string,
@@ -34,15 +34,22 @@ export async function databaseKind(
   const { ts } = source
   let selected: string | null = null
   if (ts.isStringLiteral(connection)) selected = connection.text
-  else
-    selected =
-      (await selectedEnvName(
-        source,
-        root,
-        defaultImportName(source, '#start/env'),
-        connection,
-        'DB_CONNECTION'
-      )) ?? null
+  else {
+    // An empty, repeated or indirect DB_CONNECTION is unresolved, not a setup crash.
+    try {
+      selected =
+        (await selectedEnvName(
+          source,
+          root,
+          defaultImportName(source, '#start/env'),
+          connection,
+          'DB_CONNECTION'
+        )) ?? null
+    } catch (error) {
+      if (error instanceof SelectedEnvironmentValueError) return 'unknown'
+      throw error
+    }
+  }
   if (!selected) return 'unknown'
   const selectedConnection = directObject(
     source,
@@ -57,7 +64,7 @@ export async function databaseKind(
   const client = directProperty(source, selectedConnection, 'client')?.initializer
   if (!client || !ts.isStringLiteral(client)) return 'unknown'
   if (['better-sqlite3', 'sqlite3'].includes(client.text)) return 'sqlite'
-  if (['pg', 'postgres'].includes(client.text)) return 'postgres'
+  if (['pg', 'postgres', 'postgresql'].includes(client.text)) return 'postgres'
   if (client.text === 'mysql2') return 'mysql'
   return 'unsupported'
 }

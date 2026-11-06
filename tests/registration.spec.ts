@@ -81,19 +81,21 @@ test.group('registration', (group) => {
         }),
       InvalidInputError
     )
-    const mapped = makeService(kit, {
-      enabled: ['registration'],
-      registration: { availability: 'open', mapFields: async () => ({ role: 'admin' }) },
-    })
-    await assert.rejects(
-      () =>
-        mapped.account.registration.register({
-          email: 'person@example.test',
-          password: 'password123',
-          registrationData: {},
-        }),
-      InvalidInputError
-    )
+    for (const field of ['role', 'credentials_changed_at', 'credentialsChangedAt']) {
+      const mapped = makeService(kit, {
+        enabled: ['registration'],
+        registration: { availability: 'open', mapFields: async () => ({ [field]: 'x' }) },
+      })
+      await assert.rejects(
+        () =>
+          mapped.account.registration.register({
+            email: 'person@example.test',
+            password: 'password123',
+            registrationData: {},
+          }),
+        InvalidInputError
+      )
+    }
     assert.equal((await kit.db.from('users')).length, 0)
   })
 
@@ -421,11 +423,13 @@ test.group('registration', (group) => {
       }
     )
     assert.equal(result.account.id, user.id)
-    await assert.rejects(() =>
-      service.account.registration.register({
-        email: 'new@example.test',
-        password: 'lowercase123',
-      })
+    await assert.rejects(
+      () =>
+        service.account.registration.register({
+          email: 'new@example.test',
+          password: 'lowercase123',
+        }),
+      InvalidInputError
     )
   })
 })

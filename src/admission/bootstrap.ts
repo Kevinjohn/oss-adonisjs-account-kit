@@ -56,7 +56,12 @@ export async function operatorBootstrap(
   const own = () => deps.db.from(admissionTable).where('id', rowId).whereNull('user_id')
   try {
     const issued = await kit.operator.invite({ email, role: input.role, deliver: 'print' })
-    await own().update({ invitation_id: issued.invitation.id })
+    const updated = await own().update({ invitation_id: issued.invitation.id })
+    // Without its approval row, the printed link would create an account that is not approved.
+    if (Number(Array.isArray(updated) ? updated[0] : updated) === 0)
+      throw new InvalidInputError(
+        'Bootstrap approval was replaced or cancelled; run bootstrap again'
+      )
     return issued
   } catch (error) {
     await own().delete()

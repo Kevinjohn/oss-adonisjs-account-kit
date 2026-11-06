@@ -37,6 +37,9 @@ if (env.get('ACCOUNT_KIT_AUTH_STRATEGY') === 'session' && env.get('SESSION_DRIVE
 }
 
 /**
+ * Demo notifier: outside development it sends no email and keeps each link in process memory.
+ * Replace `notify` with the application's mailer before copying this file.
+ *
  * Test seam: the kit freezes the notification callbacks it resolves from this file, so tests
  * replace entries in `notifyOverrides`. The kit calls through it at call time.
  */
@@ -100,6 +103,7 @@ export default defineConfig({
   notify,
   // Records invitation evidence for admission, then grants the role, in the acceptance transaction.
   onInvitationAccepted: withInvitationEvidence(onInvitationAccepted),
+  // Inactive here: they run only when `accountDeletion` and `dataExport` are enabled.
   onAccountDeletingTransaction: withAdmissionCleanup(),
   exportAccountData,
   onCredentialsChangedTransaction,

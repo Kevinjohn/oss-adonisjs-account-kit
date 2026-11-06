@@ -2,9 +2,45 @@ import { rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { planSetup } from '../src/setup/plan.js'
+import {
+  nativeSessionConfiguration,
+  renderManagedSessionConfig,
+} from '../src/setup/session_config.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
 
 test.group('setup session prerequisites', () => {
+  test('an uncompilable session config is reported only when setup needs it', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] = 'export default defineConfig({\n'
+      const reported = async () => {
+        const plan = await planSetup(choices, state)
+        return plan.diagnostics.some(
+          ({ field, message }) =>
+            field === 'config/session.ts' && message.includes('TypeScript errors')
+        )
+      }
+      assert.isTrue(await reported())
+      choices.authentication!.strategy = 'access_tokens'
+      assert.isFalse(await reported())
+    })
+  })
+
+  test('the session export is wrapped whatever spacing or comments it carries', async ({
+    assert,
+  }) => {
+    const source = [
+      "import { defineConfig, stores } from '@adonisjs/session'",
+      "const sessionConfig = defineConfig({ store: 'database', stores: { database: stores.database() } })",
+      'export  default /* session */ sessionConfig',
+      '',
+    ].join('\n')
+    const inspected = await nativeSessionConfiguration(source, '/nonexistent')
+    const rendered = renderManagedSessionConfig(source, inspected!)
+    assert.equal(rendered.split('// account-kit:session-export:end\n')[1], '\n')
+  })
+
   test('rejects an aliased cookie session and leaves dynamic custom stores unverified', async ({
     assert,
   }) => {
@@ -28,12 +64,57 @@ test.group('setup session prerequisites', () => {
         )
       )
       state.files['config/session.ts'] =
+        "import { defineConfig, stores as s } from '@adonisjs/session'\nexport default defineConfig({ store: 'browser', stores: { browser: s.cookie() } })"
+      const importedAlias = await planSetup(choices, state)
+      assert.isTrue(
+        importedAlias.diagnostics.some(
+          ({ field, message, severity }) =>
+            field === 'config/session.ts' && severity === 'error' && message.includes('Cookie-only')
+        ),
+        JSON.stringify(importedAlias.diagnostics)
+      )
+      state.files['config/session.ts'] =
         "export default { store: 'custom', stores: { custom: makeCustomStore() } }"
       const custom = await planSetup(choices, state)
       assert.isTrue(
         custom.diagnostics.some(
           ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
         )
+      )
+    })
+  })
+
+  test('conventional session configs report cookie and accept redis selections', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      const conventional = (store: string) =>
+        [
+          "import { defineConfig, stores } from '@adonisjs/session'",
+          'const sessionConfig = defineConfig({',
+          `  store: '${store}',`,
+          '  stores: { cookie: stores.cookie(), redis: stores.redis({ connection: "main" }) },',
+          '})',
+          'export default sessionConfig',
+          '',
+        ].join('\n')
+      state.files['config/session.ts'] = conventional('cookie')
+      const cookie = await planSetup(choices, state)
+      assert.isTrue(
+        cookie.diagnostics.some(
+          ({ field, message, severity }) =>
+            field === 'config/session.ts' && severity === 'error' && message.includes('Cookie-only')
+        ),
+        JSON.stringify(cookie.diagnostics)
+      )
+      state.files['config/session.ts'] = conventional('redis')
+      choices.authentication!.session!.persistentStore = true
+      const redis = await planSetup(choices, state, { production: true })
+      assert.isFalse(
+        redis.diagnostics.some(
+          ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+        ),
+        JSON.stringify(redis.diagnostics)
       )
     })
   })
@@ -52,6 +133,28 @@ test.group('setup session prerequisites', () => {
             message.includes('persistent shared')
         )
       )
+    })
+  })
+
+  test('an indirect SESSION_DRIVER is a diagnostic, not a crash', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      state.files['config/session.ts'] =
+        "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER'), stores: { database: stores.database() } })\nexport default sessionConfig\n"
+      const oldDriver = process.env.SESSION_DRIVER
+      delete process.env.SESSION_DRIVER
+      await writeFile(join(state.root, '.env'), 'SESSION_DRIVER=$OTHER\n')
+      try {
+        const plan = await planSetup(choices, state)
+        assert.isTrue(
+          plan.diagnostics.some(
+            ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
+          )
+        )
+      } finally {
+        await rm(join(state.root, '.env'), { force: true })
+        if (oldDriver === undefined) delete process.env.SESSION_DRIVER
+        else process.env.SESSION_DRIVER = oldDriver
+      }
     })
   })
 
@@ -229,7 +332,8 @@ test.group('setup session prerequisites', () => {
         process.env.NODE_ENV = 'development'
         state.files['config/session.ts'] =
           "import env from '#start/env'\nimport { defineConfig, stores } from '@adonisjs/session'\nconst sessionConfig = defineConfig({ store: env.get('SESSION_DRIVER'), stores: { database: stores.database(), memory: stores.memory() } })\nexport default sessionConfig\n"
-        await writeFile(join(root, '.env'), 'SESSION_DRIVER=memory\nPRIVATE_VALUE=hidden-value\n')
+        // Each step puts the unsupported `custom` store in the file that should lose.
+        await writeFile(join(root, '.env'), 'SESSION_DRIVER=custom\nPRIVATE_VALUE=hidden-value\n')
         await writeFile(join(root, '.env.development'), 'SESSION_DRIVER=database\n')
         const fromFile = await planSetup(choices, state)
         assert.isFalse(
@@ -238,6 +342,7 @@ test.group('setup session prerequisites', () => {
           )
         )
         assert.isFalse(JSON.stringify(fromFile).includes('hidden-value'))
+        await writeFile(join(root, '.env.development'), 'SESSION_DRIVER=custom\n')
         await writeFile(join(root, '.env.development.local'), 'SESSION_DRIVER="memory"\n')
         const local = await planSetup(choices, state)
         assert.isFalse(
@@ -245,6 +350,7 @@ test.group('setup session prerequisites', () => {
             ({ field, severity }) => field === 'config/session.ts' && severity === 'error'
           )
         )
+        await writeFile(join(root, '.env.development.local'), 'SESSION_DRIVER=custom\n')
         process.env.SESSION_DRIVER = 'database'
         const override = await planSetup(choices, state)
         assert.isFalse(

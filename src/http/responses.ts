@@ -38,7 +38,8 @@ export type ManagedMessage = (code: string, defaultMessage: string) => string
  * The framework's own negotiation: a missing, wildcard or unrecognised `Accept` gets JSON, and
  * JSON:API only when the client ranks it at least as high as JSON.
  */
-function negotiate(accept?: string): typeof JSON_API | 'application/json' {
+/** The error media type the `Accept` header asks for: JSON:API or plain JSON. */
+export function negotiate(accept?: string): typeof JSON_API | 'application/json' {
   const request = new HttpRequest(
     { headers: accept === undefined ? {} : { accept }, url: '/', method: 'GET' } as never,
     {} as never,

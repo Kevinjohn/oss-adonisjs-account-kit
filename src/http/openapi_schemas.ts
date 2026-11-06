@@ -93,6 +93,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       },
     }),
     forbidden: true,
+    noStore: true,
   },
   'auth.csrf': {
     summary: 'Read the CSRF token for session requests',
@@ -106,6 +107,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       200: { description: 'Signed in.', schema: accountBody(strategy, 'required') },
     }),
     authenticates: true,
+    noStore: true,
   },
   'auth.passwordReset.request': {
     summary: 'Request a password-reset email',
@@ -427,7 +429,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.magicLink.complete': {
     summary: 'Sign in with a magic link',
     description:
-      'Consumes the link, also when a check fails. Session guards use the verifier held in the session.',
+      'Consumes the link, also when a later check fails. A request without its verifier is refused before the link is used, so the link stays live. Session guards use the verifier held in the session.',
     body: (strategy) =>
       body(
         {
@@ -443,6 +445,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     success: (strategy) => ({
       200: { description: 'Signed in.', schema: accountBody(strategy, 'required') },
     }),
+    authenticates: true,
   },
   'account.sessions.list': {
     summary: "List the account's sign-ins",
@@ -470,6 +473,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       'Requires `currentPassword` or a `recentProof` for `account_export`. Sent as an attachment.',
     body: () => body({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
     success: ok('The export document.', ref('AccountExport')),
+    noStore: true,
   },
   'account.delete': {
     summary: 'Delete the account permanently',

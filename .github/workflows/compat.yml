@@ -12,12 +12,17 @@ on:
       - 'pnpm-workspace.yaml'
       - 'index.ts'
       - 'configure.ts'
+      - 'src/**'
+      - 'adapters/**'
+      - 'http/**'
+      - 'services/**'
+      - 'testing/**'
       - 'providers/**'
       - 'stubs/**'
       - 'commands/**'
+      - 'examples/api/**'
       - 'bin/test_consumer.ts'
       - 'bin/helpers/consumer/**'
-      - 'bin/helpers/consumer_*.ts'
       - '.github/workflows/compat.yml'
 
 permissions:

@@ -45,6 +45,39 @@
 - Breaking: `authentication.canAccess` must resolve to `true` or `false` on every sign-in and
   session check. Any other value, such as `1`, `0` or a row, now throws instead of allowing or
   denying access; the managed routes answer `E_ACCOUNT_KIT_OPERATION_FAILED`.
+- Breaking: managed routes on an access-token guard with `authentication` enabled throw
+  `InvalidArgumentsException` at registration unless the guard sets `logoutCredential`. Before,
+  logout answered 204 and left the bearer token valid.
+- Breaking: listing admissions requires an admitted actor. A revoked or undecided approver gets
+  `AuthorizationError`, and `authorize.list` receives `(actor, {})`.
+- Breaking: linking a social provider requires a confirmed email. `begin({ intent: 'link' })` and
+  the link callback throw `UnverifiedEmailError` for an unconfirmed account.
+- Breaking: `resendInvitation` throws `EmailAlreadyRegisteredError` (409) when the invited address
+  has since signed up.
+- Changed: a social sign-in whose provider address is unconfirmed, for an account that is not yet
+  activated, resends the activation email and returns `{ status: 'new',
+emailVerificationRequired: true }` instead of throwing `SocialUserNotFoundError`.
+- Changed: `requestAdmission` from an account that already has a decision records the request but
+  emits no `admission.requested` event.
+- Changed: with `sessionManagement`, account export includes a `sessions` list of signed-in
+  devices, and signing in again in the same browser deletes the sign-in it replaces. Session
+  guards can expose the optional `previousHandle()` for this.
+- Changed: `updateProfile` accepts `keepCurrent`. On the managed profile route, correcting the
+  address of an unconfirmed account keeps the caller signed in.
+- Changed: a managed logout from a session that is no longer valid ends it and answers 204
+  instead of 401. Logout without a signed-in user still answers 401.
+- Changed: password login reserves an attempt from each login budget before checking the
+  password, so parallel guesses cannot exceed the budget. Correct logins and unrelated failures
+  give the attempt back.
+- Changed: setup keeps an edited `config/account_kit.ts` or migration when the saved choices are
+  unchanged, and `--check` no longer reports it as a conflict.
+- Changed: package 422 responses from managed routes follow the request's `Accept` header, so a
+  JSON:API client receives `{ errors: [{ code, title, source: { pointer } }] }`, with
+  `Cache-Control: no-store` and `Vary: Accept`.
+- Changed: `node ace account-kit:setup` writes warnings and progress to stderr and only the report
+  to stdout.
+- Changed: account export reports `credentialsChangedAt` as `null` when the configuration has no
+  `authentication`.
 - Deprecated: the `encryption` input to `new AccountKit(...)` is ignored. Remove it from direct
   constructor calls; it is still accepted for source compatibility.
 

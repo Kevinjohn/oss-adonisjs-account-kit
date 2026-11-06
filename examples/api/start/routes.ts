@@ -14,6 +14,7 @@ import { middleware } from '#start/kernel'
 import router from '@adonisjs/core/services/router'
 import { controllers } from '#generated/controllers'
 import { authStrategy } from '#services/auth_strategy'
+import { accountPublicLimit } from '#start/limiter'
 
 const strategy = authStrategy()
 
@@ -25,20 +26,28 @@ router
   .group(() => {
     router
       .group(() => {
-        router.post('signup', [controllers.NewAccount, 'store'])
+        router.post('signup', [controllers.NewAccount, 'store']).use(accountPublicLimit('signup'))
         router.get('social-verification/:token', [controllers.SocialAuth, 'verificationEntry'])
         if (strategy === 'session') router.get('csrf', [controllers.Session, 'csrf'])
         if (strategy === 'session') router.post('login', [controllers.Session, 'store'])
         else router.post('login', [controllers.AccessTokens, 'store'])
         router.post('password-reset', [controllers.PasswordResets, 'request'])
         router.get('password-reset/:token', [controllers.PasswordResets, 'inspect'])
-        router.post('password-reset/:token', [controllers.PasswordResets, 'complete'])
+        router
+          .post('password-reset/:token', [controllers.PasswordResets, 'complete'])
+          .use(accountPublicLimit('password-reset'))
         router.get('email-verification/:token', [controllers.EmailVerifications, 'inspect'])
-        router.post('email-verification/:token', [controllers.EmailVerifications, 'complete'])
+        router
+          .post('email-verification/:token', [controllers.EmailVerifications, 'complete'])
+          .use(accountPublicLimit('email-verification'))
         router.get('email-change/:token', [controllers.EmailChanges, 'inspectEmailChange'])
-        router.post('email-change/:token', [controllers.EmailChanges, 'completeEmailChange'])
+        router
+          .post('email-change/:token', [controllers.EmailChanges, 'completeEmailChange'])
+          .use(accountPublicLimit('email-change'))
         router.get('invitations/:token', [controllers.Invitations, 'inspect'])
-        router.post('invitations/:token', [controllers.Invitations, 'accept'])
+        router
+          .post('invitations/:token', [controllers.Invitations, 'accept'])
+          .use(accountPublicLimit('invitation'))
         router
           .post('oauth/:provider/redirect', [controllers.SocialAuth, 'redirect'])
           .use(middleware.socialThrottle({ operation: 'begin' }))

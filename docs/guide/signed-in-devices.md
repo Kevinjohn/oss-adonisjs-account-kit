@@ -136,8 +136,16 @@ working. When a post-commit observer, commit listener, or password-change notice
 throws `PostCommitError` or `DeliveryError`; `passwordChangeRevision(error)` returns the committed
 revision for either, so store that one. The managed session guard's `refresh(revision)` does both,
 and the managed password-change route passes `keepCurrent` and calls it on success and failure
-paths. Password reset, email change, restriction, social unlink and sign out everywhere still end
-every sign-in.
+paths.
+
+`updateProfile({ ..., keepCurrent })` takes the same option. A new address on an account that is
+not yet active advances the revision, so an unconfirmed user can fix a mistyped address and
+resend the link without signing in again. Read the new revision with
+`authentication.inspectAccountAccess`; the managed profile route passes `keepCurrent` and
+refreshes the session with the revision the correction committed. `updateProfile` returns after
+sending the confirmation email, so a password reset that lands while it is sending advances the
+revision again, and reading it then would keep a session the reset meant to end. Password reset, a confirmed email change, restriction, social unlink and
+sign out everywhere still end every sign-in.
 
 ### Custom guard adapters
 

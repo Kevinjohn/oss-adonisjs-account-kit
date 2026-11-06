@@ -212,6 +212,26 @@ test.group('setup source edits', (group) => {
     )
   })
 
+  test('object and block-body provider entries count as registered', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const rewritten = [
+      'export default {',
+      '  providers: [',
+      "    { file: () => import('@adonisjs/lucid/database_provider'), environment: ['web', 'console'] },",
+      '    () => {',
+      "      return import('@adonisjs/limiter/limiter_provider')",
+      '    },',
+      '  ],',
+      '}',
+      '',
+    ].join('\n')
+    await writeFile(join(root, 'adonisrc.ts'), rewritten)
+    const plan = await planSetup(choices, await inspectSetup(root))
+    const content = plan.changes.find(({ path }) => path === 'adonisrc.ts')!.content
+    assert.notInclude(content, "    () => import('@adonisjs/lucid/database_provider'),")
+    assert.notInclude(content, "    () => import('@adonisjs/limiter/limiter_provider'),")
+  })
+
   test('registers the provider export once', async ({ assert }) => {
     const { root, choices } = await fixture()
     await writeFile(join(root, 'adonisrc.ts'), 'export default { providers: [] }\n')

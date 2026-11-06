@@ -32,7 +32,7 @@ export default defineAdmission({
     required: true,
     authorize: {
       decide: async (actor, subject, context) => false, // may actor approve, reject or revoke subject
-      list: async (actor, context) => false, // may actor list admission records
+      list: async (actor, context) => false, // may actor list records; runs with no context.trx
     },
   },
   onAdmissionEvent: async (event) => {}, // optional, after commit, ids only
@@ -225,6 +225,8 @@ After commit, `onAdmissionEvent` receives `admission.requested`, `admission.appr
 `admission.rejected`, `admission.revoked` or `admission.invitation_granted`, with ids and an
 `operationId` only. A failing hook surfaces as `PostCommitError`: the change is saved, so do not
 repeat it. Account Kit sends no email about admission; use the hook to notify people.
+`admission.requested` is sent only for a person with no decision yet. A bootstrap approval sends no
+event, either when it is issued or when its invitation creates the account.
 
 `list` filters by `status`: `pending` is a person who asked and has no decision; `approved`,
 `rejected` and `revoked` are the stored decisions; omitted lists every record. The cursor is
@@ -351,5 +353,5 @@ withAdmissionCleanup()` in `config/account_kit.ts`.
 
 ## Changelog
 
-Admission arrived in the Unreleased section of the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md):
+Admission arrived in the 0.1.0 section of the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md):
 the module, decisions and commands, and the example application.

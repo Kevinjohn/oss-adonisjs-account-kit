@@ -10,29 +10,34 @@ export type NavItem = {
   label: string
   route: NavRoute
   icon?: LucideIcon
+  /** A path whose pages also count as this link's, when the route is one page of a section. */
+  section?: string
 }
 
 /**
  * A link that marks itself with `aria-current="page"` when the current URL
  * matches its route. By default nested URLs count as a match, so a
  * "Settings" link stays active on "/settings/security". Pass `exact` to
- * only match the route itself.
+ * only match the route itself. Pass `section` to mark the link on every page under that path.
  */
 export default function NavLink({
   route,
   exact = false,
+  section,
   className,
   children,
 }: {
   route: NavRoute
   exact?: boolean
+  section?: string
   className?: string
   children: ReactNode
 }) {
   const { url } = usePage()
   const href = urlFor(route)
   const path = url.split('?')[0]
-  const isActive = exact ? path === href : path === href || path.startsWith(`${href}/`)
+  const base = section ?? href
+  const isActive = exact ? path === href : path === base || path.startsWith(`${base}/`)
 
   return (
     <Link href={href} className={className} aria-current={isActive ? 'page' : undefined}>

@@ -347,6 +347,15 @@ test.group('emailPasswordManagement', (group) => {
     )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     assert.lengthOf(recorder.calls, 1)
+    // An immediate retry sends a new link rather than reporting the undelivered one as sent.
+    recorder.failOn(null)
+    await account.emailPasswordManagement.requestEmailChange({
+      actorId: user.id,
+      currentPassword: 'oldPassword123',
+      newEmail: 'new@example.test',
+    })
+    assert.lengthOf(recorder.calls, 2)
+    assert.equal(recorder.calls[1].method, 'emailChangeProvision')
   })
 
   test('email-change URL callback failure preserves the committed token', async ({ assert }) => {

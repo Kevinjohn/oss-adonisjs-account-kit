@@ -36,7 +36,11 @@ export default function Email({ email, pendingEmail, canRequestChange }: Props) 
         </p>
       )}
       {canRequestChange && (
-        <Form route="email_changes.store" onError={focusFormErrorSummary}>
+        <Form
+          route="email_changes.store"
+          resetOnSuccess={['currentPassword']}
+          onError={focusFormErrorSummary}
+        >
           {({ errors, processing }) => (
             <div className="auth__form">
               <FormErrorSummary errors={errors} fields={requestFields} />
@@ -88,7 +92,11 @@ export default function Email({ email, pendingEmail, canRequestChange }: Props) 
         </Form>
       )}
       {pendingEmail && (
-        <Form route="email_changes.cancel" onError={focusFormErrorSummary}>
+        <Form
+          route="email_changes.cancel"
+          resetOnSuccess={['cancelCurrentPassword']}
+          onError={focusFormErrorSummary}
+        >
           {({ errors, processing }) => (
             <div className="auth__form">
               <p>Cancel the pending change with your current password.</p>

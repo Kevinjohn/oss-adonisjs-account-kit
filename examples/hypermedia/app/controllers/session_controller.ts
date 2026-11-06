@@ -11,17 +11,16 @@ export default class SessionController {
 
   async store(ctx: HttpContext) {
     const { email, password } = await ctx.request.validateUsing(loginValidator)
+    let active: boolean
     try {
-      await kit.authentication.login(
+      const { account } = await kit.authentication.login(
         { email, password, clientKey: ctx.request.ip() },
         accountKitSessionGuard(ctx)
       )
+      active = account.active
     } catch (error) {
-      if (
-        !(error instanceof errors.InvalidCredentialsError) &&
-        !(error instanceof errors.ThrottledError)
-      )
-        throw error
+      // ThrottledError reaches the exception handler, which asks the person to wait.
+      if (!(error instanceof errors.InvalidCredentialsError)) throw error
       ctx.session.flash(
         'error',
         'The email or password is incorrect. Check your details and try again.'
@@ -31,7 +30,9 @@ export default class SessionController {
     }
     ctx.session.flash(
       'success',
-      'You are signed in. Confirm your email to access protected account pages.'
+      active
+        ? 'You are signed in.'
+        : 'You are signed in. Confirm your email to access protected account pages.'
     )
     return ctx.response.redirect().toRoute('dashboard')
   }

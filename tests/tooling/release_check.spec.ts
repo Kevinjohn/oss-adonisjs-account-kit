@@ -7,8 +7,8 @@ import { test } from '@japa/runner'
 
 const root = join(import.meta.dirname, '../..')
 
-/** Run the release gate in a throwaway package with the given changelog. */
-async function releaseCheck(changelog: string) {
+/** Run the release gate in a throwaway repository with the given changelog. */
+async function releaseCheck(changelog: string, repository: 'clean' | 'tagged' | 'none' = 'clean') {
   const directory = await mkdtemp(join(tmpdir(), 'account_kit_release_check_'))
   try {
     await writeFile(
@@ -16,6 +16,19 @@ async function releaseCheck(changelog: string) {
       JSON.stringify({ name: 'release-fixture', version: '9.9.9', scripts: { build: 'true' } })
     )
     await writeFile(join(directory, 'CHANGELOG.md'), changelog)
+    if (repository !== 'none') {
+      const git = (...args: string[]) =>
+        spawnSync(
+          'git',
+          ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', ...args],
+          {
+            cwd: directory,
+          }
+        )
+      git('init', '-q')
+      git('commit', '-q', '--allow-empty', '-m', 'fixture')
+      if (repository === 'tagged') git('tag', 'v9.9.9')
+    }
     const environment: NodeJS.ProcessEnv = { ...process.env, GITHUB_REPOSITORY: 'owner/repo' }
     delete environment.GITHUB_ENV
     const result = spawnSync('bash', [join(root, 'bin/release_check.sh')], {
@@ -79,4 +92,16 @@ test('release notes take only the exact version section', async ({ assert }) => 
   assert.equal(result.status, 0, result.stderr)
   assert.include(result.notes, '- Current')
   assert.notInclude(result.notes, '- Other')
+})
+
+test('release gate refuses a version that is already tagged', async ({ assert }) => {
+  const result = await releaseCheck('# Changelog\n\n## 9.9.9 - 2026-01-01\n\n- A\n', 'tagged')
+  assert.equal(result.status, 1)
+  assert.include(result.stderr, 'tag v9.9.9 already exists')
+})
+
+test('release gate refuses to run where git cannot read tags', async ({ assert }) => {
+  const result = await releaseCheck('# Changelog\n\n## 9.9.9 - 2026-01-01\n\n- A\n', 'none')
+  assert.equal(result.status, 1)
+  assert.include(result.stderr, 'cannot read git tags')
 })

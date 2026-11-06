@@ -39,6 +39,14 @@ router.post('verify-email/:token', [controllers.EmailVerifications, 'update'])
 router.get('confirm-email/:token', [controllers.EmailChanges, 'confirm'])
 router.post('confirm-email/:token', [controllers.EmailChanges, 'complete'])
 
+// Application pages that need a confirmed address use the verified-account middleware.
+router
+  .group(() => {
+    router.on('/account').renderInertia('account', {}).as('account')
+  })
+  .use(middleware.auth())
+  .use(middleware.verifiedAccount())
+
 router
   .group(() => {
     router.on('/dashboard').renderInertia('dashboard', {}).as('dashboard')

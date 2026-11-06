@@ -4,7 +4,7 @@ import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { databaseEnvironment } from './consumer_app.js'
 import { run } from './harness.js'
-import { database, tempRoot } from './settings.js'
+import { database, runRoot } from './settings.js'
 
 export const optionalBackendIntegrations = [
   '@adonisjs/auth',
@@ -211,7 +211,7 @@ ${
 }
 
 export async function runServiceOnly(candidate: string, runName: string) {
-  const appRoot = join(tempRoot, runName)
+  const appRoot = join(await runRoot(), runName)
   const serviceEvidencePath = join(appRoot, 'service-evidence.json')
   await mkdir(appRoot)
   const manifest = {

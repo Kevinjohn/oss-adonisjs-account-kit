@@ -8,6 +8,7 @@ import {
   exactCall,
   hasUnsafeBindingReferences,
   importedName,
+  InvalidSetupSourceError,
   isTypeOnlyReference,
   parseSetupSource,
   unwrapStaticExpression,
@@ -369,8 +370,14 @@ export async function planUserModel(
           'Resolve the imported Lucid BaseModel inheritance before using this model for generated migrations'
         )
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      diagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
+      if (error instanceof InvalidSetupSourceError)
+        diagnostic(
+          diagnostics,
+          'user.model',
+          `Setup cannot inspect ${modelPath}; fix its TypeScript errors first`
+        )
+      else if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      else diagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
     }
   }
 }

@@ -2,6 +2,9 @@ import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
 import { insertUser } from './helpers/fakes.js'
+/** A unique violation, as SQLite, PostgreSQL and MySQL word it. */
+const unique = /unique|duplicate/i
+
 test.group('published account kit migrations', (group) => {
   const kit = useTestApp(group)
 
@@ -132,64 +135,76 @@ test.group('published account kit migrations', (group) => {
       created_at: now,
     })
 
-    await assert.rejects(() =>
-      kit.db.table('password_reset_tokens').insert({
-        tokenable_id: firstUserId,
-        email: 'first@example.test',
-        hash: 'd'.repeat(64),
-        expires_at: now,
-        created_at: now,
-      })
+    await assert.rejects(
+      () =>
+        kit.db.table('password_reset_tokens').insert({
+          tokenable_id: firstUserId,
+          email: 'first@example.test',
+          hash: 'd'.repeat(64),
+          expires_at: now,
+          created_at: now,
+        }),
+      unique
     )
-    await assert.rejects(() =>
-      kit.db.table('email_verification_tokens').insert({
-        tokenable_id: firstUserId,
-        email: 'another@example.test',
-        hash: 'e'.repeat(64),
-        expires_at: now,
-        created_at: now,
-      })
+    await assert.rejects(
+      () =>
+        kit.db.table('email_verification_tokens').insert({
+          tokenable_id: firstUserId,
+          email: 'another@example.test',
+          hash: 'e'.repeat(64),
+          expires_at: now,
+          created_at: now,
+        }),
+      unique
     )
 
-    await assert.rejects(() =>
-      kit.db.table('password_reset_tokens').insert({
-        tokenable_id: secondUserId,
-        email: 'second@example.test',
-        hash: 'a'.repeat(64),
-        expires_at: now,
-        created_at: now,
-      })
+    await assert.rejects(
+      () =>
+        kit.db.table('password_reset_tokens').insert({
+          tokenable_id: secondUserId,
+          email: 'second@example.test',
+          hash: 'a'.repeat(64),
+          expires_at: now,
+          created_at: now,
+        }),
+      unique
     )
-    await assert.rejects(() =>
-      kit.db.table('account_invitations').insert({
-        email: 'invite@example.test',
-        role: 'member',
-        inviter_id: secondUserId,
-        token_hash: 'd'.repeat(64),
-        expires_at: now,
-        created_at: now,
-        updated_at: now,
-      })
+    await assert.rejects(
+      () =>
+        kit.db.table('account_invitations').insert({
+          email: 'invite@example.test',
+          role: 'member',
+          inviter_id: secondUserId,
+          token_hash: 'd'.repeat(64),
+          expires_at: now,
+          created_at: now,
+          updated_at: now,
+        }),
+      unique
     )
-    await assert.rejects(() =>
-      kit.db.table('account_invitations').insert({
-        email: 'another-invite@example.test',
-        role: 'member',
-        inviter_id: secondUserId,
-        token_hash: 'b'.repeat(64),
-        expires_at: now,
-        created_at: now,
-        updated_at: now,
-      })
+    await assert.rejects(
+      () =>
+        kit.db.table('account_invitations').insert({
+          email: 'another-invite@example.test',
+          role: 'member',
+          inviter_id: secondUserId,
+          token_hash: 'b'.repeat(64),
+          expires_at: now,
+          created_at: now,
+          updated_at: now,
+        }),
+      unique
     )
-    await assert.rejects(() =>
-      kit.db.table('email_verification_tokens').insert({
-        tokenable_id: secondUserId,
-        email: 'next@example.test',
-        hash: 'c'.repeat(64),
-        expires_at: now,
-        created_at: now,
-      })
+    await assert.rejects(
+      () =>
+        kit.db.table('email_verification_tokens').insert({
+          tokenable_id: secondUserId,
+          email: 'next@example.test',
+          hash: 'c'.repeat(64),
+          expires_at: now,
+          created_at: now,
+        }),
+      unique
     )
 
     await kit.db.from('users').where('id', firstUserId).delete()
@@ -224,13 +239,16 @@ test.group('published account kit migrations', (group) => {
       updated_at: new Date(),
     }
     await kit.db.table('social_identities').insert(row)
-    await assert.rejects(() =>
-      kit.db
-        .table('social_identities')
-        .insert({ ...row, provider_user_id: 'orphan', user_id: 999999 })
+    await assert.rejects(
+      () =>
+        kit.db
+          .table('social_identities')
+          .insert({ ...row, provider_user_id: 'orphan', user_id: 999999 }),
+      /foreign key/i
     )
-    await assert.rejects(() =>
-      kit.db.table('social_identities').insert({ ...row, user_id: second.id })
+    await assert.rejects(
+      () => kit.db.table('social_identities').insert({ ...row, user_id: second.id }),
+      unique
     )
     await kit.db.from('users').where('id', first.id).delete()
     assert.lengthOf(await kit.db.from('social_identities'), 0)

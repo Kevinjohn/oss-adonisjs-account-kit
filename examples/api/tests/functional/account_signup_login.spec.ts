@@ -2,6 +2,7 @@
 
 import { test } from '@japa/runner'
 import db from '@adonisjs/lucid/services/db'
+import limiter from '@adonisjs/limiter/services/main'
 import User from '#models/user'
 import { notifications } from '#services/account_kit_notifications'
 import { tokenFrom } from '#tests/helpers/link_tokens'
@@ -11,7 +12,7 @@ import { truncateDatabase } from '#tests/helpers/database'
 test.group('Account signup login', (group) => {
   group.each.setup(truncateDatabase)
 
-  test('signup and login over HTTP normalize email, require verification, and hide duplicates', async ({
+  test('signup and login over HTTP normalize email, require verification, and reject duplicates', async ({
     client,
     assert,
   }) => {
@@ -51,6 +52,8 @@ test.group('Account signup login', (group) => {
     })
     assert.equal(tooLongSignup.status(), 422)
     notifications.reset()
+    // Five signups spent this client's signup budget; start the next journey with a fresh one.
+    await limiter.clear()
 
     const registration = await client.post('/api/v1/auth/signup').json({
       fullName: 'Registration User',
@@ -107,5 +110,26 @@ test.group('Account signup login', (group) => {
       password: 'ClaimantPass123!',
     })
     assert.equal(normalizedLogin.status(), 200)
+  })
+
+  test('signup is rate limited per client before it creates accounts', async ({
+    client,
+    assert,
+  }) => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await client.post('/api/v1/auth/signup').json({
+        email: `limited-${attempt}@example.test`,
+        password: 'LimitedPass123!',
+        passwordConfirmation: 'LimitedPass123!',
+      })
+      assert.equal(response.status(), 200)
+    }
+    const limited = await client.post('/api/v1/auth/signup').json({
+      email: 'limited-over@example.test',
+      password: 'LimitedPass123!',
+      passwordConfirmation: 'LimitedPass123!',
+    })
+    assert.equal(limited.status(), 429)
+    assert.isNull(await User.findBy('email', 'limited-over@example.test'))
   })
 })

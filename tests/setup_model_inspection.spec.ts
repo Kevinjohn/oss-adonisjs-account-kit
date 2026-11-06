@@ -25,11 +25,20 @@ test.group('setup model and schema safety', (group) => {
     }
     const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
     manifest.imports = { '#models/*': './app/models/*.js', '#database/*': './database/*.js' }
+    manifest.dependencies['@adonisjs/mail'] = '10'
     await writeFile(join(root, 'package.json'), JSON.stringify(manifest))
+    await mkdir(join(root, 'node_modules/@adonisjs/mail'), { recursive: true })
+    await writeFile(
+      join(root, 'node_modules/@adonisjs/mail/package.json'),
+      JSON.stringify({ name: '@adonisjs/mail', version: '10.0.0' })
+    )
     choices.mail.integration = 'adonisjs-mail'
     choices.mail.senderEnv = 'MAIL_FROM_ADDRESS'
     choices.mail.transportEnv = 'MAIL_MAILER'
-    await writeFile(join(root, '.env'), 'MAIL_MAILER=smtp\nLIMITER_STORE=database\n')
+    await writeFile(
+      join(root, '.env'),
+      'MAIL_MAILER=smtp\nMAIL_FROM_ADDRESS=accounts@example.test\nLIMITER_STORE=database\n'
+    )
     choices.authentication!.applicationRouteRevocation = true
     return {
       root,
@@ -39,6 +48,18 @@ test.group('setup model and schema safety', (group) => {
       user: await stock('app/models/user.ts'),
     }
   }
+
+  test('the unmodified stock fixture has no blocking diagnostic', async ({ assert }) => {
+    const { root, choices } = await stockFixture()
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.deepEqual(
+      plan.diagnostics.filter(({ severity }) => severity === 'error'),
+      []
+    )
+  })
 
   test('runtime config, schema and model mutations block setup', async ({ assert }) => {
     const { root, choices } = await stockFixture()
@@ -243,6 +264,30 @@ test.group('setup model and schema safety', (group) => {
       )
     )
     await assert.rejects(() => applySetup(root, changedFactory), /blocking diagnostics/)
+  }).timeout(10_000)
+
+  test('relation and computed decorators do not block setup', async ({ assert }) => {
+    const { root, choices, user } = await stockFixture()
+    for (const [imports, member] of [
+      ['hasMany', '@hasMany(() => User) declare posts: unknown'],
+      ['belongsTo, column', '@belongsTo(() => User) declare owner: unknown'],
+      ['computed', '@computed() get initials() { return 1 }'],
+      ['manyToMany', "@manyToMany(() => User, { pivotTable: 'friends' }) declare friends: unknown"],
+    ] as const) {
+      await writeFile(
+        join(root, 'app/models/user.ts'),
+        `import { ${imports} } from '@adonisjs/lucid/orm'\n` +
+          user.replace('static accessTokens =', `${member}\n  static accessTokens =`)
+      )
+      const plan = await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+      })
+      assert.isFalse(
+        plan.diagnostics.some(({ field }) => field === 'user.idType'),
+        `${member}: ${JSON.stringify(plan.diagnostics)}`
+      )
+    }
   }).timeout(10_000)
 
   test('string and uuid user ids must match the schema id column', async ({ assert }) => {

@@ -122,8 +122,10 @@ export async function inspectMagicLink(
 }
 
 /**
- * Consume the link and sign in. Any failed check still consumes the link: a link presented with
- * the wrong verifier may have been forwarded or intercepted, so the owner requests a new one.
+ * Consume the link and sign in. A wrong verifier, an inactive account or a refused access check
+ * still consumes the link: it may have been forwarded or intercepted, so the owner requests a new
+ * one. A link whose address no longer matches the account is refused without being consumed; it
+ * can never match again.
  */
 export async function completeMagicLink<Credential>(
   deps: ServiceDependencies,

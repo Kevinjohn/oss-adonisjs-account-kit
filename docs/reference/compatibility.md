@@ -12,7 +12,7 @@ does not verify every version in a range.
 | `@adonisjs/lucid`     | 22.4.2       | peer `^22.4.2`                               |
 | `@adonisjs/limiter`   | 3.0.1        | peer `^3.0.0`                                |
 | Luxon                 | 3.7.2        | peer `^3.0.0`                                |
-| `@adonisjs/assembler` | 8.5.2        | optional peer `^8.0.0` for configure tooling |
+| `@adonisjs/assembler` | 8.6.0        | optional peer `^8.0.0` for configure tooling |
 
 The package minimum matrix uses Core 7.0.0, assembler 8.0.0, Lucid 22.4.2, limiter 3.0.0 and
 Luxon 3.0.0. At those floors the exact-minimum consumer loads every public entry point and boots
@@ -22,7 +22,7 @@ every command module before the requested command runs. Core added `configProvid
 `@adonisjs/core`, which exports it from 7.0.0, and lint rejects the subpath import. Lucid 22.0.0 fails password reset issuance on both databases because its transaction
 insert builder does not expose `onConflict`; the supported floor is therefore 22.4.2. The complete
 HTTP reference application uses the latest compatible set, including Core 7.6.0 and assembler
-8.5.2. Concrete installed-consumer outcomes are recorded in [verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md).
+8.6.0. Concrete installed-consumer outcomes are recorded in [verification](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/maintainers/verification.md).
 Testing these points does not verify every version within the declared ranges. The
 `pg`, `mysql2` and `better-sqlite3` drivers are supplied by applications and depend on the selected Lucid
 dialect; the package does not declare them as runtime peers.
@@ -39,7 +39,9 @@ duplicate classification discovers a single-column email unique index from the c
 configure `emailConstraint` when relying on a custom constraint name. The Lucid adapter derives the
 model's table and requires the physical primary-key column to be `id` on the default connection.
 
-SQLite applications must enable foreign keys on every connection. Package writes acquire a
+SQLite is tested through the `better-sqlite3` client; with another SQLite driver, package writes
+take no write lock and do not retry a busy database. SQLite applications must enable foreign keys
+on every connection. Package writes acquire a
 package-owned transaction lock using `account_transaction_lock`; the fifth configure migration
 creates this table. SQLite write-contention retries can rerun transaction callbacks, so callbacks
 must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See

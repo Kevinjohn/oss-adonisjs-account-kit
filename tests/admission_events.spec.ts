@@ -8,6 +8,25 @@ import { insertUser } from './helpers/fakes.js'
 test.group('admission events', (group) => {
   const kit = useAdmissionApp(group)
 
+  test('a request from an account with a decision emits nothing', async ({ assert }) => {
+    const events: AdmissionEvent[] = []
+    const { admission } = makeAdmission(
+      kit,
+      { ...allRequirements, onAdmissionEvent: async (event) => void events.push(event) },
+      { authentication: { strategy: 'session', guard: 'web' } }
+    )
+    for (const [email, approval] of [
+      ['approved@example.test', 'approved'],
+      ['rejected@example.test', 'rejected'],
+    ] as const) {
+      const person = await insertUser(kit, { email })
+      await writeAdmissionRow(kit, person.id, { invited: true, approval })
+      const record = await admission.request({ userId: person.id, revision: null })
+      assert.isNotNull(record.requestedAt)
+    }
+    assert.deepEqual(events, [])
+  })
+
   test('carry ids only, a fresh operation id each, after commit', async ({ assert }) => {
     const events: AdmissionEvent[] = []
     const { admission } = makeAdmission(
@@ -17,7 +36,7 @@ test.group('admission events', (group) => {
         onAdmissionEvent: async (event) => {
           // After commit: the change is visible outside the operation's transaction.
           const row = await kit.db.from('account_admissions').where('user_id', event.userId).first()
-          assert.isDefined(row)
+          assert.isNotNull(row)
           events.push(event)
         },
       },

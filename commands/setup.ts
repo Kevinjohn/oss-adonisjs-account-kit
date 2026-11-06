@@ -8,6 +8,7 @@ import type { SetupChoices, SetupInspection } from '../src/setup/types.js'
 import { collectSetupChoices } from '../src/setup/prompts.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import type RetirementImpact from './retirement_impact.js'
+import { writeWarning } from './operator_output.js'
 
 /** No prompt path is reachable from --input or --check. */
 export default class SetupAccountKit extends BaseCommand {
@@ -72,12 +73,13 @@ export default class SetupAccountKit extends BaseCommand {
         ]
       )
       if (inventory.failure || !inventory.impact) {
-        this.logger.warning('Read-only account inventory could not query the application database')
+        writeWarning(this, 'Read-only account inventory could not query the application database')
         return { retirementImpact: inventory.impact, runtimeInventoryUnavailable: true }
       }
       return { retirementImpact: inventory.impact, runtimeInventoryUnavailable: false }
     } catch {
-      this.logger.warning(
+      writeWarning(
+        this,
         'Read-only account inventory could not start; login retirement remains blocked'
       )
       return { retirementImpact: null, runtimeInventoryUnavailable: true }
@@ -98,15 +100,18 @@ export default class SetupAccountKit extends BaseCommand {
         : {}
     )
     if (!this.check && invalidSavedChoices && this.input) {
-      this.logger.warning(
+      writeWarning(
+        this,
         'Saved setup choices are invalid; using the explicit --input file. The invalid saved choices cannot provide a comparison baseline.'
       )
     } else if (!this.check && invalidSavedChoices) {
-      this.logger.warning(
+      writeWarning(
+        this,
         'Saved setup choices are invalid; using safe defaults for this interview. Correct or remove config/account_kit_setup.json, or rerun with --input=choices.json to provide valid choices.'
       )
     } else if (!this.check && !this.input && state.existingInstallation && !state.existingChoices) {
-      this.logger.warning(
+      writeWarning(
+        this,
         'No saved setup choices were found; using starter defaults. Provide a reviewed choices file with --input=choices.json to preserve an earlier configuration.'
       )
     }
@@ -121,7 +126,8 @@ export default class SetupAccountKit extends BaseCommand {
       retirementMaintenanceWindow: this.retirementMaintenanceWindow,
       runtimeInventoryUnavailable,
     })
-    this.logger.info(
+    // The report alone goes to stdout, so `--check | jq` works; everything else goes to stderr.
+    this.logger.log(
       JSON.stringify(
         {
           preview: plan.preview,
@@ -150,7 +156,11 @@ export default class SetupAccountKit extends BaseCommand {
     }
     if (!plan.preview) {
       const written = await applySetup(root, plan)
-      this.logger.info(`Wrote ${written.length} files. Run migrations separately after review.`)
+      this.logger.logError(
+        this.logger.prepareInfo(
+          `Wrote ${written.length} files. Run migrations separately after review.`
+        )
+      )
     }
   }
 }

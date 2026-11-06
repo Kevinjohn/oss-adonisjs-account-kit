@@ -99,6 +99,11 @@
         "responses": {
           "201": {
             "description": "Registered. When sign-in after registration fails, the body reports `authenticated: false`.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -142,6 +147,11 @@
           },
           "202": {
             "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -290,6 +300,11 @@
         "responses": {
           "200": {
             "description": "Signed in.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -314,6 +329,11 @@
           },
           "202": {
             "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1272,7 +1292,7 @@
           "magicLinkLogin"
         ],
         "summary": "Sign in with a magic link",
-        "description": "Consumes the link, also when a check fails. Session guards use the verifier held in the session.",
+        "description": "Consumes the link, also when a later check fails. A request without its verifier is refused before the link is used, so the link stays live. Session guards use the verifier held in the session.",
         "security": [],
         "parameters": [
           {
@@ -1356,6 +1376,58 @@
           },
           "400": {
             "description": "The link, proof or social flow state is invalid or expired.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication failed.",
+            "headers": {
+              "Vary": {
+                "$ref": "#/components/headers/VaryAccept"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              },
+              "Referrer-Policy": {
+                "$ref": "#/components/headers/NoReferrer"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedErrorBody"
+                }
+              },
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden, or email verification is required.",
             "headers": {
               "Vary": {
                 "$ref": "#/components/headers/VaryAccept"
@@ -7319,6 +7391,11 @@
         "responses": {
           "200": {
             "description": "The export document.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -7329,6 +7406,11 @@
           },
           "202": {
             "description": "The change committed, but a follow-up (notification or hook) failed. Do not retry.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/NoStore"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -7811,6 +7893,13 @@
               "type": "object"
             },
             "description": "Present only for the access-token strategy."
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Present only for the session strategy."
           },
           "pending": {
             "type": "object"

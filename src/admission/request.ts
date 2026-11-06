@@ -13,7 +13,8 @@ import type { AdmissionRecord } from './types.js'
 
 /**
  * Records that the signed-in person asked for approval, once. Idempotent: a repeat returns the
- * record unchanged and emits nothing. Refuses an unconfirmed account.
+ * record unchanged and emits nothing; so does a request from an account that already has a
+ * decision. Refuses an unconfirmed account.
  */
 export async function requestAdmission(
   deps: AdmissionContext,
@@ -30,11 +31,13 @@ export async function requestAdmission(
       if (!user) throw new InvalidSessionError()
       let row = await readAdmissionRow(trx, user.id)
       const firstRequest = !row || row.requested_at === null
+      // A decided account has nothing for an approver to act on, so it records but does not notify.
+      const undecided = !row || row.approval_status === null
       if (firstRequest) {
         const now = sqlTimestamp(trx)
         row = await upsertAdmissionRow(trx, user.id, { requested_at: now }, now)
       }
-      return { record: toAdmissionRecord(row!, user.email), first: firstRequest }
+      return { record: toAdmissionRecord(row!, user.email), first: firstRequest && undecided }
     }),
     (value) =>
       value.first ? { type: 'admission.requested', userId: value.record.userId, operationId } : null

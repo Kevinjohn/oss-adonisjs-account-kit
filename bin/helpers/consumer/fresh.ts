@@ -12,7 +12,7 @@ import {
 import { digest, expectFailure, hashFiles, run } from './harness.js'
 import { copyFixture } from './fixture.js'
 import { resetExclusivePostgresSchema } from './postgres.js'
-import { fixtureRoot, prepareOnly, tempRoot, userIdType, usersTable } from './settings.js'
+import { fixtureRoot, prepareOnly, runRoot, userIdType, usersTable } from './settings.js'
 
 /** Checks the generated config as written, before the app's formatter can repair it. */
 async function checkGeneratedStyle(appRoot: string, env: NodeJS.ProcessEnv) {
@@ -41,6 +41,7 @@ const entryCount = (rc: string, path: string) =>
   (rc.match(new RegExp(`@kevinjohn/adonisjs-account-kit/${path}`, 'g')) ?? []).length
 
 export async function runFresh(candidate: string, runName: string) {
+  const tempRoot = await runRoot()
   const appRoot = join(tempRoot, runName)
   await copyFixture(fixtureRoot, appRoot)
   await mkdir(join(appRoot, 'tmp'), { recursive: true })

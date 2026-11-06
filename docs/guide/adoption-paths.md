@@ -29,7 +29,7 @@ together. Follow the README in order: install, environment/key, migrations/code 
 then open its stated URL and observe development emails. The [shared acceptance guide](example-acceptance.md)
 explains expected outcomes and distinguishes implementation from HTTP, browser and manual evidence.
 
-For the focused API starter tutorial, complete its [prerequisites and setup](core-api.md#_1-create-the-app-and-install-account-kit)
+For the focused API starter tutorial, complete its [prerequisites and setup](core-api.md)
 before copying controllers. Its one `/api/v1` namespace and opaque `api` guard are intentional.
 The broader API fixture also demonstrates optional integrations; they are not prerequisites for
 reset or basic account settings.
