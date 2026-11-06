@@ -66,11 +66,11 @@ export async function completePasswordReset(
         await deps.config.users.setUnverifiedEmail(row.tokenable_id, null, trx)
       // A reset proves control of the address, so it confirms a never-confirmed account and
       // consumes an invitation waiting for it, like activation.
-      let invitationId: number | null = null
+      let invitationIds: number[] = []
       if (current.unverifiedEmail === current.email) {
         const now = DateTime.utc()
         await deps.config.users.markEmailVerified(row.tokenable_id, now, trx)
-        invitationId = await matchInvitation(deps.config, trx, current, now)
+        invitationIds = await matchInvitation(deps.config, trx, current, now)
       }
       await clearRecoveryTokens(trx, row.tokenable_id, ['email_verification_tokens'])
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
@@ -80,7 +80,7 @@ export async function completePasswordReset(
         operationId,
         userId: reloaded.id,
       })
-      return { user: reloaded, invitationId }
+      return { user: reloaded, invitationIds }
     })
   )
   const user = reset.user
@@ -91,7 +91,7 @@ export async function completePasswordReset(
       { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(user, context) },
       { kind: 'delivery', run: () => deps.config.notify.passwordResetCompleted(user, context) },
       lifecycle(deps.config, { type: 'password.reset', userId: user.id, operationId }),
-      ...invitationAccepted(deps.config, reset.invitationId, user.id, operationId),
+      ...invitationAccepted(deps.config, reset.invitationIds, user.id, operationId),
     ])
   )
   return user

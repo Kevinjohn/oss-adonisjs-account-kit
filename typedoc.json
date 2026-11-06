@@ -3,6 +3,7 @@
   "entryPoints": [
     "index.ts",
     "http/main.ts",
+    "transaction/main.ts",
     "testing/adapter_contract.ts",
     "testing/notifications.ts"
   ],

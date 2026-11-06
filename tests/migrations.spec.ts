@@ -45,6 +45,7 @@ test.group('published account kit migrations', (group) => {
       'expires_at',
       'created_at',
       'updated_at',
+      'scope',
     ])
     if (kit.db.connection().dialect.name === 'better-sqlite3') {
       const invitationIndexes = await kit.db

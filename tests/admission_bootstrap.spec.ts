@@ -22,6 +22,7 @@ test.group('admission bootstrap', (group) => {
   const operatorInvitation = (email: string, inviterId: number | null, id = 99): Invitation => ({
     id,
     email,
+    scope: null,
     role: 'owner',
     inviterId,
     expiresAt: DateTime.utc().plus({ days: 1 }),

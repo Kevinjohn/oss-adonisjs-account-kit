@@ -45,6 +45,8 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 - `pnpm postcompile` copies templates into `build/`.
 - `pnpm copy:templates` copies the stub templates into `build/`; `postcompile` runs it.
 - `pnpm build` runs the package compilation scripts.
+- `pnpm prepare` runs on install and compiles only when `build/` is missing, so a git commit pin
+  installs a built package.
 - `pnpm docs:api` generates the API reference.
 - `pnpm docs:dev` generates the API reference and serves the documentation site.
 - `pnpm docs:build` generates the API reference and builds the documentation site.

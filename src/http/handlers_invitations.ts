@@ -32,13 +32,15 @@ export const invitationHandlers = {
     return response.created({ account: await representIssued(safeAccount(user)) })
   },
   'account.invitation.send': async ({ context, kit, actorId }) => {
-    const { email, role } = await context.request.validateUsing(invitationSendValidator)
-    const invitation = await kit.invitations.send({ actorId: actorId!, email, role })
+    const { email, role, scope } = await context.request.validateUsing(invitationSendValidator)
+    const invitation = await kit.invitations.send({ actorId: actorId!, email, role, scope })
     return context.response.created({ id: invitation.id })
   },
   'account.invitation.list': async ({ context, kit, actorId }) => {
-    const { limit, cursor } = await context.request.validateUsing(invitationListValidator)
-    return context.response.ok(await kit.invitations.list({ actorId: actorId!, limit, cursor }))
+    const { limit, cursor, scope } = await context.request.validateUsing(invitationListValidator)
+    return context.response.ok(
+      await kit.invitations.list({ actorId: actorId!, limit, cursor, scope })
+    )
   },
   'account.invitation.resend': async ({ context, kit, actorId }) => {
     const invitation = await kit.invitations.resend({

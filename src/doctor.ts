@@ -101,6 +101,14 @@ async function tableChecks(db: Database, config: ResolvedConfig): Promise<Doctor
   const missing: string[] = []
   for (const table of required)
     if (!(await db.connection().schema.hasTable(table))) missing.push(table)
+  // An installation from before scoped invitations has the table but not the column.
+  const invitations = packageTables.accountInvitations
+  if (
+    required.has(invitations) &&
+    !missing.includes(invitations) &&
+    !(await db.connection().schema.hasColumn(invitations, 'scope'))
+  )
+    missing.push(`${invitations}.scope`)
   if (missing.length)
     return [
       {

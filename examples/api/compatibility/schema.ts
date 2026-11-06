@@ -53,6 +53,8 @@ export async function createSchema(db: Database) {
   await schema.createTable('account_invitations', (table) => {
     table.increments('id').primary()
     table.string('email').notNullable()
+    table.string('scope', 255).notNullable().defaultTo('')
+    table.unique(['email', 'scope'])
     table.string('role').notNullable()
     table.integer('inviter_id').nullable()
     table.string('token_hash').notNullable().unique()

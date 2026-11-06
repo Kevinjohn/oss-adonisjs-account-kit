@@ -49,6 +49,7 @@ Run the repository scripts, not the bare tools. They carry the flags used by CI.
 | `pnpm test`               | Runs `pnpm quick:test` with coverage thresholds           |
 | `pnpm test:pg`            | Runs the suite against a local PostgreSQL 16 database     |
 | `pnpm build`              | Compiles to `build/`                                      |
+| `pnpm prepare`            | On install, compiles only when `build/` is missing        |
 | `pnpm test:built-exports` | Checks the package's built exports                        |
 | `pnpm test:built-setup`   | Checks built Ace setup and packaged migration templates   |
 | `pnpm test:consumer`      | Packs the package and checks it in a consumer application |

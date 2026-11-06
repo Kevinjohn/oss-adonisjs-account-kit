@@ -79,7 +79,7 @@ export async function createAccount(
     profile: { provider: SocialProviderName; subject: string; email: string },
     trx: Trx
   ) => Promise<void>
-): Promise<{ user: AccountUser; relation: SocialIdentity; invitationId: number | null }> {
+): Promise<{ user: AccountUser; relation: SocialIdentity; invitationIds: number[] }> {
   const registration = deps.config.registration!
   if (registration.availability === 'closed') throw new SocialTransactionError()
   if (registration.availability === 'application' && !admit) throw new SocialTransactionError()
@@ -99,10 +99,10 @@ export async function createAccount(
   const verifiedAt = DateTime.utc()
   if (profile.emailVerified) await deps.config.users.markEmailVerified(user.id, verifiedAt, trx)
   const relation = await createAssociation(trx, user.id, name, profile, profile.emailVerified)
-  const invitationId = profile.emailVerified
+  const invitationIds = profile.emailVerified
     ? await matchInvitation(deps.config, trx, user, verifiedAt)
-    : null
+    : []
   const latest = await deps.config.users.findById(user.id, trx)
   if (!latest) throw new SocialTransactionError()
-  return { user: latest, relation, invitationId }
+  return { user: latest, relation, invitationIds }
 }

@@ -12,6 +12,7 @@ import {
 } from './errors.js'
 import { throttlerOf } from './throttle.js'
 import { toInvitation } from './invitation_rows.js'
+import { normalizeScope, scopeColumn } from './invitation_scope.js'
 import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -64,7 +65,7 @@ async function lockResendable(
     actorId,
     invitationId
   )
-  if ((await config.authorize.invite(actor, current.role, { trx })) !== true)
+  if ((await config.authorize.invite(actor, current.role, { trx, scope: current.scope })) !== true)
     throw new InvitationManagementDeniedError()
   return current
 }
@@ -164,11 +165,14 @@ export async function listInvitations(
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new InvalidInputError('Invalid invitation page limit')
   const position = input.cursor === undefined ? null : decodeInvitationCursor(input.cursor)
+  const scope = input.scope === undefined ? undefined : normalizeScope(input.scope)
   const actor = await requireUser(deps.config, input.actorId)
-  if ((await deps.config.authorize.listInvitations(actor)) !== true) throw new AuthorizationError()
-  const query = deps.db
-    .from('account_invitations')
-    .where('expires_at', '>', sqlTimestamp(deps.db))
+  const context = scope === undefined ? {} : { scope }
+  if ((await deps.config.authorize.listInvitations(actor, context)) !== true)
+    throw new AuthorizationError()
+  const query = deps.db.from('account_invitations').where('expires_at', '>', sqlTimestamp(deps.db))
+  if (scope !== undefined) query.where('scope', scopeColumn(scope))
+  query
     .orderBy('created_at', 'asc')
     .orderBy('id', 'asc')
     .limit(limit + 1)

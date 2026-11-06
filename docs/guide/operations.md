@@ -139,8 +139,8 @@ line to stdout (`result`, identifiers, `expiresAt` for invitations, and `url` wi
 writes warnings and errors to stderr, so the output can be piped. A printed link is a bearer
 secret: share it only over a trusted channel.
 
-- `account-kit:invite` replaces any invitation already issued for the address, so rerunning it
-  after a lost link works. The invitation has no inviter (`inviterId` is `null`). It refuses an
+- `account-kit:invite` replaces any invitation already issued for the address and scope
+  (`--scope`, unscoped by default), so rerunning it with the same scope after a lost link works. The invitation has no inviter (`inviterId` is `null`). It refuses an
   address that already has an account. The role becomes the invitation role; assign application
   roles in `onInvitationAccepted`, as for any invitation.
 - `account-kit:reset-link` reports an unknown address (`E_ACCOUNT_KIT_USER_NOT_FOUND`) instead of

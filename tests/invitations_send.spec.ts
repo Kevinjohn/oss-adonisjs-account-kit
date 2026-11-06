@@ -129,7 +129,7 @@ test.group('invitations.send', (group) => {
     })
     await account.invitations.send({ actorId: actor.id, email: 'new@example.test', role: 'user' })
     assert.lengthOf(contexts, 2)
-    assert.isUndefined(contexts[0])
+    assert.deepEqual(contexts[0], { scope: null })
     assert.isDefined((contexts[1] as { trx?: unknown }).trx)
   })
 

@@ -3544,6 +3544,12 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 64
+                  },
+                  "scope": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255,
+                    "description": "The team or workspace the invitation is for."
                   }
                 },
                 "required": [
@@ -3762,6 +3768,16 @@
             "description": "The `nextCursor` of the previous page.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "description": "Only invitations for this team or workspace.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
             }
           }
         ],
@@ -8052,6 +8068,12 @@
           "role": {
             "type": "string"
           },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "inviterId": {
             "type": [
               "integer",
@@ -8076,6 +8098,7 @@
           "id",
           "email",
           "role",
+          "scope",
           "inviterId",
           "expiresAt",
           "createdAt",

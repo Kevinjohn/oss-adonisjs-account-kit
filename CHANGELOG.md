@@ -2,8 +2,17 @@
 
 ## Unreleased
 
+### Added
+
+- Scope invitations: `scope` on `Invitation`, `invitations.send`, `invitations.list`, the managed send and list routes and `account-kit:invite --scope`; one pending invitation per address and scope; acceptance applies every pending invitation for the address in ascending scope order; `authorize.invite` and `authorize.listInvitations` receive `context.scope`. The `add_scope_to_account_invitations` migration adds the column and the per-scope unique index. Existing installations re-run `node ace configure @kevinjohn/adonisjs-account-kit` to add the migration, then `node ace migration:run`; `account-kit:doctor` reports the missing column.
+- Export `transaction`, `lockRow`, `sqlTimestamp` and `readTimestamp` from `@kevinjohn/adonisjs-account-kit/transaction` for packages built on Account Kit.
+- Compile the package on install when `build/` is missing, so a git commit pin installs a built package.
+  pnpm 10 and later refuse to run that build until the app lists the package under `allowBuilds`
+  in `pnpm-workspace.yaml`, using the exact entry pnpm prints for the pinned commit.
+
 ### Fixed
 
+- Leave `ctx.auth.user`, `isAuthenticated` and `getUserOrFail()` set for the selected guard after `managedAccountMiddleware` and `admissionMiddleware`, without a second credential lookup.
 - Preserve SIGINT and SIGTERM exit status in changed-file checks.
 - Preserve deliberately cleared native profile fields through validation and password recovery, expose required email fields, and improve theme labels, status contrast and keyboard focus.
 - Show terminal recordings as static previews until playback is requested, with keyboard-operable Show/Hide controls and a static README preview.

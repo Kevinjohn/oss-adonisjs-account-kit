@@ -48,6 +48,7 @@ test.group('maintained notifications', () => {
         id: 2,
         email: user.email,
         role: 'reader',
+        scope: null,
         inviterId: null,
         expiresAt: null as never,
         createdAt: null as never,
