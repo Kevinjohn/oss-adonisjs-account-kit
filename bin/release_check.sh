@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Release gate shared by .github/workflows/release.yml and local dry runs.
-# Exports VERSION and TARBALL to $GITHUB_ENV when run in Actions.
+# Writes the version and tarball name to $GITHUB_OUTPUT when run in Actions.
 set -euo pipefail
 VERSION=$(node -p "require('./package.json').version")
 if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
@@ -20,6 +20,6 @@ REPO=${GITHUB_REPOSITORY:-$(git remote get-url origin | sed -E 's#.*github.com[:
 awk -v h="## $VERSION - " 'index($0, h) == 1 {p=1; next} /^## / {p=0} p' CHANGELOG.md > tmp/release/notes.md
 printf '\n## Install\n\n```sh\npnpm add https://github.com/%s/releases/download/v%s/%s\n```\n\nSHA-256: `%s`\n' \
   "$REPO" "$VERSION" "$(basename "$TARBALL")" "$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)" >> tmp/release/notes.md
-if [ -n "${GITHUB_ENV:-}" ]; then
-  { echo "VERSION=$VERSION"; echo "TARBALL=$TARBALL"; } >> "$GITHUB_ENV"; fi
+if [ -n "${GITHUB_OUTPUT:-}" ]; then
+  { echo "version=$VERSION"; echo "tarball=$(basename "$TARBALL")"; } >> "$GITHUB_OUTPUT"; fi
 echo "ready: v$VERSION $TARBALL"
