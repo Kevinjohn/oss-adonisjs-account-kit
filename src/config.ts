@@ -134,14 +134,6 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
         throw new InvalidConfigurationError(path, `account_kit: ${path} must be a function`)
     }
   }
-  // Login is not a capability, so check the adapter methods it calls when it is configured.
-  if (config.authentication)
-    for (const method of ['findByEmail', 'findById', 'verifyPassword'] as const)
-      if (typeof config.users[method] !== 'function')
-        throw new InvalidConfigurationError(
-          `users.${method}`,
-          `account_kit: users.${method} must be a function`
-        )
   if (
     !config.registration ||
     !['open', 'closed', 'application'].includes(config.registration.availability)

@@ -322,20 +322,4 @@ test.group('account kit configuration and service surface', (group) => {
     )
     assert.equal(resolved.registration.availability, 'closed')
   })
-
-  test('login requires the adapter methods it calls', ({ assert }) => {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    const withoutVerify = { ...users, verifyPassword: undefined } as never
-    assert.throws(
-      () =>
-        defineConfig(
-          makeConfig({
-            users: withoutVerify,
-            enabled: ['passwordReset'],
-            authentication: { strategy: 'session', guard: 'web' },
-          })
-        ),
-      /users.verifyPassword must be a function/
-    )
-  })
 })

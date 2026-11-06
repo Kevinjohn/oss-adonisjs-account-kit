@@ -60,8 +60,6 @@ emailVerificationRequired: true }` instead of throwing `SocialUserNotFoundError`
 - Changed: password login reserves an attempt from each login budget before checking the
   password, so parallel guesses cannot exceed the budget. Correct logins and unrelated failures
   give the attempt back.
-- Changed: `defineConfig` throws `InvalidConfigurationError` when `authentication` is set and
-  `users.findByEmail`, `users.findById` or `users.verifyPassword` is not a function.
 - Changed: setup keeps an edited `config/account_kit.ts` or migration when the saved choices are
   unchanged, and `--check` no longer reports it as a conflict.
 - Changed: package 422 responses from managed routes follow the request's `Accept` header, so a
