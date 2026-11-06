@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.1 - 2026-11-06
+
+### Changed
+
+- Development dependencies resolve to the dependency baseline shared with masquerade and soft-delete. No runtime or package behaviour changes.
+
 ## 0.3.0 - 2026-11-06
 
 ### Added
