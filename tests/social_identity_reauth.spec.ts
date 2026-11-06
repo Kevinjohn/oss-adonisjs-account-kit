@@ -6,7 +6,6 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import type { SocialProvider, VerifiedSocialAuthentication } from '../src/types.js'
 import { clientChallenge, current, provider } from './helpers/social_identity.js'
-import { dbTime } from './helpers/db_time.js'
 
 test.group('social reauthentication proof atomicity', (group) => {
   const kit = useTestApp(group)
@@ -62,11 +61,12 @@ test.group('social reauthentication proof atomicity', (group) => {
       subject,
       authenticatedAt: new Date().toISOString(),
     })
+    // Provider evidence is ISO 8601 on every engine, so stale and future cases fail on time alone.
     const cases: Array<VerifiedSocialAuthentication | null> = [
       null,
-      { ...valid(), authenticatedAt: dbTime(kit, DateTime.utc().minus({ milliseconds: 60_000 })) },
+      { ...valid(), authenticatedAt: DateTime.utc().minus({ milliseconds: 60_000 }).toISO()! },
       { ...valid(), authenticatedAt: 'yesterday' },
-      { ...valid(), authenticatedAt: dbTime(kit, DateTime.utc().plus({ milliseconds: 1_000 })) },
+      { ...valid(), authenticatedAt: DateTime.utc().plus({ milliseconds: 1_000 }).toISO()! },
       { ...valid(), subject: 'other-subject' },
       { ...valid(), verified: false } as unknown as VerifiedSocialAuthentication,
       {
@@ -333,6 +333,64 @@ test.group('social reauthentication proof atomicity', (group) => {
       currentPassword: 'first-Password-9!',
       newPassword: 'another-Password-9!',
     })
+  })
+
+  test('reauthentication needs a confirmed identity of this subject on a passwordless account', async ({
+    assert,
+  }) => {
+    const subject = 'reauth-guard-subject'
+    const adapters: { github: SocialProvider } = {
+      github: provider(subject, 'reauth-guard@example.test', true),
+    }
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: { providers: adapters },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const login = await account.socialAuthentication.begin({
+      provider: 'github',
+      intent: 'login',
+      clientChallenge,
+    })
+    const created = await account.socialAuthentication.callback({
+      state: login.state,
+      callback: {},
+    })
+    if (created.status !== 'new' || !('userId' in created))
+      throw new Error('Expected social account')
+    const actor = current(created.userId)
+    const reauth = async () => {
+      const started = await account.socialAuthentication.begin({
+        provider: 'github',
+        intent: 'reauth',
+        purpose: 'email_change',
+        current: actor,
+        clientChallenge,
+      })
+      return account.socialAuthentication.callback({
+        state: started.state,
+        callback: {},
+        current: actor,
+      })
+    }
+    const accepted = await reauth()
+    assert.equal(accepted.status, 'reauthenticated')
+    await kit.db.from('social_sensitive_proofs').delete()
+
+    const refused = async (label: string) => {
+      await assert.rejects(reauth, 'Invalid recent authentication proof')
+      assert.lengthOf(await kit.db.from('social_sensitive_proofs'), 0, label)
+    }
+    await kit.db.from('social_identities').update({ confirmed_at: null })
+    await refused('pending identity')
+    await kit.db.from('social_identities').update({ confirmed_at: kit.db.raw('created_at') })
+
+    adapters.github = provider('another-subject', 'reauth-guard@example.test', true)
+    await refused('subject not linked to the actor')
+    adapters.github = provider(subject, 'reauth-guard@example.test', true)
+
+    await kit.db.from('users').where('id', created.userId).update({ password: 'stored-hash' })
+    await refused('password account')
   })
 
   test('missing or unsupported reauthentication purpose fails before redirect', async ({

@@ -28,6 +28,22 @@ test.group('invitations.revoke', (group) => {
 
   const { createActor, service, issue } = invitationHelpers(kit)
 
+  test('resend and revoke refuse a malformed invitation id', async ({ assert }) => {
+    const actor = await createActor()
+    const { account } = service()
+    for (const invitationId of [0, -1, 1.5, '1', Number.NaN]) {
+      for (const action of ['resend', 'revoke'] as const)
+        await assert.rejects(
+          () =>
+            account.invitations[action]({
+              actorId: actor.id,
+              invitationId: invitationId as number,
+            }),
+          /Invalid invitation id/
+        )
+    }
+  })
+
   test('revoke emits the revoked event once after a committed cleanup fault', async ({
     assert,
   }) => {

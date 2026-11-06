@@ -168,15 +168,30 @@ test.group('magicLink.request', (group) => {
 
   test('the client and email budgets throttle before lookup', async ({ assert }) => {
     await insertUser(kit)
-    const { account } = service()
+    let lookups = 0
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const { account } = service({
+      users: {
+        ...users,
+        async findByEmail(email, trx, options) {
+          lookups++
+          return users.findByEmail(email, trx, options)
+        },
+      },
+    })
     for (let index = 0; index < 5; index++)
       await request(account, `unknown${index}@example.test`, 'same-client')
+    let before = lookups
+    assert.equal(before, 5)
     await assert.rejects(
       () => request(account, 'unknown5@example.test', 'same-client'),
       ThrottledError
     )
+    assert.equal(lookups, before)
     for (let index = 0; index < 5; index++) await request(account, undefined, `client-${index}`)
+    before = lookups
     await assert.rejects(() => request(account, undefined, 'client-5'), ThrottledError)
+    assert.equal(lookups, before)
   })
 
   test('delivery and lifecycle failures surface after the link commits', async ({ assert }) => {
@@ -241,7 +256,10 @@ test.group('magicLink config', (group) => {
         defineConfig({ ...base(), notify: { ...base().notify, magicLinkProvision: undefined } }),
       /notify\.magicLinkProvision must be a function/
     )
-    assert.throws(() => defineConfig({ ...base(), expiresIn: { magicLink: 'soon' } }))
+    assert.throws(
+      () => defineConfig({ ...base(), expiresIn: { magicLink: 'soon' } }),
+      /TTL must be a positive duration/
+    )
     // Off by default.
     assert.notInclude(defineConfig({ ...base(), enabled: undefined }).enabled, 'magicLinkLogin')
   })

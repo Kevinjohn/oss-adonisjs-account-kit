@@ -48,10 +48,15 @@ function answerChoice<const T extends string>(
 }
 
 export async function collectSetupChoices(
-  ask: (question: string) => Promise<string>,
+  askRaw: (question: string) => Promise<string>,
   log: (message: string) => void,
   initialChoices?: SetupChoices
 ): Promise<SetupChoices> {
+  // Every answer is trimmed, so a blank or whitespace answer keeps the current value everywhere.
+  const ask = async (question: string) => {
+    const answer = await askRaw(question)
+    return answer.trim()
+  }
   const hasSavedChoices = initialChoices !== undefined
   const choices = parseSetupChoices(structuredClone(initialChoices ?? defaultSetupChoices()))
   const savedRoutePrefix = choices.routePrefix
@@ -115,10 +120,12 @@ export async function collectSetupChoices(
           featureNames
         )
   const excluded = await ask(
-    `Managed endpoint exclusions, comma separated (current: ${choices.managedExcept?.join(', ') || 'none'})`
+    `Managed endpoint exclusions, comma separated (current: ${choices.managedExcept?.join(', ') || 'none'}; blank to keep, none to remove)`
   )
   const exclusionsProvided = Boolean(excluded.trim())
-  if (exclusionsProvided) {
+  if (excluded.toLowerCase() === 'none') {
+    choices.managedExcept = []
+  } else if (exclusionsProvided) {
     choices.managedExcept = list(excluded) as NonNullable<SetupChoices['managedExcept']>
   } else if (!choices.managed.length || !choices.authentication) {
     choices.managedExcept = []
@@ -285,7 +292,7 @@ export async function collectSetupChoices(
   } else {
     choices.mail = defaultSetupChoices().mail
   }
-  if (registrationEnabled || choices.features.includes('socialAuthentication')) {
+  const askRegistrationPolicy = async () => {
     choices.policy.registration = answerChoice(
       await ask(
         `Registration policy (open/closed/application; current: ${choices.policy.registration})`
@@ -295,6 +302,9 @@ export async function collectSetupChoices(
       choices.policy.registration
     )
   }
+  const registrationPolicyAsked =
+    registrationEnabled || choices.features.includes('socialAuthentication')
+  if (registrationPolicyAsked) await askRegistrationPolicy()
   const minLength = await ask(`New-password minimum length (${choices.policy.password.minLength})`)
   if (minLength) choices.policy.password.minLength = Number(minLength)
   const maxLength = await ask(
@@ -325,15 +335,14 @@ export async function collectSetupChoices(
       unverifiedActionNames
     )
   }
-  if (registrationFieldsApplicable) {
+  const askRegistrationFields = async () => {
     const registrationFields = await ask(
       `Additional profile fields for registration, invitations, email changes or social sign-in as JSON array (current: ${JSON.stringify(choices.policy.registrationFields)})`
     )
-    if (registrationFields.trim())
-      choices.policy.registrationFields = JSON.parse(registrationFields)
-  } else {
-    choices.policy.registrationFields = []
+    if (registrationFields) choices.policy.registrationFields = JSON.parse(registrationFields)
   }
+  if (registrationFieldsApplicable) await askRegistrationFields()
+  else choices.policy.registrationFields = []
   if (choices.authentication)
     choices.policy.accessRestrictionHook = await confirmed(
       `Application restricted-account policy callback provided? (yes/no; current: ${choices.policy.accessRestrictionHook ? 'yes' : 'no'})`,
@@ -345,6 +354,11 @@ export async function collectSetupChoices(
       choices.policy.invitationPermissionHook
     )
   await collectSocialChoices(choices, ask, log, savedRoutePrefix, savedStrategy)
+  // Naming a provider can turn social sign-in on; ask what it needs that was skipped above.
+  if (choices.features.includes('socialAuthentication')) {
+    if (!registrationPolicyAsked) await askRegistrationPolicy()
+    if (!registrationFieldsApplicable) await askRegistrationFields()
+  }
   if (
     !exclusionsProvided &&
     /^\/(?:[\w-]+(?:\/[\w-]+)*)?$/.test(choices.routePrefix) &&

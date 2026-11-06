@@ -4,7 +4,14 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
+import { allyConfigSource } from '../src/setup/generated_ally_config.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
+
+/** The severity of the diagnostic on `field`; retirement must block with `error`. */
+const blocking = (
+  plan: { diagnostics: Array<{ field: string; severity: string }> },
+  field: string
+) => plan.diagnostics.find((diagnostic) => diagnostic.field === field)?.severity
 
 test.group('setup social providers', (group) => {
   registerSetupTeardown(group)
@@ -108,6 +115,51 @@ test.group('setup social providers', (group) => {
     )!.content
     assert.include(mount, 'except: ["auth.oauth.callback","auth.oauth.registration"]')
     assert.equal(mount.match(/except:/g)?.length, 1)
+  })
+
+  test('setup keeps its own config/ally.ts current when a provider is added', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.features = ['authentication', 'registration', 'socialAuthentication']
+    choices.managed = ['socialAuthentication']
+    choices.policy.registration = 'open'
+    choices.social = {
+      status: 'enabled',
+      providers: ['github'],
+      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackPath: '/account/auth/oauth/{provider}/callback',
+      credentials: {
+        github: { clientIdEnv: 'GITHUB_CLIENT_ID', clientSecretEnv: 'GITHUB_CLIENT_SECRET' },
+      },
+    }
+    await mkdir(join(root, 'config'), { recursive: true })
+    await writeFile(join(root, 'config/ally.ts'), allyConfigSource(choices))
+    await writeFile(join(root, 'config/account_kit_setup.json'), JSON.stringify(choices))
+    const same = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.equal(same.changes.find(({ path }) => path === 'config/ally.ts')?.action, 'unchanged')
+    assert.notInclude(
+      same.diagnostics.map(({ field }) => field),
+      'config/ally.ts'
+    )
+
+    choices.social.providers.push('google')
+    choices.social.credentials.google = {
+      clientIdEnv: 'GOOGLE_CLIENT_ID',
+      clientSecretEnv: 'GOOGLE_CLIENT_SECRET',
+    }
+    const added = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    const ally = added.changes.find(({ path }) => path === 'config/ally.ts')!
+    assert.equal(ally.action, 'update')
+    assert.include(ally.content, 'GOOGLE_CLIENT_ID')
+
+    await writeFile(join(root, 'config/ally.ts'), '// edited by the application\n')
+    const edited = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.isUndefined(edited.changes.find(({ path }) => path === 'config/ally.ts'))
+    assert.include(
+      edited.diagnostics.map(({ field }) => field),
+      'config/ally.ts'
+    )
   })
 
   test('social callback prerequisites and readiness read the environment passed to planning', async ({
@@ -320,10 +372,7 @@ test.group('setup social providers', (group) => {
       },
     }
     const missing = await planSetup(next, state)
-    assert.include(
-      missing.diagnostics.map(({ field }) => field),
-      'social.retirement'
-    )
+    assert.equal(blocking(missing, 'social.retirement'), 'error')
     const impact = {
       inspectedAccounts: 5,
       affectedAccounts: 1,
@@ -337,6 +386,7 @@ test.group('setup social providers', (group) => {
       affected.diagnostics.find(({ field }) => field === 'social.retirement')!.message,
       '1 of 5'
     )
+    assert.equal(blocking(affected, 'social.retirement'), 'error')
     const zero = await planSetup(next, state, {
       retirementImpact: { ...impact, affectedAccounts: 0 },
     })
@@ -344,6 +394,7 @@ test.group('setup social providers', (group) => {
       zero.diagnostics.find(({ field }) => field === 'social.retirement')!.message,
       '--retirement-maintenance-window'
     )
+    assert.equal(blocking(zero, 'social.retirement'), 'error')
     const allowed = await planSetup(next, state, {
       retirementImpact: { ...impact, affectedAccounts: 0 },
       retirementMaintenanceWindow: true,
@@ -375,12 +426,10 @@ test.group('setup social providers', (group) => {
       blocked.diagnostics.find(({ field }) => field === 'authentication.retirement')!.message,
       '3 of 9'
     )
+    assert.equal(blocking(blocked, 'authentication.retirement'), 'error')
     const zero = { ...impact, affectedAccounts: 0 }
     const withoutWindow = await planSetup(choices, state, { retirementImpact: zero })
-    assert.include(
-      withoutWindow.diagnostics.map(({ field }) => field),
-      'authentication.retirement'
-    )
+    assert.equal(blocking(withoutWindow, 'authentication.retirement'), 'error')
     const allowed = await planSetup(choices, state, {
       retirementImpact: zero,
       retirementMaintenanceWindow: true,

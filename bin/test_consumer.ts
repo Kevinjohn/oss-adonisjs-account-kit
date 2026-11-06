@@ -116,7 +116,7 @@ const evidence: ConsumerEvidence = {
 
 try {
   const settings = await import('./helpers/consumer/settings.js')
-  tempRoot = settings.tempRoot
+  tempRoot = await settings.runRoot()
   evidencePath ??= join(tempRoot, 'evidence.json')
   evidence.database = settings.database
   evidence.compatibility = settings.compatibility
@@ -146,7 +146,7 @@ try {
       ['--config.verify-deps-before-run=false', 'run', 'build'],
       settings.repoRoot
     )
-    const packed = join(settings.tempRoot, 'candidate')
+    const packed = join(await settings.runRoot(), 'candidate')
     await mkdir(packed)
     harness.run(
       'pnpm',

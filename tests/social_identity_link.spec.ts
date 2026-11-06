@@ -131,6 +131,8 @@ test.group('social link and proof binding atomicity', (group) => {
     )
   })
 
+  // The replayed proof is refused because linking advanced the credential revision, not because
+  // the proof row was consumed.
   test('rejects proof replay and wrong purpose, then preserves a password login on unlink', async ({
     assert,
   }) => {
@@ -220,23 +222,29 @@ test.group('social link and proof binding atomicity', (group) => {
       intent: 'login',
       clientChallenge,
     })
-    await assert.rejects(
-      () => account.socialAuthentication.callback({ state: retry.state, callback: {} }),
-      'Social account was not found'
+    // The quarantined identity never signs in; a retry only asks for activation again.
+    assert.deepEqual(
+      await account.socialAuthentication.callback({ state: retry.state, callback: {} }),
+      { status: 'new', emailVerificationRequired: true }
     )
     const sent = recorder.calls.find((call) => call.method === 'accountActivationProvision')
     if (!sent) throw new Error('Expected activation proof')
     const token = new URL(sent.args[1] as string).pathname.split('/').at(-1)!
     await account.emailVerification.complete({ token, password: 'New-Owner-Password-9!' })
     assert.lengthOf(await kit.db.from('social_identities'), 0)
+    const afterClaimStart = await account.socialAuthentication.begin({
+      provider: 'github',
+      intent: 'login',
+      clientChallenge,
+    })
     const afterClaim = await account.socialAuthentication.callback({
-      state: retry.state,
+      state: afterClaimStart.state,
       callback: {},
     })
     assert.deepEqual(afterClaim, { status: 'link_required' })
   })
 
-  test('an unconfirmed address receives no relationship notice', async ({ assert }) => {
+  test('an unconfirmed account cannot start a provider link', async ({ assert }) => {
     const user = await insertUser(kit)
     await kit.db.from('users').where('id', user.id).update({
       unverified_email: user.email,
@@ -253,6 +261,40 @@ test.group('social link and proof binding atomicity', (group) => {
       password: 'password123',
       purpose: 'social_link',
     })
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.begin({
+          provider: 'google',
+          intent: 'link',
+          current: current(user.id),
+          clientChallenge,
+          proof,
+        }),
+      'Email verification is required'
+    )
+    assert.lengthOf(await kit.db.from('social_transactions'), 0)
+    assert.lengthOf(await kit.db.from('social_identities'), 0)
+    assert.lengthOf(
+      recorder.calls.filter((call) => call.method === 'socialIdentityLinked'),
+      0
+    )
+  })
+
+  test('a pre-claimed address cannot keep a provider link through the owner claim', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: { providers: { google: provider('pre-claim', null, false) } },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const proof = await account.socialAuthentication.provePassword({
+      current: current(user.id),
+      password: 'password123',
+      purpose: 'social_link',
+    })
     const started = await account.socialAuthentication.begin({
       provider: 'google',
       intent: 'link',
@@ -260,28 +302,19 @@ test.group('social link and proof binding atomicity', (group) => {
       clientChallenge,
       proof,
     })
-    await account.socialAuthentication.callback({
-      state: started.state,
-      callback: {},
-      current: current(user.id),
+    await kit.db.from('users').where('id', user.id).update({
+      unverified_email: user.email,
+      email_verified_at: null,
     })
-    const relations = await account.socialAuthentication.list({ current: current(user.id) })
-    const relation = relations[0]
-    const unlinkProof = await account.socialAuthentication.provePassword({
-      current: current(user.id),
-      password: 'password123',
-      purpose: 'social_unlink',
-    })
-    await account.socialAuthentication.unlink({
-      current: current(user.id),
-      identityId: relation.id,
-      proof: unlinkProof,
-    })
-    assert.lengthOf(
-      recorder.calls.filter(
-        (call) => call.method === 'socialIdentityLinked' || call.method === 'socialIdentityUnlinked'
-      ),
-      0
+    await assert.rejects(
+      () =>
+        account.socialAuthentication.callback({
+          state: started.state,
+          callback: {},
+          current: current(user.id),
+        }),
+      'Email verification is required'
     )
+    assert.lengthOf(await kit.db.from('social_identities'), 0)
   })
 })

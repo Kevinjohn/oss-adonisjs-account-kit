@@ -194,6 +194,34 @@ test.group('authentication contract', (group) => {
     assert.deepEqual(events, ['issue', 'delete'])
   })
 
+  test("a token that fails to issue leaves the caller's own token alone", async ({ assert }) => {
+    const user = await insertUser(kit)
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'access_tokens', guard: 'api' },
+    })
+    const terminated: unknown[] = []
+    const failure = new Error('token store unavailable')
+    await assert.rejects(
+      () =>
+        account.authentication.login(
+          { email: user.email, password: 'password123', clientKey: 'ip-1' },
+          {
+            strategy: 'access_tokens',
+            name: 'api',
+            establish: async () => {
+              throw failure
+            },
+            // Without an argument, the contract revokes the token that authenticated the request.
+            terminate: async (...args: unknown[]) => {
+              terminated.push(args)
+            },
+          }
+        ),
+      /token store unavailable/
+    )
+    assert.deepEqual(terminated, [])
+  })
+
   test('a reset committed before login verification rejects the old password', async ({
     assert,
   }) => {

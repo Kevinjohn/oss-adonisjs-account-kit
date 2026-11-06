@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
   AuthorizationError,
+  EmailAlreadyRegisteredError,
   DeliveryError,
   InvalidInputError,
   InvitationNotFoundError,
@@ -16,6 +17,7 @@ import { invitationHelpers } from './helpers/invitations.js'
 import {
   accountKit,
   allowAll,
+  insertUser,
   makeConfig,
   makeNotify,
   makeUsersAdapter,
@@ -82,11 +84,23 @@ test.group('invitations.resend', (group) => {
     assert.equal(accepted.email, original.email)
   })
 
+  test('resend refuses an address that has since signed up', async ({ assert }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    const { invitation } = await issue(account, recorder, actor.id)
+    await insertUser(kit, { email: invitation.email })
+    await assert.rejects(
+      () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
+      EmailAlreadyRegisteredError
+    )
+    assert.lengthOf(recorder.calls, 1)
+  })
+
   test('resend renews an expired invitation and rejects accepted or missing ids', async ({
     assert,
   }) => {
     const actor = await createActor()
-    const { account, recorder } = service()
+    const { account, recorder } = service({ expiresIn: { invitation: '2d' } })
     const { invitation, token } = await issue(account, recorder, actor.id)
     await kit.db
       .from('account_invitations')
@@ -96,7 +110,9 @@ test.group('invitations.resend', (group) => {
       actorId: actor.id,
       invitationId: invitation.id,
     })
-    assert.isTrue(renewed.expiresAt > DateTime.utc())
+    const renewedBefore = DateTime.utc()
+    assert.isTrue(renewed.expiresAt > renewedBefore.plus({ days: 2, minutes: -1 }))
+    assert.isTrue(renewed.expiresAt <= renewedBefore.plus({ days: 2 }))
     assert.isNull(await account.invitations.inspect({ token }))
     await account.invitations.accept({
       token: tokenFrom(recorder.calls[1].args[1]),
@@ -403,9 +419,10 @@ test.group('invitations.resend', (group) => {
       )
         attempted()
     }
-    knex.on('query', onQuery)
     try {
       await ready
+      // Listen only once resend holds its lock, so its own lock query cannot count as the accept.
+      knex.on('query', onQuery)
       const accepting = account.invitations.accept({ token, password: 'password123' })
       void accepting.catch(() => {})
       await attemptedDelete

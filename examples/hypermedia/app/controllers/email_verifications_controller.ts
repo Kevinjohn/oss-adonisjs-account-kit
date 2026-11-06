@@ -8,10 +8,13 @@ import { verifyEmailValidator } from '#validators/account'
 export default class EmailVerificationsController {
   async store(ctx: HttpContext) {
     try {
-      await kit.emailVerification.send({ userId: ctx.auth.getUserOrFail().id })
+      const outcome = await kit.emailVerification.send({ userId: ctx.auth.getUserOrFail().id })
+      // A link sent in the last minute is not sent again, so say a link is on its way.
       ctx.session.flash(
         'success',
-        'A fresh verification link was sent. Check the development server output.'
+        outcome === 'already_verified'
+          ? 'Your email address is already confirmed.'
+          : 'A verification link is on its way. Check the development server output.'
       )
     } catch (error) {
       if (!isDeliveryFailure(error)) throw error

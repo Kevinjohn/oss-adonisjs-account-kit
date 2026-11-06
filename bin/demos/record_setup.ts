@@ -1,8 +1,9 @@
 // Records account-kit:setup previewing, then applying, the API choices on a setup demo app.
 // Usage: node bin/demos/record_setup.ts <app-dir> <out-dir>
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { join } from 'node:path'
+import { stripVTControlCharacters } from 'node:util'
 import { Cast } from './cast.js'
 import {
   assertDatabaseInventory,
@@ -25,14 +26,20 @@ const appDir = demo.root
 const run = (command: string, args: string[]) =>
   execFileSync(command, args, { cwd: appDir, env: demo.childEnv, encoding: 'utf8' })
 
-/** Splits setup's output into its JSON report and the lines printed after it. */
-function parse(output: string) {
-  const lines = output.split('\n')
-  const start = lines.findIndex((line) => line.startsWith('[ info ] {'))
-  const end = lines.indexOf('}', start)
-  if (start === -1 || end === -1) throw new Error(`no setup report in:\n${output}`)
-  const json = ['{', ...lines.slice(start + 1, end + 1)].join('\n')
-  return { report: JSON.parse(json) as SetupReport, after: lines.slice(end + 1).filter(Boolean) }
+/** Runs setup: its JSON report is stdout, and the lines it prints on stderr follow it. */
+function setup(args: string[]) {
+  const result = spawnSync('node', ['ace', 'account-kit:setup', ...args], {
+    cwd: appDir,
+    env: demo.childEnv,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) throw new Error(`setup failed:\n${result.stdout}${result.stderr}`)
+  return {
+    report: JSON.parse(result.stdout) as SetupReport,
+    after: stripVTControlCharacters(result.stderr)
+      .split('\n')
+      .filter((line) => line.startsWith('[ info ]')),
+  }
 }
 
 /** One line per pillar. */
@@ -119,7 +126,7 @@ validateDemoIdentity(appDir, 'setup-recording', demo.childEnv)
 const cast = new Cast()
 cast.comment('preview the choices file: nothing is written yet')
 cast.type('node ace account-kit:setup --input=choices.json')
-const preview = parse(run('node', ['ace', 'account-kit:setup', '--input=choices.json']))
+const preview = setup(['--input=choices.json'])
 cast.print(
   ['pillars', ...pillars(preview.report), 'changes', ...changes(preview.report)].join('\n')
 )
@@ -130,7 +137,7 @@ cast.print('', 0.3)
 
 cast.comment('apply the same plan')
 cast.type('node ace account-kit:setup --input=choices.json --apply')
-const applied = parse(run('node', ['ace', 'account-kit:setup', '--input=choices.json', '--apply']))
+const applied = setup(['--input=choices.json', '--apply'])
 const steps = applied.report.prerequisites.map((step) => `  - ${step}`)
 cast.print(['next steps', ...steps, ...applied.after.map(info)].join('\n'))
 cast.type('git status --short | grep -v database/migrations')

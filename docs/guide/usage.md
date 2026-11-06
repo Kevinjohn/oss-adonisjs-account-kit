@@ -16,6 +16,7 @@ expiresIn: {
   emailVerification: '1h',
   invitation: '7d',
   emailChange: '1h',
+  magicLink: '15m',
 }
 ```
 
@@ -160,8 +161,9 @@ connection and an `id` primary-key column. Add
 `mapRegistrationData(data, user)` only when account creation needs additional required profile
 fields. The callback receives untrusted registration data and the new model instance. Explicitly
 validate and assign known fields; never spread request data onto the model. The adapter controls
-`id`, `email`, `unverifiedEmail`, `password`, `emailVerifiedAt`, and `role`. Passwords are set through normal model
-save hooks so the application's hashing hook runs once.
+`id`, `email`, `unverifiedEmail`, `password`, `emailVerifiedAt`, and `role`. Passwords are hashed
+before the write transaction with the AdonisJS hash service and stored as is; see
+[adapters](adapters.md).
 
 Users tables defined with Drizzle or Prisma, or with no ORM, use the shipped
 [Drizzle, Prisma and SQL adapters](adapters.md). If using a custom adapter, implement normalized email equality, a unique email constraint, password

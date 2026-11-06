@@ -53,6 +53,12 @@ if (mode !== 'fresh' && (userIdType !== 'integer' || usersTable !== 'users')) {
   throw new Error('Minimum and service-only runs currently require the default integer users table')
 }
 
-export const tempRoot = await mkdtemp(join(tmpdir(), 'account-kit-consumer-'))
+let runDirectory: Promise<string> | undefined
+
+/** The run's scratch directory, created on first use so importing these settings writes nothing. */
+export function runRoot(): Promise<string> {
+  runDirectory ??= mkdtemp(join(tmpdir(), 'account-kit-consumer-'))
+  return runDirectory
+}
 
 export const secret = process.env.DB_PASSWORD ?? ''

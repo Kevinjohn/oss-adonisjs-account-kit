@@ -11,7 +11,10 @@ export interface AccountErrorResponse {
   status: number
   /** Headers to set, such as `Cache-Control` and `Retry-After`. */
   headers: Record<string, string>
-  /** The error entries. `committed` is true when the change was saved before a later step failed. */
+  /**
+   * The error entries. `committed` marks a `PostCommitError`: the change was saved and a later
+   * step failed. A `DeliveryError` also follows a saved change but carries no marker.
+   */
   body: { errors: Array<{ code: string; message: string; committed?: true }> }
 }
 

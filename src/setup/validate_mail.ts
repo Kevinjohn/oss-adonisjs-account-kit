@@ -70,7 +70,15 @@ export function validateMail(
     for (const field of ['senderEnv', 'transportEnv'] as const) {
       const name = choices.mail[field]
       if (!name || !envName.test(name)) continue
-      const value = env[name]
+      const error = selectedOrigins?.errors[name]
+      if (error) {
+        diagnostic(diagnostics, `mail.${field}`, `${name}: ${error.message}`)
+        continue
+      }
+      const value =
+        selectedOrigins && Object.hasOwn(selectedOrigins.values, name)
+          ? (selectedOrigins.values[name] ?? undefined)
+          : env[name]
       if (value === undefined || value === '')
         diagnostic(
           diagnostics,

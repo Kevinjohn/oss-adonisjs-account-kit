@@ -9,7 +9,7 @@ test.group('managed HTTP dispatch', () => {
   test('excludes a named route and rejects a second registration before mutating router', ({
     assert,
   }) => {
-    const { router, routes } = fakeManagedHttp()
+    const { router, routes, pending } = fakeManagedHttp()
     const options = {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
@@ -24,9 +24,10 @@ test.group('managed HTTP dispatch', () => {
     }
     registerManagedRoutes(router, options)
     assert.isFalse(routes.has('POST /api/v1/auth/login'))
-    const count = routes.size
+    // `routes` is keyed by method and path, so a repeat would overwrite it; count definitions.
+    const count = pending.length
     assert.throws(() => registerManagedRoutes(router, options), /already registered/)
-    assert.equal(routes.size, count)
+    assert.equal(pending.length, count)
   })
 
   test('a queued application collision aborts router commit before serving requests', ({
@@ -49,7 +50,7 @@ test.group('managed HTTP dispatch', () => {
   })
 
   test('late application routes are checked and repeated commit stays stable', ({ assert }) => {
-    const { router, pending, routes } = fakeManagedHttp()
+    const { router, pending } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
       kit: async () => ({}) as AccountKit,
@@ -62,10 +63,10 @@ test.group('managed HTTP dispatch', () => {
       enabled: ['authentication'],
     })
     pending.push({ methods: ['POST'], pattern: '/api/v1/auth/login', name: 'late.login' })
-    const count = routes.size
+    const count = pending.length
     assert.throws(() => router.commit(), /late\.login/)
     assert.throws(() => router.commit(), /late\.login/)
-    assert.equal(routes.size, count)
+    assert.equal(pending.length, count)
   })
 
   test('collision check preserves router commit receiver, arguments, and result', ({ assert }) => {

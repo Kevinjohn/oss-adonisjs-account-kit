@@ -8,7 +8,7 @@ import {
 import { deleteReturning } from './consume_rows.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { CapabilityDisabledError, SessionNotFoundError } from './errors.js'
+import { CapabilityDisabledError, InvalidSessionError, SessionNotFoundError } from './errors.js'
 import { recordRevocation } from './session_revocation.js'
 import { sessionTable } from './session_registry.js'
 import { readIsoTimestamp } from './timestamps.js'
@@ -56,6 +56,8 @@ async function scope(trx: Trx, auth: ResolvedAuthenticationConfig, current: Curr
     .select('id')
     .where('handle_hash', hashToken(current.sessionHandle!))
     .first()
+  // A concurrent sign-out can delete the row after the caller was authenticated.
+  if (!row) throw new InvalidSessionError()
   return {
     table: sessionTable,
     owner: 'user_id',
@@ -101,7 +103,7 @@ async function deleteSignIns(
 
 export function sessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
   /** Authenticate the caller and run `mutate` in one transaction under the account lock. */
-  function asCurrent<T>(
+  async function asCurrent<T>(
     current: CurrentAccountInput,
     mutate: (trx: Trx, target: Awaited<ReturnType<typeof scope>>, userId: UserId) => Promise<T>
   ): Promise<T> {

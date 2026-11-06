@@ -17,7 +17,7 @@ export default class PasswordResetsController {
     } catch (error) {
       // Only known addresses get an email, so a delivery failure must not change the response.
       if (!isDeliveryFailure(error)) throw error
-      logger.error({ err: error }, 'password reset email failed')
+      logger.error({ event: 'password_reset_follow_up_failed' }, 'password reset email failed')
     }
     // The same message for known and unknown addresses.
     session.flash('success', 'If an account exists for that address, we have sent a reset link.')

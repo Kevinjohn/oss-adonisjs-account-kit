@@ -32,12 +32,13 @@ username-only accounts, or as an identity provider for other applications.
 ```sh
 node ace add @adonisjs/limiter
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.2.0/kevinjohn-adonisjs-account-kit-0.2.0.tgz
+node ace configure @kevinjohn/adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor
 ```
 
-`node ace add` writes `config/account_kit.ts`, generates migrations and registers the provider and
-commands. `account-kit:doctor` exits 1 and names the fix when the config, limiter, `APP_URL` or
+`node ace configure` writes `config/account_kit.ts`, generates migrations and registers the
+provider and commands. `account-kit:doctor` exits 1 and names the fix when the config, limiter, `APP_URL` or
 tables are wrong. The generated `notify` callbacks throw until email is configured.
 
 ## Capabilities

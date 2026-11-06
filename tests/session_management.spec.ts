@@ -387,8 +387,38 @@ test.group('sign-in management with sessions', (group) => {
       () => account.authentication.sessions.revoke({ current, id: 1 }),
       () => account.authentication.sessions.revokeOthers({ current }),
       () => account.authentication.sessions.revokeAll({ current }),
-    ])
-      await assert.rejects(call, CapabilityDisabledError)
+    ]) {
+      // A refusal is a rejected promise, never a synchronous throw.
+      let pending: Promise<unknown> | undefined
+      assert.doesNotThrow(() => {
+        pending = call()
+      })
+      await assert.rejects(() => pending!, CapabilityDisabledError)
+    }
+  })
+
+  test('a sign-in deleted after the caller was authenticated fails as an invalid session', async ({
+    assert,
+  }) => {
+    await insertUser(kit)
+    let removeSignIn = false
+    const { account } = service({
+      authentication: {
+        strategy: 'session',
+        guard: 'web',
+        // Runs after the live-session check; stands in for a concurrent sign-out committing.
+        canAccess: async (_user, trx) => {
+          if (removeSignIn) await trx!.from('account_sessions').delete()
+          return true
+        },
+      },
+    })
+    const current = await signIn(account)
+    removeSignIn = true
+    await assert.rejects(
+      () => account.authentication.sessions.list({ current }),
+      InvalidSessionError
+    )
   })
 })
 

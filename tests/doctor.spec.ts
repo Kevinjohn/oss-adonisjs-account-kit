@@ -7,6 +7,7 @@ import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
 import { provider } from './helpers/social_identity.js'
+import { testEngine } from './helpers/dialect.js'
 
 test.group('account-kit:doctor', (group) => {
   const kit = useTestApp(group)
@@ -62,6 +63,9 @@ test.group('account-kit:doctor', (group) => {
       failures(await runDoctor(input({ appUrl: 'localhost:3333', environment: 'development' }))),
       ['APP_URL: must start with http:// or https://']
     )
+    assert.deepEqual(failures(await runDoctor(input({ appUrl: '/relative' }))), [
+      'APP_URL: is not an absolute URL',
+    ])
   })
 
   test('names each missing table for the enabled capabilities', async ({ assert }) => {
@@ -185,6 +189,72 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
+  // Four schema rebuilds outlast Japa's 2s default on MySQL.
+  test('export requires every table it reads', async ({ assert }) => {
+    const exportOnly = defineConfig(
+      makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['dataExport'] })
+    )
+    for (const table of [
+      'social_identities',
+      'account_invitations',
+      'password_reset_tokens',
+      'email_verification_tokens',
+    ]) {
+      try {
+        // PostgreSQL and MySQL refuse to drop a table other tables reference; drop only their keys.
+        if (testEngine === 'pg') await kit.db.rawQuery(`drop table ${table} cascade`)
+        else {
+          if (testEngine === 'mysql') {
+            const [references] = await kit.db.rawQuery(
+              'select table_name as owner, constraint_name as name from information_schema.referential_constraints where constraint_schema = database() and referenced_table_name = ?',
+              [table]
+            )
+            for (const { owner, name } of references as Array<{ owner: string; name: string }>)
+              await kit.db.rawQuery(`alter table \`${owner}\` drop foreign key \`${name}\``)
+          }
+          await kit.db.connection().schema.dropTable(table)
+        }
+        assert.deepEqual(failures(await runDoctor(input({ config: exportOnly }))), [
+          `Package tables: missing ${table}`,
+        ])
+      } finally {
+        await resetSchema(kit)
+      }
+    }
+  }).timeout(10_000)
+
+  test('names users-table columns the configuration needs', async ({ assert }) => {
+    const withLogin = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+    )
+    const withoutLogin = defineConfig(makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) }))
+    try {
+      await kit.db.connection().schema.alterTable('users', (table) => {
+        table.dropColumn('credentials_changed_at')
+      })
+      assert.deepEqual(failures(await runDoctor(input({ config: withLogin }))), [
+        'Users table: users is missing credentials_changed_at',
+      ])
+      assert.deepEqual(failures(await runDoctor(input({ config: withoutLogin }))), [])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
+  test('SQLite requires the transaction lock table', async ({ assert }) => {
+    try {
+      await kit.db.connection().schema.dropTable('account_transaction_lock')
+      assert.deepEqual(failures(await runDoctor(input())), [
+        'Package tables: missing account_transaction_lock',
+      ])
+    } finally {
+      await resetSchema(kit)
+    }
+  }).skip(testEngine !== 'sqlite', 'Only SQLite serializes writers through the lock table')
+
   test('passwordless social registration requires a nullable password', async ({ assert }) => {
     try {
       await kit.db.connection().schema.alterTable('users', (table) => {
@@ -214,6 +284,41 @@ test.group('account-kit:doctor', (group) => {
         makeConfig({ users: options.users, enabled: ['registration'] })
       )
       assert.deepEqual(failures(await runDoctor(input({ config: passwordOnly }))), [])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
+  test('reports user metadata that cannot be resolved', async ({ assert }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const config = defineConfig(
+      makeConfig({
+        users: {
+          ...users,
+          resolveMetadata: async () => {
+            throw new Error('metadata unavailable')
+          },
+        },
+      })
+    )
+    assert.deepEqual(failures(await runDoctor(input({ config }))), [
+      'Users table: metadata unavailable',
+    ])
+  })
+
+  test('sign-in requires the session registry table', async ({ assert }) => {
+    const withLogin = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        authentication: { strategy: 'session', guard: 'web' },
+      })
+    )
+    try {
+      await kit.db.connection().schema.dropTable('account_sessions')
+      assert.deepEqual(failures(await runDoctor(input({ config: withLogin }))), [
+        'Package tables: missing account_sessions',
+      ])
+      assert.deepEqual(failures(await runDoctor(input())), [])
     } finally {
       await resetSchema(kit)
     }

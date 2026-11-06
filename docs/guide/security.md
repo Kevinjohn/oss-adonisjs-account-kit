@@ -43,7 +43,7 @@ token.
 Magic links add a client check: the browser or app that asked for the link keeps a PKCE-style
 verifier, and the link only completes with it. A wrong verifier burns the link, because it may have
 been forwarded. The verifier's challenge is compared with `timingSafeEqual` ([`client_challenge.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/client_challenge.ts)). Pinned
-by `magic_link.spec.ts`: "a wrong verifier fails and burns the link; a malformed one consumes
+by `magic_link_completion.spec.ts`: "a wrong verifier fails and burns the link; a malformed one consumes
 nothing". See [magic-link sign-in](magic-link.md).
 
 ## Account enumeration
@@ -79,7 +79,7 @@ Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 
 | Invitation send                    | actor (10 per hour), recipient (3/hour)  | as listed                            | `invitationThrottle`           |
 | Invitation resend                  | actor (10 per hour), invitation (3/hour) | as listed                            | `invitationThrottle`           |
 | Login, per client                  | client, failures only                    | 10 per minute                        | `authentication.clientLimit`   |
-| Login, per identity                | email, failures only                     | 5 per minute, then a 20-minute block | `authentication.identityLimit` |
+| Login, per identity                | client and email, failures only          | 5 per minute, then a 20-minute block | `authentication.identityLimit` |
 
 Request limits are checked before the user lookup, so a throttled request reveals nothing. Pinned
 by "the sixth client request is throttled before user lookup".
@@ -117,7 +117,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   destinations. The request `Host` and forwarded headers are never used, so a forged header cannot
   redirect a link.
 - **HTTPS in production.** A production origin must be HTTPS. Plain HTTP is accepted only for
-  loopback development origins. Pinned by `notifications.spec.ts`: "rejects untrusted and insecure
+  loopback development origins. Pinned by `notifications_rendering.spec.ts`: "rejects untrusted and insecure
   action origins while preserving base paths".
 - **Safe email content.** Built-in templates escape every value, and action URLs must be absolute
   HTTP(S) URLs without credentials. Sender and brand values with line breaks are rejected before

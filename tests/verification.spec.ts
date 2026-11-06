@@ -233,6 +233,14 @@ test.group('emailVerification.send', (group) => {
       assert.instanceOf(error, DeliveryError)
       assert.equal((error as DeliveryError).cause instanceof Error, true)
     }
+    // An immediate retry sends a new link rather than reporting the undelivered one as sent.
+    recorder.failOn(null)
+    assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
+    assert.lengthOf(
+      recorder.calls.filter(({ method }) => method === 'accountActivationProvision'),
+      2
+    )
+    recorder.failOn('accountActivationProvision')
     await kit.db
       .from('email_verification_tokens')
       .where('tokenable_id', id)
@@ -476,7 +484,7 @@ test.group('emailVerification.complete', (group) => {
             }
           }
         })
-      })
+      }, /lock/i)
     } finally {
       releaseLookup()
       await verifying

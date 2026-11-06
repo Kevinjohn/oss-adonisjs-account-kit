@@ -30,7 +30,12 @@ const capabilityTables: Record<Capability, string[]> = {
     packageTables.passwordResetTokens,
   ],
   invitations: [packageTables.accountInvitations],
-  dataExport: [],
+  dataExport: [
+    packageTables.passwordResetTokens,
+    packageTables.emailVerificationTokens,
+    packageTables.socialIdentities,
+    packageTables.accountInvitations,
+  ],
   accountDeletion: [],
   socialAuthentication: [
     packageTables.socialIdentities,
@@ -79,6 +84,8 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
+  if (config.enabled.includes('dataExport') && config.authentication?.strategy === 'access_tokens')
+    required.add(config.authentication.tokenTable)
   if (config.enabled.includes('accountDeletion')) {
     for (const { table } of userOwnedRows) required.add(table)
     required.add(packageTables.accountInvitations)

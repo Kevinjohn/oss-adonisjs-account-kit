@@ -71,6 +71,10 @@ blank to keep its displayed value. Choices for capabilities you disable are clea
 preview does not carry stale nested settings forward. Setup still previews the complete plan and
 refuses to apply over owner-edited conflicts.
 
+With the saved choices unchanged, an edited `config/account_kit.ts` or `.env.account-kit.example`,
+or a package migration written by an earlier version, is kept and reported as an action, so
+`--check` stays green after an upgrade. Changing a choice makes such a file a conflict again.
+
 If the saved file is missing or invalid, the wizard explains that it is using starter defaults. To
 preserve an earlier setup in that case, correct or remove `config/account_kit_setup.json`, or pass a
 reviewed, valid choices file with `--input=choices.json`. An explicit `--input` always takes
@@ -289,4 +293,4 @@ export const accountKitNotifications: NotificationCallbacks = {
      reset, sign in with it, then re-enter it.
    - Retire a provider only after a read-only inventory shows every affected account keeps another
      way to sign in.
-8. Run `node ace account-kit:setup --check --production` after the application integration and exercise the selected workflows over HTTP. The command's static report cannot substitute for those end-to-end checks.
+8. Run `node ace account-kit:setup --check --production` after the application integration and exercise the selected workflows over HTTP. The command's static report cannot substitute for those end-to-end checks. The report is the only output on stdout, so it can be piped to a JSON tool; warnings go to stderr.

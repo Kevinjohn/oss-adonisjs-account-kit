@@ -3,6 +3,8 @@ import app from '@adonisjs/core/services/app'
 import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
+import { errors as limiterErrors } from '@adonisjs/limiter'
+import { errors as accountErrors } from '@kevinjohn/adonisjs-account-kit'
 import { proofRequest, proofRecovery } from '#services/token_page_headers'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
@@ -49,6 +51,22 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       ctx.session.flash('input', safeOldInput(ctx.request.all()))
       ctx.session.flash('error', message)
       ctx.session.flashErrors({ [error.code]: message })
+      return ctx.response.redirect().back()
+    }
+    // Account Kit and limiter errors render JSON on their own; this app answers with a page.
+    const throttled =
+      error instanceof accountErrors.ThrottledError ||
+      error instanceof limiterErrors.E_TOO_MANY_REQUESTS
+    if ((throttled || error instanceof accountErrors.EmailAlreadyRegisteredError) && ctx.session) {
+      ctx.session.flash(
+        'error',
+        throttled
+          ? 'Too many attempts. Wait a few minutes and try again.'
+          : 'That email address is already in use.'
+      )
+      const destination = await proofRecovery(ctx.request)
+      if (destination) return ctx.response.redirect(destination, false)
+      ctx.session.flash('input', safeOldInput(ctx.request.all()))
       return ctx.response.redirect().back()
     }
     return super.handle(error, ctx)

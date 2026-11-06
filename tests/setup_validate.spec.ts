@@ -11,6 +11,31 @@ import { withFixture } from './helpers/setup_prerequisites.js'
 test.group('setup choice validation', (group) => {
   registerSetupTeardown(group)
 
+  test('choices the generators cannot render are reported, not thrown', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    choices.user.table = 'app-users'
+    const table = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.include(
+      table.diagnostics.map(({ field }) => field),
+      'user.table'
+    )
+
+    const { choices: social } = await fixture()
+    social.features = ['authentication', 'registration', 'socialAuthentication']
+    social.managed = ['socialAuthentication']
+    social.policy.registration = 'open'
+    social.social = {
+      status: 'enabled',
+      providers: ['github'],
+      callbackOriginEnv: 'ACCOUNT_SOCIAL_ORIGIN',
+      callbackPath: '/account/auth/oauth/{provider}/callback',
+      credentials: {},
+    }
+    const missing = await planSetup(social, await inspectSetup(root), { timestamp: 1234 })
+    assert.isTrue(missing.diagnostics.some(({ severity }) => severity === 'error'))
+    assert.isUndefined(missing.changes.find(({ path }) => path === 'config/ally.ts'))
+  })
+
   test('application-admitted registration cannot expose the managed public signup route', async ({
     assert,
   }) => {

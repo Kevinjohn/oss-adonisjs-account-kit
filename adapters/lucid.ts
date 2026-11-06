@@ -103,6 +103,7 @@ function assertSafeRegistrationMapping(
     'id' | 'email' | 'unverifiedEmail' | 'password' | 'emailVerifiedAt'
   > & {
     role: unknown
+    credentialsChangedAt: unknown
   }
 ): void {
   const values = user as unknown as Record<string, unknown>
@@ -112,10 +113,11 @@ function assertSafeRegistrationMapping(
     user.unverifiedEmail !== before.unverifiedEmail ||
     user.password !== before.password ||
     user.emailVerifiedAt !== before.emailVerifiedAt ||
-    values.role !== before.role
+    values.role !== before.role ||
+    values.credentialsChangedAt !== before.credentialsChangedAt
   ) {
     throw new Error(
-      'account_kit: mapRegistrationData cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role'
+      'account_kit: mapRegistrationData cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role'
     )
   }
 }
@@ -252,6 +254,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
         password: user.password,
         emailVerifiedAt: user.emailVerifiedAt,
         role: (user as unknown as Record<string, unknown>).role,
+        credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
       }
 
       if (attrs.registrationData !== undefined) {
@@ -316,6 +319,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
         password: user.password,
         emailVerifiedAt: user.emailVerifiedAt,
         role: (user as unknown as Record<string, unknown>).role,
+        credentialsChangedAt: (user as unknown as Record<string, unknown>).credentialsChangedAt,
       }
       await options.mapRegistrationData(data, user as Model)
       assertSafeRegistrationMapping(user, before)
@@ -326,9 +330,15 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     async markEmailVerified(id, at, trx) {
       await updateUser(id, trx, (user) => {
         user.unverifiedEmail = null
-        // Lucid writes MySQL timestamps as wall time without an offset, and mysql2 with the
-        // required `timezone: 'Z'` reads them back as UTC.
-        user.emailVerifiedAt = trx.dialect.name === 'mysql' ? at.toUTC() : at
+        // Lucid writes MySQL and SQLite timestamps as wall time without an offset. mysql2 with the
+        // required `timezone: 'Z'` reads MySQL back as UTC; Lucid reads SQLite back in the
+        // process zone, so SQLite gets local wall time.
+        user.emailVerifiedAt =
+          trx.dialect.name === 'mysql'
+            ? at.toUTC()
+            : ['better-sqlite3', 'sqlite3'].includes(trx.dialect.name)
+              ? at.toLocal()
+              : at
       })
     },
 

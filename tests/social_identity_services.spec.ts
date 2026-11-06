@@ -1,4 +1,6 @@
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
+import { dbTime } from './helpers/db_time.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { clientChallenge, provider } from './helpers/social_identity.js'
@@ -97,5 +99,35 @@ test.group('social identity services', (group) => {
       () => account.socialAuthentication.callback({ state: start.state, callback: {} }),
       'Invalid social transaction'
     )
+  })
+
+  test('signing in again before activation resends the activation', async ({ assert }) => {
+    const service = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: { google: provider('subject-1', 'new@example.test', false) },
+      },
+      registration: { availability: 'open' },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const signIn = async () => {
+      const start = await service.account.socialAuthentication.begin({
+        provider: 'google',
+        intent: 'login',
+        clientChallenge,
+      })
+      return service.account.socialAuthentication.callback({ state: start.state, callback: {} })
+    }
+    const activations = () =>
+      service.recorder.calls.filter((call) => call.method === 'accountActivationProvision').length
+    assert.deepEqual(await signIn(), { status: 'new', emailVerificationRequired: true })
+    assert.equal(activations(), 1)
+    // Past the duplicate-send window, so the second sign-in issues a fresh activation.
+    await kit.db
+      .from('email_verification_tokens')
+      .update({ created_at: dbTime(kit, DateTime.utc().minus({ hours: 1 })) })
+    assert.deepEqual(await signIn(), { status: 'new', emailVerificationRequired: true })
+    assert.equal(activations(), 2)
+    assert.lengthOf(await kit.db.from('users'), 1)
   })
 })

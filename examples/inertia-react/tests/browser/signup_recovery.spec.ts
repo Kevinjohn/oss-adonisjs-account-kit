@@ -207,14 +207,15 @@ test.group('Signup recovery in the browser', (group) => {
           }
           return
         }
-        assert.equal(response.headers().location, '/login')
-        await page.waitForURL('**/login')
+        // The change committed, so this session stays on its new revision and the others end.
+        assert.equal(response.headers().location, '/settings/password')
+        await page.waitForURL('**/settings/password')
         assert.equal(new URL(page.url()).search, '')
         await page
           .getByText(
             failure === 'delivery'
-              ? 'Your password was changed, but the notification email could not be sent. Sign in again with your new password.'
-              : 'Your password was changed, but a follow-up step failed. Sign in again with your new password.'
+              ? 'Password changed. Other devices have been signed out. The notification email could not be sent.'
+              : 'Password changed. Other devices have been signed out. A follow-up step failed.'
           )
           .waitFor()
         assert.equal(observers, 1)
@@ -229,14 +230,10 @@ test.group('Signup recovery in the browser', (group) => {
         assert.notInclude(body, 'private')
         assert.notInclude(body, 'ChangedPass123!')
         assert.notInclude(body, 'GlobalPass123!')
-        for (const current of [page, secondPage]) {
-          await current.goto('/dashboard')
-          await current.waitForURL('**/login')
-        }
-        await page.getByLabel('Email').fill(user.email)
-        await page.getByLabel('Password').fill('ChangedPass123!')
-        await page.getByRole('button', { name: 'Sign in' }).click()
+        await page.goto('/dashboard')
         await page.waitForURL('**/dashboard')
+        await secondPage.goto('/dashboard')
+        await secondPage.waitForURL('**/login')
       } finally {
         lifecycleOverrides.run = originalObserver
         notifyOverrides.passwordChanged = originalNotice

@@ -131,6 +131,9 @@ For the service contract and other address-confirmation paths, see
 - The link callback requires `{ state, callback, current }`, consumes the proof bound at begin, and
   cannot transfer an identity already linked elsewhere. An application can also supply a fresh
   proof directly to the callback when it has an authenticated completion channel.
+- Linking needs a confirmed account. `begin` and the link callback both throw
+  `UnverifiedEmailError` (403) while the account's address is unconfirmed, so a provider cannot be
+  attached to an address someone else may still claim.
 - No recent proof goes into a provider URL.
 - An optional `socialAuthentication.acceptLink(user, profile)` refuses a provider account before
   it is linked. `profile` is `{ provider, subject, email, emailVerified }`; `email` may be `null`.

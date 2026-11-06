@@ -66,7 +66,7 @@ if (args[0] === 'ace' && args[1] === 'serve') {
 } else if (args[0] === 'ace' && args[1] === 'account-kit:doctor') console.log('fake doctor')
 else if (args[0] === 'ace' && args[1] === 'account-kit:setup') {
   if (args.includes('--apply')) { fs.writeFileSync('.setup-applied', 'yes'); fs.appendFileSync('adonisrc.ts', '\\n// setup-generated changes\\n') }
-  console.log('[ info ] {\\n  "pillars": {},\\n  "changes": [],\\n  "prerequisites": []\\n}')
+  console.log('{\\n  "pillars": {},\\n  "changes": [],\\n  "prerequisites": []\\n}')
 }
 `
   )

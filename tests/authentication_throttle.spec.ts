@@ -1,6 +1,9 @@
 import { test } from '@japa/runner'
+import { LimiterResponse, errors } from '@adonisjs/limiter'
+import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
+import { insertUser, makeConfig, makeService } from './helpers/fakes.js'
+import { makeUsersAdapter } from './helpers/users_adapter.js'
 
 const sessionGuard = (events: string[] = []) => ({
   strategy: 'session' as const,
@@ -112,5 +115,130 @@ test.group('authentication contract', (group) => {
         ),
       'Too many requests'
     )
+  })
+
+  test('parallel guesses against one identity check at most the identity budget', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let checks = 0
+    const { account } = makeService(kit, {
+      users: {
+        ...users,
+        verifyPassword: async (...args) => {
+          checks++
+          return users.verifyPassword(...args)
+        },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 20 }, () =>
+        account.authentication.login(
+          { email: user.email, password: 'wrong', clientKey: 'burst' },
+          sessionGuard()
+        )
+      )
+    )
+    assert.isTrue(attempts.every((result) => result.status === 'rejected'))
+    assert.isAtMost(checks, 5)
+  })
+
+  test('a refusal the store did not count leaves the stored count alone', async ({ assert }) => {
+    const user = await insertUser(kit)
+    // An in-memory block refuses before the store is touched, so it reports nothing consumed.
+    const decremented: string[] = []
+    const limiter = {
+      use: () => ({
+        consume: async () => {
+          throw new errors.E_TOO_MANY_REQUESTS(
+            new LimiterResponse({ limit: 10, remaining: 0, consumed: 0, availableIn: 60 })
+          )
+        },
+        decrement: async (key: string) => void decremented.push(key),
+      }),
+    }
+    const account = new AccountKit({
+      config: defineConfig(
+        makeConfig({
+          users: makeUsersAdapter(kit.db, kit.hash),
+          authentication: { strategy: 'session', guard: 'web' },
+          minRequestMs: 0,
+        })
+      ),
+      db: kit.db,
+      limiter: limiter as never,
+    })
+    await assert.rejects(
+      () =>
+        account.authentication.login(
+          { email: user.email, password: 'password123', clientKey: 'blocked' },
+          sessionGuard()
+        ),
+      'Too many requests'
+    )
+    assert.deepEqual(decremented, [])
+  })
+
+  test('a burst of correct logins on one client leaves no budget spent', async ({ assert }) => {
+    const users = await Promise.all(
+      Array.from({ length: 20 }, (_, index) =>
+        insertUser(kit, { email: `office-${index}@example.test` })
+      )
+    )
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
+    const attempts = await Promise.allSettled(
+      users.map((user) =>
+        account.authentication.login(
+          { email: user.email, password: 'password123', clientKey: 'office' },
+          sessionGuard()
+        )
+      )
+    )
+    assert.isTrue(attempts.some((result) => result.status === 'rejected'))
+    for (const user of users) {
+      await account.authentication.login(
+        { email: user.email, password: 'password123', clientKey: 'office' },
+        sessionGuard()
+      )
+    }
+  })
+
+  test('failures unrelated to the credentials spend no login budget', async ({ assert }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let outage = true
+    const { account } = makeService(kit, {
+      users: {
+        ...users,
+        verifyPassword: async (...args) => {
+          if (outage) throw new Error('database offline')
+          return users.verifyPassword(...args)
+        },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+      minRequestMs: 0,
+    })
+    for (let attempt = 0; attempt < 12; attempt++) {
+      await assert.rejects(
+        () =>
+          account.authentication.login(
+            { email: user.email, password: 'password123', clientKey: 'outage' },
+            sessionGuard()
+          ),
+        'database offline'
+      )
+    }
+    outage = false
+    const { account: signedIn } = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'outage' },
+      sessionGuard()
+    )
+    assert.equal(signedIn.id, user.id)
   })
 })

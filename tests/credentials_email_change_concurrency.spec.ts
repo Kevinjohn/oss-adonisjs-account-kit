@@ -89,6 +89,7 @@ test.group('emailPasswordManagement', (group) => {
       currentPassword: 'oldPassword123',
       newEmail: 'new@example.test',
     })
+    let outcome: unknown
     try {
       await ready
       let conflict: unknown
@@ -112,8 +113,13 @@ test.group('emailPasswordManagement', (group) => {
       assert.equal((conflict as { code?: string } | undefined)?.code, lockNotAvailableCode)
     } finally {
       releaseProof()
-      await requesting.catch(() => {})
+      outcome = await requesting.then(
+        () => 'requested',
+        (error: unknown) => error
+      )
       if (native) await sqliteClient!.client.releaseConnection(native)
     }
+    // Once the lock is released, the held request completes.
+    assert.equal(outcome, 'requested')
   })
 })

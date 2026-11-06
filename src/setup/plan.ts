@@ -51,6 +51,10 @@ export async function planSetup(
   if (hasEmailFlow(choices)) {
     originNames.add(choices.mail.backendOriginEnv)
     originNames.add(choices.mail.frontendOriginEnv)
+    // Setup does not boot the app, so read mail references from `.env` like the origins.
+    if (choices.mail.integration === 'adonisjs-mail')
+      for (const name of [choices.mail.senderEnv, choices.mail.transportEnv])
+        if (name) originNames.add(name)
   }
   if (choices.social.status === 'enabled') originNames.add(choices.social.callbackOriginEnv)
   await Promise.all(
@@ -79,6 +83,26 @@ export async function planSetup(
     retirementMaintenanceWindow: options.retirementMaintenanceWindow ?? false,
     runtimeInventoryUnavailable: options.runtimeInventoryUnavailable ?? false,
   })
+  // Generators assume valid choices. When validation has already reported an error for the
+  // choices a generator reads, its failure leaves the file out instead of hiding that report.
+  // Any other failure is a setup bug and still throws.
+  const generated = async (
+    reads: string[],
+    build: () => string | Promise<string>
+  ): Promise<string | null> => {
+    try {
+      return await build()
+    } catch (error) {
+      if (
+        diagnostics.some(
+          ({ field, severity }) =>
+            severity === 'error' && reads.some((prefix) => field.startsWith(prefix))
+        )
+      )
+        return null
+      throw error
+    }
+  }
   await planMail(choices, state, diagnostics)
   await planUserModel(choices, state, diagnostics)
   const changes: SetupFileChange[] = []
@@ -104,15 +128,28 @@ export async function planSetup(
   )
   await planSessionConfigIntegration(changes, state, choices, diagnostics)
   if (choices.social.status === 'enabled') {
-    if (state.files['config/ally.ts'] === undefined)
-      addChange(
-        changes,
-        state,
-        'config/ally.ts',
-        allyConfigSource(choices),
-        'Configure selected Ally providers using deployment references and exact callbacks'
-      )
-    else
+    if (state.files['config/ally.ts'] === undefined) {
+      const ally = await generated(['social.'], () => allyConfigSource(choices))
+      if (ally !== null)
+        addChange(
+          changes,
+          state,
+          'config/ally.ts',
+          ally,
+          'Configure selected Ally providers using deployment references and exact callbacks'
+        )
+    } else if (await ownsAllyConfig(state, choices)) {
+      const ally = await generated(['social.'], () => allyConfigSource(choices))
+      if (ally !== null)
+        ownedChange(
+          changes,
+          state,
+          'config/ally.ts',
+          ally,
+          state.files['config/ally.ts']!,
+          'Configure selected Ally providers using deployment references and exact callbacks'
+        )
+    } else
       diagnostic(
         diagnostics,
         'config/ally.ts',
@@ -150,7 +187,8 @@ export async function planSetup(
     const suffix = `_account_kit_${name}.ts`
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
     const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
-    const content = await migrationContent(name, choices)
+    const content = await generated(['user.', 'database.'], () => migrationContent(name, choices))
+    if (content === null) continue
     addChange(
       changes,
       state,
@@ -171,7 +209,28 @@ export async function planSetup(
     state.files['config/account_kit_setup.json'] ?? null,
     'Persist six-pillar application choices without secrets'
   )
+  // With the saved choices unchanged, a differing generated config or an existing migration was
+  // edited by the owner or written by an earlier version. Keep it and say so; blocking would turn
+  // every upgrade or config edit into a permanent `--check` failure.
+  const choicesUnchanged =
+    state.existingChoices !== null &&
+    JSON.stringify(state.existingChoices) === JSON.stringify(choices)
   for (const change of changes) {
+    const keptGenerated =
+      change.path === 'config/account_kit.ts' || change.path === '.env.account-kit.example'
+    const keptMigration = /^database\/migrations\/[^/]+_account_kit_[a-z_]+\.ts$/.test(change.path)
+    if (change.action === 'conflict' && choicesUnchanged && (keptMigration || keptGenerated)) {
+      change.action = 'unchanged'
+      change.content = state.files[change.path]!
+      diagnostic(
+        diagnostics,
+        change.path,
+        keptMigration
+          ? 'Existing migration differs from this version; setup keeps it. Add a new migration for any schema change'
+          : 'Existing file differs from what setup generates for the saved choices; setup keeps it',
+        'action'
+      )
+    }
     if (change.action === 'conflict')
       diagnostic(
         diagnostics,
@@ -217,4 +276,18 @@ export async function planSetup(
     missingPackages,
     env,
   })
+}
+
+/** Setup owns `config/ally.ts` while it is exactly what setup generates for these or the saved choices. */
+async function ownsAllyConfig(state: SetupInspection, choices: SetupChoices): Promise<boolean> {
+  const existing = state.files['config/ally.ts']
+  for (const selection of [choices, state.existingChoices]) {
+    if (selection?.social.status !== 'enabled') continue
+    try {
+      if (allyConfigSource(selection) === existing) return true
+    } catch {
+      // Saved choices this version cannot render do not claim the file.
+    }
+  }
+  return false
 }

@@ -13,7 +13,6 @@ test.group('managed transaction wrapper', (group) => {
   test('rejects a PostgreSQL deferred-constraint COMMIT without commit events or durable writes', async ({
     assert,
   }) => {
-    if (testEngine !== 'pg') return
     await kit.db
       .rawQuery(
         'CREATE TABLE test_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
@@ -61,12 +60,11 @@ test.group('managed transaction wrapper', (group) => {
     } finally {
       await kit.db.connection().schema.dropTableIfExists('test_deferred_commit')
     }
-  })
+  }).skip(testEngine !== 'pg', 'PostgreSQL only')
 
   test('a PostgreSQL commit failure rejects password change and suppresses its post-commit callback', async ({
     assert,
   }) => {
-    if (testEngine !== 'pg') return
     await kit.db
       .rawQuery(
         'CREATE TABLE test_deferred_commit (id integer PRIMARY KEY, user_id integer REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED)'
@@ -121,5 +119,5 @@ test.group('managed transaction wrapper', (group) => {
     } finally {
       await kit.db.connection().schema.dropTableIfExists('test_deferred_commit')
     }
-  })
+  }).skip(testEngine !== 'pg', 'PostgreSQL only')
 })

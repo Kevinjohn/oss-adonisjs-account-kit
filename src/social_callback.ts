@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { validateAccountAccessResult } from './account_access_policy.js'
-import { revision } from './authentication.js'
+import { isActiveAccount, revision } from './authentication.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
@@ -15,6 +15,7 @@ import {
   SocialProofError,
   SocialTransactionError,
   SocialUserNotFoundError,
+  UnverifiedEmailError,
 } from './errors.js'
 import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -181,7 +182,20 @@ export async function socialCallback(
             .where('provider_user_id', profile.subject)
             .first()
           if (stored) {
-            if (!stored.confirmed_at) throw new SocialUserNotFoundError()
+            if (!stored.confirmed_at) {
+              // The account this identity created was never activated: send activation again
+              // instead of refusing this provider subject for good.
+              const owner = await deps.config.users.findById(stored.user_id, trx)
+              if (
+                owner &&
+                owner.unverifiedEmail !== null &&
+                owner.unverifiedEmail === owner.email
+              ) {
+                unverified = owner.id
+                return { status: 'new', emailVerificationRequired: true }
+              }
+              throw new SocialUserNotFoundError()
+            }
             const user = await deps.config.users.findById(stored.user_id, trx)
             if (!user) throw new SocialUserNotFoundError()
             const auth = deps.config.authentication!
@@ -229,7 +243,7 @@ export async function socialCallback(
               continuation,
             }
           }
-          const created = await createAccount(deps, trx, name, profile)
+          const created = await createAccount(deps, trx, name, profile, undefined, input.admit)
           if (created.invitationIds.length > 0)
             accepted = { invitationIds: created.invitationIds, userId: created.user.id }
           if (!profile.emailVerified) {
@@ -308,6 +322,8 @@ export async function socialCallback(
         const proofHash = state.proof_hash ?? (input.proof ? hashToken(input.proof) : null)
         if (!proofHash) throw new SocialProofError()
         await consumeSocialSensitiveProofHash(trx, deps.config, user.id, 'social_link', proofHash)
+        // A confirmed link survives the email-owner claim, so an unconfirmed account cannot link.
+        if (!isActiveAccount(user)) throw new UnverifiedEmailError()
         const existing = await trx
           .from('social_identities')
           .where('provider', name)

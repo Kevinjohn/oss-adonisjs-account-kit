@@ -1,7 +1,13 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import { DeliveryError, InvalidInputError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import {
+  DeliveryError,
+  errors,
+  InvalidInputError,
+  PostCommitError,
+} from '@kevinjohn/adonisjs-account-kit'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
+import { errors as vineErrors } from '@vinejs/vine'
 import NewAccountController from '#controllers/new_account_controller'
 
 type Route = 'dashboard' | 'session.create'
@@ -82,6 +88,26 @@ test.group('Signup recovery', () => {
     assert.include(flashes[0]![1], 'resend action')
     assert.notInclude(flashes[0]![1], 'private mail transport detail')
     assert.lengthOf(loggedErrors, 1)
+    // The event is logged, not the error: its cause can carry transport details.
+    assert.notProperty((loggedErrors[0] as unknown[])[0] as object, 'err')
+  })
+
+  test('a signup that loses an address race gets the email field error', async ({ assert }) => {
+    const { ctx, flashes, routes } = makeContext()
+    const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
+      throw new errors.RegistrationEmailAlreadyRegisteredError()
+    })
+    try {
+      const error = await new NewAccountController().store(ctx).catch((caught: unknown) => caught)
+      assert.instanceOf(error, vineErrors.E_VALIDATION_ERROR)
+      assert.deepEqual((error as { messages: unknown }).messages, [
+        { field: 'email', rule: 'unique', message: 'This email address is already in use.' },
+      ])
+    } finally {
+      restoreRegistration()
+    }
+    assert.deepEqual(routes, [])
+    assert.deepEqual(flashes, [])
   })
 
   test('does not claim account creation when registration fails before commit', async ({

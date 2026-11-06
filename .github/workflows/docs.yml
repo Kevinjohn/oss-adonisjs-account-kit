@@ -44,9 +44,10 @@ permissions:
   contents: read
 
 concurrency:
-  # Each PR build has its own queue; deployments share the Pages queue.
+  # Each PR build has its own queue; deployments share the Pages queue and are never cancelled
+  # mid-deploy, as in GitHub's Pages template.
   group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.pull_request.number) || 'pages' }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:

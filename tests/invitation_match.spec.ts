@@ -41,7 +41,7 @@ test.group('invitation match', (group) => {
         accepted.push({
           userId: user.id,
           role: invitation.role,
-          inTransaction: row !== undefined && left.length === 0,
+          inTransaction: row !== null && left.length === 0,
         })
       },
       onLifecycleEvent: async (event) => {

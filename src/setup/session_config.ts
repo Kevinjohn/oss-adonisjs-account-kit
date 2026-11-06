@@ -26,13 +26,21 @@ const exportEnd = '// account-kit:session-export:end\n'
 export interface NativeSessionConfiguration {
   configStart: number
   exportStartIndex: number
+  /** End of the exported `sessionConfig` name, whatever spacing or comments precede it. */
+  exportNameEnd: number
   originalStore: string
   originalSelection: string
   storeStart: number
-  allowedStores: Array<{ name: string; kind: 'database' | 'memory' }>
+  /** Server-side stores the managed wrapper accepts; the cookie store is never one. */
+  allowedStores: Array<{ name: string; kind: string }>
   selectedName: string | null
-  selected: { name: string; kind: 'database' | 'memory' } | null
+  selected: { name: string; kind: string } | null
+  /** The `stores.<kind>()` factory of the selected entry, cookie included. */
+  selectedKind: string | null
 }
+
+/** The `stores` factories that keep session data on the server. */
+const serverStores = ['database', 'dynamodb', 'file', 'memory', 'redis']
 
 export async function nativeSessionConfiguration(
   text: string,
@@ -54,6 +62,7 @@ export async function nativeSessionConfiguration(
   if (!store || !stores || !ts.isObjectLiteralExpression(stores.initializer)) return null
   if (hasUnsafeObjectEntries(source, stores.initializer)) return null
   const allowedStores: NativeSessionConfiguration['allowedStores'] = []
+  const kinds = new Map<string, string>()
   for (const property of stores.initializer.properties) {
     if (!ts.isPropertyAssignment(property)) return null
     const name =
@@ -61,9 +70,10 @@ export async function nativeSessionConfiguration(
         ? property.name.text
         : null
     if (!name) return null
-    for (const kind of ['database', 'memory'] as const) {
-      if (exactCall(source, property.initializer, storesName, kind))
-        allowedStores.push({ name, kind })
+    for (const kind of [...serverStores, 'cookie']) {
+      if (!exactCall(source, property.initializer, storesName, kind)) continue
+      kinds.set(name, kind)
+      if (kind !== 'cookie') allowedStores.push({ name, kind })
     }
   }
   let selectedName: string | null = null
@@ -112,12 +122,14 @@ export async function nativeSessionConfiguration(
   return {
     configStart: declaration.parent.parent.getStart(file),
     exportStartIndex: target.exportAssignment.getStart(file),
+    exportNameEnd: target.exportAssignment.expression.getEnd(),
     originalStore: store.initializer.getText(file),
     originalSelection: store.getText(file),
     storeStart: store.getStart(file),
     allowedStores,
     selectedName,
     selected,
+    selectedKind: (selectedName && kinds.get(selectedName)) ?? null,
   }
 }
 
@@ -128,6 +140,7 @@ export function renderManagedSessionConfig(
   const {
     configStart,
     exportStartIndex,
+    exportNameEnd,
     originalStore,
     originalSelection,
     storeStart,
@@ -160,7 +173,7 @@ ${exportEnd}`
     `store: ${selector}` +
     source.slice(storeStart + originalSelection.length, exportStartIndex) +
     wrappedExport +
-    source.slice(exportStartIndex + 'export default sessionConfig'.length)
+    source.slice(exportNameEnd)
   )
 }
 

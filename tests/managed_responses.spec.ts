@@ -11,8 +11,53 @@ import {
   ThrottledError,
 } from '../src/errors.js'
 import { managedErrorResponse, proofHeaders } from '../src/http/responses.js'
+import { ruleError } from '../src/http/response_helpers.js'
+import type { HttpContext } from '@adonisjs/core/http'
 
 test.group('managed HTTP responses', () => {
+  test('package 422s follow Accept and are never cached', ({ assert }) => {
+    const send = (accept?: string) => {
+      const headers: Record<string, string> = {}
+      const vary: string[] = []
+      let sent: { status?: number; body?: unknown } = {}
+      const context = {
+        request: { header: () => accept },
+        response: {
+          header: (name: string, value: string) => void (headers[name] = value),
+          vary: (value: string) => void vary.push(value),
+          status(status: number) {
+            sent.status = status
+            return { send: (body: unknown) => (sent = { ...sent, body }) }
+          },
+        },
+      } as unknown as HttpContext
+      ruleError(context, 'email', 'unique', 'The email has already been taken.')
+      return { headers, vary, ...sent }
+    }
+    assert.deepEqual(send(), {
+      headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json' },
+      vary: ['Accept'],
+      status: 422,
+      body: {
+        errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken.' }],
+      },
+    })
+    assert.deepEqual(send('application/vnd.api+json'), {
+      headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/vnd.api+json' },
+      vary: ['Accept'],
+      status: 422,
+      body: {
+        errors: [
+          {
+            code: 'unique',
+            title: 'The email has already been taken.',
+            source: { pointer: 'email' },
+          },
+        ],
+      },
+    })
+  })
+
   test('maps proof failures to one generic code and hides all causes', ({ assert }) => {
     const error = new InvalidTokenError('database row and token details')
     assert.deepEqual(managedErrorResponse(error, { proof: 'password' }), {

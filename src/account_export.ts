@@ -9,6 +9,7 @@ import { throttlerOf } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
+import { sessionRegistryEnabled, sessionTable } from './session_registry.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
 
@@ -65,6 +66,21 @@ async function accessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
   }))
 }
 
+async function signedInSessions(trx: Trx, userId: UserId) {
+  const rows = await trx
+    .from(sessionTable)
+    .select('id', 'label', 'created_at', 'last_seen_at', 'expires_at')
+    .where('user_id', userId)
+    .orderBy('id')
+  return rows.map((row) => ({
+    id: row.id,
+    label: row.label ?? null,
+    createdAt: readIsoTimestamp(row.created_at)!,
+    lastSeenAt: readIsoTimestamp(row.last_seen_at)!,
+    expiresAt: readIsoTimestamp(row.expires_at)!,
+  }))
+}
+
 export async function exportAccountData(
   deps: ServiceDependencies,
   input: AccountDataInput
@@ -97,7 +113,8 @@ export async function exportAccountData(
           unverifiedEmail: user.unverifiedEmail,
           emailVerifiedAt: user.emailVerifiedAt?.toUTC().toISO() ?? null,
           hasPassword: user.hasPassword,
-          credentialsChangedAt: await revision(trx, config, user.id),
+          // The column is required only when login is configured.
+          credentialsChangedAt: config.authentication ? await revision(trx, config, user.id) : null,
         },
         socialIdentities: identities.map((row) => ({
           provider: row.provider,
@@ -118,6 +135,9 @@ export async function exportAccountData(
         })),
         ...(config.authentication?.strategy === 'access_tokens'
           ? { accessTokens: await accessTokens(trx, config, user.id) }
+          : {}),
+        ...(sessionRegistryEnabled(config)
+          ? { sessions: await signedInSessions(trx, user.id) }
           : {}),
         pending: await pending(trx, user.id),
         application: config.exportAccountData

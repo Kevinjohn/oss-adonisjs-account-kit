@@ -16,7 +16,7 @@ export interface ManagedGuard<Credential> {
   forRequest(context: HttpContext): AuthenticationGuard<Credential>
   /** Authenticate through that guard and return its trusted token id or session revision. */
   current(context: HttpContext): Promise<CurrentAccountInput>
-  /** Return the current credential for bearer logout; sessions may omit this callback. */
+  /** Return the current credential for bearer logout. Required for access tokens with `authentication`. */
   logoutCredential?(context: HttpContext): Promise<Credential>
   /** Expose only the opaque bearer value after successful token issuance. */
   publicCredential?(credential: Credential): string

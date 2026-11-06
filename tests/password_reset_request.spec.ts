@@ -371,10 +371,11 @@ test.group('passwordReset.request', (group) => {
         assert.instanceOf(error, InvalidInputError)
       }
     }
+    // The address keeps its whole budget: five requests from separate clients all pass.
     for (let index = 0; index < 5; index++) {
       await account.passwordReset.request({
-        email: `unknown${index}@example.test`,
-        clientKey: 'ok',
+        email: 'person@example.test',
+        clientKey: `client-${index}`,
       })
     }
   })

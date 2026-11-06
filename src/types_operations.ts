@@ -244,6 +244,11 @@ export interface UpdateProfileInput {
   email?: string
   /** Untrusted extra fields, passed to `registration.mapFields`. */
   registrationData?: unknown
+  /**
+   * The caller's own sign-in, from `authentication.current` input. A new address on an account
+   * that is not yet active ends every other sign-in and keeps this one.
+   */
+  keepCurrent?: { sessionHandle?: string; tokenId?: UserId }
 }
 
 /** Input for `emailPasswordManagement.completeEmailChange`. */
@@ -301,6 +306,14 @@ export interface AccountExport {
     createdAt: string | null
     lastUsedAt: string | null
     expiresAt: string | null
+  }>
+  /** Present only for the session strategy with `sessionManagement`: the recorded signed-in devices. */
+  sessions?: Array<{
+    id: number
+    label: string | null
+    createdAt: string
+    lastSeenAt: string
+    expiresAt: string
   }>
   pending: { passwordReset: boolean; emailVerification: boolean; emailChange: string | null }
   application: unknown

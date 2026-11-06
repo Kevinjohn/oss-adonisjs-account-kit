@@ -37,7 +37,7 @@ export default class RetirementImpact extends BaseCommand {
         passwordLogin: this.keepPasswordLogin === true,
         providers: parseProviders(this.providers),
       })
-      if (!this.quiet) this.logger.info(JSON.stringify(this.impact))
+      if (!this.quiet) this.logger.log(JSON.stringify(this.impact))
     } catch {
       this.failure = 'inventory_unavailable'
       this.exitCode = 1

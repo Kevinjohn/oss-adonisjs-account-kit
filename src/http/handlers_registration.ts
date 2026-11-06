@@ -21,6 +21,8 @@ async function signup<Credential>({
   representIssued,
 }: ManagedRequest<Credential>): Promise<unknown> {
   const { request, response } = context
+  // The body can carry a bearer token; no cache may keep it.
+  response.header('Cache-Control', 'no-store')
   kit.managedHttp.assertPublicRegistration()
   await kit.managedHttp.consume({ endpoint: route.name, clientKey: request.ip() })
   const input = options.extensions?.registration

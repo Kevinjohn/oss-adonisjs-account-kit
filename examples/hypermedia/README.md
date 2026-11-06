@@ -80,7 +80,7 @@ Open `http://localhost:3342` and follow these steps:
 8. Sign out again. The protected route returns you to sign in.
 
 For keyboard recovery, submit an invalid form and use the first focused field. Each field error is
-linked to its label and announced through the error region. Names and email addresses are retained
+linked to its input through `aria-describedby`, so a screen reader reads it with the field. Names and email addresses are retained
 after ordinary validation errors; password fields are always cleared. Check this journey at desktop
 and narrow viewport widths.
 
@@ -123,10 +123,13 @@ Follow the [password reset recipe](../../docs/recipes/hypermedia-edge.md) to add
 
 Copy the minimum relevant pieces and adapt names to the host app:
 
-- `config/account_kit.ts`, the limiter configuration, provider registration in `adonisrc.ts`, and
-  the Account Kit migrations.
+- `config/account_kit.ts`, the limiter configuration with its `rate_limits` migration, provider
+  and command registration in `adonisrc.ts`, and the Account Kit migrations. Replace the
+  `#services/account_kit_notifications` import in `config/account_kit.ts`: it is the example's
+  development notifier, which prints links instead of sending email.
 - `app/services/session_guard.ts`, `app/services/delivery_failure.ts`,
-  `app/services/token_page_headers.ts`, and the session-revision middleware.
+  `app/services/token_page_headers.ts`, `app/services/safe_old_input.ts` (the exception handler
+  imports it), and the session-revision middleware.
 - The account controllers, validators and named middleware, then the matching form pages and
   shared `@form`, field, error and flash components.
 - Native session and auth guard configuration, request limits, CSRF protection and the

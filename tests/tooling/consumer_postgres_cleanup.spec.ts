@@ -16,7 +16,7 @@ const scenarios = ['success', 'connect', 'query', 'end', 'query+end', 'connect+e
 
 // Every child owns a real referenced timer: missing shutdown prevents natural exit.
 // The deadline only bounds a broken implementation; no timer stages test behavior.
-async function runChild(script: string) {
+async function runChild(script: string, temporary: string) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -28,7 +28,12 @@ async function runChild(script: string) {
         '--',
         '--database=postgres',
       ],
-      { cwd: repoRoot, env: { ...process.env, DB_DATABASE: 'account_kit_consumer' }, stdio: 'pipe' }
+      {
+        cwd: repoRoot,
+        // The consumer settings create their run directory under TMPDIR; keep it in the test's.
+        env: { ...process.env, TMPDIR: temporary, DB_DATABASE: 'account_kit_consumer' },
+        stdio: 'pipe',
+      }
     )
     let output = ''
     child.stdout.on('data', (data) => (output += data))
@@ -86,7 +91,8 @@ test.group('Consumer PostgreSQL cleanup', () => {
               : '../../bin/helpers/consumer/postgres.ts',
             import.meta.url
           ).href
-          const output = await runChild(`
+          const output = await runChild(
+            `
             import assert from 'node:assert/strict'
             globalThis.scenario = ${JSON.stringify(scenario)}
             globalThis.operationError = new Error('operation sentinel')
@@ -120,7 +126,9 @@ test.group('Consumer PostgreSQL cleanup', () => {
             assert.deepEqual(events, ['connect', ...(scenario.includes('query') ? queries.slice(0, 1) : queries), 'end'])
             assert.equal(options.database, ${JSON.stringify(operation === 'ensureExclusivePostgresDatabase' ? 'postgres' : 'account_kit_consumer')})
             console.log('SETTLED')
-          `)
+          `,
+            root
+          )
           assert.match(output, /LIVE true/)
           assert.match(output, /CLOSED true/)
           assert.match(output, /SETTLED/)

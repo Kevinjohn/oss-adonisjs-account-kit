@@ -93,7 +93,7 @@ test.group('account kit configuration and service surface', (group) => {
   test('rejects invalid password reset timing and throttle configuration', ({ assert }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
     for (const minRequestMs of [Number.NaN, Number.POSITIVE_INFINITY, -1]) {
-      assert.throws(() => defineConfig({ ...base, minRequestMs }))
+      assert.throws(() => defineConfig({ ...base, minRequestMs }), /minRequestMs/)
     }
     assert.equal(defineConfig({ ...base, minRequestMs: 0 }).minRequestMs, 0)
 
@@ -298,8 +298,28 @@ test.group('account kit configuration and service surface', (group) => {
     assert.isTrue(Object.isFrozen(resolved.authentication?.clientLimit))
     assert.isTrue(Object.isFrozen(resolved.authentication?.identityLimit))
     assert.isTrue(Object.isFrozen(resolved.authentication?.tokenAbilities))
+    assert.isTrue(Object.isFrozen(resolved.registration))
     assert.isFalse(Object.isFrozen(input))
     assert.isFalse(Object.isFrozen(input.users))
+    assert.isFalse(Object.isFrozen(input.registration))
     assert.strictEqual(resolved.users, input.users)
+    // A later write to the application's object does not reach the checked copy.
+    input.registration.availability = 'bogus' as never
+    assert.equal(resolved.registration.availability, 'open')
+  })
+
+  test('keeps a registration availability defined on a class', async ({ assert }) => {
+    class Registration {
+      get availability() {
+        return 'closed' as const
+      }
+    }
+    const resolved = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        registration: new Registration(),
+      })
+    )
+    assert.equal(resolved.registration.availability, 'closed')
   })
 })

@@ -17,7 +17,11 @@ export default function Profile({ profile }: Props) {
       title="Profile"
       description="Your name saves immediately. Confirm with your current password."
     >
-      <Form route="profile.update" onError={focusFormErrorSummary}>
+      <Form
+        route="profile.update"
+        resetOnSuccess={['currentPassword']}
+        onError={focusFormErrorSummary}
+      >
         {({ errors, processing }) => (
           <div className="auth__form">
             <FormErrorSummary errors={errors} fields={fields} />

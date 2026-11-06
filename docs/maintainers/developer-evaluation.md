@@ -113,4 +113,4 @@ reviews.
 
 ## Changelog
 
-The Unreleased changelog records this technical evaluation and its limits.
+The 0.1.0 changelog section records this technical evaluation and its limits.

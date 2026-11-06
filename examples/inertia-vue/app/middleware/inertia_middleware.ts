@@ -28,7 +28,10 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
     return {
       errors: ctx.inertia.always(this.getValidationErrors(ctx)),
       user: ctx.inertia.always(auth?.user ? UserTransformer.transform(auth.user) : undefined),
-      emailVerified: ctx.inertia.always(auth?.user ? auth.user.emailVerifiedAt !== null : true),
+      // Account Kit's rule: active once the pending address is not the account's own address.
+      emailVerified: ctx.inertia.always(
+        auth?.user ? auth.user.unverifiedEmail !== auth.user.email : true
+      ),
       preferences: ctx.inertia.always({ theme }),
     }
   }

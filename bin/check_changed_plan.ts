@@ -9,15 +9,20 @@ const lintConfig = /^eslint\.config\.[^/]+$/
 const spec = /^tests\/.+\.spec\.ts$/
 const docsSource = /^(?:docs\/(?!reference\/api\/|\.vitepress\/(?:cache|dist)\/).+|typedoc\.json)$/
 // TypeDoc reads the exported sources and fails on warnings, so source changes build the docs too.
-const docsInput = /^(?!tests\/|examples\/|stubs\/|bin\/).+\.(?:ts|mts|cts)$/
+// `stubs/main.ts` is re-exported from `index.ts`; the other stubs are templates.
+const docsInput = /^(?!tests\/|examples\/|bin\/)(?!stubs\/(?!main\.ts$)).+\.(?:ts|mts|cts)$/
+// What the published package is built from: its sources, stubs, manifest and build settings.
+const packageInput =
+  /^(?:package\.json|tsdown\.config\.[^/]+|tsconfig[^/]*\.json|stubs\/.+|(?!tests\/|examples\/|bin\/|docs\/)[^/]+(?:\/[^/]+)*\.(?:ts|mts|cts))$/
 const pgService =
   /^(?:bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.ts)$/
 const checkChanged =
   /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_(?:plan|process)\.spec\.ts)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
 // Markdown never qualifies: tests/docs_links.spec.ts reads tracked Markdown except changelogs.
+// Workflows do not qualify either: workflow specs read `.github/workflows/*.yml`.
 const outsideJapa =
-  /^(?!.*\.md$)(?:\.github\/.+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
+  /^(?!.*\.md$)(?:\.github\/(?!workflows\/).+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
 
 const minute = 60_000
 
@@ -62,7 +67,7 @@ export function planChecks(
     'lint',
     lintFiles.length > 0 || any(lintConfig) || any(dependencies),
     any(lintConfig) || any(dependencies)
-      ? ['pnpm', 'lint', '--max-warnings', '0']
+      ? ['pnpm', 'lint']
       : [
           'pnpm',
           'exec',
@@ -133,6 +138,16 @@ export function planChecks(
       skip: 'check:changed and its tests unchanged',
     }
   )
+  // The built package: its exports and the packaged setup command and templates.
+  for (const [id, command] of [
+    ['build', ['pnpm', 'build']],
+    ['built-exports', ['pnpm', 'test:built-exports']],
+    ['built-setup', ['pnpm', 'test:built-setup']],
+  ] as const)
+    step(id, any(packageInput), [...command], {
+      ...(id === 'build' ? {} : { tests: 'japa' as const }),
+      skip: 'no package source changed',
+    })
   step('docs', any(docsSource) || any(docsInput) || any(dependencies), ['pnpm', 'docs:build'], {
     timeoutMs: 10 * minute,
     skip: 'no documentation source changed',

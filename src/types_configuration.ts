@@ -33,7 +33,10 @@ export interface AccountKitConfig {
   urls: Partial<UrlCallbacks>
   /** Sends account emails. Each enabled flow needs its callbacks. */
   notify: Partial<NotificationCallbacks>
-  /** Application-owned delivery guarantee; durable requires an application queue or outbox. */
+  /**
+   * The delivery guarantee the application provides; durable requires an application queue or
+   * outbox. Readiness checks and setup read it; Account Kit sends messages the same way either way.
+   */
   delivery?: 'best-effort' | 'durable' | 'capture'
   /**
    * Runs inside the acceptance transaction, for example to assign the invitation's role. Use `trx`
@@ -203,7 +206,10 @@ export interface ResolvedConfig extends Omit<
   urls: UrlCallbacks
   notify: NotificationCallbacks
   delivery: 'best-effort' | 'durable' | 'capture'
-  /** `AccountKitConfig.onInvitationAccepted`, or a no-op. */
+  /**
+   * `AccountKitConfig.onInvitationAccepted`. Without one, calling it throws
+   * `CapabilityDisabledError`; invitations require the hook, so the package never calls that.
+   */
   onInvitationAccepted: NonNullable<AccountKitConfig['onInvitationAccepted']>
   usersTable: string
   limiterSecret: string

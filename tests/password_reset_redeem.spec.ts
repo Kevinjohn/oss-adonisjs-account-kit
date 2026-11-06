@@ -239,7 +239,6 @@ test.group('passwordReset.reset', (group) => {
   test('credential callback runs once after a contended DELETE-journal commit', async ({
     assert,
   }) => {
-    if (locksRows) return
     const customKit = await bootTestApp({ sqlitePoolMax: 2 })
     let reader: Awaited<ReturnType<typeof customKit.db.transaction>> | undefined
     let native:
@@ -368,7 +367,9 @@ test.group('passwordReset.reset', (group) => {
       if (native?.inTransaction) native.exec('ROLLBACK')
       await customKit.close()
     }
-  }).timeout(8000)
+  })
+    .skip(locksRows, 'SQLite serializes writers instead of locking rows')
+    .timeout(8000)
 
   test('reset attempts notices and lifecycle once after verified COMMIT listener failure', async ({
     assert,

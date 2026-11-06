@@ -1,4 +1,7 @@
+import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
+import { SocialTransactionError } from '../src/errors.js'
+import { dbTime } from './helpers/db_time.js'
 import { advanceCredentialRevision } from '../src/authentication.js'
 import { transaction } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
@@ -13,6 +16,26 @@ test.group('social continuation and handoff', (group) => {
     establish: async () => 'session',
     terminate: async () => {},
   }
+
+  test('begin refuses a provider that is not configured or not supported', async ({ assert }) => {
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: { google: provider('subject', 'person@example.test', true) },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    for (const name of ['github', 'twitter'])
+      await assert.rejects(
+        () =>
+          account.socialAuthentication.begin({
+            provider: name as 'github',
+            intent: 'login',
+            clientChallenge,
+          }),
+        'Unsupported social provider'
+      )
+  })
 
   test('PKCE handoff issues one guard credential and rejects replay or a wrong verifier', async ({
     assert,
@@ -90,6 +113,44 @@ test.group('social continuation and handoff', (group) => {
       guard,
     })
     assert.equal(githubExchange.provider, 'github')
+  })
+
+  test('a handoff refuses another guard and an expired code without spending the code', async ({
+    assert,
+  }) => {
+    const { account } = makeService(kit, {
+      enabled: ['socialAuthentication', 'emailVerification'],
+      registration: { availability: 'open' },
+      socialAuthentication: {
+        providers: { google: provider('guard-subject', 'guard@example.test', true) },
+      },
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    const start = await account.socialAuthentication.begin({
+      provider: 'google',
+      intent: 'login',
+      clientChallenge,
+    })
+    const result = await account.socialAuthentication.callback({ state: start.state, callback: {} })
+    if (result.status !== 'new' || !('handoffCode' in result) || !result.handoffCode)
+      throw new Error('Expected handoff')
+    const code = result.handoffCode
+    for (const guard of [
+      { ...sessionGuard, name: 'admin' },
+      { ...sessionGuard, strategy: 'access_tokens' as const },
+    ])
+      await assert.rejects(
+        () => account.socialAuthentication.redeemHandoff({ code, verifier, guard: guard as never }),
+        SocialTransactionError
+      )
+    assert.lengthOf(await kit.db.from('social_handoff_codes'), 1)
+    await kit.db
+      .from('social_handoff_codes')
+      .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
+    await assert.rejects(
+      () => account.socialAuthentication.redeemHandoff({ code, verifier, guard: sessionGuard }),
+      SocialTransactionError
+    )
   })
 
   test('an unlinked association cannot redeem its earlier handoff', async ({ assert }) => {

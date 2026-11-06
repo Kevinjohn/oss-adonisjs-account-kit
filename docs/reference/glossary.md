@@ -16,8 +16,8 @@ _registration availability_.
 The default. Compare _managed mode_.
 
 **Capability.** One feature area you switch on in `enabled`: `passwordReset`,
-`emailVerification`, `emailPasswordManagement`, `invitations`, `registration` or
-`socialAuthentication`. Calling a disabled capability throws `CapabilityDisabledError`.
+`emailVerification`, `emailPasswordManagement`, `invitations`, `registration`,
+`socialAuthentication`, `magicLinkLogin`, `sessionManagement`, `dataExport` or `accountDeletion`. Calling a disabled capability throws `CapabilityDisabledError`.
 
 **Client key.** A value that identifies the caller for rate limiting, usually `request.ip()` after
 trusted proxies are configured. Never accept one from the request body.

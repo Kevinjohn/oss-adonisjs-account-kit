@@ -51,6 +51,7 @@ test.group('Account profile email', (group) => {
     const emailToken = tokenFrom(emailNotice.value)
     const emailPath = `/api/v1/auth/email-change/${encodeURIComponent(emailToken)}`
     const emailInspect = await client.get(emailPath)
+    assert.equal(emailInspect.status(), 200)
     assert.equal(emailInspect.header('referrer-policy'), 'no-referrer')
     assert.equal(emailInspect.header('cache-control'), 'no-store')
     await emailUser.refresh()

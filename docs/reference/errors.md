@@ -176,7 +176,7 @@ import {
 | `AdmissionDecisionError` | `E_ACCOUNT_KIT_ADMISSION_DECISION` |    409 | An approve, reject or revoke that the current approval state does not allow. | Reload the admission list and show the current state.                                          |
 
 Their translation keys are `errors.E_ACCOUNT_KIT_ADMISSION_REQUIRED` and
-`errors.E_ACCOUNT_KIT_ADMISSION_DECISION`, with the English message `Account request rejected`.
+`errors.E_ACCOUNT_KIT_ADMISSION_DECISION`, with the English message `Account request rejected.`.
 
 ## Stability
 

@@ -2,7 +2,7 @@
 
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import db from '@adonisjs/lucid/services/db'
 import limiter from '@adonisjs/limiter/services/main'
 import { Session } from '@adonisjs/session'
@@ -194,6 +194,37 @@ test.group('native account journeys', (group) => {
       .waitFor()
     assert.equal(await page.getByLabel('Email').inputValue(), 'unknown@example.test')
     assert.equal(await page.getByLabel('Password').inputValue(), '')
+  })
+
+  test('throttled signup and reset requests answer with a page, not JSON', async ({
+    browser,
+    assert,
+  }) => {
+    const context = await browser.newContext({ baseURL: origin, javaScriptEnabled: false })
+    const throttled = 'Too many attempts. Wait a few minutes and try again.'
+    try {
+      const page = await context.visit('/forgot-password')
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await page.getByLabel('Email').fill('unknown@example.test')
+        await page.getByRole('button', { name: 'Send reset link' }).click()
+        await page.getByRole('heading', { name: 'Reset your password' }).waitFor()
+      }
+      assert.include(await page.locator('body').innerText(), throttled)
+
+      // Each signup attempt spends the client budget before validation runs.
+      await page.goto('/signup')
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await page.getByLabel('Full name').fill('Taylor Example')
+        await page.getByLabel('Email').fill('throttled@example.test')
+        await page.getByLabel('Password', { exact: true }).fill('SignupPass123!')
+        await page.getByLabel('Confirm password').fill('DifferentPass123!')
+        await page.getByRole('button', { name: 'Create account' }).click()
+        await page.getByRole('button', { name: 'Create account' }).waitFor()
+      }
+      assert.include(await page.locator('body').innerText(), throttled)
+    } finally {
+      await context.close()
+    }
   })
 
   test('failure and recovery feedback work without JavaScript and errors persist with JavaScript', async ({
@@ -557,7 +588,7 @@ test.group('native account journeys', (group) => {
         .update({ created_at: DateTime.now().minus({ minutes: 2 }).toSQL() })
       accountKitNotifications.notify.accountActivationProvision = notify
       await page.getByRole('button', { name: 'Send a fresh verification link' }).click()
-      await page.getByText(/A fresh verification link was sent/).waitFor()
+      await page.getByText(/A verification link is on its way/).waitFor()
       const token = accountKitNotifications.tokenFor('accountActivationProvision', user.email)
       await page.goto(`/verify-email/${encodeURIComponent(token)}`)
       await page.getByLabel('Choose a password').fill('RecoveryPass123!')
@@ -620,18 +651,42 @@ test.group('native account journeys', (group) => {
       emailVerifiedAt: null,
       unverifiedEmail: 'expired@example.test',
     })
-    const token = 'expired-proof-token'
+    // A well-formed token, so only its expiry can refuse it.
+    const token = randomBytes(32).toString('base64url')
+    const hash = createHash('sha256').update(token).digest('hex')
     await db.table('email_verification_tokens').insert({
       tokenable_id: user.id,
       email: user.email,
-      current_email: '',
+      current_email: user.email,
       purpose: 'activation',
-      hash: createHash('sha256').update(token).digest('hex'),
-      expires_at: DateTime.now().minus({ minutes: 1 }).toSQL(),
-      created_at: DateTime.now().minus({ minutes: 2 }).toSQL(),
+      hash,
+      expires_at: DateTime.utc().minus({ minutes: 1 }).toISO(),
+      created_at: DateTime.utc().minus({ minutes: 2 }).toISO(),
     })
     const page = await visit(`/verify-email/${encodeURIComponent(token)}`)
     await page.getByText(/This link is invalid, already used, or expired/).waitFor()
     assert.isNull((await User.findByOrFail('id', user.id)).emailVerifiedAt)
+    // The same row with a future expiry is accepted.
+    await db
+      .from('email_verification_tokens')
+      .where('hash', hash)
+      .update({ expires_at: DateTime.utc().plus({ hours: 1 }).toISO() })
+    await page.goto(`/verify-email/${encodeURIComponent(token)}`)
+    await page.getByRole('button', { name: 'Confirm email' }).waitFor()
+  })
+
+  test('a confirmed account signs in without the confirmation reminder', async ({ visit }) => {
+    const user = await User.create({
+      fullName: 'Confirmed Example',
+      email: 'confirmed@example.test',
+      password: 'ConfirmedPass123!',
+      emailVerifiedAt: DateTime.now(),
+      unverifiedEmail: null,
+    })
+    const page = await visit('/login')
+    await page.getByLabel('Email').fill(user.email)
+    await page.getByLabel('Password').fill('ConfirmedPass123!')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByText('You are signed in.', { exact: true }).waitFor()
   })
 })

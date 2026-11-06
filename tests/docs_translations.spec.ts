@@ -126,18 +126,18 @@ test.group('docs translations', () => {
     assert.deepEqual(compare(english, english), [])
   })
 
+  const pages = trackedMarkdown(['docs/guide/translations/*.md']).filter(
+    (page) => page !== 'docs/guide/translations/index.md'
+  )
   test('every locale page has the same keys and placeholders as English', async ({ assert }) => {
     const english = await englishBlocks()
-    const pages = trackedMarkdown(['docs/guide/translations/*.md']).filter(
-      (page) => page !== 'docs/guide/translations/index.md'
-    )
     const problems: string[] = []
     for (const page of pages) {
       const blocks = localeBlocks(await read(page))
       problems.push(...compare(english, blocks).map((problem) => `${page} ${problem}`))
     }
     assert.deepEqual(problems, [])
-  })
+  }).skip(pages.length === 0, 'no locale pages are tracked yet')
 
   test('a locale page is parsed by its titled blocks', async ({ assert }) => {
     const english = await englishBlocks()

@@ -4,10 +4,10 @@ import { join } from 'node:path'
 import { databaseEnvironment, installArchive } from './consumer_app.js'
 import { run } from './harness.js'
 import { resetExclusivePostgresSchema } from './postgres.js'
-import { fixtureRoot, tempRoot } from './settings.js'
+import { fixtureRoot, runRoot } from './settings.js'
 
 export async function runMinimumCompatibility(candidate: string, runName: string) {
-  const appRoot = join(tempRoot, runName)
+  const appRoot = join(await runRoot(), runName)
   const compatibilityRoot = join(fixtureRoot, 'compatibility')
   await cp(compatibilityRoot, appRoot, { recursive: true })
   await mkdir(join(appRoot, 'tmp'), { recursive: true })

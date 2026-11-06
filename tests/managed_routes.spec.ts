@@ -4,6 +4,44 @@ import { managedHandlers, type ManagedHandler } from '../src/http/managed.js'
 import { planManagedRoutes, type ManagedEndpointName } from '../src/http/routes.js'
 
 test.group('managed route plan', () => {
+  test('only password change and invitation management need an active account', ({ assert }) => {
+    for (const strategy of ['session', 'access_tokens'] as const) {
+      const routes = planManagedRoutes({
+        prefix: '/api/v1',
+        strategy,
+        enabled: [
+          'authentication',
+          'registration',
+          'passwordReset',
+          'emailVerification',
+          'emailPasswordManagement',
+          'invitations',
+          'socialAuthentication',
+          'magicLinkLogin',
+          'sessionManagement',
+          'dataExport',
+          'accountDeletion',
+        ],
+      })
+      assert.deepEqual(
+        routes
+          .filter(({ access }) => access === 'active')
+          .map(({ name }) => name)
+          .sort(),
+        [
+          'account.invitation.list',
+          'account.invitation.resend',
+          'account.invitation.revoke',
+          'account.invitation.send',
+          'account.password.change',
+        ],
+        strategy
+      )
+      for (const route of routes)
+        assert.equal(route.access === 'public', route.name.startsWith('auth.'), route.name)
+    }
+  })
+
   test('publishes the named Phase 1 paths and submission methods', ({ assert }) => {
     const routes = planManagedRoutes({
       prefix: '/api/v1',

@@ -1,8 +1,12 @@
+import { AssertionError } from 'node:assert'
 import { test } from '@japa/runner'
 import { column } from '@adonisjs/lucid/orm'
-import { type DateTime } from 'luxon'
+import { DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
-import { InvalidConfigurationError } from '../src/errors.js'
+import {
+  InvalidConfigurationError,
+  RegistrationEmailAlreadyRegisteredError,
+} from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import type { Trx, UsersAdapter } from '../src/types.js'
 import type { AdapterContractFixture } from '../testing/adapter_contract.js'
@@ -56,8 +60,8 @@ test.group('maintained Lucid adapter', (group) => {
 
     assert.equal(
       LucidUser.hashCalls,
-      5,
-      'each create, duplicate create, rolled-back create, and both setPassword calls hash once'
+      6,
+      'each create, duplicate create, rolled-back create, re-create after delete, and both setPassword calls hash once'
     )
 
     const brokenAdapter = (overrides: Partial<UsersAdapter>): UsersAdapter => ({
@@ -65,12 +69,14 @@ test.group('maintained Lucid adapter', (group) => {
       ...overrides,
     })
     const rejectsBrokenAdapter = (broken: UsersAdapter, suffix: string) =>
-      assert.rejects(() =>
-        assertUsersAdapterContract({
-          ...contractFixture,
-          adapter: broken,
-          emailPrefix: `broken-${suffix}-${Date.now()}`,
-        })
+      assert.rejects(
+        () =>
+          assertUsersAdapterContract({
+            ...contractFixture,
+            adapter: broken,
+            emailPrefix: `broken-${suffix}-${Date.now()}`,
+          }),
+        AssertionError
       )
 
     const verificationShadows = new WeakMap<Trx, { id: number | string; at: DateTime }>()
@@ -97,6 +103,18 @@ test.group('maintained Lucid adapter', (group) => {
       }),
       'non-normalizing-email-setter'
     )
+    // An adapter that checks for the address itself and throws the package's error conforms.
+    await assertUsersAdapterContract({
+      ...contractFixture,
+      adapter: brokenAdapter({
+        async create(attributes, trx) {
+          if (await adapter.findByEmail(attributes.email, trx))
+            throw new RegistrationEmailAlreadyRegisteredError()
+          return adapter.create(attributes, trx)
+        },
+      }),
+      emailPrefix: `prechecked-${Date.now()}`,
+    })
   })
 
   test('physically deletes plain models and ignores missing users', async ({ assert }) => {
@@ -181,31 +199,36 @@ test.group('maintained Lucid adapter', (group) => {
     assert.isNull(await adapter.findByEmail('missing-mapper@example.test'))
   })
 
-  test('rejects a registration mapper that assigns a package controlled role', async ({
+  test('rejects a registration mapper that assigns a package controlled column', async ({
     assert,
   }) => {
-    const adapter = createLucidAdapter(async () => LucidUser, {
-      mapRegistrationData(_data, user) {
+    const assignments: Array<(user: Record<string, unknown>) => void> = [
+      (user) => {
         user.role = 'admin'
       },
-    })
-
-    await assert.rejects(
-      () =>
-        transaction(kit.db, (trx) =>
-          adapter.create(
-            {
-              email: 'role-mapper@example.test',
-              password: 'password',
-              unverifiedEmail: null,
-              registrationData: {},
-            },
-            trx
-          )
-        ),
-      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role/
-    )
-    assert.isNull(await adapter.findByEmail('role-mapper@example.test'))
+      (user) => {
+        user.credentialsChangedAt = DateTime.utc()
+      },
+    ]
+    for (const [index, assign] of assignments.entries()) {
+      const adapter = createLucidAdapter(async () => LucidUser, {
+        mapRegistrationData(_data, user) {
+          assign(user as unknown as Record<string, unknown>)
+        },
+      })
+      const email = `role-mapper-${index}@example.test`
+      await assert.rejects(
+        () =>
+          transaction(kit.db, (trx) =>
+            adapter.create(
+              { email, password: 'password', unverifiedEmail: null, registrationData: {} },
+              trx
+            )
+          ),
+        /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role/
+      )
+      assert.isNull(await adapter.findByEmail(email))
+    }
   })
 
   test('profile mapping persists configured fields and rejects protected writes', async ({
@@ -241,7 +264,7 @@ test.group('maintained Lucid adapter', (group) => {
     })
     await assert.rejects(
       () => transaction(kit.db, (trx) => unsafe.updateRegistrationData!(user.id, {}, trx)),
-      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, or role/
+      /cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role/
     )
     row = await kit.db.from('users').where('id', user.id).first()
     assert.equal(row.full_name, 'New Name')
@@ -375,5 +398,23 @@ test.group('identity creation contract', (group) => {
     const row = await kit.db.from('users').where('id', user.id).first()
     assert.equal(row.unverified_email, 'pending@example.test')
     assert.isNull(row.password)
+  })
+
+  test('a verification time round-trips outside UTC', async ({ assert }) => {
+    const previous = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const adapter = createLucidAdapter(async () => LucidUser)
+      const user = await transaction(kit.db, (trx) =>
+        adapter.create({ email: 'zone@example.test', unverifiedEmail: null, password: null }, trx)
+      )
+      const at = DateTime.utc(2026, 7, 1, 10, 0, 0)
+      await transaction(kit.db, (trx) => adapter.markEmailVerified(user.id, at, trx))
+      const read = await adapter.findById(user.id)
+      assert.equal(read?.emailVerifiedAt?.toMillis(), at.toMillis())
+    } finally {
+      if (previous === undefined) delete process.env.TZ
+      else process.env.TZ = previous
+    }
   })
 })

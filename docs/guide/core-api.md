@@ -505,7 +505,7 @@ test.group('copied core API journey', (group) => {
     const replay = await client
       .post(verificationPath())
       .json({ password: confirmed, passwordConfirmation: confirmed })
-    replay.assertStatus(422)
+    replay.assertStatus(400)
 
     const missingCredential = await client.get('/api/v1/account/profile')
     missingCredential.assertStatus(401)
@@ -565,7 +565,7 @@ test.group('copied core API journey', (group) => {
       .header('Authorization', `Bearer ${tokenA}`)
     revokedA.assertStatus(401)
     const oldLogin = await client.post('/api/v1/auth/login').json({ email, password: settings })
-    oldLogin.assertStatus(400)
+    oldLogin.assertStatus(401)
     const newLogin = await client.post('/api/v1/auth/login').json({ email, password: reset })
     newLogin.assertStatus(200)
   })
@@ -591,7 +591,7 @@ angle-bracket placeholders with the actual values; never commit or share them.
 | Log in twice          | `POST /api/v1/auth/login` with the confirmed password                                                                              | Each `200` response has `user` and a different opaque `token`.                                                                                                                |
 | Protected profile     | `GET /api/v1/account/profile` with each bearer token                                                                               | `200` with the active account; a missing token gets `401`.                                                                                                                    |
 | Settings change       | `POST /api/v1/account/password` with one bearer token, old password, new password and confirmation                                 | `200 {"changed":true}`. The calling token stays valid; the second token fails with `401`.                                                                                     |
-| Reset                 | `POST /api/v1/auth/request-password-reset`, then `POST /api/v1/auth/password-reset/<proof>` with another password and confirmation | Generic `202` request and `200 {"reset":true,...}` completion. The retained token now fails with `401`; only the reset password logs in. Invalid login gets the mapped `400`. |
+| Reset                 | `POST /api/v1/auth/request-password-reset`, then `POST /api/v1/auth/password-reset/<proof>` with another password and confirmation | Generic `202` request and `200 {"reset":true,...}` completion. The retained token now fails with `401`; only the reset password logs in. Invalid login gets the mapped `401`. |
 
 For example, these are the actual shapes to send:
 
@@ -624,7 +624,7 @@ curl -i -X POST 'http://localhost:3333/api/v1/auth/password-reset/<proof>' \
 
 Send a missing email to signup or a seven-character new password to the settings route to see
 the starter's `422` field errors. A nonempty invalid or replayed proof gets the package's mapped
-`422` code; a missing `:token` path segment is an ordinary route `404`. Requesting password reset for
+`400` code; a missing `:token` path segment is an ordinary route `404`. Requesting password reset for
 an unknown address returns the same `202` body as a known address. If follow-up delivery fails
 after a state change committed, the controller logs the failure privately and still reports what
 was saved. A registration delivery failure returns `202` with guidance to call

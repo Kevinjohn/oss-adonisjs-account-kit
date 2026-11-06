@@ -40,7 +40,11 @@ class BrowserSession {
   async login(user: User) {
     const page = await this.request('/login')
     this.version = ((await page.json()) as { version: string }).version
-    return this.request('/login', { email: user.email, password: currentPassword })
+    const response = await this.request('/login', { email: user.email, password: currentPassword })
+    // A refused login also answers 302, back to the form; only the dashboard means signed in.
+    if (!response.headers.get('location')?.endsWith('/dashboard'))
+      throw new Error(`Login for ${user.email} did not sign in`)
+    return response
   }
 
   async props(path: string) {

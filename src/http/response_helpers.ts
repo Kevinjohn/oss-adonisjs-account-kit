@@ -2,7 +2,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DeliveryError, InvalidTokenError, PostCommitError } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
-import { applyMappedHeaders, managedErrorResponse, type ManagedMessage } from './responses.js'
+import {
+  applyMappedHeaders,
+  managedErrorResponse,
+  negotiate,
+  type ManagedMessage,
+} from './responses.js'
 import type { AccountKitTranslator } from '../translator.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedRequest } from './managed_types.js'
@@ -51,7 +56,18 @@ export function ruleError(
         fallbackMessage
       )
     : fallbackMessage
-  return context.response.status(422).send({ errors: [{ field, rule, message }] })
+  // Same media type, caching and shape as the VineJS 422s the managed routes send.
+  const contentType = negotiate(context.request.header('accept'))
+  context.response.header('Cache-Control', 'no-store')
+  context.response.vary('Accept')
+  context.response.header('Content-Type', contentType)
+  return context.response
+    .status(422)
+    .send(
+      contentType === 'application/json'
+        ? { errors: [{ field, rule, message }] }
+        : { errors: [{ code: rule, title: message, source: { pointer: field } }] }
+    )
 }
 
 export function passwordPolicyError(

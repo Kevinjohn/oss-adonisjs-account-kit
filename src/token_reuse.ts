@@ -1,6 +1,8 @@
 // Decides whether a matching email token was issued recently enough to suppress a resend.
-import type { DateTime } from 'luxon'
-import { readTimestamp } from './timestamps.js'
+import { DateTime } from 'luxon'
+import type { Database } from '@adonisjs/lucid/database'
+import { readTimestamp, sqlTimestamp } from './timestamps.js'
+import { hashToken } from './tokens.js'
 
 /** A matching, unexpired token younger than this is reused instead of reissued. */
 export const RESEND_WINDOW = { minutes: 1 }
@@ -36,4 +38,25 @@ export function isRecentIssue(
     readTimestamp(row.expires_at)!.toMillis() > now.toMillis() &&
     readTimestamp(row.created_at)!.toMillis() > now.minus(RESEND_WINDOW).toMillis()
   )
+}
+
+/**
+ * Runs `send`; when it fails, moves the token's issue time out of `RESEND_WINDOW`, so a retry
+ * issues and sends a new link instead of reporting the undelivered one as sent.
+ */
+export async function reopenResendOnFailure(
+  db: Database,
+  token: string,
+  send: () => Promise<void>
+): Promise<void> {
+  try {
+    await send()
+  } catch (error) {
+    await db
+      .from('email_verification_tokens')
+      .where('hash', hashToken(token))
+      .update({ created_at: sqlTimestamp(db, DateTime.utc().minus(RESEND_WINDOW)) })
+      .catch(() => {})
+    throw error
+  }
 }

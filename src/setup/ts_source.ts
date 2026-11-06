@@ -3,6 +3,13 @@ import type * as TypeScript from 'typescript'
 export type SetupSource = { ts: typeof TypeScript; file: TypeScript.SourceFile; text: string }
 
 /** TypeScript is a setup-time dependency. Other package entries do not load it. */
+/** The source does not compile, so setup cannot inspect it. Planners report it against the file. */
+export class InvalidSetupSourceError extends Error {
+  constructor() {
+    super('Setup cannot inspect invalid TypeScript source')
+  }
+}
+
 export async function parseSetupSource(text: string): Promise<SetupSource> {
   let ts: typeof TypeScript
   try {
@@ -23,7 +30,7 @@ export async function parseSetupSource(text: string): Promise<SetupSource> {
     reportDiagnostics: true,
   }).diagnostics
   if (diagnostics?.some((item) => item.category === ts.DiagnosticCategory.Error))
-    throw new Error('Setup cannot inspect invalid TypeScript source')
+    throw new InvalidSetupSourceError()
   return { ts, file, text }
 }
 
@@ -350,10 +357,19 @@ export function walk(source: SetupSource, visitor: (node: TypeScript.Node) => vo
   visit(source.file)
 }
 
+/** The path of `() => import('x')`, also written with a block body that returns the import. */
 export function lazyImportPath(source: SetupSource, node: TypeScript.Node): string | null {
   const { ts } = source
-  if (!ts.isArrowFunction(node) || !ts.isCallExpression(node.body)) return null
-  const call = node.body
+  if (!ts.isArrowFunction(node)) return null
+  let call: TypeScript.Expression | undefined = node.body as TypeScript.Expression
+  if (ts.isBlock(node.body)) {
+    const [statement] = node.body.statements
+    call =
+      node.body.statements.length === 1 && ts.isReturnStatement(statement)
+        ? statement.expression
+        : undefined
+  }
+  if (!call || !ts.isCallExpression(call)) return null
   if (
     call.expression.kind !== ts.SyntaxKind.ImportKeyword ||
     call.arguments.length !== 1 ||

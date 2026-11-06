@@ -73,11 +73,6 @@ const sessionConfig = defineConfig({
    */
   stores: {
     /**
-     * Cookie store saves session data in encrypted cookies.
-     * Suitable for small session data that doesn't exceed cookie size limits.
-     */
-    cookie: stores.cookie(),
-    /**
      * Database store persists sessions in the configured SQL database.
      */
     database: stores.database(),

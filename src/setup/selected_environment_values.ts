@@ -7,22 +7,19 @@ import { EnvLoader } from '@adonisjs/core/env'
 import { envName } from './diagnostics.js'
 import { safeSetupPath } from './safe_path.js'
 
+/** A selected assignment is empty, repeated, malformed or indirect: unresolved, not unsafe. */
+export class SelectedEnvironmentValueError extends Error {}
+
 /** A selected assignment refers to other values, so reading it would mean evaluating it. */
-export class IndirectEnvironmentValueError extends Error {
+export class IndirectEnvironmentValueError extends SelectedEnvironmentValueError {
   constructor() {
     super('Selected environment assignment must be a direct value')
   }
 }
 
+/** Node's `parseEnv` treats no character as an escape: the next matching quote closes the value. */
 function hasClosingQuote(text: string, quote: string): boolean {
-  for (let index = 0; index < text.length; index++) {
-    if (text[index] === '\\') {
-      index++
-      continue
-    }
-    if (text[index] === quote) return true
-  }
-  return false
+  return text.includes(quote)
 }
 
 async function resolveEnvironmentValue(
@@ -57,7 +54,9 @@ async function resolveEnvironmentValue(
       for await (const line of lines) {
         if (multilineQuote) {
           if (assignmentStart.test(line))
-            throw new Error('Selected environment assignment is inside a multiline value')
+            throw new SelectedEnvironmentValueError(
+              'Selected environment assignment is inside a multiline value'
+            )
           if (hasClosingQuote(line, multilineQuote)) multilineQuote = null
           continue
         }
@@ -69,15 +68,16 @@ async function resolveEnvironmentValue(
         }
         if (!assignmentStart.test(line)) continue
         if (found || !assignmentValue.test(line))
-          throw new Error('Selected environment assignment is ambiguous')
+          throw new SelectedEnvironmentValueError('Selected environment assignment is ambiguous')
         found = true
         if (line.includes('$') || line.includes('`')) throw new IndirectEnvironmentValueError()
         try {
           value = parseEnv(line)[variable] ?? null
         } catch {
-          throw new Error('Selected environment assignment is malformed')
+          throw new SelectedEnvironmentValueError('Selected environment assignment is malformed')
         }
-        if (!validate(value)) throw new Error(`Selected environment value must be ${expected}`)
+        if (!validate(value))
+          throw new SelectedEnvironmentValueError(`Selected environment value must be ${expected}`)
       }
     } finally {
       lines.close()

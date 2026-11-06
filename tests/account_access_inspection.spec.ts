@@ -162,7 +162,7 @@ test.group('account access inspection', (group) => {
         canAccess: async (_user, trx) => {
           policyTrx = trx
           assert.isFalse(trx.isCompleted)
-          assert.isDefined(await trx.from('users').where('id', user.id).first())
+          assert.isNotNull(await trx.from('users').where('id', user.id).first())
           return true
         },
       },

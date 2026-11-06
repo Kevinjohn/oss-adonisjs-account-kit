@@ -260,10 +260,7 @@ test.group('setup prompt values', () => {
     assert.equal(choices.policy.invitationPermissionHook, false)
     assert.equal(choices.social.status, 'not-applicable')
     assert.isFalse(questions.some((question) => question.startsWith('Registration policy')))
-    assert.notInclude(
-      questions,
-      'Additional profile fields for registration, invitations, email changes or social sign-in as JSON array (current: [{"name":"legacyProfile","type":"string","required":false}])'
-    )
+    assert.isFalse(questions.some((question) => question.startsWith('Additional profile fields')))
     assert.isFalse(questions.some((question) => question.startsWith('Require verified email')))
     assert.deepEqual(parseSetupChoices(choices), choices)
   })
@@ -390,6 +387,41 @@ test.group('setup prompt values', () => {
 
     assert.equal(choices.policy.registration, 'application')
     assert.isTrue(questions.some((question) => question.startsWith('Registration policy')))
+  })
+
+  test('whitespace answers keep saved values and none clears exclusions', async ({ assert }) => {
+    const saved = savedNonDefaultChoices()
+    saved.policy.password.minScore = 3
+    const choices = await collectFromSavedChoices(
+      async (question) =>
+        question.startsWith('Managed endpoint exclusions')
+          ? ' none '
+          : question.startsWith('Password strength score') || question.startsWith('User table')
+            ? '  '
+            : '',
+      () => {},
+      saved
+    )
+    assert.equal(choices.policy.password.minScore, 3)
+    assert.equal(choices.user.table, saved.user.table)
+    assert.deepEqual(choices.managedExcept, [])
+  })
+
+  test('naming a provider asks the registration questions social sign-in needs', async ({
+    assert,
+  }) => {
+    const { choices, questions } = await collectWithTrace({
+      'Enabled services': 'authentication,passwordReset',
+      'Existing guard strategy': 'access_tokens',
+      'Existing guard name': 'api',
+      'Delivery integration': 'custom',
+      'Social providers to prepare': 'google',
+      'Registration policy': 'application',
+      'Additional profile fields': '[]',
+    })
+    assert.include(choices.features, 'socialAuthentication')
+    assert.equal(choices.policy.registration, 'application')
+    assert.isTrue(questions.some((question) => question.startsWith('Additional profile fields')))
   })
 
   test('a changed route prefix replaces a saved session callback path', async ({ assert }) => {

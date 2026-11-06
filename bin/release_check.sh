@@ -3,8 +3,13 @@
 # Writes the version and tarball name to $GITHUB_OUTPUT when run in Actions.
 set -euo pipefail
 VERSION=$(node -p "require('./package.json').version")
-if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
-  echo "tag v$VERSION already exists" >&2; exit 1; fi
+# Exit 1 means no such tag; anything else (no repository, unreadable refs) must not pass the gate.
+tag_status=0
+git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || tag_status=$?
+if [ "$tag_status" -eq 0 ]; then
+  echo "tag v$VERSION already exists" >&2; exit 1
+elif [ "$tag_status" -ne 1 ]; then
+  echo "cannot read git tags (status $tag_status); run the release gate in a repository checkout" >&2; exit 1; fi
 # Compare the version literally: its dots must not match any character.
 awk -v h="## $VERSION - " 'index($0, h) == 1 && substr($0, length(h) + 1) ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ {f=1} END {exit !f}' CHANGELOG.md \
   || { echo "CHANGELOG.md has no '## $VERSION - YYYY-MM-DD' heading" >&2; exit 1; }

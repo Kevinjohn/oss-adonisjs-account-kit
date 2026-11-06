@@ -6,7 +6,7 @@ import FlashMessages from '~/components/flash_messages.vue'
 <template>
   <header class="header header--bar">
     <div class="header__inner">
-      <Link href="/" aria-label="AdonisJS" class="brand">◆ Account Kit</Link>
+      <Link href="/" class="brand">◆ Account Kit</Link>
       <div class="header__right">
         <Form v-slot="{ processing }" route="session.destroy"
           ><button class="btn btn--secondary btn--sm" type="submit" :disabled="processing">

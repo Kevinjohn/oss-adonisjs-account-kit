@@ -69,7 +69,8 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     fixture.emailPrefix ?? `adapter-${Date.now()}-${Math.random().toString(36).slice(2)}`
   const email = `${prefix}@example.test`
   const password = 'contract-password-one'
-  const verifiedAt = DateTime.local().startOf('second')
+  // UTC, like every value the package writes; a local value would hide a zone shift on read.
+  const verifiedAt = DateTime.utc().startOf('second')
   /** Padded and upper-cased, so the adapter has to normalize it. */
   const messy = (address: string) => ` ${address.toUpperCase()} `
   /** Create attributes with the fixture's registration data, when it has any. */
@@ -236,6 +237,59 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     assert.equal(await fixture.adapter.verifyPassword(afterVerification.id, password, trx), false)
   })
 
+  // A ready hash from `hashPassword` is stored as is by `create` and `setPasswordHash`.
+  if (fixture.adapter.hashPassword) {
+    const hashPassword = fixture.adapter.hashPassword.bind(fixture.adapter)
+    const setPasswordHash = fixture.adapter.setPasswordHash?.bind(fixture.adapter)
+    assert.ok(setPasswordHash, 'hashPassword requires setPasswordHash')
+    const preparedPassword = 'contract-password-prepared'
+    const preparedHash = await hashPassword(preparedPassword)
+    assert.notEqual(preparedHash, preparedPassword, 'hashPassword must not return the plaintext')
+    const preparedEmail = `${prefix}-prepared@example.test`
+    const prepared = await fixture.transaction((trx) =>
+      fixture.adapter.create(
+        createAttrs({
+          email: preparedEmail,
+          unverifiedEmail: null,
+          password: null,
+          passwordHash: preparedHash,
+        }),
+        trx
+      )
+    )
+    assert.equal(prepared.hasPassword, true)
+    assert.equal(
+      await fixture.storedPassword(prepared.id),
+      preparedHash,
+      'create must store a passwordHash as is'
+    )
+    await fixture.transaction(async (trx) =>
+      assert.equal(await fixture.adapter.verifyPassword(prepared.id, preparedPassword, trx), true)
+    )
+    const nextHash = await hashPassword('contract-password-prepared-two')
+    await assert.rejects(
+      fixture.transaction(async (trx) => {
+        await setPasswordHash(prepared.id, nextHash, trx)
+        throw new Error('hash rollback')
+      }),
+      /hash rollback/
+    )
+    assert.equal(await fixture.storedPassword(prepared.id), preparedHash)
+    await fixture.transaction((trx) => setPasswordHash(prepared.id, nextHash, trx))
+    assert.equal(
+      await fixture.storedPassword(prepared.id),
+      nextHash,
+      'setPasswordHash must store the hash as is'
+    )
+    await fixture.transaction(async (trx) => {
+      assert.equal(
+        await fixture.adapter.verifyPassword(prepared.id, 'contract-password-prepared-two', trx),
+        true
+      )
+      assert.equal(await fixture.adapter.verifyPassword(prepared.id, preparedPassword, trx), false)
+    })
+  }
+
   const inactiveEmail = `${prefix}-inactive@example.test`
   const inactive = await fixture.transaction((trx) =>
     fixture.adapter.create(
@@ -332,6 +386,15 @@ export async function assertUsersAdapterContract(fixture: AdapterContractFixture
     await fixture.transaction((trx) => remove(inactive.id, trx))
     assert.equal(await fixture.adapter.findById(inactive.id), null, 'delete removes the user')
     assert.equal(await fixture.adapter.findByEmail(inactiveEmail), null)
+    // `delete` removes the user row, so its address can sign up again.
+    const recreated = await fixture.transaction((trx) =>
+      fixture.adapter.create(
+        createAttrs({ email: inactiveEmail, password, unverifiedEmail: null }),
+        trx
+      )
+    )
+    assert.equal(recreated.email, inactiveEmail, 'delete frees the address for a new account')
+    await fixture.transaction((trx) => remove(recreated.id, trx))
     assertSameUser(await fixture.adapter.findById(created.id), committedVerification)
   }
 }

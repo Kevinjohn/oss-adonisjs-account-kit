@@ -267,8 +267,15 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'account_kit: usersTable must be a plain SQL identifier'
     )
   const hooks = bindTopLevelHooks(config)
+  const { mapFields } = config.registration
   return freezeResolved({
     ...hooks,
+    // A copy, so a later write to the application's object cannot skip the checks above.
+    // Read by name: a spread would drop an availability defined on a class or prototype.
+    registration: freezeResolved({
+      availability: config.registration.availability,
+      ...(mapFields ? { mapFields: mapFields.bind(config.registration) } : {}),
+    }),
     enabled: freezeResolved([...enabled]),
     delivery: config.delivery ?? 'best-effort',
     expiresIn,

@@ -35,7 +35,8 @@ test.group('capability configuration', (group) => {
       notificationCalls++
     }
     const config = defineConfig({
-      ...makeConfig({ users, enabled: [] }),
+      // Authentication is configured, so only the capability check can refuse session listing.
+      ...makeConfig({ users, enabled: [], authentication: { strategy: 'session', guard: 'web' } }),
       notify: Object.fromEntries(Object.keys(callbacks).map((key) => [key, countNotify])) as never,
     })
     const account = new AccountKit({
@@ -52,6 +53,7 @@ test.group('capability configuration', (group) => {
       () => account.passwordReset.inspect({ token: '' }),
       () => account.passwordReset.reset({ token: '', password: '' }),
       () => account.emailVerification.send({ userId: 0 }),
+      () => account.emailVerification.inspect({ token: '' }),
       () => account.emailVerification.complete({ token: '', password: 'NewPassword123' }),
       () => account.invitations.send({ actorId: 0, email: '', role: '' }),
       () => account.invitations.list({ actorId: 0 }),
@@ -71,7 +73,11 @@ test.group('capability configuration', (group) => {
           currentPassword: '',
           newEmail: '',
         }),
+      () => account.emailPasswordManagement.updateProfile({ actorId: 0 }),
+      () => account.emailPasswordManagement.inspectEmailChange({ token: '' }),
       () => account.emailPasswordManagement.completeEmailChange({ token: '' }),
+      async () => account.socialAuthentication,
+      () => account.authentication.sessions.list({ current: { userId: 0, revision: null } }),
     ]
     try {
       for (const operation of operations) {

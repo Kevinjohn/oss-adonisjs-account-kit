@@ -138,6 +138,11 @@ export type AuthenticationGuard<Credential> =
       terminate(credential?: Credential): Promise<void>
       /** Store a new revision for the current session, where `establish` stored the first one. */
       refresh?(revision: string | null): Promise<void>
+      /**
+       * The handle this session holds before `establish` replaces it. Its sign-in row is removed,
+       * so signing in again in the same browser leaves no orphaned device in the list.
+       */
+      previousHandle?(): string | undefined
     }
   | {
       strategy: 'access_tokens'

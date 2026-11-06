@@ -86,6 +86,45 @@ test.group('setup apply', (group) => {
     assert.deepEqual(await applySetup(root, repeated), [])
   })
 
+  test('after apply, an edited config or an older migration is kept, not a conflict', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const first = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    await applySetup(root, first)
+    const config = join(root, 'config/account_kit.ts')
+    await writeFile(config, `${await readFile(config, 'utf8')}// owner edit\n`)
+    const migration = first.changes.find(({ path }) =>
+      path.endsWith('_account_kit_create_password_reset_tokens.ts')
+    )!
+    await writeFile(join(root, migration.path), `${migration.content}// older version\n`)
+    const again = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 4321,
+    })
+    assert.isFalse(again.diagnostics.some(({ severity }) => severity === 'error'))
+    for (const path of ['config/account_kit.ts', migration.path]) {
+      assert.equal(again.changes.find((change) => change.path === path)?.action, 'unchanged')
+      assert.isTrue(
+        again.diagnostics.some((item) => item.field === path && item.severity === 'action'),
+        path
+      )
+    }
+    await applySetup(root, again)
+    assert.include(await readFile(config, 'utf8'), '// owner edit')
+
+    // A changed choice still refuses to overwrite the edited config.
+    const changed = parseSetupChoices({ ...choices, routePrefix: '/api/v2' })
+    const reconfigured = await planSetup(changed, await inspectSetup(root), { apply: true })
+    assert.equal(
+      reconfigured.changes.find(({ path }) => path === 'config/account_kit.ts')?.action,
+      'conflict'
+    )
+  })
+
   test('plans and applies a stock schema-composed starter with inert routes until application revocation is verified', async ({
     assert,
   }) => {
