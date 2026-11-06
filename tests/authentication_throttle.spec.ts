@@ -1,6 +1,8 @@
 import { test } from '@japa/runner'
+import { LimiterResponse, errors } from '@adonisjs/limiter'
+import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeService } from './helpers/fakes.js'
+import { insertUser, makeConfig, makeService } from './helpers/fakes.js'
 import { makeUsersAdapter } from './helpers/users_adapter.js'
 
 const sessionGuard = (events: string[] = []) => ({
@@ -142,6 +144,42 @@ test.group('authentication contract', (group) => {
     )
     assert.isTrue(attempts.every((result) => result.status === 'rejected'))
     assert.isAtMost(checks, 5)
+  })
+
+  test('a refusal the store did not count leaves the stored count alone', async ({ assert }) => {
+    const user = await insertUser(kit)
+    // An in-memory block refuses before the store is touched, so it reports nothing consumed.
+    const decremented: string[] = []
+    const limiter = {
+      use: () => ({
+        consume: async () => {
+          throw new errors.E_TOO_MANY_REQUESTS(
+            new LimiterResponse({ limit: 10, remaining: 0, consumed: 0, availableIn: 60 })
+          )
+        },
+        decrement: async (key: string) => void decremented.push(key),
+      }),
+    }
+    const account = new AccountKit({
+      config: defineConfig(
+        makeConfig({
+          users: makeUsersAdapter(kit.db, kit.hash),
+          authentication: { strategy: 'session', guard: 'web' },
+          minRequestMs: 0,
+        })
+      ),
+      db: kit.db,
+      limiter: limiter as never,
+    })
+    await assert.rejects(
+      () =>
+        account.authentication.login(
+          { email: user.email, password: 'password123', clientKey: 'blocked' },
+          sessionGuard()
+        ),
+      'Too many requests'
+    )
+    assert.deepEqual(decremented, [])
   })
 
   test('a burst of correct logins on one client leaves no budget spent', async ({ assert }) => {
