@@ -31,7 +31,7 @@ username-only accounts, or as an identity provider for other applications.
 
 ```sh
 node ace add @adonisjs/limiter
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.0/kevinjohn-adonisjs-account-kit-0.3.0.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.3.1/kevinjohn-adonisjs-account-kit-0.3.1.tgz
 node ace configure @kevinjohn/adonisjs-account-kit
 node ace migration:run
 node ace account-kit:doctor
