@@ -229,6 +229,9 @@ global transaction. `authentication.withCurrent` is how an application joins one
 transactions. All adapter methods receiving `trx` must use that transaction. Keep database
 writes in `onInvitationAccepted` and the transaction-aware credential hook inside the supplied
 transaction. Do not send mail or call external services from transaction callbacks.
+Packages built on Account Kit import the same runner, row lock and timestamp helpers from
+`@kevinjohn/adonisjs-account-kit/transaction`; see the
+[application-owned integration guide](application-owned-integration.md#transaction-helpers-for-packages-built-on-account-kit).
 
 SQLite uses the package-owned `account_transaction_lock` singleton row to serialize account
 transactions, then may retry write contention. Therefore transaction callbacks can run more than

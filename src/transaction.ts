@@ -1,4 +1,5 @@
 // Transaction engine: SQLite busy-retry, and PostgreSQL and MySQL commit wrapping with committed-fault reporting.
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { performance } from 'node:perf_hooks'
 import type { Database } from '@adonisjs/lucid/database'
 import { PostCommitError } from './errors.js'
@@ -267,10 +268,24 @@ async function sqliteTransaction<T>(
   }
 }
 
+/** Set while a package transaction's callback runs, so a nested call fails instead of hanging. */
+const insideTransaction = new AsyncLocalStorage<true>()
+
 /** Run a database-only callback; callers perform notifications after this resolves. */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   const connection = db.connection()
   if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
+  // On SQLite a nested call waits for the outer writer lock; elsewhere it commits on its own.
+  if (insideTransaction.getStore())
+    throw new Error('Account kit transactions cannot be nested; use the trx you were given')
+  return insideTransaction.run(true, () => openTransaction(db, connection, callback))
+}
+
+async function openTransaction<T>(
+  db: Database,
+  connection: Connection,
+  callback: (trx: Trx) => Promise<T>
+): Promise<T> {
   if (connection.dialect.name === 'better-sqlite3') return sqliteTransaction(connection, callback)
 
   const commit = trackCommit<T>()
