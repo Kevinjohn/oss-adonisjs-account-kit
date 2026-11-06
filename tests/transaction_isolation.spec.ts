@@ -8,6 +8,22 @@ import { insertUser } from './helpers/fakes.js'
 test.group('package transaction isolation', (group) => {
   const kit = useTestApp(group)
 
+  test('a package transaction refuses to run inside another', async ({ assert }) => {
+    const user = await insertUser(kit)
+    await assert.rejects(
+      () =>
+        transaction(kit.db, async (trx) => {
+          await trx.from('users').where('id', user.id).update({ email: 'outer@example.test' })
+          return transaction(kit.db, async () => 'inner')
+        }),
+      /cannot be nested/
+    )
+    // The outer transaction rolled back, and a later call runs normally.
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.email, user.email)
+    assert.equal(await transaction(kit.db, async () => 'after'), 'after')
+  })
+
   test('a read after the row lock sees a write committed after the transaction began', async ({
     assert,
   }) => {

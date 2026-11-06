@@ -88,9 +88,10 @@ the helpers the package uses itself; they are stable public API.
 - `transaction(db, callback)` runs `callback(trx)` in a root transaction. On SQLite it takes the
   `account_transaction_lock` writer lock first, so the package's transactions and yours serialise,
   and it may retry the callback on write contention. On MySQL it runs at `READ COMMITTED` on a UTC
-  connection. On every engine a commit failure is reported instead of swallowed. It refuses to run
-  inside a Lucid global transaction, and it must never be nested inside another package
-  transaction: on SQLite the inner call would wait for the outer call's writer lock.
+  connection. On every engine a commit failure is reported instead of swallowed. A
+  `PostCommitError` means the writes committed and a step after the commit failed, so do not run
+  the callback again. It refuses to run inside a Lucid global transaction or inside another
+  package transaction: use the `trx` you were given instead.
 - `lockRow(trx, table, id)` locks the row with that `id` with `select ... for update` on PostgreSQL
   and MySQL, and does nothing on SQLite, whose writer lock is already held.
 - `sqlTimestamp(client, at?)` is the UTC value to write or compare for a timestamp column on the
