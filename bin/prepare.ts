@@ -16,6 +16,8 @@ if (existsSync(new URL('../build/index.js', import.meta.url))) {
       cwd: root,
       stdio: ['ignore', process.stderr, 'inherit'],
     })
+    // pnpm missing from PATH (an npm or yarn install) leaves no exit status; say why.
+    if (result.error) console.error(`[prepare] ${result.error.message}`)
     if (result.status !== 0) process.exit(result.status ?? 1)
   }
 }
