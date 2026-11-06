@@ -44,7 +44,9 @@ test('only the job that creates the release can write, and it runs no repository
   const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
   assert.match(workflow, /^permissions:\n {2}contents: read$/m)
   const writers = [...jobs(workflow)].filter(([, job]) =>
-    /^ {4}permissions:\n(?: {6}.*\n)*? {6}contents: write$/m.test(job.block)
+    /^ {4}permissions: write-all$|^ {4}permissions:\n(?: {6}.*\n)*? {6}contents: write$/m.test(
+      job.block
+    )
   )
   assert.lengthOf(writers, 1)
   const [, release] = writers[0]
@@ -56,4 +58,18 @@ test('only the job that creates the release can write, and it runs no repository
   assert.match(runs[0], /^gh release create /)
   assert.notInclude(release.block, 'actions/checkout')
   assert.notInclude(release.block, 'pnpm')
+})
+
+// The release job reads the gate's outputs; a renamed step id or key would empty them.
+test('the release job receives the version and tarball the gate wrote', async ({ assert }) => {
+  const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
+  const all = jobs(workflow)
+  const packageJob = all.get('package')?.block ?? ''
+  const release = all.get('release')?.block ?? ''
+  assert.match(packageJob, /^ {8}id: check$/m)
+  for (const key of ['version', 'tarball']) {
+    assert.include(packageJob, `${key}: \${{ steps.check.outputs.${key} }}`)
+    assert.include(release, `\${{ needs.package.outputs.${key} }}`)
+  }
+  assert.include(release, 'needs: package')
 })
