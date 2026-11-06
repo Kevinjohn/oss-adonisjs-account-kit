@@ -5,6 +5,8 @@
 ### Added
 
 - Compile the package on install when `build/` is missing, so a git commit pin installs a built package.
+  pnpm 10 and later refuse to run that build until the app lists the package under `allowBuilds`
+  in `pnpm-workspace.yaml`, using the exact entry pnpm prints for the pinned commit.
 
 ### Fixed
 
