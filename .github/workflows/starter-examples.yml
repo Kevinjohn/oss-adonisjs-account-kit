@@ -1,0 +1,39 @@
+name: starter-examples
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  STARTER_EXAMPLES_REF: v0.1.0
+
+jobs:
+  combined:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        kit: [api, hypermedia, inertia-react]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: package
+      - uses: actions/checkout@v7
+        with:
+          repository: Kevinjohn/oss-adonisjs-starter-examples
+          ref: ${{ env.STARTER_EXAMPLES_REF }}
+          path: starter-examples
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: starter-examples/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: pnpm --dir package install --frozen-lockfile
+      - run: pnpm --dir starter-examples install --frozen-lockfile
+      - run: pnpm --dir starter-examples assemble --kit ${{ matrix.kit }} --with-local "$GITHUB_WORKSPACE/package" --out "$GITHUB_WORKSPACE/starter-examples/tmp/combined"
+      - run: pnpm --dir starter-examples test:app --kit ${{ matrix.kit }} --dir tmp/combined --install-browsers

@@ -12,7 +12,7 @@ tmp/*
 # Frontend assets compiled code
 public/assets
 
-# Packed Account Kit build, see README. The lockfile records the archive contents.
+# Packed package build, see README. The lockfile records the archive contents.
 vendor
 .adonisjs
 
