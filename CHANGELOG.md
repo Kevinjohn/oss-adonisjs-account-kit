@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.2 - 2026-11-07
+
 ### Fixed
 
 - Examples: the Inertia Vue `.gitignore` describes `vendor` as a packed package build, like the other examples. Closes #796.
