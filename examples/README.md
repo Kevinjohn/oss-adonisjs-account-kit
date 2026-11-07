@@ -21,6 +21,22 @@ release when checking a released consumer.
 The example READMEs also describe the local archive workflow for contributors. It builds the
 current checkout and does not establish release-pinned consumer evidence.
 
+## Starter examples
+
+The API, Hypermedia and Inertia React examples feed the
+[starter examples sandbox](https://github.com/Kevinjohn/oss-adonisjs-starter-examples), which
+combines them with our other packages in the official AdonisJS starter kits. The sandbox's
+`config/sandbox.json` lists these folders and the Account Kit release it reads them from. The
+`starter-examples` workflow assembles and tests each combined app with this checkout's package and
+examples. To do the same locally, clone the sandbox next to this repository and run, from the
+repository root:
+
+```sh
+pnpm --dir ../oss-adonisjs-starter-examples assemble --with-local "$PWD" --out "$PWD/../oss-adonisjs-starter-examples/tmp/combined"
+```
+
+The Inertia Vue example is not included yet.
+
 ## Contributor smoke record
 
 On 2026-10-21, the API and React examples were installed and exercised from a clean local example setup with
