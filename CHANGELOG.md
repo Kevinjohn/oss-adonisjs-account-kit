@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Examples: the API and Hypermedia `database/schema.ts` match their migrations again (the invitation `scope` column and the `rate_limits` table), and the examples workflow fails when a fresh migration changes a committed schema. Closes #792.
+
 ## 0.3.1 - 2026-11-06
 
 ### Changed

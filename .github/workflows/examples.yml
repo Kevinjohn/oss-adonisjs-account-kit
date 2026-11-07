@@ -66,6 +66,8 @@ jobs:
                 pnpm exec node ace generate:key --force
                 pnpm exec node ace codegen
                 pnpm exec node ace migration:run --force
+                # The committed schema must match what a fresh migration generates.
+                git diff --exit-code -- database/schema.ts
                 if node -e 'const p = require("./package.json"); process.exit(p.devDependencies?.["@japa/browser-client"] ? 0 : 1)'; then
                   PLAYWRIGHT_CLI=$(node -p "require('node:path').join(require('node:path').dirname(require.resolve('playwright/package.json', {paths:[require.resolve('@japa/browser-client')]})), 'cli.js')")
                   node "$PLAYWRIGHT_CLI" install --with-deps chromium
