@@ -215,7 +215,10 @@ test.group('Admission', (group) => {
       [email]
     )
 
-    const malformed = await as(client.post('/api/v1/account/admissions/abc/approve'), owner)
+    const malformed = await as(
+      client.post(`/api/v1/account/admissions/${'1'.repeat(65)}/approve`),
+      owner
+    )
     assert.equal(malformed.status(), 422, JSON.stringify(malformed.body()))
     const approved = await as(client.post(`/api/v1/account/admissions/${person.id}/approve`), owner)
     assert.equal(approved.status(), 200, JSON.stringify(approved.body()))
