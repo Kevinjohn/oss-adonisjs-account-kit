@@ -28,11 +28,18 @@ stores the revision it signed in with, and older sessions are rejected on their 
 
 ## 2. Adapt the guard
 
-```ts
-// app/services/account_kit_guard.ts
-import type { HttpContext } from '@adonisjs/core/http'
-import User from '#models/user'
+Add `app/services/session_guard.ts`:
 
+<!-- source: ../../examples/hypermedia/app/services/session_guard.ts#session_guard -->
+
+```ts
+import User from '#models/user'
+import type { HttpContext } from '@adonisjs/core/http'
+
+/**
+ * Lets Account Kit sign users in and out through the existing `web` session guard. The stored
+ * revision is checked on every request by the session revision middleware.
+ */
 export function accountKitSessionGuard(ctx: HttpContext) {
   const guard = ctx.auth.use('web')
   return {

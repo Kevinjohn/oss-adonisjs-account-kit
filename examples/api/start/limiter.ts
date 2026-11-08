@@ -15,7 +15,9 @@ import limiter from '@adonisjs/limiter/services/main'
  * Client budget for public account writes that Account Kit does not throttle itself: signup and
  * the proof completions. Separate names keep each route's budget independent.
  */
+// #region account_public_limit
 export const accountPublicLimit = (name: string) =>
   limiter.define(`account-${name}`, (ctx) =>
     limiter.allowRequests(5).every('15 minutes').usingKey(ctx.request.ip())
   )
+// #endregion account_public_limit
