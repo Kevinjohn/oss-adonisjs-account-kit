@@ -115,6 +115,14 @@ Translations are copy-paste pages in the docs, not files in the package.
 4. Run `pnpm quick:test --files=docs_translations.spec.ts`. It checks keys, ICU syntax and
    placeholders, not wording.
 
+### Documentation examples from the example apps
+
+When a guide shows code that an example application runs, keep the code in the example and mark
+it with `// #region example_name` and `// #endregion example_name`. Put
+`<!-- source: relative/path/to/file.ts#example_name -->` before the matching code fence in the
+guide. `tests/docs_source_examples.spec.ts` fails when the fence and the region differ, so change
+both together.
+
 ### Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in

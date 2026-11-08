@@ -1,3 +1,4 @@
+// #region session_guard
 import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
 
@@ -23,3 +24,4 @@ export function accountKitSessionGuard(ctx: HttpContext) {
     },
   }
 }
+// #endregion session_guard

@@ -378,6 +378,8 @@ Add these bounded client-IP limiters to `start/limiter.ts`. Separate names keep 
 verification, login, and password-reset budgets independent. Configure trusted proxies before
 using the forwarded client address in production.
 
+<!-- source: ../../examples/api/start/limiter.ts#account_public_limit -->
+
 ```ts
 export const accountPublicLimit = (name: string) =>
   limiter.define(`account-${name}`, (ctx) =>
