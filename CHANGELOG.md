@@ -8,6 +8,10 @@
   apps' code, and a test keeps them in step. The sessions recipe names the file
   `app/services/session_guard.ts`, as the examples do.
 
+### Fixed
+
+- Examples: the API admission test uses a malformed ID for every user ID type, including string and UUID.
+
 ## 0.3.2 - 2026-11-07
 
 ### Fixed
