@@ -48,7 +48,9 @@ export function sourceExamples(contents: string): { examples: SourceExample[]; e
 export function sourceRegion(source: string, name: string): string | undefined {
   const lines = source.split(/\r?\n/)
   const start = lines.findIndex((line) => line.trim() === `// #region ${name}`)
-  const end = lines.findIndex((line, index) => index > start && line.trim() === `// #endregion ${name}`)
+  const end = lines.findIndex(
+    (line, index) => index > start && line.trim() === `// #endregion ${name}`
+  )
   if (!name || start < 0 || end < 0) return undefined
   return lines.slice(start + 1, end).join('\n')
 }
