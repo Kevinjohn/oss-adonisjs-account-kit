@@ -127,17 +127,18 @@ guard strategies. To also sign the person out, call `kit.authentication.changeRe
 
 ### Service
 
-| Method                                                            | Does                                                                                                                                            |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `current(input)`                                                  | Checks the credential like `kit.authentication.current`, then evaluates admission, in one transaction. Returns `{ account, decision }`.         |
-| `require(input, { active? })`                                     | Like `current`; throws `UnverifiedEmailError` for an unconfirmed account unless `active: false`, then `AdmissionRequiredError` unless admitted. |
-| `decide(user, trx)`                                               | Evaluates the requirements for a user row inside your transaction.                                                                              |
-| `isAdmitted(userId, trx?)`                                        | True when admitted; false for an unknown user. For `authorize` and `exportAccountData` callbacks.                                               |
-| `request(input)`                                                  | The signed-in person asks for approval, so the pending list shows them. Idempotent; refuses an unconfirmed account.                             |
-| `approve`, `reject`, `revoke`                                     | An approver's decision: `{ actorId, userId }`. See [decisions](#decisions).                                                                     |
-| `list({ actorId, status?, cursor?, limit? })`                     | Admission records, oldest first, 1 to 100 a page (default 25), after `authorize.list` returns `true`.                                           |
-| `operator.approve`, `operator.revoke`, `operator.grantInvitation` | Shell-trusted changes by `{ email }` for Ace commands: no actor, no `authorize`. Never expose them to a request.                                |
-| `eligibleDomain(email)`                                           | Whether an address would meet the domain requirement once confirmed. True when the requirement is off; false for a malformed one.               |
+| Method                                                            | Does                                                                                                                                                |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `current(input)`                                                  | Checks the credential like `kit.authentication.current`, then evaluates admission, in one transaction. Returns `{ account, decision }`.             |
+| `require(input, { active? })`                                     | Like `current`; throws `UnverifiedEmailError` for an unconfirmed account unless `active: false`, then `AdmissionRequiredError` unless admitted.     |
+| `decide(user, trx)`                                               | Evaluates the requirements for a user row inside your transaction.                                                                                  |
+| `isAdmitted(userId, trx?)`                                        | True when admitted; false for an unknown user. For `authorize` and `exportAccountData` callbacks.                                                   |
+| `record(userId, trx?)`                                            | The user's admission record, including `invitation.role`; null for an unknown user or one with no admission row. Pass your `trx` to see its writes. |
+| `request(input)`                                                  | The signed-in person asks for approval, so the pending list shows them. Idempotent; refuses an unconfirmed account.                                 |
+| `approve`, `reject`, `revoke`                                     | An approver's decision: `{ actorId, userId }`. See [decisions](#decisions).                                                                         |
+| `list({ actorId, status?, cursor?, limit? })`                     | Admission records, oldest first, 1 to 100 a page (default 25), after `authorize.list` returns `true`.                                               |
+| `operator.approve`, `operator.revoke`, `operator.grantInvitation` | Shell-trusted changes by `{ email }` for Ace commands: no actor, no `authorize`. Never expose them to a request.                                    |
+| `eligibleDomain(email)`                                           | Whether an address would meet the domain requirement once confirmed. True when the requirement is off; false for a malformed one.                   |
 
 `input` is the same `CurrentAccountInput` your guard returns: a credential check always comes
 first, so an expired session fails with `InvalidSessionError` before admission is evaluated.
