@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-11-08
+
 ### Added
 
 - `admission.record(userId, trx?)` returns one user's admission record, including the invited role,
