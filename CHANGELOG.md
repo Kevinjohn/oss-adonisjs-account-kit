@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-11-08
+
+### Added
+
+- `admission.record(userId, trx?)` returns one user's admission record, including the invited role,
+  inside the caller's transaction when given one. Applications no longer need to query
+  `account_admissions` directly.
+
 ### Changed
 
 - Docs: the sessions recipe's guard and the core API guide's public-write limiter are now the example

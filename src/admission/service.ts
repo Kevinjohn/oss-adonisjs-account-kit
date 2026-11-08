@@ -17,7 +17,7 @@ import type {
 import { evaluateAdmission } from './decision.js'
 import { domainAllowed, domainOf } from './domain.js'
 import { AdmissionRequiredError } from './errors.js'
-import { readAdmissionRow } from './rows.js'
+import { readAdmissionRow, toAdmissionRecord } from './rows.js'
 import type {
   AdmissionApprovalStatus,
   AdmissionDecision,
@@ -101,6 +101,18 @@ export class AccountAdmission {
     if (!user) return false
     const row = await readAdmissionRow(trx ?? this.deps.db.connection(), user.id)
     return evaluateAdmission(this.deps.config, user, row).admitted
+  }
+
+  /**
+   * The user's admission record, or null for an unknown user or one with no admission row. Pass the
+   * caller's `trx` to see its uncommitted writes. Ids reach the users adapter as given, as in
+   * `isAdmitted`.
+   */
+  async record(userId: UserId, trx?: Trx): Promise<AdmissionRecord | null> {
+    const user = await this.deps.accountConfig.users.findById(userId, trx)
+    if (!user) return null
+    const row = await readAdmissionRow(trx ?? this.deps.db.connection(), user.id)
+    return row ? toAdmissionRecord(row, user.email) : null
   }
 
   /**
