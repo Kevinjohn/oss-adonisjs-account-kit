@@ -66,7 +66,7 @@ The `compat` workflow checks minimum and latest peer versions weekly and before 
 checks the packed consumer application and experimental MySQL 8.4 compatibility. The `examples`
 workflow checks recipes and example applications. The `starter-examples` workflow assembles the
 examples into the [starter examples sandbox](https://github.com/Kevinjohn/oss-adonisjs-starter-examples)
-and tests the combined apps; it does not block a pull request.
+and tests the combined apps; a failure blocks the pull request.
 
 The _Tested against_ table in `README.md` mirrors `.github/workflows/checks.yml` and
 `.github/workflows/compat.yml`; change them in the same PR.

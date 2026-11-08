@@ -13,11 +13,10 @@ env:
 jobs:
   combined:
     runs-on: ubuntu-24.04
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
-        kit: [api, hypermedia, inertia-react]
+        kit: [api, hypermedia, inertia-react, inertia-vue]
     steps:
       - uses: actions/checkout@v7
         with:

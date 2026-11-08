@@ -23,7 +23,7 @@ current checkout and does not establish release-pinned consumer evidence.
 
 ## Starter examples
 
-The API, Hypermedia and Inertia React examples feed the
+The API, Hypermedia, Inertia React and Inertia Vue examples feed the
 [starter examples sandbox](https://github.com/Kevinjohn/oss-adonisjs-starter-examples), which
 combines them with our other packages in the official AdonisJS starter kits. The sandbox's
 `config/sandbox.json` lists these folders and the Account Kit release it reads them from. The
