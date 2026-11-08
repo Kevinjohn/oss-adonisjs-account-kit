@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+
+- Docs: the sessions recipe's guard and the core API guide's public-write limiter are now the example
+  apps' code, and a test keeps them in step. The sessions recipe names the file
+  `app/services/session_guard.ts`, as the examples do.
+
 ## 0.3.2 - 2026-11-07
 
 ### Fixed
