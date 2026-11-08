@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  STARTER_EXAMPLES_REF: v0.8.0
+  STARTER_EXAMPLES_REF: v0.9.0
 
 jobs:
   combined:
