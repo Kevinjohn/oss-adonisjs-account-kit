@@ -18,7 +18,8 @@ test.group('admission record', (group) => {
     assert.isNull(await admission.record(999_999))
     assert.isNull(await admission.record(person.id))
     await writeAdmissionRow(kit, person.id, { invited: true })
-    assert.equal((await admission.record(person.id))?.userId, person.id)
+    const record = await admission.record(person.id)
+    assert.equal(record?.userId, person.id)
   })
 
   test('returns the role an operator granted', async ({ assert }) => {
@@ -51,7 +52,8 @@ test.group('admission record', (group) => {
     assert.lengthOf(seen, 1)
     assert.equal(seen[0]?.invitation?.role, 'editor')
     assert.equal(seen[0]?.invitation?.invitationId, invitation.id)
-    assert.equal((await setup.admission.record(user.id))?.invitation?.role, 'editor')
+    const committed = await setup.admission.record(user.id)
+    assert.equal(committed?.invitation?.role, 'editor')
   })
 
   test('treats ids like isAdmitted does', async ({ assert }) => {
