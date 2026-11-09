@@ -59,6 +59,17 @@ test.group('classify_changed', () => {
     )
     assert.equal(full([modified(starterWorkflow)], () => pinAndNeighbour).classification, 'full')
     assert.equal(full([modified(starterWorkflow)], () => '').reason, 'unparsable diff')
+    const header = `diff --git a/${starterWorkflow} b/${starterWorkflow}\n--- a/${starterWorkflow}\n+++ b/${starterWorkflow}\n`
+    const removedPin = `${header}@@ -11 +10,0 @@ env:\n-  STARTER_EXAMPLES_REF: v0.9.0\n`
+    assert.equal(
+      full([modified(starterWorkflow)], () => removedPin).reason,
+      `${starterWorkflow} does not replace the pin line once`
+    )
+    const addedPin = `${header}@@ -11,0 +12 @@ env:\n+  STARTER_EXAMPLES_REF: v0.10.0\n`
+    assert.equal(full([modified(starterWorkflow)], () => addedPin).classification, 'full')
+    const duplicatedPin =
+      pinDiff('v0.9.0', 'v0.10.0') + '@@ -20,0 +21 @@\n+  STARTER_EXAMPLES_REF: v0.10.0\n'
+    assert.equal(full([modified(starterWorkflow)], () => duplicatedPin).classification, 'full')
     const otherKey = pinDiff('v0.9.0', 'v0.10.0').replaceAll('STARTER_EXAMPLES_REF', 'NODE_VERSION')
     assert.match(
       full([modified(starterWorkflow)], () => otherKey).reason,

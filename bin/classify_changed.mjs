@@ -31,7 +31,7 @@ export function classify(files, readDiff) {
     return { classification: 'full', reason: `${file.path} changed` }
   const changedLines = readDiff(file.path)
     .split('\n')
-    .filter((line) => /^[-+]/.test(line) && !/^(?:---|\+\+\+) /.test(line))
+    .filter((line) => /^[-+]/.test(line) && !/^(?:--- a\/|\+\+\+ b\/)/.test(line))
   if (changedLines.length === 0) return { classification: 'full', reason: 'unparsable diff' }
   const offending = changedLines.find((line) => !pinLine.test(line))
   if (offending)
@@ -39,6 +39,10 @@ export function classify(files, readDiff) {
       classification: 'full',
       reason: `${file.path} changes more than the pin: ${offending}`,
     }
+  // One pin line replaced by one pin line: a removed, added or duplicated pin is not a pin change.
+  const removed = changedLines.filter((line) => line.startsWith('-')).length
+  if (changedLines.length !== 2 || removed !== 1)
+    return { classification: 'full', reason: `${file.path} does not replace the pin line once` }
   return { classification: 'starter-pin-only', reason: 'only the STARTER_EXAMPLES_REF pin changed' }
 }
 

@@ -241,7 +241,10 @@ test.group('check_changed_plan.spec', (group) => {
       .filter((path) => !/^tests\/tooling\/(?:check_changed_|classify_changed)/.test(path))
     const reading = (pattern: RegExp) =>
       specs.filter((path) => pattern.test(readFileSync(join(root, path), 'utf8'))).sort()
-    assert.deepEqual(reading(/trackedMarkdown\(\['\*{1,2}(?:\/\*)?\.md'/), [...readmeSpecs].sort())
+    // Root Markdown globs anywhere in the list, or the root README read by path.
+    const readsRootReadme =
+      /trackedMarkdown\(\[[^\]]*'\*{1,2}(?:\/\*)?\.md'|(?:repoRoot|root), 'README\.md'\)|new URL\('(?:\.\.\/)+README\.md'/
+    assert.deepEqual(reading(readsRootReadme), [...readmeSpecs].sort())
     assert.deepEqual(reading(/\.github\/workflows/), [...workflowSpecs].sort())
   })
 
