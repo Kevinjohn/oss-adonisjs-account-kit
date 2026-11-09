@@ -137,3 +137,5 @@ the [changelog](CHANGELOG.md).
 ## License
 
 [MIT](LICENSE.md)
+
+This line measures the focused README run and is removed with its pull request.
