@@ -8,17 +8,20 @@ import type { UserIdType } from '../../../configure.js'
 export const exampleRoot = fileURLToPath(new URL('../../../examples/api/', import.meta.url))
 
 /** Example files, relative to `examples/api`, whose contents depend on the schema variant. */
-export const apiVariantFiles = [
-  'app/models/user.ts',
-  'app/controllers/admissions_controller.ts',
-  'database/migrations/1761885935168_create_users_table.ts',
-  'database/migrations/1768620764696_create_access_tokens_table.ts',
-  'database/migrations/1791906000000_create_role_assignments.ts',
-  'database/migrations/1800000000001_create_notifications_outbox.ts',
-  'database/migrations/1800000000003_make_user_full_name_nullable.ts',
-] as const
+const renderers = {
+  'app/models/user.ts': userModel,
+  'app/controllers/admissions_controller.ts': (_: string, idType: UserIdType) =>
+    admissionsController(idType),
+  'database/migrations/1761885935168_create_users_table.ts': createUsersTable,
+  'database/migrations/1768620764696_create_access_tokens_table.ts': createAccessTokensTable,
+  'database/migrations/1791906000000_create_role_assignments.ts': createRoleAssignments,
+  'database/migrations/1800000000001_create_notifications_outbox.ts': createNotificationsOutbox,
+  'database/migrations/1800000000003_make_user_full_name_nullable.ts': makeUserFullNameNullable,
+} satisfies Record<string, (usersTable: string, idType: UserIdType) => string>
 
-export type ApiVariantFile = (typeof apiVariantFiles)[number]
+export type ApiVariantFile = keyof typeof renderers
+
+export const apiVariantFiles = Object.keys(renderers) as ApiVariantFile[]
 
 /** A foreign-key column with the type of the users table's primary key. */
 function idColumn(name: string, idType: UserIdType) {
@@ -319,35 +322,14 @@ export async function renderApiVariant(
 ): Promise<Map<ApiVariantFile, string>> {
   if (!/^[a-z][a-z0-9_]*$/.test(usersTable))
     throw new Error(`Invalid users table name: ${usersTable}`)
-  const sources: [ApiVariantFile, string][] = [
-    ['app/models/user.ts', userModel(usersTable, userIdType)],
-    ['app/controllers/admissions_controller.ts', admissionsController(userIdType)],
-    [
-      'database/migrations/1761885935168_create_users_table.ts',
-      createUsersTable(usersTable, userIdType),
-    ],
-    [
-      'database/migrations/1768620764696_create_access_tokens_table.ts',
-      createAccessTokensTable(usersTable, userIdType),
-    ],
-    [
-      'database/migrations/1791906000000_create_role_assignments.ts',
-      createRoleAssignments(usersTable, userIdType),
-    ],
-    [
-      'database/migrations/1800000000001_create_notifications_outbox.ts',
-      createNotificationsOutbox(usersTable, userIdType),
-    ],
-    [
-      'database/migrations/1800000000003_make_user_full_name_nullable.ts',
-      makeUserFullNameNullable(usersTable),
-    ],
-  ]
   const rendered = new Map<ApiVariantFile, string>()
-  for (const [path, source] of sources) {
+  for (const path of apiVariantFiles) {
     const filepath = join(exampleRoot, path)
     const options = await resolveConfig(filepath)
-    rendered.set(path, await format(source, { ...options, filepath }))
+    rendered.set(
+      path,
+      await format(renderers[path](usersTable, userIdType), { ...options, filepath })
+    )
   }
   return rendered
 }
