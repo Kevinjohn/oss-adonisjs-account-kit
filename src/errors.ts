@@ -259,3 +259,5 @@ export class LastLoginMethodError extends AccountKitError {
     super('At least one login method must remain')
   }
 }
+
+// Measures the full matrix for a source change; removed with its pull request.
