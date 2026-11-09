@@ -17,14 +17,31 @@ const packageInput =
 const pgService =
   /^(?:bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/pg_service(?:_inputs|_process_safety)?\.spec\.ts)$/
 const checkChanged =
-  /^(?:bin\/check_changed[^/]*\.ts|tests\/tooling\/check_changed_(?:plan|process)\.spec\.ts)$/
+  /^(?:bin\/check_changed[^/]*\.ts|bin\/classify_changed\.mjs|tests\/tooling\/(?:check_changed_(?:plan|process)|classify_changed)\.spec\.ts)$/
 // Files no Japa spec reads. Anything else may be read by a spec, so it runs the full suite.
 // Markdown never qualifies: tests/docs_links.spec.ts reads tracked Markdown except changelogs.
 // Workflows do not qualify either: workflow specs read `.github/workflows/*.yml`.
 const outsideJapa =
-  /^(?!.*\.md$)(?:\.github\/(?!workflows\/).+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts)$/
+  /^(?!.*\.md$)(?:\.github\/(?!workflows\/).+|bin\/pg\.sh|bin\/helpers\/pg_service_[^/]+\.ts|tests\/helpers\/pg_service_(?:fixture|fake_tools)\.ts|tests\/tooling\/.+|bin\/check_changed[^/]*\.ts|bin\/classify_changed\.mjs)$/
 
 const minute = 60_000
+
+/** The two change shapes `bin/classify_changed.mjs` gives a focused run; anything else is full. */
+export type Classification = 'starter-pin-only' | 'root-readme-only' | 'full'
+/** Specs that read the root README (through tracked Markdown globs). */
+export const readmeSpecs = [
+  'tests/docs_links.spec.ts',
+  'tests/docs_snippets.spec.ts',
+  'tests/docs_source_examples.spec.ts',
+  'tests/docs_spec_references.spec.ts',
+]
+/** Specs that read `.github/workflows/*.yml`. */
+export const workflowSpecs = [
+  'tests/docs_release_checksum.spec.ts',
+  'tests/examples_workflow.spec.ts',
+  'tests/release_workflow.spec.ts',
+  'tests/tooling/check_profiles.spec.ts',
+]
 
 export type CheckStep =
   | { id: string; command: string[]; tests?: 'japa'; timeoutMs: number; skip?: never }
@@ -35,8 +52,10 @@ export type CheckStep =
  */
 export function planChecks(
   files: { path: string; deleted: boolean }[],
-  options: { static?: boolean } = {}
+  options: { static?: boolean; classification?: Classification } = {}
 ): CheckStep[] {
+  if (options.classification && options.classification !== 'full')
+    return focusedChecks(options.classification)
   const present = files.filter((file) => !file.deleted).map((file) => file.path)
   const any = (pattern: RegExp) => files.some((file) => pattern.test(file.path))
   const steps: CheckStep[] = []
@@ -132,6 +151,7 @@ export function planChecks(
       'quick:test',
       '--files=tests/tooling/check_changed_plan.spec.ts',
       '--files=tests/tooling/check_changed_process.spec.ts',
+      '--files=tests/tooling/classify_changed.spec.ts',
     ],
     {
       tests: 'japa',
@@ -153,6 +173,36 @@ export function planChecks(
     skip: 'no documentation source changed',
   })
   return steps
+}
+
+/**
+ * The checks for a narrow change shape: formatting of the one changed file and the specs that
+ * read it. Every other step is skipped and says why.
+ */
+function focusedChecks(classification: Exclude<Classification, 'full'>): CheckStep[] {
+  const [file, specs] =
+    classification === 'root-readme-only'
+      ? ['README.md', readmeSpecs]
+      : ['.github/workflows/starter-examples.yml', workflowSpecs]
+  const skip = `focused run for ${classification}`
+  return [
+    {
+      id: 'format',
+      command: ['pnpm', 'exec', 'prettier', '--check', '--', file],
+      timeoutMs: 5 * minute,
+    },
+    { id: 'lint', skip },
+    { id: 'typecheck', skip },
+    {
+      id: 'tests',
+      command: ['pnpm', 'quick:test', ...specs.map((path) => `--files=${path}`)],
+      tests: 'japa',
+      timeoutMs: 5 * minute,
+    },
+    ...['pg-service', 'check-changed', 'build', 'built-exports', 'built-setup', 'docs'].map(
+      (id) => ({ id, skip })
+    ),
+  ]
 }
 
 /**

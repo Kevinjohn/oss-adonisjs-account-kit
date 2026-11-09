@@ -10,6 +10,11 @@
   of the example; a test keeps the committed example equal to the default rendering and checks a
   rendered variant's foreign keys. The existing-data upgrade and rollback checks of the example
   schema spec now run for the default cell only.
+- The `checks` workflow classifies the change first. A pull request or push that changes only the
+  starter workflow's pinned ref, or only the root README, runs a focused job (that file's
+  formatting and the specs that read it); everything else runs the full matrix on both databases.
+  `pnpm check:changed` applies the same two cases locally and prints the classification and its
+  reason. `checks-gate` reports the selected path's result.
 - The `checks` workflow lints once, on the SQLite leg. Its test and compile steps run with pnpm's
   pre and post scripts off, so `pretest` and `precompile` no longer repeat lint in CI; the package
   scripts, coverage thresholds and built-package checks are unchanged.

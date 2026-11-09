@@ -31,10 +31,33 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  checks:
+  # Classifies the change before anything is installed. Two narrow shapes (only the starter
+  # workflow's pinned ref, or only the root README) get the `focused` job; everything else, and
+  # every manual or release run, gets the full `checks` matrix.
+  plan:
     # Push and pull request runs start once the repository is public, where hosted minutes are
     # free. Manual and release runs always start.
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      classification: ${{ steps.classify.outputs.classification }}
+      focused: ${{ steps.classify.outputs.focused }}
+      base: ${{ steps.classify.outputs.base }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: classify
+        env:
+          # A release inherits `workflow_dispatch`, so these events never carry a base to diff.
+          BASE: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.sha) || (github.event_name == 'push' && github.event.before) || '' }}
+        run: |
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          node bin/classify_changed.mjs "$BASE"
+  checks:
+    needs: plan
+    if: ${{ needs.plan.outputs.focused != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -89,3 +112,38 @@ jobs:
         run: pnpm test:built-exports
       - if: matrix.database == 'better-sqlite3'
         run: pnpm test:built-setup
+  # The one changed file's formatting and the specs that read it; `pnpm check:changed` plans
+  # them from the same classification.
+  focused:
+    needs: plan
+    if: ${{ needs.plan.outputs.focused == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:changed "${{ needs.plan.outputs.base }}"
+  # One status to require: green when the plan ran and whichever path it selected passed, or
+  # when the private-repository guard skipped the whole run.
+  checks-gate:
+    needs: [plan, checks, focused]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PLAN: ${{ needs.plan.result }}
+      CHECKS: ${{ needs.checks.result }}
+      FOCUSED: ${{ needs.focused.result }}
+    steps:
+      - run: |
+          echo "plan=$PLAN checks=$CHECKS focused=$FOCUSED"
+          if [ "$PLAN" = skipped ]; then exit 0; fi
+          [ "$PLAN" = success ] || { echo "the plan job did not succeed"; exit 1; }
+          [ "$CHECKS" = success ] || [ "$FOCUSED" = success ] || { echo "no checks path succeeded"; exit 1; }

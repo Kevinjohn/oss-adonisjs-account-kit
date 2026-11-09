@@ -50,7 +50,7 @@ test.group('check:changed process signals', (group) => {
       await mkdir(join(root, 'bin'))
       await writeFile(join(root, 'package.json'), '{"type":"module"}')
       await symlink(join(repository, 'node_modules'), join(root, 'node_modules'), 'dir')
-      for (const name of ['check_changed.ts', 'check_changed_plan.ts'])
+      for (const name of ['check_changed.ts', 'check_changed_plan.ts', 'classify_changed.mjs'])
         await copyFile(join(repository, 'bin', name), join(root, 'bin', name))
       await writeFile(
         join(root, 'bin/git'),

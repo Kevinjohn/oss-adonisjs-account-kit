@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { countTests, planChecks, stepProblem } from './check_changed_plan.js'
+import { classify } from './classify_changed.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 function usage(message: string): never {
@@ -35,14 +36,21 @@ if (!git('rev-parse', '--verify', '--quiet', `${base}^{commit}`)) usage(`Unknown
 const mergeBase = git('merge-base', base, 'HEAD')?.trim()
 if (!mergeBase) usage(`No merge base between ${base} and HEAD`)
 
-const files = new Map()
+const files = new Map<string, { path: string; status: string }>()
 const changed = git('diff', '--name-status', '--no-renames', '-z', mergeBase)?.split('\0') ?? []
 for (let index = 0; index + 1 < changed.length; index += 2)
-  files.set(changed[index + 1], { path: changed[index + 1], deleted: changed[index] === 'D' })
+  files.set(changed[index + 1], { path: changed[index + 1], status: changed[index] })
 for (const path of git('ls-files', '-z', '--others', '--exclude-standard')?.split('\0') ?? [])
-  if (path) files.set(path, { path, deleted: false })
-const list = [...files.values()].sort((a, b) => a.path.localeCompare(b.path))
+  if (path) files.set(path, { path, status: '?' })
+const statuses = [...files.values()].sort((a, b) => a.path.localeCompare(b.path))
+const list = statuses.map((file) => ({ path: file.path, deleted: file.status === 'D' }))
 console.log(`check:changed: ${list.length} files changed since ${base} (${mergeBase.slice(0, 8)})`)
+// A pin-only or root-README-only change runs the checks that read that file and nothing else.
+const { classification, reason } = classify(
+  statuses,
+  (path) => git('diff', '-U0', '--no-renames', mergeBase, '--', path) ?? ''
+)
+console.log(`classification=${classification} because ${reason}`)
 
 let active: number | undefined
 const stop = (pid: number | undefined) => {
@@ -83,7 +91,7 @@ function run(command: string[], timeoutMs: number) {
 }
 
 let failed = false
-for (const step of planChecks(list, { static: isStatic })) {
+for (const step of planChecks(list, { static: isStatic, classification })) {
   if ('skip' in step) {
     console.log(`${step.id}: skip (${step.skip})`)
     continue

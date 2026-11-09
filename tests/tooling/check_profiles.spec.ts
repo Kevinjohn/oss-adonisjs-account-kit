@@ -3,6 +3,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { test } from '@japa/runner'
+import { planChecks } from '../../bin/check_changed_plan.js'
 import { checkProfiles, selectedSteps } from '../../bin/check_profiles.js'
 
 const root = join(import.meta.dirname, '../..')
@@ -37,6 +38,8 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
   const covered = coveredScripts()
   assert.includeMembers([...covered], ['compile', 'copy:templates'], 'build covers its steps')
   const ignored = new Set(['install', 'dlx', 'add', 'list', 'update', 'pack', 'exec', '--dir'])
+  // `check:changed` orchestrates profile scripts; the next test proves every command it plans.
+  ignored.add('check:changed')
   // PostgreSQL lifecycle commands provision and clean up the consumer job; they are not gates.
   const prerequisites = new Set(['pg:start', 'pg:stop'])
   // A `--config.<key>=<value>` flag before the script (pre and post hooks off) still runs it.
@@ -53,6 +56,30 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
       .map((script) => `${workflow}: ${script}`)
   )
   assert.deepEqual(uncovered, [])
+})
+
+test('every command check:changed can plan runs a profile script or prettier', ({ assert }) => {
+  const covered = new Set(allSteps.map((step) => step.script))
+  const files = ['README.md', '.github/workflows/starter-examples.yml', 'src/index.ts', 'bin/pg.sh']
+  const plans = [
+    planChecks([{ path: 'README.md', deleted: false }], { classification: 'root-readme-only' }),
+    planChecks([{ path: '.github/workflows/starter-examples.yml', deleted: false }], {
+      classification: 'starter-pin-only',
+    }),
+    planChecks(
+      files.map((path) => ({ path, deleted: false })),
+      { classification: 'full' }
+    ),
+  ]
+  const commands = plans.flatMap((plan) =>
+    plan.flatMap((step) => (step.command ? [step.command] : []))
+  )
+  assert.isAbove(commands.length, 10)
+  for (const command of commands) {
+    assert.equal(command[0], 'pnpm', command.join(' '))
+    if (command[1] === 'exec') assert.include(['prettier', 'eslint'], command[2], command.join(' '))
+    else assert.isTrue(covered.has(command[1]), command.join(' '))
+  }
 })
 
 test('full adds to the quick profile and unknown flags are rejected', ({ assert }) => {
