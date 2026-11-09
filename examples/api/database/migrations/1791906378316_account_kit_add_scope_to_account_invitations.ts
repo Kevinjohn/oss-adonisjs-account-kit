@@ -11,6 +11,7 @@ export default class extends BaseSchema {
     })
   }
 
+  // Rolling back fails while an address has pending invitations in more than one scope.
   async down() {
     this.schema.alterTable(this.tableName, (table) => {
       table.dropUnique(['email', 'scope'])

@@ -1,12 +1,9 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import env from '#start/env'
 
 export default class extends BaseSchema {
   protected tableName = 'social_transactions'
 
   async up() {
-    const idType = env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer'
-    const usersTable = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table.string('hash', 64).notNullable().unique()
@@ -17,13 +14,13 @@ export default class extends BaseSchema {
       table.string('verification_hash', 64).nullable()
       table.string('proof_hash', 64).nullable()
       table.string('credential_revision', 40).nullable()
-      const userId =
-        idType === 'integer'
-          ? table.integer('user_id').unsigned()
-          : idType === 'uuid'
-            ? table.uuid('user_id')
-            : table.string('user_id')
-      userId.nullable().references('id').inTable(usersTable).onDelete('CASCADE')
+      table
+        .integer('user_id')
+        .unsigned()
+        .nullable()
+        .references('id')
+        .inTable('users')
+        .onDelete('CASCADE')
       table.string('provider_user_id', 255).collate('utf8mb4_0900_bin').nullable()
       table.string('email', 254).nullable()
       table.boolean('email_verified').nullable()

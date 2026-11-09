@@ -535,6 +535,11 @@ pnpm test:consumer -- --mode=service-only --database=sqlite
 pnpm test:consumer -- --mode=service-only --database=postgres
 ```
 
+The five non-default users table and ID type cells (`integer`/`account_users`, `string` and
+`uuid` with `users` and `account_users`) run on both databases with `--user-id-type` and
+`--users-table`; `compat.yml` runs them on SQLite for every pull request and on PostgreSQL on the
+schedule, on dispatch and at release.
+
 The service-only mode installs the packed candidate in a separate minimal application, builds
 with full declaration checking, and boots the compiled account service with the selected
 database. It verifies that authentication, session, shield, Tuyau, mail, and Ally integrations
@@ -877,8 +882,11 @@ exports `configProvider` only from Core 7.5.1. The repository lint rule rejects 
 
 For a prebuilt immutable candidate, supply `--candidate-tarball=PATH --candidate-revision=REV`.
 Schema variants use `--mode=fresh --user-id-type=string` (or `uuid`) with
-`--users-table=account_users`. The harness records a representative contention measurement; this
-is a smoke check for blocking and duplicate acceptance, not a throughput benchmark.
+`--users-table=account_users`. The committed example is the integer `users` cell; the harness
+renders the other cells' app-owned files (`bin/helpers/consumer/api_variants.ts`) over its copy
+and regenerates the package migrations through `configure`. The harness records a representative
+contention measurement; this is a smoke check for blocking and duplicate acceptance, not a
+throughput benchmark.
 
 #### Credential and invitation failure coverage
 

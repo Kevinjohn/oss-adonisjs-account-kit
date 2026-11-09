@@ -145,6 +145,34 @@ jobs:
           path: ${{ runner.temp }}/consumer-evidence/fresh-sqlite/
           if-no-files-found: error
 
+  # The committed example is the default cell; the harness renders the other users table and ID
+  # type cells over a copy of it, all from one packed candidate.
+  consumer-variants:
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build && pnpm pack --pack-destination tmp/candidate
+      - name: Run the non-default users table and ID type cells
+        run: |
+          candidate=$(ls tmp/candidate/*.tgz)
+          for cell in integer:account_users string:users string:account_users uuid:users uuid:account_users; do
+            CONSUMER_EVIDENCE_PATH="$RUNNER_TEMP/consumer-evidence/variants-sqlite/${cell/:/-}/evidence.json" \
+              pnpm test:consumer -- --database=sqlite --candidate-tarball="$candidate" --candidate-revision="$GITHUB_SHA" --user-id-type="${cell%%:*}" --users-table="${cell##*:}"
+          done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: consumer-evidence-variants-sqlite
+          path: ${{ runner.temp }}/consumer-evidence/variants-sqlite/
+          if-no-files-found: error
+
   consumer-sqlite-modes:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
@@ -236,6 +264,17 @@ jobs:
         run: createdb -h 127.0.0.1 -p 55432 -U account_kit account_kit_consumer
       - if: matrix.mode == 'fresh'
         run: pnpm test:consumer -- --database=postgres
+      # The other users table and ID type cells reuse this cluster outside pull requests, where
+      # the SQLite variants job already covers them.
+      - if: matrix.mode == 'fresh' && github.event_name != 'pull_request'
+        name: Run the non-default users table and ID type cells
+        run: |
+          pnpm pack --pack-destination tmp/candidate
+          candidate=$(ls tmp/candidate/*.tgz)
+          for cell in integer:account_users string:users string:account_users uuid:users uuid:account_users; do
+            CONSUMER_EVIDENCE_PATH="$RUNNER_TEMP/consumer-evidence/fresh-postgres/variants/${cell/:/-}/evidence.json" \
+              pnpm test:consumer -- --database=postgres --candidate-tarball="$candidate" --candidate-revision="$GITHUB_SHA" --user-id-type="${cell%%:*}" --users-table="${cell##*:}"
+          done
       - if: matrix.mode == 'minimum'
         run: pnpm test:consumer -- --mode=minimum --compatibility=minimum --database=postgres
       - if: matrix.mode == 'service-only'

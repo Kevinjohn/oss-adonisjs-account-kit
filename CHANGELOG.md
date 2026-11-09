@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- The API example is defaults-only: integer user IDs and a `users` table, with no
+  `ACCOUNT_KIT_USERS_TABLE` or `ACCOUNT_KIT_USER_ID_TYPE` switches in its model, controllers or
+  migrations. `pnpm test:consumer` renders the other users table and ID type variants over a copy
+  of the example, and a test keeps the committed example equal to the default rendering.
+
 ## 0.3.3 - 2026-11-08
 
 ### Added

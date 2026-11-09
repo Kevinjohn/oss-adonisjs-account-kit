@@ -10,6 +10,7 @@ import {
   packageMigrations,
 } from './consumer_app.js'
 import { digest, expectFailure, hashFiles, run } from './harness.js'
+import { renderApiVariant } from './api_variants.js'
 import { copyFixture } from './fixture.js'
 import { resetExclusivePostgresSchema } from './postgres.js'
 import { fixtureRoot, prepareOnly, runRoot, userIdType, usersTable } from './settings.js'
@@ -44,12 +45,13 @@ export async function runFresh(candidate: string, runName: string) {
   const tempRoot = await runRoot()
   const appRoot = join(tempRoot, runName)
   await copyFixture(fixtureRoot, appRoot)
-  await mkdir(join(appRoot, 'tmp'), { recursive: true })
-  const env = {
-    ...databaseEnvironment(appRoot),
-    ACCOUNT_KIT_USERS_TABLE: usersTable,
-    ACCOUNT_KIT_USER_ID_TYPE: userIdType,
+  // The committed example is the default cell; the other cells overwrite its app-owned files.
+  if (usersTable !== 'users' || userIdType !== 'integer') {
+    for (const [path, contents] of await renderApiVariant(usersTable, userIdType))
+      await writeFile(join(appRoot, path), contents)
   }
+  await mkdir(join(appRoot, 'tmp'), { recursive: true })
+  const env = databaseEnvironment(appRoot)
   const adapterPath = join(tempRoot, `${runName}-adapter.ts`)
   const configPath = join(appRoot, 'config/account_kit.ts')
   const adonisrcPath = join(appRoot, 'adonisrc.ts')

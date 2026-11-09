@@ -1,18 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
-import env from '#start/env'
 import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
 import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
 import { accountInput } from '#services/account_input'
 import { admissionListValidator } from '#validators/admission'
 
-const integerIds = (env.get('ACCOUNT_KIT_USER_ID_TYPE') ?? 'integer') === 'integer'
-
 /** Integer ids must be positive integers, so a database never receives a malformed id. */
-function userIdParam(value: string): number | string {
+function userIdParam(value: string): number {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
     throw new InvalidInputError('Invalid user ID')
-  if (!integerIds) return value
   const id = /^[1-9]\d*$/.test(value) ? Number(value) : Number.NaN
   if (!Number.isSafeInteger(id)) throw new InvalidInputError('Invalid user ID')
   return id

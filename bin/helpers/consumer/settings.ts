@@ -3,6 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { UserIdType } from '../../../configure.js'
 
 export const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 export const fixtureRoot = join(repoRoot, 'examples/api')
@@ -23,7 +24,7 @@ function option(name: string, fallback?: string) {
 export const mode = option('mode', 'fresh')
 export const database = option('database', 'sqlite')
 export const compatibility = option('compatibility', 'latest')
-export const userIdType = option('user-id-type', 'integer')
+export const userIdType = option('user-id-type', 'integer') as UserIdType
 export const usersTable = option('users-table', 'users')
 export const prepareOnly = process.argv.includes('--prepare-only')
 export const candidateInput = option('candidate-tarball', process.env.CANDIDATE_TARBALL)

@@ -166,7 +166,7 @@ try {
   console.log('MINIMUM_STAGE user-created')
   const metadata = await modelAdapter.resolveMetadata()
   const foundOwner = await modelAdapter.findByEmail(' OWNER@example.test ')
-  assert.equal(metadata.table, process.env.ACCOUNT_KIT_USERS_TABLE ?? 'users')
+  assert.equal(metadata.table, 'users')
   assert.equal(foundOwner?.id, profile.id)
 
   await runSqliteContention({ account, db, profile, NativeSqlite, databaseName })

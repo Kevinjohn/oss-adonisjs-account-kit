@@ -27,8 +27,6 @@ export default await Env.create(new URL('../', import.meta.url), {
   DB_USER: Env.schema.string.optional(),
   DB_PASSWORD: Env.schema.string.optional(),
   DB_DATABASE: Env.schema.string.optional(),
-  ACCOUNT_KIT_USERS_TABLE: Env.schema.string.optional(),
-  ACCOUNT_KIT_USER_ID_TYPE: Env.schema.enum.optional(['integer', 'string', 'uuid'] as const),
   ACCOUNT_KIT_AUTH_STRATEGY: Env.schema.enum.optional(['session', 'access_tokens'] as const),
   ACCOUNT_KIT_ADMISSION_DOMAINS: Env.schema.string.optional(),
   GOOGLE_CLIENT_ID: Env.schema.string.optional(),
