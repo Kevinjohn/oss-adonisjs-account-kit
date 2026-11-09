@@ -1,16 +1,14 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import env from '#start/env'
 
 export default class extends BaseSchema {
-  protected usersTable = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
+  protected usersTable = 'users'
 
   // Change only the constraint, in place. `.alter()` would also reset the column's type and
-  // default, and on SQLite it rebuilds the users table.
+  // default, and on SQLite it rebuilds the users table. The table name is a plain identifier.
   async up() {
-    const quotedUsersTable = this.usersTable.replaceAll('"', '""')
     this.defer(async (db) => {
       await db
-        .rawQuery(`ALTER TABLE "${quotedUsersTable}" ALTER COLUMN full_name DROP NOT NULL`)
+        .rawQuery(`ALTER TABLE "${this.usersTable}" ALTER COLUMN full_name DROP NOT NULL`)
         .exec()
     })
   }
@@ -24,10 +22,9 @@ export default class extends BaseSchema {
       )
     }
 
-    const quotedUsersTable = this.usersTable.replaceAll('"', '""')
     this.defer(async (db) => {
       await db
-        .rawQuery(`ALTER TABLE "${quotedUsersTable}" ALTER COLUMN full_name SET NOT NULL`)
+        .rawQuery(`ALTER TABLE "${this.usersTable}" ALTER COLUMN full_name SET NOT NULL`)
         .exec()
     })
   }

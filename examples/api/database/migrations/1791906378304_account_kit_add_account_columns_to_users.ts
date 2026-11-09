@@ -1,12 +1,19 @@
 import { BaseSchema } from '@adonisjs/lucid/schema'
-import env from '#start/env'
 
 export default class extends BaseSchema {
-  protected usersTable = env.get('ACCOUNT_KIT_USERS_TABLE') ?? 'users'
-
   async up() {
-    const quotedUsersTable = this.usersTable.replaceAll('"', '""')
-    this.schema.alterTable(this.usersTable, (table) => {
+    if (this.db.dialect.name === 'better-sqlite3') {
+      // ALTER COLUMN ... DROP NOT NULL needs SQLite 3.53, bundled from better-sqlite3 12.10.
+      const [{ version }] = await this.db.rawQuery('select sqlite_version() as version')
+      const [major, minor] = String(version).split('.').map(Number)
+      if (major < 3 || (major === 3 && minor < 53))
+        throw new Error(
+          'account_kit: SQLite ' +
+            version +
+            ' cannot make the users password column nullable; upgrade better-sqlite3 to 12.10 or later (SQLite 3.53)'
+        )
+    }
+    this.schema.alterTable('users', (table) => {
       table.timestamp('email_verified_at', { useTz: true, precision: 3 }).nullable()
       table.string('unverified_email', 254).nullable()
       // Milliseconds: two credential changes within one second must give different revisions.
@@ -15,18 +22,18 @@ export default class extends BaseSchema {
     if (this.db.dialect.name === 'better-sqlite3') {
       this.defer(async (db) => {
         await db
-          .rawQuery(`ALTER TABLE "${quotedUsersTable}" ALTER COLUMN password DROP NOT NULL`)
+          .rawQuery('ALTER TABLE "' + 'users' + '" ALTER COLUMN password DROP NOT NULL')
           .exec()
       })
     } else {
-      this.schema.alterTable(this.usersTable, (table) => {
+      this.schema.alterTable('users', (table) => {
         table.string('password').nullable().alter()
       })
     }
   }
 
   async down() {
-    this.schema.alterTable(this.usersTable, (table) => {
+    this.schema.alterTable('users', (table) => {
       table.dropColumn('credentials_changed_at')
       table.dropColumn('unverified_email')
       table.dropColumn('email_verified_at')

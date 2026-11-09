@@ -13,14 +13,16 @@ derives its table, so do not also set `usersTable` for it. The Lucid model must 
 its primary-key column and the default connection. For application-assigned string or UUID keys,
 set `static selfAssignPrimaryKey = true` and assign the key before insertion. Without that model
 policy, SQLite can replace the in-memory key with its numeric rowid and subsequent refreshes fail.
-The API fixture selects this policy for its string/UUID modes.
+The repository's consumer harness selects this policy for its string and UUID runs of the
+[API example](../../examples/api/README.md#schema), which itself uses the default integer IDs.
 
-For the complete Lucid example flow, set the example's table and ID type in `.env` before its first
-migration, then run `migration:run` and `schema:generate` and point `app/models/user.ts` at the
-generated user schema class. See [the API example's schema steps](../../examples/api/README.md#schema-variants)
-for the exact commands and import.
-Its optional-name migration preserves existing names; rollback stops with an actionable error while
-any user has a null `full_name`, so assign names before rolling it back.
+For the complete Lucid flow, run configure with the table and ID type before the first migration.
+Configure writes only the package migrations; your own users migration, the model's `static table`
+and the key policy above, and any application migration that references users are yours to write
+for that table and ID type. Then run `migration:run` and `schema:generate`, and point
+`app/models/user.ts` at the generated user schema class. The example's optional-name migration
+preserves existing names; rollback stops with an actionable error while any user has a null
+`full_name`, so assign names before rolling it back.
 
 When changing an existing database, inspect foreign-key types and all migration references. Match
 `user_id` and `inviter_id` columns to the actual user ID type. Ensure the email unique index covers

@@ -51,9 +51,8 @@ node ace generate:key
 node ace codegen
 ```
 
-For the default `users` table, run `node ace migration:run`. If you want a custom table or ID type,
-follow [Schema variants](#schema-variants) first and run its migration steps instead; the settings
-must be in `.env` before the first migration. Then start the server with `pnpm dev`.
+Run `node ace migration:run`, then start the server with `pnpm dev`. The example uses the default
+`users` table with integer IDs; see [Schema](#schema) for other shapes.
 
 The API listens at <http://localhost:3333>; `GET /` returns `{"hello":"world"}`. The `.env.example`
 uses SQLite, and `node ace generate:key` fills the local `APP_KEY`. Its OAuth values are inert
@@ -64,38 +63,14 @@ verification, login, and account API flows over HTTP. The suites expect the loop
 in-memory limiter that `test:consumer` sets, so the development `.env` values alone fail the login
 throttling test.
 
-### Schema variants
+### Schema
 
-`ACCOUNT_KIT_USERS_TABLE` and `ACCOUNT_KIT_USER_ID_TYPE` select the physical users table and its
-identifier type (`integer`, `string`, or `uuid`). The committed example migrations use these same
-settings for every account-owned foreign key. Choose the table and ID type before the first
-migration. For example, to use `account_users` with string IDs, set these values in `.env`:
-
-```dotenv
-ACCOUNT_KIT_USERS_TABLE=account_users
-ACCOUNT_KIT_USER_ID_TYPE=string
-```
-
-With a fresh database, run these commands from `examples/api`:
-
-```sh
-node ace migration:run
-node ace schema:generate
-```
-
-Lucid generates `AccountUserSchema` in `database/schema.ts` for `account_users`. In
-`app/models/user.ts`, point the existing `UserSchema` alias at that export:
-
-```ts
-import { AccountUserSchema as UserSchema } from '#database/schema'
-```
-
-Keep `User.table` set from `ACCOUNT_KIT_USERS_TABLE` and retain its ID hook for non-integer IDs.
-For another custom table, use the schema class name exported by `node ace schema:generate` in the
-same import. Changing the environment alone does not retarget an existing database or a schema
-generated under earlier settings. These steps replace the default `node ace migration:run` above;
-do not run the default migration first. For string and UUID IDs, the example model already enables
-`selfAssignPrimaryKey` and assigns a UUID before insertion.
+The example uses integer user IDs and a `users` table, the defaults `node ace configure
+@kevinjohn/adonisjs-account-kit` writes. Its migrations and model are not switchable. For another
+table or ID type, start from `node ace add @kevinjohn/adonisjs-account-kit` with `--users-table`
+and `--user-id-type` in your own application, as the [custom schema](../../docs/guide/custom-schema.md)
+guide shows. The repository's `pnpm test:consumer` runs those variants against a copy of this
+example.
 
 In development, the example prints proof links to the server log and keeps its in-memory capture
 for tests. This makes the HTTP journey inspectable locally; it does not send email or prove

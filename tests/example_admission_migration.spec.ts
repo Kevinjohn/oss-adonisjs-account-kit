@@ -13,16 +13,6 @@ const exampleMigration = new URL(
   import.meta.url
 )
 
-const envSource = `
-import { readFileSync } from 'node:fs'
-export default {
-  get(key: string) {
-    const settings = JSON.parse(readFileSync(new URL('../schema-settings.json', import.meta.url), 'utf8'))
-    return settings[key]
-  },
-}
-`
-
 async function migrate(kit: TestApp, migrationsPath: string, direction: 'up' | 'down') {
   kit.db.config.connections.test.migrations!.paths = [migrationsPath]
   const runner = new MigrationRunner(kit.db, kit.app, {
@@ -147,19 +137,6 @@ test.group('example admission migration', () => {
         fileURLToPath(new URL('../node_modules', import.meta.url)),
         join(fixtureRoot, 'node_modules')
       )
-      await writeFile(
-        join(fixtureRoot, 'package.json'),
-        JSON.stringify({ type: 'module', imports: { '#start/env': './start/env.js' } })
-      )
-      await writeFile(
-        join(fixtureRoot, 'schema-settings.json'),
-        JSON.stringify({
-          ACCOUNT_KIT_USERS_TABLE: 'users',
-          ACCOUNT_KIT_USER_ID_TYPE: 'integer',
-        })
-      )
-      await mkdir(join(fixtureRoot, 'start'))
-      await writeFile(join(fixtureRoot, 'start/env.ts'), envSource)
 
       await kit.db.connection().schema.dropTableIfExists('account_admissions')
       await kit.db.connection().schema.dropTableIfExists('users')
