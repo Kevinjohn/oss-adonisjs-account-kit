@@ -6,7 +6,11 @@ import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { format, resolveConfig } from 'prettier'
 import { migrationNames, migrationSchema, type UserIdType } from '../configure.js'
-import { exampleRoot, renderApiVariant } from '../bin/helpers/consumer/api_variants.js'
+import {
+  type ApiVariantFile,
+  exampleRoot,
+  renderApiVariant,
+} from '../bin/helpers/consumer/api_variants.js'
 import { bootTestApp, type TestApp } from './helpers/app.js'
 
 const stubsRoot = fileURLToPath(new URL('../stubs', import.meta.url))
@@ -167,7 +171,7 @@ test('a rendered variant schema keeps the foreign keys of the default cell', asy
     const rendered = await renderApiVariant(usersTable, 'string')
     for (const filename of await readdir(exampleMigrations)) {
       const destination = join(migrations, filename)
-      const appOwned = rendered.get(`database/migrations/${filename}` as never)
+      const appOwned = rendered.get(`database/migrations/${filename}` as ApiVariantFile)
       const stub = packageMigrations.get(filename.replace(/^\d+/, ''))
       const contents = appOwned
         ? appOwned
@@ -250,11 +254,22 @@ test('a rendered variant schema keeps the foreign keys of the default cell', asy
     assert.isNull(invitation?.inviter_id)
     const admission = await kit.db.from('account_admissions').where('user_id', userId).first()
     assert.isNull(admission?.approval_actor_id)
-    await kit.db.from(usersTable).where('id', userId).delete()
-    for (const [table, row] of dependents) {
+    // Snapshot the dependent rows by primary key: a SET NULL on a nullable column would also
+    // empty a lookup by the deleted user's id.
+    const cascading = dependents.filter(([table]) => table !== 'account_invitations')
+    const rowIds = new Map<string, number[]>()
+    for (const [table, row] of cascading) {
       const column = 'tokenable_id' in row ? 'tokenable_id' : 'user_id'
-      if (table === 'account_invitations') continue
-      assert.lengthOf(await kit.db.from(table).where(column, userId), 0, `${table} cascades`)
+      const rows = await kit.db.from(table).where(column, userId).select('id')
+      assert.isNotEmpty(rows, `${table} has a row for the user`)
+      rowIds.set(
+        table,
+        rows.map((entry: { id: number }) => entry.id)
+      )
+    }
+    await kit.db.from(usersTable).where('id', userId).delete()
+    for (const [table, ids] of rowIds) {
+      assert.lengthOf(await kit.db.from(table).whereIn('id', ids), 0, `${table} cascades`)
     }
   } finally {
     try {

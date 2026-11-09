@@ -79,11 +79,11 @@ ${table}${selfAssign}  static accessTokens = DbAccessTokensProvider.forModel(Use
 function admissionsController(idType: UserIdType) {
   const userIdParam =
     idType === 'uuid'
-      ? `/** Ids are UUIDs, so a database never receives a malformed id. */
+      ? `/** Ids are UUIDs, stored in lower case, so a database never receives a malformed id. */
 function userIdParam(value: string): string {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value))
     throw new InvalidInputError('Invalid user ID')
-  return value
+  return value.toLowerCase()
 }`
       : idType === 'integer'
         ? `/** Integer ids must be positive integers, so a database never receives a malformed id. */

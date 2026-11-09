@@ -537,7 +537,7 @@ pnpm test:consumer -- --mode=service-only --database=postgres
 
 The five non-default users table and ID type cells (`integer`/`account_users`, `string` and
 `uuid` with `users` and `account_users`) run on both databases with `--user-id-type` and
-`--users-table`; `compat.yml` runs them on SQLite for every pull request and on PostgreSQL on the
+`--users-table`; `compat.yml` runs them on SQLite for every pull request its path filters select and on PostgreSQL on the
 schedule, on dispatch and at release.
 
 The service-only mode installs the packed candidate in a separate minimal application, builds

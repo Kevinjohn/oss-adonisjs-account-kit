@@ -444,7 +444,9 @@ test('committed API migrations support the default users table with integer IDs'
         .then((row) => row?.approval_actor_id)
     )
 
-    await kit.db.from(usersTable).where('id', userId).delete()
+    // Snapshot the dependent rows by primary key: a SET NULL on a nullable column would also
+    // empty a lookup by the deleted user's id.
+    const dependentIds = new Map<string, number[]>()
     for (const [table, fieldName] of [
       ['password_reset_tokens', 'tokenable_id'],
       ['email_verification_tokens', 'tokenable_id'],
@@ -459,7 +461,16 @@ test('committed API migrations support the default users table with integer IDs'
       ['role_assignments', 'user_id'],
       ['account_kit_outbox', 'user_id'],
     ]) {
-      assert.lengthOf(await kit.db.from(table).where(fieldName, userId), 0, `${table}.${fieldName}`)
+      const rows = await kit.db.from(table).where(fieldName, userId).select('id')
+      assert.isNotEmpty(rows, `${table}.${fieldName} has a row for the user`)
+      dependentIds.set(
+        table,
+        rows.map((entry: { id: number }) => entry.id)
+      )
+    }
+    await kit.db.from(usersTable).where('id', userId).delete()
+    for (const [table, ids] of dependentIds) {
+      assert.lengthOf(await kit.db.from(table).whereIn('id', ids), 0, `${table} cascades`)
     }
 
     const rollbackDependents = await migrate('down', baseSchemaMigrations.length - 4)
