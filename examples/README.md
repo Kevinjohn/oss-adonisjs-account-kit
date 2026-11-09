@@ -27,9 +27,9 @@ The API, Hypermedia, Inertia React and Inertia Vue examples feed the
 [starter examples sandbox](https://github.com/Kevinjohn/oss-adonisjs-starter-examples), which
 combines them with our other packages in the official AdonisJS starter kits. The sandbox's
 `config/sandbox.json` lists these folders and the Account Kit release it reads them from. The
-`starter-examples` workflow assembles and tests each combined app with this checkout's package and
-examples. To do the same locally, clone the sandbox next to this repository and run, from the
-repository root:
+`starter-examples` workflow assembles and tests each combined app with the release commit's package
+and examples; the release workflow calls it, and it can be run by hand. To do the same locally,
+clone the sandbox next to this repository and run, from the repository root:
 
 ```sh
 pnpm --dir ../oss-adonisjs-starter-examples assemble --with-local "$PWD" --out "$PWD/../oss-adonisjs-starter-examples/tmp/combined"
