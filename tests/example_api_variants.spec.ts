@@ -68,9 +68,8 @@ test('the committed API example package migrations are the default configure out
 }) => {
   const kit = await bootTestApp()
   try {
-    const committed = (await readdir(exampleMigrations)).filter((name) =>
-      name.includes('_account_kit_')
-    )
+    const names = await readdir(exampleMigrations)
+    const committed = names.filter((name) => name.includes('_account_kit_'))
     assert.sameMembers(
       committed.map((name) => name.replace(/^\d+/, '')),
       [...packageMigrations.keys()],
@@ -247,12 +246,10 @@ test('a rendered variant schema keeps the foreign keys of the default cell', asy
     assert.isFalse(orphanAccepted, 'a role assignment for an unknown user was accepted')
 
     await kit.db.from(usersTable).where('id', actorId).delete()
-    assert.isNull(
-      (await kit.db.from('account_invitations').where('token_hash', 'i').first())?.inviter_id
-    )
-    assert.isNull(
-      (await kit.db.from('account_admissions').where('user_id', userId).first())?.approval_actor_id
-    )
+    const invitation = await kit.db.from('account_invitations').where('token_hash', 'i').first()
+    assert.isNull(invitation?.inviter_id)
+    const admission = await kit.db.from('account_admissions').where('user_id', userId).first()
+    assert.isNull(admission?.approval_actor_id)
     await kit.db.from(usersTable).where('id', userId).delete()
     for (const [table, row] of dependents) {
       const column = 'tokenable_id' in row ? 'tokenable_id' : 'user_id'
