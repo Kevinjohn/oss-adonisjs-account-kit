@@ -20,8 +20,9 @@ For the complete Lucid flow, run configure with the table and ID type before the
 Configure writes only the package migrations; your own users migration, the model's `static table`
 and the key policy above, and any application migration that references users are yours to write
 for that table and ID type. Then run `migration:run` and `schema:generate`, and point
-`app/models/user.ts` at the generated user schema class. The example's optional-name migration preserves existing names; rollback stops with an actionable error while
-any user has a null `full_name`, so assign names before rolling it back.
+`app/models/user.ts` at the generated user schema class. The example's optional-name migration
+preserves existing names; rollback stops with an actionable error while any user has a null
+`full_name`, so assign names before rolling it back.
 
 When changing an existing database, inspect foreign-key types and all migration references. Match
 `user_id` and `inviter_id` columns to the actual user ID type. Ensure the email unique index covers
