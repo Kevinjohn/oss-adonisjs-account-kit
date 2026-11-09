@@ -77,9 +77,16 @@ ${table}${selfAssign}  static accessTokens = DbAccessTokensProvider.forModel(Use
 }
 
 function admissionsController(idType: UserIdType) {
-  const integer = idType === 'integer'
-  const userIdParam = integer
-    ? `/** Integer ids must be positive integers, so a database never receives a malformed id. */
+  const userIdParam =
+    idType === 'uuid'
+      ? `/** Ids are UUIDs, so a database never receives a malformed id. */
+function userIdParam(value: string): string {
+  if (typeof value !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value))
+    throw new InvalidInputError('Invalid user ID')
+  return value
+}`
+      : idType === 'integer'
+        ? `/** Integer ids must be positive integers, so a database never receives a malformed id. */
 function userIdParam(value: string): number {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
     throw new InvalidInputError('Invalid user ID')
@@ -87,7 +94,7 @@ function userIdParam(value: string): number {
   if (!Number.isSafeInteger(id)) throw new InvalidInputError('Invalid user ID')
   return id
 }`
-    : `/** Ids are opaque strings; a database never receives an empty or oversized id. */
+        : `/** Ids are opaque strings; a database never receives an empty or oversized id. */
 function userIdParam(value: string): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
     throw new InvalidInputError('Invalid user ID')
@@ -274,7 +281,7 @@ export default class extends BaseSchema {
   protected usersTable = '${usersTable}'
 
   // Change only the constraint, in place. \`.alter()\` would also reset the column's type and
-  // default, and on SQLite it rebuilds the users table.
+  // default, and on SQLite it rebuilds the users table. The table name is a plain identifier.
   async up() {
     this.defer(async (db) => {
       await db

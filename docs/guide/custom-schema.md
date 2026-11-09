@@ -16,9 +16,11 @@ policy, SQLite can replace the in-memory key with its numeric rowid and subseque
 The repository's consumer harness selects this policy for its string and UUID runs of the
 [API example](../../examples/api/README.md#schema), which itself uses the default integer IDs.
 
-For the complete Lucid flow, run configure with the table and ID type before the first migration,
-then `migration:run` and `schema:generate`, and point `app/models/user.ts` at the generated user
-schema class. Its optional-name migration preserves existing names; rollback stops with an actionable error while
+For the complete Lucid flow, run configure with the table and ID type before the first migration.
+Configure writes only the package migrations; your own users migration, the model's `static table`
+and the key policy above, and any application migration that references users are yours to write
+for that table and ID type. Then run `migration:run` and `schema:generate`, and point
+`app/models/user.ts` at the generated user schema class. The example's optional-name migration preserves existing names; rollback stops with an actionable error while
 any user has a null `full_name`, so assign names before rolling it back.
 
 When changing an existing database, inspect foreign-key types and all migration references. Match

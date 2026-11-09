@@ -4,7 +4,7 @@ export default class extends BaseSchema {
   protected usersTable = 'users'
 
   // Change only the constraint, in place. `.alter()` would also reset the column's type and
-  // default, and on SQLite it rebuilds the users table.
+  // default, and on SQLite it rebuilds the users table. The table name is a plain identifier.
   async up() {
     this.defer(async (db) => {
       await db
