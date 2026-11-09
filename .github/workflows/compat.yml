@@ -146,9 +146,10 @@ jobs:
           if-no-files-found: error
 
   # The committed example is the default cell; the harness renders the other users table and ID
-  # type cells over a copy of it, all from one packed candidate.
+  # type cells over a copy of it, all from one packed candidate. Pull requests run the default cell
+  # only; the variants run on the schedule, on dispatch and at release.
   consumer-variants:
-    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
+    if: ${{ github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || !github.event.repository.private) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -264,8 +265,8 @@ jobs:
         run: createdb -h 127.0.0.1 -p 55432 -U account_kit account_kit_consumer
       - if: matrix.mode == 'fresh'
         run: pnpm test:consumer -- --database=postgres
-      # The other users table and ID type cells reuse this cluster outside pull requests, where
-      # the SQLite variants job already covers them.
+      # The other users table and ID type cells reuse this cluster outside pull requests, like the
+      # SQLite variants job.
       - if: matrix.mode == 'fresh' && github.event_name != 'pull_request'
         name: Run the non-default users table and ID type cells
         run: |
