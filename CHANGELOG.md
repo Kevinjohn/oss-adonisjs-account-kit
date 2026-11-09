@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.4 - 2026-11-09
+
 ### Changed
 
 - The API example is defaults-only: integer user IDs and a `users` table, with no
