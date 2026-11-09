@@ -17,15 +17,33 @@ test('every check step names an existing script', ({ assert }) => {
   assert.deepEqual(missing, [])
 })
 
+/**
+ * The profile scripts plus every script they reach through `pnpm <script>` in their bodies and
+ * their `pre` and `post` hooks, so a workflow may run a step of a profile script on its own.
+ */
+function coveredScripts(): Set<string> {
+  const all = scripts()
+  const covered = new Set(allSteps.filter((step) => !step.directory).map((step) => step.script))
+  for (const script of covered) {
+    for (const hook of [`pre${script}`, `post${script}`]) if (hook in all) covered.add(hook)
+    for (const [, called] of all[script].matchAll(/\bpnpm (?:run )?([a-z][\w:-]*)/g)) {
+      if (called in all) covered.add(called)
+    }
+  }
+  return covered
+}
+
 test('the check profiles cover every pnpm script the CI workflows run', ({ assert }) => {
-  const covered = new Set(allSteps.map((step) => step.script))
+  const covered = coveredScripts()
+  assert.includeMembers([...covered], ['compile', 'copy:templates'], 'build covers its steps')
   const ignored = new Set(['install', 'dlx', 'add', 'list', 'update', 'pack', 'exec', '--dir'])
   // PostgreSQL lifecycle commands provision and clean up the consumer job; they are not gates.
   const prerequisites = new Set(['pg:start', 'pg:stop'])
+  // A `--config.<key>=<value>` flag before the script (pre and post hooks off) still runs it.
   const uncovered = ['checks.yml', 'compat.yml', 'examples.yml', 'docs.yml'].flatMap((workflow) =>
     [
       ...readFileSync(join(root, '.github/workflows', workflow), 'utf8').matchAll(
-        /\bpnpm ([a-z][\w:-]*)/g
+        /\bpnpm (?:--config\.[\w.-]+=\S+ )*([a-z][\w:-]*)/g
       ),
     ]
       .map((match) => match[1])

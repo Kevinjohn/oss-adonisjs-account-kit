@@ -60,7 +60,9 @@ own server instead, set `DB_CLIENT=pg` plus `DB_HOST`, `DB_PORT`, `DB_USER`, `DB
 
 Changes to account operations should pass on both SQLite and PostgreSQL. The `checks` workflow
 runs both databases on every pull request. Its SQLite leg checks formatting, lint and types, then
-builds the package and checks its built exports. `pnpm test` runs lint first through `pretest`.
+compiles the package and checks its built exports. Lint runs once there: the workflow's test and
+compile steps turn off the `pretest` and `precompile` hooks, which `pnpm test` and `pnpm build`
+still run locally.
 
 The `compat` workflow checks minimum and latest peer versions weekly and before a release. It also
 checks the packed consumer application and experimental MySQL 8.4 compatibility. The `examples`

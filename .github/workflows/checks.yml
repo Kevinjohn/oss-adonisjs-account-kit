@@ -70,7 +70,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Formatting, lint, types, build and built-package checks do not depend on the database, so
-      # only the SQLite leg runs them.
+      # only the SQLite leg runs them. Lint runs once, here: the test and compile steps below skip
+      # their `pretest` and `precompile` lint hooks, which `pnpm test` and `pnpm build` still run
+      # locally.
       - name: Check formatting
         if: matrix.database == 'better-sqlite3'
         run: pnpm format:check
@@ -78,9 +80,11 @@ jobs:
         run: pnpm lint
       - if: matrix.database == 'better-sqlite3'
         run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm --config.enable-pre-post-scripts=false test
       - if: matrix.database == 'better-sqlite3'
-        run: pnpm build
+        run: pnpm --config.enable-pre-post-scripts=false compile
+      - if: matrix.database == 'better-sqlite3'
+        run: pnpm copy:templates
       - if: matrix.database == 'better-sqlite3'
         run: pnpm test:built-exports
       - if: matrix.database == 'better-sqlite3'
