@@ -59,6 +59,11 @@ test.group('classify_changed', () => {
     )
     assert.equal(full([modified(starterWorkflow)], () => pinAndNeighbour).classification, 'full')
     assert.equal(full([modified(starterWorkflow)], () => '').reason, 'unparsable diff')
+    const otherKey = pinDiff('v0.9.0', 'v0.10.0').replaceAll('STARTER_EXAMPLES_REF', 'NODE_VERSION')
+    assert.match(
+      full([modified(starterWorkflow)], () => otherKey).reason,
+      /more than the pin: - {2}NODE_VERSION/
+    )
   })
 })
 
