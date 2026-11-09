@@ -3,7 +3,17 @@ import { starterAce, starterConsole } from '../../bin/demos/starter_contract.js'
 import { test } from '@japa/runner'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { chmod, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,7 +27,7 @@ const recordSetup = join(repoRoot, 'bin/demos/record_setup.ts')
 type Result = { code: number | null; output: string }
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'account-kit-demo-safety-'))
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'account-kit-demo-safety-')))
   const bin = join(root, 'bin')
   const trace = join(root, 'commands.log')
   await mkdir(bin)
