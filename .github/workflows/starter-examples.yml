@@ -1,7 +1,9 @@
 name: starter-examples
 
+# Assembling and testing four kits costs about ten runner-minutes, so this runs at release, where
+# release.yml calls it, and on manual dispatch. Pull requests and pushes launch no starter job.
 on:
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
