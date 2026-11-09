@@ -73,3 +73,31 @@ test('the release job receives the version and tarball the gate wrote', async ({
   }
   assert.include(release, 'needs: package')
 })
+
+// Four kits cost about ten runner-minutes; they run against the release commit and the starter
+// ref pinned in it, not on every pull request or push.
+test('the starter integrations run only from the release workflow or by hand', async ({
+  assert,
+}) => {
+  const starter = await readFile(join(repoRoot, '.github/workflows/starter-examples.yml'), 'utf8')
+  const triggers = starter.slice(starter.indexOf('\non:\n'), starter.indexOf('\npermissions:\n'))
+  assert.match(triggers, /^ {2}workflow_call:$/m)
+  assert.match(triggers, /^ {2}workflow_dispatch:$/m)
+  assert.notMatch(triggers, /^ {2}(?:pull_request|push)\b/m)
+  assert.match(starter, /^env:\n {2}STARTER_EXAMPLES_REF: \S+$/m)
+  assert.include(starter, 'ref: ${{ env.STARTER_EXAMPLES_REF }}')
+  assert.match(starter, /^ {8}kit: \[api, hypermedia, inertia-react, inertia-vue\]$/m)
+
+  const release = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
+  const starterJob = jobs(release).get('starter-examples')
+  assert.include(starterJob?.block, 'uses: ./.github/workflows/starter-examples.yml')
+})
+
+// A failing kit, or any other called workflow, must stop packaging and the release.
+test('packaging waits for every workflow the release calls', async ({ assert }) => {
+  const release = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
+  const all = jobs(release)
+  const called = [...all].filter(([, job]) => /^ {4}uses: /m.test(job.block)).map(([name]) => name)
+  assert.include(called, 'starter-examples')
+  assert.sameMembers(all.get('package')?.needs ?? [], called)
+})

@@ -22,9 +22,14 @@ jobs:
   examples:
     needs: main-only
     uses: ./.github/workflows/examples.yml
+  # The four kits run against this commit and the starter ref pinned in it; a failing kit blocks
+  # packaging and the release.
+  starter-examples:
+    needs: main-only
+    uses: ./.github/workflows/starter-examples.yml
   # Installing and building run dependency code, so they hold a read-only token.
   package:
-    needs: [checks, compat, examples]
+    needs: [checks, compat, examples, starter-examples]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
