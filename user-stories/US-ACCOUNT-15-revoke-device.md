@@ -35,8 +35,8 @@ flowchart TD
  B --> C["Delete row only where owner and id match"]
  C --> D{"Exactly one row deleted?"}
  D -->|No| E["Throw SessionNotFoundError"]
- D -->|Yes| F["Run transaction hook and commit; return { current }"]
- F --> G["Run post-commit revocation event"]
+ D -->|Yes| F["Run transaction hook and commit"]
+ F --> G["Run post-commit revocation event; then return { current }, or report committed follow-up failure"]
 ```
 
 **Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)

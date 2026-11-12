@@ -32,7 +32,7 @@ flowchart TD
  A["authentication.sessions.revokeOthers"] --> B["Authenticate current credential and resolve current sign-in in transaction"]
  B --> C["Delete account-owned rows whose id differs from current id"]
  C --> D["Run transaction revocation hook for deleted ids"]
- D --> E["Commit; return count and run post-commit event"]
+ D --> E["Commit and run post-commit event, then return count; report committed follow-up failure if the event fails"]
 ```
 
 **Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
