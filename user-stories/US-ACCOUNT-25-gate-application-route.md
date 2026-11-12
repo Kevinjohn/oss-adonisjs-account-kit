@@ -19,9 +19,13 @@ As an application developer, I want to require admission before protected applic
 flowchart TD
  A["Request reaches host-protected route"] --> B{"Does selected guard credential/revision validate?"}
  B -->|No| C["Deny before route handler"]
- B -->|Yes| D{"Is account active and every enabled admission requirement met?"}
- D -->|No| E["Deny with inactive/admission error unless active:false; keep pre-admission routes reachable"]
- D -->|Yes| F["Continue to host route"]
+ B -->|Yes| D{"Was active:false explicitly selected?"}
+ D -->|No| E{"Is account active?"}
+ E -->|No| F["Deny inactive account; keep verification routes reachable"]
+ E -->|Yes| G{"Are all enabled admission requirements met?"}
+ D -->|Yes| G
+ G -->|No| H["Deny with admission error; keep pre-admission routes reachable"]
+ G -->|Yes| I["Continue to host route"]
 ```
 
 ## Code flow

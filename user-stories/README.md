@@ -59,6 +59,8 @@ Source baseline: `2e0583de9db02bd8a9bcb8256c32b01646db7237` (origin/main, 2026-1
 | [US-ACCOUNT-51](US-ACCOUNT-51-configure-admission-hooks.md)           | Connect invitation evidence and deletion cleanup | Current when admission is installed and host selects the wrappers                |
 | [US-ACCOUNT-52](US-ACCOUNT-52-issue-reset-link-as-operator.md)        | Issue a password reset link from the shell       | Operator                                                                         |
 | [US-ACCOUNT-53](US-ACCOUNT-53-list-social-identities.md)              | Review linked social identities                  | Current when `socialAuthentication` is enabled                                   |
+| [US-ACCOUNT-54](US-ACCOUNT-54-check-custom-adapter-contract.md)       | Check a custom user adapter contract             | Current for adapter integration tests                                            |
+| [US-ACCOUNT-55](US-ACCOUNT-55-capture-notifications-in-tests.md)      | Capture account notifications in tests           | Current for application tests                                                    |
 
 ## Catalogue references
 
