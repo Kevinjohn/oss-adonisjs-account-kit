@@ -11,19 +11,15 @@ As an account holder, I want to download a JSON export of account data so that I
 
 ## Acceptance criteria
 
-- **Inputs and result:** current account, required recent proof and host callback context; returns JSON export. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- valid proof returns package and callback data as JSON.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `accountData.export({ actorId, currentPassword? , recentProof? })` returns the version 1 JSON export. Password accounts prove the current password; password-less accounts use purpose-bound `account_export` proof. The configured `exportAccountData` callback contributes application data.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person requests export"]
-    U1["stale or invalid proof is refused"]
-    U0 --> U1
-    U2["valid proof returns package and callback data as JSON."]
-    U1 --> U2
+ A["Account holder requests export and proves identity"] --> B{"Does current password or account_export proof pass?"}
+ B -->|No| C["Refuse export without returning account data"]
+ B -->|Yes| D["Return package-held fields and host export callback data as JSON"]
 ```
 
 ## Code flow
@@ -32,13 +28,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["exportAccountData"]
-    C1["verify proof and read account in transaction"]
-    C0 --> C1
-    C2["collect account, verification, configured credential/session and host export fields"]
-    C1 --> C2
-    C3["return document without mutation."]
-    C2 --> C3
+ A["accountData.export"] --> B["Throttle and transactionally confirm actor for account_export"]
+ B --> C{"Proof valid?"}
+ C -->|No| D["Abort read with identity refusal"]
+ C -->|Yes| E["Read AccountExport fields and invoke exportAccountData callback"]
+ E --> F["Return versioned JSON without mutation"]
 ```
 
 **Code references:** [implementation](../src/account_export.ts), [`tests/account_export.spec.ts`](../tests/account_export.spec.ts)

@@ -11,21 +11,18 @@ As a signed-in account holder, I want to link a provider identity after recent p
 
 ## Acceptance criteria
 
-- **Inputs and result:** current account, provider, client challenge, recent proof and provider callback. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- valid callback stores relationship and notifies after commit.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `socialAuthentication.begin({ provider, intent: 'link', current, clientChallenge, proof })` returns state and URL; callback consumes the bound proof and returns its social outcome. Password accounts first obtain one-use `social_link` proof with `provePassword({ current, password, purpose: social_link })`.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Account holder proves current ownership"]
-    U1["starts link flow"]
-    U0 --> U1
-    U2["invalid proof/state or already-linked subject is refused"]
-    U1 --> U2
-    U3["valid callback stores relationship and notifies after commit."]
-    U2 --> U3
+ A["Signed-in person proves identity and starts provider linking"] --> B{"Is current credential and social_link proof valid?"}
+ B -->|No| C["Refuse link; no provider identity is added"]
+ B -->|Yes| D["Provider callback is bound to account, intent and challenge"]
+ D --> E{"Does host accept this provider identity and is it unused?"}
+ E -->|No| F["Keep identity relationships unchanged"]
+ E -->|Yes| G["Link identity and notify after commit"]
 ```
 
 ## Code flow
@@ -34,15 +31,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["provePassword or configured proof operation"]
-    C1["store one-use proof; begin(link) binds current account, intent and proof to state"]
-    C0 --> C1
-    C2["callback consumes state/proof"]
-    C1 --> C2
-    C3["transaction inserts social identity"]
-    C2 --> C3
-    C4["post-commit notification."]
-    C3 --> C4
+ A["socialAuthentication.provePassword when password exists"] --> B["Issue purpose-bound social_link proof"]
+ B --> C["socialAuthentication.begin(intent = link) stores account/proof-bound state"]
+ C --> D["callback consumes state and proof; acceptLink runs in transaction"]
+ D --> E{"Provider subject passes checks?"}
+ E -->|No| F["Abort relationship write"]
+ E -->|Yes| G["Insert social identity; commit and run linked notification"]
 ```
 
 **Code references:** [implementation](../src/social_identity.ts), [`tests/social_identity_link.spec.ts`](../tests/social_identity_link.spec.ts)

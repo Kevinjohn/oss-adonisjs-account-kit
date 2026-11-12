@@ -11,21 +11,20 @@ As a person with a configured provider identity, I want to authenticate through 
 
 ## Acceptance criteria
 
-- **Inputs and result:** provider, intent, client challenge, callback state and provider response; application mode may require completion continuation. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- linked verified subject signs in; new subject follows open/closed/application policy; matching email alone does not authenticate.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `socialAuthentication.begin({ provider, intent: 'login', clientChallenge, context? })` returns state and authorization URL. `callback({ state, callback, provider?, admit? })` returns a `linked`, `link_required`, `new`, or `reauthenticated` outcome; `linked` returns a userId and optional handoffCode; `new` may include a continuation or email-verification-required state; `link_required` returns no credential. Provider adapters support configured Google/GitHub only.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person chooses provider"]
-    U1["provider returns identity"]
-    U0 --> U1
-    U2["invalid state/provider is refused"]
-    U1 --> U2
-    U3["linked verified subject signs in; new subject follows open/closed/application policy; matching email alone does not authenticate."]
-    U2 --> U3
+ A["Person starts configured provider sign-in"] --> B["Provider returns callback to host route"]
+ B --> C{"Do state, challenge and provider identity validate?"}
+ C -->|No| D["Reject callback without sign-in"]
+ C -->|Yes| E{"Is this subject already linked?"}
+ E -->|Yes| F["Complete linked sign-in"]
+ E -->|No| G{"Does registration policy allow account creation?"}
+ G -->|No| H["Return link_required or denied; matching email alone does not sign in"]
+ G -->|Yes| I["Return new-account continuation or create account under policy"]
 ```
 
 ## Code flow
@@ -34,13 +33,15 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["socialAuthentication.begin"]
-    C1["persist one-use state/PKCE and redirect; callback"]
-    C0 --> C1
-    C2["consume state and resolve provider; social identity service resolves linked/link_required/new"]
-    C1 --> C2
-    C3["allowed path hands off credential or trusted registration continuation."]
-    C2 --> C3
+ A["socialAuthentication.begin"] --> B["Persist one-use state/PKCE and ask provider adapter for URL"]
+ B --> C["socialAuthentication.callback consumes state and resolves provider profile"]
+ C --> D{"State, challenge and provider response valid?"}
+ D -->|No| E["Return defined social callback refusal"]
+ D -->|Yes| F["Resolve stable provider subject, not email, against linked identities"]
+ F --> G{"Linked, new or link_required?"}
+ G -->|Linked| H["Return credential handoff for completion"]
+ G -->|New| I["Apply configured signup policy/mapFields/admit callback"]
+ G -->|link_required| J["Return link_required without credential"]
 ```
 
 **Code references:** [implementation](../src/social_identity.ts), [`tests/managed_social_http.spec.ts`](../tests/managed_social_http.spec.ts), [`tests/social_identity_handoff.spec.ts`](../tests/social_identity_handoff.spec.ts)

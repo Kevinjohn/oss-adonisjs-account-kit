@@ -2,30 +2,25 @@
 
 As a signed-in account holder, I want to revoke every recorded sign-in so that I can require a fresh sign-in on each device.
 
-**Status:** Current when `sessionManagement` is enabled
+**Status:** Current when `authentication.sessions` (requires `sessionManagement`) is enabled
 **Access:** Authenticated current account; action may end the credential used for this request.
-**Entry:** Host calls `sessionManagement.revokeAll({ current })`; optional managed route.
+**Entry:** Host calls `authentication.sessions.revokeAll({ current })`; optional managed route.
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)
 **Source:** [`src/session_management.ts`](../src/session_management.ts)
 **Coverage:** [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** current credential; returns completion. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- old credentials fail and a new login is required.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `authentication.sessions.revokeAll({ current })` returns `void`. It changes credential revision so every existing session/token, including the current one, must authenticate again.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person confirms sign out everywhere"]
-    U1["current credential is checked"]
-    U0 --> U1
-    U2["all sign-ins are removed"]
-    U1 --> U2
-    U3["old credentials fail and a new login is required."]
-    U2 --> U3
+ A["Account holder chooses sign out everywhere"] --> B{"Does current credential validate?"}
+ B -->|No| C["Return authentication refusal"]
+ B -->|Yes| D["Invalidate credential state for every sign-in"]
+ D --> E["Current credential also ends; sign in again on the next request"]
 ```
 
 ## Code flow
@@ -34,15 +29,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["sessionManagement.revokeAll"]
-    C1["verify current account and credential in transaction"]
-    C0 --> C1
-    C2["delete all sign-in records"]
-    C1 --> C2
-    C3["announce after commit"]
-    C2 --> C3
-    C4["return."]
-    C3 --> C4
+ A["authentication.sessions.revokeAll"] --> B["Authenticate and load account under transaction"]
+ B --> C["credentialsChanged advances revision and invalidates all existing credentials"]
+ C --> D["Commit account change"]
+ D --> E{"Post-commit observer/event succeeds?"}
+ E -->|Yes| F["Resolve void"]
+ E -->|No| G["Report committed follow-up failure; all sign-ins remain invalid"]
 ```
 
 **Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)

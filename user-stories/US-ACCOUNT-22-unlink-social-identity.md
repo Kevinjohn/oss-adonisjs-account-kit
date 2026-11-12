@@ -3,27 +3,26 @@
 As a signed-in account holder, I want to remove a linked provider identity so that I can stop that provider from authenticating this account.
 
 **Status:** Current when social authentication is configured
-**Access:** Authenticated current account and recent proof; application must ensure another usable credential remains per its policy.
-**Entry:** Host calls `socialAuthentication.unlink({ current, provider, proof })`; no built-in identity settings screen.
+**Access:** Authenticated current account and one-use `social_unlink` proof; the package refuses to remove the last usable sign-in method.
+**Entry:** Host calls `socialAuthentication.unlink({ current, identityId, proof })`; no built-in identity settings screen.
 **Documentation:** [social-authentication.md](../docs/guide/social-authentication.md)
 **Source:** [`src/social_identity.ts`](../src/social_identity.ts)
 **Coverage:** [`tests/social_identity_unlink.spec.ts`](../tests/social_identity_unlink.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** current account, identityId and a one-use `social_unlink` proof; service preserves at least one way to sign in. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- valid request removes the relationship and sends notice after commit.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `socialAuthentication.unlink({ current, identityId, proof })` returns `void`. `proof` must be a one-use `social_unlink` proof. The package prevents removing the account’s last sign-in method and invalidates older credentials on a successful unlink.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person selects a linked provider"]
-    U1["stale proof or a relationship not owned by this account is refused"]
-    U0 --> U1
-    U2["valid request removes the relationship and sends notice after commit."]
-    U1 --> U2
+ A["Account holder chooses one linked identity and submits social_unlink proof"] --> B{"Does proof validate and does identity belong to this account?"}
+ B -->|No| C["Refuse without changing identities"]
+ B -->|Yes| D{"Would another sign-in method remain?"}
+ D -->|No| E["Refuse removal of the last sign-in method"]
+ D -->|Yes| F["Remove identity and end older credentials"]
+ F --> G["Notify after commit"]
 ```
 
 ## Code flow
@@ -32,15 +31,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["socialAuthentication.unlink"]
-    C1["validate credential revision and proof"]
-    C0 --> C1
-    C2["transaction removes owned relationship while enforcing service invariants"]
-    C1 --> C2
-    C3["post-commit notification"]
-    C2 --> C3
-    C4["return result."]
-    C3 --> C4
+ A["socialAuthentication.unlink({ current, identityId, proof })"] --> B["Check current credential, purpose-bound proof and ownership"]
+ B --> C["Transaction enforces at least one remaining sign-in method"]
+ C --> D{"All unlink invariants pass?"}
+ D -->|No| E["Abort transaction before unlink"]
+ D -->|Yes| F["Delete relationship and advance credential state"]
+ F --> G["Commit, then notify; follow-up failure does not restore identity"]
 ```
 
 **Code references:** [implementation](../src/social_identity.ts), [`tests/social_identity_unlink.spec.ts`](../tests/social_identity_unlink.spec.ts)
