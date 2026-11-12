@@ -60,7 +60,7 @@ flowchart TD
  P -->|Yes| F
  E -->|unverified| R["beginConfirmation binds verification token to fresh confirm state"]
  R --> S["callback confirms same pending provider identity and activates account"]
- E -->|link_required| N["Return no credential; existing account must prove and link"]
+ E -->|link_required| T["Return no credential; existing account must prove and link"]
 ```
 
 **Code references:** [`social identity methods`](../src/social_identity.ts), [`provider callback flow`](../src/http/social.ts), [`handoff tests`](../tests/social_identity_handoff.spec.ts), [`continuation tests`](../tests/social_identity_continuation.spec.ts)
