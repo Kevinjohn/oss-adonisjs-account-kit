@@ -2,7 +2,7 @@
 
 As an authorized inviter, I want to issue a fresh invitation delivery for an eligible recipient so that I can recover a link without changing host authorization.
 
-**Status:** Current
+**Status:** Current when the host explicitly enables the opt-in `invitations` capability
 **Access:** Host authorization callback and configured resend limits apply.
 **Entry:** Host calls `invitations.resend`; no built-in resend UI.
 **Documentation:** [usage.md](../docs/guide/usage.md)

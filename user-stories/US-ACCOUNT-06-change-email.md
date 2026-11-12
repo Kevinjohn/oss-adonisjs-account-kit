@@ -15,7 +15,7 @@ As a signed-in account holder, I want to request a new email and confirm ownersh
 
 - For an active account requesting a different address, keep the confirmed address until completion. Requesting the confirmed address cancels an existing pending change; a repeat for the same pending address within one minute does not send again.
 - For an inactive account, requesting a different address changes both address fields and issues an activation link; it stays inactive until activation with a policy-valid password. This branch advances credentials immediately.
-- Delivery happens after commit; a delivery failure leaves the saved address state in place and is surfaced to the caller.
+- Completion calls the configured `emailChanged(previousEmail, user)` callback; the built-in mail helper sends this completion notice to the previous address. New-address confirmation is a separate request provision. Delivery happens after commit; a delivery failure leaves the saved address state in place and is surfaced to the caller.
 
 ## User flow
 
@@ -43,7 +43,7 @@ flowchart TD
  B --> C["Transaction confirms actor proof and stores pending address/token"]
  C --> D["Commit; issue activation provision for inactive account or email-change provision for active account when needed"]
  E["emailPasswordManagement.completeEmailChange({ token })"] --> F["Consume proof, replace email and update credential revision transactionally"]
- F --> G["Commit and run old/new address notices"]
+ F --> G["Commit and call configured emailChanged(previousEmail, user); built-in mail helper sends to previous address; host may observe lifecycle separately"]
 ```
 
 **Code references:** [request implementation](../src/profile_update.ts), [completion and inspection](../src/email_change.ts), [`tests/credentials_email_change_completion.spec.ts`](../tests/credentials_email_change_completion.spec.ts)

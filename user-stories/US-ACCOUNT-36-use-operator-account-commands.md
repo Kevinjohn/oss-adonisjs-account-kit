@@ -4,26 +4,29 @@ As an application operator, I want to bootstrap an application invitation throug
 
 **Status:** Operator
 **Access:** Requires shell access and configured invitations capability; operator commands bypass actor authorization and throttles.
-**Entry:** Run `account-kit:invite <email> --role <role> [--scope <scope>] [--print]`.
+**Entry:** Run `account-kit:invite <email> --role <role> [--scope <scope>] [--print]`; `invitations` must be explicitly enabled.
 **Documentation:** [operations.md](../docs/guide/operations.md)
 **Source:** [`commands/invite.ts`](../commands/invite.ts)
 **Coverage:** [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret.
+- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. The service API scope is an optional string of 1–255 characters; omitted or `null` means unscoped. At the CLI, omitting `--scope` requests an unscoped invitation. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Operator chooses an invitation recipient, role and delivery mode"] --> B{"Is requested capability enabled and target eligible?"}
- B -->|No| C["Report disabled capability or registered recipient; issue no invitation"]
- B -->|Yes| D{"Is delivery send or explicit print?"}
- D -->|Send| E["Deliver link through configured callback"]
- D -->|Print| F["Print bearer URL to trusted terminal"]
- E --> G["Report committed result and any follow-up fault"]
- F --> G
+ A["Operator chooses an invitation recipient, role and delivery mode"] --> B{"Is invitations enabled?"}
+ B -->|No| C["Report disabled capability; issue no invitation"]
+ B -->|Yes| D{"Does target already have an account?"}
+ D -->|Yes| E["Report registered recipient; issue no invitation"]
+ D -->|No| F["Replace pending invitation for same email and scope, invalidating its old link"]
+ F --> G{"Is delivery send or explicit print?"}
+ G -->|Send| H["Deliver link through configured callback"]
+ G -->|Print| I["Print bearer URL to trusted terminal"]
+ H --> J["Report committed result and any follow-up fault"]
+ I --> J
 ```
 
 ## Code flow
@@ -33,7 +36,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["account-kit:invite"] --> B["Call operator.invite with email, role, optional scope and deliver"]
- B --> C["Transaction stores a new invitation and token hash"]
+ B --> C["Transaction replaces any pending invitation for the same email and scope, invalidating its old link, and stores the new token hash"]
  C --> D{"deliver = send or print?"}
  D -->|send| E["Run configured invitation notification callback"]
  D -->|print| F["Return URL for terminal output"]

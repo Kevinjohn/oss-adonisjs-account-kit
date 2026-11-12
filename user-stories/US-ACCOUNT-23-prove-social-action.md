@@ -11,7 +11,7 @@ As a signed-in account holder, I want to provide recent proof before a sensitive
 
 ## Acceptance criteria
 
-- **Inputs and result:** `socialAuthentication.provePassword({ current, password, purpose })` returns a single-use proof for a supported sensitive purpose (`social_link`, `social_unlink`, `password_change`, `email_change`, `account_export` or `account_delete`). A provider reauthentication path uses `begin({ intent: reauth, current, purpose, clientChallenge })` then callback and returns a proof only when the provider verifies fresh authentication.
+- **Inputs and result:** `socialAuthentication.provePassword({ current, password, purpose })` returns a single-use proof for a supported sensitive purpose (`social_link`, `social_unlink`, `password_change`, `email_change`, `account_export` or `account_delete`). Provider reauthentication requires `begin({ provider, intent: 'reauth', current, purpose, clientChallenge })`, where `provider` selects the configured provider. Its callback also requires `current`; it returns proof only when that provider verifies fresh authentication for the bound current account.
 
 ## User flow
 
@@ -35,8 +35,8 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["provePassword({ current, password, purpose })"] --> B["Verify password against the current account"]
- A2["begin({ intent: reauth, current, purpose, clientChallenge })"] --> C["Bind provider reauthentication to current account, purpose and challenge"]
- C --> D["Verify provider fresh-auth assertion"]
+ A2["begin({ provider, intent: 'reauth', current, purpose, clientChallenge })"] --> C["Bind provider reauthentication to current account, purpose and challenge"]
+ C --> D["callback({ state, callback, current }) verifies provider fresh-auth assertion"]
  B --> E{"Password or provider proof is valid?"}
  D --> E
  E -->|No| F["Reject without issuing recent proof"]

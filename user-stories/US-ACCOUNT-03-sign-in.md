@@ -3,7 +3,7 @@
 As an existing account holder, I want to sign in with email and password so that I can receive the configured session or access token.
 
 **Status:** Current
-**Access:** Account must satisfy configured credential, verification and access policy; limiter budgets apply.
+**Access:** Credentials and `canAccess` policy must pass; limiter budgets apply. Account Kit does not require an active account for password login. The host may enforce activation in `canAccess` or with `requireActive` on protected routes.
 **Entry:** Host calls `authentication.login` with email, password, client key and selected guard; optional managed login route.
 **Documentation:** [authentication.md](../docs/guide/authentication.md)
 **Source:** [`src/authentication.ts`](../src/authentication.ts)
@@ -30,7 +30,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["authentication.login"] --> B["Reserve client and identity attempt budgets"]
- B --> C["Transaction loads account, checks password, activity and canAccess"]
+ B --> C["Transaction loads account, checks password and canAccess; activation is a separate host policy"]
  C --> D{"Login checks pass?"}
  D -->|No| E["Record failed attempt and return generic invalid-credentials error"]
  D -->|Yes| F["Guard establishes credential; registry records sign-in when enabled"]

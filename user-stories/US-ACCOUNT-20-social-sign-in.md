@@ -44,7 +44,7 @@ Scope: provider adapter supplies provider URL/profile; Account Kit owns state, l
 flowchart TD
  A["socialAuthentication.begin"] --> B["Store one-use state, intent, challenge and optional account/proof binding"]
  B --> C["Configured adapter returns authorization URL"]
- C --> D["socialAuthentication.callback consumes state and resolves provider profile"]
+ C --> D["socialAuthentication.callback resolves provider profile before consuming one-use state"]
  D --> E{"Confirmed linked subject, new account, link_required or confirmation?"}
  E -->|linked| F["Return handoffCode bound to association and credential revision"]
  F --> G["redeemHandoff({ code, verifier, guard }) checks verifier and rechecks association/revision"]

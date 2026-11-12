@@ -12,6 +12,7 @@ As an account holder, I want to request a password reset and use its one-time li
 ## Acceptance criteria
 
 - **Inputs and result:** `passwordReset.request({ email, clientKey })` returns `void`; `inspect({ token })` is read-only and returns a boolean; `reset({ token, password })` returns the updated account. The request returns the same acknowledgement after the same minimum delay for known and unknown addresses.
+- Resetting an account that has never confirmed its email can confirm it and apply pending invitations for that address, like activation.
 
 ## User flow
 
@@ -36,8 +37,8 @@ flowchart TD
  A["passwordReset.request"] --> B["Throttle client and address; transact hashed token issuance"]
  B --> C["Commit; send provision; return generic acknowledgement"]
  D["passwordReset.reset"] --> E["Consume token and store password inside transaction"]
- E --> F["Invalidate older credentials; commit account result"]
- F --> G["Run post-commit notice; follow-up failure does not undo reset"]
+ E --> F["If email was never confirmed, confirm it and apply pending invitation grants; invalidate older credentials"]
+ F --> G["Commit; run post-commit notices; follow-up failure does not undo reset"]
 ```
 
 **Code references:** [implementation](../src/password_reset.ts), [`tests/password_reset_request.spec.ts`](../tests/password_reset_request.spec.ts), [`tests/password_reset_redeem.spec.ts`](../tests/password_reset_redeem.spec.ts)

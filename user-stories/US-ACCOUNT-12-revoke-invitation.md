@@ -2,7 +2,7 @@
 
 As an authorized inviter, I want to cancel an outstanding invitation so that I can prevent its token from granting membership.
 
-**Status:** Current
+**Status:** Current when the host explicitly enables the opt-in `invitations` capability
 **Access:** Host authorization callback must permit managing this invitation.
 **Entry:** Host calls `invitations.revoke`; no built-in revoke UI.
 **Documentation:** [usage.md](../docs/guide/usage.md)

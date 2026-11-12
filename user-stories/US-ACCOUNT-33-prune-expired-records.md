@@ -11,7 +11,7 @@ As an application operator, I want to remove eligible expired rows in bounded ba
 
 ## Acceptance criteria
 
-- **Inputs and result:** `account-kit:prune` accepts `--dry-run`, `--batch-size` and `--max-batches`; batch values are 1–1000, with defaults of 100. It reports eligible rows in dry-run or rows actually deleted, across expired proof/session tables; it does not delete users or application records.
+- **Inputs and result:** `account-kit:prune` accepts `--dry-run`, `--batch-size` and `--max-batches`; batch values are 1–1000, with defaults of 100. Reported counts cover this run only; `max-batches` is shared across all tables and dry-run batches use the same budget. It reports eligible rows in dry-run or rows actually deleted across expired proof/session tables; it does not delete users or application records.
 
 ## User flow
 
