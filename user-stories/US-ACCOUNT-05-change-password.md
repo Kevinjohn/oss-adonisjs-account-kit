@@ -24,7 +24,7 @@ flowchart TD
     C --> A
     B -->|Yes| D["Password changes and other sign-ins end"]
     D --> E["Keep the caller sign-in only when its handle or token ID matches keepCurrent"]
-    E --> F["Show completed change; service follow-ups have run after commit"]
+    E --> F["Show completed change after callbacks succeed, or report a follow-up failure while retaining the committed change"]
 ```
 
 ## Code flow

@@ -11,19 +11,16 @@ As an authorized inviter or operator, I want to list invitations visible under h
 
 ## Acceptance criteria
 
-- **Inputs and result:** actor context and optional page cursor/limit; returns authorized invitation page. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- authorized results and next cursor are returned; empty page is a valid result.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `invitations.list({ actorId, limit?, cursor?, scope? })` returns `{ items, nextCursor }`. `limit` defaults to 25 and cannot exceed 100; omitted scope lists every scope, while `null` selects unscoped invitations. `authorize.listInvitations` controls visibility.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Inviter requests a page"]
-    U1["callback denies or scopes visibility"]
-    U0 --> U1
-    U2["authorized results and next cursor are returned; empty page is a valid result."]
-    U1 --> U2
+ A["Inviter requests an authorized invitation page"] --> B{"Does listInvitations authorize this actor and scope?"}
+ B -->|No| C["Return authorization refusal"]
+ B -->|Yes| D["Show pending invitations and next cursor, or an empty page"]
+ D --> E["Use nextCursor to request another page"]
 ```
 
 ## Code flow
@@ -32,13 +29,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["invitations.list"]
-    C1["authorize listing and apply configured paging/filter"]
-    C0 --> C1
-    C2["query invitation rows"]
-    C1 --> C2
-    C3["return page and cursor."]
-    C2 --> C3
+ A["invitations.list"] --> B["Load actor and call authorize.listInvitations"]
+ B --> C{"Authorized?"}
+ C -->|No| D["Return AuthorizationError"]
+ C -->|Yes| E["Normalize limit/scope/cursor and query pending rows"]
+ E --> F["Return InvitationPage items and nextCursor"]
 ```
 
 **Code references:** [implementation](../src/invitations.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)

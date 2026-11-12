@@ -11,19 +11,16 @@ As an authorized inviter, I want to cancel an outstanding invitation so that I c
 
 ## Acceptance criteria
 
-- **Inputs and result:** actor context and invitation identifier; result reports revocation outcome. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- accepted revoke makes the token unusable.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `invitations.revoke({ actorId, invitationId })` returns `void`. `authorize.manageInvitation` must allow the actor; the pending invitation is deleted and its token can no longer be accepted.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Inviter chooses an outstanding invitation"]
-    U1["authorization or state refusal preserves current record"]
-    U0 --> U1
-    U2["accepted revoke makes the token unusable."]
-    U1 --> U2
+ A["Authorized inviter chooses revoke on a pending invitation"] --> B{"Does manageInvitation allow this action?"}
+ B -->|No| C["Return authorization refusal"]
+ B -->|Yes| D["Delete the pending invitation"]
+ D --> E["A later acceptance with its token fails"]
 ```
 
 ## Code flow
@@ -32,11 +29,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["invitations.revoke"]
-    C1["authorize and transactionally mark/remove eligible invitation"]
-    C0 --> C1
-    C2["return result; subsequent accept path rejects its token."]
-    C1 --> C2
+ A["invitations.revoke"] --> B["Load actor and call authorize.manageInvitation"]
+ B --> C{"Authorized and pending row found?"}
+ C -->|No| D["Return defined refusal"]
+ C -->|Yes| E["Delete invitation row and resolve void"]
 ```
 
 **Code references:** [implementation](../src/invitations.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)

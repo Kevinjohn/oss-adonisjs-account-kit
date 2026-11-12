@@ -11,21 +11,20 @@ As an account holder, I want to request a password reset and use its one-time li
 
 ## Acceptance criteria
 
-- **Inputs and result:** request email + client key; completion token + policy-valid password. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- valid token changes password and ends older credentials; invalid/expired/used token is refused.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `passwordReset.request({ email, clientKey })` returns `void`; `inspect({ token })` is read-only and returns a boolean; `reset({ token, password })` returns the updated account. The request returns the same acknowledgement after the same minimum delay for known and unknown addresses.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Host request"]
-    U1["generic acknowledgement whether address exists"]
-    U0 --> U1
-    U2["recipient follows expiring link"]
-    U1 --> U2
-    U3["valid token changes password and ends older credentials; invalid/expired/used token is refused."]
-    U2 --> U3
+ A["Person submits email and trusted clientKey"] --> B["passwordReset.request"]
+ B --> C["Same acknowledgement for known and unknown addresses"]
+ C --> D["Known account receives expiring one-use link"]
+ D --> E{"Does passwordReset.inspect report the token usable?"}
+ E -->|No| F["Keep password unchanged and request a new link"]
+ F --> A
+ E -->|Yes| G["Submit token and policy-valid password"]
+ G --> H["passwordReset.reset changes password and ends older credentials"]
 ```
 
 ## Code flow
@@ -34,15 +33,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["passwordReset.request"]
-    C1["rate-limit and transaction; known account gets hashed single-use token and post-commit provision"]
-    C0 --> C1
-    C2["same acknowledgement. passwordReset.reset"]
-    C1 --> C2
-    C3["consume token in transaction, update password/revision, revoke prior sign-ins"]
-    C2 --> C3
-    C4["post-commit notice."]
-    C3 --> C4
+ A["passwordReset.request"] --> B["Throttle client and address; transact hashed token issuance"]
+ B --> C["Commit; send provision; return generic acknowledgement"]
+ D["passwordReset.reset"] --> E["Consume token and store password inside transaction"]
+ E --> F["Invalidate older credentials; commit account result"]
+ F --> G["Run post-commit notice; follow-up failure does not undo reset"]
 ```
 
 **Code references:** [implementation](../src/password_reset.ts), [`tests/password_reset_request.spec.ts`](../tests/password_reset_request.spec.ts), [`tests/password_reset_redeem.spec.ts`](../tests/password_reset_redeem.spec.ts)

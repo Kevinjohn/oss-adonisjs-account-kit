@@ -11,19 +11,16 @@ As an existing account holder, I want to sign in with email and password so that
 
 ## Acceptance criteria
 
-- **Inputs and result:** email, password, clientKey; guard adapter chosen by host. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- accepted credentials produce a new configured credential.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `authentication.login({ email, password, clientKey, sessionLabel? })` returns the safe current account and issued credential through the configured guard. `sessionLabel` is untrusted display text limited to 255 characters; the guard strategy and access policy are configured by the host.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person submits credentials"]
-    U1["generic denial on invalid, restricted or throttled attempt"]
-    U0 --> U1
-    U2["accepted credentials produce a new configured credential."]
-    U1 --> U2
+ A["Person submits email and password"] --> B{"Are credentials, account state and access policy accepted?"}
+ B -->|No| C["Return generic login refusal; apply failed-attempt budgets"]
+ C --> A
+ B -->|Yes| D["Issue configured session or token and show signed-in state"]
 ```
 
 ## Code flow
@@ -32,15 +29,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["authentication.login"]
-    C1["reserve per-client and per-identity attempts"]
-    C0 --> C1
-    C2["transaction reads account, verifies hash and access policy"]
-    C1 --> C2
-    C3["guard issues credential and sign-in registry records it"]
-    C2 --> C3
-    C4["return credential."]
-    C3 --> C4
+ A["authentication.login"] --> B["Reserve client and identity attempt budgets"]
+ B --> C["Transaction loads account, checks password, activity and canAccess"]
+ C --> D{"Login checks pass?"}
+ D -->|No| E["Record failed attempt and return generic invalid-credentials error"]
+ D -->|Yes| F["Guard establishes credential; registry records sign-in when enabled"]
+ F --> G["Return account and credential"]
 ```
 
 **Code references:** [implementation](../src/authentication.ts), [`tests/authentication.spec.ts`](../tests/authentication.spec.ts), [`tests/authentication_throttle.spec.ts`](../tests/authentication_throttle.spec.ts)

@@ -11,21 +11,16 @@ As a signed-in account holder, I want to sign out of the current session or toke
 
 ## Acceptance criteria
 
-- **Inputs and result:** current account and selected guard credential; result is logout completion. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- later request with it is denied.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `authentication.logout(guard, credential?, current?)` returns `void`. The host authenticates the request and supplies its guard; a session registry row is removed when a current session handle is supplied and session management is enabled.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person chooses sign out"]
-    U1["host submits current credential"]
-    U0 --> U1
-    U2["accepted credential is revoked"]
-    U1 --> U2
-    U3["later request with it is denied."]
-    U2 --> U3
+ A["Signed-in person submits sign-out"] --> B{"Does host guard accept current credential?"}
+ B -->|No| C["Sign-out request fails authentication"]
+ B -->|Yes| D["Terminate current session or token"]
+ D --> E["Later use of that credential is denied"]
 ```
 
 ## Code flow
@@ -34,13 +29,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["authentication.logout"]
-    C1["authenticate current guard credential"]
-    C0 --> C1
-    C2["revoke it and its sign-in registry entry when enabled"]
-    C1 --> C2
-    C3["return logout result."]
-    C2 --> C3
+ A["authentication.logout"] --> B["Require authentication configuration"]
+ B --> C["Delete matching session registry row when current handle is supplied"]
+ C --> D["Call guard.terminate with current credential"]
+ D --> E["Resolve void"]
 ```
 
 **Code references:** [implementation](../src/authentication.ts), [`tests/authentication.spec.ts`](../tests/authentication.spec.ts)

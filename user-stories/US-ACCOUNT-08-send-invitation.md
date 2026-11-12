@@ -11,19 +11,17 @@ As an authorized inviter, I want to send an invitation for a recipient and appli
 
 ## Acceptance criteria
 
-- **Inputs and result:** inviter/current context, recipient email, role and host-configured scope/data. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- accepted invite is stored and delivered after commit.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `invitations.send({ actorId, email, role, scope? })` returns the invitation. Email must be email-shaped; role is a string of 1–64 characters; omitted or `null` scope means unscoped. Host `authorize.invite` decides permission and role meaning.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Authorized inviter submits recipient and role"]
-    U1["callback refusal creates no invitation"]
-    U0 --> U1
-    U2["accepted invite is stored and delivered after commit."]
-    U1 --> U2
+ A["Authorized inviter submits recipient, role and optional scope"] --> B{"Does invite authorization and input validation pass?"}
+ B -->|No| C["Return refusal; no invitation is issued"]
+ B -->|Yes| D{"Does recipient already have an account or pending invite?"}
+ D -->|Yes| E["Return registered or pending invitation result"]
+ D -->|No| F["Store invitation and deliver link after commit"]
 ```
 
 ## Code flow
@@ -32,15 +30,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["sendInvitation"]
-    C1["authorization callback and input rules"]
-    C0 --> C1
-    C2["transaction stores token hash/expiry"]
-    C1 --> C2
-    C3["post-commit invitation provision"]
-    C2 --> C3
-    C4["return invitation result."]
-    C3 --> C4
+ A["invitations.send"] --> B["Validate email/role/scope; load actor and authorize invite"]
+ B --> C["Spend actor budget before checking registered address"]
+ C --> D["Spend recipient budget and store token hash transactionally"]
+ D --> E["Commit; deliver invitation and lifecycle event"]
+ E --> F["Return Invitation or committed follow-up failure"]
 ```
 
 **Code references:** [implementation](../src/invitations.ts), [`tests/invitations_send.spec.ts`](../tests/invitations_send.spec.ts)

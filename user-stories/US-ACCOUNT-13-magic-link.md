@@ -11,23 +11,19 @@ As a prospective account holder, I want to request and complete an opt-in passwo
 
 ## Acceptance criteria
 
-- **Inputs and result:** email and client key to request; token and matching client challenge/verifier at completion. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- matching client completes once and receives credential; forwarded, expired or used link fails.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `magicLink.request({ email, clientKey, clientChallenge })` returns `void`; challenge is a 43-character base64url SHA-256 digest of a verifier kept by the initiating client. `inspect({ token })` is non-consuming; `complete({ token, verifier }, guard)` returns account and credential.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person requests a link"]
-    U1["generic acknowledgement"]
-    U0 --> U1
-    U2["email arrives"]
-    U1 --> U2
-    U3["scanner inspection does not consume it"]
-    U2 --> U3
-    U4["matching client completes once and receives credential; forwarded, expired or used link fails."]
-    U3 --> U4
+ A["Client creates verifier and submits email plus its challenge"] --> B["Receive generic request acknowledgement"]
+ B --> C["Open link in the same browser or app"]
+ C --> D{"Does inspection find a live link?"}
+ D -->|No| E["Request another link"]
+ D -->|Yes| F{"Does verifier match the stored challenge?"}
+ F -->|No| G["Refuse; link remains unusable from this client"]
+ F -->|Yes| H["Consume once and establish sign-in credential"]
 ```
 
 ## Code flow
@@ -36,11 +32,13 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["requestMagicLink"]
-    C1["rate-limit and store token hash plus browser binding"]
-    C0 --> C1
-    C2["deliver after commit; inspectMagicLink is read-only; completeMagicLink consumes proof transactionally, rechecks identity and issues credential."]
-    C1 --> C2
+ A["magicLink.request"] --> B["Validate client challenge, throttle and create hashed proof transactionally"]
+ B --> C["Commit and deliver provision; acknowledge generically"]
+ D["magicLink.inspect"] --> E["Read token expiry/account status without consuming"]
+ F["magicLink.complete"] --> G["Transaction consumes token and matches verifier challenge"]
+ G --> H{"Email/account remains eligible?"}
+ H -->|No| I["Reject without issuing credential"]
+ H -->|Yes| J["Guard establishes credential and service returns account/credential"]
 ```
 
 **Code references:** [implementation](../src/magic_link.ts), [`tests/magic_link.spec.ts`](../tests/magic_link.spec.ts), [`tests/magic_link_completion.spec.ts`](../tests/magic_link_completion.spec.ts)

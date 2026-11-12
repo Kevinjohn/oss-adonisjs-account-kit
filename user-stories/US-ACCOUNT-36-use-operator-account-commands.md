@@ -1,31 +1,29 @@
-# US-ACCOUNT-36 — Issue an invitation or reset link from the shell
+# US-ACCOUNT-36 — Issue an invitation from the shell
 
-As an application operator, I want to help a user or bootstrap an account through trusted operator commands so that I can complete recovery without exposing a privileged HTTP capability.
+As an application operator, I want to bootstrap an application invitation through trusted operator commands so that I can bootstrap an invitation without exposing a privileged HTTP capability.
 
 **Status:** Operator
-**Access:** Requires shell access and configured invitation/password-reset capability; operator commands bypass actor authorization and throttles.
-**Entry:** Run `account-kit:invite <email> [--role] [--scope] [--print]` or `account-kit:reset-link <email> [--print]`.
+**Access:** Requires shell access and configured invitations capability; operator commands bypass actor authorization and throttles.
+**Entry:** Run `account-kit:invite <email> --role <role> [--scope <scope>] [--print]`.
 **Documentation:** [operations.md](../docs/guide/operations.md)
 **Source:** [`commands/invite.ts`](../commands/invite.ts)
 **Coverage:** [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** recipient email plus command-specific options; `--print` prints bearer link instead of delivery. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- link is delivered, or printed only when explicitly requested.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Operator invokes command"]
-    U1["unavailable capability or invalid target reports error"]
-    U0 --> U1
-    U2["eligible action commits"]
-    U1 --> U2
-    U3["link is delivered, or printed only when explicitly requested."]
-    U2 --> U3
+ A["Operator chooses an invitation recipient, role and delivery mode"] --> B{"Is requested capability enabled and target eligible?"}
+ B -->|No| C["Report disabled capability or registered recipient; issue no invitation"]
+ B -->|Yes| D{"Is delivery send or explicit print?"}
+ D -->|Send| E["Deliver link through configured callback"]
+ D -->|Print| F["Print bearer URL to trusted terminal"]
+ E --> G["Report committed result and any follow-up fault"]
+ F --> G
 ```
 
 ## Code flow
@@ -34,15 +32,13 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["Invite/ResetLink.run"]
-    C1["use shell-trusted operator service"]
-    C0 --> C1
-    C2["transaction creates/replaces invitation or reset proof"]
-    C1 --> C2
-    C3["deliver or print based on flag"]
-    C2 --> C3
-    C4["report committed follow-up faults distinctly."]
-    C3 --> C4
+ A["account-kit:invite"] --> B["Call operator.invite with email, role, optional scope and deliver"]
+ B --> C["Transaction stores a new invitation and token hash"]
+ C --> D{"deliver = send or print?"}
+ D -->|send| E["Run configured invitation notification callback"]
+ D -->|print| F["Return URL for terminal output"]
+ E --> G["Write invitation result and any post-commit fault as JSON"]
+ F --> G
 ```
 
 **Code references:** [implementation](../commands/invite.ts), [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)

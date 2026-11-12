@@ -11,19 +11,17 @@ As a signed-in account holder, I want to change profile fields accepted by the h
 
 ## Acceptance criteria
 
-- **Inputs and result:** current account and configured profile fields; field allowlist and constraints are host-configured. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- valid mapped changes are saved and represented using host policy.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `emailPasswordManagement.updateProfile({ actorId, email?, registrationData?, currentPassword?, recentProof?, keepCurrent? })` returns the account. At least `email` or `registrationData` must be supplied; profile values are untrusted and mapped by configured registration fields. Changing email requires current password or social-only recent proof.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Person submits profile changes"]
-    U1["unknown/disallowed fields are rejected or ignored as configured"]
-    U0 --> U1
-    U2["valid mapped changes are saved and represented using host policy."]
-    U1 --> U2
+ A["Account holder submits configured profile fields"] --> B{"Did caller provide email or registrationData?"}
+ B -->|No| C["Reject empty update without writing"]
+ B -->|Yes| D{"Are mapped fields and any email proof accepted?"}
+ D -->|No| E["Return validation or identity refusal"]
+ D -->|Yes| F["Save allowed profile fields; email remains pending until confirmed"]
 ```
 
 ## Code flow
@@ -32,13 +30,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["updateProfile"]
-    C1["map and validate configured fields"]
-    C0 --> C1
-    C2["transaction updates account and revision behavior"]
-    C1 --> C2
-    C3["return current safe account representation."]
-    C2 --> C3
+ A["emailPasswordManagement.updateProfile"] --> B["Map untrusted registrationData and validate optional email"]
+ B --> C["Throttle and transactionally confirm actor when email changes"]
+ C --> D{"Configured fields and uniqueness checks pass?"}
+ D -->|No| E["Return refusal; do not persist profile update"]
+ D -->|Yes| F["Update adapter-supported fields and/or issue email proof"]
+ F --> G["Return account; send email provision after commit when needed"]
 ```
 
 **Code references:** [implementation](../src/profile_update.ts), [`tests/credentials_profile.spec.ts`](../tests/credentials_profile.spec.ts)
