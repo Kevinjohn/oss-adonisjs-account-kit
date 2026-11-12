@@ -76,6 +76,10 @@ node ace configure @kevinjohn/adonisjs-account-kit --provider-registered
 This flag confirms that you registered the provider yourself. Configure then preserves the dynamic
 provider expression and completes the remaining setup. Running it again is safe.
 
+## User stories
+
+See the [user story catalogue](user-stories/README.md) for source-reviewed account journeys, opt-in capabilities and operator surfaces.
+
 ## Quick example
 
 A forgot-password action. The [getting started tutorial](docs/guide/getting-started.md) adds
