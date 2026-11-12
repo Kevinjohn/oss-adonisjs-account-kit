@@ -1,6 +1,6 @@
-# US-ACCOUNT-41 — Commit a host write only for the current sign-in
+# US-ACCOUNT-41 — Commit a host write with a tracked current sign-in
 
-As an application developer, I want a host-owned write to share Account Kit's current-credential transaction so that logout or credential revocation cannot race that write.
+As an application developer, I want a host-owned write to share Account Kit's current-credential transaction so that a tracked credential revocation cannot race that write.
 
 **Status:** Current when authentication is configured
 **Access:** Host authenticates and authorizes the account before passing its `CurrentAccountInput`; the callback must use the supplied transaction for every write.

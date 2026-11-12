@@ -32,6 +32,8 @@ flowchart TD
  J -->|registration continuation| L["Host applies signup decision and calls completeRegistration"]
  J -->|unverified email| M["Confirm address with proof and fresh callback for same provider subject"]
  J -->|closed policy| N["Refuse account creation"]
+ J -->|verified provider email and open registration| O["Create account and issue a handoff code"]
+ O --> F
 ```
 
 ## Code flow

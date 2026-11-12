@@ -34,10 +34,14 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["AccountAdmission.request(current)"] --> B["Transaction validates current credential/revision and loads account"]
- B --> C{"Confirmed and approval requirement enabled?"}
- C -->|No| D["Return eligibility refusal or current decision"]
- C -->|Yes| E["Upsert pending request idempotently"]
- E --> F["Commit; emit admission.requested only on first request"]
+ B --> C{"Approval requirement enabled?"}
+ C -->|No| D["Throw AdmissionRequiredError before opening the transaction"]
+ C -->|Yes| E{"Is the account active?"}
+ E -->|No| F["Throw UnverifiedEmailError before recording a request"]
+ E -->|Yes| G["Transaction upserts requestedAt idempotently"]
+ G --> H{"Is this the first request with no decision?"}
+ H -->|Yes| I["Commit, then emit admission.requested"]
+ H -->|No| J["Commit without emitting the event"]
 ```
 
 **Code references:** [implementation](../src/admission/request.ts), [`tests/admission_request.spec.ts`](../tests/admission_request.spec.ts)

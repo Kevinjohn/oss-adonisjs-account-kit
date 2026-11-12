@@ -1,6 +1,6 @@
 # US-ACCOUNT-13 — Sign in with an email link
 
-As a prospective account holder, I want to request and complete an opt-in passwordless sign-in link so that I can sign in without entering a password.
+As an existing account holder, I want to request and complete an opt-in passwordless sign-in link so that I can sign in without entering a password.
 
 **Status:** Current when `magicLinkLogin` is enabled
 **Access:** Request uses generic acknowledgement and rate limits; completion must be bound to the requesting browser/app challenge.
@@ -11,7 +11,7 @@ As a prospective account holder, I want to request and complete an opt-in passwo
 
 ## Acceptance criteria
 
-- **Inputs and result:** `magicLink.request({ email, clientKey, clientChallenge })` returns `void`; challenge is a 43-character base64url SHA-256 digest of a verifier kept by the initiating client. `inspect({ token })` is non-consuming; `complete({ token, verifier }, guard)` returns account and credential.
+- **Inputs and result:** `magicLink.request({ email, clientKey, clientChallenge })` returns `void`; it issues a link only for an existing active account allowed by sign-in policy. Unknown or denied addresses receive the same generic acknowledgement and do not create accounts. Challenge is a 43-character base64url SHA-256 digest of a verifier kept by the initiating client. `inspect({ token })` is non-consuming; `complete({ token, verifier }, guard)` returns account and credential.
 
 ## User flow
 

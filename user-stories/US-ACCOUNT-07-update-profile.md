@@ -35,8 +35,10 @@ flowchart TD
  C --> D{"Configured fields and uniqueness checks pass?"}
  D -->|No| E["Return refusal; do not persist profile update"]
  D -->|Yes| F["Update adapter-supported fields and/or issue email proof"]
- F --> G["Commit; run required provision/follow-ups, then return account"]
- G --> H["A post-commit failure is surfaced without undoing saved fields"]
+ F --> G["Commit profile update"]
+ G --> H{"Do required post-commit callbacks succeed?"}
+ H -->|Yes| I["Return updated account"]
+ H -->|No| J["Surface post-commit failure; committed profile remains updated"]
 ```
 
 **Code references:** [implementation](../src/profile_update.ts), [`tests/credentials_profile.spec.ts`](../tests/credentials_profile.spec.ts)

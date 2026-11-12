@@ -7,7 +7,7 @@ As an application integrator, I want admission evidence to follow invitation acc
 **Entry:** Wrap `onInvitationAccepted` with `withInvitationEvidence(...)` and set `onAccountDeletingTransaction: withAdmissionCleanup(...)` in `config/account_kit.ts`.
 **Documentation:** [Admission lifecycle hooks](../docs/guide/admission.md)
 **Source:** [`src/admission/invitation_evidence.ts`](../src/admission/invitation_evidence.ts)
-**Coverage:** [`tests/admission_cleanup.spec.ts`](../tests/admission_cleanup.spec.ts), [`tests/admission_operator.spec.ts`](../tests/admission_invitation_evidence.spec.ts)
+**Coverage:** [`tests/admission_cleanup.spec.ts`](../tests/admission_cleanup.spec.ts), [`tests/admission_invitation_evidence.spec.ts`](../tests/admission_invitation_evidence.spec.ts)
 
 ## Acceptance criteria
 

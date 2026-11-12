@@ -34,12 +34,14 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["provePassword or begin(intent reauth)"] --> B["Bind current account, purpose and client challenge"]
- B --> C["Verify password or provider fresh-auth assertion"]
- C --> D{"Fresh proof is valid?"}
- D -->|No| E["Reject without issuing recent proof"]
- D -->|Yes| F["Store one-use proof; return it for matching sensitive operation"]
- F --> G["Link/unlink consumes proof transactionally and rejects reuse/mismatch"]
+ A["provePassword({ current, password, purpose })"] --> B["Verify password against the current account"]
+ A2["begin({ intent: reauth, current, purpose, clientChallenge })"] --> C["Bind provider reauthentication to current account, purpose and challenge"]
+ C --> D["Verify provider fresh-auth assertion"]
+ B --> E{"Password or provider proof is valid?"}
+ D --> E
+ E -->|No| F["Reject without issuing recent proof"]
+ E -->|Yes| G["Store one-use purpose-bound proof"]
+ G --> H["Matching sensitive operation consumes proof transactionally"]
 ```
 
 **Code references:** [implementation](../src/social_identity.ts), [`tests/social_identity_reauth.spec.ts`](../tests/social_identity_reauth.spec.ts)

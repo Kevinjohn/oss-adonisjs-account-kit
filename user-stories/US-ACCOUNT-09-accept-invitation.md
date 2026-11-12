@@ -1,6 +1,6 @@
 # US-ACCOUNT-09 — Accept an invitation
 
-As an invited person, I want to redeem the invitation sent to their address so that I can join through the host-approved invitation path.
+As an invited person, I want to redeem the invitation sent to my address so that I can join through the host-approved invitation path.
 
 **Status:** Current
 **Access:** Valid unused invitation token and matching recipient proof; host callback owns membership grant.

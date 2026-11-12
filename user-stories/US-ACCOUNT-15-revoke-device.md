@@ -1,6 +1,6 @@
 # US-ACCOUNT-15 — Sign out a selected device
 
-As a signed-in account holder, I want to revoke one of my recorded sign-ins so that I can end access from a device they no longer trust.
+As a signed-in account holder, I want to revoke one of my recorded sign-ins so that I can end access from a device I no longer trust.
 
 **Status:** Current when `authentication.sessions` (requires `sessionManagement`) is enabled
 **Access:** Authenticated current account; target id is scoped to the account. The service allows revoking the current sign-in and reports that fact.

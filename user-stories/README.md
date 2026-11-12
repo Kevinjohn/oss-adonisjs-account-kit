@@ -61,6 +61,9 @@ Source baseline: `2e0583de9db02bd8a9bcb8256c32b01646db7237` (origin/main, 2026-1
 | [US-ACCOUNT-53](US-ACCOUNT-53-list-social-identities.md)              | Review linked social identities                  | Current when `socialAuthentication` is enabled                                   |
 | [US-ACCOUNT-54](US-ACCOUNT-54-check-custom-adapter-contract.md)       | Check a custom user adapter contract             | Current for adapter integration tests                                            |
 | [US-ACCOUNT-55](US-ACCOUNT-55-capture-notifications-in-tests.md)      | Capture account notifications in tests           | Current for application tests                                                    |
+| [US-ACCOUNT-56](US-ACCOUNT-56-read-current-admission-status.md)       | Read current admission status                    | Current when the admission module is installed                                   |
+| [US-ACCOUNT-57](US-ACCOUNT-57-check-admission-record.md)              | Check a user's admission record                  | Current when the admission module is installed                                   |
+| [US-ACCOUNT-58](US-ACCOUNT-58-check-domain-eligibility.md)            | Check admission domain eligibility               | Current when the admission module is installed                                   |
 
 ## Catalogue references
 
