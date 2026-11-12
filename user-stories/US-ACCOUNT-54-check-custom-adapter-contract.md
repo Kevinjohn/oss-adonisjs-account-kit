@@ -32,12 +32,13 @@ flowchart TD
 ```mermaid
 flowchart TD
  A["assertUsersAdapterContract(fixture)"] --> B["Run create, normalized lookup, password and verification checks inside fixture transaction"]
- B --> C["Commit primary fixture account; inspect stored password through fixture callback"]
- C --> D["Check lookup, email updates, rollback, optional deletion and registration mapping"]
- D --> E["Acquire adapter account lock and invoke independent-writer probe"]
- E --> F{"Do assertions resolve?"}
- F -->|No| G["Reject with assertion or fixture error; committed fixture rows may remain"]
- F -->|Yes| H["Resolve; primary fixture row remains for caller cleanup"]
+ B --> C["Commit account; inspect stored password and check lookups, email updates, rollback and verification transactions"]
+ C --> D["Acquire adapter account lock and invoke independent-writer probe"]
+ D --> E["Check password updates, optional prepared-hash paths and inactive/pending-email behavior"]
+ E --> F["Run optional registration-update and supported deletion checks"]
+ F --> G{"Do all assertions resolve?"}
+ G -->|No| H["Reject with assertion or fixture error; committed fixture rows may remain"]
+ G -->|Yes| I["Resolve; primary fixture row remains for caller cleanup"]
 ```
 
 **Code references:** [`assertUsersAdapterContract`](../testing/adapter_contract.ts), [custom adapter recipe](../docs/recipes/custom-adapter.md), [`Lucid fixture`](../tests/lucid_adapter.spec.ts), [`Drizzle fixtures`](../tests/drizzle_adapter.spec.ts), [`Prisma fixtures`](../tests/prisma_adapter.spec.ts), [`SQL fixtures`](../tests/sql_adapter.spec.ts)
