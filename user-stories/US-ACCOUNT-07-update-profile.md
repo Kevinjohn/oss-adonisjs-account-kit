@@ -11,7 +11,7 @@ As a signed-in account holder, I want to change profile fields accepted by the h
 
 ## Acceptance criteria
 
-- **Inputs and result:** `emailPasswordManagement.updateProfile({ actorId, email?, registrationData?, currentPassword?, recentProof?, keepCurrent? })` returns the account. At least `email` or `registrationData` must be supplied; profile values are untrusted and mapped by configured registration fields. Changing email requires current password or social-only recent proof.
+- **Inputs and result:** `emailPasswordManagement.updateProfile({ actorId, email?, registrationData?, currentPassword?, recentProof?, keepCurrent? })` returns the account. At least `email` or `registrationData` must be supplied; profile values are untrusted and mapped by configured registration fields. Every update requires current password or social-only recent proof, including a registrationData-only update. Email follows active/inactive/cancellation branches in US-ACCOUNT-06.
 
 ## User flow
 
@@ -21,7 +21,7 @@ flowchart TD
  B -->|No| C["Reject empty update without writing"]
  B -->|Yes| D{"Are mapped fields and any email proof accepted?"}
  D -->|No| E["Return validation or identity refusal"]
- D -->|Yes| F["Save allowed profile fields; email remains pending until confirmed"]
+ D -->|Yes| F["Save mapped profile fields; apply email branch described in US-ACCOUNT-06"]
 ```
 
 ## Code flow
@@ -31,11 +31,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["emailPasswordManagement.updateProfile"] --> B["Map untrusted registrationData and validate optional email"]
- B --> C["Throttle and transactionally confirm actor when email changes"]
+ B --> C["Throttle and transactionally confirm actor for every update"]
  C --> D{"Configured fields and uniqueness checks pass?"}
  D -->|No| E["Return refusal; do not persist profile update"]
  D -->|Yes| F["Update adapter-supported fields and/or issue email proof"]
- F --> G["Return account; send email provision after commit when needed"]
+ F --> G["Commit; run required provision/follow-ups, then return account"]
+ G --> H["A post-commit failure is surfaced without undoing saved fields"]
 ```
 
 **Code references:** [implementation](../src/profile_update.ts), [`tests/credentials_profile.spec.ts`](../tests/credentials_profile.spec.ts)

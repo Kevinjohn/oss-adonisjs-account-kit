@@ -11,7 +11,7 @@ As an existing account holder, I want to sign in with email and password so that
 
 ## Acceptance criteria
 
-- **Inputs and result:** `authentication.login({ email, password, clientKey, sessionLabel? })` returns the safe current account and issued credential through the configured guard. `sessionLabel` is untrusted display text limited to 255 characters; the guard strategy and access policy are configured by the host.
+- **Inputs and result:** `authentication.login({ email, password, clientKey, sessionLabel? }, guard)` returns the safe current account and issued credential through the configured guard. `sessionLabel` is untrusted display text limited to 255 characters; the guard strategy and access policy are configured by the host.
 
 ## User flow
 

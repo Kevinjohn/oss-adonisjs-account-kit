@@ -29,10 +29,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["invitations.list"] --> B["Load actor and call authorize.listInvitations"]
+ A["invitations.list"] --> B["Validate limit, decode cursor, normalize optional scope; load actor and authorize"]
  B --> C{"Authorized?"}
  C -->|No| D["Return AuthorizationError"]
- C -->|Yes| E["Normalize limit/scope/cursor and query pending rows"]
+ C -->|Yes| E["Query unexpired rows with normalized scope and cursor"]
  E --> F["Return InvitationPage items and nextCursor"]
 ```
 

@@ -38,8 +38,11 @@ flowchart TD
     C --> D{"Actor proof accepted?"}
     D -->|No| E["Reject before password mutation"]
     D -->|Yes| F["Store password; clear recovery proofs; credentialsChanged applies keepCurrent"]
-    F --> G["Commit and return credential revision"]
+    F --> G["Commit and capture credential revision"]
     G --> H["Run credential observer, password notice and lifecycle callback"]
+    H --> I{"Follow-ups complete?"}
+    I -->|Yes| J["Return revision result"]
+    I -->|No| K["Remember committed revision on error and rethrow; do not roll back change"]
 ```
 
 **Code references:** [`changePassword`](../src/change_password.ts), [`confirmActor`](../src/actor_confirmation.ts), [`authentication.credentialsChanged`](../src/authentication.ts), [`managed password handler`](../src/http/handlers_email_password_management.ts), [`password change tests`](../tests/credentials_password_change.spec.ts)
