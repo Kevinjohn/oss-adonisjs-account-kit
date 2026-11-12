@@ -11,7 +11,7 @@ As a signed-in account holder, I want to review my confirmed provider identities
 
 ## Acceptance criteria
 
-- `list` takes `CurrentAccountInput` and returns the caller’s confirmed `SocialIdentity[]`; it excludes pending/unconfirmed relationships. `get` also takes numeric `identityId` and returns one confirmed caller-owned identity.
+- `list({ current })` takes `CurrentAccountInput` and returns the caller’s confirmed `SocialIdentity[]`; it excludes pending/unconfirmed relationships. `get` also takes numeric `identityId` and returns one confirmed caller-owned identity.
 - A stale credential is refused; `get` of an unknown, unconfirmed or foreign identity returns the same not-found outcome. Displayed provider email is relationship metadata and is never an account-merge key.
 
 ## User flow

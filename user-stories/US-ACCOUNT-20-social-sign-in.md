@@ -48,10 +48,18 @@ flowchart TD
  F --> G["redeemHandoff({ code, verifier, guard }) checks verifier and rechecks association/revision"]
  G --> H["Establish guard; return account, credential and provider"]
  E -->|new| I["Apply open/closed/application policy and configured field mapping"]
- I --> J["Return continuation or create eligible account"]
- J --> K["completeRegistration consumes continuation with trusted host admit callback"]
- E -->|unverified| L["beginConfirmation binds verification token to fresh confirm state"]
- L --> M["callback confirms same pending provider identity and activates account"]
+ I --> J{"Does this path need a trusted continuation?"}
+ J -->|Yes| K["Return continuation to host"]
+ K --> L{"Does host accept and call completeRegistration?"}
+ L -->|No| M["No account is created"]
+ L -->|Yes| N["Consume continuation with trusted host admit callback"]
+ J -->|No| O["Create account directly under open policy"]
+ N --> P{"Is provider email confirmed?"}
+ O --> P
+ P -->|No| Q["Return emailVerificationRequired; wait for joint email/provider confirmation"]
+ P -->|Yes| F
+ E -->|unverified| R["beginConfirmation binds verification token to fresh confirm state"]
+ R --> S["callback confirms same pending provider identity and activates account"]
  E -->|link_required| N["Return no credential; existing account must prove and link"]
 ```
 
