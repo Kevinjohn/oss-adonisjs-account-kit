@@ -11,21 +11,17 @@ As an application developer, I want to require admission before protected applic
 
 ## Acceptance criteria
 
-- **Inputs and result:** guard and active option configured by host; request credential is read from selected guard. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- admitted credential continues to route.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `AccountAdmission.require(current, { active? } = {})` returns account and decision or throws for invalid credential, inactive account when `active` is not false, or an unmet requirement. The host applies it only to routes that should require admission.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Signed-in person requests protected route"]
-    U1["invalid credential fails first"]
-    U0 --> U1
-    U2["valid credential with unmet admission is denied"]
-    U1 --> U2
-    U3["admitted credential continues to route."]
-    U2 --> U3
+ A["Request reaches host-protected route"] --> B{"Does selected guard credential/revision validate?"}
+ B -->|No| C["Deny before route handler"]
+ B -->|Yes| D{"Is account active and every enabled admission requirement met?"}
+ D -->|No| E["Deny with inactive/admission error; keep pre-admission routes reachable"]
+ D -->|Yes| F["Continue to host route"]
 ```
 
 ## Code flow
@@ -34,13 +30,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["admissionMiddleware"]
-    C1["assert configured guard"]
-    C0 --> C1
-    C2["admission.require checks account credential/revision and enabled requirements in transaction"]
-    C1 --> C2
-    C3["continue or raise admission error."]
-    C2 --> C3
+ A["Host admissionMiddleware or AccountAdmission.require"] --> B["Check configured guard and current credential inside admission.current"]
+ B --> C["Evaluate enabled domain, invitation and approval requirements"]
+ C --> D{"active option and decision admit request?"}
+ D -->|No| E["Throw UnverifiedEmailError or AdmissionRequiredError"]
+ D -->|Yes| F["Return account/decision and continue host handler"]
 ```
 
 **Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts)

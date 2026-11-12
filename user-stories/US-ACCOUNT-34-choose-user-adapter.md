@@ -11,19 +11,15 @@ As an application integrator, I want to connect Account Kit to a supported user 
 
 ## Acceptance criteria
 
-- **Inputs and result:** adapter implementing exported user adapter contract and configured transaction/database connection. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- compatible adapter supports the same account service operations.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** The adapter contract lets `AccountKit` read, create, update and delete the application user inside supplied database transactions. Lucid is the default adapter; Drizzle, Prisma and SQL factories are included. Integrators configure the adapter and use the same service API; schema/driver compatibility follows the adapter guide and contract suite.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Integrator selects adapter"]
-    U1["contract/schema mismatch fails integration checks"]
-    U0 --> U1
-    U2["compatible adapter supports the same account service operations."]
-    U1 --> U2
+ A["Integrator selects an adapter matching the the app user model and database"] --> B{"Does adapter meet user/transaction contract?"}
+ B -->|No| C["Fix mapping or schema integration before enabling account flows"]
+ B -->|Yes| D["Account services use configured adapter for user operations"]
 ```
 
 ## Code flow
@@ -32,13 +28,9 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["AccountKit construction"]
-    C1["configured adapter supplies account lookup/create/update/delete behavior"]
-    C0 --> C1
-    C2["service operations use shared transaction contract"]
-    C1 --> C2
-    C3["adapter persists user data."]
-    C2 --> C3
+ A["AccountKit construction with configured user adapter"] --> B["Adapter resolves user read/create/update/delete operations"]
+ B --> C["Account service passes transaction to adapter at write boundary"]
+ C --> D["Lucid, Drizzle, Prisma or SQL adapter persists application user"]
 ```
 
 **Code references:** [implementation](../adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)

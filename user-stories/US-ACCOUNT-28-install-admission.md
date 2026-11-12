@@ -11,19 +11,18 @@ As an application operator, I want to add admission migration, configuration, pr
 
 ## Acceptance criteria
 
-- **Inputs and result:** optional users table and user id type; command reports created/skipped artifacts. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- operator configures policy, applies migration and gates app-owned routes.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `account-kit:admission:install [--users-table] [--user-id-type]` writes missing migration/config/provider/command-loader files and skips existing files. It does not define application roles, authorization callbacks or protected routes; the operator must review config and run migrations.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Operator runs installer"]
-    U1["missing artifacts are written without overwriting existing files"]
-    U0 --> U1
-    U2["operator configures policy, applies migration and gates app-owned routes."]
-    U1 --> U2
+ A["Operator runs admission installer"] --> B{"Are target files already present?"}
+ B -->|Yes| C["Keep existing files and report skipped artifacts"]
+ B -->|No| D["Write migration and admission config; register provider and commands"]
+ C --> E["Operator configures requirements and approval authority"]
+ D --> E
+ E --> F["Review migration, apply schema and gate host routes"]
 ```
 
 ## Code flow
@@ -32,13 +31,9 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["AdmissionInstall.run"]
-    C1["write config/migration stubs when absent"]
-    C0 --> C1
-    C2["register provider/commands"]
-    C1 --> C2
-    C3["print manual migration and policy steps."]
-    C2 --> C3
+ A["AdmissionInstall.run"] --> B["Render config and migration stubs only when absent"]
+ B --> C["Register admission provider and command loader in adonisrc"]
+ C --> D["Report manual policy, migration and route-gating steps"]
 ```
 
 **Code references:** [implementation](../commands/admission_install.ts), [`tests/admission_install_command.spec.ts`](../tests/admission_install_command.spec.ts)

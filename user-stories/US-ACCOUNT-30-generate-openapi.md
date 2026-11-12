@@ -5,25 +5,24 @@ As an application operator, I want to write a contract for the managed endpoints
 **Status:** Operator
 **Access:** Managed routes must already be registered in the application route inventory.
 **Entry:** Run `account-kit:openapi [--output]`; command writes OpenAPI 3.1 for the discovered route set.
-**Documentation:** [../reference/openapi.md](../docs/guide/../reference/openapi.md)
+**Documentation:** [OpenAPI reference](../docs/reference/openapi.md)
 **Source:** [`commands/openapi.ts`](../commands/openapi.ts)
-**Coverage:** [`tests/openapi.spec.ts`](../tests/openapi_command.spec.ts)
+**Coverage:** [`tests/openapi_command.spec.ts`](../tests/openapi_command.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** optional output path; routes are read from application router; result is a generated document. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- valid route inventory produces document containing only mounted endpoints.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `account-kit:openapi` accepts optional `--output`, `--title` and `--api-version`; without output it prints JSON to stdout. It commits/inspects the host router and refuses when no managed route registration exists.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Operator runs command"]
-    U1["no registered managed routes yields an actionable error"]
-    U0 --> U1
-    U2["valid route inventory produces document containing only mounted endpoints."]
-    U1 --> U2
+ A["Operator runs OpenAPI command"] --> B{"Are managed routes registered?"}
+ B -->|No| C["Print actionable error and exit nonzero"]
+ B -->|Yes| D["Generate OpenAPI 3.1 for mounted endpoints only"]
+ D --> E{"Was output path supplied?"}
+ E -->|No| F["Print document to stdout"]
+ E -->|Yes| G["Write document to selected file"]
 ```
 
 ## Code flow
@@ -32,13 +31,13 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["OpenApi.run"]
-    C1["inspect router route registry"]
-    C0 --> C1
-    C2["reject empty inventory"]
-    C1 --> C2
-    C3["generate spec and write selected destination."]
-    C2 --> C3
+ A["account-kit:openapi"] --> B["Commit queued router and inspect managedRouteRegistration"]
+ B --> C{"Registration exists?"}
+ C -->|No| D["Log error and set exitCode 1"]
+ C -->|Yes| E["Generate OpenAPI 3.1 with optional title/version"]
+ E --> F{"--output supplied?"}
+ F -->|No| G["Print JSON"]
+ F -->|Yes| H["Write JSON to resolved application path"]
 ```
 
-**Code references:** [implementation](../commands/openapi.ts), [`tests/openapi.spec.ts`](../tests/openapi_command.spec.ts)
+**Code references:** [implementation](../commands/openapi.ts), [`tests/openapi_command.spec.ts`](../tests/openapi_command.spec.ts)

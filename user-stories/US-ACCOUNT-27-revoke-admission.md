@@ -11,21 +11,17 @@ As an authorized application approver, I want to revoke an admitted account’s 
 
 ## Acceptance criteria
 
-- **Inputs and result:** actorId, target user and transition context; returns updated admission state. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- next gated request is denied.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `AccountAdmission.revoke({ actorId, userId })` returns the updated record. The host approval callback authorizes the actor; only an approved decision can be revoked. Existing sessions remain, but later gated requests reevaluate admission and are refused.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Approver requests revocation"]
-    U1["unauthorized or ineligible transition is refused"]
-    U0 --> U1
-    U2["accepted transition changes admission decision"]
-    U1 --> U2
-    U3["next gated request is denied."]
-    U2 --> U3
+ A["Approver selects an approved account to revoke"] --> B{"Is actor admitted and allowed to decide?"}
+ B -->|No| C["Refuse without changing admission"]
+ B -->|Yes| D{"Is subject currently approved?"}
+ D -->|No| E["Refuse invalid transition"]
+ D -->|Yes| F["Record revoked decision; next gated request is denied"]
 ```
 
 ## Code flow
@@ -34,13 +30,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["AccountAdmission.revoke"]
-    C1["authorize and transact transition"]
-    C0 --> C1
-    C2["persist revoked decision"]
-    C1 --> C2
-    C3["post-commit event; admission.require reevaluates on each protected request."]
-    C2 --> C3
+ A["AccountAdmission.revoke({ actorId, userId })"] --> B["Check actor admission and authorize.decide"]
+ B --> C["Transaction loads subject and validates approved-to-revoked transition"]
+ C --> D{"Transition allowed?"}
+ D -->|No| E["Abort without session revocation or record change"]
+ D -->|Yes| F["Persist revoked state; commit and emit event"]
+ F --> G["Later admission.require reevaluates and denies"]
 ```
 
 **Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts)

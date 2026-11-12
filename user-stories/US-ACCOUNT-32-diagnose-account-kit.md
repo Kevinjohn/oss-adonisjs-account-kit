@@ -11,19 +11,16 @@ As an application operator, I want to check configuration and integration readin
 
 ## Acceptance criteria
 
-- **Inputs and result:** application configuration and filesystem inventory; returns diagnostic report/status. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- operator corrects config/integration and reruns; runtime revocation is not inferred from static checks.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `account-kit:doctor` starts the app and reports configuration, limiter, APP_URL and database-table checks with a failing exit status when checks fail. Its final notice says notifications/delivery, credential revocation, application policy and routes remain unverified.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Operator runs doctor"]
-    U1["checks are reported with actionable detail"]
-    U0 --> U1
-    U2["operator corrects config/integration and reruns; runtime revocation is not inferred from static checks."]
-    U1 --> U2
+ A["Operator runs doctor in configured application"] --> B{"Do static configuration and schema checks pass?"}
+ B -->|No| C["Print failing check and fix guidance; exit nonzero"]
+ B -->|Yes| D["Report static checks and explicitly unverified runtime workflows"]
+ D --> E["Operator runs disposable-account smoke test separately"]
 ```
 
 ## Code flow
@@ -32,11 +29,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["Doctor.run"]
-    C1["inspect package config, routes, dependencies and integration markers"]
-    C0 --> C1
-    C2["print findings and exit status."]
-    C1 --> C2
+ A["account-kit:doctor"] --> B["runDoctor checks config, limiter binding, APP_URL and tables"]
+ B --> C{"Any failed check?"}
+ C -->|Yes| D["Print check failures and exit nonzero"]
+ C -->|No| E["Print passed checks and unverified delivery/revocation/policy/routes notice"]
 ```
 
-**Code references:** [implementation](../commands/doctor.ts), [`tests/doctor_command.spec.ts`](../tests/doctor.spec.ts)
+**Code references:** [implementation](../commands/doctor.ts), [`tests/doctor.spec.ts`](../tests/doctor.spec.ts)

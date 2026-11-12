@@ -11,21 +11,17 @@ As an authorized application approver, I want to approve or reject a pending per
 
 ## Acceptance criteria
 
-- **Inputs and result:** actorId, target user and decision inputs; service returns changed/current record. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- configured event runs after commit.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `AccountAdmission.approve({ actorId, userId })` or `.reject({ actorId, userId })` returns the updated admission record. The actor must be admitted; `approval.authorize.decide(actor, subject, context)` determines permission. Approval requires an eligible pending transition; rejection applies only before a decision.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Approver reviews request"]
-    U1["authorization or transition conflict is refused"]
-    U0 --> U1
-    U2["allowed approve/reject records actor and result"]
-    U1 --> U2
-    U3["configured event runs after commit."]
-    U2 --> U3
+ A["Approver selects pending person and approve or reject"] --> B{"Is actor admitted and authorized to decide?"}
+ B -->|No| C["Return authorization refusal"]
+ B -->|Yes| D{"Does requested transition apply to this record?"}
+ D -->|No| E["Return transition refusal; decision unchanged"]
+ D -->|Yes| F["Record actor and decision; emit event after commit"]
 ```
 
 ## Code flow
@@ -34,15 +30,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["AccountAdmission.approve/reject"]
-    C1["authorization callback and transaction load target"]
-    C0 --> C1
-    C2["transition rules update decision/actor"]
-    C1 --> C2
-    C3["commit"]
-    C2 --> C3
-    C4["onAdmissionEvent."]
-    C3 --> C4
+ A["AccountAdmission.approve/reject({ actorId, userId })"] --> B["Load actor and subject; check admitted actor and authorize.decide"]
+ B --> C["Apply pending-to-approved or pending-to-rejected transition transactionally"]
+ C --> D{"Transition and policy accepted?"}
+ D -->|No| E["Abort write with authorization/decision error"]
+ D -->|Yes| F["Persist decision and actor; commit and emit event"]
 ```
 
 **Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decision.spec.ts`](../tests/admission_decision.spec.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts)

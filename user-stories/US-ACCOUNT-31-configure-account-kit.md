@@ -11,19 +11,18 @@ As an application operator, I want to configure package integration from reviewe
 
 ## Acceptance criteria
 
-- **Inputs and result:** interactive choices or JSON input; flags `--apply`, `--check`, `--production`. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- clean plan applies selected integration files; route mount activation remains a separate reviewed step.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `account-kit:setup` accepts interactive choices or `--input`; no flag previews by default, `--apply` writes a conflict-free plan, `--check` inspects saved choices, and `--production` adds deployment checks. It writes selected integration files only; migration execution, guard policy and active route cutover remain operator-controlled.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Operator previews plan"]
-    U1["conflict report causes correction with no writes"]
-    U0 --> U1
-    U2["clean plan applies selected integration files; route mount activation remains a separate reviewed step."]
-    U1 --> U2
+ A["Operator supplies setup choices"] --> B["Review preview and reported conflicts"]
+ B --> C{"Does plan contain conflicts?"}
+ C -->|Yes| D["Correct choices or owner-file conflicts; apply writes nothing"]
+ C -->|No| E{"Operator chose --apply?"}
+ E -->|No| F["Keep preview/check read-only"]
+ E -->|Yes| G["Write selected files; operator reviews migrations and route activation separately"]
 ```
 
 ## Code flow
@@ -32,15 +31,11 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["Setup.run"]
-    C1["load/validate choices and inspect project"]
-    C0 --> C1
-    C2["build plan/conflicts"]
-    C1 --> C2
-    C3["preview or apply non-conflicting writes"]
-    C2 --> C3
-    C4["report readiness and next steps."]
-    C3 --> C4
+ A["account-kit:setup"] --> B["Load interactive or JSON choices and validate"]
+ B --> C["Inspect project files and build plan"]
+ C --> D{"Conflict-free apply requested?"}
+ D -->|No| E["Print preview/check results without writes"]
+ D -->|Yes| F["Write allowed generated files and report readiness/next steps"]
 ```
 
 **Code references:** [implementation](../commands/setup.ts), [`tests/setup_command.spec.ts`](../tests/setup_command.spec.ts)

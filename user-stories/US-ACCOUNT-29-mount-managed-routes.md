@@ -11,19 +11,16 @@ As an application integrator, I want to register the chosen service-backed endpo
 
 ## Acceptance criteria
 
-- **Inputs and result:** router and explicit options including prefix, selected guard/features and exclusions. The host owns any screen, request parsing and presentation unless the entry explicitly names a managed route or command.
-- mounted endpoints call services and map their responses.
-- Refusal, expiry, stale state or post-commit delivery behavior follows the linked service contract; a committed mutation is not described as rolled back because a follow-up failed.
+- **Inputs and result:** `registerManagedRoutes(router, options)` registers only the explicitly enabled route groups under the chosen prefix and guard; exclusions and callbacks are host configuration. Route conflicts are checked when the router commits. The package supplies JSON handlers, not a frontend.
 
 ## User flow
 
 ```mermaid
 flowchart TD
-    U0["Integrator selects route set"]
-    U1["invalid config or collision is rejected during route registration/commit"]
-    U0 --> U1
-    U2["mounted endpoints call services and map their responses."]
-    U1 --> U2
+ A["Integrator configures prefix, guard and selected feature groups"] --> B{"Are options valid and route names/paths conflict-free?"}
+ B -->|No| C["Fail startup/route commit with conflict detail"]
+ B -->|Yes| D["Register selected guarded JSON endpoints"]
+ D --> E["Client requests endpoint; host policy and service validation run"]
 ```
 
 ## Code flow
@@ -32,13 +29,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
-    C0["registerManagedRoutes"]
-    C1["validate options/features"]
-    C0 --> C1
-    C2["register selected routes with guards, validators and handlers"]
-    C1 --> C2
-    C3["app route commit detects collisions."]
-    C2 --> C3
+ A["registerManagedRoutes(router, options)"] --> B["Validate guard, prefix, enabled features, callbacks and exclusions"]
+ B --> C["Register handlers that validate input and call AccountKit services"]
+ C --> D["Router commit runs collision checks"]
+ D --> E{"Route inventory valid?"}
+ E -->|No| F["Reject registration before serving requests"]
+ E -->|Yes| G["Expose selected routes; no frontend is generated"]
 ```
 
 **Code references:** [implementation](../src/http/managed.ts), [`tests/managed_http_route_registration.spec.ts`](../tests/managed_http_route_registration.spec.ts), [`tests/managed_http_live_account.spec.ts`](../tests/managed_http_live_account.spec.ts)
