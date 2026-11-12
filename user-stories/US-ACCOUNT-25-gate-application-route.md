@@ -20,7 +20,7 @@ flowchart TD
  A["Request reaches host-protected route"] --> B{"Does selected guard credential/revision validate?"}
  B -->|No| C["Deny before route handler"]
  B -->|Yes| D{"Is account active and every enabled admission requirement met?"}
- D -->|No| E["Deny with inactive/admission error; keep pre-admission routes reachable"]
+ D -->|No| E["Deny with inactive/admission error unless active:false; keep pre-admission routes reachable"]
  D -->|Yes| F["Continue to host route"]
 ```
 
@@ -32,9 +32,13 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 flowchart TD
  A["Host admissionMiddleware or AccountAdmission.require"] --> B["Check configured guard and current credential inside admission.current"]
  B --> C["Evaluate enabled domain, invitation and approval requirements"]
- C --> D{"active option and decision admit request?"}
- D -->|No| E["Throw UnverifiedEmailError or AdmissionRequiredError"]
- D -->|Yes| F["Return account/decision and continue host handler"]
+ C --> D{"Was active:false supplied?"}
+ D -->|No| E{"Is account active?"}
+ E -->|No| F["Throw UnverifiedEmailError"]
+ E -->|Yes| G{"Does admission decision admit account?"}
+ D -->|Yes| G
+ G -->|No| H["Throw AdmissionRequiredError"]
+ G -->|Yes| I["Return account/decision and continue host handler"]
 ```
 
 **Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts)

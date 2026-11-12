@@ -11,7 +11,7 @@ As an authorized application approver, I want to approve or reject a pending per
 
 ## Acceptance criteria
 
-- **Inputs and result:** `AccountAdmission.approve({ actorId, userId })` or `.reject({ actorId, userId })` returns the updated admission record. The actor must be admitted; `approval.authorize.decide(actor, subject, context)` determines permission. Approval requires an eligible pending transition; rejection applies only before a decision.
+- **Inputs and result:** `AccountAdmission.approve({ actorId, userId })` or `.reject({ actorId, userId })` returns the updated admission record. The actor must be a different, admitted account; `approval.authorize.decide(actor, subject, context)` must return `true`. Approval can transition a record with no decision or a prior `rejected`/`revoked` decision to `approved`; rejection applies only when there is no decision yet. A disallowed transition leaves the record unchanged.
 
 ## User flow
 
@@ -30,9 +30,9 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.approve/reject({ actorId, userId })"] --> B["Load actor and subject; check admitted actor and authorize.decide"]
- B --> C["Apply pending-to-approved or pending-to-rejected transition transactionally"]
- C --> D{"Transition and policy accepted?"}
+ A["AccountAdmission.approve/reject({ actorId, userId })"] --> B["Load distinct actor and subject; check admitted actor and authorize.decide"]
+ B --> C["Approve from no decision/rejected/revoked, or reject from no decision"]
+ C --> D{"Is requested transition allowed?"}
  D -->|No| E["Abort write with authorization/decision error"]
  D -->|Yes| F["Persist decision and actor; commit and emit event"]
 ```

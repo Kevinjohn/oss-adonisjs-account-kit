@@ -6,7 +6,7 @@ As an application integrator, I want to connect Account Kit to a supported user 
 **Access:** Integrator supplies user adapter; transaction, schema and ID compatibility must match selected database/driver.
 **Entry:** Configure the user adapter in Account Kit; supported adapters include Lucid, Drizzle, Prisma and SQL.
 **Documentation:** [adapters.md](../docs/guide/adapters.md)
-**Source:** [`adapters/index.ts`](../adapters/lucid.ts)
+**Source:** [`package.json` adapter exports](../package.json), [Lucid adapter](../adapters/lucid.ts), [SQL adapter](../adapters/sql.ts), [Drizzle adapter](../adapters/drizzle.ts), [Prisma adapter](../adapters/prisma.ts)
 **Coverage:** [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)
 
 ## Acceptance criteria
@@ -17,7 +17,7 @@ As an application integrator, I want to connect Account Kit to a supported user 
 
 ```mermaid
 flowchart TD
- A["Integrator selects an adapter matching the the app user model and database"] --> B{"Does adapter meet user/transaction contract?"}
+ A["Integrator selects an adapter matching the app user model and database"] --> B{"Does adapter meet user/transaction contract?"}
  B -->|No| C["Fix mapping or schema integration before enabling account flows"]
  B -->|Yes| D["Account services use configured adapter for user operations"]
 ```

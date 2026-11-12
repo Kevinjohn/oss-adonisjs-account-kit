@@ -17,10 +17,11 @@ As an application operator, I want to connect account events to mail or host-own
 
 ```mermaid
 flowchart TD
- A["Operator configures mail, log or host notification callbacks"] --> B["Account operation commits or reaches its configured notice point"]
- B --> C{"Does configured notification callback deliver successfully?"}
- C -->|No| D["Surface follow-up failure while retaining committed mutation"]
- C -->|Yes| E["Recipient receives configured message or host log records provision"]
+ A["Operator configures mail, log or host notification callbacks"] --> B["Account operation reaches a configured pre- or post-commit notice point"]
+ B --> C{"Does the callback resolve and, for mail, does sendLater accept the message?"}
+ C -->|No, pre-commit| D["Propagate failure under operation transaction contract"]
+ C -->|No, post-commit| E["Surface follow-up failure; committed mutation remains"]
+ C -->|Yes| F["Return callback/queue acceptance; recipient delivery is not confirmed"]
 ```
 
 ## Code flow
@@ -32,7 +33,7 @@ flowchart TD
  A["Account service invokes configured notification provision"] --> B["createMailNotifications or createLogNotifications formats/routes message"]
  B --> C{"Callback/transport succeeds?"}
  C -->|No| D["Propagate delivery failure at documented transaction boundary"]
- C -->|Yes| E["Resolve notification; committed service operation remains committed"]
+ C -->|Yes| E["Resolve callback; mail queue acceptance does not confirm recipient delivery"]
 ```
 
 **Code references:** [implementation](../src/notifications.ts), [`tests/notifications.spec.ts`](../tests/notifications.spec.ts)
