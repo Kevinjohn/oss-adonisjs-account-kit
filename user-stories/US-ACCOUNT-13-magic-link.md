@@ -3,7 +3,7 @@
 As an existing account holder, I want to request and complete an opt-in passwordless sign-in link so that I can sign in without entering a password.
 
 **Status:** Current when `magicLinkLogin` is enabled
-**Access:** Request uses generic acknowledgement and rate limits; completion must be bound to the requesting browser/app challenge.
+**Access:** Links are issued only to existing active accounts allowed by sign-in policy. Request uses generic acknowledgement and rate limits; completion must be bound to the requesting browser/app challenge.
 **Entry:** Host calls `magicLink.request` and `magicLink.complete`, or explicitly enables managed routes.
 **Documentation:** [magic-link.md](../docs/guide/magic-link.md)
 **Source:** [`src/magic_link.ts`](../src/magic_link.ts)

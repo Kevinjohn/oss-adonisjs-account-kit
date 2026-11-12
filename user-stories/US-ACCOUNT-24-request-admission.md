@@ -33,10 +33,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.request(current)"] --> B["Transaction validates current credential/revision and loads account"]
- B --> C{"Approval requirement enabled?"}
- C -->|No| D["Throw AdmissionRequiredError before opening the transaction"]
- C -->|Yes| E{"Is the account active?"}
+ A["AccountAdmission.request(current)"] --> C{"requireApproval: approval requirement enabled?"}
+ C -->|No| D["Throw CapabilityDisabledError before opening the transaction"]
+ C -->|Yes| B["Transaction validates current credential/revision and loads account"]
+ B --> E{"Is the account active?"}
  E -->|No| F["Throw UnverifiedEmailError before recording a request"]
  E -->|Yes| G["Transaction upserts requestedAt idempotently"]
  G --> H{"Is this the first request with no decision?"}
