@@ -21,12 +21,7 @@
     "model": "#models/user",
     "table": "users",
     "idType": "integer",
-    "adapter": "lucid",
-    "connection": "default",
-    "primaryKey": "id",
-    "emailColumn": "email",
-    "passwordColumn": "password",
-    "verifiedColumn": "email_verified_at"
+    "adapter": "lucid"
   },
   "authentication": {
     "strategy": "session",

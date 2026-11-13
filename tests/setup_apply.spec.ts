@@ -16,6 +16,7 @@ import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
+import { disabledManagedRoutesSource } from '../src/setup/generated_routes.js'
 import { cleanupRoots, fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import type { SetupPlan } from '../src/setup/types.js'
 import { stock } from './helpers/native_starter_fixture.js'
@@ -505,6 +506,54 @@ test.group('setup apply', (group) => {
       conflicted.changes.find(({ path }) => path === 'app/services/account_kit_guard.ts')?.action,
       'conflict'
     )
+  })
+
+  test('a disabled-routes marker that lists the fixed user fields still re-enables', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await applySetup(
+      root,
+      await planSetup(choices, await inspectSetup(root), { apply: true, timestamp: 1234 })
+    )
+    const authentication = choices.authentication
+    choices.managed = []
+    choices.authentication = null
+    const zero = { inspectedAccounts: 1, affectedAccounts: 0, checkedAt: new Date().toISOString() }
+    await applySetup(
+      root,
+      await planSetup(choices, await inspectSetup(root), {
+        apply: true,
+        timestamp: 1234,
+        retirementImpact: zero,
+        retirementMaintenanceWindow: true,
+      })
+    )
+    // Earlier versions recorded five fixed user fields in the marker's saved selection.
+    const marker = join(root, 'start/account_kit_routes.ts')
+    const source = await readFile(marker, 'utf8')
+    const encoded = source.match(/selection: (\S+)\n/)![1]
+    const previous = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
+    previous.user = {
+      ...previous.user,
+      connection: 'default',
+      primaryKey: 'id',
+      emailColumn: 'email',
+      passwordColumn: 'password',
+      verifiedColumn: 'email_verified_at',
+    }
+    await writeFile(marker, disabledManagedRoutesSource(previous))
+    choices.authentication = authentication
+    choices.managed = ['passwordReset']
+    const reenabling = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    assert.equal(
+      reenabling.changes.find(({ path }) => path === 'start/account_kit_routes.ts')?.action,
+      'update'
+    )
+    assert.isFalse(reenabling.diagnostics.some(({ severity }) => severity === 'error'))
   })
 
   test('reconfiguration replay keeps old choices until dependent files finish', async ({

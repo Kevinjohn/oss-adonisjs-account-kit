@@ -48,9 +48,10 @@ export function retainedGeneratedChoices(state: SetupInspection): SetupChoices |
   )?.[1]
   if (!encoded) return null
   try {
-    const previous = parseSetupChoices(
-      JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
-    )
+    // Compare the decoded selection itself: a marker from an earlier version may list fields
+    // that parsing now drops, and re-encoding the parsed copy would no longer match it.
+    const previous = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SetupChoices
+    parseSetupChoices(previous)
     return marker === disabledManagedRoutesSource(previous) ? previous : null
   } catch {
     return null

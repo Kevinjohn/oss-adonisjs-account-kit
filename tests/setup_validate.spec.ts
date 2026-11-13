@@ -342,6 +342,45 @@ test.group('setup choice validation', (group) => {
     })
   })
 
+  test('saved choices with the fixed user fields at their supported values still parse', async ({
+    assert,
+  }) => {
+    await withFixture(async (choices, state) => {
+      const saved = {
+        ...choices,
+        user: {
+          ...choices.user,
+          connection: 'default',
+          primaryKey: 'id',
+          emailColumn: 'email',
+          passwordColumn: 'password',
+          verifiedColumn: 'email_verified_at',
+        },
+      }
+      assert.deepEqual(parseSetupChoices(saved), choices)
+      const plan = await planSetup(saved, state)
+      assert.notIncludeMembers(
+        plan.diagnostics.map(({ field }) => field),
+        ['user', 'user.connection']
+      )
+      const written = plan.changes.find(({ path }) => path === 'config/account_kit_setup.json')
+      assert.deepEqual(JSON.parse(written!.content).user, choices.user)
+    })
+  })
+
+  test('a saved fixed user field with another value is still reported', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      const plan = await planSetup(
+        { ...choices, user: { ...choices.user, emailColumn: 'mail' } as typeof choices.user },
+        state
+      )
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'user'
+      )
+    })
+  })
+
   test('runtime feature dependency does not depend on verification policy', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       choices.features = ['authentication', 'emailPasswordManagement']
