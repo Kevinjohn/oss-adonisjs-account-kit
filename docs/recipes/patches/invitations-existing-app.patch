@@ -110,7 +110,7 @@ index 0000000..5ca1830
 +  sentInvitations.push(url)
 +}
 diff --git a/config/account_kit.ts b/config/account_kit.ts
-index 11d9e2c..533563c 100644
+index 11d9e2c..7eeb576 100644
 --- a/config/account_kit.ts
 +++ b/config/account_kit.ts
 @@ -1,5 +1,8 @@
@@ -174,7 +174,7 @@ index 11d9e2c..533563c 100644
  
    /**
     * Rate-limit keys are HMACs of this secret, so the limiter store never holds an email or IP.
-@@ -43,9 +68,7 @@ export default defineConfig({
+@@ -43,22 +68,21 @@ export default defineConfig({
     * Who may send, manage and list invitations. Everything is denied until you decide.
     */
    authorize: {
@@ -185,7 +185,16 @@ index 11d9e2c..533563c 100644
    },
  
    /**
-@@ -59,6 +82,7 @@ export default defineConfig({
+-   * Links sent in account emails: each page path below FRONTEND_URL, or APP_URL when it is unset.
+-   * Point the paths at your own pages. Production origins must use HTTPS.
++   * Links sent in account emails. This application serves the pages, so links use APP_URL.
++   * Production origins must use HTTPS.
+    */
+   urls: createActionUrls({
+     backendOrigin: env.get('APP_URL'),
+-    appFrontendUrl: env.get('FRONTEND_URL') ?? env.get('APP_URL'),
++    appFrontendUrl: env.get('APP_URL'),
+     environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',
      destinations: {
        emailVerification: 'account/verification',
        passwordReset: 'account/recovery',
