@@ -5,6 +5,7 @@ import {
   clearSocialTransactions,
 } from './credential_cleanup.js'
 import { DateTime } from 'luxon'
+import { isActiveAccount } from './account_projection.js'
 import { consumeUserTokenHash } from './db.js'
 import { matchInvitation } from './invitation_match.js'
 import type { AccountUser, ResolvedConfig, UserId, Trx } from './types.js'
@@ -23,7 +24,7 @@ export function activationMatches(
 ): boolean {
   return (
     proof.purpose === 'activation' &&
-    user.unverifiedEmail === user.email &&
+    !isActiveAccount(user) &&
     user.unverifiedEmail === proof.email &&
     user.email === proof.current_email
   )

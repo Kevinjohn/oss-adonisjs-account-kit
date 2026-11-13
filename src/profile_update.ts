@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
+import { isActiveAccount } from './account_projection.js'
 import { isUserEmailUniqueViolation, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
@@ -87,7 +88,7 @@ export async function updateProfile(
           throw new EmailAlreadyRegisteredError()
 
         const now = DateTime.utc()
-        const inactive = current.unverifiedEmail === current.email
+        const inactive = !isActiveAccount(current)
         if (current.unverifiedEmail === newEmail) {
           const previous = await trx
             .from('email_verification_tokens')

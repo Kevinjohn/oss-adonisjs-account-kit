@@ -1,13 +1,9 @@
 // Evaluates the enabled admission requirements for one user and their admission row.
 import type { AccountUser } from '../types.js'
+import { hasConfirmedAddress } from '../account_projection.js'
 import { domainAllowed, domainOf } from './domain.js'
 import type { AdmissionRow } from './rows.js'
 import type { AdmissionDecision, ResolvedAdmissionConfig } from './types.js'
-
-/** The account's address is confirmed: verified, and not only waiting for confirmation. */
-function hasConfirmedAddress(user: AccountUser): boolean {
-  return user.emailVerifiedAt !== null && user.unverifiedEmail !== user.email
-}
 
 /** Every enabled requirement against the stored state. Nothing is cached. */
 export function evaluateAdmission(

@@ -2,6 +2,7 @@ import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { credentialsChanged } from './authentication.js'
+import { isActiveAccount } from './account_projection.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import { consumeUserToken, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
@@ -67,7 +68,7 @@ export async function completePasswordReset(
       // A reset proves control of the address, so it confirms a never-confirmed account and
       // consumes an invitation waiting for it, like activation.
       let invitationIds: number[] = []
-      if (current.unverifiedEmail === current.email) {
+      if (!isActiveAccount(current)) {
         const now = DateTime.utc()
         await deps.config.users.markEmailVerified(row.tokenable_id, now, trx)
         invitationIds = await matchInvitation(deps.config, trx, current, now)
