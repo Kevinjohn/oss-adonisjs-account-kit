@@ -1,5 +1,6 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
+import { isActiveAccount } from '../src/account_projection.js'
 import type { OperatorResetLinkResult } from '../src/types.js'
 import { reportOperatorOutcome, writeFailure } from './operator_output.js'
 
@@ -26,8 +27,7 @@ export default class ResetLink extends BaseCommand {
         deliver: this.print ? 'print' : 'send',
       })
       this.result = result
-      const unverified =
-        result.user.unverifiedEmail !== null && result.user.unverifiedEmail === result.user.email
+      const unverified = !isActiveAccount(result.user)
       this.failure = reportOperatorOutcome(this, {
         result,
         printed: this.print,

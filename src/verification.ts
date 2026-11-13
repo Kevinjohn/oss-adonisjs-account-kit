@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
 import { credentialsChanged } from './authentication.js'
+import { isActiveAccount } from './account_projection.js'
 import { DateTime } from 'luxon'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
@@ -44,7 +45,7 @@ export async function sendVerification(
 ): Promise<'sent' | 'already_verified'> {
   const user = await deps.config.users.findById(input.userId)
   if (!user) throw new InvalidInputError('Unknown user')
-  if (user.unverifiedEmail !== user.email) return 'already_verified'
+  if (isActiveAccount(user)) return 'already_verified'
   await throttlerOf(deps).consume('verification:user', String(user.id), deps.config.throttle)
   const recent = await deps.db
     .from('email_verification_tokens')
@@ -64,7 +65,7 @@ export async function sendVerification(
     transaction(deps.db, async (trx) => {
       await lockUser(trx, deps.config, user.id)
       const current = await deps.config.users.findById(user.id, trx)
-      if (!current || current.unverifiedEmail !== current.email) return null
+      if (!current || isActiveAccount(current)) return null
       const now = DateTime.utc()
       const previous = await trx
         .from('email_verification_tokens')

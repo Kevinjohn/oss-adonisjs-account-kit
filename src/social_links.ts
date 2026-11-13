@@ -1,6 +1,7 @@
 // The caller's linked providers: listing and unlinking.
 import { randomUUID } from 'node:crypto'
 import { credentialsChanged } from './authentication.js'
+import { hasConfirmedAddress } from './account_projection.js'
 import { transaction } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { consumeSocialSensitiveProof } from './social_proofs.js'
@@ -23,10 +24,6 @@ export function identity(row: Record<string, unknown>): SocialIdentity {
     email: row.email as string | null,
     emailVerified: row.email_verified === true || row.email_verified === 1,
   }
-}
-
-export function confirmedRecipient(user: AccountUser): boolean {
-  return user.emailVerifiedAt !== null && user.unverifiedEmail !== user.email
 }
 
 /** The caller's confirmed linked providers. */
@@ -108,7 +105,7 @@ export async function unlinkSocialIdentity(
         },
       })
     }
-    if (notice && confirmedRecipient(notice.user)) {
+    if (notice && hasConfirmedAddress(notice.user)) {
       const { user, relation } = notice
       effects.push({
         kind: 'delivery',

@@ -7,7 +7,7 @@ import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { invitationAccepted } from './invitation_match.js'
 import { createHandoff } from './social_handoff.js'
-import { confirmedRecipient } from './social_links.js'
+import { hasConfirmedAddress } from './account_projection.js'
 import { consumeSocialSensitiveProofHash, issueProof } from './social_proofs.js'
 import {
   InvalidInputError,
@@ -186,11 +186,7 @@ export async function socialCallback(
               // The account this identity created was never activated: send activation again
               // instead of refusing this provider subject for good.
               const owner = await deps.config.users.findById(stored.user_id, trx)
-              if (
-                owner &&
-                owner.unverifiedEmail !== null &&
-                owner.unverifiedEmail === owner.email
-              ) {
+              if (owner && !isActiveAccount(owner)) {
                 unverified = owner.id
                 return { status: 'new', emailVerificationRequired: true }
               }
@@ -359,7 +355,7 @@ export async function socialCallback(
       if (unverified && deps.config.enabled.includes('emailVerification')) {
         await sendVerification(deps, { userId: unverified })
       }
-      if (linkedNotice && confirmedRecipient(linkedNotice.user)) {
+      if (linkedNotice && hasConfirmedAddress(linkedNotice.user)) {
         const { user, relation } = linkedNotice
         await postCommit('Social identity linked but notice failed', [
           {

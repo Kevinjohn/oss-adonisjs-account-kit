@@ -90,7 +90,7 @@ export function socialIdentityService(deps: Dependencies) {
         if (!token) throw new SocialTransactionError()
         await lockUser(trx, deps.config, token.tokenable_id)
         const user = await deps.config.users.findById(token.tokenable_id, trx)
-        if (!user || user.unverifiedEmail !== user.email || user.email !== token.email)
+        if (!user || isActiveAccount(user) || user.email !== token.email)
           throw new SocialTransactionError()
         const pending = await trx
           .from('social_identities')
