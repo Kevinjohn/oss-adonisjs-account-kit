@@ -1,9 +1,15 @@
 import { readdir } from 'node:fs/promises'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { migrationSchema, type UserIdType } from '../configure.js'
+import {
+  accountKitMigrationSuffix,
+  migrationSchema,
+  type UserIdType,
+} from '../src/setup/migration_definitions.js'
 import { stubsRoot } from '../stubs/main.js'
 
-export const admissionMigrationSuffix = '_account_kit_admission_create_account_admissions.ts'
+export const admissionMigrationSuffix = accountKitMigrationSuffix(
+  'admission_create_account_admissions'
+)
 
 /**
  * Adds the optional admission module: the `account_admissions` migration and `config/admission.ts`

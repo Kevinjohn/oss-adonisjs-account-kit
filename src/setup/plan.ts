@@ -1,4 +1,4 @@
-import { migrationNames } from '../../configure.js'
+import { accountKitMigrationSuffix, migrationNames } from './migration_definitions.js'
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { parseSetupSource } from './ts_source.js'
@@ -184,7 +184,7 @@ export async function planSetup(
   }
   const migrationTimestamp = options.timestamp ?? Date.now()
   for (const [index, name] of migrationNames.entries()) {
-    const suffix = `_account_kit_${name}.ts`
+    const suffix = accountKitMigrationSuffix(name)
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
     const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
     const content = await generated(['user.', 'database.'], () => migrationContent(name, choices))

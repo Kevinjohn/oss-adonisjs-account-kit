@@ -1,24 +1,18 @@
-import { RuntimeException } from '@adonisjs/core/exceptions'
 import { readdir } from 'node:fs/promises'
 import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import type Configure from '@adonisjs/core/commands/configure'
-import { isSqlIdentifier } from './src/sql_identifier.js'
+import {
+  accountKitMigrationSuffix,
+  migrationNames,
+  migrationSchema,
+} from './src/setup/migration_definitions.js'
 import { stubsRoot } from './stubs/main.js'
 
-export const migrationNames = [
-  'add_account_columns_to_users',
-  'create_password_reset_tokens',
-  'create_email_verification_tokens',
-  'create_account_invitations',
-  'create_account_transaction_lock',
-  'create_social_identities',
-  'create_social_transactions',
-  'create_social_sensitive_proofs',
-  'create_social_handoff_codes',
-  'create_login_link_tokens',
-  'create_account_sessions',
-  'add_scope_to_account_invitations',
-]
+export {
+  migrationNames,
+  migrationSchema,
+  type UserIdType,
+} from './src/setup/migration_definitions.js'
 
 function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException).code === 'ENOENT'
@@ -182,30 +176,6 @@ function hasRegisteredProvider(project: AssemblerProject, rcPath: string): boole
   return providerFound
 }
 
-const userIdTypes = ['integer', 'string', 'uuid'] as const
-export type UserIdType = (typeof userIdTypes)[number]
-
-/** Metadata for newly generated migrations; existing application files are never rewritten. */
-export function migrationSchema(usersTable = 'users', userIdType: UserIdType = 'integer') {
-  if (!isSqlIdentifier(usersTable))
-    throw new RuntimeException('account_kit: users-table must be a plain SQL identifier')
-  if (!userIdTypes.includes(userIdType))
-    throw new RuntimeException('account_kit: user-id-type must be integer, string or uuid')
-  const column = (name: string) =>
-    userIdType === 'integer'
-      ? `table.integer('${name}').unsigned()`
-      : userIdType === 'uuid'
-        ? `table.uuid('${name}')`
-        : `table.string('${name}', 254)`
-  return {
-    usersTable: JSON.stringify(usersTable),
-    userIdColumn: column('user_id'),
-    tokenableIdColumn: column('tokenable_id'),
-    inviterIdColumn: column('inviter_id'),
-    actorIdColumn: column('approval_actor_id'),
-  }
-}
-
 /**
  * Runs on `node ace add @kevinjohn/adonisjs-account-kit` or `node ace configure @kevinjohn/adonisjs-account-kit`: writes
  * `config/account_kit.ts`, generates the migrations and registers the provider and commands. Never
@@ -273,7 +243,7 @@ export async function configure(command: Configure) {
 
   const timestamp = Date.now()
   for (const [index, name] of migrationNames.entries()) {
-    const suffix = `_account_kit_${name}.ts`
+    const suffix = accountKitMigrationSuffix(name)
     if (migrationFiles.some((filename) => filename.endsWith(suffix))) {
       command.logger.info(`Skipped database/migrations/*${suffix}`)
       continue

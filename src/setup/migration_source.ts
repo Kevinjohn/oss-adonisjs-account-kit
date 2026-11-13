@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { migrationSchema } from '../../configure.js'
+import { migrationSchema } from './migration_definitions.js'
 import { stubsRoot } from '../../stubs/main.js'
 import type { SetupChoices } from './types.js'
 
