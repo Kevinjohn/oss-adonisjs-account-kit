@@ -531,7 +531,8 @@ test.group('setup apply', (group) => {
     )
     // Earlier versions recorded five fixed user fields in the marker's saved selection.
     const marker = join(root, 'start/account_kit_routes.ts')
-    const encoded = (await readFile(marker, 'utf8')).match(/selection: (\S+)\n/)![1]
+    const source = await readFile(marker, 'utf8')
+    const encoded = source.match(/selection: (\S+)\n/)![1]
     const previous = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
     previous.user = {
       ...previous.user,
