@@ -82,10 +82,11 @@ Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 
 | Login, per client                  | client, failures only                    | 10 per minute                        | `authentication.clientLimit`   |
 | Login, per identity                | client and email, failures only          | 5 per minute, then a 20-minute block | `authentication.identityLimit` |
 
-Request limits are checked before the user lookup, so a throttled request reveals nothing. The
-user-keyed rows share one budget per account: every operation that checks the signed-in account's
-password spends it. Pinned
+Request limits are checked before the user lookup, so a throttled request reveals nothing. Pinned
 by "the sixth client request is throttled before user lookup".
+
+Password, email and profile change, social password proof, and account export and deletion share
+one budget per account; verification resend has its own.
 
 **Limiter keys hold no personal data.** Each key is an HMAC-SHA256 digest under a key derived from
 `limiterSecret` with HKDF ([`throttle.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/throttle.ts)). The limiter store never holds an email address or
