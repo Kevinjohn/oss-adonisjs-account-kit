@@ -56,7 +56,7 @@ test.group('passwordReset.inspect', (group) => {
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
 
-  test('unknown and malformed tokens return false before malformed values reach hashing or the database', async ({
+  test('unknown and malformed tokens return false and leave the stored token in place', async ({
     assert,
   }) => {
     const { account } = await issue()
