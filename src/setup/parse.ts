@@ -35,19 +35,29 @@ function strings(value: unknown, path: string): void {
     throw new Error(`${path}: expected a string array`)
 }
 
-function parseUser(input: unknown): void {
-  const user = record(input, 'user', [
-    'model',
-    'table',
-    'idType',
-    'adapter',
-    'connection',
-    'primaryKey',
-    'emailColumn',
-    'passwordColumn',
-    'verifiedColumn',
-  ])
+/** Fields earlier setup files recorded with their only supported value. */
+export const fixedUserFields = {
+  connection: 'default',
+  primaryKey: 'id',
+  emailColumn: 'email',
+  passwordColumn: 'password',
+  verifiedColumn: 'email_verified_at',
+} as const
+
+/** Drops each fixed field holding its supported value; any other value stays for validation. */
+function parseUser(input: unknown): Record<string, unknown> {
+  const user = record(
+    input,
+    'user',
+    ['model', 'table', 'idType', 'adapter'],
+    Object.keys(fixedUserFields)
+  )
   for (const [key, value] of Object.entries(user)) string(value, `user.${key}`)
+  return Object.fromEntries(
+    Object.entries(user).filter(
+      ([key, value]) => fixedUserFields[key as keyof typeof fixedUserFields] !== value
+    )
+  )
 }
 
 function parseAuthentication(input: unknown): void {
@@ -234,10 +244,10 @@ export function parseSetupChoices(input: unknown): SetupChoices {
     throw new Error('mode: choose services or managed')
   if (root.version !== 1) throw new Error('version: expected 1')
   string(root.routePrefix, 'routePrefix')
-  parseUser(root.user)
+  const user = parseUser(root.user)
   parseAuthentication(root.authentication)
   parseMail(root.mail)
   parsePolicy(root.policy)
   parseSocial(root.social)
-  return input as SetupChoices
+  return { ...root, user } as unknown as SetupChoices
 }

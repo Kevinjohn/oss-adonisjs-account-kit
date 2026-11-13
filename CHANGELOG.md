@@ -14,6 +14,10 @@
   comparison as magic links, and the PKCE challenge and verifier rules live in one module. The
   managed `auth.oauth.token` route rejects a verifier longer than 128 characters with a field error,
   as the service already did; its OpenAPI schema states the bound.
+- Saved setup choices no longer record `user.connection`, `user.primaryKey`, `user.emailColumn`,
+  `user.passwordColumn` or `user.verifiedColumn`, which had one supported value each. Setup still
+  reads a saved file that lists them, drops each one that holds its supported value, and reports any
+  other value as before.
 
 ### Fixed
 

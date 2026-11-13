@@ -259,7 +259,7 @@ export async function planUserModel(
         ts.isPropertyDeclaration(member) &&
         member.initializer &&
         ts.isStringLiteral(member.initializer) &&
-        member.initializer.text === choices.user.primaryKey
+        member.initializer.text === 'id'
       const declaredKeys = [...staticMember('primaryKey'), ...inheritedMember('primaryKey')]
       if (
         declaredKeys.some((member) => !primaryKeyMember(member)) ||
@@ -283,7 +283,7 @@ export async function planUserModel(
           ...modelColumns.columns,
         ])
         const primary = [...effective.entries()].filter(([, value]) => value.primary)
-        const id = effective.get(choices.user.primaryKey)
+        const id = effective.get('id')
         const expectedType =
           choices.user.idType === 'integer'
             ? ts.SyntaxKind.NumberKeyword
@@ -291,9 +291,9 @@ export async function planUserModel(
         if (
           !id ||
           !id.primary ||
-          id.physical !== choices.user.primaryKey ||
+          id.physical !== 'id' ||
           primary.length !== 1 ||
-          primary[0][0] !== choices.user.primaryKey ||
+          primary[0][0] !== 'id' ||
           id.declaration.type?.kind !== expectedType
         )
           diagnostic(

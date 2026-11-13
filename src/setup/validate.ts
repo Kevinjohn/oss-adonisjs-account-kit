@@ -52,7 +52,9 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
   if (choices.mode === 'services' && choices.managed.length)
     diagnostic(diagnostics, 'managed', 'Services mode cannot mount managed endpoints')
   validateRoutes(diagnostics, choices, state)
-  if (choices.user.connection !== 'default')
+  // Parsing drops a fixed user field that holds its supported value, so any one left is unsupported.
+  const fixed = choices.user as Record<string, unknown>
+  if ('connection' in fixed)
     diagnostic(diagnostics, 'user.connection', 'Only the default Lucid connection is supported')
   if (state.database === 'unsupported')
     diagnostic(
@@ -72,12 +74,7 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     diagnostic(diagnostics, 'user.adapter', 'Choose lucid or custom')
   if (!userIdTypes.includes(choices.user.idType))
     diagnostic(diagnostics, 'user.idType', 'Choose integer, string or uuid')
-  if (
-    choices.user.primaryKey !== 'id' ||
-    choices.user.emailColumn !== 'email' ||
-    choices.user.passwordColumn !== 'password' ||
-    choices.user.verifiedColumn !== 'email_verified_at'
-  )
+  if (['primaryKey', 'emailColumn', 'passwordColumn', 'verifiedColumn'].some((key) => key in fixed))
     diagnostic(
       diagnostics,
       'user',

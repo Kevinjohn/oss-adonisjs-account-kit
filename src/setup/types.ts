@@ -40,11 +40,6 @@ export interface SetupChoices {
     table: string
     idType: (typeof userIdTypes)[number]
     adapter: (typeof userAdapters)[number]
-    connection: 'default'
-    primaryKey: 'id'
-    emailColumn: 'email'
-    passwordColumn: 'password'
-    verifiedColumn: 'email_verified_at'
   }
   authentication: {
     strategy: GuardStrategy

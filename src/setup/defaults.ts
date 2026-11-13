@@ -26,11 +26,6 @@ export function defaultSetupChoices(): SetupChoices {
       table: 'users',
       idType: 'integer',
       adapter: 'lucid',
-      connection: 'default',
-      primaryKey: 'id',
-      emailColumn: 'email',
-      passwordColumn: 'password',
-      verifiedColumn: 'email_verified_at',
     },
     authentication: {
       strategy: 'session',
