@@ -1,7 +1,7 @@
 // Social sensitive proofs: issuing and consuming short-lived reauthentication proofs.
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
-import { revision } from './authentication.js'
+import { revision } from './credential_revision.js'
 import { SocialProofError } from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
 import { throttlerOf } from './throttle.js'

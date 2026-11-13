@@ -1,6 +1,7 @@
 import { completeRegistration } from './social_registration.js'
 import { lockUser, transaction } from './db.js'
-import { isActiveAccount, revision } from './authentication.js'
+import { isActiveAccount } from './account_projection.js'
+import { revision } from './credential_revision.js'
 import { redeemSocialHandoff } from './social_handoff.js'
 import { isClientChallenge } from './client_challenge.js'
 import { consumeSocialSensitiveProof, proveSocialPassword } from './social_proofs.js'

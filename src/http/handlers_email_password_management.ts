@@ -1,7 +1,7 @@
 /** Managed handlers for the email and password management capability: email change, profile, password. */
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { safeAccount } from '../authentication.js'
+import { safeAccount } from '../account_projection.js'
 import { passwordChangeRevision } from '../password_change_revision.js'
 import { correctionRevision } from '../profile_correction_revision.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'

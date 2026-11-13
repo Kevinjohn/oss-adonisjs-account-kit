@@ -1,10 +1,8 @@
 // Lists and revokes the places a user is signed in, for session and access-token guards.
 import { randomUUID } from 'node:crypto'
-import {
-  credentialsChanged,
-  currentInTransaction,
-  requireAuthentication,
-} from './authentication.js'
+import { currentInTransaction } from './authentication.js'
+import { credentialsChanged } from './credential_revision.js'
+import { requireAuthentication } from './authentication_config.js'
 import { deleteReturning } from './consume_rows.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'

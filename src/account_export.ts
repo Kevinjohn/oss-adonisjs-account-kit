@@ -1,7 +1,7 @@
 // The account export: one versioned JSON document of the data Account Kit holds for a user.
 import { DateTime } from 'luxon'
 import { confirmActor } from './actor_confirmation.js'
-import { revision } from './authentication.js'
+import { revision } from './credential_revision.js'
 import { transaction } from './db.js'
 import { settleCommitted } from './effects.js'
 import type { PostCommitError } from './errors.js'

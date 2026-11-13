@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
-import { credentialsChanged } from './authentication.js'
+import { credentialsChanged } from './credential_revision.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { EmailAlreadyRegisteredError, InvalidTokenError, type PostCommitError } from './errors.js'
