@@ -4,10 +4,10 @@ import {
   directProperty,
   importedName,
   parseSetupSource,
-  lazyImportPath,
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
+import { inspectProviders } from './providers_inspection.js'
 import { diagnostic } from './shared.js'
 
 export async function planArrayImports(
@@ -38,13 +38,12 @@ export async function planArrayImports(
     )
       object = target.expression.arguments[0]
   }
-  const providers = source && object && directProperty(source, object, 'providers')
-  if (
-    !previous ||
-    !source ||
-    !providers ||
-    !source.ts.isArrayLiteralExpression(providers.initializer)
-  ) {
+  // Setup reads only plain objects, so a spread or a duplicate key leaves the property unread.
+  const read = (entry: TypeScript.ObjectLiteralExpression, name: string) =>
+    directProperty(source!, entry, name)
+  const providers =
+    source && object && inspectProviders(source, object, { config: read, entry: read })
+  if (!previous || !source || !providers || providers.status !== 'array') {
     diagnostic(
       diagnostics,
       path,
@@ -52,14 +51,7 @@ export async function planArrayImports(
     )
     return
   }
-  const array = providers.initializer
-  // Providers may also be written `{ file: () => import('x'), environment: [...] }`.
-  const providerPath = (entry: (typeof array.elements)[number]) => {
-    const file =
-      source!.ts.isObjectLiteralExpression(entry) && directProperty(source!, entry, 'file')
-    return lazyImportPath(source!, file ? file.initializer : entry)
-  }
-  const present = new Set(array.elements.map(providerPath))
+  const present = new Set(providers.entries.map((entry) => entry.path))
   const missing = imports.filter((name) => !present.has(name))
   if (!missing.length) {
     changes.push({
@@ -70,7 +62,7 @@ export async function planArrayImports(
     })
     return
   }
-  const at = array.getStart(source.file) + 1
+  const at = providers.array.getStart(source.file) + 1
   changes.push({
     path,
     action: 'update',
