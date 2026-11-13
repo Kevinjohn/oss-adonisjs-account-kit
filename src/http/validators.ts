@@ -1,7 +1,8 @@
 import vine from '@vinejs/vine'
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
 
 const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
-const password = () => vine.string().minLength(8).maxLength(256)
+const password = () => vine.string().minLength(MIN_PASSWORD_LENGTH).maxLength(MAX_PASSWORD_LENGTH)
 const registrationData = () => vine.record(vine.any()).optional()
 const proofFields = () => ({
   currentPassword: vine.string().minLength(1).optional(),

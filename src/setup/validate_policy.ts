@@ -5,6 +5,7 @@ import {
   type SetupInspection,
 } from './types.js'
 import { diagnostic } from './shared.js'
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
 
 /** Password, registration, callback and unverified-account policy. */
 export function validatePolicy(
@@ -15,10 +16,12 @@ export function validatePolicy(
   const p = choices.policy.password
   if (
     !Number.isInteger(p.minLength) ||
-    p.minLength < 8 ||
-    p.minLength > 256 ||
+    p.minLength < MIN_PASSWORD_LENGTH ||
+    p.minLength > MAX_PASSWORD_LENGTH ||
     (p.maxLength !== null &&
-      (!Number.isInteger(p.maxLength) || p.maxLength < p.minLength || p.maxLength > 256)) ||
+      (!Number.isInteger(p.maxLength) ||
+        p.maxLength < p.minLength ||
+        p.maxLength > MAX_PASSWORD_LENGTH)) ||
     !Number.isInteger(p.minScore) ||
     p.minScore < 0 ||
     p.minScore > 4
@@ -26,7 +29,7 @@ export function validatePolicy(
     diagnostic(
       diagnostics,
       'policy.password',
-      'Use minLength 8–256, maxLength null or minLength–256, and minScore 0–4'
+      `Use minLength ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH}, maxLength null or minLength–${MAX_PASSWORD_LENGTH}, and minScore 0–4`
     )
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const) {
     if (typeof p[key] !== 'boolean')
