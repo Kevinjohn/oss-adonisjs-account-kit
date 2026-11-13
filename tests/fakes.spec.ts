@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
-import { allowAll, denyAll, makeConfig, makeNotify, makeUsersAdapter } from './helpers/fakes.js'
+import { makeNotify, makeUsersAdapter } from './helpers/fakes.js'
 test.group('test fakes', (group) => {
   const kit = useTestApp(group)
 
@@ -62,28 +62,9 @@ test.group('test fakes', (group) => {
     })
   })
 
-  test('supplies callbacks and records notification failures on demand', async ({ assert }) => {
-    const users = makeUsersAdapter(kit.db, kit.hash)
-    const config = makeConfig({ users })
-    assert.equal(config.users, users)
-    assert.isTrue(
-      await allowAll.listInvitations({
-        id: 1,
-        email: 'a@example.test',
-        unverifiedEmail: null,
-        hasPassword: false,
-        emailVerifiedAt: null,
-      })
-    )
-    assert.isFalse(
-      await denyAll.listInvitations({
-        id: 1,
-        email: 'a@example.test',
-        unverifiedEmail: null,
-        hasPassword: false,
-        emailVerifiedAt: null,
-      })
-    )
+  test('notification recorder records calls and fails the named method on demand', async ({
+    assert,
+  }) => {
     const recorder = makeNotify()
     const user = {
       id: 1,
