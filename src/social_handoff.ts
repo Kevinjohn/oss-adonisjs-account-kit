@@ -6,7 +6,7 @@ import { DateTime } from 'luxon'
 import { revision, safeAccount } from './authentication.js'
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
-import { clientChallengeFor, isClientVerifier } from './client_challenge.js'
+import { isClientVerifier, verifierMatches } from './client_challenge.js'
 import { SocialTransactionError } from './errors.js'
 import { enabledProviders, now, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -89,7 +89,7 @@ export async function redeemSocialHandoff<Credential>(
     if (
       !row ||
       row.user_id !== candidate.user_id ||
-      row.client_challenge !== clientChallengeFor(input.verifier)
+      !verifierMatches(input.verifier, row.client_challenge)
     )
       throw new SocialTransactionError()
     const user = await deps.config.users.findById(row.user_id, trx)

@@ -97,7 +97,10 @@ export const socialRegistrationValidator = vine.compile(
   })
 )
 export const socialTokenValidator = vine.compile(
-  vine.object({ code: vine.string().minLength(1), verifier: vine.string().minLength(43) })
+  vine.object({
+    code: vine.string().minLength(1),
+    verifier: vine.string().minLength(43).maxLength(128),
+  })
 )
 export const socialPasswordProofValidator = vine.compile(
   vine.object({ password: vine.string().minLength(1), purpose: vine.string().minLength(1) })
