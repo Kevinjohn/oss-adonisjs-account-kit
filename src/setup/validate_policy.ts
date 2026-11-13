@@ -6,6 +6,7 @@ import {
 } from './types.js'
 import { diagnostic } from './shared.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
+import { PROTECTED_FIELDS } from '../registration_fields.js'
 
 /** Password, registration, callback and unverified-account policy. */
 export function validatePolicy(
@@ -51,21 +52,11 @@ export function validatePolicy(
       'policy.registration',
       'Managed public signup requires open registration; use an application-owned route for application admission or omit managed signup when closed'
     )
+  // The runtime names, plus names setup refuses because its generated mapper copies client values.
   const protectedFields = new Set([
-    'id',
-    'email',
-    'password',
-    'passwordhash',
-    'password_hash',
-    'unverifiedemail',
-    'unverified_email',
-    'emailverifiedat',
-    'email_verified_at',
-    'role',
-    'roles',
+    ...PROTECTED_FIELDS,
     'isadmin',
     'accesstokens',
-    'credentialschangedat',
     '__proto__',
     'prototype',
     'constructor',

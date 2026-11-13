@@ -327,6 +327,21 @@ test.group('setup choice validation', (group) => {
     await assert.rejects(() => applySetup(root, blocked), /blocking diagnostics/)
   })
 
+  test('refuses a registration field named credentials_changed_at', async ({ assert }) => {
+    await withFixture(async (choices, state) => {
+      choices.policy.registration = 'application'
+      choices.managedExcept = ['auth.signup']
+      choices.policy.registrationFields = [
+        { name: 'credentials_changed_at', type: 'string', required: false },
+      ]
+      const plan = await planSetup(choices, state)
+      assert.include(
+        plan.diagnostics.map(({ field }) => field),
+        'policy.registrationFields.0.name'
+      )
+    })
+  })
+
   test('runtime feature dependency does not depend on verification policy', async ({ assert }) => {
     await withFixture(async (choices, state) => {
       choices.features = ['authentication', 'emailPasswordManagement']
