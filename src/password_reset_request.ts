@@ -6,7 +6,6 @@ import { lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
 import { InvalidInputError } from './errors.js'
-import { throttlerOf } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -24,8 +23,8 @@ export async function requestPasswordReset(
       throw new InvalidInputError('Invalid client key')
     const email = normalizeEmail(input.email)
 
-    await throttlerOf(deps).consume('recovery:client', input.clientKey, deps.config.throttle)
-    await throttlerOf(deps).consume('recovery:email', email, deps.config.throttle)
+    await deps.throttler.consume('recovery:client', input.clientKey, deps.config.throttle)
+    await deps.throttler.consume('recovery:email', email, deps.config.throttle)
     const user = await deps.config.users.findByEmail(email)
     if (!user) return
 

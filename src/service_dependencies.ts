@@ -8,5 +8,5 @@ export type ServiceDependencies = {
   config: ResolvedConfig
   db: Database
   limiter: LimiterService
-  throttler?: Throttler
+  throttler: Throttler
 }

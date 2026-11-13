@@ -7,7 +7,6 @@ import { InvalidInputError } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { rememberPasswordChangeRevision } from './password_change_revision.js'
 import { preparePassword, storePassword } from './password_hashing.js'
-import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
 import type { ChangePasswordInput } from './types.js'
@@ -20,7 +19,7 @@ export async function changePassword(
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
     throw new InvalidInputError('Invalid new password')
 
-  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
+  await deps.throttler.consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.newPassword)
   const { value: changed, fault } = await settleCommitted(

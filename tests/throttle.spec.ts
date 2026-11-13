@@ -9,11 +9,11 @@ test.group('operation throttling', (group) => {
     assert,
   }) => {
     const options = { requests: 1, duration: '15m' }
-    await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32))
-    await consume(kit.limiter, 'verification:send', 'same', options, 'a'.repeat(32))
+    await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32), 'default')
+    await consume(kit.limiter, 'verification:send', 'same', options, 'a'.repeat(32), 'default')
     assert.deepEqual(options, { requests: 1, duration: '15m' })
     try {
-      await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32))
+      await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32), 'default')
       assert.fail('expected throttle rejection')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
@@ -31,12 +31,12 @@ test.group('operation throttling', (group) => {
       'account-kit:v1:ed4db1e5e8d516de35e9221ee581dec10607da49d81330c734ff710abb9cda8e'
     await kit.limiter.use(options).consume(storedKey)
     try {
-      await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32))
+      await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32), 'default')
       assert.fail('expected the existing budget to remain exhausted')
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
     }
-    assert.equal(limiterKey('recovery:client', 'same', 'a'.repeat(32)), storedKey)
+    assert.equal(limiterKey('recovery:client', 'same', 'a'.repeat(32), 'default'), storedKey)
   })
 
   test('propagates unrelated limiter errors unchanged', async ({ assert }) => {
@@ -57,7 +57,8 @@ test.group('operation throttling', (group) => {
         'recovery:client',
         'same',
         { requests: 1, duration: '15m' },
-        'a'.repeat(32)
+        'a'.repeat(32),
+        'default'
       )
       assert.fail('expected failure')
     } catch (error) {

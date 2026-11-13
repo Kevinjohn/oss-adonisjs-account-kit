@@ -11,7 +11,6 @@ import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import { InvalidCredentialsError, InvalidInputError, InvalidTokenError } from './errors.js'
-import { throttlerOf } from './throttle.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -49,8 +48,8 @@ export async function requestMagicLink(
       throw new InvalidInputError('Invalid client challenge')
     const email = normalizeEmail(input.email)
 
-    await throttlerOf(deps).consume('magic:client', input.clientKey, deps.config.throttle)
-    await throttlerOf(deps).consume('magic:email', email, deps.config.throttle)
+    await deps.throttler.consume('magic:client', input.clientKey, deps.config.throttle)
+    await deps.throttler.consume('magic:email', email, deps.config.throttle)
     const user = await deps.config.users.findByEmail(email)
     if (!user) return
 
