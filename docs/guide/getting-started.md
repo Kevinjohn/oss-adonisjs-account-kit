@@ -15,7 +15,8 @@ You need:
   pnpm create adonisjs@latest my-app --kit=api
   ```
 
-- A stable `APP_KEY` of at least 32 characters and `APP_URL=http://localhost:3333` in `.env`.
+- A stable `APP_KEY` of at least 32 characters and `APP_URL=http://localhost:3333` in `.env`. Set
+  `FRONTEND_URL` as well when account pages live on another origin; links use `APP_URL` without it.
   Production action links require a public HTTPS origin. Configure trusted proxies before using
   `request.ip()` as the rate-limit client identity.
 
@@ -213,12 +214,13 @@ Register the routes:
 // start/routes.ts
 const PasswordResetsController = () => import('#controllers/password_resets_controller')
 
-router.post('account-kit/request-recovery', [PasswordResetsController, 'request'])
-router.post('account-kit/recovery/:token', [PasswordResetsController, 'complete'])
+router.post('account/request-recovery', [PasswordResetsController, 'request'])
+router.post('account/recovery/:token', [PasswordResetsController, 'complete'])
 ```
 
-The paths match the `urls.passwordReset` builder in the generated config, which produces links
-of the form `APP_URL/account-kit/recovery/<token>`. In a real application that link points at
+The paths match the `urls.passwordReset` destination in the generated config, which produces
+links of the form `APP_URL/account/recovery/<token>`, or `FRONTEND_URL/account/recovery/<token>`
+when `FRONTEND_URL` is set. In a real application that link points at
 your frontend page, which then posts the new password to the API. The request endpoint has a
 distinct path, so a completion POST without a token segment has no matching route and returns
 AdonisJS's ordinary 404. Redact proof-bearing URL paths
@@ -243,17 +245,17 @@ curl -X POST http://localhost:3333/api/v1/auth/login -H 'content-type: applicati
   -d '{"email":"person@example.test","password":"old-password-123"}'
 curl -H 'Authorization: Bearer <first-token>' http://localhost:3333/api/v1/account/profile
 curl -H 'Authorization: Bearer <second-token>' http://localhost:3333/api/v1/account/profile
-curl -X POST http://localhost:3333/account-kit/request-recovery -H 'content-type: application/json' \
+curl -X POST http://localhost:3333/account/request-recovery -H 'content-type: application/json' \
   -d '{"email":"person@example.test"}'
 ```
 
 The terminal running the server prints the email, including a line like
-`Reset password: http://localhost:3333/account-kit/recovery/<proof>`. Inspect this only in the
+`Reset password: http://localhost:3333/account/recovery/<proof>`. Inspect this only in the
 private development terminal; do not put proofs into production logs or shared test output.
 Complete the reset with that proof:
 
 ```sh
-curl -X POST 'http://localhost:3333/account-kit/recovery/<proof>' \
+curl -X POST 'http://localhost:3333/account/recovery/<proof>' \
   -H 'content-type: application/json' -d '{"password":"new-password-123"}'
 ```
 

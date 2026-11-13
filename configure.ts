@@ -293,10 +293,14 @@ export async function configure(command: Configure) {
     rcFile.addCommand('@kevinjohn/adonisjs-account-kit/commands')
   })
 
-  // The generated config builds links from APP_URL. Declare it in start/env.ts so a missing
-  // value fails at boot; defineEnvValidations leaves an existing declaration unchanged.
+  // The generated config builds links from FRONTEND_URL, or APP_URL when it is unset. Declare them
+  // in start/env.ts so a missing APP_URL fails at boot; defineEnvValidations leaves an existing
+  // declaration unchanged.
   await codemods.defineEnvValidations({
     leadingComment: 'Variables for @kevinjohn/adonisjs-account-kit',
-    variables: { APP_URL: "Env.schema.string({ format: 'url', tld: false })" },
+    variables: {
+      APP_URL: "Env.schema.string({ format: 'url', tld: false })",
+      FRONTEND_URL: "Env.schema.string.optional({ format: 'url', tld: false })",
+    },
   })
 }

@@ -1,19 +1,14 @@
 {{{ exports({ to: app.configPath('account_kit.ts') }) }}}
 import env from '#start/env'
+import app from '@adonisjs/core/services/app'
 import {
+  createActionUrls,
   createLucidAdapter,
   defineConfig,
   type AccountUser,
   type Invitation,
   type Trx,
 } from '@kevinjohn/adonisjs-account-kit'
-
-/**
- * A trailing slash keeps any APP_URL path, for example https://example.com/portal.
- */
-const appUrl = env.get('APP_URL').endsWith('/') ? env.get('APP_URL') : env.get('APP_URL') + '/'
-const accountUrl = (path: string, token: string) =>
-  new URL('account-kit/' + path + '/' + encodeURIComponent(token), appUrl).toString()
 
 const users = createLucidAdapter(async () => {
   const { default: User } = await import('#models/user')
@@ -55,14 +50,19 @@ export default defineConfig({
   },
 
   /**
-   * Links sent in account emails. Point them at your own routes.
+   * Links sent in account emails: each page path below FRONTEND_URL, or APP_URL when it is unset.
+   * Point the paths at your own pages. Production origins must use HTTPS.
    */
-  urls: {
-    passwordReset: (token) => accountUrl('recovery', token),
-    emailVerification: (token) => accountUrl('verification', token),
-    invitation: (token) => accountUrl('invitation', token),
-    emailChange: (token) => accountUrl('email-change', token),
-  },
+  urls: createActionUrls({
+    backendOrigin: env.get('APP_URL'),
+    appFrontendUrl: env.get('FRONTEND_URL') ?? env.get('APP_URL'),
+    environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',
+    destinations: {
+      emailVerification: 'account/verification',
+      passwordReset: 'account/recovery',
+      emailChange: 'account/email-change',
+    },
+  }),
 
   /**
    * Delivers account notices. Each one throws until you connect your mailer.
