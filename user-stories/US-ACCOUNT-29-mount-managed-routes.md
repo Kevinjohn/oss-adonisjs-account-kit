@@ -11,7 +11,7 @@ As an application integrator, I want to register the chosen service-backed endpo
 
 ## Acceptance criteria
 
-- **Inputs and result:** `registerManagedRoutes(router, options)` registers only the explicitly enabled route groups under the chosen prefix and guard; exclusions and callbacks are host configuration. Route conflicts are checked when the router commits. The package supplies JSON handlers, not a frontend.
+- **Inputs and result:** `registerManagedRoutes(router, { prefix, guard, kit, enabled, ... })` registers only the explicitly enabled route groups under the chosen prefix and guard; `kit()` is required, while `verificationRequired` defaults to `true` when omitted. Exclusions and callbacks are host configuration. Route conflicts are checked when the router commits. The package supplies JSON handlers, not a frontend.
 
 ## User flow
 

@@ -64,6 +64,7 @@ Source baseline: `2e0583de9db02bd8a9bcb8256c32b01646db7237` (origin/main, 2026-1
 | [US-ACCOUNT-56](US-ACCOUNT-56-read-current-admission-status.md)       | Read current admission status                      | Current when the admission module is installed                                   |
 | [US-ACCOUNT-57](US-ACCOUNT-57-check-admission-record.md)              | Check a user's admission record                    | Current when the admission module is installed                                   |
 | [US-ACCOUNT-58](US-ACCOUNT-58-check-domain-eligibility.md)            | Check admission domain eligibility                 | Current when the admission module is installed                                   |
+| [US-ACCOUNT-59](US-ACCOUNT-59-discover-authentication-methods.md)     | Discover available authentication methods          | Current when `socialAuthentication` and its public managed route are enabled     |
 
 ## Catalogue references
 

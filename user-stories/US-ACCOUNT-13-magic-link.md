@@ -12,6 +12,7 @@ As an existing account holder, I want to request and complete an opt-in password
 ## Acceptance criteria
 
 - **Inputs and result:** `magicLink.request({ email, clientKey, clientChallenge })` returns `void`; it issues a link only for an existing active account allowed by sign-in policy. Unknown or denied addresses receive the same generic acknowledgement and do not create accounts. Challenge is a 43-character base64url SHA-256 digest of a verifier kept by the initiating client. `inspect({ token })` is non-consuming; `complete({ token, verifier }, guard)` returns account and credential. A well-shaped completion with the wrong verifier consumes the link; an inactive account or denied `canAccess` check also consumes it. The owner must request a fresh link. Malformed proof and an address mismatch are refused without that consumption.
+- Issuing a fresh magic link invalidates the older link for that account.
 
 ## User flow
 

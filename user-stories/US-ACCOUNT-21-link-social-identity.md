@@ -4,25 +4,27 @@ As a signed-in account holder, I want to link a provider identity after recent p
 
 **Status:** Current when social authentication is configured
 **Access:** Authenticated current, active account with confirmed email plus one-use recent `social_link` proof; provider state is bound to account and intent.
-**Entry:** Host calls `provePassword` when applicable and begins a provider flow with intent `link`; callback is handled by host/managed route.
+**Entry:** Host begins a provider flow with intent `link`; callback is handled by host/managed route, which may provide `social_link` proof at callback time.
 **Documentation:** [social-authentication.md](../docs/guide/social-authentication.md)
-**Source:** [`src/social_identity.ts`](../src/social_identity.ts)
+**Source:** [`src/social_identity.ts`](../src/social_identity.ts), [`src/social_callback.ts`](../src/social_callback.ts)
 **Coverage:** [`tests/social_identity_link.spec.ts`](../tests/social_identity_link.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `socialAuthentication.begin({ provider, intent: 'link', current, clientChallenge, proof })` returns state and URL only for an active account with confirmed email; callback rechecks active status and consumes the bound proof and returns its social outcome. Password accounts first obtain one-use `social_link` proof with `provePassword({ current, password, purpose: social_link })`.
+- **Inputs and result:** `socialAuthentication.begin({ provider, intent: 'link', current, clientChallenge, proof? })` returns state and URL for the current active account with confirmed email; optional proof is shape-checked and bound to that state. At callback, pass `{ state, callback, current, proof? }`: a state-bound proof may be omitted there, while proof may instead be supplied at callback and checked then. Password accounts obtain one-use `social_link` proof with `provePassword({ current, password, purpose: social_link })`.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Signed-in person proves identity and starts provider linking"] --> B{"Is account active with confirmed email, and is current credential and social_link proof valid?"}
- B -->|No| C["Refuse link; no provider identity is added"]
+ A["Signed-in person starts provider linking with current credential and challenge"] --> B{"Is account active with confirmed email?"}
+ B -->|No| C["Refuse before provider state is stored"]
  B -->|Yes| D["Provider callback is bound to account, intent and challenge"]
- D --> E{"Does host accept this provider identity and is it unused?"}
- E -->|No| F["Keep identity relationships unchanged"]
- E -->|Yes| G["Link identity and notify after commit"]
+ D --> E{"Is state-bound or callback-supplied social_link proof valid?"}
+ E -->|No| F["Refuse link; no provider identity is added"]
+ E -->|Yes| G{"Does host accept this provider identity and is it unused?"}
+ G -->|No| H["Keep identity relationships unchanged"]
+ G -->|Yes| I["Link identity and notify after commit"]
 ```
 
 ## Code flow
@@ -31,14 +33,15 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["Obtain one-use social_link proof with password or provider reauthentication"] --> B["Bind proof to the requested action"]
- B --> C{"Does begin find an active account with confirmed email?"}
- C -->|No| D["Refuse before storing provider state"]
- C -->|Yes| E["socialAuthentication.begin(intent = link) stores account/proof-bound state"]
- E --> D2["callback rechecks active status; consumes state and proof; acceptLink runs in transaction"]
- D2 --> F{"Provider subject passes checks?"}
- F -->|No| G["Abort relationship write"]
- F -->|Yes| H["Insert social identity; commit and run linked notification"]
+ A["socialAuthentication.begin(intent = link) checks current account and optional proof shape"] --> B{"Does begin find an active account with confirmed email?"}
+ B -->|No| C["Refuse before storing provider state"]
+ B -->|Yes| D["Store one-use state with account and optional proof hash"]
+ D --> E["Provider returns callback"]
+ E --> F["socialAuthentication.callback({ state, callback, current, proof? }) validates state and proof"]
+ F --> G["Recheck active status; consume proof; acceptLink runs in transaction"]
+ G --> H{"Provider subject passes checks?"}
+ H -->|No| I["Abort relationship write"]
+ H -->|Yes| J["Insert social identity; commit and run linked notification"]
 ```
 
-**Code references:** [implementation](../src/social_identity.ts), [`tests/social_identity_link.spec.ts`](../tests/social_identity_link.spec.ts)
+**Code references:** [begin and callback API](../src/social_identity.ts), [callback proof handling](../src/social_callback.ts), [`tests/social_identity_link.spec.ts`](../tests/social_identity_link.spec.ts)

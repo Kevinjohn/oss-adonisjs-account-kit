@@ -4,7 +4,7 @@ As an invited person, I want to redeem the invitation sent to my address so that
 
 **Status:** Current when the host explicitly enables the opt-in `invitations` capability
 **Access:** Enabled invitation capability and a valid token matching the recipient email; host callbacks own membership grants.
-**Entry:** Host calls `invitations.accept`; optional managed acceptance route.
+**Entry:** Host calls `invitations.accept`; the optional managed acceptance route requires the confirmation field in the [managed password fields reference](REFERENCE.md#managed-password-fields). A replacement validator may change that HTTP schema.
 **Documentation:** [usage.md](../docs/guide/usage.md)
 **Source:** [`src/invitations.ts`](../src/invitations.ts)
 **Coverage:** [`tests/invitations_acceptance.spec.ts`](../tests/invitations_acceptance.spec.ts)

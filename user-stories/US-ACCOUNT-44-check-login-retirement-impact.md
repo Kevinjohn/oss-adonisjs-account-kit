@@ -11,17 +11,17 @@ As an application operator, I want to count accounts affected by a proposed logi
 
 ## Acceptance criteria
 
-- The command reports inspected/affected account counts, checkedAt, current providers and current password-login state. `--providers` names unique supported providers remaining; omitted means currently configured providers, `none` means none. `--keep-password-login` opts into retaining password login; otherwise password login is considered removed.
+- The command reports inspected/affected account counts, checkedAt, current providers and current password-login state. `--providers` names unique supported providers remaining; omitted means currently configured providers, `none` means none. `--keep-password-login` opts into retaining password login; otherwise password login is considered removed. `--quiet` suppresses success and error text while preserving the structured `impact` or `failure` result and nonzero exit status on error.
 - Invalid configuration or unavailable inventory exits nonzero with a generic inventory-unavailable result; the command changes no account or provider state.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Operator specifies proposed remaining password/provider methods"] --> B{"Is proposed provider inventory valid?"}
- B -->|No| C["Report inventory unavailable; exit nonzero"]
+ A["Operator specifies proposed remaining password/provider methods; --quiet suppresses printed output"] --> B{"Is proposed provider inventory valid?"}
+ B -->|No| C["Set inventory_unavailable and exit nonzero; print error only when not quiet"]
  B -->|Yes| D["Inspect accounts and confirmed configured identities"]
- D --> E["Show number losing every usable current sign-in method"]
+ D --> E["Return structured impact; print it only when not quiet"]
  E --> F["Operator uses result before changing login configuration"]
 ```
 

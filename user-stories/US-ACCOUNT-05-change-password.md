@@ -4,7 +4,7 @@ As a signed-in account holder, I want to replace my password so that I can prote
 
 **Status:** Current when `emailPasswordManagement` is enabled
 **Access:** `actorId` identifies the signed-in user. A password account must prove `currentPassword`; a social-only account may provide a purpose-bound `recentProof`. The host decides which caller may invoke the service.
-**Entry:** Host calls `emailPasswordManagement.changePassword`; the optional managed route validates the request and calls the same service.
+**Entry:** Host calls `emailPasswordManagement.changePassword`; the optional managed route validates the request and calls the same service. Its confirmation field is documented in the [managed password fields reference](REFERENCE.md#managed-password-fields).
 **Documentation:** [Account operations](../docs/guide/account-operations.md)
 **Source:** [`src/change_password.ts`](../src/change_password.ts)
 **Coverage:** [`tests/credentials_password_change.spec.ts`](../tests/credentials_password_change.spec.ts)

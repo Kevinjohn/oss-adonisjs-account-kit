@@ -11,7 +11,7 @@ As an application operator, I want to configure package integration from reviewe
 
 ## Acceptance criteria
 
-- **Inputs and result:** `account-kit:setup` accepts interactive choices or `--input`; no flag previews by default, `--apply` writes a conflict-free plan, `--check` inspects saved choices, and `--production` adds deployment checks. It writes selected integration files only; migration execution, guard policy and active route cutover remain operator-controlled.
+- **Inputs and result:** `account-kit:setup` accepts the interactive prompts or the same JSON keys with `--input`; defaults, exact prompt labels, options and conditional questions are listed in the [setup choices reference](../docs/reference/setup-choices.md#interactive-interview). No flag previews by default, `--apply` writes a conflict-free plan, `--check` inspects saved choices, and `--production` adds deployment checks. It writes selected integration files only; migration execution, guard policy and active route cutover remain operator-controlled.
 - Removing an existing password or social login method is blocked when the impact inventory is unavailable or any account would lose its last usable method. With zero affected accounts, apply still requires `--retirement-maintenance-window` to acknowledge a host-operated maintenance window. The flag does not lock credentials or prevent concurrent changes; the operator must enforce the window.
 
 ## User flow

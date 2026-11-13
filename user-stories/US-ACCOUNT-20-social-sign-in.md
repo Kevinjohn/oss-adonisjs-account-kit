@@ -14,12 +14,13 @@ As a person with a configured provider identity, I want to sign in through Googl
 - `begin` takes provider (`google` or `github`), intent `login`, a 43-character base64url SHA-256 `clientChallenge`, and optional adapter context; it returns `{ state, url }`. `beginConfirmation` takes provider, activation `verificationToken`, the same challenge shape and optional context, returning `{ state, url }`. Callback takes `{ state, callback, provider?, admit? }` and returns `linked`/`new` with userId and optional handoffCode, `new` with continuation, `new` with `emailVerificationRequired`, `link_required`, or `reauthenticated` with proof. It does not issue an Adonis credential in the provider redirect.
 - A confirmed `linked` result carries userId and a short-lived handoffCode; `redeemHandoff({ code, verifier, guard })` checks the verifier against the challenge and returns account, actual guard credential and provider. A matching email without a relationship returns `link_required`, not sign-in.
 - A `new` continuation is completed by trusted host code with `completeRegistration({ continuation, email?, registrationData?, admit? })`; closed signup refuses and application policy remains host-owned. An unverified provider email cannot sign in; confirmation uses `beginConfirmation({ provider, verificationToken, clientChallenge, context? })` followed by `callback({ state, callback })`, matching the email proof to the same pending subject.
+- Managed session clients retain the verifier server-side and redeem the handoff inside the callback. Managed token clients return a short-lived code for the client to redeem with its verifier at the token endpoint; both strategies support this sign-in action.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Client keeps verifier and sends its challenge to begin provider login"] --> B["Provider returns callback to host"]
+ A["Initiating client or session host keeps verifier and sends its challenge to begin provider login"] --> B["Provider returns callback to host"]
  B --> C{"Does one-use state and provider response validate?"}
  C -->|No| D["Refuse callback without issuing credential"]
  C -->|Yes| E{"Is provider subject already confirmed and linked?"}
@@ -47,8 +48,12 @@ flowchart TD
  C --> D["socialAuthentication.callback resolves provider profile before consuming one-use state"]
  D --> E{"Confirmed linked subject, new account, link_required or confirmation?"}
  E -->|linked| F["Return handoffCode bound to association and credential revision"]
- F --> G["redeemHandoff({ code, verifier, guard }) checks verifier and rechecks association/revision"]
- G --> H["Establish guard; return account, credential and provider"]
+ F --> G{"Which managed guard strategy is configured?"}
+ G -->|session| HS_SESSION["Callback redeems with verifier retained in server session; returns safe account data"]
+ G -->|access tokens| HS_TOKEN["Callback returns code; client posts code and verifier to auth.oauth.token for redemption"]
+ G -->|host-managed| HS_HOST["Host calls redeemHandoff({ code, verifier, guard })"]
+ HS_TOKEN --> HS_TOKEN_DONE["Token endpoint establishes access token"]
+ HS_HOST --> HS_HOST_DONE["Selected guard establishes credential; service returns account and credential"]
  E -->|new| I["Apply open/closed/application policy and configured field mapping"]
  I --> J{"Does this path need a trusted continuation?"}
  J -->|Yes| K["Return continuation to host"]
