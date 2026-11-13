@@ -12,7 +12,7 @@ As an account holder with an activation link, I want to confirm my email address
 ## Acceptance criteria
 
 - Inspection takes `token` and returns a boolean without spending it. Completion takes `token` and a new policy-valid password and returns `verified`.
-- An invalid, expired or already-used token does not activate the account; a valid token is consumed once, confirms the address, sets the password, clears applicable recovery proofs and applies any matching pending invitation grant.
+- An invalid, expired or already-used token does not activate the account; a valid token is consumed once, confirms the address, sets the password, invalidates prior credentials, clears applicable recovery proofs and applies any matching pending invitation grant.
 - Credential observers and lifecycle callbacks run after commit. If a follow-up fails, activation and proof consumption remain committed; the user must not retry the consumed link as though activation rolled back.
 
 ## User flow
@@ -25,7 +25,7 @@ flowchart TD
  D --> E{"Is password accepted by configured policy?"}
  E -->|No| F["Keep account inactive and correct password"]
  F --> D
- E -->|Yes| G["Confirm address, set password, clear recovery proofs and apply a matching pending invitation"]
+ E -->|Yes| G["Confirm address, set password, invalidate prior credentials, clear recovery proofs and apply a matching pending invitation"]
  G --> H{"Did post-commit observers and lifecycle follow-ups succeed?"}
  H -->|Yes| I["Show activation complete"]
  H -->|No| J["Report follow-up failure; activation remains committed and this link cannot be retried"]
@@ -43,7 +43,8 @@ flowchart TD
  C -->|Yes| E["emailVerification.complete({ token, password })"]
  E --> F["Transaction consumes proof, confirms email and stores password"]
  F --> G["Clear recovery proofs and apply matching pending invitation in the claim transaction"]
- G --> H["Commit activation and consume proof"]
+ G --> CRED["credentialsChanged invalidates prior credentials in the claim transaction"]
+ CRED --> H["Commit activation and consume proof"]
  H --> I["Run credential observer, lifecycle and invitation follow-ups"]
  I --> J{"Follow-ups succeeded?"}
  J -->|Yes| K["Return verified"]
