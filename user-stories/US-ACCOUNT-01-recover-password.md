@@ -20,14 +20,10 @@ As an account holder, I want to request a password reset and use its one-time li
 ```mermaid
 flowchart TD
  A["Person submits email and trusted clientKey"] --> B["passwordReset.request"]
- B --> C{"Was an account found?"}
- C -->|No| ACK["Return generic acknowledgement after the timing floor; issue no link"]
- C -->|Yes| ISSUE["Issue one-use link and send provision"]
- ISSUE --> FOLLOW{"Did delivery and follow-ups succeed?"}
- FOLLOW -->|Yes| ACK
- FOLLOW -->|No| ERROR["Surface service error; issuance may already be committed"]
- ACK --> RECIPIENT{"Was this the known-account path?"}
- RECIPIENT -->|Yes| D["Open the expiring one-use link"]
+ B --> C{"Did the request succeed?"}
+ C -->|No| ERROR["Report a request error; a link may already have been issued"]
+ C -->|Yes| ACK["Show the same generic acknowledgement after the timing floor for known and unknown addresses"]
+ ACK --> D["If a reset link was delivered, open it"]
  D --> E{"Does passwordReset.inspect report the token usable?"}
  E -->|No| F["Keep password unchanged and request a new link"]
  F --> A

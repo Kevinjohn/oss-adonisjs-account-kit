@@ -40,15 +40,14 @@ flowchart TD
  B -->|Yes| D["Store one-use state with account and optional proof hash"]
  D --> E["Provider returns callback"]
  E --> F["socialAuthentication.callback resolves provider profile, then begins transaction"]
- F --> G["Consume state and validate state-bound or callback-supplied proof"]
- G --> H{"Proof is valid?"}
- H -->|No| I["Refuse; transaction rolls back state consumption"]
- H -->|Yes| J["Consume proof within transaction; check active account and unused provider subject"]
- J --> K{"Do account and uniqueness checks pass?"}
- K -->|No| L["Refuse; transaction rolls back state and proof consumption"]
- K -->|Yes| M["Run configured acceptLink callback, if present, before insert"]
- M --> N["Insert social identity and commit"]
- N --> O["Run linked notification after commit"]
+ F --> G["Within the transaction: consume state, recheck current actor, consume proof, check active status, then check provider uniqueness"]
+ G --> H{"Do the ordered transaction checks pass?"}
+ H -->|No| I["Refuse link; roll back state and proof consumption"]
+ H -->|Yes| J["Run configured acceptLink callback, if present"]
+ J --> K{"Did the optional callback refuse?"}
+ K -->|Yes| L["Refuse link; roll back transaction"]
+ K -->|No| M["Insert social identity and commit"]
+ M --> N["Run linked notification after commit"]
 ```
 
 **Code references:** [begin and callback API](../src/social_identity.ts), [callback proof handling](../src/social_callback.ts), [`tests/social_identity_link.spec.ts`](../tests/social_identity_link.spec.ts)
