@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { AdmissionRequiredError } from '../src/admission/errors.js'
 import { admissionMiddleware } from '../src/admission/middleware.js'
-import { advanceCredentialRevision } from '../src/authentication.js'
+import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
 import { accountErrorResponse } from '../src/error_response.js'
 import { InvalidSessionError, UnverifiedEmailError } from '../src/errors.js'

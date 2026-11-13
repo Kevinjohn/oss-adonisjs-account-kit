@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { advanceCredentialRevision } from '../src/authentication.js'
+import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
 import { consumeSocialSensitiveProof } from '../src/social_identity.js'
 import { useTestApp } from './helpers/app.js'

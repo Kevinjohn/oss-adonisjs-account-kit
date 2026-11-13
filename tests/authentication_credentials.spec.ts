@@ -3,7 +3,7 @@
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
-import { advanceCredentialRevision } from '../src/authentication.js'
+import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
 import { InvalidCredentialsError, InvalidSessionError } from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'

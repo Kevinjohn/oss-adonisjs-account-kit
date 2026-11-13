@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
-import { credentialsChanged } from './authentication.js'
+import { credentialsChanged } from './credential_revision.js'
 import { isActiveAccount } from './account_projection.js'
 import { DateTime } from 'luxon'
 import { consumeUserToken, lockUser, transaction } from './db.js'

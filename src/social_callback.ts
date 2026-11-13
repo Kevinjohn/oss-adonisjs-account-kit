@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { validateAccountAccessResult } from './account_access_policy.js'
-import { isActiveAccount, revision } from './authentication.js'
+import { revision } from './credential_revision.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { invitationAccepted } from './invitation_match.js'
 import { createHandoff } from './social_handoff.js'
-import { hasConfirmedAddress } from './account_projection.js'
+import { hasConfirmedAddress, isActiveAccount } from './account_projection.js'
 import { consumeSocialSensitiveProofHash, issueProof } from './social_proofs.js'
 import {
   InvalidInputError,

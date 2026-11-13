@@ -1,6 +1,6 @@
 // Password change: confirms the actor, sets the new password and ends older credentials.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged, revision } from './authentication.js'
+import { credentialsChanged, revision } from './credential_revision.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError } from './errors.js'

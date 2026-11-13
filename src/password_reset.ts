@@ -1,7 +1,7 @@
 import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
-import { credentialsChanged } from './authentication.js'
+import { credentialsChanged } from './credential_revision.js'
 import { isActiveAccount } from './account_projection.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import { consumeUserToken, transaction } from './db.js'

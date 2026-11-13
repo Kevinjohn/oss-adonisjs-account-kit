@@ -2,7 +2,7 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { positiveId } from './positive_id.js'
-import { safeAccount } from '../authentication.js'
+import { safeAccount } from '../account_projection.js'
 import { invalidProof, passwordPolicyError } from './response_helpers.js'
 import {
   invitationAcceptValidator,

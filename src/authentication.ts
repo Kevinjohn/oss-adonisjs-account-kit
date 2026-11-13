@@ -40,10 +40,6 @@ import type {
 } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-export { advanceCredentialRevision, credentialsChanged, revision } from './credential_revision.js'
-export { isActiveAccount, safeAccount } from './account_projection.js'
-export { requireAuthentication } from './authentication_config.js'
-
 export async function currentInTransaction(
   deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
@@ -54,7 +50,7 @@ export async function currentInTransaction(
 }
 
 /** `currentInTransaction`, also returning the registry session it accepted, if any. */
-export async function currentWithSessionInTransaction(
+async function currentWithSessionInTransaction(
   deps: Pick<ServiceDependencies, 'config'>,
   input: CurrentAccountInput,
   trx: Trx

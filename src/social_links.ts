@@ -1,6 +1,6 @@
 // The caller's linked providers: listing and unlinking.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged } from './authentication.js'
+import { credentialsChanged } from './credential_revision.js'
 import { hasConfirmedAddress } from './account_projection.js'
 import { transaction } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
