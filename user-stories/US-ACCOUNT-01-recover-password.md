@@ -20,8 +20,14 @@ As an account holder, I want to request a password reset and use its one-time li
 ```mermaid
 flowchart TD
  A["Person submits email and trusted clientKey"] --> B["passwordReset.request"]
- B --> C["Same acknowledgement for known and unknown addresses"]
- C --> D["Known account receives expiring one-use link"]
+ B --> C{"Was an account found?"}
+ C -->|No| ACK["Return generic acknowledgement after the timing floor; issue no link"]
+ C -->|Yes| ISSUE["Issue one-use link and send provision"]
+ ISSUE --> FOLLOW{"Did delivery and follow-ups succeed?"}
+ FOLLOW -->|Yes| ACK
+ FOLLOW -->|No| ERROR["Surface service error; issuance may already be committed"]
+ ACK --> RECIPIENT{"Was this the known-account path?"}
+ RECIPIENT -->|Yes| D["Open the expiring one-use link"]
  D --> E{"Does passwordReset.inspect report the token usable?"}
  E -->|No| F["Keep password unchanged and request a new link"]
  F --> A
@@ -35,11 +41,14 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- REQ["passwordReset.request"] --> REQ_THROTTLE["Throttle client and address; transact hashed token issuance"]
- REQ_THROTTLE --> REQ_COMMIT["Commit token issuance"]
- REQ_COMMIT --> REQ_FOLLOW["Send provision and run follow-up callback"]
+ REQ["passwordReset.request"] --> REQ_THROTTLE["Throttle client and address"]
+ REQ_THROTTLE --> REQ_LOOKUP["Find account by normalized email"]
+ REQ_LOOKUP --> REQ_KNOWN{"Was an account found?"}
+ REQ_KNOWN -->|No| REQ_ACK["Skip issuance and delivery; return generic acknowledgement after timing floor"]
+ REQ_KNOWN -->|Yes| REQ_ISSUE["Issue hashed token and commit"]
+ REQ_ISSUE --> REQ_FOLLOW["Send provision and run follow-up callback"]
  REQ_FOLLOW --> REQ_OK{"Did follow-ups succeed?"}
- REQ_OK -->|Yes| REQ_ACK["Return generic acknowledgement after timing floor"]
+ REQ_OK -->|Yes| REQ_ACK
  REQ_OK -->|No| REQ_ERROR["Surface service error after commit; issued token remains"]
  D["passwordReset.reset"] --> E["Consume token and store password inside transaction"]
  E --> F["If email was never confirmed, confirm it and apply pending invitation grants; invalidate older credentials"]

@@ -11,7 +11,7 @@ As a signed-in account holder, I want to link a provider identity after recent p
 
 ## Acceptance criteria
 
-- **Inputs and result:** `socialAuthentication.begin({ provider, intent: 'link', current, clientChallenge, proof? })` returns state and URL for the current active account with confirmed email; optional proof is shape-checked and bound to that state. At callback, pass `{ state, callback, current, proof? }`: a state-bound proof may be omitted there, while proof may instead be supplied at callback and checked then. Password accounts obtain one-use `social_link` proof with `provePassword({ current, password, purpose: social_link })`.
+- **Inputs and result:** `socialAuthentication.begin({ provider, intent: 'link', current, clientChallenge, proof? })` returns state and URL for the current active account with confirmed email; optional proof is shape-checked and bound to that state. At callback, pass `{ state, callback, current, proof? }`: a state-bound proof may be omitted there, while proof may instead be supplied at callback. Password accounts obtain one-use `social_link` proof with `provePassword({ current, password, purpose: social_link })`. Callback state/proof consumption, active-account and provider-uniqueness checks, optional `acceptLink`, and insertion share one transaction; refusal before commit rolls back consumption.
 
 ## User flow
 
@@ -21,10 +21,12 @@ flowchart TD
  B -->|No| C["Refuse before provider state is stored"]
  B -->|Yes| D["Provider callback is bound to account, intent and challenge"]
  D --> E{"Is state-bound or callback-supplied social_link proof valid?"}
- E -->|No| F["Refuse link; no provider identity is added"]
- E -->|Yes| G{"Does host accept this provider identity and is it unused?"}
- G -->|No| H["Keep identity relationships unchanged"]
- G -->|Yes| I["Link identity and notify after commit"]
+ E -->|No| F["Refuse link; transaction rolls back"]
+ E -->|Yes| G{"Is account active and provider subject unused?"}
+ G -->|No| H["Refuse link; transaction rolls back proof and state consumption"]
+ G -->|Yes| I{"Does optional acceptLink refuse?"}
+ I -->|Yes| J["Refuse link; transaction rolls back"]
+ I -->|No| K["Insert identity and commit; notify after commit"]
 ```
 
 ## Code flow
@@ -37,11 +39,16 @@ flowchart TD
  B -->|No| C["Refuse before storing provider state"]
  B -->|Yes| D["Store one-use state with account and optional proof hash"]
  D --> E["Provider returns callback"]
- E --> F["socialAuthentication.callback({ state, callback, current, proof? }) validates state and proof"]
- F --> G["Recheck active status; consume proof; acceptLink runs in transaction"]
- G --> H{"Provider subject passes checks?"}
- H -->|No| I["Abort relationship write"]
- H -->|Yes| J["Insert social identity; commit and run linked notification"]
+ E --> F["socialAuthentication.callback resolves provider profile, then begins transaction"]
+ F --> G["Consume state and validate state-bound or callback-supplied proof"]
+ G --> H{"Proof is valid?"}
+ H -->|No| I["Refuse; transaction rolls back state consumption"]
+ H -->|Yes| J["Consume proof within transaction; check active account and unused provider subject"]
+ J --> K{"Do account and uniqueness checks pass?"}
+ K -->|No| L["Refuse; transaction rolls back state and proof consumption"]
+ K -->|Yes| M["Run configured acceptLink callback, if present, before insert"]
+ M --> N["Insert social identity and commit"]
+ N --> O["Run linked notification after commit"]
 ```
 
 **Code references:** [begin and callback API](../src/social_identity.ts), [callback proof handling](../src/social_callback.ts), [`tests/social_identity_link.spec.ts`](../tests/social_identity_link.spec.ts)

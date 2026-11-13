@@ -12,7 +12,7 @@ As a visitor, I want to see which authentication methods are available so that I
 ## Acceptance criteria
 
 - The public endpoint returns enabled provider names and nullable `lastUsedMethod` without looking up an account.
-- The hint is allowlisted to `password` or an enabled provider and is only a visitor-local preference; it cannot identify or authorize an account. It appears only when the application mounts the method endpoint and the selected strategy records it after successful sign-in.
+- The handler reads a session hint or calls the host's `lastUsedMethod(context)` extension on each request, then allowlists the value to `password` or an enabled provider. It does not establish when the host wrote the hint; the host must record only visitor-local preferences after successful sign-in or handoff. The hint cannot identify or authorize an account.
 
 ## User flow
 
