@@ -2,11 +2,11 @@
 import { validateAccountAccessResult } from './account_access_policy.js'
 import { sqlTimestamp } from './timestamps.js'
 import { establishCredential } from './credential_issuance.js'
-import { createHash } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { revision, safeAccount } from './authentication.js'
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
+import { isClientVerifier, verifierMatches } from './client_challenge.js'
 import { SocialTransactionError } from './errors.js'
 import { enabledProviders, now, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -18,9 +18,6 @@ import type {
   Trx,
   UserId,
 } from './types.js'
-
-const challengeFrom = (verifier: string) =>
-  createHash('sha256').update(verifier).digest('base64url')
 
 export async function createHandoff(
   trx: Trx,
@@ -70,8 +67,7 @@ export async function redeemSocialHandoff<Credential>(
   const auth = deps.config.authentication!
   if (
     !isTokenShaped(input.code) ||
-    typeof input.verifier !== 'string' ||
-    !/^[A-Za-z0-9._~-]{43,128}$/.test(input.verifier) ||
+    !isClientVerifier(input.verifier) ||
     input.guard.strategy !== auth.strategy ||
     input.guard.name !== auth.guard
   )
@@ -93,7 +89,7 @@ export async function redeemSocialHandoff<Credential>(
     if (
       !row ||
       row.user_id !== candidate.user_id ||
-      row.client_challenge !== challengeFrom(input.verifier)
+      !verifierMatches(input.verifier, row.client_challenge)
     )
       throw new SocialTransactionError()
     const user = await deps.config.users.findById(row.user_id, trx)

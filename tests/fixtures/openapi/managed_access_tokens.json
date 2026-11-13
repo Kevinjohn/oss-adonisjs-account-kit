@@ -5730,7 +5730,8 @@
                   },
                   "verifier": {
                     "type": "string",
-                    "minLength": 43
+                    "minLength": 43,
+                    "maxLength": 128
                   }
                 },
                 "required": [

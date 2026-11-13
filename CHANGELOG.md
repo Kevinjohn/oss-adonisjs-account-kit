@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- The social handoff checks the verifier against the stored challenge with the same constant-time
+  comparison as magic links, and the PKCE challenge and verifier rules live in one module. The
+  managed `auth.oauth.token` route rejects a verifier longer than 128 characters with a field error,
+  as the service already did; its OpenAPI schema states the bound.
+
 ### Fixed
 
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends

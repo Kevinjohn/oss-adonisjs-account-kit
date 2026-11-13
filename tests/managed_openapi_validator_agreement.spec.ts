@@ -134,6 +134,8 @@ test.group('managed request schemas match the validators', () => {
     ['auth.oauth.confirmation', socialConfirmationValidator, { verificationToken: '' }],
     ['auth.oauth.token', socialTokenValidator, { code: 'c', verifier }],
     ['auth.oauth.token', socialTokenValidator, { code: 'c', verifier: verifier.slice(1) }],
+    ['auth.oauth.token', socialTokenValidator, { code: 'c', verifier: 'v'.repeat(128) }],
+    ['auth.oauth.token', socialTokenValidator, { code: 'c', verifier: 'v'.repeat(129) }],
     ['auth.oauth.token', socialTokenValidator, { code: '', verifier }],
     [
       'account.socialProof.password',
@@ -172,6 +174,19 @@ test.group('managed request schemas match the validators', () => {
     const begin = compileEmbedded(session, requestSchema(session, 'auth.oauth.redirect'))
     assert.isTrue(await socialBeginValidator.validate({ intent: 'confirm' }).then(() => true))
     assert.isFalse(begin({ intent: 'confirm' }))
+  })
+
+  test('a 129-character verifier is a field error on verifier', async ({ assert }) => {
+    const error = await socialTokenValidator
+      .validate({ code: 'c', verifier: 'v'.repeat(129) })
+      .then(
+        () => null,
+        (failure) => failure as { messages: Array<{ field: string }> }
+      )
+    assert.deepEqual(
+      error?.messages.map((message) => message.field),
+      ['verifier']
+    )
   })
 
   test('the invitation list query matches the validator', async ({ assert }) => {

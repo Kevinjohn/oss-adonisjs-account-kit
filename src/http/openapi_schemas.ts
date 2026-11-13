@@ -353,7 +353,10 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.oauth.token': {
     summary: 'Exchange a social handoff code for an access token',
     body: () =>
-      body({ code: nonEmpty(), verifier: string({ minLength: 43 }) }, ['code', 'verifier']),
+      body({ code: nonEmpty(), verifier: string({ minLength: 43, maxLength: 128 }) }, [
+        'code',
+        'verifier',
+      ]),
     success: ok(
       'Signed in.',
       closed({
