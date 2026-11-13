@@ -1,7 +1,8 @@
 import { InvalidInputError } from './errors.js'
 import type { ResolvedConfig } from './types.js'
 
-const PROTECTED_FIELDS = new Set([
+/** Lower-cased account field names that registration data may never set. */
+export const PROTECTED_FIELDS: ReadonlySet<string> = new Set([
   'id',
   'email',
   'unverifiedemail',
