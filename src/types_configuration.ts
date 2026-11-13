@@ -35,7 +35,8 @@ export interface AccountKitConfig {
   notify: Partial<NotificationCallbacks>
   /**
    * The delivery guarantee the application provides; durable requires an application queue or
-   * outbox. Readiness checks and setup read it; Account Kit sends messages the same way either way.
+   * outbox. Account Kit validates and exposes it, and setup writes it; the application passes it to
+   * `notificationReadiness`. Account Kit sends messages the same way either way.
    */
   delivery?: 'best-effort' | 'durable' | 'capture'
   /**
@@ -54,8 +55,9 @@ export interface AccountKitConfig {
    */
   onPasswordResetIssuedTransaction?: (user: AccountUser, trx: Trx) => Promise<void>
   /**
-   * Revokes your own sessions or tokens in the same transaction as a password or email change.
-   * Required when credentials can change; a no-op is a deliberate choice.
+   * Optional. Revokes your own sessions or tokens in the same transaction as a password or email
+   * change. Without `authentication`, Account Kit revokes none, so this hook is then the only
+   * revocation.
    */
   onCredentialsChangedTransaction?: (
     user: AccountUser,

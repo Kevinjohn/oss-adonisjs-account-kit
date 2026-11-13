@@ -56,6 +56,8 @@ export async function reopenResendOnFailure(
       .from('email_verification_tokens')
       .where('hash', hashToken(token))
       .update({ created_at: sqlTimestamp(db, DateTime.utc().minus(RESEND_WINDOW)) })
+      // Best-effort, so the delivery error is the one thrown. If this reset fails, a retry inside
+      // the resend window returns 'sent' without sending.
       .catch(() => {})
     throw error
   }
