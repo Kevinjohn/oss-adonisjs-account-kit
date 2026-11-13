@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
+  the account's `identity:user` budget before checking the password, as password change, profile
+  changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.
 - The exported `ManagedRequestBodies['account.invitation.send']` and
   `ManagedQueries['account.invitation.list']` types include the optional `scope` the routes already
   accept.
