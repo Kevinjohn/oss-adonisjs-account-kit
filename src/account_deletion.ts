@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto'
 import { confirmActor } from './actor_confirmation.js'
 import { transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
-import { throttlerOf } from './throttle.js'
 import { deleteUserRows } from './user_rows.js'
 import type { AccountDataInput, DeletedAccount } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
@@ -16,7 +15,7 @@ export async function deleteAccount(
   const { config } = deps
   const remove = config.users.delete
   if (!remove) throw new Error('account_kit: users.delete must be a function')
-  await throttlerOf(deps).consume('identity:user', String(input.actorId), config.throttle)
+  await deps.throttler.consume('identity:user', String(input.actorId), config.throttle)
   const operationId = randomUUID()
   const { value: deleted, fault } = await settleCommitted(
     transaction(deps.db, async (trx): Promise<DeletedAccount> => {

@@ -5,7 +5,6 @@ import { revision } from './credential_revision.js'
 import { transaction } from './db.js'
 import { settleCommitted } from './effects.js'
 import type { PostCommitError } from './errors.js'
-import { throttlerOf } from './throttle.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
@@ -86,7 +85,7 @@ export async function exportAccountData(
   input: AccountDataInput
 ): Promise<AccountExport> {
   const { config } = deps
-  await throttlerOf(deps).consume('identity:user', String(input.actorId), config.throttle)
+  await deps.throttler.consume('identity:user', String(input.actorId), config.throttle)
   const { value: document, fault } = await settleCommitted(
     transaction(deps.db, async (trx): Promise<AccountExport> => {
       const user = await confirmActor(

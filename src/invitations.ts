@@ -19,7 +19,6 @@ import {
   InvalidTokenError,
   type PostCommitError,
 } from './errors.js'
-import { throttlerOf } from './throttle.js'
 import { isPasswordAllowed } from './password.js'
 import { passwordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
@@ -135,13 +134,13 @@ export async function sendInvitation(
   if ((await deps.config.authorize.invite(actor, input.role, { scope })) !== true)
     throw new AuthorizationError()
   // Spend the actor's budget first: the registered-address answer below must not be free to probe.
-  await throttlerOf(deps).consume(
+  await deps.throttler.consume(
     'invitation:send:actor',
     String(actor.id),
     deps.config.invitationThrottle.sendActor
   )
   if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
-  await throttlerOf(deps).consume(
+  await deps.throttler.consume(
     'invitation:send:recipient',
     email,
     deps.config.invitationThrottle.sendRecipient

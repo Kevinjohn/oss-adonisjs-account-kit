@@ -9,7 +9,6 @@ import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { invitationAccepted } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
-import { throttlerOf } from './throttle.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isRecentIssue, reopenResendOnFailure } from './token_reuse.js'
 import { expiresAt } from './ttl.js'
@@ -46,7 +45,7 @@ export async function sendVerification(
   const user = await deps.config.users.findById(input.userId)
   if (!user) throw new InvalidInputError('Unknown user')
   if (isActiveAccount(user)) return 'already_verified'
-  await throttlerOf(deps).consume('verification:user', String(user.id), deps.config.throttle)
+  await deps.throttler.consume('verification:user', String(user.id), deps.config.throttle)
   const recent = await deps.db
     .from('email_verification_tokens')
     .select('created_at', 'expires_at', 'purpose', 'email', 'current_email')

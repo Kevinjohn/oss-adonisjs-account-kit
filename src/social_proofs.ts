@@ -4,7 +4,6 @@ import { consumeRows } from './consume_rows.js'
 import { revision } from './credential_revision.js'
 import { SocialProofError } from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
-import { throttlerOf } from './throttle.js'
 import { authenticated, expiry, now, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type { CurrentAccountInput, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
@@ -66,11 +65,7 @@ export async function proveSocialPassword(
 ): Promise<string> {
   if (typeof input.password !== 'string' || !isSensitivePurpose(input.purpose) || !input.current)
     throw new SocialProofError()
-  await throttlerOf(deps).consume(
-    'identity:user',
-    String(input.current.userId),
-    deps.config.throttle
-  )
+  await deps.throttler.consume('identity:user', String(input.current.userId), deps.config.throttle)
   return transaction(deps.db, async (trx) => {
     const user = await authenticated(deps, input.current, trx)
     if (

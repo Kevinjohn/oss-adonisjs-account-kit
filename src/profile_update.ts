@@ -8,7 +8,6 @@ import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effec
 import { isEmailShaped, normalizeEmail } from './email.js'
 import { EmailAlreadyRegisteredError, InvalidInputError, type PostCommitError } from './errors.js'
 import { mapRegistrationFields } from './registration_fields.js'
-import { throttlerOf } from './throttle.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { confirmActor, requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
@@ -44,7 +43,7 @@ export async function updateProfile(
   const registrationData = hasRegistrationData
     ? await mapRegistrationFields(deps.config, input.registrationData)
     : undefined
-  await throttlerOf(deps).consume('identity:user', String(input.actorId), deps.config.throttle)
+  await deps.throttler.consume('identity:user', String(input.actorId), deps.config.throttle)
 
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()

@@ -6,6 +6,7 @@ import { hashToken } from '../src/tokens.js'
 import { DeliveryError, InvalidInputError, PostCommitError, ThrottledError } from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { serviceDependencies } from './helpers/service_dependencies.js'
 import {
   accountKit,
   insertUser,
@@ -321,10 +322,10 @@ test.group('passwordReset.request', (group) => {
     const limiter = { use: () => ({ consume: async () => {} }) } as never
     for (let index = 0; index < 30; index++) {
       const started = performance.now()
-      await requestPasswordReset(
-        { config, db: kit.db, limiter },
-        { email: 'unknown@example.test', clientKey: 'fast' }
-      )
+      await requestPasswordReset(serviceDependencies({ config, db: kit.db, limiter }), {
+        email: 'unknown@example.test',
+        clientKey: 'fast',
+      })
       assert.isAtLeast(performance.now() - started, 20)
     }
   }).timeout(4000)
@@ -335,10 +336,10 @@ test.group('passwordReset.request', (group) => {
     for (let index = 0; index < 30; index++) {
       const started = performance.now()
       try {
-        await requestPasswordReset(
-          { config, db: kit.db, limiter },
-          { email: 'invalid', clientKey: 'fast' }
-        )
+        await requestPasswordReset(serviceDependencies({ config, db: kit.db, limiter }), {
+          email: 'invalid',
+          clientKey: 'fast',
+        })
         assert.fail('expected InvalidInputError')
       } catch (error) {
         assert.instanceOf(error, InvalidInputError)

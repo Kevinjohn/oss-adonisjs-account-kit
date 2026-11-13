@@ -7,7 +7,6 @@ import { requireAuthentication } from './authentication_config.js'
 import { safeAccount } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { normalizeEmail } from './email.js'
-import { throttlerOf } from './throttle.js'
 import { credentialsChanged, revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
 import {
@@ -166,7 +165,7 @@ export function authenticationService(deps: ServiceDependencies) {
         throw new InvalidCredentialsError()
 
       const email = normalizeEmail(input.email)
-      const key = throttlerOf(deps).key
+      const key = deps.throttler.key
       const clientKey = key('login:client', input.clientKey)
       const identityKey = key('login:identity', `${input.clientKey}\0${email}`)
       // The limiter normalises the options it receives in place; give it copies of the frozen budgets.

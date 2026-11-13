@@ -10,7 +10,6 @@ import {
   InvitationNotFoundError,
   InvitationManagementDeniedError,
 } from './errors.js'
-import { throttlerOf } from './throttle.js'
 import { toInvitation } from './invitation_rows.js'
 import { normalizeScope, scopeColumn } from './invitation_scope.js'
 import { requireUser } from './actor_confirmation.js'
@@ -83,12 +82,12 @@ export async function resendInvitation(
   const preflight = await transaction(deps.db, (trx) =>
     lockResendable(deps.config, trx, input.actorId, input.invitationId)
   )
-  await throttlerOf(deps).consume(
+  await deps.throttler.consume(
     'invitation:resend:actor',
     String(input.actorId),
     deps.config.invitationThrottle.resendActor
   )
-  await throttlerOf(deps).consume(
+  await deps.throttler.consume(
     'invitation:resend:invitation',
     String(preflight.id),
     deps.config.invitationThrottle.resendInvitation
