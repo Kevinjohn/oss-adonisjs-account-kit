@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- The exported `ManagedRequestBodies['account.invitation.send']` and
+  `ManagedQueries['account.invitation.list']` types include the optional `scope` the routes already
+  accept.
+
 ## 0.3.4 - 2026-11-09
 
 ### Changed
