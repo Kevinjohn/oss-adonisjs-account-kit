@@ -77,7 +77,7 @@ export { defineConfig } from './config.js'
  * The account service. Resolve it from the container with `app.container.make(AccountKit)`. Each
  * capability group throws `CapabilityDisabledError` when its capability is not in `enabled`.
  * `authentication` depends on the `authentication` config block instead, except `sessions`, which
- * needs `sessionManagement`; `maintenance` and `managedHttp` are always available.
+ * needs `sessionManagement`; `maintenance` is always available.
  */
 export class AccountKit {
   private readonly deps: {
@@ -121,7 +121,11 @@ export class AccountKit {
     prune: (input: PruneInput = {}) => pruneExpired(this.deps.db, input),
   }
 
-  /** Shared-store, secret-keyed client budget for managed proof URL requests. */
+  /**
+   * Shared-store, secret-keyed client budget for managed proof URL requests.
+   *
+   * @internal
+   */
   get managedHttp() {
     return managedHttpService(this.deps)
   }
