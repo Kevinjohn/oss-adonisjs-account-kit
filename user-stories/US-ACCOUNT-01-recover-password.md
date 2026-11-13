@@ -40,7 +40,8 @@ flowchart TD
  REQ["passwordReset.request"] --> REQ_THROTTLE["Throttle client and address"]
  REQ_THROTTLE --> REQ_LOOKUP["Find account by normalized email"]
  REQ_LOOKUP --> REQ_KNOWN{"Was an account found?"}
- REQ_KNOWN -->|No| REQ_ACK["Skip issuance and delivery; return generic acknowledgement after timing floor"]
+ REQ_KNOWN -->|No| REQ_SKIP["Skip issuance and delivery"]
+ REQ_SKIP --> REQ_ACK["Return generic acknowledgement after timing floor"]
  REQ_KNOWN -->|Yes| REQ_ISSUE["Issue hashed token and commit"]
  REQ_ISSUE --> REQ_FOLLOW["Send provision and run follow-up callback"]
  REQ_FOLLOW --> REQ_OK{"Did follow-ups succeed?"}
