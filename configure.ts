@@ -1,11 +1,19 @@
 import { readdir } from 'node:fs/promises'
 import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import type Configure from '@adonisjs/core/commands/configure'
+import type * as TypeScript from 'typescript'
 import {
   accountKitMigrationSuffix,
   migrationNames,
   migrationSchema,
 } from './src/setup/migration_definitions.js'
+import { inspectProviders } from './src/setup/providers_inspection.js'
+import {
+  InvalidSetupSourceError,
+  parseSetupSource,
+  walk,
+  type SetupSource,
+} from './src/setup/ts_source.js'
 import { stubsRoot } from './stubs/main.js'
 
 export {
@@ -23,155 +31,111 @@ const providerPath = '@kevinjohn/adonisjs-account-kit/account_kit_provider'
 class UnsupportedProvidersConfiguration extends Error {}
 class UnsupportedConfigShape extends Error {}
 
-type RcNode = {
-  getKindName(): string
-  getText(): string
-  getArguments?(): RcNode[]
-  getExpression?(): RcNode
-  getProperty?(name: string): RcNode | undefined
-  getProperties?(): RcNode[]
-  getName?(): string
-  getNameNode?(): RcNode
-  getInitializer?(): RcNode | undefined
-  getElements?(): RcNode[]
-  getBody?(): RcNode
-  getStatements?(): RcNode[]
-  getLiteralValue?(): string
-}
 type AssemblerProject = CodeTransformer['project']
 
 /**
  * Inspect the same defineConfig call and provider entry forms consumed by Assembler's RC
  * transformer. Returning false means no registered provider was found in the inspectable configuration.
  */
-function hasRegisteredProvider(project: AssemblerProject, rcPath: string): boolean {
+async function hasRegisteredProvider(project: AssemblerProject, rcPath: string): Promise<boolean> {
   const rcFile = project.getSourceFile(rcPath)
   if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
   if (project.getProgram().getSyntacticDiagnostics(rcFile).length)
     throw new Error('adonisrc.ts contains TypeScript syntax errors')
+  let source: SetupSource
+  try {
+    source = await parseSetupSource(rcFile.getFullText())
+  } catch (error) {
+    if (error instanceof InvalidSetupSourceError)
+      throw new Error('adonisrc.ts contains TypeScript syntax errors')
+    throw error
+  }
+  const { ts, file } = source
 
-  const call = (rcFile.getDescendants() as unknown as RcNode[]).find((node) => {
-    if (node.getKindName() !== 'CallExpression') return false
-    return node.getExpression?.().getText() === 'defineConfig'
+  let call: TypeScript.CallExpression | undefined
+  walk(source, (node) => {
+    if (!call && ts.isCallExpression(node) && node.expression.getText(file) === 'defineConfig')
+      call = node
   })
   if (!call) throw new UnsupportedConfigShape('could not locate the defineConfig call')
-  const config = call.getArguments?.()[0]
-  if (!config || config.getKindName() !== 'ObjectLiteralExpression')
+  const config = call.arguments[0]
+  if (!config || !ts.isObjectLiteralExpression(config))
     throw new UnsupportedConfigShape('defineConfig does not receive a static object literal')
 
-  const properties = config.getProperties?.() ?? []
-  if (
-    properties.some((property) => property.getNameNode?.().getKindName() === 'ComputedPropertyName')
-  ) {
+  // A property's name as written, so `'providers'` (quoted) is not the providers property.
+  const nameOf = (property: TypeScript.ObjectLiteralElementLike) =>
+    ts.isSpreadAssignment(property) ? undefined : property.name.getText(file)
+  const isComputed = (property: TypeScript.ObjectLiteralElementLike) =>
+    !ts.isSpreadAssignment(property) && ts.isComputedPropertyName(property.name)
+  const lastSpreadIndex = (object: TypeScript.ObjectLiteralExpression) =>
+    object.properties.findLastIndex((property) => ts.isSpreadAssignment(property))
+
+  if (config.properties.some(isComputed)) {
     throw new UnsupportedConfigShape('computed config properties cannot be inspected safely')
   }
 
-  let lastSpreadIndex = -1
-  for (const [index, property] of properties.entries()) {
-    if (property.getKindName() === 'SpreadAssignment') lastSpreadIndex = index
+  const configSpread = lastSpreadIndex(config)
+  // After a spread, only properties written after the last spread are known.
+  const findProperty = (object: TypeScript.ObjectLiteralExpression, name: string) =>
+    configSpread >= 0
+      ? object.properties.slice(configSpread + 1).findLast((property) => nameOf(property) === name)
+      : object.properties.find((property) => nameOf(property) === name)
+  const findFile = (entry: TypeScript.ObjectLiteralExpression, name: string) => {
+    const entrySpread = lastSpreadIndex(entry)
+    return entrySpread >= 0
+      ? entry.properties
+          .slice(entrySpread + 1)
+          .findLast((property) => ts.isPropertyAssignment(property) && nameOf(property) === name)
+      : entry.properties.find((property) => nameOf(property) === name)
   }
-  const propertiesAfterLastSpread = properties.slice(lastSpreadIndex + 1).reverse()
-  const findProperty = (name: string) =>
-    lastSpreadIndex >= 0
-      ? propertiesAfterLastSpread.find((property) => property.getName?.() === name)
-      : config.getProperty?.(name)
   if (
-    lastSpreadIndex >= 0 &&
-    !['providers', 'commands'].every(
-      (name) => findProperty(name)?.getKindName() === 'PropertyAssignment'
-    )
+    configSpread >= 0 &&
+    !['providers', 'commands'].every((name) => {
+      const property = findProperty(config, name)
+      return property !== undefined && ts.isPropertyAssignment(property)
+    })
   ) {
     throw new UnsupportedConfigShape(
       'a config with object spreads must explicitly expose providers and commands after its last spread'
     )
   }
 
-  const providersProperty = findProperty('providers')
-  const commandsProperty = findProperty('commands')
+  const commandsProperty = findProperty(config, 'commands')
   if (
     commandsProperty &&
-    (commandsProperty.getKindName() !== 'PropertyAssignment' ||
-      commandsProperty.getInitializer?.()?.getKindName() !== 'ArrayLiteralExpression')
+    (!ts.isPropertyAssignment(commandsProperty) ||
+      !ts.isArrayLiteralExpression(commandsProperty.initializer))
   ) {
     throw new UnsupportedConfigShape('the commands property is not a static array assignment')
   }
 
-  if (!providersProperty) return false
-  if (providersProperty.getKindName() !== 'PropertyAssignment')
+  const providers = inspectProviders(source, config, { config: findProperty, entry: findFile })
+  if (providers.status === 'absent') return false
+  if (providers.status === 'not-assignment')
     throw new UnsupportedProvidersConfiguration(
       'the providers property is not a static array assignment'
     )
-
-  const providersArray = providersProperty.getInitializer?.()
-  if (!providersArray || providersArray.getKindName() !== 'ArrayLiteralExpression')
+  if (providers.status === 'not-array')
     throw new UnsupportedProvidersConfiguration('the providers property is not a static array')
 
-  const importPathFromArrow = (node: RcNode) => {
-    if (node.getKindName() !== 'ArrowFunction') return undefined
-    const body = node.getBody?.()
-    if (!body) return undefined
-    let importCall: RcNode | undefined
-    if (body.getKindName() === 'CallExpression') importCall = body
-    else if (body.getKindName() === 'Block') {
-      const statements = body.getStatements?.() ?? []
-      if (statements.length !== 1 || statements[0].getKindName() !== 'ReturnStatement')
-        return undefined
-      importCall = statements[0].getExpression?.()
-    }
-    if (!importCall || importCall.getKindName() !== 'CallExpression') return undefined
-    const [argument] = importCall.getArguments?.() ?? []
-    if (
-      importCall.getExpression?.().getKindName() !== 'ImportKeyword' ||
-      !argument ||
-      argument.getKindName() !== 'StringLiteral'
-    )
-      return undefined
-    return argument.getLiteralValue?.()
-  }
-
   let providerFound = false
-  for (const entry of providersArray.getElements?.() ?? []) {
-    const isProviderObject = entry.getKindName() === 'ObjectLiteralExpression'
-    let loader: RcNode | undefined = entry
-    if (isProviderObject) {
-      const entryProperties = entry.getProperties?.() ?? []
-      if (
-        entryProperties.some(
-          (property) => property.getNameNode?.().getKindName() === 'ComputedPropertyName'
-        )
-      ) {
-        throw new UnsupportedProvidersConfiguration(
-          'computed provider object properties cannot be inspected safely'
-        )
-      }
-
-      let entryLastSpreadIndex = -1
-      for (const [index, property] of entryProperties.entries()) {
-        if (property.getKindName() === 'SpreadAssignment') entryLastSpreadIndex = index
-      }
-      const fileProperty =
-        entryLastSpreadIndex >= 0
-          ? entryProperties
-              .slice(entryLastSpreadIndex + 1)
-              .reverse()
-              .find(
-                (property) =>
-                  property.getKindName() === 'PropertyAssignment' && property.getName?.() === 'file'
-              )
-          : entry.getProperty?.('file')
-      loader =
-        fileProperty?.getKindName() === 'PropertyAssignment'
-          ? fileProperty.getInitializer?.()
-          : undefined
+  for (const entry of providers.entries) {
+    if (
+      entry.isObject &&
+      ts.isObjectLiteralExpression(entry.node) &&
+      entry.node.properties.some(isComputed)
+    ) {
+      throw new UnsupportedProvidersConfiguration(
+        'computed provider object properties cannot be inspected safely'
+      )
     }
-    const path = loader && importPathFromArrow(loader)
-    if (!path) {
-      const message = isProviderObject
+    if (!entry.path) {
+      const message = entry.isObject
         ? 'a providers object must have a static file lazy import'
         : 'a providers entry is not a supported lazy import'
       throw new UnsupportedProvidersConfiguration(message)
     }
-    if (path === providerPath) providerFound = true
+    if (entry.path === providerPath) providerFound = true
   }
   return providerFound
 }
@@ -204,7 +168,7 @@ export async function configure(command: Configure) {
   try {
     const project = await codemods.getTsMorphProject()
     if (!project) throw new Error('the Assembler TypeScript project is unavailable')
-    registeredProvider = hasRegisteredProvider(project, command.app.makePath('adonisrc.ts'))
+    registeredProvider = await hasRegisteredProvider(project, command.app.makePath('adonisrc.ts'))
   } catch (error) {
     if (error instanceof UnsupportedConfigShape) {
       command.exitCode = 1
