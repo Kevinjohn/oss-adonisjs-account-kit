@@ -93,7 +93,7 @@ test('configures the package idempotently without replacing application-owned fi
     const generatedConfig = await readFile(configPath, 'utf8')
     assert.include(generatedConfig, "from '@kevinjohn/adonisjs-account-kit'")
     assert.include(generatedConfig, "import('#models/user')")
-    assert.match(generatedConfig, /import \{\n  createActionUrls,/)
+    assert.include(generatedConfig, 'import {\n  createActionUrls,')
     assert.include(generatedConfig, 'urls: createActionUrls({')
     assert.include(generatedConfig, "passwordReset: 'account/recovery'")
     assert.notInclude(generatedConfig, 'account-kit/')
