@@ -12,6 +12,7 @@ import {
   ThrottledError,
 } from './errors.js'
 
+/** The proof an invalid token was for; picks the per-kind invalid-token code. */
 export type ProofKind = 'password' | 'email' | 'invitation' | 'magicLink'
 
 export interface PublicIdentity {

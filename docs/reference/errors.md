@@ -15,14 +15,37 @@ failure handling:
 ```ts
 import { accountErrorResponse } from '@kevinjohn/adonisjs-account-kit'
 
-const mapped = accountErrorResponse(error, { i18n: 'i18n' in ctx ? ctx.i18n : undefined })
+const mapped = accountErrorResponse(error, {
+  i18n: 'i18n' in ctx ? ctx.i18n : undefined,
+  accept: ctx.request.header('accept'),
+})
 if (mapped) {
-  for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
+  for (const [name, value] of Object.entries(mapped.headers)) {
+    if (name === 'Vary') ctx.response.vary(value)
+    else ctx.response.header(name, value)
+  }
+  ctx.response.header('Content-Type', mapped.contentType)
   return ctx.response.status(mapped.status).send(mapped.body)
 }
 ```
 
-The body is `{ errors: [{ code, message }] }`, the same envelope the managed routes send. The entry
+The helper runs the same mapper as the managed routes, so the status, code, body, headers and
+content type match theirs for the same error. Its options are:
+
+- `i18n`: the request's `ctx.i18n`, to translate the message (see below).
+- `accept`: the request's `Accept` header. When the client ranks `application/vnd.api+json` at
+  least as high as JSON, `contentType` is `application/vnd.api+json` and the entry carries
+  `title` instead of `message`. Otherwise `contentType` is `application/json`.
+- `proof`: `'password'`, `'email'`, `'invitation'` or `'magicLink'`. An `InvalidTokenError` then
+  returns the per-kind code, such as `E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN`, instead of
+  `E_ACCOUNT_KIT_INVALID_TOKEN`.
+
+The body is `{ errors: [{ code, message }] }`, or `{ errors: [{ code, title }] }` for JSON:API, the
+same envelope the managed routes send. Code that reads `entry.message` narrows the union first, for
+example with `'message' in entry`. A plain JSON entry adds `field` when the error names one:
+`RegistrationEmailAlreadyRegisteredError` returns 422 with `field: 'email'`. A masked or 5xx error
+never carries `field`. The headers include `Vary: Accept`; append it with `ctx.response.vary` so an
+existing `Vary` value is kept. The entry
 adds `committed: true` for `PostCommitError`; `DeliveryError` is a committed delivery-only failure
 without that marker. Every 5xx error returns `E_ACCOUNT_KIT_OPERATION_FAILED`. `PostCommitError` identifies a failed observer
 or commit listener; if a delivery also fails, its cause is included.
@@ -53,9 +76,16 @@ try {
     return response.accepted(acknowledgement)
   }
 
-  const mapped = accountErrorResponse(error, { i18n: 'i18n' in ctx ? ctx.i18n : undefined })
+  const mapped = accountErrorResponse(error, {
+    i18n: 'i18n' in ctx ? ctx.i18n : undefined,
+    accept: request.header('accept'),
+  })
   if (mapped) {
-    for (const [name, value] of Object.entries(mapped.headers)) response.header(name, value)
+    for (const [name, value] of Object.entries(mapped.headers)) {
+      if (name === 'Vary') response.vary(value)
+      else response.header(name, value)
+    }
+    response.header('Content-Type', mapped.contentType)
     return response.status(mapped.status).send(mapped.body)
   }
   throw error
@@ -76,7 +106,7 @@ shows reset request and completion handling. Never log full proof-bearing URLs, 
 credentials, or callback causes in the response.
 
 - `ThrottledError` adds a `Retry-After` header. Every package error response sets
-  `Cache-Control: no-store`.
+  `Cache-Control: no-store` and `Vary: Accept`.
 - `DeliveryError` marks a committed delivery-path failure. It returns
   `E_ACCOUNT_KIT_OPERATION_FAILED` without a `committed` marker.
 - `PostCommitError` marks a failed post-commit observer or commit listener and adds `committed: true` to
@@ -121,7 +151,9 @@ messages for `resources/lang/<locale>/errors.json`:
 }
 ```
 
-An application that also uses the managed routes keeps one `errors.json` for both.
+With `proof`, an `InvalidTokenError` uses its per-kind code instead, so add those keys too; the
+[managed routes guide](../guide/managed-http.md) lists them. An application that also uses the
+managed routes keeps one `errors.json` for both.
 
 ## Catalog
 

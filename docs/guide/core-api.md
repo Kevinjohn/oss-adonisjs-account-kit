@@ -193,9 +193,13 @@ In the starter's `app/exceptions/handler.ts`, add the mapping before its ordinar
 import { accountErrorResponse } from '@kevinjohn/adonisjs-account-kit'
 
 // at the start of HttpExceptionHandler.handle(error, ctx):
-const mapped = accountErrorResponse(error)
+const mapped = accountErrorResponse(error, { accept: ctx.request.header('accept') })
 if (mapped) {
-  for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
+  for (const [name, value] of Object.entries(mapped.headers)) {
+    if (name === 'Vary') ctx.response.vary(value)
+    else ctx.response.header(name, value)
+  }
+  ctx.response.header('Content-Type', mapped.contentType)
   return ctx.response.status(mapped.status).send(mapped.body)
 }
 ```

@@ -168,9 +168,13 @@ import {
 const acknowledgement = { message: 'If the account exists, instructions will be sent.' }
 
 function knownError(ctx: HttpContext, error: unknown) {
-  const mapped = accountErrorResponse(error)
+  const mapped = accountErrorResponse(error, { accept: ctx.request.header('accept') })
   if (!mapped) throw error
-  for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
+  for (const [name, value] of Object.entries(mapped.headers)) {
+    if (name === 'Vary') ctx.response.vary(value)
+    else ctx.response.header(name, value)
+  }
+  ctx.response.header('Content-Type', mapped.contentType)
   return ctx.response.status(mapped.status).send(mapped.body)
 }
 

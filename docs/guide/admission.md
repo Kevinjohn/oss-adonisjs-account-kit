@@ -193,7 +193,8 @@ Both errors extend `AccountKitError` and are exported from `@kevinjohn/adonisjs-
 | `AdmissionRequiredError` | `E_ACCOUNT_KIT_ADMISSION_REQUIRED` |    403 | `require` refused a person who is not admitted. `decision` says what is missing. |
 | `AdmissionDecisionError` | `E_ACCOUNT_KIT_ADMISSION_DECISION` |    409 | An approve, reject or revoke the current approval state does not allow.          |
 
-`accountErrorResponse` returns one entry, `{ code, message }`, under `errors`. Add `error.decision` to the 403 body in
+`accountErrorResponse` returns one entry under `errors`: `{ code, message }`, or
+`{ code, title }` when its `accept` option asks for JSON:API. Add `error.decision` to the 403 body in
 your exception handler so the application can say what is missing, inside whatever error envelope
 it already negotiates; the example puts it at the top level of a JSON body and in `meta` of a
 JSON:API body. The package sends no notification of any kind.
