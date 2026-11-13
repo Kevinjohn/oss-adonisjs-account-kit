@@ -4,6 +4,12 @@
 
 ### Changed
 
+- The `config/account_kit.ts` written by `node ace configure` builds account links with
+  `createActionUrls` and the setup command's default paths (`account/recovery`,
+  `account/verification`, `account/email-change`), so both commands write the same links and apply
+  the same HTTPS and loopback origin rules. Links use `FRONTEND_URL` when set, else `APP_URL`;
+  configure declares `FRONTEND_URL` as optional in `start/env.ts`. Existing config files are not
+  rewritten. The recipe patches and the getting-started guide follow the new paths.
 - The social handoff checks the verifier against the stored challenge with the same constant-time
   comparison as magic links, and the PKCE challenge and verifier rules live in one module. The
   managed `auth.oauth.token` route rejects a verifier longer than 128 characters with a field error,

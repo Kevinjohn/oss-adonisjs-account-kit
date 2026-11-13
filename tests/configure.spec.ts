@@ -93,13 +93,21 @@ test('configures the package idempotently without replacing application-owned fi
     const generatedConfig = await readFile(configPath, 'utf8')
     assert.include(generatedConfig, "from '@kevinjohn/adonisjs-account-kit'")
     assert.include(generatedConfig, "import('#models/user')")
-    assert.include(generatedConfig, "env.get('APP_URL').endsWith('/')")
-    assert.include(generatedConfig, "new URL('account-kit/' + path")
+    assert.include(generatedConfig, 'import {\n  createActionUrls,')
+    assert.include(generatedConfig, 'urls: createActionUrls({')
+    assert.include(generatedConfig, "passwordReset: 'account/recovery'")
+    assert.notInclude(generatedConfig, 'account-kit/')
     assert.include(generatedConfig, "registration: { availability: 'open' }")
     assert.notInclude(generatedConfig.match(/enabled: \[[^\]]*\]/s)?.[0], "'invitations'")
     const firstEnv = await readFile(envPath, 'utf8')
     assert.equal(
       firstEnv.match(/APP_URL: Env\.schema\.string\(\{ format: 'url', tld: false \}\)/g)?.length,
+      1
+    )
+    assert.equal(
+      firstEnv.match(
+        /FRONTEND_URL: Env\.schema\.string\.optional\(\{ format: 'url', tld: false \}\)/g
+      )?.length,
       1
     )
     assert.equal(await readFile(existingMigrationPath, 'utf8'), existingMigration)

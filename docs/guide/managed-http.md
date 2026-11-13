@@ -53,7 +53,7 @@ node ace migration:run
 This applies Account Kit's user columns and `password_reset_tokens` table, along with any selected
 limiter migration. Follow the install and migration steps in [Getting started](getting-started.md)
 to install the limiter integration and generate the schema before running migrations.
-The generated `urls.passwordReset` uses `{APP_URL}/account-kit/recovery/:token`; it names the link
+The generated `urls.passwordReset` uses `{FRONTEND_URL or APP_URL}/account/recovery/:token`; it names the link
 destination, but Account Kit does not generate a browser page there. For a browser flow, point it
 to a page owned by your application and have that page POST the token and password fields to the
 managed completion route.
