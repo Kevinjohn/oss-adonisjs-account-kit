@@ -74,6 +74,7 @@ Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 
 | Magic-link request                 | client, normalized email                 | 5 per 15 minutes                     | `throttle`                     |
 | Verification resend                | user                                     | 5 per 15 minutes                     | `throttle`                     |
 | Password, email and profile change | user                                     | 5 per 15 minutes                     | `throttle`                     |
+| Social password proof              | user                                     | 5 per 15 minutes                     | `throttle`                     |
 | Account export and deletion        | user                                     | 5 per 15 minutes                     | `throttle`                     |
 | Managed proof routes and signup    | client, per endpoint                     | 5 per 15 minutes                     | `throttle`                     |
 | Invitation send                    | actor (10 per hour), recipient (3/hour)  | as listed                            | `invitationThrottle`           |
@@ -83,6 +84,9 @@ Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 
 
 Request limits are checked before the user lookup, so a throttled request reveals nothing. Pinned
 by "the sixth client request is throttled before user lookup".
+
+Password, email and profile change, social password proof, and account export and deletion share
+one budget per account; verification resend has its own.
 
 **Limiter keys hold no personal data.** Each key is an HMAC-SHA256 digest under a key derived from
 `limiterSecret` with HKDF ([`throttle.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/throttle.ts)). The limiter store never holds an email address or

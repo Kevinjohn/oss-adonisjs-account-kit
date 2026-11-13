@@ -116,6 +116,10 @@ provider sign-in. To make sensitive changes:
    `account.socialProof.password` with `social_link` or `social_unlink` when managing provider
    relationships.
 
+Each `account.socialProof.password` attempt spends the account's password budget, the same one
+password change, email and profile changes, export and deletion spend (see
+[rate limits](./security.md#rate-limits)), on top of the route's per-client budget.
+
 The service checks the account's password state under lock, so a supplied `recentProof` never
 substitutes for `currentPassword` once a password exists. Setup blocks social selection without
 the password-reset fallback. A failed standard-adapter reauthentication begin does not redirect

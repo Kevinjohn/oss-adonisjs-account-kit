@@ -13,7 +13,7 @@ import type {
 } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-export type Dependencies = Omit<ServiceDependencies, 'throttler'>
+export type Dependencies = ServiceDependencies
 const MINUTES = 10
 export const expiry = (client: DialectSource) =>
   sqlTimestamp(client, DateTime.utc().plus({ minutes: MINUTES }))
