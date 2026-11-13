@@ -2,6 +2,7 @@ import { completeRegistration } from './social_registration.js'
 import { lockUser, transaction } from './db.js'
 import { isActiveAccount, revision } from './authentication.js'
 import { redeemSocialHandoff } from './social_handoff.js'
+import { isClientChallenge } from './client_challenge.js'
 import { consumeSocialSensitiveProof, proveSocialPassword } from './social_proofs.js'
 import {
   SocialProofError,
@@ -27,9 +28,6 @@ import type {
   Trx,
 } from './types.js'
 
-const validChallenge = (value: unknown): value is string =>
-  typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value)
-
 export { consumeSocialSensitiveProof }
 
 export function socialIdentityService(deps: Dependencies) {
@@ -37,7 +35,7 @@ export function socialIdentityService(deps: Dependencies) {
     /** Starts a provider flow and returns the one-use state and the provider URL to redirect to. */
     async begin(input: SocialBeginInput): Promise<{ state: string; url: string }> {
       const adapter = provider(deps, input.provider)
-      if (!validChallenge(input.clientChallenge)) throw new SocialTransactionError()
+      if (!isClientChallenge(input.clientChallenge)) throw new SocialTransactionError()
       if (!isSocialBeginIntent(input.intent)) throw new SocialTransactionError()
       if (input.proof !== undefined && (input.intent !== 'link' || !isTokenShaped(input.proof)))
         throw new SocialProofError()
@@ -79,7 +77,7 @@ export function socialIdentityService(deps: Dependencies) {
       context?: unknown
     }): Promise<{ state: string; url: string }> {
       const adapter = provider(deps, input.provider)
-      if (!validChallenge(input.clientChallenge) || !isTokenShaped(input.verificationToken))
+      if (!isClientChallenge(input.clientChallenge) || !isTokenShaped(input.verificationToken))
         throw new SocialTransactionError()
       const state = generateToken()
       await transaction(deps.db, async (trx) => {
