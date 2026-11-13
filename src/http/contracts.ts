@@ -45,7 +45,7 @@ export interface ManagedRequestBodies {
     newPasswordConfirmation: string
   }
   'account.emailVerification.send': undefined
-  'account.invitation.send': { email: string; role: string }
+  'account.invitation.send': { email: string; role: string; scope?: string }
   'account.invitation.list': undefined
   'account.invitation.resend': undefined
   'account.invitation.revoke': undefined
@@ -114,7 +114,7 @@ export interface ManagedQueries {
   'account.password.change': undefined
   'account.emailVerification.send': undefined
   'account.invitation.send': undefined
-  'account.invitation.list': { limit?: number; cursor?: string }
+  'account.invitation.list': { limit?: number; cursor?: string; scope?: string }
   'account.invitation.resend': undefined
   'account.invitation.revoke': undefined
   'account.socialProof.password': undefined
