@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
+  AuthorizationError,
   CapabilityDisabledError,
   DeliveryError,
   RegistrationEmailAlreadyRegisteredError,
@@ -153,7 +154,7 @@ test.group('registration', (group) => {
           email: 'person@example.test',
           password: 'password123',
         }),
-      CapabilityDisabledError
+      AuthorizationError
     )
     const disabled = makeService(kit, {
       enabled: ['emailVerification'],
