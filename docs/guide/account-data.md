@@ -120,8 +120,8 @@ The document, version 1 (timestamps are ISO 8601 UTC strings):
   of a pending email change.
 - `application` is what `exportAccountData` returned, passed through JSON, or `null` without the
   hook. Returning `undefined` or a value JSON cannot represent fails the export before it commits.
-- The export never contains password hashes, token hashes, provider tokens, provider `meta`, or
-  in-flight social sign-in state.
+- The export never contains password hashes, token hashes, provider tokens, provider `meta`,
+  magic sign-in links, or in-flight social sign-in state.
 - Export publishes no lifecycle event.
 
 ### Consistency

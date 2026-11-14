@@ -8,7 +8,8 @@ import type { PostCommitError } from './errors.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
-import { sessionRegistryEnabled, sessionTable } from './session_registry.js'
+import { packageTables } from './package_tables.js'
+import { sessionRegistryEnabled } from './session_registry.js'
 
 const faults = new WeakMap<AccountExport, PostCommitError>()
 
@@ -33,12 +34,12 @@ function applicationSection(value: unknown): unknown {
 async function pending(trx: Trx, userId: UserId): Promise<AccountExport['pending']> {
   const now = sqlTimestamp(trx)
   const reset = await trx
-    .from('password_reset_tokens')
+    .from(packageTables.passwordResetTokens)
     .where('tokenable_id', userId)
     .where('expires_at', '>', now)
     .first()
   const verification = await trx
-    .from('email_verification_tokens')
+    .from(packageTables.emailVerificationTokens)
     .select('purpose', 'email')
     .where('tokenable_id', userId)
     .where('expires_at', '>', now)
@@ -67,7 +68,7 @@ async function accessTokens(trx: Trx, config: ResolvedConfig, userId: UserId) {
 
 async function signedInSessions(trx: Trx, userId: UserId) {
   const rows = await trx
-    .from(sessionTable)
+    .from(packageTables.accountSessions)
     .select('id', 'label', 'created_at', 'last_seen_at', 'expires_at')
     .where('user_id', userId)
     .orderBy('id')
@@ -96,9 +97,12 @@ export async function exportAccountData(
         input.recentProof,
         'account_export'
       )
-      const identities = await trx.from('social_identities').where('user_id', user.id).orderBy('id')
+      const identities = await trx
+        .from(packageTables.socialIdentities)
+        .where('user_id', user.id)
+        .orderBy('id')
       const invitations = await trx
-        .from('account_invitations')
+        .from(packageTables.accountInvitations)
         .select('email', 'role', 'created_at', 'expires_at')
         .where('inviter_id', user.id)
         .orderBy('id')
