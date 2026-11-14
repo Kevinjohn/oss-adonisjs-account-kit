@@ -33,8 +33,8 @@ The helper runs the same mapper as the managed routes, so the status, code, body
 content type match theirs for the same error. Its options are:
 
 - `i18n`: the request's `ctx.i18n`, to translate the message (see below).
-- `accept`: the request's `Accept` header. When the client ranks `application/vnd.api+json` at
-  least as high as JSON, `contentType` is `application/vnd.api+json` and the entry carries
+- `accept`: the request's `Accept` header, negotiated as AdonisJS does. When the client prefers
+  `application/vnd.api+json` to JSON (higher quality, or equal quality and listed first), `contentType` is `application/vnd.api+json` and the entry carries
   `title` instead of `message`. Otherwise `contentType` is `application/json`.
 - `proof`: `'password'`, `'email'`, `'invitation'` or `'magicLink'`. An `InvalidTokenError` then
   returns the per-kind code, such as `E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN`, instead of
