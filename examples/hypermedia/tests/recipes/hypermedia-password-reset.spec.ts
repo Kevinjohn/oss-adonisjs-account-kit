@@ -13,6 +13,16 @@ import { accountKitNotifications } from '#services/account_kit_notifications'
 
 const origin = process.env.APP_URL!
 
+/** The path and search of the latest reset link the package sent, after checking its origin and route. */
+function emailedResetPath(assert: Assert, email: string) {
+  const message = accountKitNotifications.last('passwordResetProvision', email)
+  assert.exists(message?.actionUrl, `no password reset link was sent to ${email}`)
+  const url = new URL(message!.actionUrl!)
+  assert.equal(url.origin, new URL(origin).origin)
+  assert.equal(url.pathname, `/reset-password/${encodeURIComponent(message!.token!)}`)
+  return `${url.pathname}${url.search}`
+}
+
 /** Real native form session with manual redirects and the server-rendered hidden CSRF token. */
 class ProofSession {
   private cookies = new Map<string, string>()
@@ -126,8 +136,7 @@ test.group('existing Edge application password reset', (group) => {
       await requester
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
-      const token = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
-      const resetPath = `/reset-password/${encodeURIComponent(token)}`
+      const resetPath = emailedResetPath(assert, user.email)
 
       for (const context of [firstContext, secondContext]) {
         const login = await context.visit('/login')
@@ -255,6 +264,7 @@ test.group('existing Edge application password reset', (group) => {
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
       const valid = accountKitNotifications.tokenFor('passwordResetProvision', formOwner.email)
+      const validPath = emailedResetPath(assert, formOwner.email)
       const validHash = createHash('sha256').update(valid).digest('hex')
       const validProof = await db
         .from('password_reset_tokens')
@@ -283,7 +293,7 @@ test.group('existing Edge application password reset', (group) => {
         }
         for (const token of ['not-a-proof', expired]) {
           await assertActiveSessions()
-          await page.goto(`/reset-password/${encodeURIComponent(valid)}`)
+          await page.goto(validPath)
           await page
             .locator('form')
             .evaluate(
@@ -352,7 +362,7 @@ test.group('existing Edge application password reset', (group) => {
       await page
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
-      const first = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+      const firstPath = emailedResetPath(assert, user.email)
       await page.goto('/forgot-password')
       await page.getByLabel('Email').fill(user.email)
       await page.getByRole('button', { name: 'Send reset link' }).click()
@@ -360,6 +370,7 @@ test.group('existing Edge application password reset', (group) => {
         .getByText('If an account exists for that address, we have sent a reset link.')
         .waitFor()
       const replacement = accountKitNotifications.tokenFor('passwordResetProvision', user.email)
+      const replacementPath = emailedResetPath(assert, user.email)
       const originalHash = (await db.from('users').select('password').where('id', user.id).first())!
         .password
       const replacementHash = createHash('sha256').update(replacement).digest('hex')
@@ -393,7 +404,7 @@ test.group('existing Edge application password reset', (group) => {
       }
       await assertPreserved()
 
-      await page.goto(`/reset-password/${encodeURIComponent(replacement)}`)
+      await page.goto(replacementPath)
       await page.getByLabel('New password').fill('ReplacementPass123!')
       await page.getByLabel('Confirm password').fill('DifferentPass123!')
       const validationResponse = page.waitForResponse(
@@ -421,13 +432,10 @@ test.group('existing Edge application password reset', (group) => {
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
       await assertPreserved()
 
-      await page.goto(`/reset-password/${encodeURIComponent(replacement)}`)
+      await page.goto(replacementPath)
       await page
         .locator('form')
-        .evaluate(
-          (form, action) => form.setAttribute('action', action),
-          `/reset-password/${encodeURIComponent(first)}`
-        )
+        .evaluate((form, action) => form.setAttribute('action', action), firstPath)
       await page.getByLabel('New password').fill('ReplacementPass123!')
       await page.getByLabel('Confirm password').fill('ReplacementPass123!')
       await page.getByRole('button', { name: 'Reset password' }).click()
@@ -435,7 +443,7 @@ test.group('existing Edge application password reset', (group) => {
       assert.isNotNull(await User.verifyCredentials(user.email, 'OldPassword123!'))
       await assertPreserved()
 
-      await page.goto(`/reset-password/${encodeURIComponent(replacement)}`)
+      await page.goto(replacementPath)
       await page.getByLabel('New password').fill('ReplacementPass123!')
       await page.getByLabel('Confirm password').fill('ReplacementPass123!')
       await page.getByRole('button', { name: 'Reset password' }).click()
