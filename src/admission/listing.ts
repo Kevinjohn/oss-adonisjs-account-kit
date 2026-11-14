@@ -4,7 +4,7 @@ import { AuthorizationError, InvalidInputError } from '../errors.js'
 import { readIsoTimestamp, sqlTimestamp } from '../timestamps.js'
 import type { UserId } from '../types.js'
 import { requireApproval } from './capability.js'
-import { decodeAdmissionCursor, encodeAdmissionCursor } from './cursor.js'
+import { decodeKeysetCursor, encodeKeysetCursor } from '../keyset_cursor.js'
 import { evaluateAdmission } from './decision.js'
 import { admissionTable, readAdmissionRow, toAdmissionRecord, type AdmissionRow } from './rows.js'
 import type { AdmissionContext } from './service.js'
@@ -32,7 +32,8 @@ export async function listAdmissions(
     throw new InvalidInputError('Invalid admission page limit')
   if (input.status !== undefined && !statuses.includes(input.status))
     throw new InvalidInputError('Invalid admission status')
-  const position = input.cursor === undefined ? null : decodeAdmissionCursor(input.cursor)
+  const position =
+    input.cursor === undefined ? null : decodeKeysetCursor(input.cursor, 'Invalid admission cursor')
   const { users } = deps.accountConfig
   const actor = await users.findById(input.actorId)
   if (!actor) throw new InvalidInputError('Unknown actor')
@@ -73,6 +74,6 @@ export async function listAdmissions(
   return {
     items,
     // The driver may return a Date or an SQL string; the cursor always carries ISO 8601 UTC.
-    nextCursor: last ? encodeAdmissionCursor(readIsoTimestamp(last.created_at), last.id) : null,
+    nextCursor: last ? encodeKeysetCursor(readIsoTimestamp(last.created_at), last.id) : null,
   }
 }
