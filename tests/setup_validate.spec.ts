@@ -36,6 +36,16 @@ test.group('setup choice validation', (group) => {
     assert.isUndefined(missing.changes.find(({ path }) => path === 'config/ally.ts'))
   })
 
+  test('an unknown feature name is reported as a features diagnostic', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    choices.features = [...choices.features, 'typo' as never]
+    const plan = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
+    assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'features'
+    )
+  })
+
   test('application-admitted registration cannot expose the managed public signup route', async ({
     assert,
   }) => {

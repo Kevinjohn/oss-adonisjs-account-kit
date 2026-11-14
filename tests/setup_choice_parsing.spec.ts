@@ -29,4 +29,13 @@ test.group('setup choice parsing', () => {
     choices.authentication.token!.abilities = ['']
     assert.throws(() => parseSetupChoices(choices), /authentication.token.abilities/)
   })
+
+  test('rejects an invalid mode and an unsupported version', ({ assert }) => {
+    const choices = defaultSetupChoices()
+    assert.throws(
+      () => parseSetupChoices({ ...choices, mode: 'typo' }),
+      'mode: choose services or managed'
+    )
+    assert.throws(() => parseSetupChoices({ ...choices, version: 2 }), 'version: expected 1')
+  })
 })
