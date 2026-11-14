@@ -2,7 +2,7 @@
 
 As a signed-in account holder, I want to see the account’s recorded sign-ins so that I can identify sessions that should be revoked.
 
-**Status:** Current when `authentication.sessions` (requires `sessionManagement`) is enabled
+**Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; feature requires configured authentication and session management.
 **Entry:** Host calls `authentication.sessions.list({ current })`; optional managed device routes.
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)

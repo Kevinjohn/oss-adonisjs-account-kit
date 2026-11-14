@@ -12,7 +12,8 @@ As an application administrator, I want to change an account's restriction state
 ## Acceptance criteria
 
 - Input requires target `userId` and an async database-only `change(user, trx)` callback. The method returns `void`; callback mutation and credential revocation commit together.
-- If the target is missing or the transaction/callback fails before commit, neither the restriction change nor credential revision/revocation commits. After commit, existing credentials are invalidated; any later post-commit failure does not undo the committed restriction or revocation.
+- A missing target throws `InvalidCredentialsError`. If that, the callback or the transaction fails before commit, neither the restriction change nor credential revision/revocation commits. After commit, existing credentials are invalidated.
+- No lifecycle post-commit hook, credential observer or notification runs for a restriction change. The only later failure is the transaction wrapper's: on SQLite, cleanup after a successful commit can fail, and the wrapper then throws `PostCommitError`. The committed restriction and revocation stay in place.
 
 ## User flow
 
@@ -28,19 +29,21 @@ flowchart TD
 
 ## Code flow
 
-Scope: host policy callback and credential revocation share one locked transaction.
+Scope: host policy callback and credential revocation share one locked transaction. No lifecycle post-commit hook or observer runs for this operation.
 
 ```mermaid
 flowchart TD
  A["authentication.changeRestriction({ userId, change })"] --> B["Lock and load target account"]
- B --> C["Run host change(user, trx)"]
+ B --> B1{"Target found?"}
+ B1 -->|No| F
+ B1 -->|Yes| C["Run host change(user, trx)"]
  C --> D["credentialsChanged invalidates sessions and tokens"]
  D --> E{"Did a pre-commit operation fail?"}
- E -->|Yes| F["Roll back restriction and revocation; propagate error"]
+ E -->|Yes| F["Roll back restriction and revocation; propagate error (InvalidCredentialsError for a missing target)"]
  E -->|No| G["Commit restriction and revocation"]
- G --> H{"Did a later post-commit hook fail?"}
- H -->|Yes| I["Surface committed follow-up failure; state remains changed"]
+ G --> H{"Did transaction cleanup fail after the commit?"}
+ H -->|Yes| I["Transaction wrapper throws PostCommitError; state remains changed"]
  H -->|No| J["Return void"]
 ```
 
-**Code references:** [`changeRestriction`](../src/authentication.ts), [`credential invalidation`](../src/credential_revision.ts), [`authentication tests`](../tests/authentication.spec.ts)
+**Code references:** [`changeRestriction`](../src/authentication.ts), [`credential invalidation`](../src/credential_revision.ts), [`transaction wrapper`](../src/transaction.ts), [`authentication tests`](../tests/authentication.spec.ts)

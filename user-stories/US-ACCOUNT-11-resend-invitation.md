@@ -6,7 +6,7 @@ As an authorized inviter, I want to issue a fresh invitation delivery for an eli
 **Access:** Host authorization callback and configured resend limits apply.
 **Entry:** Host calls `invitations.resend`; no built-in resend UI.
 **Documentation:** [usage.md](../docs/guide/usage.md)
-**Source:** [`src/invitations.ts`](../src/invitations.ts)
+**Source:** [`src/invitation_management.ts`](../src/invitation_management.ts)
 **Coverage:** [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
 
 ## Acceptance criteria
@@ -35,4 +35,4 @@ flowchart TD
  E --> F["Commit, deliver new link and return invitation"]
 ```
 
-**Code references:** [implementation](../src/invitations.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
+**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)

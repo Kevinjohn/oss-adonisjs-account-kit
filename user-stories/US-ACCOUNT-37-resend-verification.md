@@ -11,8 +11,8 @@ As an account holder with an unconfirmed address, I want to request another veri
 
 ## Acceptance criteria
 
-- Required input is the account `userId`; result is `sent` or `already_verified`. A repeated request during the one-minute cooldown reuses the active link and does not send another message.
-- An already-confirmed account returns `already_verified`; an eligible unconfirmed account receives an activation provision after issuance commits.
+- Required input is the account `userId`; an unknown id throws `InvalidInputError`. The result is `sent` or `already_verified`. A repeated request during the one-minute cooldown reuses the active link and does not send another message.
+- An already-confirmed account returns `already_verified` without spending the per-user throttle budget; an eligible unconfirmed account receives an activation provision after issuance commits.
 
 ## User flow
 
@@ -31,11 +31,14 @@ Scope: service issuance and notification; the host owns the authenticated userId
 
 ```mermaid
 flowchart TD
- A["emailVerification.send({ userId })"] --> B["Throttle and transactionally inspect account/activation proof"]
- B --> C{"Already verified or recent issue?"}
- C -->|Verified| D["Return already_verified"]
- C -->|Recent| E["Reuse link state; do not send another message"]
- C -->|Needs issuance| F["Store hashed activation token"]
+ A["emailVerification.send({ userId })"] --> B{"Account found?"}
+ B -->|No| X["Throw InvalidInputError"]
+ B -->|Yes| C{"Already verified?"}
+ C -->|Yes| D["Return already_verified before any throttle"]
+ C -->|No| T["Consume verification:user throttle budget"]
+ T --> R{"Recent activation issue?"}
+ R -->|Yes| E["Return sent; reuse link state and send no message"]
+ R -->|No| F["Transaction locks account, rechecks verified and recent state, stores hashed activation token"]
  F --> G["Commit and send accountActivationProvision; return sent"]
 ```
 

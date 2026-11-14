@@ -3,10 +3,10 @@
 As an authorized inviter or operator, I want to list invitations visible under host authorization so that I can see current invitation state before taking action.
 
 **Status:** Current when the host explicitly enables the opt-in `invitations` capability
-**Access:** Host list authorization callback and configured page size/cursor determine visible results.
+**Access:** Host list authorization callback and the caller-supplied `limit` (default 25, maximum 100), `cursor` and `scope` inputs determine visible results.
 **Entry:** Host calls `invitations.list` with actor and paging inputs; no built-in invitation screen.
 **Documentation:** [usage.md](../docs/guide/usage.md)
-**Source:** [`src/invitations.ts`](../src/invitations.ts)
+**Source:** [`src/invitation_management.ts`](../src/invitation_management.ts)
 **Coverage:** [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
 
 ## Acceptance criteria
@@ -36,4 +36,4 @@ flowchart TD
  E --> F["Return InvitationPage items and nextCursor"]
 ```
 
-**Code references:** [implementation](../src/invitations.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
+**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
