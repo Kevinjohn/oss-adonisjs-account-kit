@@ -2,7 +2,7 @@
 
 As a signed-in account holder, I want to revoke every recorded sign-in so that I can require a fresh sign-in on each device.
 
-**Status:** Current when `authentication.sessions` (requires `sessionManagement`) is enabled
+**Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; action may end the credential used for this request.
 **Entry:** Host calls `authentication.sessions.revokeAll({ current })`; optional managed route.
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)

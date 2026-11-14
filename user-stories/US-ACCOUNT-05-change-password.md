@@ -45,4 +45,4 @@ flowchart TD
     I -->|No| K["Remember committed revision on error and rethrow; do not roll back change"]
 ```
 
-**Code references:** [`changePassword`](../src/change_password.ts), [`confirmActor`](../src/actor_confirmation.ts), [`authentication.credentialsChanged`](../src/authentication.ts), [`managed password handler`](../src/http/handlers_email_password_management.ts), [`password change tests`](../tests/credentials_password_change.spec.ts)
+**Code references:** [`changePassword`](../src/change_password.ts), [`confirmActor`](../src/actor_confirmation.ts), [`credentialsChanged`](../src/credential_revision.ts), [`managed password handler`](../src/http/handlers_email_password_management.ts), [`password change tests`](../tests/credentials_password_change.spec.ts)
