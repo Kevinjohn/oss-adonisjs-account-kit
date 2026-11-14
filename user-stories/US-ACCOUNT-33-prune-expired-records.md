@@ -4,7 +4,7 @@ As an application operator, I want to remove eligible expired rows in bounded ba
 
 **Status:** Operator
 **Access:** Explicit scheduled invocation; dry-run is available; batch limits come from the run flags or `prune` input (both default to 100, range 1–1000), not from configuration.
-**Entry:** Run `account-kit:prune [--dry-run] [--batch-size] [--max-batches]`, or call the public `AccountKit.maintenance.prune({ batchSize?, maxBatches?, dryRun? })` from a scheduled host job; the command calls the same service.
+**Entry:** Run `account-kit:prune [--dry-run] [--batch-size] [--max-batches]`, or call the public `AccountKit.maintenance.prune({ batchSize?, maxBatches?, dryRun? })` from a scheduled host job; the command and the service both call `pruneExpired`.
 **Documentation:** [operations.md](../docs/guide/operations.md)
 **Source:** [`commands/prune.ts`](../commands/prune.ts), [`src/maintenance.ts`](../src/maintenance.ts)
 **Coverage:** [`tests/maintenance.spec.ts`](../tests/maintenance.spec.ts)
@@ -20,7 +20,7 @@ flowchart TD
  A["Operator starts bounded prune run"] --> B{"Is dry-run selected?"}
  B -->|Yes| C["Count eligible expired rows without deleting"]
  B -->|No| D["Recheck expiry and delete eligible rows in batches"]
- C --> E["Print per-table counts"]
+ C --> E["See per-table counts (the command prints them)"]
  D --> E
  E --> F{"Did run reach batch cap?"}
  F -->|Yes| G["Schedule another bounded run if rows remain"]
@@ -38,8 +38,11 @@ flowchart TD
  C --> D{"dryRun?"}
  D -->|Yes| E["Count candidates; perform no deletes"]
  D -->|No| F["Delete rows still expired and count actual removals"]
- E --> G["Print per-table counts"]
+ E --> G["Return per-table counts"]
  F --> G
+ G --> H{"Called from account-kit:prune?"}
+ H -->|Yes| I["Command prints the counts as a table"]
+ H -->|No| J["Host job receives the counts"]
 ```
 
 **Code references:** [implementation](../commands/prune.ts), [`pruneExpired`](../src/maintenance.ts), [`maintenance` service](../src/account_kit.ts), [`tests/maintenance.spec.ts`](../tests/maintenance.spec.ts)

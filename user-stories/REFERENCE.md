@@ -13,7 +13,7 @@ The root export map is [`index.ts`](../index.ts). It exposes `AccountKit` and `d
 
 ## Managed password fields
 
-The default managed JSON validators require confirmation fields alongside the service inputs: password change uses `newPasswordConfirmation` equal to `newPassword`; reset, activation and invitation acceptance use `passwordConfirmation` equal to `password`. These fields belong to the HTTP schemas, not the corresponding service method signatures. Invitation acceptance may replace its validator through the managed extension. Service-only registration in US-ACCOUNT-02 does not add a confirmation argument.
+The default managed JSON validators require confirmation fields alongside the service inputs: password change uses `newPasswordConfirmation` equal to `newPassword`; reset, activation and invitation acceptance use `passwordConfirmation` equal to `password`. These fields belong to the HTTP schemas, not the corresponding service method signatures. Managed signup (US-ACCOUNT-02) uses `passwordConfirmation` equal to `password` in its default validator. Invitation acceptance and signup may replace their validators through managed extensions. The `registration.register` service does not take a confirmation argument.
 
 ## Source map
 

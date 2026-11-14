@@ -7,7 +7,7 @@ As an authorized inviter or operator, I want to list invitations visible under h
 **Entry:** Host calls `invitations.list` with actor and paging inputs; no built-in invitation screen.
 **Documentation:** [usage.md](../docs/guide/usage.md)
 **Source:** [`src/invitation_management.ts`](../src/invitation_management.ts)
-**Coverage:** [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
+**Coverage:** [`tests/invitation_listing.spec.ts`](../tests/invitation_listing.spec.ts), [`tests/invitations_inspection.spec.ts`](../tests/invitations_inspection.spec.ts)
 
 ## Acceptance criteria
 
@@ -36,4 +36,4 @@ flowchart TD
  E --> F["Return InvitationPage items and nextCursor"]
 ```
 
-**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
+**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitation_listing.spec.ts`](../tests/invitation_listing.spec.ts), [`tests/invitations_inspection.spec.ts`](../tests/invitations_inspection.spec.ts)

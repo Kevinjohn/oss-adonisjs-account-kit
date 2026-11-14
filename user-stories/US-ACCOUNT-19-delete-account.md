@@ -3,7 +3,7 @@
 As an account holder, I want to close the account after proving identity so that I can remove package-owned records and invoke host cleanup atomically.
 
 **Status:** Current when `accountDeletion` is enabled
-**Access:** Current password required for password accounts, or purpose-bound `account_delete` recent proof for password-less accounts; host defines and implements deletion callback for application-owned rows/retention.
+**Access:** Current password required for password accounts, or purpose-bound `account_delete` recent proof for password-less accounts, which also requires `socialAuthentication` to be enabled (otherwise `NoPasswordError`); host defines and implements deletion callback for application-owned rows/retention.
 **Entry:** Host-owned endpoint calls `accountData.delete`; managed deletion route is optional.
 **Documentation:** [account-data.md](../docs/guide/account-data.md)
 **Source:** [`src/account_deletion.ts`](../src/account_deletion.ts)
@@ -11,7 +11,7 @@ As an account holder, I want to close the account after proving identity so that
 
 ## Acceptance criteria
 
-- **Inputs and result:** `accountData.delete({ actorId, currentPassword? , recentProof? })` returns `void`. Password accounts prove the current password; password-less accounts use purpose-bound `account_delete` proof. The configured transaction callback handles application-owned rows before package/user deletion.
+- **Inputs and result:** `accountData.delete({ actorId, currentPassword? , recentProof? })` returns `void`. Password accounts prove the current password; password-less accounts use purpose-bound `account_delete` proof and need `socialAuthentication` enabled; without it they are refused with `NoPasswordError`, even when a proof is supplied. The configured transaction callback handles application-owned rows before package/user deletion.
 
 ## User flow
 

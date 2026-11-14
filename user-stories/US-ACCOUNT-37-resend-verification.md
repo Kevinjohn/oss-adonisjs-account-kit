@@ -38,8 +38,13 @@ flowchart TD
  C -->|No| T["Consume verification:user throttle budget"]
  T --> R{"Recent activation issue?"}
  R -->|Yes| E["Return sent; reuse link state and send no message"]
- R -->|No| F["Transaction locks account, rechecks verified and recent state, stores hashed activation token"]
- F --> G["Commit and send accountActivationProvision; return sent"]
+ R -->|No| F["Transaction locks account and reloads it"]
+ F --> F1{"Account missing or verified meanwhile?"}
+ F1 -->|Yes| D2["Return already_verified; nothing stored"]
+ F1 -->|No| F2{"Recent activation issued meanwhile?"}
+ F2 -->|Yes| E2["Return sent; store and send nothing"]
+ F2 -->|No| F3["Store hashed activation token"]
+ F3 --> G["Commit and send accountActivationProvision; return sent"]
 ```
 
 **Code references:** [`sendVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts)

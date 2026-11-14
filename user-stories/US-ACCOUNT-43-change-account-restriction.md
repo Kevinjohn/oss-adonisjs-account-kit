@@ -13,7 +13,7 @@ As an application administrator, I want to change an account's restriction state
 
 - Input requires target `userId` and an async database-only `change(user, trx)` callback. The method returns `void`; callback mutation and credential revocation commit together.
 - A missing target throws `InvalidCredentialsError`. If that, the callback or the transaction fails before commit, neither the restriction change nor credential revision/revocation commits. After commit, existing credentials are invalidated.
-- No lifecycle post-commit hook, credential observer or notification runs for a restriction change. The only later failure is the transaction wrapper's: on SQLite, cleanup after a successful commit can fail, and the wrapper then throws `PostCommitError`. The committed restriction and revocation stay in place.
+- No lifecycle post-commit hook, credential observer or notification runs for a restriction change. A failure after the commit still makes the transaction wrapper throw `PostCommitError`: a commit listener that `change(user, trx)` registered on `trx` can throw on any dialect, and on SQLite transaction cleanup can fail. The committed restriction and revocation stay in place.
 
 ## User flow
 
@@ -41,7 +41,7 @@ flowchart TD
  D --> E{"Did a pre-commit operation fail?"}
  E -->|Yes| F["Roll back restriction and revocation; propagate error (InvalidCredentialsError for a missing target)"]
  E -->|No| G["Commit restriction and revocation"]
- G --> H{"Did transaction cleanup fail after the commit?"}
+ G --> H{"Did a commit listener or SQLite cleanup fail after the commit?"}
  H -->|Yes| I["Transaction wrapper throws PostCommitError; state remains changed"]
  H -->|No| J["Return void"]
 ```

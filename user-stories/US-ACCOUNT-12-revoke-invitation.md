@@ -7,7 +7,7 @@ As an authorized inviter, I want to cancel an outstanding invitation so that I c
 **Entry:** Host calls `invitations.revoke`; no built-in revoke UI.
 **Documentation:** [usage.md](../docs/guide/usage.md)
 **Source:** [`src/invitation_management.ts`](../src/invitation_management.ts)
-**Coverage:** [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
+**Coverage:** [`tests/invitations_revoke.spec.ts`](../tests/invitations_revoke.spec.ts)
 
 ## Acceptance criteria
 
@@ -37,4 +37,4 @@ flowchart TD
  M -->|Yes| E["Delete invitation row and resolve void"]
 ```
 
-**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)
+**Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_revoke.spec.ts`](../tests/invitations_revoke.spec.ts)
