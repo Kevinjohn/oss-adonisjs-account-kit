@@ -4,7 +4,7 @@ import { wantsJsonApi } from '#services/http_responses'
 
 export default class ForceJsonResponseMiddleware {
   handle(ctx: HttpContext, next: NextFn) {
-    if (!wantsJsonApi(ctx.request.header('accept'))) {
+    if (!wantsJsonApi(ctx)) {
       ctx.request.request.headers.accept = 'application/json'
     }
     return next()
