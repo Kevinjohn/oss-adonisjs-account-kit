@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { link, mkdir, open, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { SetupFileChange, SetupPlan } from './types.js'
+import { SetupApplyInterruptedError } from './apply_interrupted_error.js'
 import { readRegularFile, safeSetupPath } from './safe_path.js'
 
 async function assertNoConflict(
@@ -70,6 +71,9 @@ export async function applySetup(
       }
       written.push(change.path)
     }
+  } catch (error) {
+    if (written.length) throw new SetupApplyInterruptedError(written, error)
+    throw error
   } finally {
     await lock.close()
     await rm(lockPath, { force: true })
