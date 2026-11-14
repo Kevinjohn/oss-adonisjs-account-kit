@@ -139,6 +139,7 @@ test.group('example admission migration', () => {
       )
 
       await kit.db.connection().schema.dropTableIfExists('account_admissions')
+      await kit.db.connection().schema.dropTableIfExists('auth_access_tokens')
       await kit.db.connection().schema.dropTableIfExists('users')
       await writeFile(
         join(sourceMigrations, '1791906378315_account_kit_admission_create_account_admissions.ts'),
@@ -170,6 +171,7 @@ test.group('example admission migration', () => {
       assert.deepEqual(committedSchema, renderedSchema)
     } finally {
       await kit.db.connection().schema.dropTableIfExists('account_admissions')
+      await kit.db.connection().schema.dropTableIfExists('auth_access_tokens')
       await kit.db.connection().schema.dropTableIfExists('users')
       await kit.db.connection().schema.dropTableIfExists('adonis_schema_versions')
       await kit.db.connection().schema.dropTableIfExists('adonis_schema')

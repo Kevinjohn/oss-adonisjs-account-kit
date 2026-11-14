@@ -2,6 +2,7 @@
 
 import { test } from '@japa/runner'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
@@ -93,7 +94,7 @@ test.group('authentication contract', (group) => {
       establish: async (id: number | string) => {
         const [tokenId] = await kit.db
           .table('auth_access_tokens')
-          .insert({ tokenable_id: id, hash: `issued-${++issued}` })
+          .insert({ tokenable_id: id, ...accessTokenDefaults, hash: `issued-${++issued}` })
           .returning('id')
         return unwrapId(tokenId)
       },
@@ -283,8 +284,8 @@ test.group('authentication contract', (group) => {
       authentication: { strategy: 'access_tokens', guard: 'api' },
     })
     await kit.db.table('auth_access_tokens').insert([
-      { tokenable_id: user.id, hash: 'one' },
-      { tokenable_id: user.id, hash: 'two' },
+      { tokenable_id: user.id, ...accessTokenDefaults, hash: 'one' },
+      { tokenable_id: user.id, ...accessTokenDefaults, hash: 'two' },
     ])
     await account.emailPasswordManagement.changePassword({
       actorId: user.id,
@@ -306,7 +307,7 @@ test.group('authentication contract', (group) => {
     })
     const [inserted] = await kit.db
       .table('auth_access_tokens')
-      .insert({ tokenable_id: user.id, hash: 'authenticated-token' })
+      .insert({ tokenable_id: user.id, ...accessTokenDefaults, hash: 'authenticated-token' })
       .returning('id')
     const tokenId = unwrapId(inserted)
     await assert.rejects(
@@ -329,7 +330,9 @@ test.group('authentication contract', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    await kit.db.table('auth_access_tokens').insert({ tokenable_id: user.id, hash: 'one' })
+    await kit.db
+      .table('auth_access_tokens')
+      .insert({ tokenable_id: user.id, ...accessTokenDefaults, hash: 'one' })
     const { account } = makeService(kit, {
       authentication: { strategy: 'access_tokens', guard: 'api' },
       onCredentialsChangedTransaction: async (_account, _context, trx) => {
@@ -361,7 +364,7 @@ test.group('authentication contract', (group) => {
     const user = await insertUser(kit)
     await kit.db
       .table('auth_access_tokens')
-      .insert({ tokenable_id: user.id, hash: 'rollback-token' })
+      .insert({ tokenable_id: user.id, ...accessTokenDefaults, hash: 'rollback-token' })
     const { account } = makeService(kit, {
       authentication: { strategy: 'access_tokens', guard: 'api' },
       onCredentialsChangedTransaction: async (_account, _context, trx) => {
@@ -402,7 +405,11 @@ test.group('authentication contract', (group) => {
         strategy === 'access_tokens'
           ? await kit.db
               .table('auth_access_tokens')
-              .insert({ tokenable_id: user.id, hash: 'email-correction-token' })
+              .insert({
+                tokenable_id: user.id,
+                ...accessTokenDefaults,
+                hash: 'email-correction-token',
+              })
               .returning('id')
           : [undefined]
       const tokenId = inserted === undefined ? undefined : unwrapId(inserted)
@@ -437,7 +444,11 @@ test.group('authentication contract', (group) => {
         strategy === 'access_tokens'
           ? await kit.db
               .table('auth_access_tokens')
-              .insert({ tokenable_id: user.id, hash: 'confirmed-email-token' })
+              .insert({
+                tokenable_id: user.id,
+                ...accessTokenDefaults,
+                hash: 'confirmed-email-token',
+              })
               .returning('id')
           : [undefined]
       const tokenId = inserted === undefined ? undefined : unwrapId(inserted)
@@ -509,7 +520,7 @@ test.group('authentication policy result contract', (group) => {
         })
         const [inserted] = await kit.db
           .table('auth_access_tokens')
-          .insert({ tokenable_id: user.id, hash: 'existing-credential' })
+          .insert({ tokenable_id: user.id, ...accessTokenDefaults, hash: 'existing-credential' })
           .returning('id')
         const existingId = unwrapId(inserted)
         const guard = {
@@ -519,7 +530,11 @@ test.group('authentication policy result contract', (group) => {
             provisional = true
             const [token] = await kit.db
               .table('auth_access_tokens')
-              .insert({ tokenable_id: user.id, hash: 'provisional-credential' })
+              .insert({
+                tokenable_id: user.id,
+                ...accessTokenDefaults,
+                hash: 'provisional-credential',
+              })
               .returning('id')
             return unwrapId(token)
           },
@@ -604,7 +619,11 @@ test.group('authentication policy result contract', (group) => {
             establish: async () => {
               const [token] = await kit.db
                 .table('auth_access_tokens')
-                .insert({ tokenable_id: user.id, hash: 'cleanup-failed-token' })
+                .insert({
+                  tokenable_id: user.id,
+                  ...accessTokenDefaults,
+                  hash: 'cleanup-failed-token',
+                })
                 .returning('id')
               issuedId = unwrapId(token)
               return issuedId

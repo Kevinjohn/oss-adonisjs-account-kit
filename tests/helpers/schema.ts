@@ -38,14 +38,16 @@ export async function resetSchema(
     table.timestamp('disabled_at').nullable()
     table.timestamp('created_at').notNullable()
   })
-  // The columns AdonisJS Auth creates for access tokens.
+  // The columns and foreign key AdonisJS Auth's migration creates for access tokens.
   await schema.createTable('auth_access_tokens', (table) => {
     table.increments('id')
-    table.integer('tokenable_id').notNullable()
-    table.string('type').nullable()
+    if (options.stringUserIds) table.string('tokenable_id', 36).notNullable()
+    else table.integer('tokenable_id').unsigned().notNullable()
+    table.foreign('tokenable_id').references('id').inTable(usersTable).onDelete('CASCADE')
+    table.string('type').notNullable()
     table.string('name').nullable()
     table.string('hash').notNullable()
-    table.text('abilities').nullable()
+    table.text('abilities').notNullable()
     table.timestamp('created_at').nullable()
     table.timestamp('updated_at').nullable()
     table.timestamp('last_used_at').nullable()

@@ -151,6 +151,7 @@ test.group('database helpers', (group) => {
     if (locksRows) return
 
     const schema = kit.db.connection().schema
+    await schema.dropTableIfExists('auth_access_tokens')
     await schema.dropTableIfExists('account_email_changes')
     await schema.dropTableIfExists('email_verification_tokens')
     await schema.dropTableIfExists('account_invitations')
