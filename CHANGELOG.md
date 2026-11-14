@@ -31,6 +31,8 @@
   Lucid adapter ignores `{ forUpdate: true }`. The package locks user rows itself. Code that called
   the Lucid adapter directly with `{ forUpdate: true }` loses that lock and should run its own
   `trx...forUpdate()` query. A custom adapter that still declares the parameter keeps type-checking.
+- Breaking: `new AccountKit(...)` no longer accepts the `encryption` input, which was ignored and
+  deprecated since 0.3.0. Remove it from direct constructor calls; the provider never passed it.
 
 ### Fixed
 

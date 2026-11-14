@@ -1,6 +1,5 @@
 import { pruneExpired, type PruneInput } from './maintenance.js'
 import { CapabilityDisabledError } from './errors.js'
-import type { Encryption } from '@adonisjs/core/encryption'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import {
@@ -87,13 +86,7 @@ export class AccountKit {
     throttler: Throttler
   }
 
-  constructor(deps: {
-    config: ResolvedConfig
-    db: Database
-    /** @deprecated Ignored; accepted for source compatibility. */
-    encryption?: Encryption
-    limiter: LimiterService
-  }) {
+  constructor(deps: { config: ResolvedConfig; db: Database; limiter: LimiterService }) {
     this.deps = {
       config: deps.config,
       db: deps.db,
