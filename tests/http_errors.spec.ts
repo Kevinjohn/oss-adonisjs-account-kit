@@ -7,13 +7,21 @@ import {
   DeliveryError,
   InvitationManagementDeniedError,
   InvitationNotFoundError,
+  InvalidTokenError,
   PostCommitError,
+  RegistrationEmailAlreadyRegisteredError,
   ThrottledError,
 } from '../src/errors.js'
-import { accountErrorResponse } from '../src/error_response.js'
+import { accountErrorResponse, type AccountErrorResponse } from '../src/error_response.js'
 import { managedErrorResponse } from '../src/http/responses.js'
 
 const operationFailed = 'E_ACCOUNT_KIT_OPERATION_FAILED'
+
+/** The first entry's wording: `message` in plain JSON, `title` in JSON:API. */
+function messageOf(response: AccountErrorResponse): string {
+  const entry = response.body.errors[0]
+  return 'message' in entry ? entry.message : entry.title
+}
 
 test.group('account HTTP error mapping', () => {
   test('maps status and stable error code while keeping causes private', ({ assert }) => {
@@ -24,7 +32,7 @@ test.group('account HTTP error mapping', () => {
     assert.deepEqual(response.body, {
       errors: [{ code: operationFailed, message: 'Account operation failed.' }],
     })
-    assert.deepEqual(response.headers, { 'Cache-Control': 'no-store' })
+    assert.deepEqual(response.headers, { 'Vary': 'Accept', 'Cache-Control': 'no-store' })
     assert.equal(error.cause, cause)
     assert.notInclude(JSON.stringify(response), 'database password')
     assert.notInclude(JSON.stringify(response), 'secret provider response')
@@ -86,21 +94,18 @@ test.group('account HTTP error mapping', () => {
     const missing = accountErrorResponse(new InvitationNotFoundError(), { i18n })!
     const denied = accountErrorResponse(new InvitationManagementDeniedError(), { i18n })!
     assert.deepEqual(denied, missing)
-    assert.equal(missing.body.errors[0].message, 'Invitation introuvable')
+    assert.equal(messageOf(missing), 'Invitation introuvable')
     assert.equal(
-      accountErrorResponse(new DeliveryError(), { i18n })!.body.errors[0].message,
+      messageOf(accountErrorResponse(new DeliveryError(), { i18n })!),
       "L'opération a échoué"
     )
     assert.equal(
-      accountErrorResponse(new AuthorizationError(), { i18n })!.body.errors[0].message,
+      messageOf(accountErrorResponse(new AuthorizationError(), { i18n })!),
       'Access denied.'
     )
     assert.notInclude(lookups, 'errors.E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED')
     assert.include(lookups, 'errors.E_ACCOUNT_KIT_FORBIDDEN')
-    assert.equal(
-      accountErrorResponse(new DeliveryError())!.body.errors[0].message,
-      'Account operation failed.'
-    )
+    assert.equal(messageOf(accountErrorResponse(new DeliveryError())!), 'Account operation failed.')
   })
 
   test('the helper and the managed renderer produce the same entry for every package error', ({
@@ -118,8 +123,7 @@ test.group('account HTTP error mapping', () => {
           : new (ErrorClass as new () => Error)()
       const helper = accountErrorResponse(error)!
       const managed = managedErrorResponse(error)!
-      assert.equal(helper.status, managed.status, ErrorClass.name)
-      assert.deepEqual(helper.body.errors[0], managed.body.errors[0], ErrorClass.name)
+      assert.deepEqual(helper, managed, ErrorClass.name)
     }
   })
 
@@ -142,9 +146,55 @@ test.group('account HTTP error mapping', () => {
         ErrorClass === errors.ThrottledError
           ? new errors.ThrottledError(1)
           : new (ErrorClass as new () => Error)()
-      const entry = accountErrorResponse(error)!.body.errors[0]
-      actual[entry.code] = entry.message
+      const response = accountErrorResponse(error)!
+      actual[response.body.errors[0].code] = messageOf(response)
     }
     assert.deepEqual(documented, actual)
+  })
+
+  test('negotiates JSON:API from accept and sends Vary like the managed routes', ({ assert }) => {
+    const response = accountErrorResponse(new AuthorizationError(), {
+      accept: 'application/vnd.api+json',
+    })!
+    assert.equal(response.contentType, 'application/vnd.api+json')
+    assert.deepEqual(response.body.errors, [
+      { code: 'E_ACCOUNT_KIT_FORBIDDEN', title: 'Access denied.' },
+    ])
+    assert.notProperty(response.body.errors[0], 'message')
+    assert.equal(response.headers['Vary'], 'Accept')
+    assert.equal(accountErrorResponse(new AuthorizationError())!.contentType, 'application/json')
+  })
+
+  test('returns the per-kind invalid-token code when given proof', ({ assert }) => {
+    const response = accountErrorResponse(new InvalidTokenError(), { proof: 'password' })!
+    assert.equal(response.status, 400)
+    assert.equal(response.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN')
+    assert.equal(
+      accountErrorResponse(new InvalidTokenError())!.body.errors[0].code,
+      'E_ACCOUNT_KIT_INVALID_TOKEN'
+    )
+  })
+
+  test('keeps field for a duplicate registration email', ({ assert }) => {
+    const response = accountErrorResponse(new RegistrationEmailAlreadyRegisteredError())!
+    assert.equal(response.status, 422)
+    assert.deepEqual(response.body.errors, [
+      {
+        code: 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED',
+        message: 'The account request conflicts with an existing account.',
+        field: 'email',
+      },
+    ])
+    const jsonApi = accountErrorResponse(new RegistrationEmailAlreadyRegisteredError(), {
+      accept: 'application/vnd.api+json',
+    })!
+    assert.notProperty(jsonApi.body.errors[0], 'field')
+  })
+
+  test('drops field when the public identity masks the error', ({ assert }) => {
+    const failed = Object.assign(new PostCommitError(), { field: 'email' })
+    const denied = Object.assign(new InvitationManagementDeniedError(), { field: 'email' })
+    assert.notProperty(accountErrorResponse(failed)!.body.errors[0], 'field')
+    assert.notProperty(accountErrorResponse(denied)!.body.errors[0], 'field')
   })
 })

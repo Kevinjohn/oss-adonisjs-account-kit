@@ -4,7 +4,7 @@ import { type HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import { accountErrorResponse, errors } from '@kevinjohn/adonisjs-account-kit'
 import { AdmissionRequiredError } from '@kevinjohn/adonisjs-account-kit/admission'
 import { errors as shieldErrors } from '@adonisjs/shield'
-import { accountError } from '#services/http_responses'
+import { accountError, wantsJsonApi } from '#services/http_responses'
 import { SocialProviderExchangeError } from '#services/social_provider'
 import { isSocialPath } from '#services/social_path'
 
@@ -73,11 +73,19 @@ export default class HttpExceptionHandler extends ExceptionHandler {
         }
       )
     }
-    const mapped = accountErrorResponse(error)
+    // Resolve the media type with the example's own rule, so package errors match its other responses.
+    const mapped = accountErrorResponse(error, {
+      accept: wantsJsonApi(ctx.request.header('accept'))
+        ? 'application/vnd.api+json'
+        : 'application/json',
+    })
     if (mapped) {
-      for (const [name, value] of Object.entries(mapped.headers)) ctx.response.header(name, value)
-      const [entry] = mapped.body.errors
-      return accountError(ctx, mapped.status, entry.code, entry.message)
+      for (const [name, value] of Object.entries(mapped.headers)) {
+        if (name === 'Vary') ctx.response.vary(value)
+        else ctx.response.header(name, value)
+      }
+      ctx.response.header('Content-Type', mapped.contentType)
+      return ctx.response.status(mapped.status).send(mapped.body)
     }
     if (social && (provider || unexpected)) {
       return accountError(

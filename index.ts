@@ -19,6 +19,7 @@ export type {
 export { accountErrorResponse } from './src/error_response.js'
 export { passwordChangeRevision } from './src/password_change_revision.js'
 export type { AccountErrorResponse } from './src/error_response.js'
+export type { ProofKind } from './src/error_identity.js'
 export type { AccountKitTranslator } from './src/translator.js'
 export type { PruneInput, PruneCounts } from './src/maintenance.js'
 export { createLogNotifications } from './src/log_notifications.js'

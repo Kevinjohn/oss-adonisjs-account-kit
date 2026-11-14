@@ -166,11 +166,12 @@ back. The [registration guide](registration.md) documents the capability and its
 ### Keep HTTP policy in the application
 
 Controllers choose status codes, response bodies, and route middleware. The reference exception
-handler uses `accountErrorResponse` for stable package codes, safe messages, and `Retry-After` on
-throttling. The mapper marks committed failures for controller handling; the example does not expose
-that marker in its public error envelope. Package errors become
+handler passes the request's `Accept` header to `accountErrorResponse` and sends its result as is:
+the same status, code, body, `Content-Type` and headers (`Vary: Accept`, `Cache-Control: no-store`
+and `Retry-After` on throttling) as the managed routes. Package errors become
 `{ errors: [{ code, message }] }`, or `{ errors: [{ code, title }] }` when the client accepts
-JSON:API. Invalid credentials map to 401; request-schema failures remain Vine 422 responses.
+JSON:API. A plain JSON entry carries `field` when the error names one, and `committed: true` marks
+a `PostCommitError`. Pass `proof` to get the per-kind invalid-token code. Invalid credentials map to 401; request-schema failures remain Vine 422 responses.
 Successful login returns 200 and throttled login returns 429 with `Retry-After`. Duplicate signup is
 also a Vine 422, deliberately using the same email-field response for every existing account state:
 `{ errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }] }`.

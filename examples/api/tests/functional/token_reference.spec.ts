@@ -132,6 +132,17 @@ test.group('Token reference', (group) => {
     assert.deepEqual(wildcard.body(), {
       errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Authentication failed.' }],
     })
+    // Equal quality with JSON listed first: package errors follow the example's own rule, as its
+    // CSRF and proof-failure responses do.
+    const tied = await client
+      .post('/api/v1/auth/login')
+      .header('accept', 'application/json, application/vnd.api+json')
+      .json({ email, password: 'WrongPass123!' })
+    assert.equal(tied.status(), 401)
+    assert.include(tied.header('content-type'), 'application/vnd.api+json')
+    assert.deepEqual(tied.body(), {
+      errors: [{ code: 'E_INVALID_CREDENTIALS', title: 'Authentication failed.' }],
+    })
     const validation = await client
       .post('/api/v1/auth/login')
       .json({ email: 'invalid', password: '' })

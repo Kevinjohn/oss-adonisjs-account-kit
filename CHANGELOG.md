@@ -18,6 +18,10 @@
   `user.passwordColumn` or `user.verifiedColumn`, which had one supported value each. Setup still
   reads a saved file that lists them, drops each one that holds its supported value, and reports any
   other value as before.
+- Breaking: `AccountErrorResponse` now matches the managed routes' error responses. It adds
+  `contentType` and a `Vary: Accept` header, and with a JSON:API `accept` an entry carries `title`
+  instead of `message`, so code that reads `entry.message` must narrow the union first.
+  `accountErrorResponse` accepts `accept` and `proof` options, and `ProofKind` is exported.
 
 ### Fixed
 
@@ -27,6 +31,9 @@
 - The exported `ManagedRequestBodies['account.invitation.send']` and
   `ManagedQueries['account.invitation.list']` types include the optional `scope` the routes already
   accept.
+- `accountErrorResponse` runs the managed routes' mapper: it returns the per-kind invalid-token
+  code when given `proof`, keeps `field: 'email'` for a duplicate registration email, and negotiates
+  JSON:API and sends `Vary: Accept` as the managed routes do.
 
 ## 0.3.4 - 2026-11-09
 
