@@ -22,6 +22,18 @@ const originalPassword = 'OriginalPass123!'
 const replacementPassword = 'ReplacementPass123!'
 const recipeOrigin = process.env.APP_URL!
 
+/** The path and search of the reset link the package sent, after checking its origin and route. */
+function emailedResetPath(
+  assert: Assert,
+  message: { actionUrl?: string; token?: string } | undefined
+) {
+  assert.exists(message?.actionUrl, 'no password reset link was sent')
+  const url = new URL(message!.actionUrl!)
+  assert.equal(url.origin, new URL(recipeOrigin).origin)
+  assert.equal(url.pathname, `/reset-password/${encodeURIComponent(message!.token!)}`)
+  return `${url.pathname}${url.search}`
+}
+
 class RecipeProofSession {
   private cookies = new Map<string, string>()
   private version?: string
@@ -251,16 +263,14 @@ test('React reset recipe clears failed submissions and revokes both native sessi
       await guest.getByLabel('Email', { exact: true }).fill(email)
       await guest.getByRole('button', { name: 'Send reset link' }).click()
       await guest.getByText(acknowledgement, { exact: true }).waitFor()
-      return capture.last('passwordResetProvision', owner.email)?.token
+      return emailedResetPath(assert, capture.last('passwordResetProvision', owner.email))
     }
-    const proof = (await requestProof())!
-    assert.isString(proof)
+    const path = (await requestProof())!
     await requestProof(`missing-${randomUUID()}@example.test`)
     assert.lengthOf(
       capture.messages.filter((message) => message.kind === 'passwordResetProvision'),
       1
     )
-    const path = `/reset-password/${encodeURIComponent(proof)}`
     for (let index = 0; index < 2; index++) {
       await guest.goto(path)
       await guest.getByRole('heading', { name: 'Choose a new password' }).waitFor()
@@ -329,20 +339,16 @@ test('React reset recipe clears failed submissions and revokes both native sessi
     await unchanged()
 
     const previous = (await requestProof())!
-    await guest.goto(`/reset-password/${encodeURIComponent(previous)}`)
+    await guest.goto(previous)
     await guest.getByRole('heading', { name: 'Choose a new password' }).waitFor()
     const replacement = (await requestProof())!
     assert.notEqual(replacement, previous)
-    await guest.goto(`/reset-password/${encodeURIComponent(previous)}`)
+    await guest.goto(previous)
     await guest.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
-    assert.equal(
-      (await postProof(guest, `/reset-password/${encodeURIComponent(previous)}`)).status(),
-      302
-    )
+    assert.equal((await postProof(guest, previous)).status(), 302)
     await unchanged()
 
-    const replacementPath = `/reset-password/${encodeURIComponent(replacement)}`
-    await guest.goto(replacementPath)
+    await guest.goto(replacement)
     await guest.getByLabel('New password', { exact: true }).fill(newPassword)
     await guest.getByLabel('Confirm new password').fill(newPassword)
     await guest.getByRole('button', { name: 'Reset password' }).click()
@@ -365,9 +371,9 @@ test('React reset recipe clears failed submissions and revokes both native sessi
     }
     await owner.refresh()
     savedHash = owner.password
-    await guest.goto(replacementPath)
+    await guest.goto(replacement)
     await guest.getByRole('heading', { name: 'This link can’t be used' }).waitFor()
-    assert.equal((await postProof(guest, replacementPath)).status(), 302)
+    assert.equal((await postProof(guest, replacement)).status(), 302)
     await unchanged()
 
     // The starter also establishes a session after native signup; keep that route working, including
