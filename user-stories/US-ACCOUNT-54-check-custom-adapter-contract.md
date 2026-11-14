@@ -29,6 +29,8 @@ flowchart TD
 
 ## Code flow
 
+Scope: the `assertUsersAdapterContract` test helper and the fixture it receives. The integrator owns the adapter, the disposable database and fixture cleanup.
+
 ```mermaid
 flowchart TD
  A["assertUsersAdapterContract(fixture)"] --> B["Run create, normalized lookup, password and verification checks inside fixture transaction"]

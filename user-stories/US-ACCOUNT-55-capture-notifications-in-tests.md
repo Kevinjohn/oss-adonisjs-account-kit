@@ -29,6 +29,8 @@ flowchart TD
 
 ## Code flow
 
+Scope: the `captureNotifications` test helper only. The account operation that calls a notification callback, and the test's own assertions, stay outside this diagram.
+
 ```mermaid
 flowchart TD
  A["captureNotifications()"] --> B["Create notify callbacks and shared messages array"]

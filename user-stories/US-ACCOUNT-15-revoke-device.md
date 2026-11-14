@@ -2,7 +2,7 @@
 
 As a signed-in account holder, I want to revoke one of my recorded sign-ins so that I can end access from a device I no longer trust.
 
-**Status:** Current when `authentication.sessions` (requires `sessionManagement`) is enabled
+**Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; target id is scoped to the account. The service allows revoking the current sign-in and reports that fact.
 **Entry:** Host calls `authentication.sessions.revoke({ current, id })`; optional managed route.
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)

@@ -2,7 +2,7 @@
 
 As a signed-in account holder, I want to end every other recorded sign-in so that I can keep the credential performing the action available.
 
-**Status:** Current when `authentication.sessions` (requires `sessionManagement`) is enabled
+**Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; operation excludes the current sign-in.
 **Entry:** Host calls `authentication.sessions.revokeOthers({ current })`; optional managed route.
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)
