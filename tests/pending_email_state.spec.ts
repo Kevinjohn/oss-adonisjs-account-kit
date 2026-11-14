@@ -233,8 +233,8 @@ test.group('identity creation contract', (group) => {
     const { account } = makeService(kit, {
       users: {
         ...users,
-        findByEmail: async (email, trx, options) =>
-          email === 'taken@example.test' ? null : users.findByEmail(email, trx, options),
+        findByEmail: async (email, trx) =>
+          email === 'taken@example.test' ? null : users.findByEmail(email, trx),
       },
     })
     await assert.rejects(

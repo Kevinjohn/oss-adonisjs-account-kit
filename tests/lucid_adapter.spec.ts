@@ -29,7 +29,7 @@ test.group('maintained Lucid adapter', (group) => {
     LucidUser.hashCalls = 0
   })
 
-  test('package locking passes the adapter contract when a valid adapter ignores forUpdate', async ({
+  test('package locking passes the adapter contract when a valid adapter takes no lock', async ({
     assert,
   }) => {
     const lucidAdapter = createLucidAdapter(async () => LucidUser, {

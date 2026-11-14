@@ -23,15 +23,13 @@ export function makeUsersAdapter(db: Database, hash: Hash, usersTable = 'users')
         }
       : null
   return {
-    async findByEmail(email, trx, options) {
-      const builder = query(trx).from(usersTable).where('email', email.trim().toLowerCase())
-      if (options?.forUpdate) builder.forUpdate()
-      return toUser(await builder.first())
+    async findByEmail(email, trx) {
+      return toUser(
+        await query(trx).from(usersTable).where('email', email.trim().toLowerCase()).first()
+      )
     },
-    async findById(id, trx, options) {
-      const builder = query(trx).from(usersTable).where('id', id)
-      if (options?.forUpdate) builder.forUpdate()
-      return toUser(await builder.first())
+    async findById(id, trx) {
+      return toUser(await query(trx).from(usersTable).where('id', id).first())
     },
     async create(attrs, trx) {
       const [id] = await trx

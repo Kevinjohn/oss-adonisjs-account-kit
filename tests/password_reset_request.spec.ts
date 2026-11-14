@@ -163,8 +163,8 @@ test.group('passwordReset.request', (group) => {
         makeConfig({
           users: {
             ...users,
-            async findByEmail(email, trx, options) {
-              const found = await users.findByEmail(email, trx, options)
+            async findByEmail(email, trx) {
+              const found = await users.findByEmail(email, trx)
               if (!trx && found)
                 await kit.db
                   .from('users')
@@ -194,9 +194,9 @@ test.group('passwordReset.request', (group) => {
       makeConfig({
         users: {
           ...users,
-          async findByEmail(email, trx, options) {
+          async findByEmail(email, trx) {
             lookups++
-            return users.findByEmail(email, trx, options)
+            return users.findByEmail(email, trx)
           },
         },
         notify: recorder.notify,
@@ -230,9 +230,9 @@ test.group('passwordReset.request', (group) => {
       makeConfig({
         users: {
           ...users,
-          async findByEmail(email, trx, options) {
+          async findByEmail(email, trx) {
             lookups++
-            return users.findByEmail(email, trx, options)
+            return users.findByEmail(email, trx)
           },
         },
         minRequestMs: 0,

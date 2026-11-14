@@ -27,6 +27,10 @@
   signup route that maps it with `accountErrorResponse` now answers 403 `E_ACCOUNT_KIT_FORBIDDEN`
   instead of 500 `E_ACCOUNT_KIT_OPERATION_FAILED`. A disabled `registration` capability still
   throws `CapabilityDisabledError`.
+- Breaking: `UsersAdapter.findByEmail` and `findById` no longer take an `options` argument, and the
+  Lucid adapter ignores `{ forUpdate: true }`. The package locks user rows itself. Code that called
+  the Lucid adapter directly with `{ forUpdate: true }` loses that lock and should run its own
+  `trx...forUpdate()` query. A custom adapter that still declares the parameter keeps type-checking.
 
 ### Fixed
 

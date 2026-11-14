@@ -149,9 +149,9 @@ test.group('magicLink.request', (group) => {
     const { account } = service({
       users: {
         ...users,
-        async findByEmail(email, trx, options) {
+        async findByEmail(email, trx) {
           lookups++
-          return users.findByEmail(email, trx, options)
+          return users.findByEmail(email, trx)
         },
       },
     })
@@ -173,9 +173,9 @@ test.group('magicLink.request', (group) => {
     const { account } = service({
       users: {
         ...users,
-        async findByEmail(email, trx, options) {
+        async findByEmail(email, trx) {
           lookups++
-          return users.findByEmail(email, trx, options)
+          return users.findByEmail(email, trx)
         },
       },
     })

@@ -5,7 +5,7 @@ import { makeNotify, makeUsersAdapter } from './helpers/fakes.js'
 test.group('test fakes', (group) => {
   const kit = useTestApp(group)
 
-  test('creates normalized verified users with a hashed password and reads them with forUpdate', async ({
+  test('creates normalized verified users with a hashed password and reads them back', async ({
     assert,
   }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
@@ -21,7 +21,7 @@ test.group('test fakes', (group) => {
     const stored = await kit.db.from('users').where('id', created.id).first()
     assert.notEqual(stored.password, 'secret123')
     await kit.db.transaction(async (trx) => {
-      const found = await users.findByEmail(' A@EXAMPLE.TEST ', trx, { forUpdate: true })
+      const found = await users.findByEmail(' A@EXAMPLE.TEST ', trx)
       assert.equal(found?.id, created.id)
       assert.isTrue(await users.verifyPassword(created.id, 'secret123', trx))
       assert.isFalse(await users.verifyPassword(created.id, 'wrong', trx))
