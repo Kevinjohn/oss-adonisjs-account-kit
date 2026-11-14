@@ -4,7 +4,7 @@ As an application operator, I want to run the package's configure step so that a
 
 **Status:** Operator
 **Access:** Requires shell access to the application. The step never overwrites existing files; the operator still runs the migrations and reviews the generated config.
-**Entry:** Run `node ace configure @kevinjohn/adonisjs-account-kit [--users-table] [--user-id-type] [--provider-registered]`; `node ace add` runs the same step. [US-ACCOUNT-31](US-ACCOUNT-31-configure-account-kit.md) covers the later `account-kit:setup` action.
+**Entry:** Run `node ace configure @kevinjohn/adonisjs-account-kit [--users-table] [--user-id-type] [--provider-registered]` after installing the GitHub release archive ([root install section](../README.md#install)). `node ace add` is not a substitute: it installs the package from the npm registry first, and the package ships as a release archive. [US-ACCOUNT-31](US-ACCOUNT-31-configure-account-kit.md) covers the later `account-kit:setup` action.
 **Documentation:** [getting-started.md](../docs/guide/getting-started.md), [root install section](../README.md#install), [custom-schema.md](../docs/guide/custom-schema.md)
 **Source:** [`configure.ts`](../configure.ts), exported as `configure` from [`index.ts`](../index.ts)
 **Coverage:** [`tests/configure.spec.ts`](../tests/configure.spec.ts), [`tests/configure_contract.spec.ts`](../tests/configure_contract.spec.ts)
