@@ -25,7 +25,6 @@ export type LucidModelRow = {
 
 type Query = {
   where(column: string, value: unknown): Query
-  forUpdate(): Query
   first(): Promise<LucidModelRow | null>
 }
 
@@ -185,11 +184,8 @@ export function createLucidAdapter<Model extends LucidModelRow>(
 
   const resolveMetadata = async (): Promise<UsersAdapterMetadata> => metadataFor(await model())
 
-  const find = async (builder: Query, column: string, value: unknown, forUpdate = false) => {
-    const filtered = builder.where(column, value)
-    if (forUpdate) filtered.forUpdate()
-    return filtered.first()
-  }
+  const find = async (builder: Query, column: string, value: unknown) =>
+    builder.where(column, value).first()
 
   const updateUser = async (
     id: UserId,
@@ -229,18 +225,13 @@ export function createLucidAdapter<Model extends LucidModelRow>(
       return resolveMetadata()
     },
 
-    async findByEmail(email, trx, findOptions) {
-      const user = await find(
-        query(await model(), trx),
-        'email',
-        normalizeEmail(email),
-        findOptions?.forUpdate
-      )
+    async findByEmail(email, trx) {
+      const user = await find(query(await model(), trx), 'email', normalizeEmail(email))
       return user ? toAccountUser(user) : null
     },
 
-    async findById(id, trx, findOptions) {
-      const user = await find(query(await model(), trx), 'id', id, findOptions?.forUpdate)
+    async findById(id, trx) {
+      const user = await find(query(await model(), trx), 'id', id)
       return user ? toAccountUser(user) : null
     },
 

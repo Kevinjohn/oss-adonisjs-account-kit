@@ -159,7 +159,7 @@ test.group('invitations.send', (group) => {
   test('rejects a send blocked behind a committed demotion of the actor', async ({ assert }) => {
     if (!locksRows) return
     const actor = await createActor()
-    // The shipped SQL adapter, which ignores `findById`'s `forUpdate` option.
+    // The shipped SQL adapter, which takes no row lock of its own.
     const { account } = service({
       users: createSqlUsersAdapter({ table: 'users', db: kit.db, ...fakeHash }),
       authorize: {

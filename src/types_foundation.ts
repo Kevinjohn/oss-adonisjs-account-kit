@@ -53,7 +53,7 @@ export interface AuthorizationContext {
  * Custom adapters normalize stored email and enforce a single-column unique email index.
  * Configure physical table/constraint metadata, use the default connection, hash passwords,
  * and run every method receiving trx through that transaction. The package owns physical
- * row locks; legacy forUpdate arguments remain additive compatibility parameters.
+ * row locks.
  * The maintained Lucid adapter derives metadata and preserves model save hooks.
  */
 export interface UsersAdapter {
@@ -63,13 +63,9 @@ export interface UsersAdapter {
    */
   resolveMetadata?(): Promise<UsersAdapterMetadata>
   /** Finds a user by normalized email, or returns null. */
-  findByEmail(
-    email: string,
-    trx?: Trx,
-    options?: { forUpdate?: boolean }
-  ): Promise<AccountUser | null>
+  findByEmail(email: string, trx?: Trx): Promise<AccountUser | null>
   /** Finds a user by id, or returns null. */
-  findById(id: UserId, trx?: Trx, options?: { forUpdate?: boolean }): Promise<AccountUser | null>
+  findById(id: UserId, trx?: Trx): Promise<AccountUser | null>
   /**
    * Creates a user through `trx` and returns it. `registrationData` is untrusted input for your own
    * mapping.

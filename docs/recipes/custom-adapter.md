@@ -13,10 +13,10 @@ export const users: UsersAdapter = {
   async resolveMetadata() {
     return { table: 'users', primaryKey: 'id' }
   },
-  async findByEmail(email, trx, options) {
+  async findByEmail(email, trx) {
     /* return AccountUser | null */
   },
-  async findById(id, trx, options) {
+  async findById(id, trx) {
     /* return AccountUser | null */
   },
   async create({ email, unverifiedEmail, password, registrationData }, trx) {

@@ -94,7 +94,7 @@ test.group('admission gate', (group) => {
       authentication: strategies.session.authentication,
       users: {
         ...users,
-        findById: (id, trx, options) => {
+        findById: (id, trx) => {
           if (trx && !seen.includes(trx)) {
             const from = trx.from
             trx.from = function (...args: Parameters<typeof trx.from>) {
@@ -106,7 +106,7 @@ test.group('admission gate', (group) => {
             })
           }
           seen.push(trx)
-          return users.findById(id, trx, options)
+          return users.findById(id, trx)
         },
       },
     })

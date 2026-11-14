@@ -313,8 +313,8 @@ test.group('invitations.accept', (group) => {
       const { account, recorder } = service({
         users: {
           ...users,
-          async findByEmail(email, trx, options) {
-            const found = await users.findByEmail(email, trx, options)
+          async findByEmail(email, trx) {
+            const found = await users.findByEmail(email, trx)
             if (trx && email === 'person@example.test' && !found) {
               checked()
               await hold

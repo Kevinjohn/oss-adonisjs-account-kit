@@ -19,7 +19,7 @@ export interface AdapterContractFixture {
     id: number | string,
     acquireLock: (trx: Trx) => Promise<unknown>
   ): Promise<void>
-  /** Acquire the package-owned user lock from adapter metadata, not an adapter forUpdate option. */
+  /** Acquire the package-owned user lock from adapter metadata, not through the adapter. */
   acquireAccountLock(id: number | string, trx: Trx): Promise<void>
   emailPrefix?: string
   registrationData?: unknown

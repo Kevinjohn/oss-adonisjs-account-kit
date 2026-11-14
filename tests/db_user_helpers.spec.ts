@@ -121,7 +121,7 @@ test.group('database user helpers', (group) => {
     }
   })
 
-  test('locks the resolved PostgreSQL row even when the adapter ignores forUpdate', async ({
+  test('locks the resolved PostgreSQL row even when the adapter takes no lock', async ({
     assert,
   }) => {
     if (!locksRows) return
@@ -149,10 +149,10 @@ test.group('database user helpers', (group) => {
       const users = {
         ...adapter,
         async findById(userId: number | string, trx?: Parameters<typeof adapter.findById>[1]) {
-          return adapter.findById(userId, trx, { forUpdate: false })
+          return adapter.findById(userId, trx)
         },
         async findByEmail(email: string, trx?: Parameters<typeof adapter.findByEmail>[1]) {
-          return adapter.findByEmail(email, trx, { forUpdate: false })
+          return adapter.findByEmail(email, trx)
         },
       }
       const config = defineConfig(makeConfig({ users, usersTable: table }))

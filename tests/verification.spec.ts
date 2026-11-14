@@ -457,8 +457,8 @@ test.group('emailVerification.complete', (group) => {
       makeConfig({
         users: {
           ...users,
-          async findById(userId, trx, options) {
-            const user = await users.findById(userId, trx, options)
+          async findById(userId, trx) {
+            const user = await users.findById(userId, trx)
             lookupReady()
             await holdLookup
             return user
@@ -508,7 +508,7 @@ test.group('emailVerification.complete', (group) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const changing = transaction(kit.db, async (trx) => {
       await lockRow(trx, 'users', id)
-      await users.findById(id, trx, { forUpdate: true })
+      await users.findById(id, trx)
       await users.setEmail(id, 'changed@example.test', trx)
       await users.setUnverifiedEmail(id, 'changed@example.test', trx)
       changeReady()

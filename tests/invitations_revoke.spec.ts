@@ -136,8 +136,8 @@ test.group('invitations.revoke', (group) => {
     let paused = false
     const users = {
       ...baseUsers,
-      async findById(id: AccountUser['id'], trx?: Trx, options?: { forUpdate?: boolean }) {
-        const user = await baseUsers.findById(id, trx, options)
+      async findById(id: AccountUser['id'], trx?: Trx) {
+        const user = await baseUsers.findById(id, trx)
         if (!trx && armed && !paused) {
           paused = true
           actorRead()
