@@ -43,6 +43,7 @@ test.group('setup generated sources', (group) => {
       try {
         const schema = kit.db.connection().schema
         for (const table of [
+          'auth_access_tokens',
           'login_link_tokens',
           'account_sessions',
           'social_handoff_codes',

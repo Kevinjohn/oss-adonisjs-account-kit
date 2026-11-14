@@ -23,6 +23,7 @@ for (const scenario of [
     try {
       if (uuidColumn) {
         const schema = kit.db.connection().schema
+        await schema.dropTableIfExists('auth_access_tokens')
         await dropPackageTables(schema)
         await schema.dropTableIfExists('users')
         await schema.createTable('users', (builder) => {

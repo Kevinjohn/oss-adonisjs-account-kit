@@ -7,6 +7,7 @@ import {
   InvalidSessionError,
 } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { makeService, tokenFrom } from './helpers/fakes.js'
 
 test.group('registration', (group) => {
@@ -66,7 +67,7 @@ test.group('registration', (group) => {
       establish: async (userId: number | string) => {
         const [id] = await kit.db
           .table('auth_access_tokens')
-          .insert({ tokenable_id: userId, hash: 'credential' })
+          .insert({ tokenable_id: userId, ...accessTokenDefaults, hash: 'credential' })
           .returning('id')
         return { id: typeof id === 'object' ? id.id : id, userId }
       },

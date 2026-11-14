@@ -4,6 +4,7 @@ import { InvalidSessionError } from '../src/errors.js'
 import { readIsoTimestamp } from '../src/timestamps.js'
 import type { CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { dbTime } from './helpers/db_time.js'
 import { locksRows } from './helpers/dialect.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -315,7 +316,13 @@ test.group('authentication.withCurrent', (group) => {
     const { account } = service('access_tokens')
     const [inserted] = await kit.db
       .table('auth_access_tokens')
-      .insert({ tokenable_id: user.id, name: 'Phone', hash: 'hash', created_at: new Date() })
+      .insert({
+        tokenable_id: user.id,
+        name: 'Phone',
+        ...accessTokenDefaults,
+        hash: 'hash',
+        created_at: new Date(),
+      })
       .returning('id')
     const tokenId = typeof inserted === 'object' ? (inserted as { id: number }).id : inserted
     let signInId: number | undefined = -1

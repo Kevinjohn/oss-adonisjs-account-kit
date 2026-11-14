@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import type { AccountKitConfig, AccountUser, CurrentAccountInput, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 import { seedAccountRows } from './helpers/account_rows.js'
@@ -76,7 +77,7 @@ test.group('managed account data routes', (group) => {
   async function withToken(user: AccountUser): Promise<CurrentAccountInput> {
     const [row] = await kit.db
       .table('auth_access_tokens')
-      .insert({ tokenable_id: user.id, hash: `hash-${user.id}` })
+      .insert({ tokenable_id: user.id, ...accessTokenDefaults, hash: `hash-${user.id}` })
       .returning('id')
     return { userId: user.id, tokenId: typeof row === 'object' ? row.id : row }
   }

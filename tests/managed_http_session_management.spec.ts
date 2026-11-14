@@ -4,6 +4,7 @@ import { registerManagedRoutes } from '../src/http/managed.js'
 import { InvalidSessionError } from '../src/errors.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
 import { dbTime } from './helpers/db_time.js'
@@ -336,6 +337,7 @@ test.group('managed sign-in management routes', (group) => {
         .table('auth_access_tokens')
         .insert({
           tokenable_id: user.id,
+          ...accessTokenDefaults,
           name,
           hash: `hash-${name}`,
           created_at: dbTime(kit, DateTime.utc()),

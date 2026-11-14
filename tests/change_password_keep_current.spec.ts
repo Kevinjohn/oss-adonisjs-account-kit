@@ -7,6 +7,7 @@ import { InvalidSessionError, PostCommitError } from '../src/errors.js'
 import { passwordChangeRevision } from '../src/password_change_revision.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { dbTime } from './helpers/db_time.js'
 import { insertUser, makeNotify, makeService, tokenFrom } from './helpers/fakes.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
@@ -140,6 +141,7 @@ test.group('password change keeps the current token', (group) => {
       .table('auth_access_tokens')
       .insert({
         tokenable_id: userId,
+        ...accessTokenDefaults,
         name,
         hash: `hash-${name}`,
         created_at: dbTime(kit, DateTime.utc()),
@@ -351,6 +353,7 @@ test.group('managed password change keeps the caller signed in', (group) => {
         .table('auth_access_tokens')
         .insert({
           tokenable_id: user.id,
+          ...accessTokenDefaults,
           name,
           hash: `hash-${name}`,
           created_at: dbTime(kit, DateTime.utc()),

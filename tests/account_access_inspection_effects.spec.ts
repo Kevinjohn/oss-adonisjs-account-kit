@@ -4,6 +4,7 @@ import { AccountKit } from '../src/account_kit.js'
 import { AccountAccessDeniedError, PostCommitError } from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp, bootTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { failure } from './helpers/failure.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
@@ -97,6 +98,7 @@ test.group('account access inspection side effects and dependency failures', (gr
         if (strategy === 'access_tokens') {
           await kit.db.table('auth_access_tokens').insert({
             tokenable_id: user.id,
+            ...accessTokenDefaults,
             name: 'inspection token',
             hash: 'a'.repeat(64),
             created_at: dbTime(kit, now),

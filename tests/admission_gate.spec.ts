@@ -10,6 +10,7 @@ import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
 import { insertUser, makeUsersAdapter, unwrapId } from './helpers/fakes.js'
 import type { TestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
 
@@ -27,7 +28,7 @@ const strategies = {
     signIn: async (kit: TestApp, userId: UserId): Promise<CurrentAccountInput> => {
       const [tokenId] = await kit.db
         .table('auth_access_tokens')
-        .insert({ tokenable_id: userId, hash: `token-${userId}` })
+        .insert({ tokenable_id: userId, ...accessTokenDefaults, hash: `token-${userId}` })
         .returning('id')
       return { userId, tokenId: unwrapId(tokenId) }
     },

@@ -10,6 +10,7 @@ import {
 } from '../src/errors.js'
 import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { dbTime } from './helpers/db_time.js'
 import { testEngine } from './helpers/dialect.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -186,6 +187,7 @@ test.group('account data export', (group) => {
     const user = await insertUser(kit)
     await kit.db.table('auth_access_tokens').insert({
       tokenable_id: user.id,
+      ...accessTokenDefaults,
       name: 'Phone',
       hash: 'not-a-real-hash',
       created_at: Date.UTC(2026, 9, 1),

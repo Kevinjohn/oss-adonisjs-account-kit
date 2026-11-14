@@ -17,6 +17,7 @@ import type {
   UserId,
 } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
+import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
@@ -436,6 +437,7 @@ test.group('sign-in management with access tokens', (group) => {
       .table('auth_access_tokens')
       .insert({
         tokenable_id: userId,
+        ...accessTokenDefaults,
         name,
         hash: `hash-${name}`,
         created_at: dbTime(kit, DateTime.utc()),

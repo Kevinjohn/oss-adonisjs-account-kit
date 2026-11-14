@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import { dbTime } from './db_time.js'
+import { accessTokenDefaults } from './access_tokens.js'
 import { issueProof } from '../../src/social_proofs.js'
 import { transaction } from '../../src/transaction.js'
 import type { ResolvedConfig, SensitivePurpose, UserId } from '../../src/types.js'
@@ -98,6 +99,7 @@ export async function seedAccountRows(kit: TestApp, userId: UserId, tag: string)
   })
   await kit.db.table('auth_access_tokens').insert({
     tokenable_id: userId,
+    ...accessTokenDefaults,
     name: `Laptop ${tag}`,
     hash: secrets.accessToken,
     created_at: dbTime(kit, '2026-10-01T00:00:00.000Z'),
