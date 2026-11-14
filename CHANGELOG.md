@@ -22,6 +22,11 @@
   `contentType` and a `Vary: Accept` header, and with a JSON:API `accept` an entry carries `title`
   instead of `message`, so code that reads `entry.message` must narrow the union first.
   `accountErrorResponse` accepts `accept` and `proof` options, and `ProofKind` is exported.
+- Breaking: `registration.register` refuses closed registration (`registration.availability:
+'closed'`) with `AuthorizationError`, as the managed signup route does. An application-owned
+  signup route that maps it with `accountErrorResponse` now answers 403 `E_ACCOUNT_KIT_FORBIDDEN`
+  instead of 500 `E_ACCOUNT_KIT_OPERATION_FAILED`. A disabled `registration` capability still
+  throws `CapabilityDisabledError`.
 
 ### Fixed
 
