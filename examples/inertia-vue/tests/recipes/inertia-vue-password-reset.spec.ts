@@ -264,7 +264,10 @@ test.group('Inertia Vue password reset recipe', (group) => {
           .getByText('If an account exists for that address, we have sent a reset link.')
           .waitFor()
         assert.isAbove(resetUrls.length, 0)
-        return new URL(resetUrls.at(-1)!).pathname
+        const url = new URL(resetUrls.at(-1)!)
+        assert.equal(url.origin, new URL(recipeOrigin).origin)
+        assert.match(url.pathname, /^\/reset-password\/[^/]+$/)
+        return `${url.pathname}${url.search}`
       }
       const firstProofPath = await requestLink()
       await requester.goto('/forgot-password')
