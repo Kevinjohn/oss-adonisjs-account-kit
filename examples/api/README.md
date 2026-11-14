@@ -131,7 +131,7 @@ session, social, invitation, admission, or outbox integrations.
   `app/middleware/proof_response_headers_middleware.ts`,
   `app/middleware/force_json_response_middleware.ts`, and
   `app/middleware/container_bindings_middleware.ts`; the first two use
-  `app/services/http_responses.ts` and `app/services/accept_negotiation.ts`. Drop session, Shield,
+  `app/services/http_responses.ts`. Drop session, Shield,
   social-header, and unused silent-auth middleware for the API-only path. The global kernel runs
   before handlers; public proof routes do not use `auth()`.
 
@@ -151,7 +151,7 @@ GET/POST verification routes are public under `/api/v1/auth`; the resend route
 `POST /api/v1/account/email-verification/send` is protected by `auth()` then `accountAccess()`.
 Copy `app/middleware/account_access_middleware.ts` and `app/services/account_input.ts` for that
 route, applying the API-only adaptation above. `email_verifications_controller.ts` uses
-`app/services/http_responses.ts` and `accept_negotiation.ts` for proof headers/errors. Adapt
+`app/services/http_responses.ts` for proof headers/errors. Adapt
 registration field mapping, availability, validators, and response language. Verify with
 [`account_signup_login.spec.ts`](tests/functional/account_signup_login.spec.ts) and
 [`account_email_verification.spec.ts`](tests/functional/account_email_verification.spec.ts).
@@ -161,7 +161,7 @@ registration field mapping, availability, validators, and response language. Ver
 Required additions: `examples/api/app/controllers/password_resets_controller.ts` and
 `examples/api/app/validators/account_kit.ts` → the same paths; its import closure also needs
 `app/validators/fields.ts` and `app/validators/password.ts`. Copy
-`app/services/http_responses.ts`, `app/services/accept_negotiation.ts`, and
+`app/services/http_responses.ts` and
 `app/services/committed_failure_diagnostic.ts`; merge the reset routes from
 `examples/api/start/routes.ts`. The request, inspect, and completion handlers are public routes
 without account auth. Body parsing runs before each handler; the global

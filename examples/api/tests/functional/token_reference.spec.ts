@@ -132,17 +132,22 @@ test.group('Token reference', (group) => {
     assert.deepEqual(wildcard.body(), {
       errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Authentication failed.' }],
     })
-    // Equal quality with JSON listed first: package errors follow the example's own rule, as its
-    // CSRF and proof-failure responses do.
+    // Equal quality: the type listed first wins, for package errors and for the example's own
+    // responses alike.
     const tied = await client
       .post('/api/v1/auth/login')
       .header('accept', 'application/json, application/vnd.api+json')
       .json({ email, password: 'WrongPass123!' })
     assert.equal(tied.status(), 401)
-    assert.include(tied.header('content-type'), 'application/vnd.api+json')
+    assert.notInclude(tied.header('content-type'), 'application/vnd.api+json')
     assert.deepEqual(tied.body(), {
-      errors: [{ code: 'E_INVALID_CREDENTIALS', title: 'Authentication failed.' }],
+      errors: [{ code: 'E_INVALID_CREDENTIALS', message: 'Authentication failed.' }],
     })
+    const tiedJsonApiFirst = await client
+      .post('/api/v1/auth/login')
+      .header('accept', 'application/vnd.api+json, application/json')
+      .json({ email, password: 'WrongPass123!' })
+    assert.include(tiedJsonApiFirst.header('content-type'), 'application/vnd.api+json')
     const validation = await client
       .post('/api/v1/auth/login')
       .json({ email: 'invalid', password: '' })
@@ -360,5 +365,14 @@ test.group('Token reference', (group) => {
         { code: 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN', title: 'This link is invalid or expired.' },
       ],
     })
+    const tiedProof = await client
+      .get(path)
+      .header('accept', 'application/json, application/vnd.api+json')
+    assert.equal(tiedProof.status(), 400)
+    assert.notInclude(tiedProof.header('content-type'), 'application/vnd.api+json')
+    const tiedJsonApiFirstProof = await client
+      .get(path)
+      .header('accept', 'application/vnd.api+json, application/json')
+    assert.include(tiedJsonApiFirstProof.header('content-type'), 'application/vnd.api+json')
   }).skip(isSessionStrategy, ACCESS_TOKENS_ONLY)
 })
