@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { test } from '@japa/runner'
 import { migrationNames, migrationSchema } from '../configure.js'
+import { exportedUserColumns, omittedUserColumns } from '../src/account_export_coverage.js'
+import { admissionTable } from '../src/admission/rows.js'
 import { userOwnedRows } from '../src/user_rows.js'
 import { userTables } from './helpers/test_rows.js'
 
@@ -11,6 +13,22 @@ import { userTables } from './helpers/test_rows.js'
 const handledSeparately = [
   ['account_sessions', 'user_id'],
   ['account_invitations', 'inviter_id'],
+]
+
+/**
+ * The optional admission module's user columns, which the core export cannot name without importing
+ * that module. The application exports the admission record through `exportAccountData`.
+ */
+const admissionOmissions = [
+  {
+    column: `${admissionTable}.user_id`,
+    reason:
+      'Optional admission module: the application adds the record through `exportAccountData`.',
+  },
+  {
+    column: `${admissionTable}.approval_actor_id`,
+    reason: "The deciding owner's id on another user's admission record; set to null on deletion.",
+  },
 ]
 
 /**
@@ -32,10 +50,10 @@ function userColumnsIn(name: string, stub: string): string[] {
   })
 }
 
-/** Every `table.column` that the migrations `configure` installs key by a user id. */
-async function migratedUserColumns(): Promise<string[]> {
+/** Every `table.column` that the given migration stubs (by default, those `configure` installs) key by a user id. */
+async function migratedUserColumns(names: readonly string[] = migrationNames): Promise<string[]> {
   const found: string[] = []
-  for (const name of migrationNames) {
+  for (const name of names) {
     const stub = await readFile(
       new URL(`../stubs/migrations/${name}.stub`, import.meta.url),
       'utf8'
@@ -61,6 +79,25 @@ test.group('user-keyed table lists', () => {
     const cleanup = userTables.map(([table, column]) => `${table}.${column}`)
     assert.includeMembers(source, migrated, 'src/user_rows.ts misses a user-keyed table')
     assert.includeMembers(cleanup, migrated, 'tests/helpers/test_rows.ts misses a user-keyed table')
+  })
+
+  test('the account export reads or deliberately omits every user column the migrations create', async ({
+    assert,
+  }) => {
+    // `account-kit:admission:install` adds the admission migration on top of the configure set.
+    const migrated = await migratedUserColumns([...migrationNames, 'create_account_admissions'])
+    assert.include(migrated, 'account_admissions.approval_actor_id')
+    const omitted = [...omittedUserColumns, ...admissionOmissions]
+    const classified = [...exportedUserColumns, ...omitted.map(({ column }) => column)]
+    assert.includeMembers(
+      classified,
+      migrated,
+      'src/account_export_coverage.ts must list every migrated user column as exported or omitted with a reason'
+    )
+    for (const { column, reason } of omitted) {
+      assert.notInclude(exportedUserColumns, column, `${column} is both exported and omitted`)
+      assert.isNotEmpty(reason, `${column} needs a reason`)
+    }
   })
 
   test('collects a user column whatever shape its foreign key takes', ({ assert }) => {
