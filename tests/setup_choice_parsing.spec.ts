@@ -38,4 +38,24 @@ test.group('setup choice parsing', () => {
     )
     assert.throws(() => parseSetupChoices({ ...choices, version: 2 }), 'version: expected 1')
   })
+
+  test('rejects an unknown authentication strategy and non-boolean password rules', ({
+    assert,
+  }) => {
+    const choices = defaultSetupChoices()
+    choices.authentication = {
+      strategy: 'jwt' as never,
+      guard: 'web',
+      applicationRouteRevocation: true,
+    }
+    assert.throws(
+      () => parseSetupChoices(choices),
+      'authentication.strategy: choose session or access_tokens'
+    )
+    for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const) {
+      const policy = defaultSetupChoices()
+      policy.policy.password[key] = 'yes' as never
+      assert.throws(() => parseSetupChoices(policy), `policy.password.${key}: expected a boolean`)
+    }
+  })
 })

@@ -32,10 +32,6 @@ export function validatePolicy(
       'policy.password',
       `Use minLength ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH}, maxLength null or minLength–${MAX_PASSWORD_LENGTH}, and minScore 0–4`
     )
-  for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const) {
-    if (typeof p[key] !== 'boolean')
-      diagnostic(diagnostics, `policy.password.${key}`, 'Use a boolean')
-  }
   if (choices.policy.registration === 'open' && !choices.features.includes('registration'))
     diagnostic(
       diagnostics,
