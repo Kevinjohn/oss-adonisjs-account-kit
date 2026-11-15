@@ -4,7 +4,6 @@ import {
   type SetupInspection,
   type SetupPlan,
   featureNames,
-  setupModes,
   userAdapters,
   userIdTypes,
 } from './types.js'
@@ -32,14 +31,11 @@ export type ValidateOptions = RetirementOptions & {
 export function validate(choices: SetupChoices, state: SetupInspection, options: ValidateOptions) {
   const { production, env = process.env, selectedOrigins } = options
   const diagnostics: SetupDiagnostic[] = []
-  if (choices.version !== 1) diagnostic(diagnostics, 'version', 'Supported setup version is 1')
-  if (!setupModes.includes(choices.mode))
-    diagnostic(diagnostics, 'mode', 'Choose services or managed')
-  if (!Array.isArray(choices.features) || choices.features.some((x) => !featureNames.includes(x)))
+  if (choices.features.some((x) => !featureNames.includes(x)))
     diagnostic(diagnostics, 'features', `Choose from ${featureNames.join(', ')}`)
   if (new Set(choices.features).size !== choices.features.length)
     diagnostic(diagnostics, 'features', 'List each feature once')
-  if (!Array.isArray(choices.managed) || choices.managed.some((x) => !featureNames.includes(x)))
+  if (choices.managed.some((x) => !featureNames.includes(x)))
     diagnostic(diagnostics, 'managed', `Choose from ${featureNames.join(', ')}`)
   if (new Set(choices.managed).size !== choices.managed.length)
     diagnostic(diagnostics, 'managed', 'List each managed feature once')
