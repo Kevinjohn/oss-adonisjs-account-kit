@@ -15,7 +15,7 @@ import { normalizeScope, scopeColumn } from './invitation_scope.js'
 import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
-import { decodeInvitationCursor, encodeInvitationCursor } from './invitation_cursor.js'
+import { decodeKeysetCursor, encodeKeysetCursor } from './keyset_cursor.js'
 import type {
   Invitation,
   InvitationPage,
@@ -163,7 +163,10 @@ export async function listInvitations(
   const limit = input.limit ?? 25
   if (!Number.isInteger(limit) || limit < 1 || limit > 100)
     throw new InvalidInputError('Invalid invitation page limit')
-  const position = input.cursor === undefined ? null : decodeInvitationCursor(input.cursor)
+  const position =
+    input.cursor === undefined
+      ? null
+      : decodeKeysetCursor(input.cursor, 'Invalid invitation cursor')
   const scope = input.scope === undefined ? undefined : normalizeScope(input.scope)
   const actor = await requireUser(deps.config, input.actorId)
   const context = scope === undefined ? {} : { scope }
@@ -190,6 +193,6 @@ export async function listInvitations(
   return {
     items,
     // The driver may return a Date or an SQL string; the cursor always carries ISO 8601 UTC.
-    nextCursor: last ? encodeInvitationCursor(readIsoTimestamp(last.created_at), last.id) : null,
+    nextCursor: last ? encodeKeysetCursor(readIsoTimestamp(last.created_at), last.id) : null,
   }
 }

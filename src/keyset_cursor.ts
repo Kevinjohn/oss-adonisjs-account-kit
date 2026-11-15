@@ -1,20 +1,20 @@
-// Encodes and decodes the opaque cursor for paging through admission records.
+// Encodes and decodes the opaque `[createdAt, id]` cursor for paging admission and invitation listings.
 import { DateTime } from 'luxon'
-import { InvalidInputError } from '../errors.js'
+import { InvalidInputError } from './errors.js'
 
-const MAX_ADMISSION_CURSOR_LENGTH = 512
+const MAX_KEYSET_CURSOR_LENGTH = 512
 
-export type AdmissionCursor = { createdAt: string; id: number }
+export type KeysetCursor = { createdAt: string; id: number }
 
 /** The cursor for the page after the row with this `created_at` and `id`. */
-export function encodeAdmissionCursor(createdAt: unknown, id: unknown): string {
+export function encodeKeysetCursor(createdAt: unknown, id: unknown): string {
   return Buffer.from(JSON.stringify([createdAt, id])).toString('base64url')
 }
 
-/** Reads a cursor from `encodeAdmissionCursor`; anything else is `InvalidInputError`. */
-export function decodeAdmissionCursor(cursor: string): AdmissionCursor {
+/** Reads a cursor from `encodeKeysetCursor`; anything else is `InvalidInputError` with `message`. */
+export function decodeKeysetCursor(cursor: string, message: string): KeysetCursor {
   try {
-    if (typeof cursor !== 'string' || cursor.length > MAX_ADMISSION_CURSOR_LENGTH)
+    if (typeof cursor !== 'string' || cursor.length > MAX_KEYSET_CURSOR_LENGTH)
       throw new Error('invalid')
     const decoded = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'))
     if (
@@ -29,6 +29,6 @@ export function decodeAdmissionCursor(cursor: string): AdmissionCursor {
       throw new Error('invalid')
     return { createdAt: decoded[0], id: decoded[1] }
   } catch {
-    throw new InvalidInputError('Invalid admission cursor')
+    throw new InvalidInputError(message)
   }
 }
