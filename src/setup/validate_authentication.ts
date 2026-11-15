@@ -35,8 +35,6 @@ export function validateAuthentication(
       'Account deletion sends a confirmation email; also select an email service such as passwordReset'
     )
   if (choices.authentication) {
-    if (!['session', 'access_tokens'].includes(choices.authentication.strategy))
-      diagnostic(diagnostics, 'authentication.strategy', 'Choose session or access_tokens')
     if (!state.guards.includes(choices.authentication.guard))
       diagnostic(
         diagnostics,

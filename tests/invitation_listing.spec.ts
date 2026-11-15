@@ -93,6 +93,11 @@ test.group('invitation management contracts', (group) => {
       () => account.invitations.list({ actorId: actor.id, cursor: 'a'.repeat(513) }),
       InvalidInputError
     )
+    for (const bad of ['invalid', Buffer.from('[1,2]').toString('base64url'), 'a'.repeat(513)])
+      await assert.rejects(
+        () => account.invitations.list({ actorId: actor.id, cursor: bad }),
+        'Invalid invitation cursor'
+      )
   })
 
   test('rejects oversized cursors before decoding or actor lookup', async ({ assert }) => {
