@@ -347,6 +347,8 @@ test('original starter login reaches its protected profile', async ({ client, as
     originalBootstrap = await readFile(browserBootstrapPath, 'utf8')
     await writeFile(browserBootstrapPath, vueBrowserBootstrap(originalBootstrap))
   }
+  // A fresh starter can need a newer browser build than the local Playwright cache holds.
+  if (browserRecipe) run('pnpm', ['exec', 'playwright', 'install', 'chromium-headless-shell'])
   try {
     if (browserRecipe) run('pnpm', ['build'])
     run('pnpm', ['test', '--files=recipe_starter_login.spec.ts'])
