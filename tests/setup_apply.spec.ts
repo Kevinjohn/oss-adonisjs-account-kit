@@ -58,6 +58,62 @@ test.group('setup apply', (group) => {
     assert.equal(await readFile(join(root, '.env.account-kit.example'), 'utf8'), 'owner value\n')
   })
 
+  test('an interrupted apply names the files already written and a rerun finishes the rest', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const publishable = plan.changes.filter(({ action }) => action !== 'unchanged')
+    assert.isAtLeast(publishable.length, 3)
+    const injected = new Error('injected interruption')
+    let calls = 0
+    const error = (await applySetup(root, plan, {
+      beforePublish: async () => {
+        if (++calls === 2) throw injected
+      },
+    }).then(
+      () => assert.fail('expected rejection'),
+      (caught) => caught
+    )) as Error & { written: string[] }
+    assert.deepEqual(error.written, [publishable[0].path])
+    assert.include(error.message, publishable[0].path)
+    assert.include(error.message, 'injected interruption')
+    assert.strictEqual(error.cause, injected)
+    const rerun = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const written = await applySetup(root, rerun)
+    assert.deepEqual(
+      written,
+      publishable.slice(1).map(({ path }) => path)
+    )
+  })
+
+  test('a failure before any file is written rejects with the original error', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const injected = new Error('first file failure')
+    const error = (await applySetup(root, plan, {
+      beforePublish: async () => {
+        throw injected
+      },
+    }).then(
+      () => assert.fail('expected rejection'),
+      (caught) => caught
+    )) as Error & { written?: string[] }
+    assert.strictEqual(error, injected)
+    assert.isUndefined(error.written)
+  })
+
   test('replays an interrupted run and leaves application files untouched', async ({ assert }) => {
     const { root, choices } = await fixture()
     const originalRoutes = await readFile(join(root, 'start/routes.ts'), 'utf8')
