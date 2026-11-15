@@ -2,9 +2,8 @@ import { access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Application } from '@adonisjs/core/app'
-import { migrationSchema } from './migration_definitions.js'
+import type { migrationSchema } from './migration_definitions.js'
 import { stubsRoot } from '../../stubs/main.js'
-import type { SetupChoices } from './types.js'
 
 type StubsManager = Awaited<ReturnType<Application<any>['stubs']['create']>>
 
@@ -25,7 +24,8 @@ function packageStubs(): Promise<StubsManager> {
   return stubsManager
 }
 
-export async function migrationContent(name: string, choices: SetupChoices): Promise<string> {
+/** Locates one template and returns its stub path. It reads no setup choice. */
+export async function migrationTemplate(name: string): Promise<string> {
   const stubPath = `migrations/${name}.stub`
   try {
     await access(join(stubsRoot, stubPath))
@@ -33,13 +33,21 @@ export async function migrationContent(name: string, choices: SetupChoices): Pro
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
     throw new Error(`Account Kit migration template ${name} is missing`)
   }
+  return stubPath
+}
+
+/** Renders a located template with the schema `migrationSchema` built from the choices. */
+export async function migrationContent(
+  stubPath: string,
+  schema: ReturnType<typeof migrationSchema>
+): Promise<string> {
   const stubs = await packageStubs()
   const stub = await stubs.build(stubPath, { source: stubsRoot })
   const { contents } = await stub.prepare({
     migration: {
-      ...migrationSchema(choices.user.table, choices.user.idType),
+      ...schema,
       // The stub header requires an absolute destination; setup chooses the path in its plan.
-      destination: join(stubsRoot, 'migrations', `${name}.ts`),
+      destination: join(stubsRoot, stubPath.replace(/\.stub$/, '.ts')),
     },
   })
   // The stubs engine trims the file and keeps the blank line after the header; setup writes the

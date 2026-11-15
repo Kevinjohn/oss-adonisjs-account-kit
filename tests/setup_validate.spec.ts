@@ -1,5 +1,7 @@
+import fs from 'node:fs'
 import { readdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { syncBuiltinESMExports } from 'node:module'
+import { join, sep } from 'node:path'
 import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
@@ -7,6 +9,21 @@ import { applySetup } from '../src/setup/apply.js'
 import { parseSetupChoices } from '../src/setup/parse.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
+
+/** Makes every migration template unreadable until the test's cleanup runs. */
+function failTemplateReads(cleanup: (handler: () => void) => void) {
+  const access = fs.promises.access
+  fs.promises.access = async (path, mode) => {
+    if (String(path).includes(`${sep}migrations${sep}`) && String(path).endsWith('.stub'))
+      throw Object.assign(new Error('EIO: template'), { code: 'EIO' })
+    return access(path, mode)
+  }
+  syncBuiltinESMExports()
+  cleanup(() => {
+    fs.promises.access = access
+    syncBuiltinESMExports()
+  })
+}
 
 test.group('setup choice validation', (group) => {
   registerSetupTeardown(group)
@@ -71,6 +88,38 @@ test.group('setup choice validation', (group) => {
     )
     await assert.rejects(() => applySetup(root, plan), /blocking diagnostics/)
     assert.deepEqual(await readdir(root), before)
+  })
+
+  test('a migration template read failure is thrown with an unresolved database', async ({
+    assert,
+    cleanup,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nimport env from '#start/env'\nconst other = await import('#start/env')\nother.default.get = () => 'mysql'\nexport default defineConfig({ connection: env.get('DB_CONNECTION', 'sqlite'), connections: { sqlite: { client: 'better-sqlite3' }, mysql: { client: 'mysql2' } } })"
+    )
+    const state = await inspectSetup(root)
+    assert.equal(state.database, 'unknown')
+    failTemplateReads(cleanup)
+    await assert.rejects(() => planSetup(choices, state, { timestamp: 1234 }), /EIO: template/)
+  })
+
+  test('an invalid users table leaves migrations out but still throws a read failure', async ({
+    assert,
+    cleanup,
+  }) => {
+    const { root, choices } = await fixture()
+    choices.user.table = 'app-users'
+    const state = await inspectSetup(root)
+    const plan = await planSetup(choices, state, { timestamp: 1234 })
+    assert.include(
+      plan.diagnostics.map(({ field }) => field),
+      'user.table'
+    )
+    assert.isFalse(plan.changes.some(({ path }) => path.startsWith('database/migrations/')))
+    failTemplateReads(cleanup)
+    await assert.rejects(() => planSetup(choices, state, { timestamp: 1234 }), /EIO: template/)
   })
 
   test('blocks unsupported guard, topology, password bounds and login retirement', async ({

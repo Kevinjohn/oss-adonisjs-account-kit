@@ -1,7 +1,7 @@
 import type { SetupFileChange, SetupInspection } from './types.js'
 
 export { generatedEnv } from './generated_sources.js'
-export { migrationContent } from './migration_source.js'
+export { migrationContent, migrationTemplate } from './migration_source.js'
 
 export function addChange(
   changes: SetupFileChange[],

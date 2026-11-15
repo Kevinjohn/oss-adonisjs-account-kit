@@ -1,10 +1,20 @@
-import { accountKitMigrationSuffix, migrationNames } from './migration_definitions.js'
+import {
+  accountKitMigrationSuffix,
+  migrationNames,
+  migrationSchema,
+} from './migration_definitions.js'
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { parseSetupSource } from './ts_source.js'
 import { hasEmailFlow, selectedManagedRoutes, diagnostic, envName } from './shared.js'
 import { validate } from './validate.js'
-import { generatedEnv, migrationContent, addChange, ownedChange } from './changes.js'
+import {
+  generatedEnv,
+  migrationContent,
+  migrationTemplate,
+  addChange,
+  ownedChange,
+} from './changes.js'
 import {
   retainedGeneratedChoices,
   allyConfigSource,
@@ -86,10 +96,7 @@ export async function planSetup(
   // Generators assume valid choices. When validation has already reported an error for the
   // choices a generator reads, its failure leaves the file out instead of hiding that report.
   // Any other failure is a setup bug and still throws.
-  const generated = async (
-    reads: string[],
-    build: () => string | Promise<string>
-  ): Promise<string | null> => {
+  const generated = async <T>(reads: string[], build: () => T | Promise<T>): Promise<T | null> => {
     try {
       return await build()
     } catch (error) {
@@ -183,17 +190,22 @@ export async function planSetup(
     await planSession(choices, state, diagnostics, options)
   }
   const migrationTimestamp = options.timestamp ?? Date.now()
+  const schema = await generated(['user.'], () =>
+    migrationSchema(choices.user.table, choices.user.idType)
+  )
+  // Template reads sit outside `generated` and run without a schema: no reported choice explains
+  // a read failure.
   for (const [index, name] of migrationNames.entries()) {
+    const template = await migrationTemplate(name)
+    if (schema === null) continue
     const suffix = accountKitMigrationSuffix(name)
     const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
     const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
-    const content = await generated(['user.', 'database.'], () => migrationContent(name, choices))
-    if (content === null) continue
     addChange(
       changes,
       state,
       path,
-      content,
+      await migrationContent(template, schema),
       `Review schema change ${name}; run migrations separately`
     )
   }

@@ -45,6 +45,9 @@
 - `accountErrorResponse` runs the managed routes' mapper: it returns the per-kind invalid-token
   code when given `proof`, keeps `field: 'email'` for a duplicate registration email, and negotiates
   JSON:API and sends `Vary: Accept` as the managed routes do.
+- Setup reports a migration template that is missing or cannot be read even when the plan already
+  holds a `database.*` or `user.*` error. Before, the plan left the migrations out and said nothing
+  about the read.
 
 ## 0.3.4 - 2026-11-09
 
