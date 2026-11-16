@@ -73,6 +73,8 @@
   whether its string uses single or double quotes, so repeated runs do not register duplicates.
 - Inactive email corrections through `updateProfile` or `requestEmailChange` no longer require
   `credentials_changed_at` when authentication is not configured.
+- Social signup reports activation lookup or issuance failures as committed follow-up failures,
+  preserving the cause and existing delivery-error handling after the account has been created.
 
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile

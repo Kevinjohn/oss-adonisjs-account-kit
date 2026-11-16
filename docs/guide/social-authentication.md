@@ -60,6 +60,9 @@ Set `notify.socialIdentityLinked` and `notify.socialIdentityUnlinked`, or use th
   a confirmed email address at the time of the change.
 - Delivery failures surface after commit; callers must not repeat the relationship operation in
   response.
+- If signup commits but activation lookup or proof issuance fails, `PostCommitError` retains the
+  original cause. Delivery failures keep `DeliveryError`. The account exists and the signup state
+  is consumed; recover by requesting activation again instead of repeating signup.
 
 The selected guard's revision or token check applies to authenticated linking, listing, unlinking,
 and sensitive proof operations.
