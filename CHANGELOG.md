@@ -39,6 +39,8 @@
 
 ### Fixed
 
+- Configure and the admission installer recognize an existing command lazy import regardless of
+  whether its string uses single or double quotes, so repeated runs do not register duplicates.
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.
