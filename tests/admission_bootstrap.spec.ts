@@ -1,11 +1,18 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
 
-import { DateTime } from 'luxon'
+import { DateTime, Settings } from 'luxon'
 import { test } from '@japa/runner'
+import { replaceBootstrapInvitation } from '../src/bootstrap_invitation.js'
 import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
 import { transaction } from '../src/db.js'
-import { EmailAlreadyRegisteredError, InvalidInputError } from '../src/errors.js'
+import {
+  CapabilityDisabledError,
+  EmailAlreadyRegisteredError,
+  InvalidInputError,
+} from '../src/errors.js'
 import type { Invitation } from '../src/types.js'
+import { locksRows } from './helpers/dialect.js'
+import { createBarrier, startWithBackendId, waitForBlockedBy } from './helpers/lock_coordination.js'
 import { dbTime } from './helpers/db_time.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
@@ -185,33 +192,290 @@ test.group('admission bootstrap', (group) => {
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })
 
-  test('a failed invitation removes the approval it wrote', async ({ assert }) => {
-    const { admission, account } = setup()
-    account.operator.invite = async () => {
-      throw new Error('mail queue down')
-    }
-    await assert.rejects(
-      () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' }),
-      'mail queue down'
-    )
-    assert.lengthOf(await waiting(), 0)
+  test('the sent observer sees the committed matching invitation and approval', async ({
+    assert,
+  }) => {
+    let paired = false
+    const { admission } = makeAdmission(kit, allRequirements, {
+      onLifecycleEvent: async (event) => {
+        if (event.type !== 'invitation.sent') return
+        const pending = await waiting().first()
+        const invitation = await kit.db
+          .from('account_invitations')
+          .where('id', event.invitationId)
+          .first()
+        paired = pending?.invitation_id === invitation?.id
+      },
+    })
+    await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
+    assert.isTrue(paired)
   })
 
-  test("a failed invitation leaves a later bootstrap's approval in place", async ({ assert }) => {
-    const { admission, account } = setup()
-    const invite = account.operator.invite.bind(account.operator)
-    let later: Awaited<ReturnType<typeof invite>> | undefined
-    account.operator.invite = async () => {
-      // A second bootstrap for the address replaces this call's approval before it fails.
-      account.operator.invite = invite
-      later = await admission.operator.bootstrap({ email: 'boss@example.test', role: 'admin' })
-      throw new Error('mail queue down')
+  test('overlapping bootstraps expose only the surviving committed pair', async ({ assert }) => {
+    let enter!: () => void
+    let release!: () => void
+    const entered = new Promise<void>((resolve) => {
+      enter = resolve
+    })
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let first = true
+    let committedPairVisible = false
+    const { admission, account } = makeAdmission(kit, allRequirements, {
+      onInvitationAccepted: withInvitationEvidence(),
+      onLifecycleEvent: async (event) => {
+        if (event.type !== 'invitation.sent' || !first) return
+        first = false
+        const pending = await waiting().first()
+        const invitation = await kit.db
+          .from('account_invitations')
+          .where('id', event.invitationId)
+          .first()
+        committedPairVisible = pending?.invitation_id === invitation.id
+        enter()
+        await held
+      },
+    })
+    const earlier = admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
+    const rejected = assert.rejects(() => earlier, /replaced or cancelled/)
+    try {
+      await entered
+      assert.isTrue(committedPairVisible)
+      const later = await admission.operator.bootstrap({
+        email: 'boss@example.test',
+        role: 'admin',
+      })
+      assert.equal((await waiting().first()).invitation_id, later.invitation.id)
+      release()
+      await rejected
+      const user = await account.invitations.accept({
+        token: tokenFrom(later.url),
+        password: 'ownerPassword1',
+      })
+      assert.isTrue(await admission.isAdmitted(user.id))
+      assert.lengthOf(await kit.db.from('account_admissions'), 1)
+    } finally {
+      release()
     }
+  })
+
+  test('an approval database failure rolls back replacement and emits no event', async ({
+    assert,
+  }) => {
+    const events: string[] = []
+    const { admission, account, config } = makeAdmission(kit, allRequirements, {
+      onInvitationAccepted: withInvitationEvidence(),
+      onLifecycleEvent: async (event) => {
+        events.push(event.type)
+      },
+    })
+    const original = await admission.operator.bootstrap({
+      email: 'boss@example.test',
+      role: 'owner',
+    })
+    const prior = await waiting().first()
+    events.length = 0
+    const find = config.users.findByEmail.bind(config.users)
+    config.users.findByEmail = async (email, trx) => {
+      const user = await find(email, trx)
+      if (trx) {
+        const table = trx.table.bind(trx)
+        trx.table = ((name: string) => {
+          const builder = table(name)
+          if (name === 'account_admissions') {
+            const insert = builder.insert.bind(builder)
+            builder.insert = ((row: object) =>
+              insert({ ...row, missing_approval_column: true })) as typeof builder.insert
+          }
+          return builder
+        }) as typeof trx.table
+      }
+      return user
+    }
+    try {
+      await assert.rejects(
+        () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'admin' }),
+        /missing_approval_column/
+      )
+    } finally {
+      config.users.findByEmail = find
+    }
+    assert.deepEqual(await waiting().first(), prior)
+    assert.equal((await kit.db.from('account_invitations').first()).id, original.invitation.id)
+    assert.deepEqual(events, [])
+    const user = await account.invitations.accept({
+      token: tokenFrom(original.url),
+      password: 'ownerPassword1',
+    })
+    assert.isTrue(await admission.isAdmitted(user.id))
+  })
+  test('a committed observer failure returns the usable link and ordinary operator fault', async ({
+    assert,
+  }) => {
+    const { admission, account } = makeAdmission(kit, allRequirements, {
+      onInvitationAccepted: withInvitationEvidence(),
+      onLifecycleEvent: async (event) => {
+        if (event.type === 'invitation.sent') throw new Error('observer unavailable')
+      },
+    })
+    const issued = await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
+    assert.equal(issued.fault?.name, 'PostCommitError')
+    const user = await account.invitations.accept({
+      token: tokenFrom(issued.url),
+      password: 'ownerPassword1',
+    })
+    assert.isTrue(await admission.isAdmitted(user.id))
+  })
+
+  test('the invitation capability gate prevents bootstrap writes', async ({ assert }) => {
+    const { admission } = makeAdmission(kit, allRequirements, { enabled: [] })
     await assert.rejects(
       () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' }),
-      'mail queue down'
+      CapabilityDisabledError
     )
-    const [kept] = await waiting()
-    assert.equal(kept?.invitation_id, later!.invitation.id)
+    assert.lengthOf(await waiting(), 0)
+    assert.lengthOf(await kit.db.from('account_invitations'), 0)
   })
+
+  test('an account registered after the precheck prevents replacement under the invitation lock', async ({
+    assert,
+  }) => {
+    const { admission, config } = setup()
+    const issued = await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
+    const prior = await waiting().first()
+    const find = config.users.findByEmail.bind(config.users)
+    let registered = false
+    config.users.findByEmail = async (email, trx) => {
+      const found = await find(email, trx)
+      if (!trx && !registered) {
+        registered = true
+        await insertUser(kit, { email })
+      }
+      return found
+    }
+    try {
+      await assert.rejects(
+        () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'admin' }),
+        EmailAlreadyRegisteredError
+      )
+    } finally {
+      config.users.findByEmail = find
+    }
+    assert.deepEqual(await waiting().first(), prior)
+    assert.equal((await kit.db.from('account_invitations').first()).id, issued.invitation.id)
+  })
+
+  for (const existing of [false, true]) {
+    test(`issues a fresh lifetime after the locked eligibility check for an ${existing ? 'existing' : 'absent'} key`, async ({
+      assert,
+    }) => {
+      const { admission, account, config } = makeAdmission(kit, allRequirements, {
+        expiresIn: { invitation: 1 },
+      })
+      if (existing) await admission.operator.bootstrap({ email: 'boss@example.test', role: 'old' })
+      const originalClock = Settings.now
+      let clock = Math.floor(Date.now() / 1000) * 1000
+      Settings.now = () => clock
+      const find = config.users.findByEmail.bind(config.users)
+      config.users.findByEmail = async (email, trx) => {
+        const user = await find(email, trx)
+        if (trx) clock += 2_000
+        return user
+      }
+      try {
+        const issued = await admission.operator.bootstrap({
+          email: 'boss@example.test',
+          role: 'owner',
+        })
+        assert.equal(issued.invitation.createdAt.toMillis(), Math.floor(clock / 1000) * 1000)
+        assert.equal(
+          issued.invitation.expiresAt.toMillis(),
+          Math.floor(clock / 1000) * 1000 + 1_000
+        )
+        assert.isNotNull(await account.invitations.inspect({ token: tokenFrom(issued.url) }))
+      } finally {
+        Settings.now = originalClock
+        config.users.findByEmail = find
+      }
+    })
+  }
+
+  test('a conflicting token cannot reserve another invitation address', async ({ assert }) => {
+    const { config } = setup()
+    const token = 'a'.repeat(64)
+    const original = await transaction(kit.db, (trx) =>
+      replaceBootstrapInvitation(config, trx, {
+        email: 'first@example.test',
+        role: 'owner',
+        token,
+      })
+    )
+    await assert.rejects(() =>
+      transaction(kit.db, (trx) =>
+        replaceBootstrapInvitation(config, trx, {
+          email: 'second@example.test',
+          role: 'admin',
+          token,
+        })
+      )
+    )
+    const rows = await kit.db.from('account_invitations')
+    assert.lengthOf(rows, 1)
+    assert.equal(rows[0].id, original.id)
+    assert.equal(rows[0].email, 'first@example.test')
+    assert.equal(rows[0].role, 'owner')
+  })
+
+  if (locksRows) {
+    for (const existing of [false, true]) {
+      test(`serializes overlapping writers for an ${existing ? 'existing' : 'absent'} invitation key`, async ({
+        assert,
+      }) => {
+        const { admission, account, config } = setup()
+        if (existing)
+          await admission.operator.bootstrap({ email: 'boss@example.test', role: 'old' })
+        const reserved = createBarrier('first bootstrap reservation')
+        let release!: () => void
+        const hold = new Promise<void>((resolve) => {
+          release = resolve
+        })
+        const find = config.users.findByEmail.bind(config.users)
+        let first = true
+        config.users.findByEmail = async (email, trx) => {
+          if (trx && first) {
+            first = false
+            reserved.signal()
+            await hold
+          }
+          return find(email, trx)
+        }
+        const earlier = startWithBackendId(kit, () =>
+          admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
+        )
+        reserved.observe(earlier.operation)
+        let later: Promise<Awaited<typeof earlier.operation>> | undefined
+        try {
+          await reserved.promise
+          later = admission.operator.bootstrap({ email: 'boss@example.test', role: 'admin' })
+          void later.catch(() => {})
+          await waitForBlockedBy(kit, assert, await earlier.backendId)
+          release()
+          await earlier.operation
+          const issued = await later
+          assert.equal((await waiting().first()).invitation_id, issued.invitation.id)
+          assert.lengthOf(await kit.db.from('account_invitations'), 1)
+          const user = await account.invitations.accept({
+            token: tokenFrom(issued.url),
+            password: 'ownerPassword1',
+          })
+          assert.isTrue(await admission.isAdmitted(user.id))
+        } finally {
+          release()
+          config.users.findByEmail = find
+          await Promise.allSettled([earlier.operation, ...(later ? [later] : [])])
+        }
+      })
+    }
+  }
 })

@@ -285,8 +285,9 @@ one command, before the account exists:
   evidence `source: 'invitation'` and approval `actorId: null`.
 - Only the invitation the bootstrap issued attaches it: the approval records that invitation's id.
   Another invitation to the same address does not, including one whose inviter was deleted.
-- If the invitation cannot be issued, the command removes the approval it wrote and leaves any
-  later bootstrap's approval in place.
+- The invitation and its bound approval commit together. If either write fails, the previous
+  invitation and approval remain usable. The link is printed only after commit and follow-ups;
+  a bootstrap replaced or cancelled during those follow-ups returns no link.
 - A second bootstrap for the address replaces the approval and the invitation. `--cancel` deletes
   the approval only; it does not revoke the invitation. The invitation can still be accepted and
   invoke the application's `onInvitationAccepted` callback, including its role or membership
