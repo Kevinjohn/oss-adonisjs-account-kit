@@ -55,13 +55,13 @@ export async function requestMagicLink(
 
     const token = generateToken(deps.config.tokenSecretLength)
     const operationId = randomUUID()
-    const now = DateTime.utc()
     const { value: issuedUser, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
         await lockUser(trx, deps.config, user.id)
         const current = await deps.config.users.findById(user.id, trx)
         if (!current || current.email !== email || !isActiveAccount(current)) return null
         if (!validateAccountAccessResult(await auth.canAccess(current, trx))) return null
+        const now = DateTime.utc()
         await trx
           .table('login_link_tokens')
           .insert({

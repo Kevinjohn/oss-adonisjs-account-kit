@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks'
-import { DateTime } from 'luxon'
+import { DateTime, Settings } from 'luxon'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import {
@@ -59,6 +59,34 @@ test.group('magicLink.request', (group) => {
     email = 'person@example.test',
     clientKey = 'client'
   ) => account.magicLink.request({ email, clientKey, clientChallenge: challenge })
+
+  test('starts the proof lifetime after the locked account read', async ({ assert, cleanup }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const originalNow = Settings.now
+    let now = Date.UTC(2026, 10, 16, 12)
+    Settings.now = () => now
+    cleanup(() => {
+      Settings.now = originalNow
+    })
+    const { account, recorder } = makeService(kit, {
+      enabled,
+      authentication: { guard: 'web', strategy: 'session' },
+      minRequestMs: 0,
+      expiresIn: { magicLink: '1s' },
+      users: {
+        ...users,
+        async findById(id, trx) {
+          const current = await users.findById(id, trx)
+          now += 2000
+          return current
+        },
+      },
+    })
+    await request(account, user.email, 'clock')
+    const token = tokenFrom(recorder.calls[0].args[1])
+    assert.isTrue(await account.magicLink.inspect({ token }))
+  })
 
   test('stores a hash, the email and the client challenge, then notifies once', async ({
     assert,

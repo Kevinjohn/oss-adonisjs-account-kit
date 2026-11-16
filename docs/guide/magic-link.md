@@ -3,6 +3,9 @@
 Users sign in by clicking a link sent to their email address. The link works once, expires after
 15 minutes by default, and only works in the browser or app that asked for it.
 
+The lifetime starts after the account lock and eligibility checks succeed. Lock contention does
+not consume the new link's configured lifetime.
+
 ## Configuration
 
 `magicLinkLogin` is off by default and requires `authentication`:
