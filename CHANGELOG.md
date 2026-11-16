@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-16
+
 - Preserve managed session magic-link verifiers across successive requests for different or unknown addresses.
 
 ### Changed
@@ -60,8 +62,9 @@
   reads a saved file that lists them, drops each one that holds its supported value, and reports any
   other value as before.
 - Breaking: `AccountErrorResponse` now matches the managed routes' error responses. It adds
-  `contentType` and a `Vary: Accept` header, and with a JSON:API `accept` an entry carries `title`
-  instead of `message`, so code that reads `entry.message` must narrow the union first.
+  `contentType` and a `Vary: Accept` header. Calls with an options object may negotiate JSON:API,
+  whose entries carry `title` instead of `message`; code that reads either entry property must narrow
+  the union first. Calls without an options object return plain JSON entries with `message`.
   `accountErrorResponse` accepts `accept` and `proof` options, and `ProofKind` is exported.
 - Breaking: `registration.register` refuses closed registration (`registration.availability:
 'closed'`) with `AuthorizationError`, as the managed signup route does. An application-owned
@@ -77,6 +80,8 @@
 
 ### Fixed
 
+- `accountErrorResponse(error)` now types its default JSON entry with `message` and its content type
+  as `application/json`; calls with an options object retain the negotiated response type.
 - Package preparation now skips compilation only after both compilation and template copying have
   completed, so a partial build is retried on the next install.
 - Setup retirement inventory returns zero accounts without querying user data when no login

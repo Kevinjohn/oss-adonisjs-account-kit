@@ -1290,8 +1290,8 @@ packages:
     hasBin: true
 
   '@kevinjohn/adonisjs-account-kit@file:vendor/kevinjohn-adonisjs-account-kit.tgz':
-    resolution: {integrity: sha512-whh03VvyeT803iT4bPNvOidIobfaYBHHi4gFi03bWmmc4z3km2GHQcKx0L3hQFkr1u7d1Fz6KudEfuvMbgo/8g==, tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz}
-    version: 0.1.5
+    resolution: {integrity: sha512-lZIiSj5FW4UIICrFy5zD6Cx2g99zf1mGx/uHv5qucuzm/l1Q8/lM/3h3KlKfKZhn29FSlBAcSPuwZxdqCjlD3Q==, tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz}
+    version: 0.4.0
     engines: {node: '>=24.0.0'}
     peerDependencies:
       '@adonisjs/assembler': ^8.0.0

@@ -98,11 +98,32 @@ export interface AccountErrorResponse {
 }
 
 /**
+ * A safe plain JSON response for an Account Kit error. When options are omitted or `undefined`,
+ * the response uses `application/json` and each mapped entry carries `message`.
+ */
+export function accountErrorResponse(
+  error: unknown,
+  options?: undefined
+):
+  | (Omit<AccountErrorResponse, 'contentType' | 'body'> & {
+      contentType: 'application/json'
+      body: {
+        errors: Array<Extract<AccountErrorResponse['body']['errors'][number], { message: string }>>
+      }
+    })
+  | null
+/**
  * Central application error mapping, the same mapper the managed routes use. Causes are kept for
  * private logging, never returned here. With `i18n`, the message is looked up as
  * `errors.<code>`, with the English message as the fallback. Pass the request's `Accept` header
  * as `accept` to negotiate JSON:API, and `proof` to get the per-kind code for an invalid token.
+ * An options object may negotiate JSON:API, whose entries carry `title` instead of `message`; narrow
+ * the entry before reading either property.
  */
+export function accountErrorResponse(
+  error: unknown,
+  options?: { i18n?: AccountKitTranslator; accept?: string; proof?: ProofKind }
+): AccountErrorResponse | null
 export function accountErrorResponse(
   error: unknown,
   options: { i18n?: AccountKitTranslator; accept?: string; proof?: ProofKind } = {}
