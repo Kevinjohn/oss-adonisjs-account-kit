@@ -75,8 +75,9 @@ export { defineConfig } from './config.js'
 /**
  * The account service. Resolve it from the container with `app.container.make(AccountKit)`. Each
  * capability group throws `CapabilityDisabledError` when its capability is not in `enabled`.
- * `authentication` depends on the `authentication` config block instead, except `sessions`, which
- * needs `sessionManagement`; `maintenance` is always available.
+ * The `authentication` group depends on the `authentication` config block, except `sessions`, which
+ * needs `sessionManagement`, and `retirementImpact`, which returns an empty inventory without
+ * scanning accounts when no login methods are configured. `maintenance` is always available.
  */
 export class AccountKit {
   private readonly deps: {
