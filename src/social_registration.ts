@@ -9,7 +9,7 @@ import {
   SocialIdentityAlreadyLinkedError,
   SocialTransactionError,
 } from './errors.js'
-import { sendVerification } from './verification.js'
+import { sendSocialActivation } from './social_activation.js'
 import { consumeState, isIdentityConflict } from './social_callback.js'
 import { checkedProfile, createAccount } from './social_account_creation.js'
 import { enabledProviders, type Dependencies } from './social_shared.js'
@@ -93,7 +93,7 @@ export async function completeRegistration(
           invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
-        await sendVerification(deps, { userId: unverified })
+        await sendSocialActivation(deps, unverified)
       }
     }
   )

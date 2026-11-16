@@ -39,6 +39,9 @@
 
 ### Fixed
 
+- Social signup reports activation lookup or issuance failures as committed follow-up failures,
+  preserving the cause and existing delivery-error handling after the account has been created.
+
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.

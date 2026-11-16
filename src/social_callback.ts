@@ -21,7 +21,8 @@ import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isSocialProviderName } from './social_providers.js'
 import { authenticated, expiry, now, type Dependencies } from './social_shared.js'
-import { completeActivationByHash, sendVerification } from './verification.js'
+import { completeActivationByHash } from './verification.js'
+import { sendSocialActivation } from './social_activation.js'
 import type {
   AccountUser,
   SensitivePurpose,
@@ -353,7 +354,7 @@ export async function socialCallback(
           invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
-        await sendVerification(deps, { userId: unverified })
+        await sendSocialActivation(deps, unverified)
       }
       if (linkedNotice && hasConfirmedAddress(linkedNotice.user)) {
         const { user, relation } = linkedNotice
