@@ -4,6 +4,8 @@
 
 ### Changed
 
+- The registration guide now explains that registration without `emailVerification` leaves
+  activation to a host-owned workflow; Account Kit's verification operations remain disabled.
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
   error. A failure before any file is written reports the same error as before.
