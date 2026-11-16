@@ -78,7 +78,7 @@ test.group('account deletion', (group) => {
     assert,
   }) => {
     const user = await insertUser(kit)
-    await seedAccountRows(kit, user.id, 'retired-auth')
+    await seedAccountRows(kit, user.id, 'r')
     const users = makeUsersAdapter(kit.db, kit.hash)
     let checked = false
     const { account } = service({
