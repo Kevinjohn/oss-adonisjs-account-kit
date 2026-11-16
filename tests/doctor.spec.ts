@@ -157,6 +157,26 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
+  test('deletion requires the session table after authentication is disabled', async ({
+    assert,
+  }) => {
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        enabled: ['accountDeletion'],
+        authentication: undefined,
+      })
+    )
+    try {
+      await kit.db.connection().schema.dropTable('account_sessions')
+      assert.deepEqual(failures(await runDoctor(input({ config }))), [
+        'Package tables: missing account_sessions',
+      ])
+    } finally {
+      await resetSchema(kit)
+    }
+  })
+
   test('deletion requires the selected token table but not tokens in session mode', async ({
     assert,
   }) => {

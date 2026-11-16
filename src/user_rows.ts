@@ -15,6 +15,7 @@ export const userOwnedRows = [
   { table: packageTables.passwordResetTokens, column: 'tokenable_id' },
   { table: packageTables.emailVerificationTokens, column: 'tokenable_id' },
   { table: packageTables.loginLinkTokens, column: 'tokenable_id' },
+  { table: packageTables.accountSessions, column: 'user_id' },
 ] as const
 
 /**
@@ -25,9 +26,6 @@ export const userOwnedRows = [
 export async function deleteUserRows(trx: Trx, config: ResolvedConfig, userId: UserId) {
   for (const { table, column } of userOwnedRows)
     await trx.from(table).where(column, userId).delete()
-  // The sign-in registry exists whenever authentication is configured; see the doctor check.
-  if (config.authentication)
-    await trx.from(packageTables.accountSessions).where('user_id', userId).delete()
   if (config.authentication?.strategy === 'access_tokens')
     await trx.from(config.authentication.tokenTable).where('tokenable_id', userId).delete()
   const sent = trx.from(packageTables.accountInvitations).where('inviter_id', userId)
