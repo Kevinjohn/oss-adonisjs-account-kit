@@ -19,6 +19,7 @@ import {
 import { waitForFloor } from './timing.js'
 import { hashToken } from './tokens.js'
 import { retirementImpact } from './login_method_retirement.js'
+import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import {
   InvalidCredentialsError,
   InvalidSessionError,
@@ -302,17 +303,29 @@ export function authenticationService(deps: ServiceDependencies) {
       change: (user: AccountUser, trx: Trx) => Promise<void>
     }): Promise<void> {
       requireAuthentication(deps.config)
-      await transaction(deps.db, async (trx) => {
-        await lockUser(trx, deps.config, input.userId)
-        const user = await deps.config.users.findById(input.userId, trx)
-        if (!user) throw new InvalidCredentialsError()
-        await input.change(user, trx)
-        await credentialsChanged(trx, deps.config, user, {
-          operation: 'access_restriction',
-          operationId: randomUUID(),
-          userId: user.id,
+      const context = {
+        operation: 'access_restriction' as const,
+        operationId: randomUUID(),
+        userId: input.userId,
+      }
+      const { value: user, fault } = await settleCommitted(
+        transaction(deps.db, async (trx) => {
+          await lockUser(trx, deps.config, input.userId)
+          const current = await deps.config.users.findById(input.userId, trx)
+          if (!current) throw new InvalidCredentialsError()
+          await input.change(current, trx)
+          await credentialsChanged(trx, deps.config, current, context)
+          return current
         })
-      })
+      )
+      await finishCommitted(fault, 'Access restriction committed but follow-ups failed', () =>
+        postCommit('Access restriction follow-up failed', [
+          {
+            kind: 'observer',
+            run: () => deps.config.onCredentialsChanged?.(user, context),
+          },
+        ])
+      )
     },
   }
 }

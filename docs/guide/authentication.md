@@ -29,7 +29,10 @@ authentication: {
   default callback permits access.
 - Use `kit.authentication.changeRestriction({ userId, change })` for package-managed restriction
   changes. Its callback writes through the supplied transaction; the package then advances the
-  credential revision and applies the selected revocation policy in that transaction.
+  credential revision and applies the selected revocation policy in that transaction. After commit,
+  `onCredentialsChanged` receives the `access_restriction` context when that observer is configured.
+  An observer failure reports `PostCommitError`; the restriction and revocation remain committed.
+  A transaction failure leaves both unchanged and skips the observer.
 - Account activation is a separate state: an inactive account may hold a limited credential, but
   `requireActive` denies protected actions with HTTP 403 and code `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`.
 
