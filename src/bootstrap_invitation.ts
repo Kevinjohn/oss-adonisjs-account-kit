@@ -1,5 +1,6 @@
 // Reserve the invitation address before writing the approval bound to its replacement.
 import { DateTime } from 'luxon'
+import { EmailAlreadyRegisteredError } from './errors.js'
 import { toInvitation } from './invitation_rows.js'
 import { hashToken } from './tokens.js'
 import { sqlTimestamp } from './timestamps.js'
@@ -42,9 +43,20 @@ export async function replaceBootstrapInvitation(
     await trx.table('account_invitations').insert(row)
     throw new Error('Bootstrap invitation address reservation failed')
   }
-  if (locked.token_hash !== row.token_hash) {
+  if (await config.users.findByEmail(input.email, trx)) throw new EmailAlreadyRegisteredError()
+  // Reservation and eligibility may have waited; the committed link gets its full lifetime.
+  const issuedAt = DateTime.utc()
+  const fresh = {
+    ...row,
+    expires_at: sqlTimestamp(trx, expiresAt(issuedAt, config.expiresIn.invitation)),
+    created_at: sqlTimestamp(trx, issuedAt),
+    updated_at: sqlTimestamp(trx, issuedAt),
+  }
+  if (locked.token_hash === row.token_hash) {
+    await trx.from('account_invitations').where('id', locked.id).update(fresh)
+  } else {
     await trx.from('account_invitations').where('id', locked.id).delete()
-    await trx.table('account_invitations').insert(row)
+    await trx.table('account_invitations').insert(fresh)
   }
   const issued = await trx
     .from('account_invitations')

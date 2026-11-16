@@ -87,8 +87,6 @@ export async function issueOperatorInvitation(
             role: input.role,
             token,
           })
-          if (await deps.config.users.findByEmail(email, trx))
-            throw new EmailAlreadyRegisteredError()
           await bind(replacement, trx)
           return replacement
         })

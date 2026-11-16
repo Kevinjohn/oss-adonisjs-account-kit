@@ -1,6 +1,6 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
 
-import { DateTime } from 'luxon'
+import { DateTime, Settings } from 'luxon'
 import { test } from '@japa/runner'
 import { replaceBootstrapInvitation } from '../src/bootstrap_invitation.js'
 import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
@@ -365,6 +365,41 @@ test.group('admission bootstrap', (group) => {
     assert.deepEqual(await waiting().first(), prior)
     assert.equal((await kit.db.from('account_invitations').first()).id, issued.invitation.id)
   })
+
+  for (const existing of [false, true]) {
+    test(`issues a fresh lifetime after the locked eligibility check for an ${existing ? 'existing' : 'absent'} key`, async ({
+      assert,
+    }) => {
+      const { admission, account, config } = makeAdmission(kit, allRequirements, {
+        expiresIn: { invitation: 1 },
+      })
+      if (existing) await admission.operator.bootstrap({ email: 'boss@example.test', role: 'old' })
+      const originalClock = Settings.now
+      let clock = Math.floor(Date.now() / 1000) * 1000
+      Settings.now = () => clock
+      const find = config.users.findByEmail.bind(config.users)
+      config.users.findByEmail = async (email, trx) => {
+        const user = await find(email, trx)
+        if (trx) clock += 2_000
+        return user
+      }
+      try {
+        const issued = await admission.operator.bootstrap({
+          email: 'boss@example.test',
+          role: 'owner',
+        })
+        assert.equal(issued.invitation.createdAt.toMillis(), Math.floor(clock / 1000) * 1000)
+        assert.equal(
+          issued.invitation.expiresAt.toMillis(),
+          Math.floor(clock / 1000) * 1000 + 1_000
+        )
+        assert.isNotNull(await account.invitations.inspect({ token: tokenFrom(issued.url) }))
+      } finally {
+        Settings.now = originalClock
+        config.users.findByEmail = find
+      }
+    })
+  }
 
   test('a conflicting token cannot reserve another invitation address', async ({ assert }) => {
     const { config } = setup()
