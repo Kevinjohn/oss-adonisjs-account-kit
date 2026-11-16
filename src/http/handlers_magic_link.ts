@@ -10,10 +10,9 @@ import {
   translate,
 } from './response_helpers.js'
 import { magicLinkCompleteValidator, magicLinkRequestValidator } from './validators.js'
-import { newVerifier } from './pkce_verifier.js'
+import { clientChallengeFor } from '../client_challenge.js'
+import { magicLinkVerifier, acknowledgeMagicLink, consumeMagicLink } from './magic_link_session.js'
 import { requireSession } from './session_access.js'
-
-const verifierKey = 'accountKit.magicLink.verifier'
 
 function session(context: HttpContext) {
   return requireSession(
@@ -31,10 +30,8 @@ export const magicLinkHandlers = {
     let verifier: string | undefined
     if (options.guard.strategy === 'session') {
       // Checked before the request so a missing session refuses the call without issuing a link.
-      session(context)
-      const issued = newVerifier()
-      verifier = issued.verifier
-      clientChallenge = issued.challenge
+      verifier = magicLinkVerifier(session(context))
+      clientChallenge = clientChallengeFor(verifier)
     }
     if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
     try {
@@ -44,7 +41,8 @@ export const magicLinkHandlers = {
       if (!reportCommittedFailure(context, route.name, error)) throw error
     }
     // Stored only once the link is issued: a refused request must not orphan the live link.
-    if (verifier) session(context).put(verifierKey, verifier)
+    if (verifier)
+      acknowledgeMagicLink(session(context), verifier, kit.managedHttp.magicLinkExpiresAt())
     return response.accepted({
       message: translate(
         context,
@@ -62,16 +60,15 @@ export const magicLinkHandlers = {
     const input = await request.validateUsing(magicLinkCompleteValidator)
     let verifier = input.verifier
     if (options.guard.strategy === 'session') {
-      const stored = session(context).get(verifierKey)
-      verifier = typeof stored === 'string' ? stored : undefined
+      verifier = magicLinkVerifier(session(context), false)
     }
     if (!verifier) throw new InvalidTokenError()
     const result = await kit.magicLink.complete(
       { token: params.token, verifier },
       options.guard.forRequest(context)
     )
-    // Kept after a failure: it only matches the one link issued with it, which is single use.
-    if (options.guard.strategy === 'session') session(context).forget(verifierKey)
+    // Failed or replayed completions leave other outstanding links usable.
+    if (options.guard.strategy === 'session') consumeMagicLink(session(context))
     return response.ok(await issuedAccountBody({ options, representIssued }, result))
   },
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

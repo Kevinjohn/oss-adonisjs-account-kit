@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve managed session magic-link verifiers across successive requests for different or unknown addresses.
+
 ### Changed
 
 - The social sign-in setup prerequisite no longer exposes an internal planning identifier.
