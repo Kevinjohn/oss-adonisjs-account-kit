@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-16
+
 - Preserve managed session magic-link verifiers across successive requests for different or unknown addresses.
 
 ### Changed
