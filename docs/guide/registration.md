@@ -60,7 +60,10 @@ of whether the account is verified, inactive, passwordless, or restricted.
 After commit, the configured callback delivers the proof. Delivery or observer failure reports a
 committed failure; the account and proof remain. Do not retry registration as if it rolled back.
 The account can request a new activation proof through `emailVerification.send`, or use password
-reset. Applications can establish a limited credential through `authentication.login` immediately
+reset. After the initial signup delivery fails, wait until one minute after the proof was issued
+before resending. A resend inside that minute returns `'sent'` as an acknowledgement of the
+existing proof and does not call the notification callback again. Once the cooldown expires, a
+resend replaces the proof and attempts delivery. Applications can establish a limited credential through `authentication.login` immediately
 after successful registration. `authentication.requireActive` denies protected access with 403
 `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` in both bearer and session integrations. Verification resend and logout remain
 available to inactive accounts.
