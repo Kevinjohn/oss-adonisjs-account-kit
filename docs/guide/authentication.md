@@ -26,7 +26,8 @@ authentication: {
 ### Access restrictions
 
 - The `canAccess` callback runs under the account lock before login and on protected access. The
-  default callback permits access.
+  default callback permits access. A class method keeps the authentication configuration instance
+  as `this`, including access to private fields.
 - Use `kit.authentication.changeRestriction({ userId, change })` for package-managed restriction
   changes. Its callback writes through the supplied transaction; the package then advances the
   credential revision and applies the selected revocation policy in that transaction.

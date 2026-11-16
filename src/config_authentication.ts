@@ -68,7 +68,7 @@ export function resolveAuthentication(
     authentication = {
       strategy: auth.strategy,
       guard: auth.guard,
-      canAccess: auth.canAccess ?? (async () => true),
+      canAccess: auth.canAccess?.bind(auth) ?? (async () => true),
       clientLimit,
       identityLimit: freezeResolved({ ...identityLimit, blockDuration }),
       tokenAbilities: freezeResolved([...(auth.tokenAbilities ?? ['*'])]),
