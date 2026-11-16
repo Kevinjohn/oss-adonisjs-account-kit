@@ -68,7 +68,7 @@ export function planSummary({
       : []),
     ...(socialChoices
       ? [
-          'Verify D14 first-password reset, password login, and password re-entry for social-only sensitive actions; standard Google and GitHub Ally callbacks cannot establish fresh provider reauthentication proof',
+          'Verify first-password reset, password login, and password re-entry for social-only sensitive actions; standard Google and GitHub Ally callbacks cannot establish fresh provider reauthentication proof',
         ]
       : []),
     'Verify model email uniqueness, normalization, hashing and transaction behavior',

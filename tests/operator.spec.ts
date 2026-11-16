@@ -45,27 +45,50 @@ test.group('operator services', (group) => {
     )
   })
 
-  test('operator invite replaces a pending invitation and the printed link accepts', async ({
+  test('operator invite replaces only a pending invitation in the same scope', async ({
     assert,
   }) => {
     const { account, recorder } = makeService(kit)
     const first = await account.operator.invite({
       email: 'boss@example.test',
       role: 'admin',
+      scope: 'team-a',
       deliver: 'print',
     })
     const second = await account.operator.invite({
       email: 'boss@example.test',
       role: 'owner',
+      scope: 'team-a',
+      deliver: 'print',
+    })
+    const otherScope = await account.operator.invite({
+      email: 'boss@example.test',
+      role: 'member',
+      scope: 'team-b',
       deliver: 'print',
     })
     assert.lengthOf(recorder.calls, 0)
     assert.notEqual(first.url, second.url)
-    assert.lengthOf(await kit.db.from('account_invitations'), 1)
+    const invitations = await kit.db
+      .from('account_invitations')
+      .where('email', 'boss@example.test')
+      .orderBy('scope')
+    assert.lengthOf(invitations, 2)
+    assert.deepEqual(
+      invitations.map(({ scope, role }) => ({ scope, role })),
+      [
+        { scope: 'team-a', role: 'owner' },
+        { scope: 'team-b', role: 'member' },
+      ]
+    )
     assert.isNull(await account.invitations.inspect({ token: tokenFrom(first.url) }))
     assert.deepEqual(await account.invitations.inspect({ token: tokenFrom(second.url) }), {
       email: 'boss@example.test',
       role: 'owner',
+    })
+    assert.deepEqual(await account.invitations.inspect({ token: tokenFrom(otherScope.url) }), {
+      email: 'boss@example.test',
+      role: 'member',
     })
   })
 

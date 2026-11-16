@@ -12,7 +12,13 @@ import {
 } from '../src/errors.js'
 import type { AccountKitConfig, AccountUser, LifecycleEvent, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeConfig, makeService, makeUsersAdapter } from './helpers/fakes.js'
+import {
+  accountKit,
+  insertUser,
+  makeConfig,
+  makeService,
+  makeUsersAdapter,
+} from './helpers/fakes.js'
 import {
   issueRecentProof,
   seedAccountRows,
@@ -143,6 +149,35 @@ test.group('account deletion', (group) => {
     })
     await remove(plain, user.id)
     assert.isNull(await kit.db.from('users').where('id', user.id).first())
+  })
+
+  test('class cleanup keeps its receiver and rolls back a public deletion on failure', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    await seedAccountRows(kit, user.id, 'class')
+    class Configuration {
+      #failure = new Error('class cleanup refused')
+      calls = 0
+      async onAccountDeletingTransaction(actor: AccountUser, trx: Trx) {
+        this.calls++
+        await trx.from('users').where('id', actor.id).update({ email: 'changed@example.test' })
+        throw this.#failure
+      }
+    }
+    const input = Object.assign(
+      new Configuration(),
+      makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['accountDeletion'] })
+    )
+    const account = accountKit(kit, defineConfig(input))
+    await assert.rejects(() => remove(account, user.id), /class cleanup refused/)
+    assert.equal(input.calls, 1)
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.equal(row.email, 'person@example.test')
+    assert.deepEqual(
+      await userRowCounts(kit.db, user.id),
+      Object.fromEntries(userTables.map(([table]) => [table, 1]))
+    )
   })
 
   test('a wrong password deletes nothing', async ({ assert }) => {

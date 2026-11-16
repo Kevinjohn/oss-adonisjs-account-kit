@@ -276,6 +276,41 @@ test.group('account kit configuration and service surface', (group) => {
     assert.isTrue(called)
   })
 
+  test('resolves inherited users, social settings and optional hooks by name', async ({
+    assert,
+  }) => {
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const socialAuthentication = { providers: {} }
+    const seen: string[] = []
+    class Configuration {
+      #marker = 'class'
+      get users() {
+        return users
+      }
+      get socialAuthentication() {
+        return socialAuthentication
+      }
+      get emailConstraint() {
+        return 'users_email_unique'
+      }
+      async onLifecycleEvent() {
+        seen.push(this.#marker)
+      }
+      async exportAccountData() {
+        return this.#marker
+      }
+    }
+    const base = makeConfig({ users, enabled: [] })
+    delete (base as Partial<AccountKitConfig>).users
+    const resolved = defineConfig(Object.assign(new Configuration(), base))
+    assert.strictEqual(resolved.users, users)
+    assert.strictEqual(resolved.socialAuthentication, socialAuthentication)
+    assert.equal(resolved.emailConstraint, 'users_email_unique')
+    await resolved.onLifecycleEvent?.({} as never)
+    assert.deepEqual(seen, ['class'])
+    assert.equal(await resolved.exportAccountData?.({} as never, {} as never), 'class')
+  })
+
   test('freezes the configuration it constructs and never the application objects', ({
     assert,
   }) => {
