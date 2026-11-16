@@ -64,6 +64,8 @@
   methods are configured.
 - Social identity conflict detection matches the exact provider/subject constraint, preserving
   unrelated failures with overlapping constraint or column names.
+- Operator reset links build their URL before replacing an existing proof, so a URL-builder
+  failure in print or send mode preserves the live reset link.
 
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile

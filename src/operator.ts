@@ -114,6 +114,7 @@ export async function operatorResetLink(
   if (!user) throw new UserNotFoundError()
 
   const token = generateToken(deps.config.tokenSecretLength)
+  const url = deps.config.urls.passwordReset(token)
   const { value: issued, fault } = await settleCommitted(
     issueResetToken(deps, user.id, email, token)
   )
@@ -121,7 +122,6 @@ export async function operatorResetLink(
     if (fault) throw fault
     throw new UserNotFoundError()
   }
-  const url = deps.config.urls.passwordReset(token)
   const effects: PostCommitEffect[] = [
     lifecycle(deps.config, {
       type: 'password_reset.requested',

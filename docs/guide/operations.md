@@ -155,8 +155,10 @@ secret: share it only over a trusted channel.
   roles in `onInvitationAccepted`, as for any invitation.
 - `account-kit:reset-link` reports an unknown address (`E_ACCOUNT_KIT_USER_NOT_FOUND`) instead of
   answering generically, and skips the timing floor. It replaces the account's live reset link and
-  runs `onPasswordResetIssuedTransaction`. Completing a reset activates an account that has not
-  verified its email; the command warns when that applies.
+  runs `onPasswordResetIssuedTransaction`. It builds the URL after finding the account and before
+  replacing its proof; a URL-builder failure in either print or send mode leaves the prior link
+  usable. Completing a reset activates an account that has not verified its email; the command
+  warns when that applies.
 
 If the row commits but a follow-up (delivery or `onLifecycleEvent`) fails, the command still prints
 the committed result, including the link with `--print`, adds a `fault` with the error name and
