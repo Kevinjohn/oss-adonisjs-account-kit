@@ -157,6 +157,25 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
+  test('token authentication requires its configured table without export or deletion', async ({
+    assert,
+  }) => {
+    const config = defineConfig(
+      makeConfig({
+        users: makeUsersAdapter(kit.db, kit.hash),
+        enabled: ['passwordReset'],
+        authentication: {
+          strategy: 'access_tokens',
+          guard: 'api',
+          tokenTable: 'custom_api_tokens',
+        },
+      })
+    )
+    const checks = await runDoctor(input({ config }))
+    assert.deepEqual(failures(checks), ['Package tables: missing custom_api_tokens'])
+    assert.match(checks.find((check) => check.name === 'Package tables')!.fix!, /Auth/)
+  })
+
   test('deletion requires the selected token table but not tokens in session mode', async ({
     assert,
   }) => {

@@ -18,6 +18,10 @@ package guarantees about readiness, delivery and revocation.
 - Schedule `node ace account-kit:prune` to delete expired tokens.
 - Keep proof links out of access logs and analytics.
 
+With access-token authentication, doctor checks the configured token table even when account
+export and deletion are disabled. If it is missing, apply the application's Auth migration as
+well as Account Kit migrations.
+
 ### Deployment prerequisites
 
 Before serving traffic, apply and verify the generated migrations, configure the database and

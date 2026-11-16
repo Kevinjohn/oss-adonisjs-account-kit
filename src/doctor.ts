@@ -84,13 +84,11 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
 
 async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
-  if (config.enabled.includes('dataExport') && config.authentication?.strategy === 'access_tokens')
+  if (config.authentication?.strategy === 'access_tokens')
     required.add(config.authentication.tokenTable)
   if (config.enabled.includes('accountDeletion')) {
     for (const { table } of userOwnedRows) required.add(table)
     required.add(packageTables.accountInvitations)
-    if (config.authentication?.strategy === 'access_tokens')
-      required.add(config.authentication.tokenTable)
   }
   if (db.connection().dialect.name === 'better-sqlite3')
     required.add(packageTables.accountTransactionLock)
@@ -115,7 +113,11 @@ async function tableChecks(db: Database, config: ResolvedConfig): Promise<Doctor
         name: 'Package tables',
         ok: false,
         detail: `missing ${missing.join(', ')}`,
-        fix: migrationFix,
+        fix:
+          config.authentication?.strategy === 'access_tokens' &&
+          missing.includes(config.authentication.tokenTable)
+            ? `${migrationFix}; create the configured access-token table with the application's Auth migration`
+            : migrationFix,
       },
     ]
   return [{ name: 'Package tables', ok: true, detail: `${required.size} present` }]
