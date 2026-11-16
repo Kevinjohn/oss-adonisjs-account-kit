@@ -5,6 +5,12 @@ import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { AccountKit } from '../src/account_kit.js'
 import RetirementImpact from '../commands/retirement_impact.js'
 import { dbTime } from './helpers/db_time.js'
+import { createLucidAdapter } from '../adapters/lucid.js'
+import SoftDeletingUser from './fixtures/soft_deleting_user.js'
+
+class RetirementSoftDeletingUser extends SoftDeletingUser {
+  static table = 'retirement_soft_users'
+}
 
 test.group('authentication retirement impact', (group) => {
   const kit = useTestApp(group)
@@ -239,6 +245,71 @@ test.group('authentication retirement impact', (group) => {
       )
     } finally {
       await kit.db.connection().schema.dropTable('retirement_identities')
+    }
+  })
+
+  test('Lucid retirement inventory follows model visibility and fails closed on a missing visible user', async ({
+    assert,
+  }) => {
+    const schema = kit.db.connection().schema
+    await schema.dropTableIfExists('retirement_soft_users')
+    try {
+      await schema.createTable('retirement_soft_users', (table) => {
+        table.increments('id')
+        table.string('email').notNullable().unique()
+        table.string('password').nullable()
+        table.string('unverified_email').nullable()
+        table.timestamp('email_verified_at').nullable()
+        table.timestamp('created_at').notNullable()
+        table.timestamp('deleted_at').nullable()
+      })
+      const visible = await RetirementSoftDeletingUser.create({
+        email: 'visible@example.test',
+        password: 'password123',
+        unverifiedEmail: null,
+        emailVerifiedAt: null,
+      })
+      const retained = await RetirementSoftDeletingUser.create({
+        email: 'retained@example.test',
+        password: 'password123',
+        unverifiedEmail: null,
+        emailVerifiedAt: null,
+      })
+      const retainedModel = await RetirementSoftDeletingUser.findOrFail(retained.id)
+      await retainedModel.delete()
+      const users = createLucidAdapter(async () => RetirementSoftDeletingUser)
+      const makeInventory = (adapter: typeof users = users) =>
+        makeService(kit, {
+          users: adapter,
+          authentication: { strategy: 'session', guard: 'web' },
+        }).account
+
+      const beforeRestore = await makeInventory().authentication.retirementImpact({
+        passwordLogin: false,
+      })
+      assert.equal(beforeRestore.inspectedAccounts, 1)
+      assert.equal(beforeRestore.affectedAccounts, 1)
+      assert.deepEqual(await users.listVisibleIds!(undefined, 500), [visible.id])
+
+      const unresolved = createLucidAdapter(async () => RetirementSoftDeletingUser)
+      unresolved.listVisibleIds = async () => [retained.id]
+      await assert.rejects(
+        () => makeInventory(unresolved).authentication.retirementImpact({ passwordLogin: false }),
+        /could not resolve an inventoried user/
+      )
+
+      const toRestore = await RetirementSoftDeletingUser.withTrashed()
+        .where('id', retained.id)
+        .firstOrFail()
+      await toRestore.restore()
+      const afterRestore = await makeInventory().authentication.retirementImpact({
+        passwordLogin: false,
+      })
+      assert.equal(afterRestore.inspectedAccounts, 2)
+      assert.equal(afterRestore.affectedAccounts, 2)
+      assert.deepEqual(await users.listVisibleIds!(undefined, 500), [visible.id, retained.id])
+    } finally {
+      await schema.dropTableIfExists('retirement_soft_users')
     }
   })
 })

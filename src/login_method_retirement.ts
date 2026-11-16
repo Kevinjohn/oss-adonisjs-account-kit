@@ -41,14 +41,21 @@ export async function retirementImpact(
       currentPasswordLogin: false,
     }
 
+  const users = deps.config.users
   const { table } = await userMetadata(deps.config)
   let inspectedAccounts = 0
   let affectedAccounts = 0
   let lastId: UserId | undefined
   for (;;) {
-    const query = deps.db.from(table).select('id').orderBy('id', 'asc').limit(500)
-    if (lastId !== undefined) query.where('id', '>', lastId)
-    const rows = await query
+    let rows: Array<{ id: UserId }>
+    if (users.listVisibleIds) {
+      const ids = await users.listVisibleIds(lastId, 500)
+      rows = ids.map((id) => ({ id }))
+    } else {
+      const query = deps.db.from(table).select('id').orderBy('id', 'asc').limit(500)
+      if (lastId !== undefined) query.where('id', '>', lastId)
+      rows = await query
+    }
     if (!rows.length) break
     const identities = currentProviders.size
       ? await deps.db
@@ -71,7 +78,7 @@ export async function retirementImpact(
     }
     for (const row of rows) {
       const id = row.id as UserId
-      const user = await deps.config.users.findById(id)
+      const user = await users.findById(id)
       if (!user) throw new Error('Account adapter could not resolve an inventoried user')
       if (typeof user.hasPassword !== 'boolean')
         throw new Error('Account adapter must report whether each inventoried user has a password')

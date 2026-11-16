@@ -32,6 +32,10 @@
 - Admission bootstrap now commits the replacement invitation and its matching approval together.
   A failed replacement preserves the previous link and approval.
 
+- Login-retirement inventories now use visible user IDs from the maintained Lucid adapter, so
+  retained soft-deleted accounts do not make the inventory unavailable. Custom adapters can
+  provide `UsersAdapter.listVisibleIds` to apply their own visibility rules; other adapters keep
+  using the configured physical users table, and unresolved listed IDs still fail closed.
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
   error. The written-file list includes a file published before temporary-file cleanup fails, and
