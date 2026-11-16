@@ -63,16 +63,6 @@ function bindCallbacks<T extends object>(container: object | undefined, defaults
   return freezeResolved(result) as T
 }
 
-/** Binds the application's top-level hooks to the configuration object it passed. */
-function bindTopLevelHooks<T extends AccountKitConfig>(config: T): T {
-  return Object.fromEntries(
-    Object.entries(config).map(([key, value]) => [
-      key,
-      typeof value === 'function' ? value.bind(config) : value,
-    ])
-  ) as T
-}
-
 /**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
  * a missing callback an enabled capability needs or an out-of-range value.
@@ -266,10 +256,18 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'usersTable',
       'account_kit: usersTable must be a plain SQL identifier'
     )
-  const hooks = bindTopLevelHooks(config)
   const { mapFields } = config.registration
   return freezeResolved({
-    ...hooks,
+    users: config.users,
+    emailConstraint: config.emailConstraint,
+    socialAuthentication: config.socialAuthentication,
+    onCredentialsChanged: config.onCredentialsChanged?.bind(config),
+    onCredentialsChangedTransaction: config.onCredentialsChangedTransaction?.bind(config),
+    onSessionsRevokedTransaction: config.onSessionsRevokedTransaction?.bind(config),
+    onPasswordResetIssuedTransaction: config.onPasswordResetIssuedTransaction?.bind(config),
+    onLifecycleEvent: config.onLifecycleEvent?.bind(config),
+    exportAccountData: config.exportAccountData?.bind(config),
+    onAccountDeletingTransaction: config.onAccountDeletingTransaction?.bind(config),
     // A copy, so a later write to the application's object cannot skip the checks above.
     // Read by name: a spread would drop an availability defined on a class or prototype.
     registration: freezeResolved({

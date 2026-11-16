@@ -4,6 +4,11 @@
 
 ### Changed
 
+- The social sign-in setup prerequisite no longer exposes an internal planning identifier.
+- The `node ace account-kit:invite` command description now clarifies that it replaces a pending
+  invitation only for the same address and scope.
+- Configuration classes retain inherited users, social settings and optional hooks. Transactional
+  hooks run with their original instance, including private fields.
 - `UpdateProfileInput` and the account operations guide now clarify that profile-only updates also
   require current-password identity proof, or purpose-bound `recentProof` for social-only accounts.
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
@@ -41,6 +46,8 @@
 
 ### Fixed
 
+- Package preparation now skips compilation only after both compilation and template copying have
+  completed, so a partial build is retried on the next install.
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.

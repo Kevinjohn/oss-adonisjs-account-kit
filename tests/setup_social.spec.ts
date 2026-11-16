@@ -45,6 +45,7 @@ test.group('setup social providers', (group) => {
       'error'
     )
     assert.include(plan.prerequisites.join(' '), 'first-password reset')
+    assert.notInclude(plan.prerequisites.join(' '), 'D14')
     assert.include(plan.prerequisites.join(' '), '/account/auth/oauth/github/callback')
     const env = plan.changes.find(({ path }) => path === '.env.account-kit.example')!.content
     assert.include(env, 'GITHUB_CLIENT_ID=')

@@ -131,6 +131,10 @@ test.group('operator commands', (group) => {
     const metadata = await commandLoader.getMetaData()
     const names = metadata.map((item) => item.commandName)
     assert.includeMembers(names, ['account-kit:invite', 'account-kit:reset-link'])
+    assert.include(
+      metadata.find((item) => item.commandName === 'account-kit:invite')?.description,
+      'same address and scope'
+    )
     const kernel = new Kernel(kit.app)
     kernel.addLoader(commandLoader as never)
     kernel.ui.switchMode('raw')
