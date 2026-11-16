@@ -144,6 +144,31 @@ test.group('authentication retirement impact', (group) => {
     assert.equal(retainPassword.impact?.affectedAccounts, 0)
   })
 
+  test('service-only configuration returns an empty retirement inventory without reading accounts', async ({
+    assert,
+  }) => {
+    const { config } = makeService(kit, { authentication: undefined, enabled: ['passwordReset'] })
+    const db = new Proxy(kit.db, {
+      get(target, property) {
+        if (property === 'from')
+          return () => assert.fail('Service-only inventory must not query accounts')
+        return Reflect.get(target, property, target)
+      },
+    })
+    const account = new AccountKit({ config, db, limiter: kit.limiter })
+
+    const impact = await account.authentication.retirementImpact({
+      passwordLogin: false,
+      providers: [],
+    })
+
+    assert.equal(impact.inspectedAccounts, 0)
+    assert.equal(impact.affectedAccounts, 0)
+    assert.deepEqual(impact.currentProviders, [])
+    assert.isFalse(impact.currentPasswordLogin)
+    assert.isTrue(Number.isFinite(Date.parse(impact.checkedAt)))
+  })
+
   test('retirement inventory follows configured string IDs and user table', async ({ assert }) => {
     await kit.db.connection().schema.createTable('retirement_users', (table) => {
       table.string('id', 254).primary()

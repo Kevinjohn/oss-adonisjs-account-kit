@@ -137,6 +137,10 @@ export function authenticationService(deps: ServiceDependencies) {
       currentProviders: SocialProviderName[]
       currentPasswordLogin: boolean
     }> {
+      const hasSocialLogin =
+        deps.config.enabled.includes('socialAuthentication') &&
+        Object.keys(deps.config.socialAuthentication?.providers ?? {}).length > 0
+      if (!deps.config.authentication && !hasSocialLogin) return retirementImpact(deps, input)
       requireAuthentication(deps.config)
       return retirementImpact(deps, input)
     },

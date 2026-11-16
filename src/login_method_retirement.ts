@@ -30,7 +30,17 @@ export async function retirementImpact(
       ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as SocialProviderName[])
       : []
   )
+  const currentPasswordLogin = Boolean(deps.config.authentication)
   const remainingProviders = input.providers ?? [...currentProviders]
+  if (!currentPasswordLogin && currentProviders.size === 0)
+    return {
+      inspectedAccounts: 0,
+      affectedAccounts: 0,
+      checkedAt: new Date().toISOString(),
+      currentProviders: [],
+      currentPasswordLogin: false,
+    }
+
   const { table } = await userMetadata(deps.config)
   let inspectedAccounts = 0
   let affectedAccounts = 0
@@ -68,10 +78,10 @@ export async function retirementImpact(
       inspectedAccounts++
       const confirmed = byUser.get(String(id)) ?? new Set<string>()
       const hadUsableMethod =
-        user.hasPassword ||
+        (currentPasswordLogin && user.hasPassword) ||
         [...confirmed].some((provider) => currentProviders.has(provider as SocialProviderName))
       const retainsMethod =
-        (input.passwordLogin && user.hasPassword) ||
+        (input.passwordLogin && currentPasswordLogin && user.hasPassword) ||
         remainingProviders.some(
           (provider) => currentProviders.has(provider) && confirmed.has(provider)
         )
@@ -84,6 +94,6 @@ export async function retirementImpact(
     affectedAccounts,
     checkedAt: new Date().toISOString(),
     currentProviders: [...currentProviders],
-    currentPasswordLogin: true,
+    currentPasswordLogin,
   }
 }
