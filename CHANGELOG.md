@@ -71,6 +71,9 @@
 
 - Configure and the admission installer recognize an existing command lazy import regardless of
   whether its string uses single or double quotes, so repeated runs do not register duplicates.
+- Inactive email corrections through `updateProfile` or `requestEmailChange` no longer require
+  `credentials_changed_at` when authentication is not configured.
+
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.

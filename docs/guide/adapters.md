@@ -92,6 +92,11 @@ The users table must have these physical columns:
 | `password`          | Nullable text: the password hash                            |
 | `email_verified_at` | Nullable timestamp; text on SQLite, `TIMESTAMP(3)` on MySQL |
 
+When authentication is configured, the users table also needs a nullable `credentials_changed_at`
+timestamp for credential revocation. Without authentication, this column is optional, including
+when correcting the initial address of an inactive account through `updateProfile` or
+`requestEmailChange`.
+
 Drizzle and Prisma must map the properties `id`, `email`, `unverifiedEmail`, `password` and
 `emailVerifiedAt` to those columns. The adapters check this on first use and throw a message that
 names the property.
