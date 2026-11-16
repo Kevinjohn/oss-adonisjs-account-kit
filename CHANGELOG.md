@@ -22,6 +22,8 @@
   enabled and names the application's Auth migration when that table is missing.
 - Password-reset and magic-link lifetimes start after the locked account read and eligibility
   checks, so time spent waiting for a database lock does not consume a newly issued proof.
+- Access restriction changes invoke the configured post-commit credential observer after the
+  restriction and credential revocation commit. Observer failures surface as committed failures.
 
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
