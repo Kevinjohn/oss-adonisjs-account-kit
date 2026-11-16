@@ -4,6 +4,8 @@
 
 ### Changed
 
+- `UpdateProfileInput` and the account operations guide now clarify that profile-only updates also
+  require current-password identity proof, or purpose-bound `recentProof` for social-only accounts.
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
   error. A failure before any file is written reports the same error as before.
