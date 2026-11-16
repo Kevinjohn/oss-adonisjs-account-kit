@@ -9,6 +9,7 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises'
+import fsPromises from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
@@ -112,6 +113,107 @@ test.group('setup apply', (group) => {
     )) as Error & { written?: string[] }
     assert.strictEqual(error, injected)
     assert.isUndefined(error.written)
+  })
+
+  test('reports a file published before temporary-file cleanup fails', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const publishedChange = plan.changes.find(({ action }) => action !== 'unchanged')!
+    const originalRm = fsPromises.rm
+    const cleanupFailure = new Error('temporary cleanup failed')
+    let temporaryPath = ''
+    fsPromises.rm = async (path, options) => {
+      if (String(path).endsWith('.tmp')) {
+        temporaryPath = String(path)
+        throw cleanupFailure
+      }
+      return originalRm(path, options)
+    }
+
+    let error: (Error & { written: string[] }) | undefined
+    try {
+      error = (await applySetup(root, plan).then(
+        () => assert.fail('expected rejection'),
+        (caught) => caught
+      )) as Error & { written: string[] }
+    } finally {
+      fsPromises.rm = originalRm
+    }
+
+    assert.isNotEmpty(temporaryPath)
+    assert.deepEqual(error?.written, [publishedChange.path])
+    assert.include(error?.message ?? '', publishedChange.path)
+    assert.include(error?.message ?? '', cleanupFailure.message)
+    assert.strictEqual(error?.cause, cleanupFailure)
+    assert.equal(await readFile(join(root, publishedChange.path), 'utf8'), publishedChange.content)
+    assert.deepEqual(
+      await applySetup(root, plan),
+      plan.changes
+        .filter(({ path, action }) => path !== publishedChange.path && action !== 'unchanged')
+        .map(({ path }) => path)
+    )
+    await originalRm(temporaryPath, { force: true })
+  })
+
+  test('attempts both lock cleanups and preserves the apply failure', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const plan = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    const lockPath = join(root, '.account-kit-setup.lock')
+    const originalOpen = fsPromises.open
+    const originalRm = fsPromises.rm
+    const applyFailure = new Error('apply failed')
+    const closeFailure = new Error('lock close failed')
+    const removeFailure = new Error('lock removal failed')
+    let lockRemovalAttempted = false
+    fsPromises.open = async (...args) => {
+      const handle = await originalOpen(...args)
+      if (String(args[0]) !== lockPath) return handle
+      return new Proxy(handle, {
+        get(target, property, receiver) {
+          if (property === 'close')
+            return async () => {
+              await target.close()
+              throw closeFailure
+            }
+          return Reflect.get(target, property, receiver)
+        },
+      })
+    }
+    fsPromises.rm = async (path, options) => {
+      if (String(path) === lockPath) {
+        lockRemovalAttempted = true
+        throw removeFailure
+      }
+      return originalRm(path, options)
+    }
+
+    let error: AggregateError | undefined
+    try {
+      error = (await applySetup(root, plan, {
+        beforePublish: async () => {
+          throw applyFailure
+        },
+      }).then(
+        () => assert.fail('expected rejection'),
+        (caught) => caught
+      )) as AggregateError
+    } finally {
+      fsPromises.open = originalOpen
+      fsPromises.rm = originalRm
+    }
+
+    assert.isTrue(lockRemovalAttempted)
+    assert.instanceOf(error, AggregateError)
+    assert.strictEqual(error?.cause, applyFailure)
+    assert.include(error?.errors ?? [], applyFailure)
+    assert.include(error?.errors ?? [], closeFailure)
+    assert.include(error?.errors ?? [], removeFailure)
   })
 
   test('replays an interrupted run and leaves application files untouched', async ({ assert }) => {

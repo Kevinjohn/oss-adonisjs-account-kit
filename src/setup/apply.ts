@@ -1,9 +1,21 @@
 import { randomUUID } from 'node:crypto'
-import { link, mkdir, open, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { link, mkdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
+import fsPromises from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { SetupFileChange, SetupPlan } from './types.js'
 import { SetupApplyInterruptedError } from './apply_interrupted_error.js'
 import { readRegularFile, safeSetupPath } from './safe_path.js'
+
+function failureMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function combineFailures(failures: unknown[], message: string): unknown {
+  if (failures.length === 1) return failures[0]
+  return new AggregateError(failures, `${message}: ${failures.map(failureMessage).join('; ')}`, {
+    cause: failures[0],
+  })
+}
 
 async function assertNoConflict(
   root: string,
@@ -39,7 +51,7 @@ export async function applySetup(
   const lockPath = join(root, '.account-kit-setup.lock')
   let lock
   try {
-    lock = await open(lockPath, 'wx', 0o600)
+    lock = await fsPromises.open(lockPath, 'wx', 0o600)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST')
       throw new Error(
@@ -48,6 +60,7 @@ export async function applySetup(
     throw error
   }
   const written: string[] = []
+  const failures: unknown[] = []
   try {
     await lock.writeFile(`${process.pid} ${new Date().toISOString()}\n`)
     for (const change of plan.changes) await assertNoConflict(root, change)
@@ -58,6 +71,7 @@ export async function applySetup(
       await mkdir(dirname(path), { recursive: true })
       await safeSetupPath(root, change.path)
       const temp = `${path}.account-kit-${process.pid}-${randomUUID()}.tmp`
+      const fileFailures: unknown[] = []
       try {
         const oldStat = action === 'update' ? await stat(path) : null
         const mode = oldStat?.mode ?? 0o644
@@ -66,17 +80,37 @@ export async function applySetup(
         await options.beforePublish?.(temp, path)
         if (action === 'create') await link(temp, path)
         else await rename(temp, path)
-      } finally {
-        await rm(temp, { force: true })
+        written.push(change.path)
+      } catch (error) {
+        fileFailures.push(error)
       }
-      written.push(change.path)
+      try {
+        await fsPromises.rm(temp, { force: true })
+      } catch (error) {
+        fileFailures.push(error)
+      }
+      if (fileFailures.length)
+        throw combineFailures(fileFailures, `Setup could not publish or clean up ${change.path}`)
     }
   } catch (error) {
-    if (written.length) throw new SetupApplyInterruptedError(written, error)
-    throw error
-  } finally {
+    failures.push(error)
+  }
+
+  try {
     await lock.close()
-    await rm(lockPath, { force: true })
+  } catch (error) {
+    failures.push(error)
+  }
+  try {
+    await fsPromises.rm(lockPath, { force: true })
+  } catch (error) {
+    failures.push(error)
+  }
+
+  if (failures.length) {
+    const failure = combineFailures(failures, 'Setup and cleanup failed')
+    if (written.length) throw new SetupApplyInterruptedError(written, failure)
+    throw failure
   }
   return written
 }
