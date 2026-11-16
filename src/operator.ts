@@ -14,6 +14,9 @@ import {
   UserNotFoundError,
   type PostCommitError,
 } from './errors.js'
+import { transaction } from './db.js'
+import { replaceBootstrapInvitation } from './bootstrap_invitation.js'
+import type { Invitation, Trx } from './types.js'
 import { storeInvitation } from './invitations.js'
 import { normalizeScope } from './invitation_scope.js'
 import { issueResetToken } from './password_reset.js'
@@ -59,6 +62,15 @@ export async function operatorInvite(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: OperatorInviteInput
 ): Promise<OperatorInviteResult> {
+  return issueOperatorInvitation(deps, input)
+}
+
+/** Internal composition for the admission approval written in the invitation transaction. */
+export async function issueOperatorInvitation(
+  deps: Pick<ServiceDependencies, 'config' | 'db'>,
+  input: OperatorInviteInput,
+  bind?: (invitation: Invitation, trx: Trx) => Promise<void>
+): Promise<OperatorInviteResult> {
   requireDelivery(input.deliver)
   const email = requireEmail(input.email)
   if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
@@ -67,14 +79,28 @@ export async function operatorInvite(
 
   const token = generateToken(deps.config.tokenSecretLength)
   const url = deps.config.urls.invitation(token)
-  const { invitation, fault } = await storeInvitation(deps, {
-    email,
-    role: input.role,
-    scope: normalizeScope(input.scope),
-    inviterId: null,
-    token,
-    replacePending: true,
-  })
+  const { invitation, fault } = bind
+    ? await settleCommitted(
+        transaction(deps.db, async (trx) => {
+          const replacement = await replaceBootstrapInvitation(deps.config, trx, {
+            email,
+            role: input.role,
+            token,
+          })
+          if (await deps.config.users.findByEmail(email, trx))
+            throw new EmailAlreadyRegisteredError()
+          await bind(replacement, trx)
+          return replacement
+        })
+      ).then(({ value, fault: committedFault }) => ({ invitation: value, fault: committedFault }))
+    : await storeInvitation(deps, {
+        email,
+        role: input.role,
+        scope: normalizeScope(input.scope),
+        inviterId: null,
+        token,
+        replacePending: true,
+      })
   const effects: PostCommitEffect[] = [
     lifecycle(deps.config, {
       type: 'invitation.sent',
