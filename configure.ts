@@ -7,6 +7,7 @@ import {
   migrationNames,
   migrationSchema,
 } from './src/setup/migration_definitions.js'
+import { hasRegisteredCommand } from './src/setup/commands_inspection.js'
 import { inspectProviders } from './src/setup/providers_inspection.js'
 import {
   InvalidSetupSourceError,
@@ -165,10 +166,18 @@ export async function configure(command: Configure) {
   codemods.overwriteExisting = false
 
   let registeredProvider: boolean | undefined
+  let registeredCommand = false
   try {
     const project = await codemods.getTsMorphProject()
     if (!project) throw new Error('the Assembler TypeScript project is unavailable')
-    registeredProvider = await hasRegisteredProvider(project, command.app.makePath('adonisrc.ts'))
+    const rcPath = command.app.makePath('adonisrc.ts')
+    registeredProvider = await hasRegisteredProvider(project, rcPath)
+    const rcFile = project.getSourceFile(rcPath)
+    if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
+    registeredCommand = await hasRegisteredCommand(
+      rcFile.getFullText(),
+      '@kevinjohn/adonisjs-account-kit/commands'
+    )
   } catch (error) {
     if (error instanceof UnsupportedConfigShape) {
       command.exitCode = 1
@@ -224,7 +233,7 @@ export async function configure(command: Configure) {
   await codemods.updateRcFile((rcFile) => {
     if (registeredProvider === false)
       rcFile.addProvider('@kevinjohn/adonisjs-account-kit/account_kit_provider')
-    rcFile.addCommand('@kevinjohn/adonisjs-account-kit/commands')
+    if (!registeredCommand) rcFile.addCommand('@kevinjohn/adonisjs-account-kit/commands')
   })
 
   // The generated config builds links from FRONTEND_URL, or APP_URL when it is unset. Declare them

@@ -1,10 +1,11 @@
-import { readdir } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import {
   accountKitMigrationSuffix,
   migrationSchema,
   type UserIdType,
 } from '../src/setup/migration_definitions.js'
+import { hasRegisteredCommand } from '../src/setup/commands_inspection.js'
 import { stubsRoot } from '../stubs/main.js'
 
 export const admissionMigrationSuffix = accountKitMigrationSuffix(
@@ -60,9 +61,15 @@ export default class InstallAdmission extends BaseCommand {
         },
       })
 
+    const rcContents = await readFile(this.app.makePath('adonisrc.ts'), 'utf8')
+    const commandAlreadyRegistered = await hasRegisteredCommand(
+      rcContents,
+      '@kevinjohn/adonisjs-account-kit/admission/commands'
+    )
     await codemods.updateRcFile((rcFile) => {
       rcFile.addProvider('@kevinjohn/adonisjs-account-kit/admission/provider')
-      rcFile.addCommand('@kevinjohn/adonisjs-account-kit/admission/commands')
+      if (!commandAlreadyRegistered)
+        rcFile.addCommand('@kevinjohn/adonisjs-account-kit/admission/commands')
     })
 
     this.logger.info('Finish admission in your application:')
