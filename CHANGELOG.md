@@ -18,6 +18,8 @@
 - Account deletion removes recorded sessions before deleting the user even after authentication
   is disabled, including custom schemas without foreign-key cascades. Doctor checks require the
   session table when account deletion is enabled.
+- Doctor checks the configured bearer-token table whenever access-token authentication is
+  enabled and names the application's Auth migration when that table is missing.
 
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
