@@ -141,6 +141,9 @@ the complete document. The managed route sends it and logs a `followup_failed` d
 await kit.accountData.delete({ actorId, currentPassword })
 ```
 
+Configuration hooks may be class prototype methods. Account Kit retains the configuration
+instance as `this`, so a deletion hook can read private fields.
+
 In one transaction under the user lock:
 
 1. Re-authenticate.

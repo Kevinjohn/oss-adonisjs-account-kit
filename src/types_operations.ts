@@ -230,13 +230,13 @@ export interface RequestEmailChangeInput {
 }
 
 /**
- * Input for `emailPasswordManagement.updateProfile`. An email change needs `currentPassword` or
- * `recentProof`.
+ * Input for `emailPasswordManagement.updateProfile`. Every update, including profile-only fields,
+ * needs `currentPassword`, or purpose-bound `recentProof` for a social-only account.
  */
 export interface UpdateProfileInput {
   /** The signed-in user. */
   actorId: UserId
-  /** The user's current password. Required when `email` changes. */
+  /** The user's current password, including when only `registrationData` changes. */
   currentPassword?: string
   /** A purpose-bound proof, for a social-only account. */
   recentProof?: string

@@ -107,6 +107,33 @@ test.group('authentication contract', (group) => {
     }
   })
 
+  test('class access policy keeps its private state during login and current access', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    class Authentication {
+      strategy = 'session' as const
+      guard = 'web'
+      #allowed = true
+      async canAccess() {
+        return this.#allowed
+      }
+      deny() {
+        this.#allowed = false
+      }
+    }
+    const authentication = new Authentication()
+    const { account } = makeService(kit, { authentication })
+    const result = await account.authentication.login(
+      { email: user.email, password: 'password123', clientKey: 'class-client' },
+      sessionGuard()
+    )
+    const input = { userId: user.id, revision: null }
+    assert.deepEqual(await account.authentication.current(input), result.account)
+    authentication.deny()
+    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+  })
+
   test('allows a limited inactive login but denies protected access', async ({ assert }) => {
     const user = await insertUser(kit, { verified: false })
     const { account } = makeService(kit, {
