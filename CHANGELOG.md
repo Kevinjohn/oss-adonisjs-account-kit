@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve managed session magic-link verifiers across successive requests for different or unknown addresses.
+
 ### Changed
 
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
