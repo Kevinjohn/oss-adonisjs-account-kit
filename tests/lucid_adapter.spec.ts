@@ -29,6 +29,24 @@ test.group('maintained Lucid adapter', (group) => {
     LucidUser.hashCalls = 0
   })
 
+  test('reuses a rejected model loader promise for later metadata reads', async ({ assert }) => {
+    let loads = 0
+    const failure = new Error('Model loader unavailable')
+    const adapter = createLucidAdapter(async () => {
+      loads++
+      throw failure
+    })
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await adapter.resolveMetadata()
+        assert.fail('Expected the model loader failure')
+      } catch (error) {
+        assert.strictEqual(error, failure)
+      }
+    }
+    assert.equal(loads, 1)
+  })
+
   test('package locking passes the adapter contract when a valid adapter takes no lock', async ({
     assert,
   }) => {

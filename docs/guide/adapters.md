@@ -11,6 +11,14 @@ Account Kit reads and writes users through a `UsersAdapter`. Four ship with the 
 
 For anything else, write your own: see [custom adapter](../recipes/custom-adapter.md).
 
+## Lucid model loading
+
+The Lucid adapter calls its asynchronous model loader lazily and caches its first promise,
+including a rejected promise. If loading fails, subsequent operations on that adapter return the
+same failure. A custom loader that can recover from a transient failure needs a new adapter
+instance after recovery. Module evaluation errors can also be cached by the JavaScript runtime
+and may require restarting the application process.
+
 ## Which one to use
 
 Most AdonisJS apps define users as a Lucid model, and the Lucid adapter is the default. Use another
