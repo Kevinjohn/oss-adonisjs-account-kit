@@ -1,6 +1,10 @@
 import { test } from '@japa/runner'
-import { DateTime } from 'luxon'
-import { InvalidCredentialsError, InvalidSessionError } from '../src/errors.js'
+import { DateTime, Settings } from 'luxon'
+import {
+  InvalidCredentialsError,
+  InvalidSessionError,
+  UnverifiedEmailError,
+} from '../src/errors.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
@@ -138,7 +142,7 @@ test.group('session registry', (group) => {
     assert.equal(stillSignedIn.id, other.id)
   })
 
-  test('accepted requests extend a sign-in at most once per interval; rejected ones never', async ({
+  test('accepted credentials extend a sign-in at most once per interval; canAccess denials never', async ({
     assert,
   }) => {
     const user = await insertUser(kit)
@@ -171,6 +175,38 @@ test.group('session registry', (group) => {
     const touched = await row()
     assert.isAbove(new Date(touched.last_seen_at).getTime(), Date.now() - 60_000)
     assert.isAbove(new Date(touched.expires_at).getTime(), Date.now() + 29 * 24 * 60 * 60 * 1000)
+  })
+
+  test('a valid inactive credential refreshes activity before requireActive denies access', async ({
+    assert,
+    cleanup,
+  }) => {
+    const originalNow = Settings.now
+    let now = DateTime.utc().startOf('second').toMillis()
+    Settings.now = () => now
+    cleanup(() => {
+      Settings.now = originalNow
+    })
+    const user = await insertUser(kit, { verified: false })
+    const { account } = service()
+    const session = await login(account)
+    const before = await kit.db.from('account_sessions').first()
+    assert.equal(new Date(before.last_seen_at).getTime(), now)
+
+    now += 6 * 60 * 1000
+    await assert.rejects(
+      () => account.authentication.requireActive(session.input(user.id)),
+      UnverifiedEmailError
+    )
+    const after = await kit.db.from('account_sessions').first()
+    assert.equal(new Date(after.last_seen_at).getTime(), now)
+    assert.equal(new Date(after.expires_at).getTime(), now + 30 * 24 * 60 * 60 * 1000)
+    assert.isAbove(new Date(after.expires_at).getTime(), new Date(before.expires_at).getTime())
+
+    const limited = await account.authentication.current(session.input(user.id))
+    assert.equal(limited.id, user.id)
+    assert.isFalse(limited.active)
+    assert.deepEqual(await kit.db.from('account_sessions').first(), after)
   })
 
   test('a failed post-issuance check stores no row and terminates the credential', async ({
