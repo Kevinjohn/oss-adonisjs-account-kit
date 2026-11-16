@@ -151,7 +151,8 @@ In one transaction under the user lock:
    codes, sensitive-action proofs, social sign-in state, social identities, password reset,
    email verification and sign-in link tokens. These rows are deleted even when their capability
    is disabled.
-4. Delete the user's recorded sign-ins (`account_sessions`). With the `access_tokens` strategy,
+4. Delete the user's recorded sign-ins (`account_sessions`), including when authentication has
+   since been disabled. With the `access_tokens` strategy,
    also delete the user's access tokens.
 5. Handle invitations the user sent: `revoke` (default) deletes them; `keep` leaves them acceptable
    with no inviter.

@@ -74,6 +74,30 @@ test.group('account deletion', (group) => {
     assert.match((events[0] as { operationId: string }).operationId, /^[\da-f-]{36}$/)
   })
 
+  test('deletes recorded sessions before the user after authentication is disabled', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    await seedAccountRows(kit, user.id, 'retired-auth')
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    let checked = false
+    const { account } = service({
+      authentication: undefined,
+      users: {
+        ...users,
+        async delete(id, trx) {
+          const sessions = await trx.from('account_sessions').where('user_id', id)
+          assert.lengthOf(sessions, 0)
+          checked = true
+          await users.delete!(id, trx)
+        },
+      },
+    })
+    await remove(account, user.id)
+    assert.isTrue(checked)
+    assert.isNull(await kit.db.from('users').where('id', user.id).first())
+  })
+
   test('sent invitations are revoked by default or kept without an inviter', async ({ assert }) => {
     const revoking = await insertUser(kit)
     const keeping = await insertUser(kit, { email: 'keeper@example.test' })
