@@ -39,6 +39,9 @@
 
 ### Fixed
 
+- Social callback and continuation signup follow-ups use only the committed transaction attempt,
+  preventing activation or invitation events from escaping a rolled-back SQLite retry.
+
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.

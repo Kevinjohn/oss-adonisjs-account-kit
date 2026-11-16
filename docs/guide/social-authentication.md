@@ -60,6 +60,9 @@ Set `notify.socialIdentityLinked` and `notify.socialIdentityUnlinked`, or use th
   a confirmed email address at the time of the change.
 - Delivery failures surface after commit; callers must not repeat the relationship operation in
   response.
+- When SQLite retries a rolled-back signup attempt, activation delivery and invitation-acceptance
+  events come only from the attempt that commits. An eventual `link_required` outcome does not
+  deliver activation or emit acceptance events from an earlier attempt.
 
 The selected guard's revision or token check applies to authenticated linking, listing, unlinking,
 and sensitive proof operations.
