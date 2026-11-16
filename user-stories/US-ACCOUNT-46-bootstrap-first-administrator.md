@@ -7,12 +7,12 @@ As an application operator, I want to invite an administrator and prepare its ap
 **Entry:** Run `account-kit:admission:bootstrap <email> --role <role>`; the role is required and 1–64 characters.
 **Documentation:** [Admission bootstrap](../docs/guide/admission.md#first-administrator)
 **Source:** [`src/admission/bootstrap.ts`](../src/admission/bootstrap.ts)
-**Coverage:** [`tests/admission_bootstrap_command.spec.ts`](../tests/admission_bootstrap_command.spec.ts)
+**Coverage:** [`tests/admission_bootstrap_command.spec.ts`](../tests/admission_bootstrap_command.spec.ts), [`tests/admission_bootstrap.spec.ts`](../tests/admission_bootstrap.spec.ts)
 
 ## Acceptance criteria
 
-- Input is email and role; command creates a waiting approval tied to the exact invitation and prints the invitation URL in structured command output. It refuses malformed email, invalid role or an existing account.
-- Acceptance attaches invitation evidence and claims the waiting approval only when the host configures `withInvitationEvidence` from [US-ACCOUNT-51](US-ACCOUNT-51-configure-admission-hooks.md). If invitation issuance fails or the waiting approval was replaced, this operation removes only its own waiting row and reports failure; the invitation’s claimed approval is not transferred to a different link.
+- Input is email and role; command atomically replaces the invitation and its waiting approval, then prints the invitation URL in structured command output after commit and lifecycle delivery. It refuses malformed email, invalid role or an existing account, including an account found after acquiring the invitation reservation.
+- Acceptance attaches invitation evidence and claims the waiting approval only when the host configures `withInvitationEvidence` from [US-ACCOUNT-51](US-ACCOUNT-51-configure-admission-hooks.md). A failed write rolls back both changes and preserves the previous invitation and approval. A replacement or cancellation during lifecycle delivery reports failure without deleting another operation’s approval; the invitation’s claimed approval is not transferred to a different link.
 
 ## User flow
 
@@ -20,24 +20,31 @@ As an application operator, I want to invite an administrator and prepare its ap
 flowchart TD
  A["Operator enters new email and role"] --> B{"Is email valid, unused and role length 1–64?"}
  B -->|No| C["Report validation/registered-account error"]
- B -->|Yes| D["Create waiting approval and issue invitation"]
- D --> E{"Did invitation bind to this approval?"}
- E -->|No| F["Remove this waiting row and report failure"]
- E -->|Yes| G["Print invitation link; acceptance claims approval only through configured invitation-evidence hook"]
+ B -->|Yes| D["Atomically replace invitation and its waiting approval"]
+ D --> E{"Did both writes commit?"}
+ E -->|No| F["Preserve previous pair and report failure"]
+ E -->|Yes| G["Deliver lifecycle event"]
+ G --> H{"Does the matching approval remain?"}
+ H -->|No| I["Report replacement/cancellation; leave other approvals intact"]
+ H -->|Yes| J["Print link; configured invitation-evidence hook claims approval on acceptance"]
 ```
 
 ## Code flow
 
-Scope: admission operator service composes an approval row with the shell-trusted invitation service.
+Scope: admission operator service binds the approval inside the shell-trusted invitation transaction, serialized by the unique invitation address and scope.
 
 ```mermaid
 flowchart TD
  A["account-kit:admission:bootstrap"] --> B["AccountAdmission.operator.bootstrap({ email, role })"]
- B --> C["Insert unclaimed approval row"]
- C --> D["Call kit.operator.invite with deliver print"]
- D --> E{"Did invitation id attach to this row?"}
- E -->|No| F["Delete only this unclaimed row and throw"]
- E -->|Yes| G["Return printed URL; on later acceptance, configured withInvitationEvidence attaches evidence and claims approval"]
+ B --> C["issueOperatorInvitation prepares token and URL"]
+ C --> D["Transaction: replaceBootstrapInvitation reserves unique invitation key and rechecks account eligibility"]
+ D --> E["Write fresh invitation and bind its waiting approval"]
+ E --> F{"Commit successful?"}
+ F -->|No| G["Roll back both writes; preserve prior pair"]
+ F -->|Yes| H["Run operator lifecycle follow-ups"]
+ H --> I{"Exact invitation approval still pending?"}
+ I -->|No| J["Report replaced/cancelled without deleting other approvals"]
+ I -->|Yes| K["Return printed URL and any committed observer fault"]
 ```
 
-**Code references:** [`operatorBootstrap`](../src/admission/bootstrap.ts), [`bootstrap command`](../src/admission/commands/bootstrap.ts), [`operator invitation`](../src/operator.ts)
+**Code references:** [`operatorBootstrap`](../src/admission/bootstrap.ts), [`bootstrap command`](../src/admission/commands/bootstrap.ts), [`operator invitation`](../src/operator.ts), [`bootstrap invitation persistence`](../src/bootstrap_invitation.ts)
