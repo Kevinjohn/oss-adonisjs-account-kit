@@ -11,7 +11,9 @@ import type { AccountUser } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { invitationHelpers } from './helpers/invitations.js'
 import { allowAll, makeUsersAdapter } from './helpers/fakes.js'
-import { locksRows } from './helpers/dialect.js'
+import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
+import { tokenFrom } from './helpers/fakes.js'
+import { locksRows, testEngine } from './helpers/dialect.js'
 import { dbTime } from './helpers/db_time.js'
 
 test.group('invitations.accept', (group) => {
@@ -241,6 +243,65 @@ test.group('invitations.accept', (group) => {
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
     assert.lengthOf(recorder.calls, 1)
   })
+
+  test('different scoped links serialize acceptance in address order', async ({ assert }) => {
+    const actor = await createActor()
+    const { account, recorder } = service()
+    const first = await account.invitations.send({
+      actorId: actor.id,
+      email: 'person@example.test',
+      role: 'admin',
+      scope: 'first',
+    })
+    const firstToken = tokenFrom(recorder.calls.at(-1)!.args[1])
+    await account.invitations.send({
+      actorId: actor.id,
+      email: 'person@example.test',
+      role: 'admin',
+      scope: 'second',
+    })
+    const secondToken = tokenFrom(recorder.calls.at(-1)!.args[1])
+    const holder = await kit.db.transaction()
+    const backend = await holder.rawQuery('select pg_backend_pid() as id')
+    const holderId = String(backend.rows[0].id)
+    await holder.from('account_invitations').where('id', first.id).forUpdate()
+    const operations: Promise<unknown>[] = []
+    let outcomes: Promise<PromiseSettledResult<unknown>[]> | undefined
+    let blockerId = holderId
+    try {
+      for (const token of [firstToken, secondToken]) {
+        const tracked = startWithBackendId(kit, () =>
+          account.invitations.accept({ token, password: 'newPassword123' })
+        )
+        operations.push(tracked.operation)
+        void tracked.operation.catch(() => {})
+        const id = await tracked.backendId
+        await waitForDatabaseLockWait(kit, assert, id, blockerId, 'account_invitations')
+        blockerId = id
+      }
+      outcomes = Promise.allSettled(operations)
+    } finally {
+      await holder.rollback()
+      if (!outcomes) await Promise.allSettled(operations)
+    }
+    const results = await outcomes!
+    assert.lengthOf(
+      results.filter((result) => result.status === 'fulfilled'),
+      1
+    )
+    const failures = results.filter(
+      (result) => result.status === 'rejected'
+    ) as PromiseRejectedResult[]
+    assert.lengthOf(failures, 1)
+    assert.instanceOf(failures[0].reason, InvalidTokenError)
+    assert.lengthOf(await kit.db.from('users').where('email', 'person@example.test'), 1)
+    assert.lengthOf(
+      await kit.db.from('account_invitations').where('email', 'person@example.test'),
+      0
+    )
+  })
+    .skip(testEngine !== 'pg')
+    .timeout(20_000)
 
   test('independent concurrent accepts yield one user and one invalid token', async ({
     assert,

@@ -57,11 +57,28 @@ export async function acceptInvitation(
   try {
     ;({ value: result, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
+        const tokenHash = hashToken(input.token)
+        const candidate = await trx
+          .from('account_invitations')
+          .where('token_hash', tokenHash)
+          .select('email')
+          .first()
+        if (!candidate) throw new InvalidTokenError()
+        // Every scope for one address is consumed together. Lock in primary-key order before
+        // deleting the presented link, so different links cannot hold each other's rows.
+        if (trx.dialect.name !== 'better-sqlite3') {
+          await trx
+            .from('account_invitations')
+            .where('email', candidate.email)
+            .orderBy('id', 'asc')
+            .select('id')
+            .forUpdate()
+        }
         const now = DateTime.utc()
         const row = await consumeToken<InvitationDatabaseRow>(
           trx,
           'account_invitations',
-          hashToken(input.token),
+          tokenHash,
           sqlTimestamp(trx, now)
         )
         if (!row) throw new InvalidTokenError()
