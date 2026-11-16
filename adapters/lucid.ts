@@ -74,7 +74,8 @@ export type LucidUsersAdapter = UsersAdapter & {
 
 /**
  * Loads your Lucid user model lazily, for example `async () => (await
- * import('#models/user')).default`.
+ * import('#models/user')).default`. The adapter caches the first returned promise, including
+ * rejection. Later operations reuse that result; this loader is not retried by the adapter.
  */
 export type LucidModelLoader<Model extends LucidModelRow = LucidModelRow> = () => Promise<
   LucidModel & (new () => Model)
