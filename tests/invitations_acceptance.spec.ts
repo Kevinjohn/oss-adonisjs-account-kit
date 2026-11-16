@@ -11,8 +11,13 @@ import type { AccountUser } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { invitationHelpers } from './helpers/invitations.js'
 import { allowAll, makeUsersAdapter } from './helpers/fakes.js'
-import { startWithBackendId, waitForDatabaseLockWait } from './helpers/lock_coordination.js'
-import { tokenFrom } from './helpers/fakes.js'
+import {
+  createBarrier,
+  startWithBackendId,
+  waitForDatabaseLockWait,
+} from './helpers/lock_coordination.js'
+import { makeService, tokenFrom } from './helpers/fakes.js'
+import { clientChallenge, provider } from './helpers/social_identity.js'
 import { locksRows, testEngine } from './helpers/dialect.js'
 import { dbTime } from './helpers/db_time.js'
 
@@ -294,6 +299,75 @@ test.group('invitations.accept', (group) => {
     ) as PromiseRejectedResult[]
     assert.lengthOf(failures, 1)
     assert.instanceOf(failures[0].reason, InvalidTokenError)
+    assert.lengthOf(await kit.db.from('users').where('email', 'person@example.test'), 1)
+    assert.lengthOf(
+      await kit.db.from('account_invitations').where('email', 'person@example.test'),
+      0
+    )
+  })
+    .skip(testEngine !== 'pg')
+    .timeout(20_000)
+
+  test('acceptance and verified social signup share the user-email lock order', async ({
+    assert,
+  }) => {
+    const actor = await createActor()
+    const issuer = service()
+    const { token } = await issue(issuer.account, issuer.recorder, actor.id)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const acceptanceReady = createBarrier('acceptance before user creation')
+    const socialReady = createBarrier('social user created')
+    let release!: () => void
+    const hold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const accepting = makeService(kit, {
+      users: {
+        ...users,
+        async create(attrs, trx) {
+          acceptanceReady.signal()
+          await hold
+          return users.create(attrs, trx)
+        },
+      },
+    }).account
+    const social = makeService(kit, {
+      users: {
+        ...users,
+        async markEmailVerified(id, at, trx) {
+          await users.markEmailVerified(id, at, trx)
+          socialReady.signal()
+        },
+      },
+      enabled: ['socialAuthentication', 'invitations', 'emailVerification'],
+      authentication: { strategy: 'session', guard: 'web' },
+      registration: { availability: 'open' },
+      socialAuthentication: {
+        providers: { github: provider('invite-race', 'person@example.test', true) },
+      },
+    }).account
+    const start = await social.socialAuthentication.begin({
+      provider: 'github',
+      intent: 'login',
+      clientChallenge,
+    })
+    const acceptance = accepting.invitations.accept({ token, password: 'newPassword123' })
+    acceptanceReady.observe(acceptance)
+    void acceptance.catch(() => {})
+    let callback: Promise<unknown> | undefined
+    try {
+      await acceptanceReady.promise
+      callback = social.socialAuthentication.callback({ state: start.state, callback: {} })
+      socialReady.observe(callback)
+      void callback.catch(() => {})
+      await socialReady.promise
+    } finally {
+      release()
+    }
+    const outcomes = await Promise.allSettled([acceptance, callback!])
+    assert.equal(outcomes[0].status, 'rejected')
+    assert.instanceOf((outcomes[0] as PromiseRejectedResult).reason, InvalidTokenError)
+    assert.equal(outcomes[1].status, 'fulfilled')
     assert.lengthOf(await kit.db.from('users').where('email', 'person@example.test'), 1)
     assert.lengthOf(
       await kit.db.from('account_invitations').where('email', 'person@example.test'),

@@ -4,8 +4,8 @@
 
 ### Changed
 
-- Concurrent acceptance of different invitation scopes for one address locks the address
-  inventory in a consistent row order before consuming either link. The losing acceptance
+- Concurrent acceptance of different invitation scopes for one address claims the unique
+  user email before consuming invitation rows, matching verified social signup. The losing acceptance
   reports a used link instead of a database deadlock.
 
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files

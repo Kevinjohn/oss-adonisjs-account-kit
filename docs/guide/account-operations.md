@@ -67,7 +67,7 @@ an explicit HTTP representation instead of serializing adapter or model internal
 
 Send, resend, list, and revoke require configured application permission. Acceptance is
 password-based and consumes the invitation once. Different scoped links for the same address
-serialize under a consistent row-lock order; after one acceptance consumes them, another
+serialize on the unique user email before consuming invitations; after one acceptance consumes them, another
 acceptance receives the normal used-link refusal. It does not recheck the inviter's later
 permission or disabled state. The `role` and `scope` are opaque application data; use
 `onInvitationAccepted(user, invitation, trx)` for required membership or role writes in the
