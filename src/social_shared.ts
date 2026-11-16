@@ -6,12 +6,23 @@ import { socialProviderNames } from './social_providers.js'
 import { sqlTimestamp, type DialectSource } from './timestamps.js'
 import type {
   AccountUser,
+  SocialCallbackResult,
+  SocialIdentity,
   CurrentAccountInput,
   ResolvedConfig,
   SocialProviderName,
   Trx,
+  UserId,
 } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
+
+/** Public outcome and follow-ups belonging to one committed social transaction attempt. */
+export interface SocialTransactionResult {
+  result: SocialCallbackResult
+  unverified?: UserId
+  accepted?: { invitationIds: number[]; userId: UserId }
+  linkedNotice?: { user: AccountUser; relation: SocialIdentity }
+}
 
 export type Dependencies = ServiceDependencies
 const MINUTES = 10

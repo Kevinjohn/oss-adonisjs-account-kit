@@ -20,15 +20,19 @@ import {
 import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isSocialProviderName } from './social_providers.js'
-import { authenticated, expiry, now, type Dependencies } from './social_shared.js'
+import {
+  authenticated,
+  expiry,
+  now,
+  type Dependencies,
+  type SocialTransactionResult,
+} from './social_shared.js'
 import { completeActivationByHash } from './verification.js'
 import { sendSocialActivation } from './social_activation.js'
 import type {
-  AccountUser,
   SensitivePurpose,
   SocialCallbackInput,
   SocialCallbackResult,
-  SocialIdentity,
   SocialIntent,
   SocialProviderName,
   VerifiedSocialAuthentication,
@@ -141,13 +145,10 @@ export async function socialCallback(
   } catch (cause) {
     throw new SocialTransactionError({ cause })
   }
-  let linkedNotice: { user: AccountUser; relation: SocialIdentity } | undefined
-  let unverified: UserId | undefined
-  let accepted: { invitationIds: number[]; userId: UserId } | undefined
-  let settled: Awaited<ReturnType<typeof settleCommitted<SocialCallbackResult>>>
+  let settled: Awaited<ReturnType<typeof settleCommitted<SocialTransactionResult>>>
   try {
     settled = await settleCommitted(
-      transaction(deps.db, async (trx): Promise<SocialCallbackResult> => {
+      transaction(deps.db, async (trx): Promise<SocialTransactionResult> => {
         if (candidate.user_id) await lockUser(trx, deps.config, candidate.user_id)
         else if (candidate.intent === 'login') {
           const association = await trx
@@ -176,8 +177,10 @@ export async function socialCallback(
               // instead of refusing this provider subject for good.
               const owner = await deps.config.users.findById(stored.user_id, trx)
               if (owner && !isActiveAccount(owner)) {
-                unverified = owner.id
-                return { status: 'new', emailVerificationRequired: true }
+                return {
+                  result: { status: 'new', emailVerificationRequired: true },
+                  unverified: owner.id,
+                }
               }
               throw new SocialUserNotFoundError()
             }
@@ -187,19 +190,21 @@ export async function socialCallback(
             if (!validateAccountAccessResult(await auth.canAccess(user, trx)))
               throw new SocialUserNotFoundError()
             return {
-              status: 'linked',
-              userId: user.id,
-              handoffCode: await createHandoff(
-                trx,
-                deps.config,
-                user.id,
-                stored.id,
-                state.client_challenge
-              ),
+              result: {
+                status: 'linked',
+                userId: user.id,
+                handoffCode: await createHandoff(
+                  trx,
+                  deps.config,
+                  user.id,
+                  stored.id,
+                  state.client_challenge
+                ),
+              },
             }
           }
           if (profile.email && (await deps.config.users.findByEmail(profile.email, trx)))
-            return { status: 'link_required' }
+            return { result: { status: 'link_required' } }
           if (deps.config.registration!.availability === 'closed')
             throw new SocialTransactionError()
           if (
@@ -224,27 +229,37 @@ export async function socialCallback(
               created_at: now(trx),
             })
             return {
-              status: 'new',
-              continuation,
+              result: {
+                status: 'new',
+                continuation,
+              },
             }
           }
           const created = await createAccount(deps, trx, name, profile, undefined, input.admit)
-          if (created.invitationIds.length > 0)
-            accepted = { invitationIds: created.invitationIds, userId: created.user.id }
+          const accepted =
+            created.invitationIds.length > 0
+              ? { invitationIds: created.invitationIds, userId: created.user.id }
+              : undefined
           if (!profile.emailVerified) {
-            unverified = created.user.id
-            return { status: 'new', emailVerificationRequired: true }
+            return {
+              result: { status: 'new', emailVerificationRequired: true },
+              unverified: created.user.id,
+              accepted,
+            }
           }
           return {
-            status: 'new',
-            userId: created.user.id,
-            handoffCode: await createHandoff(
-              trx,
-              deps.config,
-              created.user.id,
-              created.relation.id,
-              state.client_challenge
-            ),
+            accepted,
+            result: {
+              status: 'new',
+              userId: created.user.id,
+              handoffCode: await createHandoff(
+                trx,
+                deps.config,
+                created.user.id,
+                created.relation.id,
+                state.client_challenge
+              ),
+            },
           }
         }
         if (state.intent === 'confirm') {
@@ -269,17 +284,20 @@ export async function socialCallback(
             state.verification_hash!,
             pending.id
           )
-          if (invitationIds.length > 0) accepted = { invitationIds, userId }
+          const accepted = invitationIds.length > 0 ? { invitationIds, userId } : undefined
           return {
-            status: 'linked',
-            userId,
-            handoffCode: await createHandoff(
-              trx,
-              deps.config,
+            accepted,
+            result: {
+              status: 'linked',
               userId,
-              pending.id,
-              state.client_challenge
-            ),
+              handoffCode: await createHandoff(
+                trx,
+                deps.config,
+                userId,
+                pending.id,
+                state.client_challenge
+              ),
+            },
           }
         }
         if (state.user_id === null || input.current?.userId !== state.user_id)
@@ -300,8 +318,10 @@ export async function socialCallback(
           if (!stored || !stored.confirmed_at || user.hasPassword) throw new SocialProofError()
           if (!state.purpose) throw new SocialTransactionError()
           return {
-            status: 'reauthenticated',
-            proof: await issueProof(trx, deps.config, user.id, state.purpose),
+            result: {
+              status: 'reauthenticated',
+              proof: await issueProof(trx, deps.config, user.id, state.purpose),
+            },
           }
         }
         const proofHash = state.proof_hash ?? (input.proof ? hashToken(input.proof) : null)
@@ -322,8 +342,7 @@ export async function socialCallback(
           emailVerified: profile.emailVerified,
         })
         const relation = await createAssociation(trx, user.id, name, profile, true)
-        linkedNotice = { user, relation }
-        return { status: 'linked', userId: user.id }
+        return { result: { status: 'linked', userId: user.id }, linkedNotice: { user, relation } }
       })
     )
   } catch (error) {
@@ -332,6 +351,7 @@ export async function socialCallback(
       throw new SocialTransactionError()
     throw error
   }
+  const { result, unverified, accepted, linkedNotice } = settled.value
   await finishCommitted(
     settled.fault,
     'Social callback committed but follow-up failed',
@@ -355,5 +375,5 @@ export async function socialCallback(
       }
     }
   )
-  return settled.value
+  return result
 }
