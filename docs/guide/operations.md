@@ -115,6 +115,12 @@ actually deleted (or rows eligible in dry-run mode). It does not delete users, s
 access tokens, web sessions, team memberships, or application-owned records. If a run reaches its
 batch cap, schedule another run rather than raising the cap without considering database load.
 
+Each invocation starts with recovery tokens again; rotation does not carry across runs. If an
+operator lowers the batch budget while earlier tables have a continuous backlog, later tables can
+receive no turn on every scheduled run. Keep `maxBatches` at least eight (one batch per table)
+for sustained-load schedules. The default is 100. This gives every nonempty table a turn, but a
+schedule still needs enough total throughput to keep up with arriving expired rows.
+
 Run `pnpm exec node ace account-kit:prune --help` in the configured application to see the
 installed command options.
 
