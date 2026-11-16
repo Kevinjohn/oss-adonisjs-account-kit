@@ -34,6 +34,12 @@ Whichever you pick, Account Kit still runs its queries through Lucid, so Lucid m
 and connected to the same database. Drizzle and Prisma only supply the table description; their
 clients are never called. The section below explains why.
 
+The optional `UsersAdapter.listVisibleIds(after, limit)` method can provide ascending keyset pages
+of accounts visible through an adapter's model rules. Retirement inventories still resolve each
+listed ID through `findById` and fail closed if an ID cannot be resolved. The maintained Lucid
+adapter implements this method with its normal model query, so model visibility hooks such as
+soft-delete scopes apply. Other adapters continue to use the configured physical users table.
+
 ## The transaction constraint
 
 Account Kit runs every operation in its own Lucid transaction and locks the user row through it.
