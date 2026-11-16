@@ -26,6 +26,9 @@
   checks, so time spent waiting for a database lock does not consume a newly issued proof.
 - Access restriction changes invoke the configured post-commit credential observer after the
   restriction and credential revocation commit. Observer failures surface as committed failures.
+- Concurrent acceptance of different invitation scopes for one address claims the unique
+  user email before consuming invitation rows, matching verified social signup. The losing acceptance
+  reports a used link instead of a database deadlock.
 
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
