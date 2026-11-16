@@ -1,11 +1,66 @@
 import { test } from '@japa/runner'
 import { EmailAlreadyRegisteredError, InvalidInputError } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
-import { insertUser, makeNotify, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
+import {
+  insertUser,
+  makeNotify,
+  makeService,
+  makeUsersAdapter,
+  tokenFrom,
+} from './helpers/fakes.js'
 import { credentialsFixtures } from './helpers/credentials.js'
+import { resetSchema } from './helpers/schema.js'
+import { correctionRevision } from '../src/profile_correction_revision.js'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service } = credentialsFixtures(kit)
+
+  for (const method of ['updateProfile', 'requestEmailChange'] as const) {
+    test(`${method} corrects an inactive email without an authentication revision column`, async ({
+      assert,
+    }) => {
+      const user = await insertUser(kit, { verified: false, password: 'oldPassword123' })
+      try {
+        await kit.db.connection().schema.alterTable('users', (table) => {
+          table.dropColumn('credentials_changed_at')
+        })
+        const { account, recorder } = makeService(kit, {
+          authentication: undefined,
+          minRequestMs: 0,
+        })
+        const actor = { actorId: user.id, currentPassword: 'oldPassword123' }
+        if (method === 'updateProfile') {
+          const updated = await account.emailPasswordManagement.updateProfile({
+            ...actor,
+            email: 'corrected@example.test',
+          })
+          assert.equal(updated.email, 'corrected@example.test')
+          assert.isUndefined(correctionRevision(updated))
+        } else {
+          await account.emailPasswordManagement.requestEmailChange({
+            ...actor,
+            newEmail: 'corrected@example.test',
+          })
+        }
+        const row = await kit.db.from('users').where('id', user.id).first()
+        assert.equal(row.email, 'corrected@example.test')
+        assert.equal(row.unverified_email, 'corrected@example.test')
+        assert.isNull(row.email_verified_at)
+        assert.lengthOf(recorder.calls, 1)
+        assert.equal(recorder.calls[0].method, 'accountActivationProvision')
+        const token = tokenFrom(recorder.calls[0].args[1])
+        assert.isTrue(await account.emailVerification.inspect({ token }))
+        assert.equal(
+          await account.emailVerification.complete({ token, password: 'newPassword123' }),
+          'verified'
+        )
+        const verified = await kit.db.from('users').where('id', user.id).first()
+        assert.isNotNull(verified.email_verified_at)
+      } finally {
+        await resetSchema(kit)
+      }
+    })
+  }
 
   test('profile updates map only configured fields and preserve pending email when omitted', async ({
     assert,

@@ -137,7 +137,9 @@ export async function updateProfile(
           user: issuedUser,
           changedConfirmedEmail: inactive,
           send: true,
-          ...(inactive ? { revision: await revision(trx, deps.config, current.id) } : {}),
+          ...(inactive && deps.config.authentication
+            ? { revision: await revision(trx, deps.config, current.id) }
+            : {}),
         }
       })
     ))
