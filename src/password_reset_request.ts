@@ -72,11 +72,11 @@ export function issueResetToken(
   email: string,
   token: string
 ): Promise<AccountUser | null> {
-  const now = DateTime.utc()
   return transaction(deps.db, async (trx) => {
     await lockUser(trx, deps.config, userId)
     const current = await deps.config.users.findById(userId, trx)
     if (!current || current.email !== email) return null
+    const now = DateTime.utc()
     await trx
       .table('password_reset_tokens')
       .insert({

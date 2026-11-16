@@ -1,3 +1,4 @@
+import { Settings } from 'luxon'
 import { performance } from 'node:perf_hooks'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
@@ -23,6 +24,32 @@ test.group('passwordReset.request', (group) => {
     makeService(kit, { minRequestMs: 0, ...overrides })
 
   const createUser = () => insertUser(kit)
+
+  test('starts the proof lifetime after the locked account read', async ({ assert, cleanup }) => {
+    const user = await insertUser(kit)
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const originalNow = Settings.now
+    let now = Date.UTC(2026, 10, 16, 12)
+    Settings.now = () => now
+    cleanup(() => {
+      Settings.now = originalNow
+    })
+    const { account, recorder } = makeService(kit, {
+      minRequestMs: 0,
+      expiresIn: { passwordReset: '1s' },
+      users: {
+        ...users,
+        async findById(id, trx) {
+          const current = await users.findById(id, trx)
+          now += 2000
+          return current
+        },
+      },
+    })
+    await account.passwordReset.request({ email: user.email, clientKey: 'clock' })
+    const token = tokenFrom(recorder.calls[0].args[1])
+    assert.isTrue(await account.passwordReset.inspect({ token }))
+  })
 
   test('unknown email returns void with no row or notification', async ({ assert }) => {
     const recorder = makeNotify()
