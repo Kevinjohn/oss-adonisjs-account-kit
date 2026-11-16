@@ -196,6 +196,71 @@ test.group('operator services', (group) => {
     )
   })
 
+  for (const deliver of ['print', 'send'] as const) {
+    test(`operator reset ${deliver} preserves the live proof when URL construction fails`, async ({
+      assert,
+    }) => {
+      await insertUser(kit)
+      const failure = new Error('Reset URL unavailable')
+      let fail = false
+      let issued = 0
+      const events: LifecycleEvent[] = []
+      const { account, recorder } = makeService(kit, {
+        enabled: ['passwordReset'],
+        urls: {
+          passwordReset(token) {
+            if (fail) throw failure
+            return `https://example.test/recovery/${token}`
+          },
+        },
+        onPasswordResetIssuedTransaction: async () => {
+          issued++
+        },
+        onLifecycleEvent: async (event) => {
+          events.push(event)
+        },
+      })
+      const first = await account.operator.resetLink({
+        email: 'person@example.test',
+        deliver: 'print',
+      })
+      const before = await kit.db.from('password_reset_tokens')
+      fail = true
+      const thrown = await account.operator
+        .resetLink({ email: 'person@example.test', deliver })
+        .catch((error) => error)
+      assert.strictEqual(thrown, failure)
+      assert.deepEqual(await kit.db.from('password_reset_tokens'), before)
+      assert.isTrue(await account.passwordReset.inspect({ token: tokenFrom(first.url) }))
+      assert.equal(issued, 1)
+      assert.lengthOf(events, 1)
+      assert.lengthOf(recorder.calls, 0)
+    })
+  }
+
+  test('operator reset skips the URL builder for unknown accounts in both delivery modes', async ({
+    assert,
+  }) => {
+    let calls = 0
+    const { account, recorder } = makeService(kit, {
+      enabled: ['passwordReset'],
+      urls: {
+        passwordReset() {
+          calls++
+          throw new Error('URL builder must not run')
+        },
+      },
+    })
+    for (const deliver of ['print', 'send'] as const)
+      await assert.rejects(
+        () => account.operator.resetLink({ email: 'nobody@example.test', deliver }),
+        UserNotFoundError
+      )
+    assert.equal(calls, 0)
+    assert.lengthOf(recorder.calls, 0)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
+  })
+
   test('operator reset link reports unknown accounts and keeps the issuance hook', async ({
     assert,
   }) => {
