@@ -40,9 +40,11 @@ content type match theirs for the same error. Its options are:
   returns the per-kind code, such as `E_ACCOUNT_KIT_INVALID_PASSWORD_TOKEN`, instead of
   `E_ACCOUNT_KIT_INVALID_TOKEN`.
 
-The body is `{ errors: [{ code, message }] }`, or `{ errors: [{ code, title }] }` for JSON:API, the
-same envelope the managed routes send. Code that reads `entry.message` narrows the union first, for
-example with `'message' in entry`. A plain JSON entry adds `field` when the error names one:
+With no options object, the body is `{ errors: [{ code, message }] }` and `contentType` is the literal
+`application/json`. Passing an options object keeps the negotiated entry type: JSON has `message`,
+while JSON:API has `title`. Narrow entries from those calls before reading either property, for
+example with `'message' in entry`. Both forms use the same envelope the managed routes send. A plain
+JSON entry adds `field` when the error names one:
 `RegistrationEmailAlreadyRegisteredError` returns 422 with `field: 'email'`. A masked or 5xx error
 never carries `field`. The headers include `Vary: Accept`; append it with `ctx.response.vary` so an
 existing `Vary` value is kept. The entry

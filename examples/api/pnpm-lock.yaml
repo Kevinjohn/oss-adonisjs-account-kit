@@ -999,7 +999,7 @@ packages:
     hasBin: true
 
   '@kevinjohn/adonisjs-account-kit@file:vendor/kevinjohn-adonisjs-account-kit.tgz':
-    resolution: {integrity: sha512-t3/DHwbqYV/ImsdVe3zOz3yx/OcI0uMF1c7Y9A6rrss0i7Ttb03r8ut/Ao7KI7LqjPepqPiMgqmy0oQu6FpumQ==, tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz}
+    resolution: {integrity: sha512-lZIiSj5FW4UIICrFy5zD6Cx2g99zf1mGx/uHv5qucuzm/l1Q8/lM/3h3KlKfKZhn29FSlBAcSPuwZxdqCjlD3Q==, tarball: file:vendor/kevinjohn-adonisjs-account-kit.tgz}
     version: 0.4.0
     engines: {node: '>=24.0.0'}
     peerDependencies:
