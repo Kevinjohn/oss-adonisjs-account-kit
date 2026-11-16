@@ -186,7 +186,9 @@ test.group('setup Ace command', (group) => {
     assert.equal(outcome.commandExitCode, 0)
     assert.isUndefined(outcome.error)
     assert.lengthOf(outcome.reports, 1)
-    assert.deepEqual(inventoryInputs, [{ passwordLogin: true, providers: [] }])
+    assert.deepEqual(inventoryInputs, [
+      { passwordLogin: true, providers: [], onlyWhenRetiring: true },
+    ])
     const report = outcome.reports[0]
     assert.isTrue(report.preview)
     assert.isTrue(report.readiness.configurationValid, JSON.stringify(report.diagnostics))
@@ -320,7 +322,9 @@ test.group('setup Ace command', (group) => {
       '--apply',
       '--retirement-maintenance-window',
     ])
-    assert.deepEqual(inventoryInputs, [{ passwordLogin: false, providers: [] }])
+    assert.deepEqual(inventoryInputs, [
+      { passwordLogin: false, providers: [], onlyWhenRetiring: true },
+    ])
     assert.equal(outcome.exitCode, 1)
     assert.equal(outcome.commandExitCode, 1)
     assert.isUndefined(outcome.error)
@@ -361,7 +365,9 @@ test.group('setup Ace command', (group) => {
       '--apply',
       '--retirement-maintenance-window',
     ])
-    assert.deepEqual(inventoryInputs, [{ passwordLogin: false, providers: [] }])
+    assert.deepEqual(inventoryInputs, [
+      { passwordLogin: false, providers: [], onlyWhenRetiring: true },
+    ])
     assert.equal(outcome.exitCode, 1)
     assert.equal(outcome.commandExitCode, 1)
     assert.isUndefined(outcome.error)
@@ -445,7 +451,11 @@ test.group('setup Ace command', (group) => {
     } finally {
       process.exitCode = previousExitCode
     }
-    assert.deepEqual(proposed, { passwordLogin: true, providers: ['google'] })
+    assert.deepEqual(proposed, {
+      passwordLogin: true,
+      providers: ['google'],
+      onlyWhenRetiring: true,
+    })
     assert.notInclude(await readdir(join(root, 'config')), 'account_kit.ts')
   })
 
@@ -485,7 +495,11 @@ test.group('setup Ace command', (group) => {
     } finally {
       process.exitCode = previousExitCode
     }
-    assert.deepEqual(proposed, { passwordLogin: true, providers: [] })
+    assert.deepEqual(proposed, {
+      passwordLogin: true,
+      providers: [],
+      onlyWhenRetiring: true,
+    })
     const state = await inspectSetup(root)
     assert.deepEqual(state.existingChoices, oldChoices)
   })

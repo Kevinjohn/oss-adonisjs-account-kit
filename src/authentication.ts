@@ -131,6 +131,12 @@ export function authenticationService(deps: ServiceDependencies) {
     async retirementImpact(input: {
       passwordLogin: boolean
       providers?: readonly SocialProviderName[]
+      /**
+       * When true, skip account enumeration if this request retains every method in the live
+       * configuration. The returned counts are then zero because no accounts were inspected.
+       * Intended for callers that do not need an inventory count, such as setup.
+       */
+      onlyWhenRetiring?: boolean
     }): Promise<{
       inspectedAccounts: number
       affectedAccounts: number

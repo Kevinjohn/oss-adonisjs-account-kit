@@ -7,7 +7,11 @@ import { AccountKit } from '../../src/account_kit.js'
 
 export function retirementIgnitor(
   root: string,
-  impact: (input?: { passwordLogin: boolean; providers?: readonly string[] }) => Promise<{
+  impact: (input?: {
+    passwordLogin: boolean
+    providers?: readonly string[]
+    onlyWhenRetiring?: boolean
+  }) => Promise<{
     inspectedAccounts: number
     affectedAccounts: number
     checkedAt: string
