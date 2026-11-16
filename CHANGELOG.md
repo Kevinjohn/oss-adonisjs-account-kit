@@ -39,6 +39,9 @@
 
 ### Fixed
 
+- Social identity conflict detection matches the exact provider/subject constraint, preserving
+  unrelated failures with overlapping constraint or column names.
+
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.

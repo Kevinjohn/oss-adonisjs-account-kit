@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { validateAccountAccessResult } from './account_access_policy.js'
 import { revision } from './credential_revision.js'
-import { lockUser, transaction, isUserEmailUniqueViolation, mysqlDuplicateKey } from './db.js'
+import { lockUser, transaction, isUserEmailUniqueViolation, isUniqueViolation } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import { invitationAccepted } from './invitation_match.js'
@@ -108,19 +108,7 @@ export async function consumeState(trx: Trx, state: string): Promise<SocialTrans
 }
 
 export function isIdentityConflict(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
-  const detail = error as { code?: string; constraint?: string; message?: string }
-  const mysqlKey = mysqlDuplicateKey(error)
-  if (mysqlKey !== undefined)
-    return mysqlKey === 'social_identities.social_identities_provider_provider_user_id_unique'
-  return (
-    (detail.code === '23505' &&
-      detail.constraint?.startsWith('social_identities_provider_provider_user_id_unique') ===
-        true) ||
-    (detail.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
-      detail.message?.includes('social_identities.provider, social_identities.provider_user_id') ===
-        true)
-  )
+  return isUniqueViolation(error, 'social_identities', ['provider', 'provider_user_id'])
 }
 
 /** Consumes the state once, resolves the provider profile and returns the outcome. */
