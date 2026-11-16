@@ -68,6 +68,7 @@ export default class SetupAccountKit extends BaseCommand {
         'account-kit:retirement-impact',
         [
           '--quiet',
+          '--only-when-retiring',
           ...(choices.authentication ? ['--keep-password-login'] : []),
           `--providers=${remainingProviders.length ? remainingProviders.join(',') : 'none'}`,
         ]

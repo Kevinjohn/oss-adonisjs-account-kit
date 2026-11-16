@@ -6,7 +6,7 @@ import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
-import { InvalidCredentialsError, InvalidSessionError } from '../src/errors.js'
+import { InvalidCredentialsError, InvalidSessionError, PostCommitError } from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 
 const sessionGuard = (events: string[] = []) => ({
@@ -23,6 +23,81 @@ const sessionGuard = (events: string[] = []) => ({
 
 test.group('authentication contract', (group) => {
   const kit = useTestApp(group)
+
+  test('restriction observers run after commit and preserve committed failure meaning', async ({
+    assert,
+  }) => {
+    for (const fail of [false, true]) {
+      const user = await insertUser(kit, { email: `observer-${fail}@example.test` })
+      let calls = 0
+      const failure = new Error('observer unavailable')
+      const { account } = makeService(kit, {
+        authentication: { strategy: 'session', guard: 'web' },
+        async onCredentialsChanged(actor, context) {
+          calls++
+          assert.equal(actor.id, user.id)
+          assert.equal(context.operation, 'access_restriction')
+          assert.strictEqual(context.userId, actor.id)
+          const row = await kit.db.from('users').where('id', user.id).first()
+          assert.isNotNull(row.disabled_at)
+          assert.isNotNull(row.credentials_changed_at)
+          if (fail) throw failure
+        },
+      })
+      const change = () =>
+        account.authentication.changeRestriction({
+          userId: String(user.id),
+          change: async (_actor, trx) => {
+            await trx
+              .from('users')
+              .where('id', user.id)
+              .update({ disabled_at: dbTime(kit) })
+          },
+        })
+      if (fail) {
+        try {
+          await change()
+          assert.fail('Expected a committed observer failure')
+        } catch (error) {
+          assert.instanceOf(error, PostCommitError)
+          assert.strictEqual((error as Error).cause, failure)
+        }
+      } else {
+        await change()
+      }
+      assert.equal(calls, 1)
+      assert.isNotNull((await kit.db.from('users').where('id', user.id).first()).disabled_at)
+    }
+  })
+
+  test('a rolled-back restriction does not call the post-commit observer', async ({ assert }) => {
+    const user = await insertUser(kit)
+    let calls = 0
+    const { account } = makeService(kit, {
+      authentication: { strategy: 'session', guard: 'web' },
+      async onCredentialsChanged() {
+        calls++
+      },
+    })
+    await assert.rejects(
+      () =>
+        account.authentication.changeRestriction({
+          userId: user.id,
+          change: async (_actor, trx) => {
+            await trx
+              .from('users')
+              .where('id', user.id)
+              .update({ disabled_at: dbTime(kit) })
+            throw new Error('restriction refused')
+          },
+        }),
+      /restriction refused/
+    )
+    assert.equal(calls, 0)
+    const row = await kit.db.from('users').where('id', user.id).first()
+    assert.isNull(row.disabled_at)
+    assert.isNull(row.credentials_changed_at)
+  })
 
   test('restriction changes revoke old sessions across service instances', async ({ assert }) => {
     const user = await insertUser(kit)

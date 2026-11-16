@@ -177,7 +177,7 @@ export class AccountAdmission {
        * account lands admitted once its invitation evidence is recorded.
        */
       bootstrap: (input: { email: string; role: string }): Promise<OperatorInviteResult> =>
-        operatorBootstrap(this.kit, this.deps, input),
+        operatorBootstrap(this.deps, input),
       /** Deletes the waiting approval for `email`; returns whether there was one. */
       cancelBootstrap: (input: { email: string }): Promise<boolean> =>
         cancelBootstrap(this.deps, input.email),

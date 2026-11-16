@@ -18,6 +18,10 @@ package guarantees about readiness, delivery and revocation.
 - Schedule `node ace account-kit:prune` to delete expired tokens.
 - Keep proof links out of access logs and analytics.
 
+With access-token authentication, doctor checks the configured token table even when account
+export and deletion are disabled. If it is missing, apply the application's Auth migration as
+well as Account Kit migrations.
+
 ### Deployment prerequisites
 
 Before serving traffic, apply and verify the generated migrations, configure the database and
@@ -115,6 +119,12 @@ actually deleted (or rows eligible in dry-run mode). It does not delete users, s
 access tokens, web sessions, team memberships, or application-owned records. If a run reaches its
 batch cap, schedule another run rather than raising the cap without considering database load.
 
+Each invocation starts with recovery tokens again; rotation does not carry across runs. If an
+operator lowers the batch budget while earlier tables have a continuous backlog, later tables can
+receive no turn on every scheduled run. Keep `maxBatches` at least eight (one batch per table)
+for sustained-load schedules. The default is 100. This gives every nonempty table a turn, but a
+schedule still needs enough total throughput to keep up with arriving expired rows.
+
 Run `pnpm exec node ace account-kit:prune --help` in the configured application to see the
 installed command options.
 
@@ -145,8 +155,10 @@ secret: share it only over a trusted channel.
   roles in `onInvitationAccepted`, as for any invitation.
 - `account-kit:reset-link` reports an unknown address (`E_ACCOUNT_KIT_USER_NOT_FOUND`) instead of
   answering generically, and skips the timing floor. It replaces the account's live reset link and
-  runs `onPasswordResetIssuedTransaction`. Completing a reset activates an account that has not
-  verified its email; the command warns when that applies.
+  runs `onPasswordResetIssuedTransaction`. It builds the URL after finding the account and before
+  replacing its proof; a URL-builder failure in either print or send mode leaves the prior link
+  usable. Completing a reset activates an account that has not verified its email; the command
+  warns when that applies.
 
 If the row commits but a follow-up (delivery or `onLifecycleEvent`) fails, the command still prints
 the committed result, including the link with `--print`, adds a `fault` with the error name and

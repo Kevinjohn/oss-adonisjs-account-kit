@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Preserve managed session magic-link verifiers across successive requests for different or unknown addresses.
+
 ### Changed
 
 - The social sign-in setup prerequisite no longer exposes an internal planning identifier.
@@ -15,9 +17,34 @@
   activation to a host-owned workflow; Account Kit's verification operations remain disabled.
 - Stateful `authentication.canAccess` methods retain their original receiver during login and
   protected access, including methods that read private class fields.
+- Account deletion removes recorded sessions before deleting the user even after authentication
+  is disabled, including custom schemas without foreign-key cascades. Doctor checks require the
+  session table when account deletion is enabled.
+- Doctor checks the configured bearer-token table whenever access-token authentication is
+  enabled and names the application's Auth migration when that table is missing.
+- Password-reset and magic-link lifetimes start after the locked account read and eligibility
+  checks, so time spent waiting for a database lock does not consume a newly issued proof.
+- Access restriction changes invoke the configured post-commit credential observer after the
+  restriction and credential revocation commit. Observer failures surface as committed failures.
+- Concurrent acceptance of different invitation scopes for one address claims the unique
+  user email before consuming invitation rows, matching verified social signup. The losing acceptance
+  reports a used link instead of a database deadlock.
+- Admission bootstrap now commits the replacement invitation and its matching approval together.
+  A failed replacement preserves the previous link and approval.
+
+- Login-retirement inventories now use visible user IDs from the maintained Lucid adapter, so
+  retained soft-deleted accounts do not make the inventory unavailable. Custom adapters can
+  provide `UsersAdapter.listVisibleIds` to apply their own visibility rules; other adapters keep
+  using the configured physical users table, and unresolved listed IDs still fail closed.
+- Setup skips per-account login-retirement inventory when the live authentication configuration
+  shows that every currently enabled method will remain. Its zero inspected/affected counts mean
+  no accounts were scanned; actual retirement requests still require a full inventory, and the
+  standalone retirement-impact command continues to count every account.
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
-  error. A failure before any file is written reports the same error as before.
+  error. The written-file list includes a file published before temporary-file cleanup fails, and
+  lock cleanup failures no longer hide the apply error. A failure before any file is written
+  reports the original error when cleanup succeeds.
 - The `config/account_kit.ts` written by `node ace configure` builds account links with
   `createActionUrls` and the setup command's default paths (`account/recovery`,
   `account/verification`, `account/email-change`), so both commands write the same links and apply
@@ -52,6 +79,22 @@
 
 - Package preparation now skips compilation only after both compilation and template copying have
   completed, so a partial build is retried on the next install.
+- Setup retirement inventory returns zero accounts without querying user data when no login
+  methods are configured.
+- Social identity conflict detection matches the exact provider/subject constraint, preserving
+  unrelated failures with overlapping constraint or column names.
+- Operator reset links build their URL before replacing an existing proof, so a URL-builder
+  failure in print or send mode preserves the live reset link.
+
+- Configure and the admission installer recognize an existing command lazy import regardless of
+  whether its string uses single or double quotes, so repeated runs do not register duplicates.
+- Inactive email corrections through `updateProfile` or `requestEmailChange` no longer require
+  `credentials_changed_at` when authentication is not configured.
+- Social signup reports activation lookup or issuance failures as committed follow-up failures,
+  preserving the cause and existing delivery-error handling after the account has been created.
+- Social callback and continuation signup follow-ups use only the committed transaction attempt,
+  preventing activation or invitation events from escaping a rolled-back SQLite retry.
+
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.

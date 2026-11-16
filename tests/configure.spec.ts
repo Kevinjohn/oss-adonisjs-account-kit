@@ -286,6 +286,34 @@ test('configures the package idempotently without replacing application-owned fi
   }
 }).timeout(30_000)
 
+test('does not duplicate a command loader written with double quotes', async ({ assert }) => {
+  const { root, ignitorFor } = await createConfigureProject()
+  const originalProcessExitCode = process.exitCode
+  try {
+    const rcPath = join(root, 'adonisrc.ts')
+    await writeFile(
+      rcPath,
+      [
+        "import { defineConfig } from '@adonisjs/core/app'",
+        'export default defineConfig({ providers: [], commands: [() => import("@kevinjohn/adonisjs-account-kit/commands")] })',
+        '',
+      ].join('\n')
+    )
+    const ignitor = ignitorFor(root)
+
+    await ignitor.ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+    await ignitor.ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+
+    assert.equal(process.exitCode, 0)
+    process.exitCode = originalProcessExitCode
+    const rcContents = await readFile(rcPath, 'utf8')
+    assert.equal(rcContents.match(/@kevinjohn\/adonisjs-account-kit\/commands/g)?.length, 1)
+  } finally {
+    process.exitCode = originalProcessExitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
 test('recovers real configure runs with registered dynamic providers', async ({ assert }) => {
   const project = await createConfigureProject()
   const { root, envPath, configDirectory, migrationsDirectory, configPath, ignitorFor } = project

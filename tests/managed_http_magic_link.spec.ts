@@ -74,7 +74,8 @@ test.group('managed magic-link routes', (group) => {
     const { call, store, established, linkToken } = mount('session')
     const requested = await call('POST /api/v1/auth/magic-link', { email: user.email })
     assert.deepEqual(requested, { status: 202, body: generic, headers: {} })
-    const verifier = store.values.get('accountKit.magicLink.verifier') as string
+    const verifier = (store.values.get('accountKit.magicLink.verifier') as { verifier: string })
+      .verifier
     assert.match(verifier, /^[\w-]{43}$/)
     const row = await kit.db.from('login_link_tokens').first()
     assert.equal(row.client_challenge, clientChallengeFor(verifier))
@@ -97,7 +98,13 @@ test.group('managed magic-link routes', (group) => {
     const { call, service, linkToken, store } = mount('session')
     await call('POST /api/v1/auth/magic-link', { email: user.email })
     const token = linkToken()
-    for (const body of [{}, { verifier: store.values.get('accountKit.magicLink.verifier') }]) {
+    for (const body of [
+      {},
+      {
+        verifier: (store.values.get('accountKit.magicLink.verifier') as { verifier: string })
+          .verifier,
+      },
+    ]) {
       const other = await call('POST /api/v1/auth/magic-link/:token', body, {
         token,
         session: sessionStore(),
@@ -110,6 +117,128 @@ test.group('managed magic-link routes', (group) => {
       })
     }
     assert.isTrue(await service.account.magicLink.inspect({ token }))
+  })
+
+  test('overlapping accounts and an unknown address retain the browser binding', async ({
+    assert,
+  }) => {
+    const first = await insertUser(kit)
+    const second = await insertUser(kit, { email: 'second@example.test' })
+    const { call, store, service, linkToken, established } = mount('session')
+    const a = await call('POST /api/v1/auth/magic-link', { email: first.email })
+    const firstToken = linkToken()
+    const unknown = await call('POST /api/v1/auth/magic-link', { email: 'unknown@example.test' })
+    const b = await call('POST /api/v1/auth/magic-link', { email: second.email })
+    const secondToken = linkToken()
+    assert.deepEqual(a, unknown)
+    assert.deepEqual(a, b)
+    const completion1 = await call(
+      'POST /api/v1/auth/magic-link/:token',
+      {},
+      { token: secondToken }
+    )
+    assert.equal(completion1.status, 200)
+    const completion2 = await call(
+      'POST /api/v1/auth/magic-link/:token',
+      {},
+      { token: secondToken }
+    )
+    assert.equal(completion2.status, 400)
+    assert.isTrue(await service.account.magicLink.inspect({ token: firstToken }))
+    const completion3 = await call('POST /api/v1/auth/magic-link/:token', {}, { token: firstToken })
+    assert.equal(completion3.status, 200)
+    assert.deepEqual(established, [
+      [second.id, null],
+      [first.id, null],
+    ])
+    assert.equal(
+      (store.values.get('accountKit.magicLink.verifier') as { outstanding: number }).outstanding,
+      1
+    )
+  })
+
+  test('two outstanding links clean up after both completions', async ({ assert }) => {
+    const first = await insertUser(kit)
+    const second = await insertUser(kit, { email: 'other@example.test' })
+    const { call, store, linkToken } = mount('session')
+    await call('POST /api/v1/auth/magic-link', { email: first.email })
+    const firstToken = linkToken()
+    await call('POST /api/v1/auth/magic-link', { email: second.email })
+    const secondToken = linkToken()
+    const completion4 = await call(
+      'POST /api/v1/auth/magic-link/:token',
+      {},
+      { token: secondToken }
+    )
+    assert.equal(completion4.status, 200)
+    const completion5 = await call('POST /api/v1/auth/magic-link/:token', {}, { token: firstToken })
+    assert.equal(completion5.status, 200)
+    assert.isFalse(store.values.has('accountKit.magicLink.verifier'))
+  })
+
+  test('reissue replaces its proof while retaining a bounded binding until expiry', async ({
+    assert,
+    cleanup,
+  }) => {
+    const originalNow = Date.now
+    let now = originalNow()
+    Date.now = () => now
+    cleanup(() => {
+      Date.now = originalNow
+    })
+    const user = await insertUser(kit)
+    const { call, store, linkToken, service } = mount('session', { expiresIn: { magicLink: '2m' } })
+    await call('POST /api/v1/auth/magic-link', { email: user.email })
+    const replaced = linkToken()
+    const initial = store.values.get('accountKit.magicLink.verifier') as {
+      verifier: string
+      expiresAt: number
+    }
+    assert.equal(initial.expiresAt, now + 120_000)
+    now += 30_000
+    await call('POST /api/v1/auth/magic-link', { email: user.email })
+    const live = linkToken()
+    const extended = store.values.get('accountKit.magicLink.verifier') as typeof initial
+    assert.equal(extended.verifier, initial.verifier)
+    assert.equal(extended.expiresAt, now + 120_000)
+    assert.isFalse(await service.account.magicLink.inspect({ token: replaced }))
+    const completion6 = await call('POST /api/v1/auth/magic-link/:token', {}, { token: live })
+    assert.equal(completion6.status, 200)
+    assert.isTrue(store.values.has('accountKit.magicLink.verifier'))
+    now = extended.expiresAt
+    const completion7 = await call('POST /api/v1/auth/magic-link/:token', {}, { token: live })
+    assert.equal(completion7.status, 400)
+    assert.isFalse(store.values.has('accountKit.magicLink.verifier'))
+  })
+
+  test('legacy verifier strings complete directly and survive adoption by another request', async ({
+    assert,
+  }) => {
+    const first = await insertUser(kit)
+    const second = await insertUser(kit, { email: 'legacy-other@example.test' })
+    const { call, store, linkToken } = mount('session')
+    for (const adopt of [false, true]) {
+      await call('POST /api/v1/auth/magic-link', { email: first.email })
+      const token = linkToken()
+      const binding = store.values.get('accountKit.magicLink.verifier') as { verifier: string }
+      store.put('accountKit.magicLink.verifier', binding.verifier)
+      let otherToken: string | undefined
+      if (adopt) {
+        await call('POST /api/v1/auth/magic-link', { email: second.email })
+        otherToken = linkToken()
+      }
+      const completion8 = await call('POST /api/v1/auth/magic-link/:token', {}, { token })
+      assert.equal(completion8.status, 200)
+      if (otherToken) {
+        const completion9 = await call(
+          'POST /api/v1/auth/magic-link/:token',
+          {},
+          { token: otherToken }
+        )
+        assert.equal(completion9.status, 200)
+      }
+      assert.isFalse(store.values.has('accountKit.magicLink.verifier'))
+    }
   })
 
   test('a failed completion keeps the session verifier for the live link', async ({ assert }) => {
@@ -148,7 +277,9 @@ test.group('managed magic-link routes', (group) => {
     const row = await kit.db.from('login_link_tokens').first()
     assert.equal(
       row.client_challenge,
-      clientChallengeFor(store.values.get('accountKit.magicLink.verifier') as string)
+      clientChallengeFor(
+        (store.values.get('accountKit.magicLink.verifier') as { verifier: string }).verifier
+      )
     )
   })
 

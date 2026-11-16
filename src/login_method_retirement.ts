@@ -9,6 +9,7 @@ export async function retirementImpact(
   input: {
     passwordLogin: boolean
     providers?: readonly SocialProviderName[]
+    onlyWhenRetiring?: boolean
   }
 ): Promise<{
   inspectedAccounts: number
@@ -19,6 +20,8 @@ export async function retirementImpact(
 }> {
   if (typeof input.passwordLogin !== 'boolean')
     throw new Error('Remaining password-login policy must be selected explicitly')
+  if (input.onlyWhenRetiring !== undefined && typeof input.onlyWhenRetiring !== 'boolean')
+    throw new Error('Retirement-only inventory option must be a boolean')
   if (
     input.providers &&
     (new Set(input.providers).size !== input.providers.length ||
@@ -30,15 +33,37 @@ export async function retirementImpact(
       ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as SocialProviderName[])
       : []
   )
+  const currentPasswordLogin = Boolean(deps.config.authentication)
   const remainingProviders = input.providers ?? [...currentProviders]
+  if (
+    (!currentPasswordLogin && currentProviders.size === 0) ||
+    (input.onlyWhenRetiring &&
+      (!currentPasswordLogin || input.passwordLogin) &&
+      [...currentProviders].every((provider) => remainingProviders.includes(provider)))
+  )
+    return {
+      inspectedAccounts: 0,
+      affectedAccounts: 0,
+      checkedAt: new Date().toISOString(),
+      currentProviders: [...currentProviders],
+      currentPasswordLogin,
+    }
+
+  const users = deps.config.users
   const { table } = await userMetadata(deps.config)
   let inspectedAccounts = 0
   let affectedAccounts = 0
   let lastId: UserId | undefined
   for (;;) {
-    const query = deps.db.from(table).select('id').orderBy('id', 'asc').limit(500)
-    if (lastId !== undefined) query.where('id', '>', lastId)
-    const rows = await query
+    let rows: Array<{ id: UserId }>
+    if (users.listVisibleIds) {
+      const ids = await users.listVisibleIds(lastId, 500)
+      rows = ids.map((id) => ({ id }))
+    } else {
+      const query = deps.db.from(table).select('id').orderBy('id', 'asc').limit(500)
+      if (lastId !== undefined) query.where('id', '>', lastId)
+      rows = await query
+    }
     if (!rows.length) break
     const identities = currentProviders.size
       ? await deps.db
@@ -61,17 +86,17 @@ export async function retirementImpact(
     }
     for (const row of rows) {
       const id = row.id as UserId
-      const user = await deps.config.users.findById(id)
+      const user = await users.findById(id)
       if (!user) throw new Error('Account adapter could not resolve an inventoried user')
       if (typeof user.hasPassword !== 'boolean')
         throw new Error('Account adapter must report whether each inventoried user has a password')
       inspectedAccounts++
       const confirmed = byUser.get(String(id)) ?? new Set<string>()
       const hadUsableMethod =
-        user.hasPassword ||
+        (currentPasswordLogin && user.hasPassword) ||
         [...confirmed].some((provider) => currentProviders.has(provider as SocialProviderName))
       const retainsMethod =
-        (input.passwordLogin && user.hasPassword) ||
+        (input.passwordLogin && currentPasswordLogin && user.hasPassword) ||
         remainingProviders.some(
           (provider) => currentProviders.has(provider) && confirmed.has(provider)
         )
@@ -84,6 +109,6 @@ export async function retirementImpact(
     affectedAccounts,
     checkedAt: new Date().toISOString(),
     currentProviders: [...currentProviders],
-    currentPasswordLogin: true,
+    currentPasswordLogin,
   }
 }

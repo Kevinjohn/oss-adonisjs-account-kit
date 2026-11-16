@@ -68,8 +68,8 @@ export async function requireLiveSession(
 }
 
 /**
- * Extend a sign-in that was just accepted. Callers run this after every other check, so a rejected
- * request never refreshes a sign-in; it writes at most once per touch interval.
+ * Extend a sign-in after credential and canAccess checks pass, at most once per touch interval.
+ * Later active-account or admission gates may still deny access after this transaction commits.
  */
 export async function touchSession(
   trx: Trx,

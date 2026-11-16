@@ -107,6 +107,9 @@ snapshot. Invitations created, revoked, or expired between requests can change l
 
 ### A reset link works once, then expires
 
+A password reset proof's lifetime starts after acquiring the account lock and verifying that the
+current account still matches the requested address.
+
 Password reset requests consume both a client-key budget and a normalized-email budget. A throttled
 request does not replace the currently stored password reset token, so an already-issued unexpired link
 remains redeemable. A later successful issuance rotates the user's token and invalidates its

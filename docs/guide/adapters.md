@@ -11,6 +11,14 @@ Account Kit reads and writes users through a `UsersAdapter`. Four ship with the 
 
 For anything else, write your own: see [custom adapter](../recipes/custom-adapter.md).
 
+## Lucid model loading
+
+The Lucid adapter calls its asynchronous model loader lazily and caches its first promise,
+including a rejected promise. If loading fails, subsequent operations on that adapter return the
+same failure. A custom loader that can recover from a transient failure needs a new adapter
+instance after recovery. Module evaluation errors can also be cached by the JavaScript runtime
+and may require restarting the application process.
+
 ## Which one to use
 
 Most AdonisJS apps define users as a Lucid model, and the Lucid adapter is the default. Use another
@@ -33,6 +41,12 @@ description of it to keep in step.
 Whichever you pick, Account Kit still runs its queries through Lucid, so Lucid must be installed
 and connected to the same database. Drizzle and Prisma only supply the table description; their
 clients are never called. The section below explains why.
+
+The optional `UsersAdapter.listVisibleIds(after, limit)` method can provide ascending keyset pages
+of accounts visible through an adapter's model rules. Retirement inventories still resolve each
+listed ID through `findById` and fail closed if an ID cannot be resolved. The maintained Lucid
+adapter implements this method with its normal model query, so model visibility hooks such as
+soft-delete scopes apply. Other adapters continue to use the configured physical users table.
 
 ## The transaction constraint
 
@@ -83,6 +97,11 @@ The users table must have these physical columns:
 | `unverified_email`  | Nullable text                                               |
 | `password`          | Nullable text: the password hash                            |
 | `email_verified_at` | Nullable timestamp; text on SQLite, `TIMESTAMP(3)` on MySQL |
+
+When authentication is configured, the users table also needs a nullable `credentials_changed_at`
+timestamp for credential revocation. Without authentication, this column is optional, including
+when correcting the initial address of an inactive account through `updateProfile` or
+`requestEmailChange`.
 
 Drizzle and Prisma must map the properties `id`, `email`, `unverifiedEmail`, `password` and
 `emailVerifiedAt` to those columns. The adapters check this on first use and throw a message that

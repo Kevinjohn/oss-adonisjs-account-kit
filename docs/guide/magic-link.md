@@ -3,6 +3,9 @@
 Users sign in by clicking a link sent to their email address. The link works once, expires after
 15 minutes by default, and only works in the browser or app that asked for it.
 
+The lifetime starts after the account lock and eligibility checks succeed. Lock contention does
+not consume the new link's configured lifetime.
+
 ## Configuration
 
 `magicLinkLogin` is off by default and requires `authentication`:
@@ -71,7 +74,13 @@ With `registerManagedRoutes`, add `magicLinkLogin` to `enabled`:
 
 - **Session guards** keep the verifier on the server. The request route stores it in the session,
   so the link works in any tab of the same browser. Clients send neither `clientChallenge` nor
-  `verifier`; a `clientChallenge` sent with a session guard is ignored.
+  `verifier`; a `clientChallenge` sent with a session guard is ignored. Successive requests
+  share one protected verifier while links remain outstanding, including requests for unknown
+  addresses. Successful completions reduce the outstanding count; failures preserve it. Reissues
+  still replace that account’s previous link. Unused requests may leave a count until the latest
+  acknowledged request’s configured magic-link lifetime expires; the next request or completion
+  clears expired state. This supports successive requests with overlapping links; applications
+  must serialize concurrent session writes if their session store requires it.
 - **Access-token guards** require `clientChallenge` on request and `verifier` on completion, and
   the mount requires `publicCredential`.
 - The request route answers `202` with the same body for known and unknown addresses, including

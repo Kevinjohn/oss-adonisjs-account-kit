@@ -67,6 +67,11 @@ export interface UsersAdapter {
   /** Finds a user by id, or returns null. */
   findById(id: UserId, trx?: Trx): Promise<AccountUser | null>
   /**
+   * Lists visible user ids in ascending primary-key order, strictly after `after`, up to `limit`.
+   * Adapters with model-level visibility rules can implement this for complete inventories.
+   */
+  listVisibleIds?(after: UserId | undefined, limit: number): Promise<UserId[]>
+  /**
    * Creates a user through `trx` and returns it. `registrationData` is untrusted input for your own
    * mapping.
    */

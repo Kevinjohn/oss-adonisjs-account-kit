@@ -25,6 +25,11 @@ export type LucidModelRow = {
 
 type Query = {
   where(column: string, value: unknown): Query
+  where(column: string, operator: string, value: unknown): Query
+  select(...columns: string[]): Query
+  orderBy(column: string, direction: 'asc' | 'desc'): Query
+  limit(value: number): Query
+  exec(): Promise<LucidModelRow[]>
   first(): Promise<LucidModelRow | null>
 }
 
@@ -74,7 +79,8 @@ export type LucidUsersAdapter = UsersAdapter & {
 
 /**
  * Loads your Lucid user model lazily, for example `async () => (await
- * import('#models/user')).default`.
+ * import('#models/user')).default`. The adapter caches the first returned promise, including
+ * rejection. Later operations reuse that result; this loader is not retried by the adapter.
  */
 export type LucidModelLoader<Model extends LucidModelRow = LucidModelRow> = () => Promise<
   LucidModel & (new () => Model)
@@ -233,6 +239,13 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     async findById(id, trx) {
       const user = await find(query(await model(), trx), 'id', id)
       return user ? toAccountUser(user) : null
+    },
+
+    async listVisibleIds(after, limit) {
+      const listing = query(await model())
+      if (after !== undefined) listing.where('id', '>', after)
+      const users = await listing.select('id').orderBy('id', 'asc').limit(limit).exec()
+      return users.map(({ id }) => id)
     },
 
     async create(attrs, trx) {

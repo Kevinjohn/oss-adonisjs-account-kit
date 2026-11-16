@@ -10,7 +10,9 @@ import { packageTables, type PackageTable } from './package_tables.js'
 export interface PruneInput {
   /** Rows deleted per batch. Default 100. */
   batchSize?: number
-  /** The most batches in one run, shared across all tables. Default 100. */
+  /** The most batches in one run, shared across all eight tables. Default 100.
+   * Use at least eight on sustained-load schedules so each nonempty table receives a turn.
+   * Each invocation starts at the first table again. */
   maxBatches?: number
   /** Count expired rows without deleting them. */
   dryRun?: boolean

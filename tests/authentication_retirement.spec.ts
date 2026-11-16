@@ -5,6 +5,12 @@ import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { AccountKit } from '../src/account_kit.js'
 import RetirementImpact from '../commands/retirement_impact.js'
 import { dbTime } from './helpers/db_time.js'
+import { createLucidAdapter } from '../adapters/lucid.js'
+import SoftDeletingUser from './fixtures/soft_deleting_user.js'
+
+class RetirementSoftDeletingUser extends SoftDeletingUser {
+  static table = 'retirement_soft_users'
+}
 
 test.group('authentication retirement impact', (group) => {
   const kit = useTestApp(group)
@@ -41,6 +47,82 @@ test.group('authentication retirement impact', (group) => {
       providers: ['google'],
     })
     assert.equal(withProviderInventory.affectedAccounts, 1)
+  })
+
+  test('setup can skip account reads when live authentication methods are all retained', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'retained@example.test' })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const findById = users.findById.bind(users)
+    let lookups = 0
+    users.findById = async (id, trx) => {
+      lookups++
+      return findById(id, trx)
+    }
+    const { account } = makeService(kit, {
+      users,
+      authentication: { strategy: 'session', guard: 'web' },
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: {
+          google: {
+            authorizationUrl: async () => 'https://provider.example',
+            resolve: async () => ({ subject: 'g-1', email: null, emailVerified: false }),
+          },
+        },
+      },
+    })
+    const knex = kit.db.connection().getWriteClient()
+    const statements: string[] = []
+    const onQuery = (query: { sql: string }) => statements.push(query.sql)
+    knex.on('query', onQuery)
+    try {
+      const skipped = await account.authentication.retirementImpact({
+        passwordLogin: true,
+        providers: ['google'],
+        onlyWhenRetiring: true,
+      })
+      assert.equal(skipped.inspectedAccounts, 0)
+      assert.equal(skipped.affectedAccounts, 0)
+      assert.equal(skipped.currentPasswordLogin, true)
+      assert.deepEqual(skipped.currentProviders, ['google'])
+      assert.equal(lookups, 0)
+      assert.deepEqual(statements, [])
+
+      const full = await account.authentication.retirementImpact({
+        passwordLogin: true,
+        providers: ['google'],
+      })
+      assert.equal(full.inspectedAccounts, 1)
+      assert.equal(full.affectedAccounts, 0)
+      assert.equal(lookups, 1)
+      assert.isTrue(statements.some((sql) => /select .* from [`"]?users/i.test(sql)))
+    } finally {
+      knex.off('query', onQuery)
+    }
+  })
+
+  test('setup still performs and fails closed on an actual retirement inventory', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'retiring@example.test' })
+    const users = {
+      ...makeUsersAdapter(kit.db, kit.hash),
+      findById: async () => null,
+    }
+    const { account } = makeService(kit, {
+      users,
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    await assert.rejects(
+      () =>
+        account.authentication.retirementImpact({
+          passwordLogin: false,
+          onlyWhenRetiring: true,
+        }),
+      /could not resolve an inventoried user/
+    )
   })
 
   test('provider retirement counts only accounts losing their last confirmed usable method', async ({
@@ -142,6 +224,42 @@ test.group('authentication retirement impact', (group) => {
     )
     assert.isNull(retainPassword.failure)
     assert.equal(retainPassword.impact?.affectedAccounts, 0)
+
+    const skipped = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [
+      '--quiet',
+      '--keep-password-login',
+      '--only-when-retiring',
+    ])
+    assert.isNull(skipped.failure)
+    assert.equal(skipped.impact?.inspectedAccounts, 0)
+    assert.equal(skipped.impact?.affectedAccounts, 0)
+    assert.equal(skipped.impact?.currentPasswordLogin, true)
+    assert.deepEqual(skipped.impact?.currentProviders, [])
+  })
+
+  test('service-only configuration returns an empty retirement inventory without reading accounts', async ({
+    assert,
+  }) => {
+    const { config } = makeService(kit, { authentication: undefined, enabled: ['passwordReset'] })
+    const db = new Proxy(kit.db, {
+      get(target, property) {
+        if (property === 'from')
+          return () => assert.fail('Service-only inventory must not query accounts')
+        return Reflect.get(target, property, target)
+      },
+    })
+    const account = new AccountKit({ config, db, limiter: kit.limiter })
+
+    const impact = await account.authentication.retirementImpact({
+      passwordLogin: false,
+      providers: [],
+    })
+
+    assert.equal(impact.inspectedAccounts, 0)
+    assert.equal(impact.affectedAccounts, 0)
+    assert.deepEqual(impact.currentProviders, [])
+    assert.isFalse(impact.currentPasswordLogin)
+    assert.isTrue(Number.isFinite(Date.parse(impact.checkedAt)))
   })
 
   test('retirement inventory follows configured string IDs and user table', async ({ assert }) => {
@@ -214,6 +332,71 @@ test.group('authentication retirement impact', (group) => {
       )
     } finally {
       await kit.db.connection().schema.dropTable('retirement_identities')
+    }
+  })
+
+  test('Lucid retirement inventory follows model visibility and fails closed on a missing visible user', async ({
+    assert,
+  }) => {
+    const schema = kit.db.connection().schema
+    await schema.dropTableIfExists('retirement_soft_users')
+    try {
+      await schema.createTable('retirement_soft_users', (table) => {
+        table.increments('id')
+        table.string('email').notNullable().unique()
+        table.string('password').nullable()
+        table.string('unverified_email').nullable()
+        table.timestamp('email_verified_at').nullable()
+        table.timestamp('created_at').notNullable()
+        table.timestamp('deleted_at').nullable()
+      })
+      const visible = await RetirementSoftDeletingUser.create({
+        email: 'visible@example.test',
+        password: 'password123',
+        unverifiedEmail: null,
+        emailVerifiedAt: null,
+      })
+      const retained = await RetirementSoftDeletingUser.create({
+        email: 'retained@example.test',
+        password: 'password123',
+        unverifiedEmail: null,
+        emailVerifiedAt: null,
+      })
+      const retainedModel = await RetirementSoftDeletingUser.findOrFail(retained.id)
+      await retainedModel.delete()
+      const users = createLucidAdapter(async () => RetirementSoftDeletingUser)
+      const makeInventory = (adapter: typeof users = users) =>
+        makeService(kit, {
+          users: adapter,
+          authentication: { strategy: 'session', guard: 'web' },
+        }).account
+
+      const beforeRestore = await makeInventory().authentication.retirementImpact({
+        passwordLogin: false,
+      })
+      assert.equal(beforeRestore.inspectedAccounts, 1)
+      assert.equal(beforeRestore.affectedAccounts, 1)
+      assert.deepEqual(await users.listVisibleIds!(undefined, 500), [visible.id])
+
+      const unresolved = createLucidAdapter(async () => RetirementSoftDeletingUser)
+      unresolved.listVisibleIds = async () => [retained.id]
+      await assert.rejects(
+        () => makeInventory(unresolved).authentication.retirementImpact({ passwordLogin: false }),
+        /could not resolve an inventoried user/
+      )
+
+      const toRestore = await RetirementSoftDeletingUser.withTrashed()
+        .where('id', retained.id)
+        .firstOrFail()
+      await toRestore.restore()
+      const afterRestore = await makeInventory().authentication.retirementImpact({
+        passwordLogin: false,
+      })
+      assert.equal(afterRestore.inspectedAccounts, 2)
+      assert.equal(afterRestore.affectedAccounts, 2)
+      assert.deepEqual(await users.listVisibleIds!(undefined, 500), [visible.id, retained.id])
+    } finally {
+      await schema.dropTableIfExists('retirement_soft_users')
     }
   })
 })

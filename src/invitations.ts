@@ -57,16 +57,35 @@ export async function acceptInvitation(
   try {
     ;({ value: result, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
+        const tokenHash = hashToken(input.token)
+        const candidate = await trx
+          .from('account_invitations')
+          .where('token_hash', tokenHash)
+          .where('expires_at', '>', sqlTimestamp(trx))
+          .select('email')
+          .first()
+        if (!candidate) throw new InvalidTokenError()
+        if (await deps.config.users.findByEmail(candidate.email, trx))
+          throw new EmailAlreadyRegisteredError()
+        // Claim the unique user email before consuming invitation rows, matching automatic
+        // invitation acceptance during social signup. A failed proof recheck rolls this back.
+        const user = await deps.config.users.create(
+          {
+            email: candidate.email,
+            unverifiedEmail: null,
+            ...passwordAttributes(password),
+            registrationData,
+          },
+          trx
+        )
         const now = DateTime.utc()
         const row = await consumeToken<InvitationDatabaseRow>(
           trx,
           'account_invitations',
-          hashToken(input.token),
+          tokenHash,
           sqlTimestamp(trx, now)
         )
-        if (!row) throw new InvalidTokenError()
-        if (await deps.config.users.findByEmail(row.email, trx))
-          throw new EmailAlreadyRegisteredError()
+        if (!row || row.email !== candidate.email) throw new InvalidTokenError()
         // The other scopes' pending invitations for the address join the same acceptance.
         const others = await consumeRows<InvitationDatabaseRow>(
           trx,
@@ -75,15 +94,6 @@ export async function acceptInvitation(
           sqlTimestamp(trx, now)
         )
 
-        const user = await deps.config.users.create(
-          {
-            email: row.email,
-            unverifiedEmail: null,
-            ...passwordAttributes(password),
-            registrationData,
-          },
-          trx
-        )
         await deps.config.users.markEmailVerified(user.id, now, trx)
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
@@ -94,8 +104,15 @@ export async function acceptInvitation(
       })
     ))
   } catch (error) {
-    if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
+    if (
+      error instanceof EmailAlreadyRegisteredError ||
+      (await isUserEmailUniqueViolation(error, deps.config, deps.db))
+    ) {
+      // Recheck after rollback: another acceptance consumes all scopes, while plain signup
+      // leaves a still-live invitation and keeps the existing registered-address refusal.
+      if (!(await inspectInvitation(deps.db, { token: input.token }))) throw new InvalidTokenError()
       throw new EmailAlreadyRegisteredError()
+    }
     throw error
   }
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>

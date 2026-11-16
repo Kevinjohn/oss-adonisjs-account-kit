@@ -9,11 +9,15 @@ import {
   SocialIdentityAlreadyLinkedError,
   SocialTransactionError,
 } from './errors.js'
-import { sendVerification } from './verification.js'
+import { sendSocialActivation } from './social_activation.js'
 import { consumeState, isIdentityConflict } from './social_callback.js'
 import { checkedProfile, createAccount } from './social_account_creation.js'
-import { enabledProviders, type Dependencies } from './social_shared.js'
-import type { SocialCallbackResult, SocialProviderName, Trx, UserId } from './types.js'
+import {
+  enabledProviders,
+  type Dependencies,
+  type SocialTransactionResult,
+} from './social_shared.js'
+import type { SocialCallbackResult, SocialProviderName, Trx } from './types.js'
 
 export async function completeRegistration(
   deps: Dependencies,
@@ -27,12 +31,10 @@ export async function completeRegistration(
     ) => Promise<void>
   }
 ): Promise<SocialCallbackResult> {
-  let unverified: UserId | undefined
-  let accepted: { invitationIds: number[]; userId: UserId } | undefined
-  let settled: Awaited<ReturnType<typeof settleCommitted<SocialCallbackResult>>>
+  let settled: Awaited<ReturnType<typeof settleCommitted<SocialTransactionResult>>>
   try {
     settled = await settleCommitted(
-      transaction(deps.db, async (trx): Promise<SocialCallbackResult> => {
+      transaction(deps.db, async (trx): Promise<SocialTransactionResult> => {
         const state = await consumeState(trx, input.continuation)
         if (state.intent !== 'registration' || !state.provider_user_id)
           throw new SocialTransactionError()
@@ -49,7 +51,7 @@ export async function completeRegistration(
           avatarUrl: state.avatar_url,
         })
         if (await deps.config.users.findByEmail(profile.email!, trx))
-          return { status: 'link_required' }
+          return { result: { status: 'link_required' } }
         const created = await createAccount(
           deps,
           trx,
@@ -58,22 +60,30 @@ export async function completeRegistration(
           input.registrationData,
           input.admit
         )
-        if (created.invitationIds.length > 0)
-          accepted = { invitationIds: created.invitationIds, userId: created.user.id }
+        const accepted =
+          created.invitationIds.length > 0
+            ? { invitationIds: created.invitationIds, userId: created.user.id }
+            : undefined
         if (!profile.emailVerified) {
-          unverified = created.user.id
-          return { status: 'new' as const, emailVerificationRequired: true as const }
+          return {
+            result: { status: 'new', emailVerificationRequired: true },
+            unverified: created.user.id,
+            accepted,
+          }
         }
         return {
-          status: 'new' as const,
-          userId: created.user.id,
-          handoffCode: await createHandoff(
-            trx,
-            deps.config,
-            created.user.id,
-            created.relation.id,
-            state.client_challenge
-          ),
+          accepted,
+          result: {
+            status: 'new',
+            userId: created.user.id,
+            handoffCode: await createHandoff(
+              trx,
+              deps.config,
+              created.user.id,
+              created.relation.id,
+              state.client_challenge
+            ),
+          },
         }
       })
     )
@@ -83,6 +93,7 @@ export async function completeRegistration(
       return { status: 'link_required' }
     throw error
   }
+  const { result, unverified, accepted } = settled.value
   await finishCommitted(
     settled.fault,
     'Social registration committed but follow-up failed',
@@ -93,9 +104,9 @@ export async function completeRegistration(
           invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
-        await sendVerification(deps, { userId: unverified })
+        await sendSocialActivation(deps, unverified)
       }
     }
   )
-  return settled.value
+  return result
 }

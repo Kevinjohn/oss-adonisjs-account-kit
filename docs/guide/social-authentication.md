@@ -60,6 +60,12 @@ Set `notify.socialIdentityLinked` and `notify.socialIdentityUnlinked`, or use th
   a confirmed email address at the time of the change.
 - Delivery failures surface after commit; callers must not repeat the relationship operation in
   response.
+- If signup commits but activation lookup or proof issuance fails, `PostCommitError` retains the
+  original cause. Delivery failures keep `DeliveryError`. The account exists and the signup state
+  is consumed; recover by requesting activation again instead of repeating signup.
+- When SQLite retries a rolled-back signup attempt, activation delivery and invitation-acceptance
+  events come only from the attempt that commits. An eventual `link_required` outcome does not
+  deliver activation or emit acceptance events from an earlier attempt.
 
 The selected guard's revision or token check applies to authenticated linking, listing, unlinking,
 and sensitive proof operations.
@@ -140,7 +146,9 @@ For the service contract and other address-confirmation paths, see
   It runs after the proof and duplicate-identity checks, inside the link transaction and under the
   user lock, and receives the locked, authenticated user but no transaction. Throw
   `SocialLinkRefusedError` to refuse: the link is rolled back, no notice is sent, and the proof and
-  state can be used again. Any other error also rolls back and reaches the caller unchanged.
+  state can be used again. Other errors also roll back; only an exact provider/subject uniqueness
+  violation becomes `SocialIdentityAlreadyLinkedError`. Errors naming overlapping constraints or
+  columns reach the caller unchanged.
 - `acceptLink` must decide from its arguments only. A database read can wait on SQLite's single
   pool connection, and the callback may run more than once on a SQLite retry, so it must not write
   or make remote side effects. It is not called for login, registration, confirmation or reauth.
