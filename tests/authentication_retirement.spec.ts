@@ -43,6 +43,82 @@ test.group('authentication retirement impact', (group) => {
     assert.equal(withProviderInventory.affectedAccounts, 1)
   })
 
+  test('setup can skip account reads when live authentication methods are all retained', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'retained@example.test' })
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    const findById = users.findById.bind(users)
+    let lookups = 0
+    users.findById = async (id, trx) => {
+      lookups++
+      return findById(id, trx)
+    }
+    const { account } = makeService(kit, {
+      users,
+      authentication: { strategy: 'session', guard: 'web' },
+      enabled: ['socialAuthentication', 'emailVerification'],
+      socialAuthentication: {
+        providers: {
+          google: {
+            authorizationUrl: async () => 'https://provider.example',
+            resolve: async () => ({ subject: 'g-1', email: null, emailVerified: false }),
+          },
+        },
+      },
+    })
+    const knex = kit.db.connection().getWriteClient()
+    const statements: string[] = []
+    const onQuery = (query: { sql: string }) => statements.push(query.sql)
+    knex.on('query', onQuery)
+    try {
+      const skipped = await account.authentication.retirementImpact({
+        passwordLogin: true,
+        providers: ['google'],
+        onlyWhenRetiring: true,
+      })
+      assert.equal(skipped.inspectedAccounts, 0)
+      assert.equal(skipped.affectedAccounts, 0)
+      assert.equal(skipped.currentPasswordLogin, true)
+      assert.deepEqual(skipped.currentProviders, ['google'])
+      assert.equal(lookups, 0)
+      assert.deepEqual(statements, [])
+
+      const full = await account.authentication.retirementImpact({
+        passwordLogin: true,
+        providers: ['google'],
+      })
+      assert.equal(full.inspectedAccounts, 1)
+      assert.equal(full.affectedAccounts, 0)
+      assert.equal(lookups, 1)
+      assert.isTrue(statements.some((sql) => /select .* from [`"]?users/i.test(sql)))
+    } finally {
+      knex.off('query', onQuery)
+    }
+  })
+
+  test('setup still performs and fails closed on an actual retirement inventory', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'retiring@example.test' })
+    const users = {
+      ...makeUsersAdapter(kit.db, kit.hash),
+      findById: async () => null,
+    }
+    const { account } = makeService(kit, {
+      users,
+      authentication: { strategy: 'session', guard: 'web' },
+    })
+    await assert.rejects(
+      () =>
+        account.authentication.retirementImpact({
+          passwordLogin: false,
+          onlyWhenRetiring: true,
+        }),
+      /could not resolve an inventoried user/
+    )
+  })
+
   test('provider retirement counts only accounts losing their last confirmed usable method', async ({
     assert,
   }) => {
@@ -142,6 +218,17 @@ test.group('authentication retirement impact', (group) => {
     )
     assert.isNull(retainPassword.failure)
     assert.equal(retainPassword.impact?.affectedAccounts, 0)
+
+    const skipped = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [
+      '--quiet',
+      '--keep-password-login',
+      '--only-when-retiring',
+    ])
+    assert.isNull(skipped.failure)
+    assert.equal(skipped.impact?.inspectedAccounts, 0)
+    assert.equal(skipped.impact?.affectedAccounts, 0)
+    assert.equal(skipped.impact?.currentPasswordLogin, true)
+    assert.deepEqual(skipped.impact?.currentProviders, [])
   })
 
   test('retirement inventory follows configured string IDs and user table', async ({ assert }) => {

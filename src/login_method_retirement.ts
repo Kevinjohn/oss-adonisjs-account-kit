@@ -9,6 +9,7 @@ export async function retirementImpact(
   input: {
     passwordLogin: boolean
     providers?: readonly SocialProviderName[]
+    onlyWhenRetiring?: boolean
   }
 ): Promise<{
   inspectedAccounts: number
@@ -19,6 +20,8 @@ export async function retirementImpact(
 }> {
   if (typeof input.passwordLogin !== 'boolean')
     throw new Error('Remaining password-login policy must be selected explicitly')
+  if (input.onlyWhenRetiring !== undefined && typeof input.onlyWhenRetiring !== 'boolean')
+    throw new Error('Retirement-only inventory option must be a boolean')
   if (
     input.providers &&
     (new Set(input.providers).size !== input.providers.length ||
@@ -31,6 +34,18 @@ export async function retirementImpact(
       : []
   )
   const remainingProviders = input.providers ?? [...currentProviders]
+  if (
+    input.onlyWhenRetiring &&
+    input.passwordLogin &&
+    [...currentProviders].every((provider) => remainingProviders.includes(provider))
+  )
+    return {
+      inspectedAccounts: 0,
+      affectedAccounts: 0,
+      checkedAt: new Date().toISOString(),
+      currentProviders: [...currentProviders],
+      currentPasswordLogin: true,
+    }
   const { table } = await userMetadata(deps.config)
   let inspectedAccounts = 0
   let affectedAccounts = 0

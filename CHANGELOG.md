@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Setup skips per-account login-retirement inventory when the live authentication configuration
+  shows that every currently enabled method will remain. Its zero inspected/affected counts mean
+  no accounts were scanned; actual retirement requests still require a full inventory, and the
+  standalone retirement-impact command continues to count every account.
 - `node ace account-kit:setup --apply` that fails after writing some files now names the files
   already written and says a rerun continues from there. Before, it printed only the underlying
   error. A failure before any file is written reports the same error as before.

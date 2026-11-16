@@ -21,6 +21,11 @@ export default class RetirementImpact extends BaseCommand {
   @flags.boolean({ description: 'Return the structured result without printing it' })
   declare quiet: boolean
 
+  @flags.boolean({
+    description: 'With --quiet, skip account enumeration when no current method is being retired',
+  })
+  declare onlyWhenRetiring: boolean
+
   @flags.boolean({ description: 'Password login remains enabled after this change' })
   declare keepPasswordLogin: boolean
 
@@ -36,6 +41,7 @@ export default class RetirementImpact extends BaseCommand {
       this.impact = await kit.authentication.retirementImpact({
         passwordLogin: this.keepPasswordLogin === true,
         providers: parseProviders(this.providers),
+        ...(this.quiet && this.onlyWhenRetiring ? { onlyWhenRetiring: true } : {}),
       })
       if (!this.quiet) this.logger.log(JSON.stringify(this.impact))
     } catch {
