@@ -108,8 +108,14 @@ With `registerManagedRoutes`, add `sessionManagement` to `enabled`:
 At login the package generates a random handle. The guard keeps it in the server-side session;
 the `account_sessions` table stores only its SHA-256 hash, with the label and timestamps. On every
 protected request, `current` looks up the handle for the signed-in user. A missing, foreign or
-expired handle is rejected as an invalid session. An accepted request extends `last_seen_at` and
-`expires_at` at most once every five minutes, after all access checks pass.
+expired handle is rejected as an invalid session. Once `current` accepts the credential, including
+its credential revision and `authentication.canAccess` checks, it extends `last_seen_at` and
+`expires_at` at most once every five minutes. A rejected credential does not refresh activity.
+
+Later account gates are separate: `authentication.requireActive` can reject an unverified account,
+and `admission.require` can deny admission, after the credential’s activity refresh has committed.
+Those denials can therefore extend idle lifetime. This lets a valid sign-in remain usable on a
+limited surface while the account awaits email verification or admission.
 
 Revoking deletes the row. The browser that held it is rejected on its next request.
 
