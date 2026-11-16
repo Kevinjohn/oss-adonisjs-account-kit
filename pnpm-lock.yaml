@@ -48,8 +48,8 @@ importers:
         specifier: ^5.3.0
         version: 5.4.0
       '@kevinjohn/adonisjs-lucid-soft-delete':
-        specifier: https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.1.7/kevinjohn-adonisjs-lucid-soft-delete-0.1.7.tgz
-        version: https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.1.7/kevinjohn-adonisjs-lucid-soft-delete-0.1.7.tgz(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(mysql2@3.24.6(@types/node@24.19.2))(pg@8.23.1)(supports-color@10.2.2))(luxon@3.7.2)(typescript@5.9.3)
+        specifier: https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.2.0/kevinjohn-adonisjs-lucid-soft-delete-0.2.0.tgz
+        version: https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.2.0/kevinjohn-adonisjs-lucid-soft-delete-0.2.0.tgz(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(mysql2@3.24.6(@types/node@24.19.2))(pg@8.23.1)(supports-color@10.2.2))(luxon@3.7.2)(typescript@5.9.3)
       '@poppinss/ts-exec':
         specifier: ^1.5.1
         version: 1.5.1
@@ -874,9 +874,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@kevinjohn/adonisjs-lucid-soft-delete@https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.1.7/kevinjohn-adonisjs-lucid-soft-delete-0.1.7.tgz':
-    resolution: {integrity: sha512-/QLUd6PUfxZeHDVm7fI/ODYZ17qsratMuf0yCecmYFX/IUO3ox4Al06f2rP2x/l9N+BXbo3qkt55vRBicpnKjg==, tarball: https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.1.7/kevinjohn-adonisjs-lucid-soft-delete-0.1.7.tgz}
-    version: 0.1.7
+  '@kevinjohn/adonisjs-lucid-soft-delete@https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.2.0/kevinjohn-adonisjs-lucid-soft-delete-0.2.0.tgz':
+    resolution: {integrity: sha512-tQqoBgt1KF6O4DhZR5HncuNG3CXWbaBXvck2lTRE29112wK157sJCWyJAXcL4Gb5hdYuowmpRTnHzfepM1Bhmg==, tarball: https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.2.0/kevinjohn-adonisjs-lucid-soft-delete-0.2.0.tgz}
+    version: 0.2.0
     engines: {node: '>=24.0.0'}
     peerDependencies:
       '@adonisjs/core': ^7.0.0
@@ -4788,7 +4788,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@kevinjohn/adonisjs-lucid-soft-delete@https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.1.7/kevinjohn-adonisjs-lucid-soft-delete-0.1.7.tgz(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(mysql2@3.24.6(@types/node@24.19.2))(pg@8.23.1)(supports-color@10.2.2))(luxon@3.7.2)(typescript@5.9.3)':
+  '@kevinjohn/adonisjs-lucid-soft-delete@https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.2.0/kevinjohn-adonisjs-lucid-soft-delete-0.2.0.tgz(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@adonisjs/lucid@22.4.2(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(mysql2@3.24.6(@types/node@24.19.2))(pg@8.23.1)(supports-color@10.2.2))(luxon@3.7.2)(typescript@5.9.3)':
     dependencies:
       '@adonisjs/core': 7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1)
       '@adonisjs/lucid': 22.4.2(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@adonisjs/core@7.6.0(@adonisjs/assembler@8.6.0(typescript@5.9.3))(@vinejs/vine@4.4.0)(supports-color@10.2.2)(youch@4.1.1))(@vinejs/vine@4.4.0)(better-sqlite3@13.0.3)(luxon@3.7.2)(mysql2@3.24.6(@types/node@24.19.2))(pg@8.23.1)(supports-color@10.2.2)
