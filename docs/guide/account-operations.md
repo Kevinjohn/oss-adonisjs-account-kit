@@ -57,7 +57,8 @@ that link with a new password.
 ### Profile updates write only configured account fields
 
 `emailPasswordManagement.updateProfile({ actorId, currentPassword, email?, registrationData?, keepCurrent? })`
-uses the current password as identity proof. The email follows the same pending-address branches
+requires identity proof even when only `registrationData` changes. Supply `currentPassword`, or
+a purpose-bound `recentProof` for a social-only account. The email follows the same pending-address branches
 as `requestEmailChange`, while `registrationData` passes through the configured field mapper
 before the adapter. Both writes occur under one account lock and transaction; a failure in
 either rolls back both. The returned account is reloaded after those writes. Transform it to
