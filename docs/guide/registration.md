@@ -11,6 +11,13 @@ Choose `open`, `closed`, or `application`. `open` is the recommended public defa
 checks. The package does not install a public registration route. Enable `emailVerification` and configure
 `urls.emailVerification` and `notify.accountActivationProvision` to deliver activation proofs.
 
+Enabling `registration` without `emailVerification` is supported when the application owns
+activation. `registration.register` still creates an inactive account, stores an activation proof,
+and calls `notify.accountActivationProvision`, but the `emailVerification` service group remains
+disabled. Account Kit cannot inspect, resend or complete that proof in this configuration. The host
+must provide a separate activation path before granting active access. Enable `emailVerification`
+when users should complete the activation link through Account Kit.
+
 Keep request validation and field-error responses in the application's HTTP layer. For example, the
 API example validates `email` and `password` plus an optional `fullName` with its signup validator before calling
 `registration.register`. Return those validation failures through the app's normal validation path;
