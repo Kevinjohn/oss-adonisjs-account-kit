@@ -37,6 +37,7 @@ test.group('authentication contract', (group) => {
           calls++
           assert.equal(actor.id, user.id)
           assert.equal(context.operation, 'access_restriction')
+          assert.strictEqual(context.userId, actor.id)
           const row = await kit.db.from('users').where('id', user.id).first()
           assert.isNotNull(row.disabled_at)
           assert.isNotNull(row.credentials_changed_at)
@@ -45,7 +46,7 @@ test.group('authentication contract', (group) => {
       })
       const change = () =>
         account.authentication.changeRestriction({
-          userId: user.id,
+          userId: String(user.id),
           change: async (_actor, trx) => {
             await trx
               .from('users')

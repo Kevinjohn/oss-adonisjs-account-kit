@@ -303,26 +303,27 @@ export function authenticationService(deps: ServiceDependencies) {
       change: (user: AccountUser, trx: Trx) => Promise<void>
     }): Promise<void> {
       requireAuthentication(deps.config)
-      const context = {
-        operation: 'access_restriction' as const,
-        operationId: randomUUID(),
-        userId: input.userId,
-      }
-      const { value: user, fault } = await settleCommitted(
+      const operationId = randomUUID()
+      const { value: changed, fault } = await settleCommitted(
         transaction(deps.db, async (trx) => {
           await lockUser(trx, deps.config, input.userId)
           const current = await deps.config.users.findById(input.userId, trx)
           if (!current) throw new InvalidCredentialsError()
+          const context = {
+            operation: 'access_restriction' as const,
+            operationId,
+            userId: current.id,
+          }
           await input.change(current, trx)
           await credentialsChanged(trx, deps.config, current, context)
-          return current
+          return { user: current, context }
         })
       )
       await finishCommitted(fault, 'Access restriction committed but follow-ups failed', () =>
         postCommit('Access restriction follow-up failed', [
           {
             kind: 'observer',
-            run: () => deps.config.onCredentialsChanged?.(user, context),
+            run: () => deps.config.onCredentialsChanged?.(changed.user, changed.context),
           },
         ])
       )
