@@ -194,6 +194,32 @@ test.group('registration', (group) => {
     assert.equal(user.email, 'approved@example.test')
   })
 
+  test('registration-only leaves activation completion to the host', async ({ assert }) => {
+    const service = makeService(kit, {
+      enabled: ['registration'],
+      registration: { availability: 'open' },
+    })
+    const user = await service.account.registration.register({
+      email: 'host-owned@example.test',
+      password: 'password123',
+    })
+    const proof = await kit.db
+      .from('email_verification_tokens')
+      .where('tokenable_id', user.id)
+      .first()
+    assert.equal(user.unverifiedEmail, user.email)
+    assert.isNotNull(proof)
+    assert.lengthOf(service.recorder.calls, 1)
+    const notification = service.recorder.calls[0]
+    assert.equal(notification.method, 'accountActivationProvision')
+    assert.isString(notification.args[1])
+    const token = tokenFrom(notification.args[1])
+    await assert.rejects(
+      () => service.account.emailVerification.complete({ token, password: 'password123' }),
+      CapabilityDisabledError
+    )
+  })
+
   test('rolls back account creation when its transaction fails', async ({ assert }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const service = makeService(kit, {
