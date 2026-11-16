@@ -140,7 +140,9 @@ For the service contract and other address-confirmation paths, see
   It runs after the proof and duplicate-identity checks, inside the link transaction and under the
   user lock, and receives the locked, authenticated user but no transaction. Throw
   `SocialLinkRefusedError` to refuse: the link is rolled back, no notice is sent, and the proof and
-  state can be used again. Any other error also rolls back and reaches the caller unchanged.
+  state can be used again. Other errors also roll back; only an exact provider/subject uniqueness
+  violation becomes `SocialIdentityAlreadyLinkedError`. Errors naming overlapping constraints or
+  columns reach the caller unchanged.
 - `acceptLink` must decide from its arguments only. A database read can wait on SQLite's single
   pool connection, and the callback may run more than once on a SQLite retry, so it must not write
   or make remote side effects. It is not called for login, registration, confirmation or reauth.

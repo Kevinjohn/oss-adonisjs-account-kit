@@ -108,6 +108,30 @@ test.group('social link acceptance', (group) => {
     assert.isFalse(recorder.calls.some((call) => call.method === 'socialIdentityLinked'))
   })
 
+  test('an overlapping SQLite constraint error from acceptLink surfaces unchanged', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const failure = Object.assign(new Error('Application constraint failed'), {
+      code: 'SQLITE_CONSTRAINT_UNIQUE',
+      message:
+        'UNIQUE constraint failed: social_identities.provider, social_identities.provider_user_id_extra',
+    })
+    let fail = true
+    const { account, recorder } = linkService(async () => {
+      if (fail) throw failure
+    })
+    const { proof, state } = await beginLink(account, user.id)
+    const input = { state, callback: {}, current: current(user.id), proof }
+    const thrown = await account.socialAuthentication.callback(input).catch((error) => error)
+    assert.strictEqual(thrown, failure)
+    assert.lengthOf(await kit.db.from('social_identities'), 0)
+    assert.isFalse(recorder.calls.some((call) => call.method === 'socialIdentityLinked'))
+    fail = false
+    const linked = await account.socialAuthentication.callback(input)
+    assert.equal(linked.status, 'linked')
+  })
+
   test('acceptLink is not called when the proof or the duplicate check fails', async ({
     assert,
   }) => {
