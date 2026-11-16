@@ -40,6 +40,8 @@
 
 ### Fixed
 
+- Package preparation now skips compilation only after both compilation and template copying have
+  completed, so a partial build is retried on the next install.
 - `socialAuthentication.provePassword` (the managed `account.socialProof.password` route) spends
   the account's `identity:user` budget before checking the password, as password change, profile
   changes, export and deletion already do. Repeated attempts now end in `ThrottledError`.
