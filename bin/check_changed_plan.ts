@@ -26,8 +26,8 @@ const outsideJapa =
 
 const minute = 60_000
 
-/** The two change shapes `bin/classify_changed.mjs` gives a focused run; anything else is full. */
-export type Classification = 'starter-pin-only' | 'root-readme-only' | 'full'
+/** The root README can run its readers alone; anything else is full. */
+export type Classification = 'root-readme-only' | 'full'
 /** Specs that read the root README (through tracked Markdown globs). */
 export const readmeSpecs = [
   'tests/docs_links.spec.ts',
@@ -35,14 +35,6 @@ export const readmeSpecs = [
   'tests/docs_source_examples.spec.ts',
   'tests/docs_spec_references.spec.ts',
 ]
-/** Specs that read `.github/workflows/*.yml`. */
-export const workflowSpecs = [
-  'tests/docs_release_checksum.spec.ts',
-  'tests/examples_workflow.spec.ts',
-  'tests/release_workflow.spec.ts',
-  'tests/tooling/check_profiles.spec.ts',
-]
-
 export type CheckStep =
   | { id: string; command: string[]; tests?: 'japa'; timeoutMs: number; skip?: never }
   | { id: string; skip: string; command?: never; tests?: never; timeoutMs?: never }
@@ -180,10 +172,8 @@ export function planChecks(
  * read it. Every other step is skipped and says why.
  */
 function focusedChecks(classification: Exclude<Classification, 'full'>): CheckStep[] {
-  const [file, specs] =
-    classification === 'root-readme-only'
-      ? ['README.md', readmeSpecs]
-      : ['.github/workflows/starter-examples.yml', workflowSpecs]
+  const file = 'README.md'
+  const specs = readmeSpecs
   const skip = `focused run for ${classification}`
   return [
     {

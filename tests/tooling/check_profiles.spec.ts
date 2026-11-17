@@ -60,12 +60,10 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
 
 test('every command check:changed can plan runs a profile script or prettier', ({ assert }) => {
   const covered = new Set(allSteps.map((step) => step.script))
-  const files = ['README.md', '.github/workflows/starter-examples.yml', 'src/index.ts', 'bin/pg.sh']
+  const files = ['README.md', '.github/workflows/release.yml', 'src/index.ts', 'bin/pg.sh']
   const plans = [
     planChecks([{ path: 'README.md', deleted: false }], { classification: 'root-readme-only' }),
-    planChecks([{ path: '.github/workflows/starter-examples.yml', deleted: false }], {
-      classification: 'starter-pin-only',
-    }),
+    planChecks([{ path: '.github/workflows/release.yml', deleted: false }]),
     planChecks(
       files.map((path) => ({ path, deleted: false })),
       { classification: 'full' }

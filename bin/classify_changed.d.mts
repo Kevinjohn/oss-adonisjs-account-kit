@@ -2,12 +2,11 @@
 // run it before `pnpm install`.
 import type { Classification } from './check_changed_plan.js'
 
-export const starterWorkflow: string
 export const rootReadme: string
-export function classify(
-  files: { path: string; status: string }[],
-  readDiff: (path: string) => string
-): { classification: Classification; reason: string }
+export function classify(files: { path: string; status: string }[]): {
+  classification: Classification
+  reason: string
+}
 export function classifyRepository(
   base: string | undefined,
   cwd?: string

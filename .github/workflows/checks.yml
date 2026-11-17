@@ -31,9 +31,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Classifies the change before anything is installed. Two narrow shapes (only the starter
-  # workflow's pinned ref, or only the root README) get the `focused` job; everything else, and
-  # every manual or release run, gets the full `checks` matrix.
+  # Classifies the change before anything is installed. A root README-only change gets the
+  # `focused` job; everything else, and every manual or release run, gets the full `checks` matrix.
   plan:
     # Push and pull request runs start once the repository is public, where hosted minutes are
     # free. Manual and release runs always start.

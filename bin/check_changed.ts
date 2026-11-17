@@ -45,11 +45,8 @@ for (const path of git('ls-files', '-z', '--others', '--exclude-standard')?.spli
 const statuses = [...files.values()].sort((a, b) => a.path.localeCompare(b.path))
 const list = statuses.map((file) => ({ path: file.path, deleted: file.status === 'D' }))
 console.log(`check:changed: ${list.length} files changed since ${base} (${mergeBase.slice(0, 8)})`)
-// A pin-only or root-README-only change runs the checks that read that file and nothing else.
-const { classification, reason } = classify(
-  statuses,
-  (path) => git('diff', '-U0', '--no-renames', mergeBase, '--', path) ?? ''
-)
+// A root-README-only change runs the checks that read that file and nothing else.
+const { classification, reason } = classify(statuses)
 console.log(`classification=${classification} because ${reason}`)
 
 let active: number | undefined
