@@ -124,7 +124,7 @@ This table describes configured CI coverage, not the result of a pending workflo
   starter.
 - [Troubleshooting](docs/guide/troubleshooting.md) and [reference](docs/reference/README.md).
 - [Generated API reference](https://kevinjohn.github.io/oss-adonisjs-account-kit/reference/api/).
-- [Recipes](docs/recipes/index.md).
+- [Account Kit recipes](docs/recipes/index.md) and the [four-package starter cookbook](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/docs/cookbook).
 - [Security model](docs/guide/security.md) and [operations](docs/guide/operations.md), including
   the production checklist.
 - [README-AGENTS.md](README-AGENTS.md): requirements, invariants and the source map for coding

@@ -21,21 +21,13 @@ release when checking a released consumer.
 The example READMEs also describe the local archive workflow for contributors. It builds the
 current checkout and does not establish release-pinned consumer evidence.
 
-## Starter examples
+## Combined starter apps
 
-The API, Hypermedia, Inertia React and Inertia Vue examples feed the
-[starter examples sandbox](https://github.com/Kevinjohn/oss-adonisjs-starter-examples), which
-combines them with our other packages in the official AdonisJS starter kits. The sandbox's
-`config/sandbox.json` lists these folders and the Account Kit release it reads them from. The
-`starter-examples` workflow assembles and tests each combined app with the release commit's package
-and examples; the release workflow calls it, and it can be run by hand. To do the same locally,
-clone the sandbox next to this repository and run, from the repository root:
-
-```sh
-pnpm --dir ../oss-adonisjs-starter-examples assemble --with-local "$PWD" --out "$PWD/../oss-adonisjs-starter-examples/tmp/combined"
-```
-
-The Inertia Vue example is not included yet.
+For applications that combine Account Kit, Masquerade, Access Control and Soft Delete, choose
+one of the [four tagged starter apps](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/apps). The
+[shared cookbook](https://github.com/Kevinjohn/oss-adonisjs-starter-examples/tree/v0.13.0/docs/cookbook)
+uses their tested source. Make combined application and recipe changes in Starter Examples.
+The local fixtures here exercise Account Kit's own consumer, compatibility and recipe contracts.
 
 ## Contributor smoke record
 

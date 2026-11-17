@@ -4,22 +4,18 @@
 import { spawnSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 
-export const starterWorkflow = '.github/workflows/starter-examples.yml'
 export const rootReadme = 'README.md'
-const pinLine = /^[-+]\s*STARTER_EXAMPLES_REF: \S+$/
 
 /**
  * Classify changed files. `files` holds one entry per path with its git status letter (`M`, `A`,
- * `D`, `R`, ... or `?` for an untracked file); `readDiff` returns the `-U0` diff of one path.
+ * `D`, `R`, ... or `?` for an untracked file).
  * @param {{ path: string, status: string }[]} files
- * @param {(path: string) => string} readDiff
- * @returns {{ classification: 'starter-pin-only' | 'root-readme-only' | 'full', reason: string }}
+ * @returns {{ classification: 'root-readme-only' | 'full', reason: string }}
  */
-export function classify(files, readDiff) {
+export function classify(files) {
   if (files.length === 0) return { classification: 'full', reason: 'no changed files' }
   if (files.length > 1) {
-    const other =
-      files.find((file) => ![starterWorkflow, rootReadme].includes(file.path)) ?? files[1]
+    const other = files.find((file) => file.path !== rootReadme) ?? files[1]
     return { classification: 'full', reason: `${other.path} changed too` }
   }
   const [file] = files
@@ -27,23 +23,7 @@ export function classify(files, readDiff) {
     return { classification: 'full', reason: `${file.path} is ${file.status}` }
   if (file.path === rootReadme)
     return { classification: 'root-readme-only', reason: 'only README.md changed' }
-  if (file.path !== starterWorkflow)
-    return { classification: 'full', reason: `${file.path} changed` }
-  const changedLines = readDiff(file.path)
-    .split('\n')
-    .filter((line) => /^[-+]/.test(line) && !/^(?:--- a\/|\+\+\+ b\/)/.test(line))
-  if (changedLines.length === 0) return { classification: 'full', reason: 'unparsable diff' }
-  const offending = changedLines.find((line) => !pinLine.test(line))
-  if (offending)
-    return {
-      classification: 'full',
-      reason: `${file.path} changes more than the pin: ${offending}`,
-    }
-  // One pin line replaced by one pin line: a removed, added or duplicated pin is not a pin change.
-  const removed = changedLines.filter((line) => line.startsWith('-')).length
-  if (changedLines.length !== 2 || removed !== 1)
-    return { classification: 'full', reason: `${file.path} does not replace the pin line once` }
-  return { classification: 'starter-pin-only', reason: 'only the STARTER_EXAMPLES_REF pin changed' }
+  return { classification: 'full', reason: `${file.path} changed` }
 }
 
 /**
@@ -65,7 +45,7 @@ export function classifyRepository(base, cwd = process.cwd()) {
     files.push({ path: changed[index + 1], status: changed[index] })
   for (const path of git('ls-files', '-z', '--others', '--exclude-standard')?.split('\0') ?? [])
     if (path) files.push({ path, status: '?' })
-  return classify(files, (path) => git('diff', '-U0', '--no-renames', mergeBase, '--', path) ?? '')
+  return classify(files)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

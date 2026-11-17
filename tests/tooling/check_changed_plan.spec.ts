@@ -4,13 +4,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import {
-  countTests,
-  planChecks,
-  readmeSpecs,
-  stepProblem,
-  workflowSpecs,
-} from '../../bin/check_changed_plan.js'
+import { countTests, planChecks, readmeSpecs, stepProblem } from '../../bin/check_changed_plan.js'
 
 test.group('check_changed_plan.spec', (group) => {
   group.each.timeout(60_000)
@@ -190,47 +184,33 @@ test.group('check_changed_plan.spec', (group) => {
     assert.ok(plan('src/index.ts')['pg-service'].skip)
   })
 
-  test('a focused classification runs the one file and the specs that read it', () => {
-    const focused = (classification: 'starter-pin-only' | 'root-readme-only', path: string) =>
+  test('a README-only classification runs its formatting and reader specs', () => {
+    const focused = (path: string) =>
       Object.fromEntries(
-        planChecks([{ path, deleted: false }], { classification }).map((step) => [step.id, step])
+        planChecks([{ path, deleted: false }], { classification: 'root-readme-only' }).map(
+          (step) => [step.id, step]
+        )
       )
-    const pin = focused('starter-pin-only', '.github/workflows/starter-examples.yml')
-    assert.deepEqual(pin.format.command, [
-      'pnpm',
-      'exec',
-      'prettier',
-      '--check',
-      '--',
-      '.github/workflows/starter-examples.yml',
-    ])
-    assert.deepEqual(pin.tests.command, [
-      'pnpm',
-      'quick:test',
-      ...workflowSpecs.map((spec) => `--files=${spec}`),
-    ])
-    assert.equal(pin.tests.tests, 'japa')
-    const readme = focused('root-readme-only', 'README.md')
+    const readme = focused('README.md')
     assert.deepEqual(readme.format.command!.slice(-2), ['--', 'README.md'])
     assert.deepEqual(readme.tests.command, [
       'pnpm',
       'quick:test',
       ...readmeSpecs.map((spec) => `--files=${spec}`),
     ])
-    for (const steps of [pin, readme])
-      for (const id of ['lint', 'typecheck', 'build', 'built-exports', 'built-setup', 'docs'])
-        assert.match(steps[id].skip!, /^focused run for /, id)
-    // The full classification plans as before, including the full suite for these files.
-    for (const path of ['README.md', '.github/workflows/starter-examples.yml'])
+    for (const id of ['lint', 'typecheck', 'build', 'built-exports', 'built-setup', 'docs'])
+      assert.match(readme[id].skip!, /^focused run for /, id)
+    // All other classifications plan as before, including the full suite for workflows.
+    for (const path of ['README.md', '.github/workflows/release.yml'])
       assert.deepEqual(
         planChecks([{ path, deleted: false }], { classification: 'full' }),
         planChecks([{ path, deleted: false }])
       )
   })
 
-  // A new spec that reads the root README or a workflow must join the focused list, or a
-  // focused run would skip it. The planner's own specs name workflow paths as inputs only.
-  test('the focused spec lists are the specs that read the README and the workflows', () => {
+  // A new spec that reads the root README must join its focused list. Workflow changes use the
+  // full suite, so their readers need no separate list.
+  test('the focused spec list contains every spec that reads the root README', () => {
     const root = join(import.meta.dirname, '..', '..')
     const specs = execFileSync('git', ['ls-files', '-z', '--', ':(glob)tests/**/*.spec.ts'], {
       cwd: root,
@@ -245,7 +225,6 @@ test.group('check_changed_plan.spec', (group) => {
     const readsRootReadme =
       /trackedMarkdown\(\[[^\]]*'\*{1,2}(?:\/\*)?\.md'|(?:repoRoot|root), 'README\.md'\)|new URL\('(?:\.\.\/)+README\.md'/
     assert.deepEqual(reading(readsRootReadme), [...readmeSpecs].sort())
-    assert.deepEqual(reading(/\.github\/workflows/), [...workflowSpecs].sort())
   })
 
   test('counts the tests each runner reported', () => {
