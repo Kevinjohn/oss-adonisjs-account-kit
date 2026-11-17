@@ -18,6 +18,7 @@ import {
   collectServiceOnlyEvidence,
   generateServiceSource,
   optionalBackendIntegrations,
+  serviceOnlyManifest,
 } from '../../bin/helpers/consumer/service_only.js'
 
 const root = join(import.meta.dirname, '../..')
@@ -40,6 +41,18 @@ function appFixture(driver = 'better-sqlite3') {
   }
   return appRoot
 }
+
+test('service-only consumers inherit the API example range for their selected driver', async () => {
+  const { dependencies } = JSON.parse(readFileSync(join(root, 'examples/api/package.json'), 'utf8'))
+  for (const [database, driver, excluded] of [
+    ['sqlite', 'better-sqlite3', 'pg'],
+    ['postgres', 'pg', 'better-sqlite3'],
+  ]) {
+    const manifest = await serviceOnlyManifest('candidate.tgz', database)
+    assert.equal(manifest.dependencies[driver], dependencies[driver])
+    assert.equal(excluded in manifest.dependencies, false)
+  }
+})
 
 test('generated service source parses for SQLite and PostgreSQL', ({ assert: japaAssert }) => {
   for (const database of ['sqlite', 'postgres'] as const) {

@@ -14,7 +14,7 @@
     "@adonisjs/limiter": "^3.0.0",
     "@adonisjs/lucid": "^22.4.2",
     "@vinejs/vine": "^4.0.0",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "luxon": "^3.0.0",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2"

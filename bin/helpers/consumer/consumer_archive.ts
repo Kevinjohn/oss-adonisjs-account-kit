@@ -28,7 +28,6 @@ function setCompatibilityVersions(manifest: {
   const { '@adonisjs/assembler': assembler, ...runtimeVersions } = versions
   Object.assign(manifest.dependencies, runtimeVersions)
   manifest.devDependencies['@adonisjs/assembler'] = assembler
-  manifest.dependencies['better-sqlite3'] = '^12.11.1'
   manifest.dependencies.pg = '^8.23.1'
 }
 

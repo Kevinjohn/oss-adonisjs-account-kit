@@ -4,7 +4,7 @@ import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { databaseEnvironment } from './consumer_app.js'
 import { run } from './harness.js'
-import { database, runRoot } from './settings.js'
+import { database, fixtureRoot, runRoot } from './settings.js'
 
 export const optionalBackendIntegrations = [
   '@adonisjs/auth',
@@ -210,11 +210,10 @@ ${
 `
 }
 
-export async function runServiceOnly(candidate: string, runName: string) {
-  const appRoot = join(await runRoot(), runName)
-  const serviceEvidencePath = join(appRoot, 'service-evidence.json')
-  await mkdir(appRoot)
-  const manifest = {
+export async function serviceOnlyManifest(candidate: string, selectedDatabase: string) {
+  const apiManifest = JSON.parse(await readFile(join(fixtureRoot, 'package.json'), 'utf8'))
+  const driver = selectedDatabase === 'sqlite' ? 'better-sqlite3' : 'pg'
+  return {
     name: 'account-kit-service-only-consumer',
     private: true,
     type: 'module',
@@ -224,8 +223,7 @@ export async function runServiceOnly(candidate: string, runName: string) {
       '@adonisjs/limiter': '^3.0.0',
       '@kevinjohn/adonisjs-account-kit': `file:${resolve(candidate)}`,
       'luxon': '^3.0.0',
-      [database === 'sqlite' ? 'better-sqlite3' : 'pg']:
-        database === 'sqlite' ? '^12.11.1' : '^8.23.1',
+      [driver]: apiManifest.dependencies[driver],
     },
     scripts: { build: 'tsc', start: 'node build/service.js' },
     devDependencies: {
@@ -241,6 +239,13 @@ export async function runServiceOnly(candidate: string, runName: string) {
       'typescript': '~6.0.3',
     },
   }
+}
+
+export async function runServiceOnly(candidate: string, runName: string) {
+  const appRoot = join(await runRoot(), runName)
+  const serviceEvidencePath = join(appRoot, 'service-evidence.json')
+  await mkdir(appRoot)
+  const manifest = await serviceOnlyManifest(candidate, database)
   await writeFile(join(appRoot, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   await writeFile(join(appRoot, 'pnpm-workspace.yaml'), 'allowBuilds:\n  better-sqlite3: true\n')
   await writeFile(
