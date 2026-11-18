@@ -43,10 +43,9 @@ function pathTokens(path: string, matchers: ExistingRoute['matchers'] = {}): Rou
 }
 
 function overlapsSegment(left: RoutePatternToken, right: RoutePatternToken): boolean {
+  // Each candidate starts at index zero without changing the router's matcher state.
   const accepts = (token: RoutePatternToken, value: string) =>
-    value.endsWith(token.end) &&
-    (!token.matcher ||
-      new RegExp(token.matcher.source, token.matcher.flags.replace(/[gy]/g, '')).test(value))
+    value.endsWith(token.end) && (!token.matcher || new RegExp(token.matcher).test(value))
   if (left.type === 0 && right.type === 0) return left.val === right.val
   if (left.type === 0) return accepts(right, left.val)
   if (right.type === 0) return accepts(left, right.val)

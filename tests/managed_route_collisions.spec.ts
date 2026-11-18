@@ -173,6 +173,8 @@ test.group('managed route plan', () => {
       const cases = [
         { pattern: '/auth/:id', matcher: /^[0-9]+$/, intersects: false },
         { pattern: '/auth/:id', matcher: /^login$/, intersects: true },
+        { pattern: '/auth/:id', matcher: /in$/y, intersects: false },
+        { pattern: '/auth/:id', matcher: /login$/y, intersects: true },
         { pattern: '/auth/:action-name', matcher: /^\d+$/, intersects: false },
         { pattern: '/auth/:action-name', matcher: /^login$/, intersects: true },
         { pattern: '/auth/login/:tail.json?', intersects: false },
