@@ -42,10 +42,22 @@ function pathTokens(path: string, matchers: ExistingRoute['matchers'] = {}): Rou
     })
 }
 
+// Recognize a standalone lookahead without nested groups or character classes. It consumes no
+// input, so a sticky matcher in this subset cannot advance from its initial index.
+const simpleLookahead = /^\(\?[=!](?:\\.|[^\\()[\]])*\)$/
+
+function matcherAccepts(matcher: RegExp, value: string): boolean {
+  // Adonis can reuse a matcher across requests. Keep the conservative overlap check when a
+  // sticky matcher may start at an index left by an earlier match.
+  const mayStartLater =
+    matcher.sticky && (matcher.lastIndex !== 0 || !simpleLookahead.test(matcher.source))
+  const flags = mayStartLater ? matcher.flags.replace('y', '') : matcher.flags
+  return new RegExp(matcher.source, flags).test(value)
+}
+
 function overlapsSegment(left: RoutePatternToken, right: RoutePatternToken): boolean {
-  // Each candidate starts at index zero without changing the router's matcher state.
   const accepts = (token: RoutePatternToken, value: string) =>
-    value.endsWith(token.end) && (!token.matcher || new RegExp(token.matcher).test(value))
+    value.endsWith(token.end) && (!token.matcher || matcherAccepts(token.matcher, value))
   if (left.type === 0 && right.type === 0) return left.val === right.val
   if (left.type === 0) return accepts(right, left.val)
   if (right.type === 0) return accepts(left, right.val)

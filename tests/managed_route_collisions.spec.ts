@@ -1,8 +1,23 @@
 import { test } from '@japa/runner'
+import { overlappingPaths } from '../src/http/route_collisions.js'
 import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
 import { bootTestApp } from './helpers/app.js'
 
 test.group('managed route plan', () => {
+  test('accounts for sticky matchers that can start beyond the first character', ({ assert }) => {
+    const item = (match: RegExp) => ({
+      method: 'GET',
+      path: '/items/:name',
+      matchers: { name: { match } },
+    })
+    const lookahead = /(?=tail$)/y
+    assert.isFalse(overlappingPaths(item(lookahead), '/items/detail'))
+    assert.isTrue(overlappingPaths(item(/tail$/y), '/items/detail'))
+    lookahead.lastIndex = 2
+    assert.isTrue(overlappingPaths(item(lookahead), '/items/detail'))
+    assert.equal(lookahead.lastIndex, 2)
+  })
+
   test('rejects a colliding application route before registering any managed route', ({
     assert,
   }) => {
@@ -173,7 +188,7 @@ test.group('managed route plan', () => {
       const cases = [
         { pattern: '/auth/:id', matcher: /^[0-9]+$/, intersects: false },
         { pattern: '/auth/:id', matcher: /^login$/, intersects: true },
-        { pattern: '/auth/:id', matcher: /in$/y, intersects: false },
+        { pattern: '/auth/:id', matcher: /(?=in$)/y, intersects: false },
         { pattern: '/auth/:id', matcher: /login$/y, intersects: true },
         { pattern: '/auth/:action-name', matcher: /^\d+$/, intersects: false },
         { pattern: '/auth/:action-name', matcher: /^login$/, intersects: true },

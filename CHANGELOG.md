@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Allow managed routes to start alongside application routes whose sticky matchers exclude the
-  managed paths.
+- Allow managed routes to start alongside application routes whose simple sticky lookaheads
+  exclude the managed paths.
 
 ## 0.4.0 - 2026-11-16
 
