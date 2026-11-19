@@ -78,7 +78,8 @@ export async function createAccount(
   admit?: (
     profile: { provider: SocialProviderName; subject: string; email: string },
     trx: Trx
-  ) => Promise<void>
+  ) => Promise<void>,
+  onUserCreateFailure?: (error: unknown) => void
 ): Promise<{ user: AccountUser; relation: SocialIdentity; invitationIds: number[] }> {
   const registration = deps.config.registration!
   if (registration.availability === 'closed') throw new SocialTransactionError()
@@ -87,15 +88,21 @@ export async function createAccount(
   if (admit) await admit({ provider: name, subject: profile.subject, email: profile.email }, trx)
   if (await deps.config.users.findByEmail(profile.email, trx)) throw new SocialTransactionError()
   const mapped = await mapRegistrationFields(deps.config, registrationData)
-  const user = await deps.config.users.create(
-    {
-      email: profile.email,
-      unverifiedEmail: profile.emailVerified ? null : profile.email,
-      password: null,
-      registrationData: mapped,
-    },
-    trx
-  )
+  let user: AccountUser
+  try {
+    user = await deps.config.users.create(
+      {
+        email: profile.email,
+        unverifiedEmail: profile.emailVerified ? null : profile.email,
+        password: null,
+        registrationData: mapped,
+      },
+      trx
+    )
+  } catch (error) {
+    onUserCreateFailure?.(error)
+    throw error
+  }
   const verifiedAt = DateTime.utc()
   if (profile.emailVerified) await deps.config.users.markEmailVerified(user.id, verifiedAt, trx)
   const relation = await createAssociation(trx, user.id, name, profile, profile.emailVerified)

@@ -145,12 +145,12 @@ export async function socialCallback(
   } catch (cause) {
     throw new SocialTransactionError({ cause })
   }
-  let signupFailure: unknown
+  let userCreateFailure: unknown
   let settled: Awaited<ReturnType<typeof settleCommitted<SocialTransactionResult>>>
   try {
     settled = await settleCommitted(
       transaction(deps.db, async (trx): Promise<SocialTransactionResult> => {
-        signupFailure = undefined
+        userCreateFailure = undefined
         if (candidate.user_id) await lockUser(trx, deps.config, candidate.user_id)
         else if (candidate.intent === 'login') {
           const association = await trx
@@ -243,11 +243,11 @@ export async function socialCallback(
             name,
             profile,
             undefined,
-            input.admit
-          ).catch((error: unknown) => {
-            signupFailure = error
-            throw error
-          })
+            input.admit,
+            (error) => {
+              userCreateFailure = error
+            }
+          )
           const accepted =
             created.invitationIds.length > 0
               ? { invitationIds: created.invitationIds, userId: created.user.id }
@@ -360,7 +360,7 @@ export async function socialCallback(
   } catch (error) {
     if (isIdentityConflict(error)) throw new SocialIdentityAlreadyLinkedError()
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db)) {
-      if (error === signupFailure) return { status: 'link_required' }
+      if (error === userCreateFailure) return { status: 'link_required' }
       throw new SocialTransactionError()
     }
     throw error
