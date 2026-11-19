@@ -43,7 +43,8 @@ SQLite is tested through the `better-sqlite3` client; with another SQLite driver
 take no write lock and do not retry a busy database. SQLite applications must enable foreign keys
 on every connection. Package writes acquire a
 package-owned transaction lock using `account_transaction_lock`; the fifth configure migration
-creates this table. SQLite write-contention retries can rerun transaction callbacks, so callbacks
+creates this table. Package transactions use one SQLite pool connection per attempt, including on
+Lucid 22.5. SQLite write-contention retries can rerun transaction callbacks, so callbacks
 must be safe to repeat. PostgreSQL and MySQL do not retry transactions. See
 [transaction guidance](../guide/usage.md#transactions-and-callbacks).
 
