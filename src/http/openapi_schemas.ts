@@ -20,7 +20,7 @@ export interface EndpointQueryParameter {
 export interface EndpointSchemas {
   summary: string
   description?: string
-  body?: (strategy: Strategy) => JsonSchema
+  requestBody?: (strategy: Strategy) => JsonSchema
   query?: EndpointQueryParameter[]
   success: (strategy: Strategy) => Record<number, EndpointResponse>
   /** The endpoint can report a conflict with existing account state (409). */
@@ -41,9 +41,9 @@ export interface EndpointSchemas {
 }
 
 import {
-  accountBody,
+  buildAccountResponseSchema,
   authorizationUrl,
-  body,
+  buildRequestBodySchema,
   clientChallenge,
   closed,
   confirmed,
@@ -70,8 +70,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.signup': {
     summary: 'Register with email and password, then sign in',
     description: `${policyNote} An email that is already registered is reported as a 422 \`unique\` error on \`email\`.`,
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           email: email(),
           password: password(),
@@ -86,7 +86,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
           'Registered. When sign-in after registration fails, the body reports `authenticated: false`.',
         schema: {
           oneOf: [
-            accountBody(strategy, 'optional'),
+            buildAccountResponseSchema(strategy, 'optional'),
             closed({ registered: constant(true), authenticated: constant(false) }),
           ],
         },
@@ -102,9 +102,10 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'auth.login': {
     summary: 'Sign in with email and password',
-    body: () => body({ email: email(), password: string() }, ['email', 'password']),
+    requestBody: () =>
+      buildRequestBodySchema({ email: email(), password: string() }, ['email', 'password']),
     success: (strategy) => ({
-      200: { description: 'Signed in.', schema: accountBody(strategy, 'required') },
+      200: { description: 'Signed in.', schema: buildAccountResponseSchema(strategy, 'required') },
     }),
     authenticates: true,
     noStore: true,
@@ -112,7 +113,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.passwordReset.request': {
     summary: 'Request a password-reset email',
     description: 'The response is the same whether or not an account uses the address.',
-    body: () => body({ email: email() }, ['email']),
+    requestBody: () => buildRequestBodySchema({ email: email() }, ['email']),
     success: () => ({
       202: {
         description: 'Accepted. Instructions are sent when the account exists.',
@@ -127,11 +128,11 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.passwordReset.complete': {
     summary: 'Set a new password from a reset link',
     description: policyNote,
-    body: () =>
-      body({ password: password(), passwordConfirmation: confirmed('password') }, [
-        'password',
-        'passwordConfirmation',
-      ]),
+    requestBody: () =>
+      buildRequestBodySchema(
+        { password: password(), passwordConfirmation: confirmed('password') },
+        ['password', 'passwordConfirmation']
+      ),
     success: ok('Password reset.', closed({ reset: constant(true) })),
   },
   'auth.emailVerification.inspect': {
@@ -141,11 +142,11 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.emailVerification.complete': {
     summary: 'Verify the email address and set a password',
     description: policyNote,
-    body: () =>
-      body({ password: password(), passwordConfirmation: confirmed('password') }, [
-        'password',
-        'passwordConfirmation',
-      ]),
+    requestBody: () =>
+      buildRequestBodySchema(
+        { password: password(), passwordConfirmation: confirmed('password') },
+        ['password', 'passwordConfirmation']
+      ),
     success: ok('Email verified.', closed({ verified: constant(true) })),
   },
   'auth.invitation.inspect': {
@@ -155,8 +156,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.invitation.accept': {
     summary: 'Accept an invitation and create the account',
     description: policyNote,
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           password: password(),
           passwordConfirmation: confirmed('password'),
@@ -165,7 +166,10 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         ['password', 'passwordConfirmation']
       ),
     success: (strategy) => ({
-      201: { description: 'Account created.', schema: accountBody(strategy, 'none') },
+      201: {
+        description: 'Account created.',
+        schema: buildAccountResponseSchema(strategy, 'none'),
+      },
     }),
     conflict: true,
   },
@@ -176,7 +180,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.emailChange.complete': {
     summary: 'Confirm an email change',
     success: (strategy) => ({
-      200: { description: 'Email changed.', schema: accountBody(strategy, 'none') },
+      200: { description: 'Email changed.', schema: buildAccountResponseSchema(strategy, 'none') },
     }),
     conflict: true,
   },
@@ -192,8 +196,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     summary: 'Update the signed-in account',
     description:
       'Changing the email requires `currentPassword` or a `recentProof` for `email_change`.',
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           currentPassword: nonEmpty(),
           recentProof: nonEmpty(),
@@ -203,15 +207,18 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         []
       ),
     success: (strategy) => ({
-      200: { description: 'Profile updated.', schema: accountBody(strategy, 'none') },
+      200: {
+        description: 'Profile updated.',
+        schema: buildAccountResponseSchema(strategy, 'none'),
+      },
     }),
     conflict: true,
   },
   'account.password.change': {
     summary: 'Change the password',
     description: `Requires \`currentPassword\` or a \`recentProof\` for \`password_change\`. ${policyNote}`,
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           currentPassword: nonEmpty(),
           recentProof: nonEmpty(),
@@ -231,8 +238,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'account.invitation.send': {
     summary: 'Invite someone by email',
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           email: email(),
           role: string({ minLength: 1, maxLength: 64 }),
@@ -282,8 +289,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     summary: 'Start a social sign-in, link or re-authentication',
     description:
       '`link` and `reauth` require an authenticated caller. `reauth` issues a proof for `purpose`.',
-    body: (strategy) =>
-      body(
+    requestBody: (strategy) =>
+      buildRequestBodySchema(
         {
           intent: { enum: ['login', 'link', 'reauth'] },
           purpose: { enum: [...sensitivePurposes] },
@@ -312,8 +319,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.oauth.complete': {
     summary: 'Finish a social flow from an access-token client',
     description: 'A `link` refused by `acceptLink` is a 403 `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED`.',
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           code: nonEmpty(),
           state: nonEmpty(),
@@ -327,8 +334,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'auth.oauth.registration': {
     summary: 'Finish registration after a social sign-in',
-    body: () =>
-      body(
+    requestBody: () =>
+      buildRequestBodySchema(
         {
           continuation: nonEmpty(),
           email: email(),
@@ -341,8 +348,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'auth.oauth.confirmation': {
     summary: 'Confirm a pending link with the provider',
-    body: (strategy) =>
-      body(
+    requestBody: (strategy) =>
+      buildRequestBodySchema(
         { verificationToken: nonEmpty(), clientChallenge: clientChallenge(strategy) },
         strategy === 'access_tokens'
           ? ['verificationToken', 'clientChallenge']
@@ -352,11 +359,11 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'auth.oauth.token': {
     summary: 'Exchange a social handoff code for an access token',
-    body: () =>
-      body({ code: nonEmpty(), verifier: string({ minLength: 43, maxLength: 128 }) }, [
-        'code',
-        'verifier',
-      ]),
+    requestBody: () =>
+      buildRequestBodySchema(
+        { code: nonEmpty(), verifier: string({ minLength: 43, maxLength: 128 }) },
+        ['code', 'verifier']
+      ),
     success: ok(
       'Signed in.',
       closed({
@@ -379,8 +386,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'account.socialProof.password': {
     summary: 'Prove the password for a sensitive social action',
-    body: () =>
-      body({ password: nonEmpty(), purpose: { enum: [...sensitivePurposes] } }, [
+    requestBody: () =>
+      buildRequestBodySchema({ password: nonEmpty(), purpose: { enum: [...sensitivePurposes] } }, [
         'password',
         'purpose',
       ]),
@@ -405,7 +412,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   },
   'account.socialIdentities.unlink': {
     summary: 'Unlink a social identity',
-    body: () => body({ proof: nonEmpty() }, ['proof']),
+    requestBody: () => buildRequestBodySchema({ proof: nonEmpty() }, ['proof']),
     success: noContent,
     conflict: true,
   },
@@ -413,8 +420,10 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     summary: 'Request a magic sign-in link',
     description:
       'The response is the same whether or not an account uses the address. Session guards bind the link to this session; access-token clients send `clientChallenge`.',
-    body: (strategy) =>
-      body({ email: email(), clientChallenge: clientChallenge(strategy) }, ['email']),
+    requestBody: (strategy) =>
+      buildRequestBodySchema({ email: email(), clientChallenge: clientChallenge(strategy) }, [
+        'email',
+      ]),
     success: () => ({
       202: {
         description: 'Accepted. A link is sent if the account exists.',
@@ -433,8 +442,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     summary: 'Sign in with a magic link',
     description:
       'Consumes the link, also when a later check fails. A request without its verifier is refused before the link is used, so the link stays live. Session guards use the verifier held in the session.',
-    body: (strategy) =>
-      body(
+    requestBody: (strategy) =>
+      buildRequestBodySchema(
         {
           verifier: string({
             description:
@@ -446,7 +455,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         []
       ),
     success: (strategy) => ({
-      200: { description: 'Signed in.', schema: accountBody(strategy, 'required') },
+      200: { description: 'Signed in.', schema: buildAccountResponseSchema(strategy, 'required') },
     }),
     authenticates: true,
   },
@@ -474,7 +483,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     summary: "Download the account's data",
     description:
       'Requires `currentPassword` or a `recentProof` for `account_export`. Sent as an attachment.',
-    body: () => body({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
+    requestBody: () =>
+      buildRequestBodySchema({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
     success: ok('The export document.', ref('AccountExport')),
     noStore: true,
   },
@@ -482,7 +492,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
     summary: 'Delete the account permanently',
     description:
       'Requires `currentPassword` or a `recentProof` for `account_delete`. A session is ended; an access token is deleted with the account.',
-    body: () => body({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
+    requestBody: () =>
+      buildRequestBodySchema({ currentPassword: nonEmpty(), recentProof: nonEmpty() }, []),
     success: noContent,
   },
 }

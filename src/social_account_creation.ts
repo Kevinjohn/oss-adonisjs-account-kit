@@ -4,7 +4,7 @@ import { matchInvitation } from './invitation_match.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { identity } from './social_links.js'
 import { SocialEmailMissingError, SocialTransactionError } from './errors.js'
-import { now, type Dependencies } from './social_shared.js'
+import { readSqlTimestamp, type Dependencies } from './social_shared.js'
 import type { AccountUser, SocialIdentity, SocialProviderName, Trx, UserId } from './types.js'
 
 export interface ProviderProfile {
@@ -46,7 +46,7 @@ export async function createAssociation(
   profile: ProviderProfile,
   confirmed: boolean
 ): Promise<SocialIdentity> {
-  const timestamp = now(trx)
+  const timestamp = readSqlTimestamp(trx)
   await trx.table('social_identities').insert({
     user_id: userId,
     provider: name,

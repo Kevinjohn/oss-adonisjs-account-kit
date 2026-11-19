@@ -42,7 +42,7 @@ export function invalidProof(
  * messages provider reads: `validator.shared.messages.<rule>`, with the field name from
  * `validator.shared.fields.<field>`.
  */
-export function ruleError(
+export function sendRuleViolationResponse(
   context: HttpContext,
   field: string,
   rule: string,
@@ -70,14 +70,19 @@ export function ruleError(
     )
 }
 
-export function passwordPolicyError(
+export function sendPasswordPolicyErrorResponse(
   context: HttpContext,
   field: 'password' | 'newPassword'
 ): unknown {
-  return ruleError(context, field, 'passwordPolicy', 'Password does not meet the policy.')
+  return sendRuleViolationResponse(
+    context,
+    field,
+    'passwordPolicy',
+    'Password does not meet the policy.'
+  )
 }
 
-export function publicAccount(account: CurrentAccount): Record<string, unknown> {
+export function buildPublicAccountBody(account: CurrentAccount): Record<string, unknown> {
   return {
     id: account.id,
     email: account.email,
@@ -88,7 +93,7 @@ export function publicAccount(account: CurrentAccount): Record<string, unknown> 
 }
 
 /** The body after a sign-in: the issued account, plus the bearer token under `access_tokens`. */
-export async function issuedAccountBody<Credential>(
+export async function renderIssuedAccountBody<Credential>(
   { options, representIssued }: Pick<ManagedRequest<Credential>, 'options' | 'representIssued'>,
   result: { account: CurrentAccount; credential: Credential }
 ): Promise<Record<string, unknown>> {

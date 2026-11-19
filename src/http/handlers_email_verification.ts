@@ -1,7 +1,7 @@
 /** Managed handlers for the email verification capability: link inspection, completion and resend. */
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { invalidProof, passwordPolicyError } from './response_helpers.js'
+import { invalidProof, sendPasswordPolicyErrorResponse } from './response_helpers.js'
 import { newPasswordValidator } from './validators.js'
 
 export const emailVerificationHandlers = {
@@ -12,7 +12,8 @@ export const emailVerificationHandlers = {
   'auth.emailVerification.complete': async ({ context, kit }) => {
     const { request, response, params } = context
     const { password } = await request.validateUsing(newPasswordValidator)
-    if (!kit.managedHttp.passwordAllowed(password)) return passwordPolicyError(context, 'password')
+    if (!kit.managedHttp.passwordAllowed(password))
+      return sendPasswordPolicyErrorResponse(context, 'password')
     await kit.emailVerification.complete({ token: params.token, password })
     return response.ok({ verified: true })
   },

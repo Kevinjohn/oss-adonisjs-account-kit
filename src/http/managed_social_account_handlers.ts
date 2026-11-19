@@ -7,7 +7,7 @@ import type { ManagedGuard } from './managed_types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedSocialExtension } from './social.js'
 import { socialPasswordProofValidator, socialUnlinkValidator } from './validators.js'
-import { positiveId } from './positive_id.js'
+import { requirePositiveId } from './positive_id.js'
 import { optionalSession } from './session_access.js'
 
 export interface SocialRequest<Credential> {
@@ -66,7 +66,7 @@ export const managedSocialAccountHandlers = {
     const input = await context.request.validateUsing(socialUnlinkValidator)
     await social.unlink({
       current: await guard.current(context),
-      identityId: positiveId(context.params.id, 'identity'),
+      identityId: requirePositiveId(context.params.id, 'identity'),
       proof: input.proof,
     })
     return context.response.noContent()

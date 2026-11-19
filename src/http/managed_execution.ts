@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { CurrentAccount } from '../types.js'
 import { InvalidSessionError } from '../errors.js'
 import { applyProofHeaders } from './proof_headers.js'
-import { recoveryDiagnostic, publicAccount } from './response_helpers.js'
+import { recoveryDiagnostic, buildPublicAccountBody } from './response_helpers.js'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
 import type { ManagedEndpointName, ManagedRoute } from './routes.js'
 import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
@@ -12,14 +12,22 @@ function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   applyProofHeaders(context.response)
 }
 
-/** Run the shared managed request checks before dispatching exactly one registered handler. */
-export async function executeManagedRequest<Credential>(
-  route: ManagedRoute,
-  context: HttpContext,
-  options: ManagedRoutesOptions<Credential>,
-  methodsEnabled: boolean,
+interface ManagedRequestExecution<Credential> {
+  route: ManagedRoute
+  context: HttpContext
+  options: ManagedRoutesOptions<Credential>
+  methodsEnabled: boolean
   handlers: Record<ManagedEndpointName, ManagedHandler>
-): Promise<unknown> {
+}
+
+/** Run the shared managed request checks before dispatching exactly one registered handler. */
+export async function executeManagedRequest<Credential>({
+  route,
+  context,
+  options,
+  methodsEnabled,
+  handlers,
+}: ManagedRequestExecution<Credential>): Promise<unknown> {
   responseHeaders(context, route)
   const { request } = context
   const csrfToken = (request as typeof request & { csrfToken?: string }).csrfToken
@@ -53,13 +61,13 @@ export async function executeManagedRequest<Credential>(
   }
   const actorId = account?.id
   const represent = (value: CurrentAccount) =>
-    options.extensions?.representAccount?.(value, context) ?? publicAccount(value)
+    options.extensions?.representAccount?.(value, context) ?? buildPublicAccountBody(value)
   const representIssued = async (value: CurrentAccount) => {
     try {
       return await represent(value)
     } catch {
       recoveryDiagnostic(context, route.name, 'representation_failed')
-      return publicAccount(value)
+      return buildPublicAccountBody(value)
     }
   }
   return handlers[route.name]({

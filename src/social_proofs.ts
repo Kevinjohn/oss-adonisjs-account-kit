@@ -4,7 +4,12 @@ import { consumeRows } from './consume_rows.js'
 import { revision } from './credential_revision.js'
 import { SocialProofError } from './errors.js'
 import { isSensitivePurpose } from './social_enums.js'
-import { authenticated, expiry, now, type Dependencies } from './social_shared.js'
+import {
+  requireAuthenticatedUser,
+  calculateSocialExpiry,
+  readSqlTimestamp,
+  type Dependencies,
+} from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type { CurrentAccountInput, ResolvedConfig, SensitivePurpose, Trx, UserId } from './types.js'
 
@@ -31,7 +36,7 @@ export async function consumeSocialSensitiveProofHash(
     trx,
     'social_sensitive_proofs',
     { hash: proofHash, user_id: userId, purpose },
-    now(trx)
+    readSqlTimestamp(trx)
   )
   if (rows.length !== 1 || rows[0].credential_revision !== (await revision(trx, config, userId)))
     throw new SocialProofError()
@@ -49,8 +54,8 @@ export async function issueProof(
     user_id: userId,
     purpose,
     credential_revision: await revision(trx, config, userId),
-    expires_at: expiry(trx),
-    created_at: now(trx),
+    expires_at: calculateSocialExpiry(trx),
+    created_at: readSqlTimestamp(trx),
   })
   return proof
 }
@@ -67,7 +72,7 @@ export async function proveSocialPassword(
     throw new SocialProofError()
   await deps.throttler.consume('identity:user', String(input.current.userId), deps.config.throttle)
   return transaction(deps.db, async (trx) => {
-    const user = await authenticated(deps, input.current, trx)
+    const user = await requireAuthenticatedUser(deps, input.current, trx)
     if (
       !user.hasPassword ||
       !(await deps.config.users.verifyPassword(user.id, input.password, trx))

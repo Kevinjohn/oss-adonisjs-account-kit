@@ -10,7 +10,7 @@ export function hasConfirmedAddress(user: AccountUser): boolean {
   return user.emailVerifiedAt !== null && isActiveAccount(user)
 }
 
-export function safeAccount(user: AccountUser): CurrentAccount {
+export function buildAccountProjection(user: AccountUser): CurrentAccount {
   return {
     id: user.id,
     email: user.email,

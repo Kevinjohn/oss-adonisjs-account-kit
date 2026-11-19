@@ -2,8 +2,8 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
-import { validateAccountAccessResult } from './account_access_policy.js'
-import { isActiveAccount, safeAccount } from './account_projection.js'
+import { requireAccountAccessDecision } from './account_access_policy.js'
+import { isActiveAccount, buildAccountProjection } from './account_projection.js'
 import { requireAuthentication } from './authentication_config.js'
 import { revision } from './credential_revision.js'
 import { establishCredential } from './credential_issuance.js'
@@ -60,7 +60,7 @@ export async function requestMagicLink(
         await lockUser(trx, deps.config, user.id)
         const current = await deps.config.users.findById(user.id, trx)
         if (!current || current.email !== email || !isActiveAccount(current)) return null
-        if (!validateAccountAccessResult(await auth.canAccess(current, trx))) return null
+        if (!requireAccountAccessDecision(await auth.canAccess(current, trx))) return null
         const now = DateTime.utc()
         await trx
           .table('login_link_tokens')
@@ -150,11 +150,11 @@ export async function completeMagicLink<Credential>(
     if (
       !verifierMatches(input.verifier, row.client_challenge) ||
       !isActiveAccount(user) ||
-      !validateAccountAccessResult(await auth.canAccess(user, trx))
+      !requireAccountAccessDecision(await auth.canAccess(user, trx))
     )
       return null
     return {
-      account: safeAccount(user),
+      account: buildAccountProjection(user),
       revision: await revision(trx, deps.config, user.id),
       email: user.email,
     }

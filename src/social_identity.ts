@@ -14,7 +14,12 @@ import {
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { provider, socialCallback } from './social_callback.js'
 import { listSocialIdentities, unlinkSocialIdentity } from './social_links.js'
-import { authenticated, expiry, now, type Dependencies } from './social_shared.js'
+import {
+  requireAuthenticatedUser,
+  calculateSocialExpiry,
+  readSqlTimestamp,
+  type Dependencies,
+} from './social_shared.js'
 import { isSensitivePurpose, isSocialBeginIntent } from './social_enums.js'
 import type {
   AuthenticationGuard,
@@ -46,7 +51,8 @@ export function socialIdentityService(deps: Dependencies) {
         throw new SocialProofError()
       const state = generateToken()
       await transaction(deps.db, async (trx) => {
-        const user = input.intent === 'login' ? null : await authenticated(deps, input.current, trx)
+        const user =
+          input.intent === 'login' ? null : await requireAuthenticatedUser(deps, input.current, trx)
         // A confirmed link outlives the email-owner claim, so only a confirmed owner may link.
         if (input.intent === 'link' && user && !isActiveAccount(user))
           throw new UnverifiedEmailError()
@@ -60,8 +66,8 @@ export function socialIdentityService(deps: Dependencies) {
           proof_hash: input.proof ? hashToken(input.proof) : null,
           credential_revision:
             input.intent === 'reauth' && user ? await revision(trx, deps.config, user.id) : null,
-          expires_at: expiry(trx),
-          created_at: now(trx),
+          expires_at: calculateSocialExpiry(trx),
+          created_at: readSqlTimestamp(trx),
         })
       })
       return { state, url: await adapter.authorizationUrl(state, input.context) }
@@ -85,7 +91,7 @@ export function socialIdentityService(deps: Dependencies) {
         const token = await trx
           .from('email_verification_tokens')
           .where('hash', hashToken(input.verificationToken))
-          .where('expires_at', '>', now(trx))
+          .where('expires_at', '>', readSqlTimestamp(trx))
           .where('purpose', 'activation')
           .first()
         if (!token) throw new SocialTransactionError()
@@ -107,8 +113,8 @@ export function socialIdentityService(deps: Dependencies) {
           user_id: user.id,
           client_challenge: input.clientChallenge,
           verification_hash: hashToken(input.verificationToken),
-          expires_at: expiry(trx),
-          created_at: now(trx),
+          expires_at: calculateSocialExpiry(trx),
+          created_at: readSqlTimestamp(trx),
         })
       })
       return { state, url: await adapter.authorizationUrl(state, input.context) }

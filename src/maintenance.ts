@@ -51,7 +51,7 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
     throw new RangeError('maxBatches must be an integer from 1 to 1000')
   const cutoff = sqlTimestamp(db)
   const counts = Object.fromEntries(TABLES.map(([key]) => [key, 0])) as unknown as PruneCounts
-  const cursors = new Map<PackageTable, number>()
+  const cursorsByTable = new Map<PackageTable, number>()
   const done = new Set<PackageTable>()
   for (let batch = 0; batch < maxBatches && done.size < TABLES.length;) {
     for (const [key, table] of TABLES) {
@@ -59,7 +59,7 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
       const selected = await db
         .from(table)
         .select('id')
-        .where('id', '>', cursors.get(table) ?? 0)
+        .where('id', '>', cursorsByTable.get(table) ?? 0)
         .where('expires_at', '<=', cutoff)
         .orderBy('id', 'asc')
         .limit(batchSize)
@@ -69,7 +69,7 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
       }
       batch++
       const ids = selected.map((row) => row.id as number)
-      cursors.set(table, ids[ids.length - 1])
+      cursorsByTable.set(table, ids[ids.length - 1])
       if (input.dryRun) {
         const [{ total }] = await db
           .from(table)

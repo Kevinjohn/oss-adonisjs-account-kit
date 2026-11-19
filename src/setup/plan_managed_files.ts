@@ -1,5 +1,5 @@
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupDiagnostic } from './types.js'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 import { ownedChange } from './changes.js'
 import {
   disabledManagedRoutesSource,
@@ -22,7 +22,7 @@ export function planManagedFiles(
     state.existingChoices?.authentication &&
     state.files['app/middleware/account_kit_access_middleware.ts']
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'authentication.retirement',
       'Review application-owned routes for the generated account access middleware and remove or replace their references after authentication retirement',

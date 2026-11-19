@@ -1,15 +1,15 @@
 // Social handoff codes: issuing a one-time code after a social callback and redeeming it for a credential.
-import { validateAccountAccessResult } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_policy.js'
 import { sqlTimestamp } from './timestamps.js'
 import { establishCredential } from './credential_issuance.js'
 import { DateTime } from 'luxon'
 import { revision } from './credential_revision.js'
-import { safeAccount } from './account_projection.js'
+import { buildAccountProjection } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { isClientVerifier, verifierMatches } from './client_challenge.js'
 import { SocialTransactionError } from './errors.js'
-import { enabledProviders, now, type Dependencies } from './social_shared.js'
+import { listEnabledSocialProviders, readSqlTimestamp, type Dependencies } from './social_shared.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import type {
   AuthenticationGuard,
@@ -35,7 +35,7 @@ export async function createHandoff(
     credential_revision: await revision(trx, config, userId),
     client_challenge: clientChallenge,
     expires_at: sqlTimestamp(trx, DateTime.utc().plus({ minutes: 2 })),
-    created_at: now(trx),
+    created_at: readSqlTimestamp(trx),
   })
   return code
 }
@@ -52,7 +52,7 @@ async function usableHandoffAssociation(
     .where('user_id', userId)
     .whereNotNull('confirmed_at')
     .first()
-  return row && enabledProviders(config).includes(row.provider)
+  return row && listEnabledSocialProviders(config).includes(row.provider)
     ? (row.provider as SocialProviderName)
     : null
 }
@@ -84,7 +84,7 @@ export async function redeemSocialHandoff<Credential>(
       trx,
       'social_handoff_codes',
       { hash: hashToken(input.code) },
-      now(trx)
+      readSqlTimestamp(trx)
     )
     const row = rows[0]
     if (
@@ -94,7 +94,7 @@ export async function redeemSocialHandoff<Credential>(
     )
       throw new SocialTransactionError()
     const user = await deps.config.users.findById(row.user_id, trx)
-    if (!user || !validateAccountAccessResult(await auth.canAccess(user, trx)))
+    if (!user || !requireAccountAccessDecision(await auth.canAccess(user, trx)))
       throw new SocialTransactionError()
     const currentRevision = await revision(trx, deps.config, user.id)
     const establishedProvider = await usableHandoffAssociation(
@@ -106,7 +106,7 @@ export async function redeemSocialHandoff<Credential>(
     if (currentRevision !== row.credential_revision || !establishedProvider)
       throw new SocialTransactionError()
     return {
-      account: safeAccount(user),
+      account: buildAccountProjection(user),
       revision: currentRevision,
       socialIdentityId: row.social_identity_id as number,
       provider: establishedProvider,

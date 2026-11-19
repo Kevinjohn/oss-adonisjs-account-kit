@@ -60,7 +60,7 @@ export function planSummary({
             try {
               callback = new URL(path, origin).toString()
             } catch {
-              // validateOrigin reports the invalid deployment value.
+              // addOriginDiagnostics reports the invalid deployment value.
             }
           }
           return `Register ${provider} callback ${callback} in the provider console and verify its Ally settings`

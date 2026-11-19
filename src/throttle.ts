@@ -12,7 +12,7 @@ export async function consume(
   secret: string,
   namespace: string
 ): Promise<void> {
-  const digest = limiterKey(operation, key, secret, namespace)
+  const digest = buildLimiterKey(operation, key, secret, namespace)
   try {
     await limiter.use({ ...options }).consume(digest)
   } catch (error) {
@@ -23,7 +23,7 @@ export async function consume(
   }
 }
 
-export function limiterKey(operation: string, key: string, secret: string, namespace: string) {
+export function buildLimiterKey(operation: string, key: string, secret: string, namespace: string) {
   // Keep the version-1 salt stable so package renames preserve stored rate-limit budgets.
   const derivedKey = Buffer.from(
     hkdfSync('sha256', secret, 'adonisjs-account-kit', 'limiter-key-v1', 32)
@@ -48,6 +48,6 @@ export function makeThrottler(input: {
   return {
     consume: (operation, key, budget) =>
       consume(input.limiter, operation, key, budget, input.secret, input.namespace),
-    key: (operation, value) => limiterKey(operation, value, input.secret, input.namespace),
+    key: (operation, value) => buildLimiterKey(operation, value, input.secret, input.namespace),
   }
 }

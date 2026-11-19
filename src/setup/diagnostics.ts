@@ -12,7 +12,7 @@ export const sqlName = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 export const routePrefix = /^\/[A-Za-z0-9/_-]*$/
 
-export function diagnostic(
+export function addSetupDiagnostic(
   diagnostics: SetupDiagnostic[],
   field: string,
   message: string,
@@ -21,17 +21,21 @@ export function diagnostic(
   diagnostics.push({ field, message, severity })
 }
 
-export function validateOrigin(
+interface OriginDiagnosticOptions {
+  production: boolean
+  env?: NodeJS.ProcessEnv
+  resolvedValue?: string | null
+  resolutionError?: { message: string; indirect: boolean }
+}
+
+export function addOriginDiagnostics(
   diagnostics: SetupDiagnostic[],
   field: string,
   variable: string,
-  production: boolean,
-  env: NodeJS.ProcessEnv = process.env,
-  resolvedValue?: string | null,
-  resolutionError?: { message: string; indirect: boolean }
+  { production, env = process.env, resolvedValue, resolutionError }: OriginDiagnosticOptions
 ) {
   if (!envName.test(variable)) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       field,
       'Use an uppercase environment variable name, not a URL or secret'
@@ -39,7 +43,7 @@ export function validateOrigin(
     return
   }
   if (resolutionError?.indirect) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       field,
       `${variable} refers to other values, so setup cannot check it before the application starts. Confirm it resolves to a trusted HTTP(S) origin.`,
@@ -48,7 +52,7 @@ export function validateOrigin(
     return
   }
   if (resolutionError) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       field,
       `${variable} could not be inspected safely: ${resolutionError.message}. Use one direct value assignment.`
@@ -57,7 +61,12 @@ export function validateOrigin(
   }
   const value = resolvedValue === undefined ? env[variable] : resolvedValue
   if (!value) {
-    diagnostic(diagnostics, field, `${variable} must be set before readiness can pass`, 'action')
+    addSetupDiagnostic(
+      diagnostics,
+      field,
+      `${variable} must be set before readiness can pass`,
+      'action'
+    )
     return
   }
   try {
@@ -66,14 +75,18 @@ export function validateOrigin(
       throw new Error('origin must not include credentials, query or fragment')
     if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('HTTP(S) is required')
     if (production && parsed.protocol !== 'https:') {
-      diagnostic(diagnostics, field, `${variable} must use HTTPS in production`)
+      addSetupDiagnostic(diagnostics, field, `${variable} must use HTTPS in production`)
     } else if (
       parsed.protocol !== 'https:' &&
       !['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
     ) {
-      diagnostic(diagnostics, field, `${variable} may use HTTP only for loopback development`)
+      addSetupDiagnostic(
+        diagnostics,
+        field,
+        `${variable} may use HTTP only for loopback development`
+      )
     }
   } catch {
-    diagnostic(diagnostics, field, `${variable} must be a valid trusted HTTP(S) origin`)
+    addSetupDiagnostic(diagnostics, field, `${variable} must be a valid trusted HTTP(S) origin`)
   }
 }

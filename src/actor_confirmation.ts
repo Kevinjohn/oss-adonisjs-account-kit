@@ -14,14 +14,18 @@ export async function requireUser(
   return user
 }
 
+interface ConfirmActorInput {
+  actorId: UserId
+  currentPassword?: unknown
+  recentProof?: unknown
+  purpose: SensitivePurpose
+}
+
 /** Lock the actor and consume the credential proof inside the same write transaction. */
 export async function confirmActor(
   config: ResolvedConfig,
   trx: Trx,
-  actorId: UserId,
-  currentPassword: unknown,
-  recentProof: unknown,
-  purpose: SensitivePurpose
+  { actorId, currentPassword, recentProof, purpose }: ConfirmActorInput
 ): Promise<AccountUser> {
   await lockUser(trx, config, actorId)
   const actor = await requireUser(config, actorId, trx)

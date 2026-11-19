@@ -3,7 +3,7 @@ import { InvalidConfigurationError } from './errors.js'
 import { isSocialProviderName } from './social_providers.js'
 import type { AccountKitConfig, Capability, SocialProviderName } from './types.js'
 
-export function validateSocialAuthentication(
+export function assertSocialAuthenticationConfig(
   config: AccountKitConfig,
   enabled: readonly Capability[]
 ): void {

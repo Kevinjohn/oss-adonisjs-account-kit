@@ -9,7 +9,7 @@ import {
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 
 export async function planRouteImport(
   changes: SetupFileChange[],
@@ -19,7 +19,7 @@ export async function planRouteImport(
   const path = 'start/routes.ts'
   const previous = state.files[path]
   if (previous === undefined) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Application route file is missing; create it before managed setup'
@@ -30,7 +30,11 @@ export async function planRouteImport(
   try {
     source = await parseSetupSource(previous)
   } catch {
-    diagnostic(diagnostics, path, 'Application route source must be valid TypeScript before setup')
+    addSetupDiagnostic(
+      diagnostics,
+      path,
+      'Application route source must be valid TypeScript before setup'
+    )
     return
   }
   let directMount = false
@@ -88,20 +92,24 @@ export async function planRouteImport(
           ].includes(call.expression.name.text)
       ))
   ) {
-    diagnostic(diagnostics, path, 'Resolve router service origins before mounting managed routes')
+    addSetupDiagnostic(
+      diagnostics,
+      path,
+      'Resolve router service origins before mounting managed routes'
+    )
     return
   }
-  let unsupportedMount =
-    hasAmbiguousRuntimeModuleImports(source, '@kevinjohn/adonisjs-account-kit/http') ||
-    namedMounts.length > 1 ||
-    namespaceMounts.some((name) => hasUnsafeBindingReferences(source, name, () => false))
+  let isMountSupported =
+    !hasAmbiguousRuntimeModuleImports(source, '@kevinjohn/adonisjs-account-kit/http') &&
+    namedMounts.length <= 1 &&
+    !namespaceMounts.some((name) => hasUnsafeBindingReferences(source, name, () => false))
   walk(source, (node) => {
     if (mountBinding && source.ts.isIdentifier(node) && node.text === mountBinding) {
       const parent = node.parent
       const declaration = source.ts.isImportSpecifier(parent) && parent.name === node
       const call = source.ts.isCallExpression(parent) && parent.expression === node
       const propertyName = source.ts.isPropertyAccessExpression(parent) && parent.name === node
-      if (!declaration && !call && !propertyName) unsupportedMount = true
+      if (!declaration && !call && !propertyName) isMountSupported = false
     }
     if (
       source.ts.isCallExpression(node) &&
@@ -115,16 +123,16 @@ export async function planRouteImport(
       node.expression.text === 'registerManagedRoutes' &&
       !mountBinding
     )
-      unsupportedMount = true
+      isMountSupported = false
     if (
       source.ts.isCallExpression(node) &&
       source.ts.isPropertyAccessExpression(node.expression) &&
       node.expression.name.text === 'registerManagedRoutes'
     )
-      unsupportedMount = true
+      isMountSupported = false
   })
-  if (directMount || unsupportedMount) {
-    diagnostic(
+  if (directMount || !isMountSupported) {
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Existing direct managed route mount must be reconciled before setup adds another'
@@ -152,7 +160,11 @@ export async function planRouteImport(
     return
   }
   if (imports.some((name) => name.includes('account_kit_routes'))) {
-    diagnostic(diagnostics, path, 'Existing Account Kit route import differs; resolve it manually')
+    addSetupDiagnostic(
+      diagnostics,
+      path,
+      'Existing Account Kit route import differs; resolve it manually'
+    )
     return
   }
   changes.push({

@@ -1,42 +1,46 @@
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
-import { hasEmailFlow, diagnostic } from './shared.js'
+import { hasEmailFlow, addSetupDiagnostic } from './shared.js'
 
 /** Guard selection and the session or token checks for the selected strategy. */
-export function validateAuthentication(
+export function addAuthenticationDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection,
   production: boolean
 ) {
   if (choices.managed.length && !choices.authentication)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'authentication',
       'Managed endpoints require one existing guard, including when login is application-owned'
     )
   if (choices.features.includes('authentication') && !choices.authentication)
-    diagnostic(diagnostics, 'authentication', 'Authentication requires a selected existing guard')
+    addSetupDiagnostic(
+      diagnostics,
+      'authentication',
+      'Authentication requires a selected existing guard'
+    )
   if (choices.features.includes('magicLinkLogin') && !choices.authentication)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'authentication',
       'Magic-link sign-in requires a selected existing guard'
     )
   if (choices.features.includes('sessionManagement') && !choices.authentication)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'authentication',
       'Session management requires a selected existing guard'
     )
   if (choices.features.includes('accountDeletion') && !hasEmailFlow(choices))
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'features',
       'Account deletion sends a confirmation email; also select an email service such as passwordReset'
     )
   if (choices.authentication) {
     if (!state.guards.includes(choices.authentication.guard))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'authentication.guard',
         'Named existing guard was not found in config/auth.ts; add it yourself before activation'
@@ -44,13 +48,13 @@ export function validateAuthentication(
     else if (
       state.guardStrategies[choices.authentication.guard] !== choices.authentication.strategy
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'authentication.guard',
         'Selected guard must use the matching conventional sessionGuard or tokensGuard driver'
       )
     else if (state.guardModels[choices.authentication.guard] !== choices.user.model)
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'authentication.guard',
         'Selected guard must load the selected user model through its conventional user provider'
@@ -59,32 +63,32 @@ export function validateAuthentication(
       choices.authentication.strategy === 'access_tokens' &&
       state.guardTokenProviders[choices.authentication.guard] !== 'accessTokens'
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'authentication.guard',
         'Selected token guard must use the model accessTokens provider'
       )
     if (choices.authentication.strategy === 'session') {
       if (!choices.authentication.session)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'authentication.session',
           'Describe cookie, CSRF, origin and session storage checks'
         )
       else if (production && Object.values(choices.authentication.session).some((v) => v !== true))
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'authentication.session',
           'Production requires secure cookie, CSRF, trusted origin and persistent storage verification'
         )
     } else if (!choices.authentication.token?.revocation)
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'authentication.token.revocation',
         'Token revocation must be configured'
       )
     if (!choices.authentication.applicationRouteRevocation)
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'authentication.applicationRouteRevocation',
         'Generated managed routes remain disabled until application-owned protected routes use the account-access middleware and revocation is verified; rerun setup with this choice true to activate',

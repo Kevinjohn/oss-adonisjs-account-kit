@@ -1,5 +1,5 @@
 // Issues a guard credential after a verified sign-in and re-checks the account under its lock.
-import { validateAccountAccessResult } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_policy.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
 import {
@@ -66,7 +66,7 @@ export async function establishCredential<Credential>(
         !user ||
         (await revision(trx, deps.config, user.id)) !== verified.revision ||
         (options.stillValid && !(await options.stillValid(trx, user))) ||
-        !validateAccountAccessResult(await auth.canAccess(user, trx))
+        !requireAccountAccessDecision(await auth.canAccess(user, trx))
       )
         throw options.rejected()
       if (handle) await recordSession(trx, deps.config, user.id, handle, label)

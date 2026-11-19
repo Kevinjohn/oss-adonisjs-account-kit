@@ -10,7 +10,7 @@ import { countTests, planChecks, stepProblem } from './check_changed_plan.js'
 import { classify } from './classify_changed.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-function usage(message: string): never {
+function exitWithUsageError(message: string): never {
   console.error(`${message}\nusage: pnpm check:changed [--static] [base]`)
   process.exit(2)
 }
@@ -21,7 +21,7 @@ const git = (...args: string[]) => {
 
 const isStatic = process.argv.includes('--static')
 const args = process.argv.slice(2).filter((arg) => arg !== '--static')
-if (args.length > 1 || args[0]?.startsWith('-')) usage('Expected at most one base ref')
+if (args.length > 1 || args[0]?.startsWith('-')) exitWithUsageError('Expected at most one base ref')
 if (Number(process.versions.node.split('.')[0]) !== 24) {
   console.error(`Node 24 is required, found ${process.version}: nvm use`)
   process.exit(1)
@@ -32,9 +32,10 @@ if (!existsSync(join(root, 'node_modules'))) {
 }
 const base =
   args[0] ?? (git('rev-parse', '--verify', '--quiet', 'origin/main') ? 'origin/main' : 'main')
-if (!git('rev-parse', '--verify', '--quiet', `${base}^{commit}`)) usage(`Unknown base ref: ${base}`)
+if (!git('rev-parse', '--verify', '--quiet', `${base}^{commit}`))
+  exitWithUsageError(`Unknown base ref: ${base}`)
 const mergeBase = git('merge-base', base, 'HEAD')?.trim()
-if (!mergeBase) usage(`No merge base between ${base} and HEAD`)
+if (!mergeBase) exitWithUsageError(`No merge base between ${base} and HEAD`)
 
 const files = new Map<string, { path: string; status: string }>()
 const changed = git('diff', '--name-status', '--no-renames', '-z', mergeBase)?.split('\0') ?? []

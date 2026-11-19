@@ -10,7 +10,7 @@ import {
   InvalidInputError,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { passwordAttributes, preparePassword } from './password_hashing.js'
+import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -46,7 +46,7 @@ export async function register(
           {
             email,
             unverifiedEmail: email,
-            ...passwordAttributes(password),
+            ...buildPasswordAttributes(password),
             registrationData,
           },
           trx

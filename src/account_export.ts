@@ -89,14 +89,12 @@ export async function exportAccountData(
   await deps.throttler.consume('identity:user', String(input.actorId), config.throttle)
   const { value: document, fault } = await settleCommitted(
     transaction(deps.db, async (trx): Promise<AccountExport> => {
-      const user = await confirmActor(
-        config,
-        trx,
-        input.actorId,
-        input.currentPassword,
-        input.recentProof,
-        'account_export'
-      )
+      const user = await confirmActor(config, trx, {
+        actorId: input.actorId,
+        currentPassword: input.currentPassword,
+        recentProof: input.recentProof,
+        purpose: 'account_export',
+      })
       const identities = await trx
         .from(packageTables.socialIdentities)
         .where('user_id', user.id)

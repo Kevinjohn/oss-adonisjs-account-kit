@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import ts from 'typescript'
 import { allyConfigSource } from '../src/setup/generated_ally_config.js'
 import { defaultSetupChoices } from '../src/setup/defaults.js'
-import { validateSocial } from '../src/setup/validate_social.js'
+import { addSocialDiagnostics } from '../src/setup/validate_social.js'
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from '../src/setup/types.js'
 
 const env = {
@@ -41,7 +41,7 @@ function socialChoices(): SetupChoices {
 
 function run(choices: SetupChoices) {
   const diagnostics: SetupDiagnostic[] = []
-  validateSocial(diagnostics, choices, state, false, env)
+  addSocialDiagnostics(diagnostics, choices, state, false, env)
   return diagnostics
 }
 

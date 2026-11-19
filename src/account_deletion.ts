@@ -19,14 +19,12 @@ export async function deleteAccount(
   const operationId = randomUUID()
   const { value: deleted, fault } = await settleCommitted(
     transaction(deps.db, async (trx): Promise<DeletedAccount> => {
-      const user = await confirmActor(
-        config,
-        trx,
-        input.actorId,
-        input.currentPassword,
-        input.recentProof,
-        'account_delete'
-      )
+      const user = await confirmActor(config, trx, {
+        actorId: input.actorId,
+        currentPassword: input.currentPassword,
+        recentProof: input.recentProof,
+        purpose: 'account_delete',
+      })
       await config.onAccountDeletingTransaction?.(user, trx)
       await deleteUserRows(trx, config, user.id)
       await remove.call(config.users, user.id, trx)

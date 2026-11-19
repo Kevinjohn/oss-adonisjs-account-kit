@@ -80,7 +80,14 @@ test.group('managed social HTTP', () => {
       ] as const) {
         const ctx = context({ state: 'callback-state', code }, { provider: 'google' })
         await assert.rejects(
-          () => executeManagedSocial(name, ctx, service, guard(strategy), social),
+          () =>
+            executeManagedSocial({
+              name,
+              context: ctx,
+              social: service,
+              guard: guard(strategy),
+              extension: social,
+            }),
           /Invalid social transaction/
         )
       }
@@ -102,7 +109,13 @@ test.group('managed social HTTP', () => {
         return { state: 'server-state', url: 'https://provider.example/authorize' }
       },
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial('auth.oauth.redirect', ctx, service, guard(), social)
+    const result = await executeManagedSocial({
+      name: 'auth.oauth.redirect',
+      context: ctx,
+      social: service,
+      guard: guard(),
+      extension: social,
+    })
     const key = `accountKit.social.${createHash('sha256').update('server-state').digest('hex')}`
     const saved = (
       ctx as unknown as { session: { get(key: string): { verifier: string } } }
@@ -131,7 +144,13 @@ test.group('managed social HTTP', () => {
       begin: async () => ({ state: `new-state-${++next}`, url: 'https://provider.example' }),
     } as unknown as SocialAuthentication
     for (let i = 0; i < 12; i++)
-      await executeManagedSocial('auth.oauth.redirect', ctx, service, guard(), social)
+      await executeManagedSocial({
+        name: 'auth.oauth.redirect',
+        context: ctx,
+        social: service,
+        guard: guard(),
+        extension: social,
+      })
     const entries = store.get('accountKit.social.pendingStates') as Array<{ key: string }>
     assert.lengthOf(entries, 8)
     const expiredKey = `accountKit.social.${createHash('sha256').update('expired-state').digest('hex')}`
@@ -168,7 +187,13 @@ test.group('managed social HTTP', () => {
         return { account: { id: 7, active: true }, credential: { opaque: 'never-in-JSON' } }
       },
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial('auth.oauth.callback', ctx, service, guard(), social)
+    const result = await executeManagedSocial({
+      name: 'auth.oauth.callback',
+      context: ctx,
+      social: service,
+      guard: guard(),
+      extension: social,
+    })
     assert.deepEqual(result, {
       status: 200,
       body: { status: 'linked', account: { id: 7, active: true } },
@@ -190,13 +215,13 @@ test.group('managed social HTTP', () => {
         return { state: 'confirm-state', url: 'https://provider.example/confirm' }
       },
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial(
-      'auth.oauth.confirmation',
-      ctx,
-      service,
-      guard(),
-      social
-    )
+    const result = await executeManagedSocial({
+      name: 'auth.oauth.confirmation',
+      context: ctx,
+      social: service,
+      guard: guard(),
+      extension: social,
+    })
     const key = `accountKit.social.${createHash('sha256').update('confirm-state').digest('hex')}`
     const saved = (
       ctx as unknown as {
@@ -231,10 +256,16 @@ test.group('managed social HTTP', () => {
         return { account: { id: 7, active: true }, credential: { opaque: 'never-in-JSON' } }
       },
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial('auth.oauth.registration', ctx, service, guard(), {
-      ...social,
-      rememberLastUsedMethod: async (_context, method) => {
-        remembered = method
+    const result = await executeManagedSocial({
+      name: 'auth.oauth.registration',
+      context: ctx,
+      social: service,
+      guard: guard(),
+      extension: {
+        ...social,
+        rememberLastUsedMethod: async (_context, method) => {
+          remembered = method
+        },
       },
     })
     assert.deepEqual(result, {
@@ -267,7 +298,13 @@ test.group('managed social HTTP', () => {
       },
     } as unknown as SocialAuthentication
     const before = Date.now()
-    await executeManagedSocial('auth.oauth.callback', ctx, service, guard(), { ...social, admit })
+    await executeManagedSocial({
+      name: 'auth.oauth.callback',
+      context: ctx,
+      social: service,
+      guard: guard(),
+      extension: { ...social, admit },
+    })
     const key = `accountKit.social.${createHash('sha256').update('continuation-state').digest('hex')}`
     const stored = (
       ctx as unknown as { session: { get(key: string): { expiresAt: number } } }
@@ -291,7 +328,14 @@ test.group('managed social HTTP', () => {
       },
     } as unknown as SocialAuthentication
     await assert.rejects(
-      () => executeManagedSocial('auth.oauth.callback', ctx, service, guard(), social),
+      () =>
+        executeManagedSocial({
+          name: 'auth.oauth.callback',
+          context: ctx,
+          social: service,
+          guard: guard(),
+          extension: social,
+        }),
       /Invalid social transaction/
     )
     assert.isFalse(called)
@@ -312,13 +356,13 @@ test.group('managed social HTTP', () => {
         return { status: 'linked', userId: 7 }
       },
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial(
-      'auth.oauth.complete',
-      ctx,
-      service,
-      guard('access_tokens'),
-      social
-    )
+    const result = await executeManagedSocial({
+      name: 'auth.oauth.complete',
+      context: ctx,
+      social: service,
+      guard: guard('access_tokens'),
+      extension: social,
+    })
     assert.deepEqual(result, { status: 200, body: { status: 'linked' } })
   })
 
@@ -336,13 +380,13 @@ test.group('managed social HTTP', () => {
         },
       ],
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial(
-      'account.socialIdentities.list',
-      ctx,
-      service,
-      guard(),
-      social
-    )
+    const result = await executeManagedSocial({
+      name: 'account.socialIdentities.list',
+      context: ctx,
+      social: service,
+      guard: guard(),
+      extension: social,
+    })
     assert.deepEqual(result, {
       status: 200,
       body: {
@@ -357,16 +401,16 @@ test.group('managed social HTTP', () => {
     assert,
   }) => {
     const ctx = context()
-    const result = await executeManagedSocial(
-      'auth.methods',
-      ctx,
-      {} as SocialAuthentication,
-      guard(),
-      {
+    const result = await executeManagedSocial({
+      name: 'auth.methods',
+      context: ctx,
+      social: {} as SocialAuthentication,
+      guard: guard(),
+      extension: {
         ...social,
         lastUsedMethod: async () => 'unexpected' as 'password',
-      }
-    )
+      },
+    })
     assert.deepEqual(result, {
       status: 200,
       body: { providers: ['google'], lastUsedMethod: null },
@@ -385,37 +429,37 @@ test.group('managed social HTTP', () => {
         credential: { opaque: 'issued-token' },
       }),
     } as unknown as SocialAuthentication
-    const result = await executeManagedSocial(
-      'auth.oauth.token',
-      ctx,
-      service,
-      guard('access_tokens'),
-      {
+    const result = await executeManagedSocial({
+      name: 'auth.oauth.token',
+      context: ctx,
+      social: service,
+      guard: guard('access_tokens'),
+      extension: {
         ...social,
         rememberLastUsedMethod: async (_context, method) => {
           remembered = method
         },
-      }
-    )
+      },
+    })
     assert.deepEqual(result, {
       status: 200,
       body: { account: { id: 7, active: true }, token: 'issued-token' },
     })
     assert.equal(remembered, 'google')
     remembered = null
-    await executeManagedSocial(
-      'auth.oauth.token',
-      context({ code: 'another-code', verifier: 'v'.repeat(43) }),
-      service,
-      guard('access_tokens'),
-      {
+    await executeManagedSocial({
+      name: 'auth.oauth.token',
+      context: context({ code: 'another-code', verifier: 'v'.repeat(43) }),
+      social: service,
+      guard: guard('access_tokens'),
+      extension: {
         ...social,
         rememberLastUsedMethod: async (_context, method) => {
           remembered = method
         },
       },
-      false
-    )
+      methodsEnabled: false,
+    })
     assert.isNull(remembered)
   })
 })

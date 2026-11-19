@@ -6,7 +6,7 @@ import { DateTime } from 'luxon'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { deliver, finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
-import { invitationAccepted } from './invitation_match.js'
+import { emitInvitationAccepted } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -163,7 +163,7 @@ export async function completeVerification(
         userId: outcome.id,
         operationId,
       }),
-      ...invitationAccepted(deps.config, claimed.invitationIds, outcome.id, operationId),
+      ...emitInvitationAccepted(deps.config, claimed.invitationIds, outcome.id, operationId),
     ])
   )
   return 'verified'

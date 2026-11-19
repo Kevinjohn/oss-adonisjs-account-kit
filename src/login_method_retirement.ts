@@ -75,14 +75,14 @@ export async function retirementImpact(
           .whereNotNull('confirmed_at')
           .select('user_id', 'provider')
       : []
-    const byUser = new Map<string, Set<string>>()
+    const loginMethodsByUserId = new Map<string, Set<string>>()
     for (const identity of identities) {
       if (!isSocialProviderName(identity.provider))
         throw new Error('Unknown confirmed provider in login inventory')
       const key = String(identity.user_id)
-      const values = byUser.get(key) ?? new Set<string>()
+      const values = loginMethodsByUserId.get(key) ?? new Set<string>()
       values.add(identity.provider)
-      byUser.set(key, values)
+      loginMethodsByUserId.set(key, values)
     }
     for (const row of rows) {
       const id = row.id as UserId
@@ -91,7 +91,7 @@ export async function retirementImpact(
       if (typeof user.hasPassword !== 'boolean')
         throw new Error('Account adapter must report whether each inventoried user has a password')
       inspectedAccounts++
-      const confirmed = byUser.get(String(id)) ?? new Set<string>()
+      const confirmed = loginMethodsByUserId.get(String(id)) ?? new Set<string>()
       const hadUsableMethod =
         (currentPasswordLogin && user.hasPassword) ||
         [...confirmed].some((provider) => currentProviders.has(provider as SocialProviderName))

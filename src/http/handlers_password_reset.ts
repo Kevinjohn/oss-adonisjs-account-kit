@@ -3,7 +3,7 @@ import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import {
   invalidProof,
-  passwordPolicyError,
+  sendPasswordPolicyErrorResponse,
   reportCommittedFailure,
   translate,
 } from './response_helpers.js'
@@ -33,7 +33,8 @@ export const passwordResetHandlers = {
   'auth.passwordReset.complete': async ({ context, kit }) => {
     const { request, response, params } = context
     const { password } = await request.validateUsing(newPasswordValidator)
-    if (!kit.managedHttp.passwordAllowed(password)) return passwordPolicyError(context, 'password')
+    if (!kit.managedHttp.passwordAllowed(password))
+      return sendPasswordPolicyErrorResponse(context, 'password')
     await kit.passwordReset.reset({ token: params.token, password })
     return response.ok({ reset: true })
   },

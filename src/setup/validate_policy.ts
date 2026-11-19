@@ -4,12 +4,12 @@ import {
   type SetupDiagnostic,
   type SetupInspection,
 } from './types.js'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
 import { PROTECTED_FIELDS } from '../registration_fields.js'
 
 /** Password, registration, callback and unverified-account policy. */
-export function validatePolicy(
+export function addPolicyDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection
@@ -27,13 +27,13 @@ export function validatePolicy(
     p.minScore < 0 ||
     p.minScore > 4
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.password',
       `Use minLength ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH}, maxLength null or minLength–${MAX_PASSWORD_LENGTH}, and minScore 0–4`
     )
   if (choices.policy.registration === 'open' && !choices.features.includes('registration'))
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.registration',
       'Open registration requires registration to be enabled'
@@ -43,7 +43,7 @@ export function validatePolicy(
     !choices.managedExcept?.includes('auth.signup') &&
     choices.policy.registration !== 'open'
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.registration',
       'Managed public signup requires open registration; use an application-owned route for application admission or omit managed signup when closed'
@@ -63,20 +63,20 @@ export function validatePolicy(
       !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.name) ||
       protectedFields.has(field.name.toLowerCase())
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `policy.registrationFields.${index}.name`,
         'Field must be a safe application-owned property'
       )
     if (fieldNames.has(field.name))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `policy.registrationFields.${index}.name`,
         'Registration fields must be unique'
       )
     fieldNames.add(field.name)
     if (!['string', 'number', 'boolean'].includes(field.type))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `policy.registrationFields.${index}.type`,
         'Choose string, number or boolean'
@@ -88,14 +88,14 @@ export function validatePolicy(
         field.maxLength < 1 ||
         field.maxLength > 1024)
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `policy.registrationFields.${index}.maxLength`,
         'Use maxLength 1–1024 for a string field'
       )
   }
   if (choices.features.includes('invitations') && !choices.policy.invitationPermissionHook)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.invitationPermissionHook',
       'Invitation permission callback must be supplied; missing permission denies access'
@@ -104,26 +104,26 @@ export function validatePolicy(
     (choices.policy.accessRestrictionHook || choices.features.includes('invitations')) &&
     !state.files['app/services/account_kit_policy.ts']
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy',
       'Provide #services/account_kit_policy callbacks before activation'
     )
   else if (choices.policy.accessRestrictionHook || choices.features.includes('invitations'))
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.callbacks',
       'Verify the application-owned policy callbacks implement the selected access and invitation contracts at runtime',
       'action'
     )
   if (choices.authentication && !choices.policy.accessRestrictionHook)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.accessRestrictionHook',
       'Supply a restricted-account callback for login and managed access'
     )
   if (choices.policy.verificationRequired && !choices.features.includes('emailVerification'))
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'policy.verificationRequired',
       'Verification-gated access requires email verification'
@@ -132,13 +132,21 @@ export function validatePolicy(
     choices.features.includes('emailPasswordManagement') &&
     !choices.features.includes('emailVerification')
   )
-    diagnostic(diagnostics, 'features', 'Email/password management requires email verification')
+    addSetupDiagnostic(
+      diagnostics,
+      'features',
+      'Email/password management requires email verification'
+    )
   if (choices.features.includes('registration') && !choices.features.includes('emailVerification'))
-    diagnostic(diagnostics, 'features', 'Registration requires the email verification service')
+    addSetupDiagnostic(
+      diagnostics,
+      'features',
+      'Registration requires the email verification service'
+    )
   if (choices.policy.verificationRequired) {
     for (const action of unverifiedActionNames) {
       if (!choices.policy.unverifiedActions.includes(action))
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'policy.unverifiedActions',
           `${action} must remain available to unverified accounts`
@@ -146,5 +154,5 @@ export function validatePolicy(
     }
   }
   if (choices.policy.unverifiedActions.some((action) => !unverifiedActionNames.includes(action)))
-    diagnostic(diagnostics, 'policy.unverifiedActions', 'Unsupported limited action')
+    addSetupDiagnostic(diagnostics, 'policy.unverifiedActions', 'Unsupported limited action')
 }

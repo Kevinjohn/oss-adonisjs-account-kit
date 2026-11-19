@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
-import { validateAccountAccessResult } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_policy.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, isUniqueViolation } from './db.js'
 import { consumeRows } from './consume_rows.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
-import { invitationAccepted } from './invitation_match.js'
+import { emitInvitationAccepted } from './invitation_match.js'
 import { createHandoff } from './social_handoff.js'
 import { hasConfirmedAddress, isActiveAccount } from './account_projection.js'
 import { consumeSocialSensitiveProofHash, issueProof } from './social_proofs.js'
@@ -21,9 +21,9 @@ import { readTimestamp } from './timestamps.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { isSocialProviderName } from './social_providers.js'
 import {
-  authenticated,
-  expiry,
-  now,
+  requireAuthenticatedUser,
+  calculateSocialExpiry,
+  readSqlTimestamp,
   type Dependencies,
   type SocialTransactionResult,
 } from './social_shared.js'
@@ -106,7 +106,7 @@ export async function consumeState(trx: Trx, state: string): Promise<SocialTrans
     trx,
     'social_transactions',
     { hash: hashToken(state) },
-    now(trx)
+    readSqlTimestamp(trx)
   )
   if (rows.length !== 1) throw new SocialTransactionError()
   return rows[0]
@@ -125,7 +125,7 @@ export async function socialCallback(
   const candidate = await deps.db
     .from('social_transactions')
     .where('hash', hashToken(input.state))
-    .where('expires_at', '>', now(deps.db))
+    .where('expires_at', '>', readSqlTimestamp(deps.db))
     .first()
   if (!candidate || candidate.intent === 'registration') throw new SocialTransactionError()
   const name = candidate.provider as SocialProviderName
@@ -189,7 +189,7 @@ export async function socialCallback(
             const user = await deps.config.users.findById(stored.user_id, trx)
             if (!user) throw new SocialUserNotFoundError()
             const auth = deps.config.authentication!
-            if (!validateAccountAccessResult(await auth.canAccess(user, trx)))
+            if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
               throw new SocialUserNotFoundError()
             return {
               result: {
@@ -227,8 +227,8 @@ export async function socialCallback(
               name: profile.name ?? null,
               nickname: profile.nickname ?? null,
               avatar_url: profile.avatarUrl ?? null,
-              expires_at: expiry(trx),
-              created_at: now(trx),
+              expires_at: calculateSocialExpiry(trx),
+              created_at: readSqlTimestamp(trx),
             })
             return {
               result: {
@@ -314,7 +314,7 @@ export async function socialCallback(
         }
         if (state.user_id === null || input.current?.userId !== state.user_id)
           throw new SocialTransactionError()
-        const user = await authenticated(deps, input.current, trx)
+        const user = await requireAuthenticatedUser(deps, input.current, trx)
         if (state.intent === 'reauth') {
           if (
             !freshAuthenticationMatches(freshEvidence, profile.subject, state.created_at) ||
@@ -373,7 +373,7 @@ export async function socialCallback(
       if (accepted)
         await postCommit(
           'Invitation follow-up failed',
-          invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
+          emitInvitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
         await sendSocialActivation(deps, unverified)

@@ -4,11 +4,11 @@ import type { CurrentAccount } from '../types.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler, ManagedRequest } from './managed_types.js'
 import {
-  issuedAccountBody,
-  passwordPolicyError,
+  renderIssuedAccountBody,
+  sendPasswordPolicyErrorResponse,
   recoveryDiagnostic,
   reportCommittedFailure,
-  ruleError,
+  sendRuleViolationResponse,
   signInLabel,
 } from './response_helpers.js'
 import { signupValidator } from './validators.js'
@@ -29,7 +29,7 @@ async function signup<Credential>({
     ? await options.extensions.registration.validate(context)
     : await request.validateUsing(signupValidator)
   if (!kit.managedHttp.passwordAllowed(input.password))
-    return passwordPolicyError(context, 'password')
+    return sendPasswordPolicyErrorResponse(context, 'password')
   try {
     await kit.registration.register({
       email: input.email,
@@ -38,7 +38,12 @@ async function signup<Credential>({
     })
   } catch (error) {
     if (error instanceof EmailAlreadyRegisteredError)
-      return ruleError(context, 'email', 'unique', 'The email has already been taken.')
+      return sendRuleViolationResponse(
+        context,
+        'email',
+        'unique',
+        'The email has already been taken.'
+      )
     if (!reportCommittedFailure(context, route.name, error)) throw error
   }
   let result: { account: CurrentAccount; credential: Credential }
@@ -56,7 +61,7 @@ async function signup<Credential>({
     recoveryDiagnostic(context, route.name, 'authentication_failed')
     return response.created({ registered: true, authenticated: false })
   }
-  return response.created(await issuedAccountBody({ options, representIssued }, result))
+  return response.created(await renderIssuedAccountBody({ options, representIssued }, result))
 }
 
 export const registrationHandlers = {

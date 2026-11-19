@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
-import { invitationAccepted } from './invitation_match.js'
+import { emitInvitationAccepted } from './invitation_match.js'
 import { isEmailShaped } from './email.js'
 import { createHandoff } from './social_handoff.js'
 import {
@@ -13,7 +13,7 @@ import { sendSocialActivation } from './social_activation.js'
 import { consumeState, isIdentityConflict } from './social_callback.js'
 import { checkedProfile, createAccount } from './social_account_creation.js'
 import {
-  enabledProviders,
+  listEnabledSocialProviders,
   type Dependencies,
   type SocialTransactionResult,
 } from './social_shared.js'
@@ -38,7 +38,7 @@ export async function completeRegistration(
         const state = await consumeState(trx, input.continuation)
         if (state.intent !== 'registration' || !state.provider_user_id)
           throw new SocialTransactionError()
-        if (!enabledProviders(deps.config).includes(state.provider))
+        if (!listEnabledSocialProviders(deps.config).includes(state.provider))
           throw new SocialTransactionError()
         const email = state.email ?? input.email
         if (!email || !isEmailShaped(email)) throw new SocialEmailMissingError()
@@ -101,7 +101,7 @@ export async function completeRegistration(
       if (accepted)
         await postCommit(
           'Invitation follow-up failed',
-          invitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
+          emitInvitationAccepted(deps.config, accepted.invitationIds, accepted.userId, randomUUID())
         )
       if (unverified && deps.config.enabled.includes('emailVerification')) {
         await sendSocialActivation(deps, unverified)
