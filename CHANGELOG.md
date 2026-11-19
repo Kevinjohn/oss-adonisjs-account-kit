@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Return `link_required` when either social signup path encounters a duplicate email during account creation.
+
 - Allow managed routes to start alongside application routes whose simple sticky lookaheads
   exclude the managed paths.
 

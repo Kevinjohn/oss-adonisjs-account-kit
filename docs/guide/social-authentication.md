@@ -83,7 +83,9 @@ and sensitive proof operations.
 Login resolution uses only `linked`, `link_required`, or `new`:
 
 - **`linked`**: a stored confirmed subject, even if its provider email changes.
-- **`link_required`**: a matching email without a stored relationship. No credential is returned.
+- **`link_required`**: a matching email without a stored relationship. Both callback signup and
+  registration completion return this outcome if the database rejects signup because the email is
+  already in use. No credential is returned.
 - **`new`**: account creation follows the shared registration mapping. Missing email or required
   fields return `{ status: 'new', continuation }` for
   `completeRegistration({ continuation, email?, registrationData?, admit? })`. Completion rechecks
