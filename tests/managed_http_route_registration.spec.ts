@@ -103,6 +103,7 @@ test.group('managed HTTP dispatch', () => {
     for (const [pattern, matcher, intersects] of [
       ['/auth/:id', /^[0-9]+$/, false],
       ['/auth/:id', /^login$/, true],
+      ['/auth/:id', /login/y, true],
       ['/auth/login/:id/:tail?', undefined, true],
       ['/auth/login/:id/:tail.json?', undefined, false],
     ] as const) {
@@ -127,6 +128,41 @@ test.group('managed HTTP dispatch', () => {
       } finally {
         await app.close()
       }
+    }
+  })
+
+  test('commits managed and application routes with disjoint sticky matchers', async ({
+    assert,
+  }) => {
+    const app = await bootTestApp()
+    try {
+      const router = await app.app.container.make('router')
+      router
+        .get('/api/:version/auth/csrf', () => null)
+        .where('version', /(?=\d+$)/y)
+        .as('app.numeric')
+      registerManagedRoutes(router, {
+        prefix: '/api/v1',
+        kit: async () => ({}) as AccountKit,
+        guard: {
+          strategy: 'session',
+          name: 'web',
+          forRequest: () => ({}) as never,
+          current: async () => ({ userId: 1, revision: null }),
+        },
+        enabled: ['authentication'],
+      })
+
+      router.commit()
+      for (let lookup = 0; lookup < 2; lookup++) {
+        assert.equal(router.match('/api/1/auth/csrf', 'GET', false)?.route.name, 'app.numeric')
+        assert.equal(
+          router.match('/api/v1/auth/csrf', 'GET', false)?.route.name,
+          'accountKit.auth.csrf'
+        )
+      }
+    } finally {
+      await app.close()
     }
   })
 })
