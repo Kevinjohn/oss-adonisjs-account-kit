@@ -9,7 +9,7 @@ export type DialectSource =
       connection(): { dialect: { name: string } }
     }
 
-function dialectOf(client: DialectSource): string {
+function getDatabaseDialect(client: DialectSource): string {
   return 'dialect' in client ? client.dialect.name : client.connection().dialect.name
 }
 
@@ -20,7 +20,9 @@ function dialectOf(client: DialectSource): string {
 export function sqlTimestamp(client: DialectSource, at: DateTime = DateTime.utc()): string {
   const utc = at.toUTC()
   if (!utc.isValid) throw new Error('account_kit: invalid timestamp')
-  return dialectOf(client) === 'mysql' ? utc.toFormat('yyyy-MM-dd HH:mm:ss.SSS') : utc.toISO()!
+  return getDatabaseDialect(client) === 'mysql'
+    ? utc.toFormat('yyyy-MM-dd HH:mm:ss.SSS')
+    : utc.toISO()!
 }
 
 /** Read a timestamp column whatever the driver returns: a Date, a string or epoch milliseconds. */

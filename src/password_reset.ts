@@ -7,7 +7,7 @@ import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_
 import { consumeUserToken, transaction } from './db.js'
 import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
-import { invitationAccepted, matchInvitation } from './invitation_match.js'
+import { emitInvitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
 import { hashToken, isTokenShaped } from './tokens.js'
@@ -92,7 +92,7 @@ export async function completePasswordReset(
       { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(user, context) },
       { kind: 'delivery', run: () => deps.config.notify.passwordResetCompleted(user, context) },
       lifecycle(deps.config, { type: 'password.reset', userId: user.id, operationId }),
-      ...invitationAccepted(deps.config, reset.invitationIds, user.id, operationId),
+      ...emitInvitationAccepted(deps.config, reset.invitationIds, user.id, operationId),
     ])
   )
   return user

@@ -173,7 +173,8 @@ function requestBody(
     throw new InvalidArgumentsException(
       `OpenAPI generation needs openapi.requestBodies['${name}'] because the application replaced its validator`
     )
-  const schema = override ?? managedEndpointSchemas[route.name].body?.(input.registration.strategy)
+  const schema =
+    override ?? managedEndpointSchemas[route.name].requestBody?.(input.registration.strategy)
   return schema && { required: true, content: { 'application/json': { schema } } }
 }
 

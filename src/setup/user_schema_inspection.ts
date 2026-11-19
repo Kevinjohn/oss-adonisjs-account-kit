@@ -12,7 +12,7 @@ import {
   walk,
   type SetupSource,
 } from './ts_source.js'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 import { conventionalSetupImport } from './package_imports.js'
 import { hasUnsafeStaticMetadata, unsupportedClassRuntime } from './model_inspection.js'
 import type * as TypeScript from 'typescript'
@@ -127,7 +127,7 @@ export async function inspectUserSchema(
     } else if (
       (error as Error).message === 'Setup cannot resolve #database/schema to the inspected schema'
     ) {
-      diagnostic(diagnostics, 'user.connection', (error as Error).message)
+      addSetupDiagnostic(diagnostics, 'user.connection', (error as Error).message)
     } else throw error
   }
   return { schemaClass: null, schemaSource: null }

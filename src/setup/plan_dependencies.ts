@@ -1,6 +1,6 @@
 // Setup planning phase: selected package presence and version range diagnostics.
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
-import { hasEmailFlow, diagnostic } from './shared.js'
+import { hasEmailFlow, addSetupDiagnostic } from './shared.js'
 
 type SupportedRange = {
   /** Without a readable installed version the package is skipped unless this says otherwise. */
@@ -85,7 +85,11 @@ export async function planDependencies(
   ]
   const missingPackages = selectedPackages.filter((name) => !state.installedPackages.includes(name))
   for (const name of missingPackages)
-    diagnostic(diagnostics, `dependencies.${name}`, `Install ${name} explicitly before applying`)
+    addSetupDiagnostic(
+      diagnostics,
+      `dependencies.${name}`,
+      `Install ${name} explicitly before applying`
+    )
   for (const name of selectedPackages) {
     const range = supportedRanges[name]
     if (!range) continue
@@ -94,7 +98,7 @@ export async function planDependencies(
       range.unknownVersion === 'report' ||
       (range.unknownVersion === 'reportIfInstalled' && state.installedPackages.includes(name))
     if (version ? range.supports(version) : !reportUnknown) continue
-    diagnostic(diagnostics, `dependencies.${name}`, range.message(version))
+    addSetupDiagnostic(diagnostics, `dependencies.${name}`, range.message(version))
   }
   return missingPackages
 }

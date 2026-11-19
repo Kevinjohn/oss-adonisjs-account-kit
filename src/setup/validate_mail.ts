@@ -7,11 +7,17 @@ import {
   type SetupInspection,
 } from './types.js'
 import { createActionUrls } from '../notifications.js'
-import { emailDestinations, hasEmailFlow, envName, diagnostic, validateOrigin } from './shared.js'
+import {
+  emailDestinations,
+  hasEmailFlow,
+  envName,
+  addSetupDiagnostic,
+  addOriginDiagnostics,
+} from './shared.js'
 import type { SelectedSetupOrigins } from './diagnostics.js'
 
 /** Mail integration, environment references, destinations and origins for email flows. */
-export function validateMail(
+export function addMailDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection,
@@ -21,13 +27,13 @@ export function validateMail(
 ) {
   const emailEnabled = hasEmailFlow(choices)
   if (emailEnabled && !mailIntegrations.includes(choices.mail.integration))
-    diagnostic(diagnostics, 'mail.integration', 'Choose adonisjs-mail or custom')
+    addSetupDiagnostic(diagnostics, 'mail.integration', 'Choose adonisjs-mail or custom')
   if (emailEnabled && !mailDeliveries.includes(choices.mail.delivery))
-    diagnostic(diagnostics, 'mail.delivery', 'Choose best-effort or durable')
+    addSetupDiagnostic(diagnostics, 'mail.delivery', 'Choose best-effort or durable')
   for (const field of ['senderEnv', 'transportEnv'] as const) {
     const name = choices.mail[field]
     if (emailEnabled && name && !envName.test(name))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `mail.${field}`,
         'Use an uppercase environment variable name, not a secret'
@@ -38,7 +44,7 @@ export function validateMail(
     choices.mail.integration === 'adonisjs-mail' &&
     !state.files['config/mail.ts']
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'config/mail.ts',
       'Configure AdonisJS Mail with a real transport before applying'
@@ -48,31 +54,35 @@ export function validateMail(
     choices.mail.integration === 'custom' &&
     !state.files['app/services/account_kit_notifications.ts']
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'mail.integration',
       'Provide #services/account_kit_notifications before activation'
     )
   else if (emailEnabled && choices.mail.integration === 'custom')
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'mail.callbacks',
       'Verify the application-owned notification callbacks for every selected email flow and a real delivery transport',
       'action'
     )
   if (emailEnabled && (!choices.mail.appName.trim() || /[\r\n]/.test(choices.mail.appName)))
-    diagnostic(diagnostics, 'mail.appName', 'Application identity is required')
+    addSetupDiagnostic(diagnostics, 'mail.appName', 'Application identity is required')
   if (emailEnabled && choices.mail.integration === 'adonisjs-mail' && !choices.mail.senderEnv)
-    diagnostic(diagnostics, 'mail.senderEnv', 'Sender environment reference is required')
+    addSetupDiagnostic(diagnostics, 'mail.senderEnv', 'Sender environment reference is required')
   if (emailEnabled && choices.mail.integration === 'adonisjs-mail' && !choices.mail.transportEnv)
-    diagnostic(diagnostics, 'mail.transportEnv', 'Transport environment reference is required')
+    addSetupDiagnostic(
+      diagnostics,
+      'mail.transportEnv',
+      'Transport environment reference is required'
+    )
   if (emailEnabled && choices.mail.integration === 'adonisjs-mail') {
     for (const field of ['senderEnv', 'transportEnv'] as const) {
       const name = choices.mail[field]
       if (!name || !envName.test(name)) continue
       const error = selectedOrigins?.errors[name]
       if (error) {
-        diagnostic(diagnostics, `mail.${field}`, `${name}: ${error.message}`)
+        addSetupDiagnostic(diagnostics, `mail.${field}`, `${name}: ${error.message}`)
         continue
       }
       const value =
@@ -80,14 +90,18 @@ export function validateMail(
           ? (selectedOrigins.values[name] ?? undefined)
           : env[name]
       if (value === undefined || value === '')
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           `mail.${field}`,
           `${name} must be set before readiness can pass`,
           'action'
         )
       else if (!value.trim() || (field === 'senderEnv' && /[\r\n]/.test(value)))
-        diagnostic(diagnostics, `mail.${field}`, 'Configured value must be nonblank and safe')
+        addSetupDiagnostic(
+          diagnostics,
+          `mail.${field}`,
+          'Configured value must be nonblank and safe'
+        )
     }
   }
   for (const [feature, destination] of Object.entries(emailDestinations)) {
@@ -96,7 +110,7 @@ export function validateMail(
       choices.features.includes(feature as SetupFeature) &&
       !choices.mail.destinations[destination!]
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `mail.destinations.${destination}`,
         'Enabled email flow needs a relative frontend destination'
@@ -114,7 +128,7 @@ export function validateMail(
         destinations: { [field]: destination },
       })
     } catch {
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         `mail.destinations.${field}`,
         'Use a safe relative frontend path without whitespace, traversal, query or fragment'
@@ -122,7 +136,7 @@ export function validateMail(
     }
   }
   if (emailEnabled) {
-    validateOrigin(
+    addOriginDiagnostics(
       diagnostics,
       'mail.backendOriginEnv',
       choices.mail.backendOriginEnv,
@@ -131,7 +145,7 @@ export function validateMail(
       selectedOrigins?.values[choices.mail.backendOriginEnv],
       selectedOrigins?.errors[choices.mail.backendOriginEnv]
     )
-    validateOrigin(
+    addOriginDiagnostics(
       diagnostics,
       'mail.frontendOriginEnv',
       choices.mail.frontendOriginEnv,
@@ -142,13 +156,13 @@ export function validateMail(
     )
   }
   if (emailEnabled && choices.mail.delivery === 'durable' && !choices.mail.durableWorkerVerified)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'mail.durableWorkerVerified',
       'Verify application-owned queue/outbox worker and retry before durable readiness'
     )
   if (emailEnabled && choices.mail.delivery === 'durable' && choices.mail.integration !== 'custom')
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'mail.delivery',
       'Durable delivery requires application-owned notification callbacks backed by a verified queue or outbox'

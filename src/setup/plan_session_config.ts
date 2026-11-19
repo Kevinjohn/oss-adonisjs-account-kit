@@ -7,7 +7,7 @@ import {
   parseSetupSource,
   type SetupSource,
 } from './ts_source.js'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 import {
   type NativeSessionConfiguration,
   nativeSessionConfiguration,
@@ -36,11 +36,15 @@ export async function planSessionConfigIntegration(
     parsed = await parseSetupSource(previous)
   } catch (error) {
     if (!(error instanceof InvalidSetupSourceError)) throw error
-    diagnostic(diagnostics, path, `Setup cannot inspect ${path}; fix its TypeScript errors first`)
+    addSetupDiagnostic(
+      diagnostics,
+      path,
+      `Setup cannot inspect ${path}; fix its TypeScript errors first`
+    )
     return
   }
   if (base === null) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'The managed session integration was edited; restore its marked block or reconcile it manually before setup'
@@ -61,7 +65,7 @@ export async function planSessionConfigIntegration(
     parsed.ts.isIdentifier(existingWrapper.expression.expression) &&
     existingWrapper.expression.expression.text === wrapperBinding
   ) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Verify the existing application-owned session protection wrapper before enabling managed session routes',
@@ -74,7 +78,7 @@ export async function planSessionConfigIntegration(
     try {
       inspected = await nativeSessionConfiguration(base, state.root)
     } catch {
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         path,
         'Inspect the selected session environment assignment and file path; only a direct native store name is supported'
@@ -83,7 +87,7 @@ export async function planSessionConfigIntegration(
     }
   }
   if (wantsManagedSession && !inspected?.selected) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'The selected session factory must be an inspected native database or development memory store; custom or unresolved selections need a truthful application-owned protectManagedSessionConfig wrapper'
@@ -93,7 +97,7 @@ export async function planSessionConfigIntegration(
   const content =
     wantsManagedSession && inspected ? renderManagedSessionConfig(base, inspected) : base
   if (content === null) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Use a conventional const sessionConfig = defineConfig(...) and export default sessionConfig, or wire protectManagedSessionConfig manually before managed session activation'

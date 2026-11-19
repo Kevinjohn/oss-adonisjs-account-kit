@@ -10,7 +10,7 @@ import {
 } from './ts_source.js'
 import { SelectedEnvironmentValueError, selectedEnvName } from './selected_environment.js'
 
-export async function databaseKind(
+export async function inspectDatabaseKind(
   sourceText: string,
   root: string
 ): Promise<SetupInspection['database']> {

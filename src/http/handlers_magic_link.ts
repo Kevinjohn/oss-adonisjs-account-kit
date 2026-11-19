@@ -5,7 +5,7 @@ import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import {
   invalidProof,
-  issuedAccountBody,
+  renderIssuedAccountBody,
   reportCommittedFailure,
   translate,
 } from './response_helpers.js'
@@ -69,6 +69,6 @@ export const magicLinkHandlers = {
     )
     // Failed or replayed completions leave other outstanding links usable.
     if (options.guard.strategy === 'session') consumeMagicLink(session(context))
-    return response.ok(await issuedAccountBody({ options, representIssued }, result))
+    return response.ok(await renderIssuedAccountBody({ options, representIssued }, result))
   },
 } satisfies Partial<Record<ManagedEndpointName, ManagedHandler>>

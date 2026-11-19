@@ -26,17 +26,17 @@ export interface SocialTransactionResult {
 
 export type Dependencies = ServiceDependencies
 const MINUTES = 10
-export const expiry = (client: DialectSource) =>
+export const calculateSocialExpiry = (client: DialectSource) =>
   sqlTimestamp(client, DateTime.utc().plus({ minutes: MINUTES }))
-export const now = (client: DialectSource) => sqlTimestamp(client)
+export const readSqlTimestamp = (client: DialectSource) => sqlTimestamp(client)
 
-export function enabledProviders(config: ResolvedConfig): SocialProviderName[] {
+export function listEnabledSocialProviders(config: ResolvedConfig): SocialProviderName[] {
   return socialProviderNames.filter(
     (name) => config.socialAuthentication?.providers[name] !== undefined
   )
 }
 
-export async function authenticated(
+export async function requireAuthenticatedUser(
   deps: Dependencies,
   current: CurrentAccountInput | undefined,
   trx: Trx

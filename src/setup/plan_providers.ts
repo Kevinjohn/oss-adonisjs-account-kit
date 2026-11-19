@@ -8,7 +8,7 @@ import {
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 import { inspectProviders } from './providers_inspection.js'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 
 export async function planArrayImports(
   changes: SetupFileChange[],
@@ -44,7 +44,7 @@ export async function planArrayImports(
   const providers =
     source && object && inspectProviders(source, object, { config: read, entry: read })
   if (!previous || !source || !providers || providers.status !== 'array') {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       `Expected a default-exported providers array in ${path}; configure these imports manually before activation`

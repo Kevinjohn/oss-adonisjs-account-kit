@@ -11,7 +11,7 @@ import {
   ThrottledError,
 } from '../src/errors.js'
 import { managedErrorResponse, proofHeaders } from '../src/http/responses.js'
-import { ruleError } from '../src/http/response_helpers.js'
+import { sendRuleViolationResponse } from '../src/http/response_helpers.js'
 import type { HttpContext } from '@adonisjs/core/http'
 
 test.group('managed HTTP responses', () => {
@@ -31,7 +31,7 @@ test.group('managed HTTP responses', () => {
           },
         },
       } as unknown as HttpContext
-      ruleError(context, 'email', 'unique', 'The email has already been taken.')
+      sendRuleViolationResponse(context, 'email', 'unique', 'The email has already been taken.')
       return { headers, vary, ...sent }
     }
     assert.deepEqual(send(), {

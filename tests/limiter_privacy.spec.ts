@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { consume, limiterKey } from '../src/throttle.js'
+import { consume, buildLimiterKey } from '../src/throttle.js'
 import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 
@@ -142,8 +142,8 @@ test.group('limiter privacy', (group) => {
     }
     const secret = 'test_only_shared_limiter_secret_32_bytes'
     assert.deepEqual(keys, [
-      limiterKey('managed:password_reset', '192.0.2.14', secret, 'app-a'),
-      limiterKey('managed:password_reset', '192.0.2.14', secret, 'app-b'),
+      buildLimiterKey('managed:password_reset', '192.0.2.14', secret, 'app-a'),
+      buildLimiterKey('managed:password_reset', '192.0.2.14', secret, 'app-b'),
     ])
   })
 })

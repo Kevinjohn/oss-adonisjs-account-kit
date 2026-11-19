@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
-import { validateAccountAccessResult } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_policy.js'
 import { inspectAccountAccess } from './account_access_inspection.js'
 import { requireAuthentication } from './authentication_config.js'
-import { safeAccount } from './account_projection.js'
+import { buildAccountProjection } from './account_projection.js'
 import { lockUser, transaction } from './db.js'
 import { normalizeEmail } from './email.js'
 import { credentialsChanged, revision } from './credential_revision.js'
@@ -80,9 +80,10 @@ async function currentWithSessionInTransaction(
     )
       throw new InvalidSessionError()
   }
-  if (!validateAccountAccessResult(await auth.canAccess(user, trx))) throw new InvalidSessionError()
+  if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
+    throw new InvalidSessionError()
   if (session) await touchSession(trx, deps.config, session)
-  return { account: safeAccount(user), session }
+  return { account: buildAccountProjection(user), session }
 }
 
 /**
@@ -205,11 +206,11 @@ export function authenticationService(deps: ServiceDependencies) {
             user.email !== email ||
             !user.hasPassword ||
             !(await deps.config.users.verifyPassword(user.id, input.password, trx)) ||
-            !validateAccountAccessResult(await auth.canAccess(user, trx))
+            !requireAccountAccessDecision(await auth.canAccess(user, trx))
           )
             throw new InvalidCredentialsError()
           return {
-            account: safeAccount(user),
+            account: buildAccountProjection(user),
             revision: await revision(trx, deps.config, user.id),
           }
         })

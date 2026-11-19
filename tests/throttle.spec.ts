@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { ThrottledError } from '../src/errors.js'
-import { consume, limiterKey } from '../src/throttle.js'
+import { consume, buildLimiterKey } from '../src/throttle.js'
 import { useTestApp } from './helpers/app.js'
 test.group('operation throttling', (group) => {
   const kit = useTestApp(group)
@@ -36,7 +36,7 @@ test.group('operation throttling', (group) => {
     } catch (error) {
       assert.instanceOf(error, ThrottledError)
     }
-    assert.equal(limiterKey('recovery:client', 'same', 'a'.repeat(32), 'default'), storedKey)
+    assert.equal(buildLimiterKey('recovery:client', 'same', 'a'.repeat(32), 'default'), storedKey)
   })
 
   test('propagates unrelated limiter errors unchanged', async ({ assert }) => {

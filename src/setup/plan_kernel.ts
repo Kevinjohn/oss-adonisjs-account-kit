@@ -10,7 +10,7 @@ import {
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 
 export function safeKernelService(
   source: SetupSource,
@@ -102,7 +102,11 @@ export async function planRouterMiddleware(
   const path = 'start/kernel.ts'
   const previous = state.files[path]
   if (!previous) {
-    diagnostic(diagnostics, path, 'Expected one conventional router.use array in start/kernel.ts')
+    addSetupDiagnostic(
+      diagnostics,
+      path,
+      'Expected one conventional router.use array in start/kernel.ts'
+    )
     return
   }
   let content = previous
@@ -110,7 +114,11 @@ export async function planRouterMiddleware(
   try {
     source = await parseSetupSource(content)
   } catch {
-    diagnostic(diagnostics, path, 'Router middleware source must be valid TypeScript before setup')
+    addSetupDiagnostic(
+      diagnostics,
+      path,
+      'Router middleware source must be valid TypeScript before setup'
+    )
     return
   }
   let array = callArray(source, 'router', 'use')
@@ -121,7 +129,7 @@ export async function planRouterMiddleware(
     !safeKernelService(source, '@adonisjs/core/services/router', 'router', array) ||
     !safeKernelService(source, '@adonisjs/core/services/server', 'server', server)
   ) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Expected one conventional server.use and router.use array in start/kernel.ts'
@@ -139,7 +147,7 @@ export async function planRouterMiddleware(
   if (
     server.elements.some((entry) => ordered.slice(1).includes(lazyImportPath(source, entry) ?? ''))
   ) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Account middleware already appears in server.use; move it to the ordered router.use stack manually'
@@ -152,7 +160,7 @@ export async function planRouterMiddleware(
     paths.filter((name) => name === body).length !== 1 ||
     ordered.some((name) => paths.filter((entry) => entry === name).length > 1)
   ) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Router middleware layout is ambiguous; preserve body parser, session, Shield, then auth order manually'
@@ -161,7 +169,7 @@ export async function planRouterMiddleware(
   }
   const existing = ordered.map((name) => paths.indexOf(name)).filter((index) => index >= 0)
   if (existing.some((index, position) => position > 0 && index <= existing[position - 1])) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Existing router middleware order is unsafe; require body parser, session, Shield, then auth'
@@ -177,7 +185,7 @@ export async function planRouterMiddleware(
     try {
       source = await parseSetupSource(content)
     } catch {
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         path,
         'Router middleware layout cannot be changed safely; use a complete import expression before setup'
@@ -186,7 +194,7 @@ export async function planRouterMiddleware(
     }
     array = callArray(source, 'router', 'use')
     if (!array) {
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         path,
         'Router middleware layout cannot be changed safely; use a conventional array before setup'
@@ -224,7 +232,7 @@ export async function planServerProofMiddleware(
     !array ||
     !safeKernelService(source, '@adonisjs/core/services/server', 'server', array)
   ) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Expected one conventional server.use array before router middleware'
@@ -235,7 +243,7 @@ export async function planServerProofMiddleware(
   const proofPosition = array.elements.findIndex((entry) => lazyImportPath(source, entry) === name)
   if (proofPosition === 0) return
   if (proofPosition > 0) {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       path,
       'Move proof response headers to the first server.use position, before body parsing or terminating middleware'

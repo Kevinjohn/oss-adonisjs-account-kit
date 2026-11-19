@@ -20,11 +20,11 @@ import {
   type PostCommitError,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
-import { passwordAttributes, preparePassword } from './password_hashing.js'
+import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
 import { normalizeScope, scopeColumn } from './invitation_scope.js'
-import { applyInvitations, invitationAccepted } from './invitation_match.js'
+import { applyInvitations, emitInvitationAccepted } from './invitation_match.js'
 import { consumeRows } from './consume_rows.js'
 import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
@@ -73,7 +73,7 @@ export async function acceptInvitation(
           {
             email: candidate.email,
             unverifiedEmail: null,
-            ...passwordAttributes(password),
+            ...buildPasswordAttributes(password),
             registrationData,
           },
           trx
@@ -118,7 +118,7 @@ export async function acceptInvitation(
   await finishCommitted(fault, 'Invitation committed but follow-ups failed', () =>
     postCommit(
       'Invitation follow-up failed',
-      invitationAccepted(deps.config, result.invitationIds, result.user.id, operationId)
+      emitInvitationAccepted(deps.config, result.invitationIds, result.user.id, operationId)
     )
   )
   return result.user

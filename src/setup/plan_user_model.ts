@@ -15,7 +15,7 @@ import {
   walk,
   type SetupSource,
 } from './ts_source.js'
-import { diagnostic } from './shared.js'
+import { addSetupDiagnostic } from './shared.js'
 import {
   classColumns,
   hasUnsafeStaticMetadata,
@@ -47,7 +47,7 @@ export async function planUserModel(
           `./${modelPath.slice(0, -3)}.js`
         )
       )
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.model',
           `Setup cannot resolve ${choices.user.model} to the inspected model`
@@ -85,7 +85,7 @@ export async function planUserModel(
           (clause) => clause.token === ts.SyntaxKind.ExtendsKeyword
         )
       )
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.model',
           'Selected Lucid model must expose a default model class'
@@ -150,13 +150,13 @@ export async function planUserModel(
         mutatedModel ||
         (selectedClass && unsupportedClassRuntime(model, selectedClass, false))
       )
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.model',
           'Model static metadata or later class references require manual review before generated migrations'
         )
       if (choices.authentication?.strategy === 'access_tokens' && !supportedTokenProvider)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.model',
           'Token guard model must initialize accessTokens with the supported DbAccessTokensProvider.forModel(User) provider'
@@ -238,7 +238,7 @@ export async function planUserModel(
             Boolean(safeBaseComposition && reference === composeCall?.arguments[0])
         )
       )
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.connection',
           'Resolve imported BaseModel origins before generated migrations'
@@ -266,13 +266,13 @@ export async function planUserModel(
         staticMember('namingStrategy').length ||
         inheritedMember('namingStrategy').length
       )
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.idType',
           'Resolve the model primary key and naming strategy before generating migrations'
         )
       if (modelColumns?.unsafe || inheritedColumns?.unsafe)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.idType',
           'Resolve model column decorators before generating migrations'
@@ -296,7 +296,7 @@ export async function planUserModel(
           primary[0][0] !== 'id' ||
           id.declaration.type?.kind !== expectedType
         )
-          diagnostic(
+          addSetupDiagnostic(
             diagnostics,
             'user.idType',
             'Model must expose one physical id primary column with the selected TypeScript id type'
@@ -310,31 +310,31 @@ export async function planUserModel(
       const table =
         tableInitializer && ts.isStringLiteral(tableInitializer) ? tableInitializer.text : null
       if (tableMember.length && !table)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.table',
           'Resolve the inherited or declared model table before generating migrations'
         )
       if (table && table !== choices.user.table)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.table',
           `Model table ${table} differs from selected ${choices.user.table}`
         )
       if (staticMember('connection').length || inheritedMember('connection').length)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.connection',
           'Selected Lucid model must not declare an explicit connection override'
         )
       if (!table && selectedClass?.name?.text !== 'User')
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.table',
           'Confirm the final model table mapping before generated migrations'
         )
       if (!table && choices.user.table !== 'users')
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.table',
           'Default Lucid User table is users; declare a model-owned table for another name'
@@ -348,7 +348,7 @@ export async function planUserModel(
             !ts.isStringLiteral(member.initializer)
         )
       )
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.table',
           'Resolve schema table evaluation before generated migrations'
@@ -364,20 +364,20 @@ export async function planUserModel(
           )
       )
       if (!extendsBase)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.connection',
           'Resolve the imported Lucid BaseModel inheritance before using this model for generated migrations'
         )
     } catch (error) {
       if (error instanceof InvalidSetupSourceError)
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           'user.model',
           `Setup cannot inspect ${modelPath}; fix its TypeScript errors first`
         )
       else if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      else diagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
+      else addSetupDiagnostic(diagnostics, 'user.model', `${modelPath} was not found`)
     }
   }
 }

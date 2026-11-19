@@ -1,6 +1,6 @@
 // Setup planning phase: Mail mailer selection diagnostics for email flows.
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
-import { hasEmailFlow, diagnostic } from './shared.js'
+import { hasEmailFlow, addSetupDiagnostic } from './shared.js'
 import { mailerSelectionState } from './config_inspection.js'
 
 export async function planMail(
@@ -19,25 +19,25 @@ export async function planMail(
       choices.mail.transportEnv
     )
     if (selection === 'missing')
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'config/mail.ts',
         'Selected Mail mailer is absent from the configured mailers map'
       )
     else if (selection === 'invalid')
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'config/mail.ts',
         'Selected Mail mailer must be a callable transport provider'
       )
     else if (selection === 'unsafe')
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'config/mail.ts',
         'Resolve runtime Mail and environment module origins before setup'
       )
     else
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'config/mail.ts',
         selection === 'unresolved'

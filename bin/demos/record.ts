@@ -368,7 +368,7 @@ async function main() {
   }
   let resolveInterrupted!: () => void
   const interrupted = new Promise<void>((resolve) => (resolveInterrupted = resolve))
-  const handleSignal = (signal: NodeJS.Signals) => {
+  const stopDemoOnSignal = (signal: NodeJS.Signals) => {
     if (!firstSignal) {
       firstSignal = signal
       cancellation.abort(new Error(`recording interrupted by ${signal}`))
@@ -387,8 +387,8 @@ async function main() {
     }
   }
 
-  const onInt = () => handleSignal('SIGINT')
-  const onTerm = () => handleSignal('SIGTERM')
+  const onInt = () => stopDemoOnSignal('SIGINT')
+  const onTerm = () => stopDemoOnSignal('SIGTERM')
   process.on('SIGINT', onInt)
   process.on('SIGTERM', onTerm)
 

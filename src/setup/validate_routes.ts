@@ -1,9 +1,9 @@
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
 import { planManagedRoutes, type ManagedRoute } from '../http/routes.js'
-import { routePrefix, selectedManagedRoutes, diagnostic } from './shared.js'
+import { routePrefix, selectedManagedRoutes, addSetupDiagnostic } from './shared.js'
 
 /** Route prefix, managed endpoint exclusions and collisions with application routes. */
-export function validateRoutes(
+export function addRoutesDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection
@@ -14,7 +14,7 @@ export function validateRoutes(
     choices.routePrefix.endsWith('/') ||
     choices.routePrefix.includes('//')
   )
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'routePrefix',
       'Use a non-root absolute path without a query or fragment'
@@ -31,13 +31,13 @@ export function validateRoutes(
       new Set(choices.managedExcept ?? []).size !== (choices.managedExcept ?? []).length ||
       (choices.managedExcept ?? []).some((name) => !allowedExcept.includes(name))
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'managedExcept',
         'Exclude each selected managed endpoint at most once'
       )
   } catch {
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'managedExcept',
       'Select only known endpoint names for the selected strategy and managed groups'
@@ -52,7 +52,7 @@ export function validateRoutes(
     try {
       selectedManagedRoutes(choices, existing)
     } catch (error) {
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'routePrefix',
         `${(error as Error).message}; exclude the selected endpoint or change the application route`

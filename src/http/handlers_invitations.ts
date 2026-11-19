@@ -1,9 +1,9 @@
 /** Managed handlers for the invitations capability: public inspect/accept and actor send/list/resend/revoke. */
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { positiveId } from './positive_id.js'
-import { safeAccount } from '../account_projection.js'
-import { invalidProof, passwordPolicyError } from './response_helpers.js'
+import { requirePositiveId } from './positive_id.js'
+import { buildAccountProjection } from '../account_projection.js'
+import { invalidProof, sendPasswordPolicyErrorResponse } from './response_helpers.js'
 import {
   invitationAcceptValidator,
   invitationListValidator,
@@ -23,13 +23,13 @@ export const invitationHandlers = {
       ? await options.extensions.invitationAcceptance.validate(context)
       : await request.validateUsing(invitationAcceptValidator)
     if (!kit.managedHttp.passwordAllowed(input.password))
-      return passwordPolicyError(context, 'password')
+      return sendPasswordPolicyErrorResponse(context, 'password')
     const user = await kit.invitations.accept({
       token: params.token,
       password: input.password,
       registrationData: 'registrationData' in input ? input.registrationData : undefined,
     })
-    return response.created({ account: await representIssued(safeAccount(user)) })
+    return response.created({ account: await representIssued(buildAccountProjection(user)) })
   },
   'account.invitation.send': async ({ context, kit, actorId }) => {
     const { email, role, scope } = await context.request.validateUsing(invitationSendValidator)
@@ -45,14 +45,14 @@ export const invitationHandlers = {
   'account.invitation.resend': async ({ context, kit, actorId }) => {
     const invitation = await kit.invitations.resend({
       actorId: actorId!,
-      invitationId: positiveId(context.params.id, 'invitation'),
+      invitationId: requirePositiveId(context.params.id, 'invitation'),
     })
     return context.response.ok({ id: invitation.id })
   },
   'account.invitation.revoke': async ({ context, kit, actorId }) => {
     await kit.invitations.revoke({
       actorId: actorId!,
-      invitationId: positiveId(context.params.id, 'invitation'),
+      invitationId: requirePositiveId(context.params.id, 'invitation'),
     })
     return context.response.noContent()
   },

@@ -6,8 +6,8 @@ import {
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { parseSetupSource } from './ts_source.js'
-import { hasEmailFlow, selectedManagedRoutes, diagnostic, envName } from './shared.js'
-import { validate } from './validate.js'
+import { hasEmailFlow, selectedManagedRoutes, addSetupDiagnostic, envName } from './shared.js'
+import { collectSetupDiagnostics } from './validate.js'
 import {
   generatedEnv,
   migrationContent,
@@ -85,7 +85,7 @@ export async function planSetup(
         }
       })
   )
-  const diagnostics = validate(choices, state, {
+  const diagnostics = collectSetupDiagnostics(choices, state, {
     production: options.production ?? false,
     env,
     selectedOrigins,
@@ -157,7 +157,7 @@ export async function planSetup(
           'Configure selected Ally providers using deployment references and exact callbacks'
         )
     } else
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'config/ally.ts',
         'Review the existing Ally configuration and add selected providers without replacing existing providers',
@@ -234,7 +234,7 @@ export async function planSetup(
     if (change.action === 'conflict' && choicesUnchanged && (keptMigration || keptGenerated)) {
       change.action = 'unchanged'
       change.content = state.files[change.path]!
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         change.path,
         keptMigration
@@ -244,7 +244,7 @@ export async function planSetup(
       )
     }
     if (change.action === 'conflict')
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         change.path,
         'Existing file differs. Resolve it manually; setup will not overwrite it'
@@ -253,7 +253,7 @@ export async function planSetup(
       try {
         await parseSetupSource(change.content)
       } catch {
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           change.path,
           'Proposed TypeScript is invalid; reconcile this application layout before setup writes files'

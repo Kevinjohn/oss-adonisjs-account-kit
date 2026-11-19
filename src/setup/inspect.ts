@@ -3,7 +3,7 @@ import { readRegularFile, safeSetupPath } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { inspectGuards } from './guard_inspection.js'
-import { databaseKind } from './database_inspection.js'
+import { inspectDatabaseKind } from './database_inspection.js'
 import { staticRouteDefinitions } from './route_inspection.js'
 import { installedPackageVersions } from './installed_packages.js'
 
@@ -91,7 +91,7 @@ export async function inspectSetup(
     guardStrategies: strategies,
     guardModels: models,
     guardTokenProviders: tokenProviders,
-    database: await databaseKind(files['config/database.ts'] ?? '', root),
+    database: await inspectDatabaseKind(files['config/database.ts'] ?? '', root),
     connection: files['config/database.ts'] ? 'default' : 'unknown',
     installedPackages,
     installedVersions,

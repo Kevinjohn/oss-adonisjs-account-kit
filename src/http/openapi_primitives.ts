@@ -25,7 +25,10 @@ export const registrationData = (): JsonSchema => ({
 })
 
 /** Request bodies are open objects: the validators ignore unknown properties. */
-export const body = (properties: Record<string, JsonSchema>, required: string[]): JsonSchema => ({
+export const buildRequestBodySchema = (
+  properties: Record<string, JsonSchema>,
+  required: string[]
+): JsonSchema => ({
   type: 'object',
   properties,
   required,
@@ -37,7 +40,10 @@ export const confirmed = (field: string) =>
 export const policyNote =
   'The new password must also satisfy the configured password policy (422 `passwordPolicy`).'
 
-export const accountBody = (strategy: Strategy, token: 'optional' | 'required' | 'none') =>
+export const buildAccountResponseSchema = (
+  strategy: Strategy,
+  token: 'optional' | 'required' | 'none'
+) =>
   closed(
     {
       account: ref('IssuedAccount'),

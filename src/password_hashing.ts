@@ -16,7 +16,7 @@ export async function preparePassword(
 }
 
 /** The password attributes `users.create` receives for a prepared password. */
-export function passwordAttributes(prepared: PreparedPassword): {
+export function buildPasswordAttributes(prepared: PreparedPassword): {
   password: string | null
   passwordHash?: string
 } {

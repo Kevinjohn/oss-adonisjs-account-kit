@@ -2,12 +2,12 @@
 import { DeliveryError, PostCommitError } from './errors.js'
 import type { AccountKitError } from './errors.js'
 
-const revisions = new WeakMap<AccountKitError, string | null>()
+const credentialRevisionsByError = new WeakMap<AccountKitError, string | null>()
 
 /** Remember the committed revision on a delivery or post-commit error a password change throws. */
 export function rememberPasswordChangeRevision(error: unknown, revision: string | null): void {
   if (error instanceof DeliveryError || error instanceof PostCommitError)
-    revisions.set(error, revision)
+    credentialRevisionsByError.set(error, revision)
 }
 
 /**
@@ -18,6 +18,6 @@ export function rememberPasswordChangeRevision(error: unknown, revision: string 
  */
 export function passwordChangeRevision(error: unknown): string | null | undefined {
   return error instanceof DeliveryError || error instanceof PostCommitError
-    ? revisions.get(error)
+    ? credentialRevisionsByError.get(error)
     : undefined
 }

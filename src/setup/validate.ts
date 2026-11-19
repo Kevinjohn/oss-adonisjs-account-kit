@@ -7,12 +7,12 @@ import {
   userAdapters,
   userIdTypes,
 } from './types.js'
-import { sqlName, diagnostic } from './shared.js'
-import { validateRoutes } from './validate_routes.js'
-import { validateAuthentication } from './validate_authentication.js'
-import { validatePolicy } from './validate_policy.js'
-import { validateMail } from './validate_mail.js'
-import { validateSocial } from './validate_social.js'
+import { sqlName, addSetupDiagnostic } from './shared.js'
+import { addRoutesDiagnostics } from './validate_routes.js'
+import { addAuthenticationDiagnostics } from './validate_authentication.js'
+import { addPolicyDiagnostics } from './validate_policy.js'
+import { addMailDiagnostics } from './validate_mail.js'
+import { addSocialDiagnostics } from './validate_social.js'
 import type { SelectedSetupOrigins } from './diagnostics.js'
 
 export type RetirementOptions = {
@@ -28,50 +28,58 @@ export type ValidateOptions = RetirementOptions & {
   selectedOrigins?: SelectedSetupOrigins
 }
 
-export function validate(choices: SetupChoices, state: SetupInspection, options: ValidateOptions) {
+export function collectSetupDiagnostics(
+  choices: SetupChoices,
+  state: SetupInspection,
+  options: ValidateOptions
+) {
   const { production, env = process.env, selectedOrigins } = options
   const diagnostics: SetupDiagnostic[] = []
   if (choices.features.some((x) => !featureNames.includes(x)))
-    diagnostic(diagnostics, 'features', `Choose from ${featureNames.join(', ')}`)
+    addSetupDiagnostic(diagnostics, 'features', `Choose from ${featureNames.join(', ')}`)
   if (new Set(choices.features).size !== choices.features.length)
-    diagnostic(diagnostics, 'features', 'List each feature once')
+    addSetupDiagnostic(diagnostics, 'features', 'List each feature once')
   if (choices.managed.some((x) => !featureNames.includes(x)))
-    diagnostic(diagnostics, 'managed', `Choose from ${featureNames.join(', ')}`)
+    addSetupDiagnostic(diagnostics, 'managed', `Choose from ${featureNames.join(', ')}`)
   if (new Set(choices.managed).size !== choices.managed.length)
-    diagnostic(diagnostics, 'managed', 'List each managed feature once')
+    addSetupDiagnostic(diagnostics, 'managed', 'List each managed feature once')
   if (choices.managed.some((x) => !choices.features.includes(x)))
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'managed',
       'Every managed feature must have its underlying service enabled'
     )
   if (choices.mode === 'services' && choices.managed.length)
-    diagnostic(diagnostics, 'managed', 'Services mode cannot mount managed endpoints')
-  validateRoutes(diagnostics, choices, state)
+    addSetupDiagnostic(diagnostics, 'managed', 'Services mode cannot mount managed endpoints')
+  addRoutesDiagnostics(diagnostics, choices, state)
   // Parsing drops a fixed user field that holds its supported value, so any one left is unsupported.
   const fixed = choices.user as Record<string, unknown>
   if ('connection' in fixed)
-    diagnostic(diagnostics, 'user.connection', 'Only the default Lucid connection is supported')
+    addSetupDiagnostic(
+      diagnostics,
+      'user.connection',
+      'Only the default Lucid connection is supported'
+    )
   if (state.database === 'unsupported')
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'database.client',
       'Only SQLite (better-sqlite3), PostgreSQL 16 and MySQL 8.4 (mysql2) are supported'
     )
   if (state.database === 'unknown')
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'database.client',
       'Resolve the selected SQLite, PostgreSQL 16 or MySQL 8.4 client before setup'
     )
   if (!sqlName.test(choices.user.table))
-    diagnostic(diagnostics, 'user.table', 'Use a plain SQL identifier')
+    addSetupDiagnostic(diagnostics, 'user.table', 'Use a plain SQL identifier')
   if (!userAdapters.includes(choices.user.adapter))
-    diagnostic(diagnostics, 'user.adapter', 'Choose lucid or custom')
+    addSetupDiagnostic(diagnostics, 'user.adapter', 'Choose lucid or custom')
   if (!userIdTypes.includes(choices.user.idType))
-    diagnostic(diagnostics, 'user.idType', 'Choose integer, string or uuid')
+    addSetupDiagnostic(diagnostics, 'user.idType', 'Choose integer, string or uuid')
   if (['primaryKey', 'emailColumn', 'passwordColumn', 'verifiedColumn'].some((key) => key in fixed))
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'user',
       'Only the physical id, email, password and email_verified_at columns are supported'
@@ -80,23 +88,31 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
     !/^#models\/[A-Za-z_][A-Za-z0-9_/]*$/.test(choices.user.model) ||
     choices.user.model.includes('//')
   )
-    diagnostic(diagnostics, 'user.model', 'Use an application #models/ import with a safe path')
+    addSetupDiagnostic(
+      diagnostics,
+      'user.model',
+      'Use an application #models/ import with a safe path'
+    )
   if (choices.user.adapter === 'custom')
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'user.adapter',
       'Verify custom adapter normalization, unique email, password hashing, transactions and row locking before activation',
       'action'
     )
   if (choices.user.adapter === 'custom' && !state.files['app/services/account_kit_users.ts'])
-    diagnostic(diagnostics, 'user.adapter', 'Provide #services/account_kit_users before activation')
-  validateAuthentication(diagnostics, choices, state, production)
-  validatePolicy(diagnostics, choices, state)
-  validateMail(diagnostics, choices, state, production, env, selectedOrigins)
-  validateSocial(diagnostics, choices, state, production, env, selectedOrigins)
-  retirementDiagnostics(diagnostics, choices, state, options)
+    addSetupDiagnostic(
+      diagnostics,
+      'user.adapter',
+      'Provide #services/account_kit_users before activation'
+    )
+  addAuthenticationDiagnostics(diagnostics, choices, state, production)
+  addPolicyDiagnostics(diagnostics, choices, state)
+  addMailDiagnostics(diagnostics, choices, state, production, env, selectedOrigins)
+  addSocialDiagnostics(diagnostics, choices, state, production, env, selectedOrigins)
+  addRetirementDiagnostics(diagnostics, choices, state, options)
   if (state.existingPrefix && state.existingPrefix !== choices.routePrefix)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'routePrefix',
       'Changing the managed prefix needs an explicit route transition; review clients before reconfiguration',
@@ -106,7 +122,7 @@ export function validate(choices: SetupChoices, state: SetupInspection, options:
 }
 
 /** Blocks login-method retirement unless the read-only inventory proves it is safe. */
-function retirementDiagnostics(
+function addRetirementDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection,
@@ -123,7 +139,7 @@ function retirementDiagnostics(
     (retirementImpact?.currentPasswordLogin ?? Boolean(state.existingChoices?.authentication)) &&
     !choices.authentication
   if (runtimeInventoryUnavailable && state.existingChoices)
-    diagnostic(
+    addSetupDiagnostic(
       diagnostics,
       'authentication.retirement',
       'Booted login-method inventory is unavailable; verify Account Kit configuration and database access before reconfiguration'
@@ -131,19 +147,19 @@ function retirementDiagnostics(
   if (providerRetirement || passwordRetirement) {
     const field = providerRetirement ? 'social.retirement' : 'authentication.retirement'
     if (!retirementImpact)
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         field,
         'Read-only retirement impact count is unavailable; verify Account Kit provider, configuration and database access, then retry'
       )
     else if (retirementImpact.affectedAccounts > 0)
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         field,
         `${retirementImpact.affectedAccounts} of ${retirementImpact.inspectedAccounts} accounts would lose their last usable login; complete an owner-managed credential migration before retrying`
       )
     else if (!retirementMaintenanceWindow)
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         field,
         'Zero affected accounts were found, but retirement requires --retirement-maintenance-window to prevent concurrent credential changes'

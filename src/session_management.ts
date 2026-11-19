@@ -20,7 +20,7 @@ import type {
 } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-function configured(
+function requireSessionManagement(
   deps: Pick<ServiceDependencies, 'config' | 'db'>
 ): ResolvedAuthenticationConfig {
   if (!deps.config.enabled.includes('sessionManagement'))
@@ -29,7 +29,7 @@ function configured(
 }
 
 /** Row ids arrive from URLs; anything but a positive integer cannot name a sign-in. */
-function signInId(value: unknown): number {
+function requireSignInId(value: unknown): number {
   const id = typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : value
   if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0)
     throw new SessionNotFoundError()
@@ -40,7 +40,11 @@ function signInId(value: unknown): number {
  * The table, owner column, label and last-seen column expressions, and id of the caller's own
  * sign-in.
  */
-async function scope(trx: Trx, auth: ResolvedAuthenticationConfig, current: CurrentAccountInput) {
+async function requireSignInStorage(
+  trx: Trx,
+  auth: ResolvedAuthenticationConfig,
+  current: CurrentAccountInput
+) {
   if (auth.strategy === 'access_tokens')
     return {
       table: auth.tokenTable,
@@ -65,7 +69,7 @@ async function scope(trx: Trx, auth: ResolvedAuthenticationConfig, current: Curr
   }
 }
 
-const sameId = (left: unknown, right: unknown) => String(left) === String(right)
+const isSameId = (left: unknown, right: unknown) => String(left) === String(right)
 
 /**
  * Delete the user's sign-in rows whose id is (`only`) or is not (`except`) `id`, and return the ids
@@ -103,12 +107,16 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
   /** Authenticate the caller and run `mutate` in one transaction under the account lock. */
   async function asCurrent<T>(
     current: CurrentAccountInput,
-    mutate: (trx: Trx, target: Awaited<ReturnType<typeof scope>>, userId: UserId) => Promise<T>
+    mutate: (
+      trx: Trx,
+      target: Awaited<ReturnType<typeof requireSignInStorage>>,
+      userId: UserId
+    ) => Promise<T>
   ): Promise<T> {
-    const auth = configured(deps)
+    const auth = requireSessionManagement(deps)
     return transaction(deps.db, async (trx) => {
       const account = await currentInTransaction(deps, current, trx)
-      return mutate(trx, await scope(trx, auth, current), account.id)
+      return mutate(trx, await requireSignInStorage(trx, auth, current), account.id)
     })
   }
 
@@ -146,7 +154,7 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
             createdAt: readIsoTimestamp(row.created_at),
             lastSeenAt: readIsoTimestamp(row.last_seen_at),
             expiresAt: readIsoTimestamp(row.expires_at),
-            current: sameId(row.id, target.currentId),
+            current: isSameId(row.id, target.currentId),
           }))
           .filter((row) => row.expiresAt === null || Date.parse(row.expiresAt) > now) as SignIn[]
       })
@@ -157,14 +165,14 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
       current: CurrentAccountInput
       id: unknown
     }): Promise<{ current: boolean }> {
-      const id = signInId(input.id)
+      const id = requireSignInId(input.id)
       const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
         asCurrent(input.current, async (trx, target, userId) => {
           const ids = await deleteSignIns(trx, target, userId, 'only', id)
           if (ids.length !== 1) throw new SessionNotFoundError()
           await revoked(trx, userId, operationId, ids)
-          return { userId, current: sameId(id, target.currentId) }
+          return { userId, current: isSameId(id, target.currentId) }
         })
       )
       const result = { current: value.current }

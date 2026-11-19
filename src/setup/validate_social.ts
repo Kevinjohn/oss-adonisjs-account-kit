@@ -1,7 +1,7 @@
 import type { SetupChoices, SetupDiagnostic, SetupInspection } from './types.js'
 import { isSocialProviderName } from '../social_providers.js'
 import type { SocialProviderName } from '../types.js'
-import { envName, diagnostic, validateOrigin } from './shared.js'
+import { envName, addSetupDiagnostic, addOriginDiagnostics } from './shared.js'
 import type { SelectedSetupOrigins } from './diagnostics.js'
 
 /** The substituted path must survive URL parsing without traversal or encoded separators. */
@@ -39,7 +39,7 @@ function safeCallbackPath(path: string): boolean {
 }
 
 /** Social providers, callbacks, credential references and Ally prerequisites. */
-export function validateSocial(
+export function addSocialDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,
   state: SetupInspection,
@@ -53,33 +53,45 @@ export function validateSocial(
       choices.social.providers.some((provider) => !isSocialProviderName(provider)) ||
       new Set(choices.social.providers).size !== choices.social.providers.length
     )
-      diagnostic(diagnostics, 'social.providers', 'Select unique Google and/or GitHub providers')
+      addSetupDiagnostic(
+        diagnostics,
+        'social.providers',
+        'Select unique Google and/or GitHub providers'
+      )
     if (!choices.features.includes('socialAuthentication'))
-      diagnostic(diagnostics, 'features', 'Selected social providers require socialAuthentication')
+      addSetupDiagnostic(
+        diagnostics,
+        'features',
+        'Selected social providers require socialAuthentication'
+      )
     if (
       !choices.features.includes('registration') ||
       !choices.features.includes('emailVerification')
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'features',
         'Social creation requires registration and emailVerification'
       )
     if (!choices.features.includes('passwordReset'))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'social.sensitiveActions',
         'Standard Ally callbacks do not prove fresh authentication. Enable passwordReset so social-only users can establish a first password, sign in with it, then re-enter it for purpose-bound sensitive-action proof'
       )
     if (!choices.authentication)
-      diagnostic(diagnostics, 'authentication', 'Social authentication requires a selected guard')
+      addSetupDiagnostic(
+        diagnostics,
+        'authentication',
+        'Social authentication requires a selected guard'
+      )
     if (choices.mode === 'managed' && !choices.managed.includes('socialAuthentication'))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'managed',
         'Selected managed social providers require managed socialAuthentication'
       )
-    validateOrigin(
+    addOriginDiagnostics(
       diagnostics,
       'social.callbackOriginEnv',
       choices.social.callbackOriginEnv,
@@ -89,7 +101,7 @@ export function validateSocial(
       selectedOrigins?.errors[choices.social.callbackOriginEnv]
     )
     if (!safeCallbackPath(choices.social.callbackPath))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'social.callbackPath',
         'Use a safe absolute path containing exactly one {provider}'
@@ -98,13 +110,13 @@ export function validateSocial(
       choices.authentication?.strategy === 'session' &&
       choices.social.callbackPath !== `${choices.routePrefix}/auth/oauth/{provider}/callback`
     )
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'social.callbackPath',
         'Session callbacks must use the managed callback route'
       )
     if (choices.policy.registration === 'application' && choices.mode === 'managed')
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'social.admission',
         'Application registration requires a trusted server admit extension; generated managed completion is excluded until supplied',
@@ -113,7 +125,7 @@ export function validateSocial(
     for (const provider of choices.social.providers) {
       const refs = choices.social.credentials[provider]
       if (!refs || !envName.test(refs.clientIdEnv) || !envName.test(refs.clientSecretEnv)) {
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           `social.credentials.${provider}`,
           'Provide credential environment variable names for this provider'
@@ -122,7 +134,7 @@ export function validateSocial(
       }
       for (const [key, variable] of Object.entries(refs))
         if (!env[variable])
-          diagnostic(
+          addSetupDiagnostic(
             diagnostics,
             `social.credentials.${provider}.${key}`,
             `${variable} must be set before readiness can pass`,
@@ -131,20 +143,20 @@ export function validateSocial(
     }
     for (const name of Object.keys(choices.social.credentials))
       if (!choices.social.providers.includes(name as SocialProviderName))
-        diagnostic(
+        addSetupDiagnostic(
           diagnostics,
           `social.credentials.${name}`,
           'Disabled providers must not carry credential references'
         )
     if (!state.installedPackages.includes('@adonisjs/ally'))
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'social',
         'Install @adonisjs/ally before activating social sign-in',
         'action'
       )
     if (!state.files['config/ally.ts'])
-      diagnostic(
+      addSetupDiagnostic(
         diagnostics,
         'config/ally.ts',
         'Configure selected providers in Ally with the displayed callbacks',
@@ -155,5 +167,9 @@ export function validateSocial(
     choices.social.status === 'not-applicable' &&
     choices.features.includes('socialAuthentication')
   )
-    diagnostic(diagnostics, 'social', 'Enabled socialAuthentication requires selected providers')
+    addSetupDiagnostic(
+      diagnostics,
+      'social',
+      'Enabled socialAuthentication requires selected providers'
+    )
 }

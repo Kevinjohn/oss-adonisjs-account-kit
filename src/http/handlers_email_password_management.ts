@@ -1,10 +1,10 @@
 /** Managed handlers for the email and password management capability: email change, profile, password. */
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
-import { safeAccount } from '../account_projection.js'
+import { buildAccountProjection } from '../account_projection.js'
 import { passwordChangeRevision } from '../password_change_revision.js'
 import { correctionRevision } from '../profile_correction_revision.js'
-import { invalidProof, passwordPolicyError } from './response_helpers.js'
+import { invalidProof, sendPasswordPolicyErrorResponse } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
 
 export const emailPasswordManagementHandlers = {
@@ -16,7 +16,7 @@ export const emailPasswordManagementHandlers = {
     const user = await kit.emailPasswordManagement.completeEmailChange({
       token: context.params.token,
     })
-    return context.response.ok({ account: await representIssued(safeAccount(user)) })
+    return context.response.ok({ account: await representIssued(buildAccountProjection(user)) })
   },
   'account.profile.update': async ({
     context,
@@ -57,14 +57,14 @@ export const emailPasswordManagementHandlers = {
         throw error
       })
     await keepSession(user)
-    return response.ok({ account: await representIssued(safeAccount(user)) })
+    return response.ok({ account: await representIssued(buildAccountProjection(user)) })
   },
   'account.password.change': async ({ context, kit, options, actorId, accountInput }) => {
     const { request, response } = context
     const { currentPassword, recentProof, newPassword } =
       await request.validateUsing(passwordChangeValidator)
     if (!kit.managedHttp.passwordAllowed(newPassword))
-      return passwordPolicyError(context, 'newPassword')
+      return sendPasswordPolicyErrorResponse(context, 'newPassword')
     const guard = options.guard.forRequest(context)
     const { revision } = await kit.emailPasswordManagement
       .changePassword({

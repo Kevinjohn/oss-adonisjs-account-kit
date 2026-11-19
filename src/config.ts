@@ -8,7 +8,7 @@ import { resolveAuthentication } from './config_authentication.js'
 import { resolvePasswordPolicy } from './config_password_policy.js'
 import { resolveAccountDeletion } from './config_account_deletion.js'
 import { resolveSessionManagement } from './config_session_management.js'
-import { validateSocialAuthentication } from './config_social_authentication.js'
+import { assertSocialAuthenticationConfig } from './config_social_authentication.js'
 import { configuredExpiresAt } from './config_ttl.js'
 import type {
   AccountKitConfig,
@@ -145,7 +145,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'magicLinkLogin',
       'account_kit: magicLinkLogin requires authentication'
     )
-  if (enabled.includes('socialAuthentication')) validateSocialAuthentication(config, enabled)
+  if (enabled.includes('socialAuthentication')) assertSocialAuthenticationConfig(config, enabled)
   for (const hook of [
     'onInvitationAccepted',
     'onCredentialsChanged',

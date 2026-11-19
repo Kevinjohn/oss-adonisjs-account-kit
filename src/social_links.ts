@@ -6,7 +6,11 @@ import { transaction } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
 import { consumeSocialSensitiveProof } from './social_proofs.js'
 import { LastLoginMethodError, SocialUserNotFoundError } from './errors.js'
-import { authenticated, enabledProviders, type Dependencies } from './social_shared.js'
+import {
+  requireAuthenticatedUser,
+  listEnabledSocialProviders,
+  type Dependencies,
+} from './social_shared.js'
 import type {
   AccountUser,
   CurrentAccountInput,
@@ -32,7 +36,7 @@ export async function listSocialIdentities(
   input: { current: CurrentAccountInput }
 ): Promise<SocialIdentity[]> {
   return transaction(deps.db, async (trx) => {
-    const user = await authenticated(deps, input.current, trx)
+    const user = await requireAuthenticatedUser(deps, input.current, trx)
     const rows = await trx
       .from('social_identities')
       .where('user_id', user.id)
@@ -55,7 +59,7 @@ export async function unlinkSocialIdentity(
   const operationId = randomUUID()
   const { fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      const user = await authenticated(deps, input.current, trx)
+      const user = await requireAuthenticatedUser(deps, input.current, trx)
       const row = await trx
         .from('social_identities')
         .where('id', input.identityId)
@@ -68,7 +72,7 @@ export async function unlinkSocialIdentity(
         .where('user_id', user.id)
         .whereNot('id', input.identityId)
         .whereNotNull('confirmed_at')
-        .whereIn('provider', enabledProviders(deps.config))
+        .whereIn('provider', listEnabledSocialProviders(deps.config))
         .count('* as total')
         .first()
       if (!user.hasPassword && Number(remaining?.total ?? 0) === 0) throw new LastLoginMethodError()
