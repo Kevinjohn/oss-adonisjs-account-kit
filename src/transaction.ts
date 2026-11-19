@@ -191,6 +191,26 @@ function trackCommit<T>() {
   }
 }
 
+async function beginSQLiteTransaction(
+  connection: Connection,
+  sqlite: SQLiteConnection
+): Promise<Trx> {
+  if (!('pinnedConnection' in connection)) {
+    return connection.transaction(undefined as never, { connection: sqlite } as never)
+  }
+
+  // Lucid 22.5 takes the checkout from the query client instead of the transaction options.
+  // Database.connection() gives each Account Kit transaction operation its own query client.
+  const queryClient = connection as { pinnedConnection: unknown }
+  const previous = queryClient.pinnedConnection
+  queryClient.pinnedConnection = sqlite
+  try {
+    return await connection.transaction()
+  } finally {
+    queryClient.pinnedConnection = previous
+  }
+}
+
 /** One SQLite attempt on a dedicated connection, with busy_timeout off and cleanup afterwards. */
 async function sqliteAttempt<T>(
   connection: Connection,
@@ -207,10 +227,7 @@ async function sqliteAttempt<T>(
   try {
     timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
     sqlite.pragma('busy_timeout = 0')
-    const trx = (await connection.transaction(
-      undefined as never,
-      { connection: sqlite } as never
-    )) as Trx
+    const trx = await beginSQLiteTransaction(connection, sqlite)
     outcome = await runAndCommit(
       trx,
       async (sqliteTrx) => {

@@ -86,7 +86,7 @@ test.group('managed transaction wrapper', (group) => {
     .skip(locksRows, 'SQLite serializes writers instead of locking rows')
     .timeout(10_000)
 
-  test('restores a custom SQLite busy timeout after success and ordinary errors', async ({
+  test('reuses the only SQLite checkout and restores its busy timeout after commit and rollback', async ({
     assert,
   }) => {
     const customKit = await bootTestApp({ sqliteBusyTimeout: 321, sqlitePoolMax: 1 })
@@ -95,6 +95,9 @@ test.group('managed transaction wrapper', (group) => {
       await transaction(customKit.db, async (trx) => {
         const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
         assert.equal(current[0].timeout, 0)
+        await trx
+          .table('users')
+          .insert({ email: 'committed@example.test', created_at: dbTime(customKit) })
       })
       await customKit.db.transaction(async (trx) => {
         const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
@@ -105,6 +108,9 @@ test.group('managed transaction wrapper', (group) => {
         await transaction(customKit.db, async (trx) => {
           const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
           assert.equal(current[0].timeout, 0)
+          await trx
+            .table('users')
+            .insert({ email: 'rolled-back@example.test', created_at: dbTime(customKit) })
           throw new Error('terminal')
         })
         assert.fail('expected rejection')
@@ -114,6 +120,8 @@ test.group('managed transaction wrapper', (group) => {
       await customKit.db.transaction(async (trx) => {
         const current = await trx.rawQuery('PRAGMA busy_timeout').exec()
         assert.equal(current[0].timeout, 321)
+        const users = await trx.from('users').select('email')
+        assert.deepEqual(users, [{ email: 'committed@example.test' }])
       })
     } finally {
       await customKit.close()

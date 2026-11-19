@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix SQLite account transactions timing out in single-connection pools with Lucid 22.5.
+
 - Allow managed routes to start alongside application routes whose simple sticky lookaheads
   exclude the managed paths.
 
