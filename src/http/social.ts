@@ -1,5 +1,4 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { AccountKit } from '../account_kit.js'
 import { InvalidInputError, SocialTransactionError } from '../errors.js'
 import { isSocialProviderName } from '../social_providers.js'
 import { isSensitivePurpose, isSocialBeginIntent, isSocialIntent } from '../social_enums.js'
@@ -32,6 +31,7 @@ import { newVerifier } from './pkce_verifier.js'
 import {
   managedSocialAccountHandlers,
   type SocialHandler,
+  type SocialRequest,
 } from './managed_social_account_handlers.js'
 
 export { rememberManagedMethod } from './last_used_method.js'
@@ -83,15 +83,18 @@ function newChallenge<Credential>(
 }
 
 /** Session flows redeem the handoff in-request; token flows return the code for `auth.oauth.token`. */
-async function finishHandoff<Credential>(
-  context: HttpContext,
-  social: AccountKit['socialAuthentication'],
-  guard: ManagedGuard<Credential>,
-  extension: ManagedSocialExtension,
-  methodsEnabled: boolean,
-  result: SocialCallbackResult,
+async function finishHandoff<Credential>({
+  context,
+  social,
+  guard,
+  extension,
+  methodsEnabled,
+  result,
+  saved,
+}: Omit<SocialRequest<Credential>, 'name'> & {
+  result: SocialCallbackResult
   saved: SessionSocialState | null
-): Promise<unknown> {
+}): Promise<unknown> {
   const { response } = context
   if ('handoffCode' in result && result.handoffCode) {
     if (saved) {
@@ -153,7 +156,7 @@ const oauthCallback: SocialHandler = async ({
         provider: saved.provider,
       })
   }
-  return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
+  return finishHandoff({ context, social, guard, extension, methodsEnabled, result, saved })
 }
 
 const socialHandlers = {
@@ -210,7 +213,7 @@ const socialHandlers = {
       admit: extension.admit,
     })
     if (saved) forgetSessionState(context, input.continuation)
-    return finishHandoff(context, social, guard, extension, methodsEnabled, result, saved)
+    return finishHandoff({ context, social, guard, extension, methodsEnabled, result, saved })
   },
   'auth.oauth.token': async ({ context, social, guard, extension, methodsEnabled }) => {
     const input = await context.request.validateUsing(socialTokenValidator)
@@ -236,26 +239,26 @@ const socialHandlers = {
 export type ManagedSocialEndpointName = keyof typeof socialHandlers
 
 /** Dispatch only after the managed router has applied guard, CSRF, throttle and no-store policy. */
-export async function executeManagedSocial<Credential>(
-  name: ManagedSocialEndpointName,
-  context: HttpContext,
-  social: AccountKit['socialAuthentication'],
-  guard: ManagedGuard<Credential>,
-  extension: ManagedSocialExtension,
-  methodsEnabled = true
-): Promise<unknown> {
-  return socialHandlers[name]({ name, context, social, guard, extension, methodsEnabled })
+export async function executeManagedSocial<Credential>({
+  name,
+  methodsEnabled = true,
+  ...request
+}: Omit<SocialRequest<Credential>, 'name' | 'methodsEnabled'> & {
+  name: ManagedSocialEndpointName
+  methodsEnabled?: boolean
+}): Promise<unknown> {
+  return socialHandlers[name]({ ...request, name, methodsEnabled })
 }
 
 const managedSocialRoute: ManagedHandler = ({ route, context, kit, options, methodsEnabled }) =>
-  executeManagedSocial(
-    route.name as ManagedSocialEndpointName,
+  executeManagedSocial({
+    name: route.name as ManagedSocialEndpointName,
     context,
-    kit.socialAuthentication,
-    options.guard,
-    options.extensions!.social!,
-    methodsEnabled
-  )
+    social: kit.socialAuthentication,
+    guard: options.guard,
+    extension: options.extensions!.social!,
+    methodsEnabled,
+  })
 
 /** The managed router's entries for every social endpoint, keyed like `socialHandlers`. */
 export const managedSocialHandlers = Object.fromEntries(

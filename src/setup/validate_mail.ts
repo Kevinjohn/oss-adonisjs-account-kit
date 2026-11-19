@@ -136,24 +136,18 @@ export function addMailDiagnostics(
     }
   }
   if (emailEnabled) {
-    addOriginDiagnostics(
-      diagnostics,
-      'mail.backendOriginEnv',
-      choices.mail.backendOriginEnv,
+    addOriginDiagnostics(diagnostics, 'mail.backendOriginEnv', choices.mail.backendOriginEnv, {
       production,
       env,
-      selectedOrigins?.values[choices.mail.backendOriginEnv],
-      selectedOrigins?.errors[choices.mail.backendOriginEnv]
-    )
-    addOriginDiagnostics(
-      diagnostics,
-      'mail.frontendOriginEnv',
-      choices.mail.frontendOriginEnv,
+      resolvedValue: selectedOrigins?.values[choices.mail.backendOriginEnv],
+      resolutionError: selectedOrigins?.errors[choices.mail.backendOriginEnv],
+    })
+    addOriginDiagnostics(diagnostics, 'mail.frontendOriginEnv', choices.mail.frontendOriginEnv, {
       production,
       env,
-      selectedOrigins?.values[choices.mail.frontendOriginEnv],
-      selectedOrigins?.errors[choices.mail.frontendOriginEnv]
-    )
+      resolvedValue: selectedOrigins?.values[choices.mail.frontendOriginEnv],
+      resolutionError: selectedOrigins?.errors[choices.mail.frontendOriginEnv],
+    })
   }
   if (emailEnabled && choices.mail.delivery === 'durable' && !choices.mail.durableWorkerVerified)
     addSetupDiagnostic(

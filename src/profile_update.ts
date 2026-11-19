@@ -57,14 +57,12 @@ export async function updateProfile(
   try {
     ;({ value: issued, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
-        const current = await confirmActor(
-          deps.config,
-          trx,
-          input.actorId,
-          input.currentPassword,
-          input.recentProof,
-          'email_change'
-        )
+        const current = await confirmActor(deps.config, trx, {
+          actorId: input.actorId,
+          currentPassword: input.currentPassword,
+          recentProof: input.recentProof,
+          purpose: 'email_change',
+        })
         if (registrationData !== undefined) {
           if (!deps.config.users.updateRegistrationData)
             throw new InvalidInputError('Profile fields are not supported by the user adapter')

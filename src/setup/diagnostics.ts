@@ -21,14 +21,18 @@ export function addSetupDiagnostic(
   diagnostics.push({ field, message, severity })
 }
 
+interface OriginDiagnosticOptions {
+  production: boolean
+  env?: NodeJS.ProcessEnv
+  resolvedValue?: string | null
+  resolutionError?: { message: string; indirect: boolean }
+}
+
 export function addOriginDiagnostics(
   diagnostics: SetupDiagnostic[],
   field: string,
   variable: string,
-  production: boolean,
-  env: NodeJS.ProcessEnv = process.env,
-  resolvedValue?: string | null,
-  resolutionError?: { message: string; indirect: boolean }
+  { production, env = process.env, resolvedValue, resolutionError }: OriginDiagnosticOptions
 ) {
   if (!envName.test(variable)) {
     addSetupDiagnostic(

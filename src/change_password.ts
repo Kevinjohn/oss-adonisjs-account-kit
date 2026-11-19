@@ -24,14 +24,12 @@ export async function changePassword(
   const password = await preparePassword(deps.config.users, input.newPassword)
   const { value: changed, fault } = await settleCommitted(
     transaction(deps.db, async (trx) => {
-      const actor = await confirmActor(
-        deps.config,
-        trx,
-        input.actorId,
-        input.currentPassword,
-        input.recentProof,
-        'password_change'
-      )
+      const actor = await confirmActor(deps.config, trx, {
+        actorId: input.actorId,
+        currentPassword: input.currentPassword,
+        recentProof: input.recentProof,
+        purpose: 'password_change',
+      })
       await storePassword(deps.config.users, actor.id, password, trx)
       if (actor.unverifiedEmail !== null && actor.unverifiedEmail !== actor.email)
         await deps.config.users.setUnverifiedEmail(actor.id, null, trx)

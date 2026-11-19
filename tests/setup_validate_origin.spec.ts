@@ -4,13 +4,10 @@ import type { SetupDiagnostic } from '../src/setup/types.js'
 
 function check(variable: string, value: string | undefined, production = false) {
   const diagnostics: SetupDiagnostic[] = []
-  addOriginDiagnostics(
-    diagnostics,
-    'field',
-    variable,
+  addOriginDiagnostics(diagnostics, 'field', variable, {
     production,
-    value === undefined ? {} : { [variable]: value }
-  )
+    env: value === undefined ? {} : { [variable]: value },
+  })
   return diagnostics
 }
 
@@ -65,17 +62,18 @@ test.group('setup origin validation', () => {
 
   test('a resolved value takes precedence over the process environment', ({ assert }) => {
     const diagnostics: SetupDiagnostic[] = []
-    addOriginDiagnostics(
-      diagnostics,
-      'field',
-      'APP_URL',
-      true,
-      { APP_URL: 'https://from-process.example.test' },
-      'http://from-file.example.test'
-    )
+    addOriginDiagnostics(diagnostics, 'field', 'APP_URL', {
+      production: true,
+      env: { APP_URL: 'https://from-process.example.test' },
+      resolvedValue: 'http://from-file.example.test',
+    })
     assert.lengthOf(diagnostics, 1)
     assert.match(diagnostics[0].message, /must use HTTPS in production/)
-    addOriginDiagnostics(diagnostics, 'field', 'APP_URL', true, { APP_URL: 'http://x.test' }, null)
+    addOriginDiagnostics(diagnostics, 'field', 'APP_URL', {
+      production: true,
+      env: { APP_URL: 'http://x.test' },
+      resolvedValue: null,
+    })
     assert.lengthOf(diagnostics, 2)
     assert.equal(diagnostics[1].severity, 'action')
     assert.match(diagnostics[1].message, /APP_URL must be set/)

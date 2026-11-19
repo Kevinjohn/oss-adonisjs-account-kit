@@ -12,14 +12,22 @@ function responseHeaders(context: HttpContext, route: ManagedRoute): void {
   applyProofHeaders(context.response)
 }
 
-/** Run the shared managed request checks before dispatching exactly one registered handler. */
-export async function executeManagedRequest<Credential>(
-  route: ManagedRoute,
-  context: HttpContext,
-  options: ManagedRoutesOptions<Credential>,
-  methodsEnabled: boolean,
+interface ManagedRequestExecution<Credential> {
+  route: ManagedRoute
+  context: HttpContext
+  options: ManagedRoutesOptions<Credential>
+  methodsEnabled: boolean
   handlers: Record<ManagedEndpointName, ManagedHandler>
-): Promise<unknown> {
+}
+
+/** Run the shared managed request checks before dispatching exactly one registered handler. */
+export async function executeManagedRequest<Credential>({
+  route,
+  context,
+  options,
+  methodsEnabled,
+  handlers,
+}: ManagedRequestExecution<Credential>): Promise<unknown> {
   responseHeaders(context, route)
   const { request } = context
   const csrfToken = (request as typeof request & { csrfToken?: string }).csrfToken

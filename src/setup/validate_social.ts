@@ -95,10 +95,12 @@ export function addSocialDiagnostics(
       diagnostics,
       'social.callbackOriginEnv',
       choices.social.callbackOriginEnv,
-      production,
-      env,
-      selectedOrigins?.values[choices.social.callbackOriginEnv],
-      selectedOrigins?.errors[choices.social.callbackOriginEnv]
+      {
+        production,
+        env,
+        resolvedValue: selectedOrigins?.values[choices.social.callbackOriginEnv],
+        resolutionError: selectedOrigins?.errors[choices.social.callbackOriginEnv],
+      }
     )
     if (!safeCallbackPath(choices.social.callbackPath))
       addSetupDiagnostic(

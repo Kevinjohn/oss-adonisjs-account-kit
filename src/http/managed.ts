@@ -85,13 +85,13 @@ export function registerManagedRoutes<Credential>(
     router
       .route(route.path, [route.method], async (context) => {
         try {
-          return await executeManagedRequest(
+          return await executeManagedRequest({
             route,
             context,
             options,
             methodsEnabled,
-            managedHandlers
-          )
+            handlers: managedHandlers,
+          })
         } catch (error) {
           if (
             (route.method !== 'GET' || route.name === 'auth.oauth.callback') &&
