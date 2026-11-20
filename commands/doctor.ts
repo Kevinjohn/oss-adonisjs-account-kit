@@ -4,7 +4,7 @@ import type { ResolvedConfig } from '../src/types.js'
 
 export default class AccountKitDoctor extends BaseCommand {
   static commandName = 'account-kit:doctor'
-  static description = 'Check config, limiter, APP_URL and database tables for Account Kit'
+  static description = 'Check config, limiter, backend origin and database tables for Account Kit'
   static options = { startApp: true }
 
   async run(): Promise<void> {

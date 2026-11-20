@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Release gate shared by .github/workflows/release.yml and local dry runs.
-# Writes the version and tarball name to $GITHUB_OUTPUT when run in Actions.
+# Writes the version, tarball name and SHA-256 to $GITHUB_OUTPUT when run in Actions.
 set -euo pipefail
 VERSION=$(node -p "require('./package.json').version")
 # Exit 1 means no such tag; anything else (no repository, unreadable refs) must not pass the gate.
@@ -21,10 +21,11 @@ pnpm build
 rm -rf tmp/release && mkdir -p tmp/release
 pnpm pack --pack-destination tmp/release >/dev/null
 TARBALL=$(ls tmp/release/*.tgz)
+SHA256=$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)
 REPO=${GITHUB_REPOSITORY:-$(git remote get-url origin | sed -E 's#.*github.com[:/]##; s#\.git$##')}
 awk -v h="## $VERSION - " 'index($0, h) == 1 {p=1; next} /^## / {p=0} p' CHANGELOG.md > tmp/release/notes.md
 printf '\n## Install\n\n```sh\npnpm add https://github.com/%s/releases/download/v%s/%s\n```\n\nSHA-256: `%s`\n' \
-  "$REPO" "$VERSION" "$(basename "$TARBALL")" "$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)" >> tmp/release/notes.md
+  "$REPO" "$VERSION" "$(basename "$TARBALL")" "$SHA256" >> tmp/release/notes.md
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
-  { echo "version=$VERSION"; echo "tarball=$(basename "$TARBALL")"; } >> "$GITHUB_OUTPUT"; fi
+  { echo "version=$VERSION"; echo "tarball=$(basename "$TARBALL")"; echo "sha256=$SHA256"; } >> "$GITHUB_OUTPUT"; fi
 echo "ready: v$VERSION $TARBALL"

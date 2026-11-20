@@ -4,7 +4,7 @@ import { test } from '@japa/runner'
 import { AuthorizationError, InvalidInputError } from '../src/errors.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
-import { insertUser } from './helpers/fakes.js'
+import { insertUser, makeUsersAdapter } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 const approvalOnly = { approval: { required: true as const, authorize: allowDecisions } }
@@ -119,5 +119,31 @@ test.group('admission listing', (group) => {
     assert.isString(first.nextCursor)
     const second = await admission.list({ actorId: actor.id, limit: 2, cursor: first.nextCursor! })
     assert.lengthOf(second.items, 2)
+  })
+
+  test('skips a missing user at the page boundary and keeps the next cursor', async ({
+    assert,
+  }) => {
+    const { actor, people } = await seed()
+    const users = makeUsersAdapter(kit.db, kit.hash)
+    // A user can disappear between fetching the admission page and resolving the account.
+    const { admission } = makeAdmission(kit, approvalOnly, {
+      users: {
+        ...users,
+        findById: async (id, trx) => (id === people.pending.id ? null : users.findById(id, trx)),
+      },
+    })
+
+    const first = await admission.list({ actorId: actor.id, limit: 2 })
+    assert.deepEqual(
+      first.items.map((item) => item.email),
+      [actor.email]
+    )
+    assert.isString(first.nextCursor)
+    const second = await admission.list({ actorId: actor.id, limit: 2, cursor: first.nextCursor! })
+    assert.deepEqual(
+      second.items.map((item) => item.email),
+      [people.silent.email, people.approved.email]
+    )
   })
 })

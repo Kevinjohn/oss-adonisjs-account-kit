@@ -1,4 +1,4 @@
-import { DeliveryError, PostCommitError } from './errors.js'
+import { isCommittedFailure, PostCommitError } from './errors.js'
 import { sendVerification } from './verification.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import type { UserId } from './types.js'
@@ -11,7 +11,7 @@ export async function sendSocialActivation(
   try {
     await sendVerification(deps, { userId })
   } catch (cause) {
-    if (cause instanceof DeliveryError || cause instanceof PostCommitError) throw cause
+    if (isCommittedFailure(cause)) throw cause
     throw new PostCommitError('Social signup committed but activation issuance failed', { cause })
   }
 }

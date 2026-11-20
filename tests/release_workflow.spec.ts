@@ -55,23 +55,44 @@ test('only the job that creates the release can write, and it runs no repository
   assert.match(steps[0], /^actions\/download-artifact@/)
   const runs = [...release.block.matchAll(/^ {8}run: (.+)$/gm)].map(([, run]) => run)
   assert.lengthOf(runs, 1)
-  assert.match(runs[0], /^gh release create /)
+  assert.equal(runs[0], '|')
+  assert.match(release.block, /^ {10}gh release create /m)
   assert.notInclude(release.block, 'actions/checkout')
   assert.notInclude(release.block, 'pnpm')
 })
 
 // The release job reads the gate's outputs; a renamed step id or key would empty them.
-test('the release job receives the version and tarball the gate wrote', async ({ assert }) => {
+test('the release job receives the version, tarball and digest the gate wrote', async ({
+  assert,
+}) => {
   const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
   const all = jobs(workflow)
   const packageJob = all.get('package')?.block ?? ''
   const release = all.get('release')?.block ?? ''
   assert.match(packageJob, /^ {8}id: check$/m)
-  for (const key of ['version', 'tarball']) {
+  for (const key of ['version', 'tarball', 'sha256']) {
     assert.include(packageJob, `${key}: \${{ steps.check.outputs.${key} }}`)
     assert.include(release, `\${{ needs.package.outputs.${key} }}`)
   }
   assert.include(release, 'needs: package')
+})
+
+test('packaging tests the release archive and checks the consumer digest before upload', async ({
+  assert,
+}) => {
+  const workflow = await readFile(join(repoRoot, '.github/workflows/release.yml'), 'utf8')
+  const block = jobs(workflow).get('package')?.block ?? ''
+  const pack = block.indexOf('bash bin/release_check.sh')
+  const consumer = block.indexOf('pnpm test:consumer')
+  const digest = block.indexOf('.status == "passed" and .candidateSha256 == $sha256')
+  const upload = block.indexOf('actions/upload-artifact@')
+  assert.isAtLeast(pack, 0)
+  assert.isAbove(consumer, pack)
+  assert.isAbove(digest, consumer)
+  assert.isAbove(upload, digest)
+  assert.include(block, '--candidate-tarball="tmp/release/$TARBALL"')
+  assert.include(block, 'TARBALL: ${{ steps.check.outputs.tarball }}')
+  assert.include(block, 'SHA256: ${{ steps.check.outputs.sha256 }}')
 })
 
 // Packaging waits for each retained reusable release workflow.

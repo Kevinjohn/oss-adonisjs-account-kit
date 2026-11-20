@@ -94,6 +94,7 @@ The document, version 1 (timestamps are ISO 8601 UTC strings):
     {
       "email": "friend@example.com",
       "role": "member",
+      "scope": "team-a",
       "createdAt": "2026-10-01T00:00:00.000Z",
       "expiresAt": "2026-10-08T00:00:00.000Z"
     }
@@ -123,6 +124,9 @@ The document, version 1 (timestamps are ISO 8601 UTC strings):
 - The export never contains password hashes, token hashes, provider tokens, provider `meta`,
   magic sign-in links, or in-flight social sign-in state.
 - Export publishes no lifecycle event.
+
+Each sent invitation includes `scope`. Unscoped invitations use `null`. This is an additive
+field in export version 1. Update any consumer that validates the exact invitation shape.
 
 ### Consistency
 

@@ -124,7 +124,13 @@ import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { AccountKit, defineConfig, type UsersAdapter } from '@kevinjohn/adonisjs-account-kit'
 import type { AccountAccessInput, AccountAccessSnapshot } from '@kevinjohn/adonisjs-account-kit/types'
-import { AccountAccessDeniedError, InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'
+import { AccountAccessDeniedError, DeliveryError, InvalidInputError, PostCommitError, isCommittedFailure } from '@kevinjohn/adonisjs-account-kit/errors'
+
+if (
+  !isCommittedFailure(new DeliveryError()) ||
+  !isCommittedFailure(new PostCommitError()) ||
+  isCommittedFailure(new Error('database write failed'))
+) throw new Error('Committed failure classification differs from the public contract')
 
 const require = createRequire(import.meta.url)
 for (const name of ${JSON.stringify(optionalBackendIntegrations)}) {

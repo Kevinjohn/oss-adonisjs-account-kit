@@ -14,9 +14,10 @@ test('the documented release workflow publishes the generated checksum notes', a
   ])
   assert.include(guide, 'bin/release_check.sh')
   assert.match(workflow, /^\s+run: bash bin\/release_check\.sh\s*$/m)
-  const commands = [...workflow.matchAll(/^\s+run: (gh release create[^\n]*)/gm)].map(
+  assert.match(workflow, /^ {10}notes=tmp\/release\/notes\.md$/m)
+  const commands = [...workflow.matchAll(/^ {10}(gh release create [^\n]+)/gm)].map(
     ([, command]) => command
   )
   assert.isAbove(commands.length, 0)
-  for (const command of commands) assert.match(command, /--notes-file tmp\/release\/notes\.md\b/)
+  for (const command of commands) assert.include(command, '--notes-file "$notes"')
 })

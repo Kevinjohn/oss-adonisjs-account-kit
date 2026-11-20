@@ -1,14 +1,18 @@
 # Release gate and historical candidate evidence
 
 Follow [Releasing](releasing.md) for the current GitHub release procedure. The release workflow
-runs `checks`, `compat` and `examples` as prerequisites, then runs `bin/release_check.sh` in a
-read-only `package` job and creates the prerelease from the uploaded artifact in a separate
-`release` job, the only one with `contents: write`. The documentation site build is a separate workflow gate.
+runs `checks`, `compat` and `examples` as prerequisites. The read-only `package` job runs
+`bin/release_check.sh`, tests that archive in a fresh SQLite consumer and compares the consumer's
+recorded SHA-256 with the digest from packaging. The consumer check must pass before the artifact
+is uploaded. The `release` job verifies the downloaded archive and notes before publishing, then
+checks the digest in the GitHub release asset metadata and notes. Only the `release` job has
+`contents: write`. The documentation site build is a separate workflow gate.
 
 The local release script checks that the version tag does not already exist, requires a dated
 changelog section for that version and an empty Unreleased section, then builds and packs the
 working-tree candidate. It writes the release notes with the archive's SHA-256, and in Actions
-the version and archive name as step outputs for the `release` job. Running the local script alone does not execute the workflow's prerequisite jobs.
+the version, archive name and digest as step outputs for the `release` job. The local script
+prepares the candidate. The workflow runs the candidate consumer check and prerequisite jobs.
 
 Before running the release workflow, the owner performs any manual viewport, keyboard or other
 checks outside the automated suites. Candidate test runs do not record those checks as completed.

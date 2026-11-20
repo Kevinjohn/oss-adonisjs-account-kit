@@ -1,5 +1,5 @@
 /** Managed handlers for session management: list sign-ins, revoke one, others, or all. */
-import { DeliveryError, PostCommitError } from '../errors.js'
+import { isCommittedFailure } from '../errors.js'
 import { revocationOutcome } from '../session_revocation.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
@@ -33,8 +33,7 @@ export const sessionManagementHandlers = {
       await kit.authentication.sessions.revokeAll({ current: accountInput! })
     } catch (error) {
       // Everything was signed out even though a follow-up failed; end this session too.
-      if (error instanceof PostCommitError || error instanceof DeliveryError)
-        await endSessionAfterCommit(options.guard, context, route.name)
+      if (isCommittedFailure(error)) await endSessionAfterCommit(options.guard, context, route.name)
       throw error
     }
     await endSessionAfterCommit(options.guard, context, route.name)

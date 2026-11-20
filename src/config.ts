@@ -1,4 +1,5 @@
 import { DateTime } from 'luxon'
+import { actionUrlBackendOrigins } from './action_urls.js'
 import { CapabilityDisabledError, InvalidConfigurationError } from './errors.js'
 import { budget } from './config_budget.js'
 import { assertObject } from './config_assert.js'
@@ -257,6 +258,9 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
       'account_kit: usersTable must be a plain SQL identifier'
     )
   const { mapFields } = config.registration
+  const urls = bindCallbacks<UrlCallbacks>(config.urls, disabledUrls)
+  const backendOrigin = actionUrlBackendOrigins.get(config.urls)
+  if (backendOrigin) actionUrlBackendOrigins.set(urls, backendOrigin)
   return freezeResolved({
     users: config.users,
     emailConstraint: config.emailConstraint,
@@ -289,7 +293,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     limiterSecret,
     limiterNamespace,
     authorize: bindCallbacks<AuthorizationCallbacks>(config.authorize, disabledAuthorize),
-    urls: bindCallbacks<UrlCallbacks>(config.urls, disabledUrls),
+    urls,
     notify: bindCallbacks<NotificationCallbacks>(config.notify, disabledNotify),
     onInvitationAccepted:
       typeof config.onInvitationAccepted === 'function'

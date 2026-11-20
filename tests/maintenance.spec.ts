@@ -86,6 +86,71 @@ test.group('expired-token pruning', (group) => {
     assert.lengthOf(await kit.db.from('social_identities'), 1)
   })
 
+  test('Ace dry run distinguishes partial scans, unvisited tables and complete zero counts', async ({
+    assert,
+  }) => {
+    const user = await insertUser(kit)
+    const expired = dbTime(kit, '2020-01-01T00:00:00.000Z')
+    await kit.db.table('password_reset_tokens').insert({
+      tokenable_id: user.id,
+      email: user.email,
+      hash: 'recovery',
+      expires_at: expired,
+      created_at: expired,
+    })
+    await kit.db.table('account_invitations').insert(
+      [1, 2].map((index) => ({
+        email: `invite-${index}@example.test`,
+        role: 'member',
+        inviter_id: user.id,
+        token_hash: `invitation-${index}`,
+        expires_at: expired,
+        created_at: expired,
+        updated_at: expired,
+      }))
+    )
+    const { kernel } = aceKernel(kit, [PruneAccountKit])
+    const flags = ['--dry-run', '--batch-size=1']
+    const bounded = await kernel.exec('account-kit:prune', [...flags, '--max-batches=1'])
+    assert.equal(bounded.exitCode, 0)
+    assert.deepEqual(
+      kernel.ui.logger.getLogs().map((log) => log.message),
+      [
+        '[ blue(info) ] Expired rows (dry run, nothing deleted)',
+        'Table|Rows',
+        'recovery|1 (partial)',
+        'invitations|Not scanned',
+        'emailVerifications|Not scanned',
+        'socialTransactions|Not scanned',
+        'socialSensitiveProofs|Not scanned',
+        'socialHandoffCodes|Not scanned',
+        'loginLinks|Not scanned',
+        'sessions|Not scanned',
+      ]
+    )
+    kernel.ui.logger.flushLogs()
+
+    const complete = await kernel.exec('account-kit:prune', [...flags, '--max-batches=4'])
+    assert.equal(complete.exitCode, 0)
+    assert.deepEqual(
+      kernel.ui.logger.getLogs().map((log) => log.message),
+      [
+        '[ blue(info) ] Expired rows (dry run, nothing deleted)',
+        'Table|Rows',
+        'recovery|1',
+        'invitations|2',
+        'emailVerifications|0',
+        'socialTransactions|0',
+        'socialSensitiveProofs|0',
+        'socialHandoffCodes|0',
+        'loginLinks|0',
+        'sessions|0',
+      ]
+    )
+    assert.lengthOf(await kit.db.from('account_invitations'), 2)
+    assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
+  })
+
   test('dry run, bounded deletion, and repeated runs count only expired rows', async ({
     assert,
   }) => {

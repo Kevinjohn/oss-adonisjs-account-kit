@@ -1,6 +1,6 @@
 /** Response shaping shared by managed endpoint handlers: proof errors, policy errors, account bodies. */
 import type { HttpContext } from '@adonisjs/core/http'
-import { DeliveryError, InvalidTokenError, PostCommitError } from '../errors.js'
+import { DeliveryError, InvalidTokenError, isCommittedFailure } from '../errors.js'
 import type { CurrentAccount } from '../types.js'
 import {
   applyMappedHeaders,
@@ -132,7 +132,7 @@ export function reportCommittedFailure(
   operation: ManagedEndpointName,
   error: unknown
 ): boolean {
-  if (!(error instanceof DeliveryError || error instanceof PostCommitError)) return false
+  if (!isCommittedFailure(error)) return false
   recoveryDiagnostic(
     context,
     operation,

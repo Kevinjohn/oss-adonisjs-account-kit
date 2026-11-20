@@ -119,6 +119,7 @@ export function accountConfigSource(choices: SetupChoices): string {
       ? [
           '  urls: createActionUrls({',
           `    backendOrigin: requiredEnv(${JSON.stringify(choices.mail.backendOriginEnv)}),`,
+          `    backendOriginSetting: ${JSON.stringify(choices.mail.backendOriginEnv)},`,
           `    appFrontendUrl: requiredEnv(${JSON.stringify(choices.mail.frontendOriginEnv)}),`,
           "    environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',",
           `    destinations: ${JSON.stringify(choices.mail.destinations)},`,

@@ -5,6 +5,7 @@ import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
 import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
+import { createActionUrls } from '../src/action_urls.js'
 import { createMailNotifications } from '../src/notifications.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
@@ -167,6 +168,8 @@ test.group('setup generated sources', (group) => {
     choices.mail.integration = 'adonisjs-mail'
     choices.mail.senderEnv = 'ACCOUNT_MAIL_FROM'
     choices.mail.transportEnv = 'MAIL_MAILER'
+    choices.mail.backendOriginEnv = 'PUBLIC_API_URL'
+    choices.mail.frontendOriginEnv = 'PUBLIC_WEB_URL'
     choices.policy.registrationFields = []
     choices.mail.destinations = { passwordReset: 'account/recovery' }
     const plan = await planSetup(choices, await inspectSetup(root), {
@@ -185,14 +188,14 @@ test.group('setup generated sources', (group) => {
     }).outputText
     const previous = {
       ACCOUNT_MAIL_FROM: process.env.ACCOUNT_MAIL_FROM,
-      APP_URL: process.env.APP_URL,
-      FRONTEND_URL: process.env.FRONTEND_URL,
+      PUBLIC_API_URL: process.env.PUBLIC_API_URL,
+      PUBLIC_WEB_URL: process.env.PUBLIC_WEB_URL,
     }
     process.env.ACCOUNT_MAIL_FROM = 'accounts@example.test'
-    process.env.APP_URL = 'http://localhost:3333'
-    process.env.FRONTEND_URL = 'http://localhost:3000'
+    process.env.PUBLIC_API_URL = 'https://api.example.test'
+    process.env.PUBLIC_WEB_URL = 'https://web.example.test'
     try {
-      const configured = new Function(
+      const evaluate = new Function(
         'env',
         'app',
         'createLucidAdapter',
@@ -202,16 +205,28 @@ test.group('setup generated sources', (group) => {
         'accountKitPolicy',
         'mail',
         compiled
-      )(
-        { get: () => ({ release: () => 'test-secret' }) },
-        { inProduction: false, inTest: true },
-        () => ({}),
-        () => ({}),
-        createMailNotifications,
-        (value: unknown) => value,
-        { canAccess: async () => true },
-        undefined
-      ) as { notify: { passwordChanged: (user: { email: string }) => Promise<void> } }
+      )
+      const loadConfig = () =>
+        evaluate(
+          { get: () => ({ release: () => 'test-secret' }) },
+          { inProduction: false, inTest: true },
+          () => ({}),
+          createActionUrls,
+          createMailNotifications,
+          (value: unknown) => value,
+          { canAccess: async () => true },
+          undefined
+        ) as {
+          urls: ReturnType<typeof createActionUrls>
+          notify: { passwordChanged: (user: { email: string }) => Promise<void> }
+        }
+      const configured = loadConfig()
+      assert.equal(
+        configured.urls.passwordReset('example-token'),
+        'https://web.example.test/account/recovery/example-token'
+      )
+      process.env.PUBLIC_API_URL = 'http://api.example.test'
+      assert.throws(loadConfig, /PUBLIC_API_URL: HTTP is restricted to loopback/)
       const sent: string[] = []
       const manager = {
         async sendLater(this: { delivered: boolean }, render: (message: any) => void) {

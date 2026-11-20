@@ -3,6 +3,15 @@ import { test } from '@japa/runner'
 import * as errors from '../src/errors.js'
 import { planManagedRoutes, type ManagedCapability } from '../src/http/routes.js'
 
+function isErrorClass(value: unknown): value is typeof errors.AccountKitError {
+  return (
+    typeof value === 'function' &&
+    (value === errors.AccountKitError ||
+      value.prototype instanceof errors.AccountKitError ||
+      'code' in value)
+  )
+}
+
 const read = (path: string) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
 test('the error reference lists every exported error with its code and status', async ({
@@ -11,7 +20,7 @@ test('the error reference lists every exported error with its code and status', 
   const reference = await read('docs/reference/errors.md')
   const missing: string[] = []
   for (const [name, value] of Object.entries(errors)) {
-    if (typeof value !== 'function') continue
+    if (!isErrorClass(value)) continue
     const row = `| \`${name}\``
     const line = reference.split('\n').find((candidate) => candidate.startsWith(`${row} `))
     if (
@@ -69,7 +78,7 @@ test('every documented error code starts with E_, unlike a validation rule', asy
     ?.match(/```json\n([\s\S]*?)```/)
   const codes = [
     ...Object.values(errors)
-      .filter((value) => typeof value === 'function')
+      .filter(isErrorClass)
       .map((value) => value.code),
     ...Object.keys(JSON.parse(block![1])),
   ]

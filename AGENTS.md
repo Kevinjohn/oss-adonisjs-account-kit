@@ -20,9 +20,9 @@ The same rules as `CONTRIBUTING.md`; every change follows them.
 ## Checks
 
 - `pnpm check` runs formatting, lint, types, SQLite tests, build, built exports and built setup.
-- `pnpm check --full` appends PostgreSQL, coverage, experimental MySQL, the default consumer,
-  the API password-reset recipe and the docs build. It does not run every compatibility or
-  example scenario.
+- `pnpm check --full` runs the SQLite suite with coverage and adds PostgreSQL, experimental MySQL,
+  the default consumer, the API password-reset recipe and the docs build. It does not run every
+  compatibility or example scenario.
 - `pnpm typecheck` runs TypeScript without emitting.
 - `pnpm lint` runs ESLint with the AdonisJS config.
 - `pnpm format` formats the repository with Prettier.

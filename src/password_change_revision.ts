@@ -1,13 +1,12 @@
 // The revision a committed password change wrote, kept for a follow-up failure it then threw.
-import { DeliveryError, PostCommitError } from './errors.js'
+import { isCommittedFailure } from './errors.js'
 import type { AccountKitError } from './errors.js'
 
 const credentialRevisionsByError = new WeakMap<AccountKitError, string | null>()
 
 /** Remember the committed revision on a delivery or post-commit error a password change throws. */
 export function rememberPasswordChangeRevision(error: unknown, revision: string | null): void {
-  if (error instanceof DeliveryError || error instanceof PostCommitError)
-    credentialRevisionsByError.set(error, revision)
+  if (isCommittedFailure(error)) credentialRevisionsByError.set(error, revision)
 }
 
 /**
@@ -17,7 +16,5 @@ export function rememberPasswordChangeRevision(error: unknown, revision: string 
  * changed the password stays signed in.
  */
 export function passwordChangeRevision(error: unknown): string | null | undefined {
-  return error instanceof DeliveryError || error instanceof PostCommitError
-    ? credentialRevisionsByError.get(error)
-    : undefined
+  return isCommittedFailure(error) ? credentialRevisionsByError.get(error) : undefined
 }

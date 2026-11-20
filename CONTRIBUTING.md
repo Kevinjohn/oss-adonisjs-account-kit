@@ -34,9 +34,9 @@ pnpm quick:test
 ## Checks
 
 - `pnpm check` runs formatting, lint, types, SQLite tests, build, built exports and built setup.
-- `pnpm check --full` appends PostgreSQL, coverage, experimental MySQL, the default consumer,
-  the API password-reset recipe and the docs build. Compatibility matrices and standalone example journeys
-  remain separate gates.
+- `pnpm check --full` runs the SQLite suite with coverage and adds PostgreSQL, experimental MySQL,
+  the default consumer, the API password-reset recipe and the docs build. Compatibility matrices
+  and standalone example journeys remain separate gates.
 
 Run the repository scripts, not the bare tools. They carry the flags used by CI.
 
