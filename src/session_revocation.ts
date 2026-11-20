@@ -1,5 +1,5 @@
 // Keeps a revocation's outcome on the committed-fault error, so callers can still end the session.
-import { DeliveryError, PostCommitError } from './errors.js'
+import { isCommittedFailure } from './errors.js'
 
 const revocationOutcomesByError = new WeakMap<Error, { current: boolean }>()
 
@@ -11,8 +11,7 @@ export async function recordRevocation(
   try {
     await followUps()
   } catch (error) {
-    if (error instanceof PostCommitError || error instanceof DeliveryError)
-      revocationOutcomesByError.set(error, outcome)
+    if (isCommittedFailure(error)) revocationOutcomesByError.set(error, outcome)
     throw error
   }
 }

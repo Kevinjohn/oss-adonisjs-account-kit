@@ -1,5 +1,5 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { pruneExpired } from '../src/maintenance.js'
+import { pruneExpiredWithScanStatus } from '../src/maintenance.js'
 
 export default class PruneAccountKit extends BaseCommand {
   static commandName = 'account-kit:prune'
@@ -18,7 +18,7 @@ export default class PruneAccountKit extends BaseCommand {
 
   async run(): Promise<void> {
     const db = await this.app.container.make('lucid.db')
-    const counts = await pruneExpired(db, {
+    const { counts, scans } = await pruneExpiredWithScanStatus(db, {
       batchSize: this.batchSize,
       maxBatches: this.maxBatches,
       dryRun: this.dryRun,
@@ -26,7 +26,16 @@ export default class PruneAccountKit extends BaseCommand {
     this.logger.info(this.dryRun ? 'Expired rows (dry run, nothing deleted)' : 'Pruned rows')
     const table = this.ui.table()
     table.head(['Table', 'Rows'])
-    for (const [key, count] of Object.entries(counts)) table.row([key, String(count)])
+    for (const { key, status } of scans) {
+      const count = counts[key]
+      const rows =
+        status === 'unvisited'
+          ? 'Not scanned'
+          : status === 'partial'
+            ? `${count} (partial)`
+            : String(count)
+      table.row([key, rows])
+    }
     table.render()
   }
 }

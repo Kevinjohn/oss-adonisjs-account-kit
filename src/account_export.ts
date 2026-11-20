@@ -8,6 +8,7 @@ import type { PostCommitError } from './errors.js'
 import type { AccountDataInput, AccountExport, ResolvedConfig, Trx, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
+import { scopeFromColumn } from './invitation_scope.js'
 import { packageTables } from './package_tables.js'
 import { sessionRegistryEnabled } from './session_registry.js'
 
@@ -101,7 +102,7 @@ export async function exportAccountData(
         .orderBy('id')
       const invitations = await trx
         .from(packageTables.accountInvitations)
-        .select('email', 'role', 'created_at', 'expires_at')
+        .select('email', 'role', 'scope', 'created_at', 'expires_at')
         .where('inviter_id', user.id)
         .orderBy('id')
       return {
@@ -131,6 +132,7 @@ export async function exportAccountData(
         invitationsSent: invitations.map((row) => ({
           email: row.email,
           role: row.role,
+          scope: scopeFromColumn(row.scope),
           createdAt: readIsoTimestamp(row.created_at)!,
           expiresAt: readIsoTimestamp(row.expires_at)!,
         })),

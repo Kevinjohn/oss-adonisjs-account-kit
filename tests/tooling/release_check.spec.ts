@@ -76,10 +76,16 @@ test('release gate accepts an empty Unreleased section above the released versio
   assert.include(result.notes, `SHA-256: \`${result.archiveSha256}\``)
 })
 
-test('release gate gives the release job its version and tarball name', async ({ assert }) => {
+test('release gate gives the release job its version, tarball name and archive digest', async ({
+  assert,
+}) => {
   const result = await releaseCheck('# Changelog\n\n## 9.9.9 - 2026-01-01\n\n- A\n')
   assert.equal(result.status, 0, result.stderr)
-  assert.equal(result.output, 'version=9.9.9\ntarball=release-fixture-9.9.9.tgz\n')
+  assert.match(result.archiveSha256 ?? '', /^[a-f0-9]{64}$/)
+  assert.equal(
+    result.output,
+    `version=9.9.9\ntarball=release-fixture-9.9.9.tgz\nsha256=${result.archiveSha256}\n`
+  )
 })
 
 test('release gate refuses entries under Unreleased, which the tarball would ship', async ({

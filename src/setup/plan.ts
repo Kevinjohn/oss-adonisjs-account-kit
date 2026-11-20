@@ -117,12 +117,22 @@ export async function planSetup(
   const priorGenerated = state.existingChoices?.authentication
     ? state.existingChoices
     : retainedChoices
+  const previousChoices = state.existingChoices
+  let previousConfig = previousChoices ? accountConfigSource(previousChoices) : null
+  if (previousChoices) {
+    // Older guided files omitted the diagnostic label. Match the entire old template
+    // before treating the file as setup-owned.
+    const legacyConfig = accountConfigSource(previousChoices, {
+      includeBackendOriginSetting: false,
+    })
+    if (state.files['config/account_kit.ts'] === legacyConfig) previousConfig = legacyConfig
+  }
   ownedChange(
     changes,
     state,
     'config/account_kit.ts',
     accountConfigSource(choices),
-    state.existingChoices ? accountConfigSource(state.existingChoices) : null,
+    previousConfig,
     'Configure selected services, policy and operational notification adapters'
   )
   ownedChange(

@@ -2,7 +2,10 @@ import type { SetupChoices } from './types.js'
 import { hasEmailFlow } from './shared.js'
 import { requiredEnvHelperLines } from './generated_env_helpers.js'
 
-export function accountConfigSource(choices: SetupChoices): string {
+export function accountConfigSource(
+  choices: SetupChoices,
+  { includeBackendOriginSetting = true } = {}
+): string {
   const emailEnabled = hasEmailFlow(choices)
   const managedMail = emailEnabled && choices.mail.integration === 'adonisjs-mail'
   const social = choices.social.status === 'enabled' ? choices.social : null
@@ -119,6 +122,9 @@ export function accountConfigSource(choices: SetupChoices): string {
       ? [
           '  urls: createActionUrls({',
           `    backendOrigin: requiredEnv(${JSON.stringify(choices.mail.backendOriginEnv)}),`,
+          ...(includeBackendOriginSetting
+            ? [`    backendOriginSetting: ${JSON.stringify(choices.mail.backendOriginEnv)},`]
+            : []),
           `    appFrontendUrl: requiredEnv(${JSON.stringify(choices.mail.frontendOriginEnv)}),`,
           "    environment: app.inProduction ? 'production' : app.inTest ? 'test' : 'development',",
           `    destinations: ${JSON.stringify(choices.mail.destinations)},`,

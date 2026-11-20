@@ -223,6 +223,7 @@ import User from '#models/user'
 import {
   DeliveryError,
   PostCommitError,
+  isCommittedFailure,
   RegistrationEmailAlreadyRegisteredError,
   passwordChangeRevision,
 } from '@kevinjohn/adonisjs-account-kit'
@@ -258,7 +259,7 @@ export default class AccountJourneyController {
         return ctx.response.unprocessableEntity({
           errors: [{ field: 'email', rule: 'unique', message: 'The email has already been taken' }],
         })
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      if (!isCommittedFailure(error)) throw error
       privateFault(ctx, error, 'signup')
       return ctx.response.accepted({
         accountCreated: true,
@@ -281,7 +282,7 @@ export default class AccountJourneyController {
       try {
         await accountKit.emailVerification.send({ userId: user.id })
       } catch (error) {
-        if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+        if (!isCommittedFailure(error)) throw error
         privateFault(ctx, error, 'requestVerification')
       }
     }
@@ -301,7 +302,7 @@ export default class AccountJourneyController {
     try {
       await accountKit.emailVerification.complete({ token, password })
     } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      if (!isCommittedFailure(error)) throw error
       privateFault(ctx, error, 'verify')
     }
     return ctx.response.ok({
@@ -336,11 +337,7 @@ export default class AccountJourneyController {
         keepCurrent: actor.tokenId ? { tokenId: actor.tokenId } : {},
       })
     } catch (error) {
-      if (
-        !(error instanceof DeliveryError || error instanceof PostCommitError) ||
-        passwordChangeRevision(error) === undefined
-      )
-        throw error
+      if (!isCommittedFailure(error) || passwordChangeRevision(error) === undefined) throw error
       privateFault(ctx, error, 'changePassword')
     }
     return ctx.response.ok({ changed: true })
@@ -351,7 +348,7 @@ export default class AccountJourneyController {
     try {
       await accountKit.passwordReset.request({ email, clientKey: ctx.request.ip() })
     } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      if (!isCommittedFailure(error)) throw error
       privateFault(ctx, error, 'requestRecovery')
     }
     return ctx.response.accepted(acknowledgement)
@@ -370,7 +367,7 @@ export default class AccountJourneyController {
     try {
       await accountKit.passwordReset.reset({ token, password })
     } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      if (!isCommittedFailure(error)) throw error
       privateFault(ctx, error, 'completeRecovery')
     }
     return ctx.response.ok({ reset: true, message: 'Password reset. Sign in again.' })

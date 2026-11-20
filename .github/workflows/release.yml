@@ -30,6 +30,7 @@ jobs:
     outputs:
       version: ${{ steps.check.outputs.version }}
       tarball: ${{ steps.check.outputs.tarball }}
+      sha256: ${{ steps.check.outputs.sha256 }}
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0, persist-credentials: false }
@@ -40,6 +41,14 @@ jobs:
       - name: Release checks (tag, changelog, build, pack)
         id: check
         run: bash bin/release_check.sh
+      - name: Test the release archive in a fresh SQLite consumer
+        env:
+          TARBALL: ${{ steps.check.outputs.tarball }}
+          SHA256: ${{ steps.check.outputs.sha256 }}
+          CONSUMER_EVIDENCE_PATH: ${{ runner.temp }}/release-consumer/evidence.json
+        run: |
+          pnpm test:consumer -- --database=sqlite --candidate-tarball="tmp/release/$TARBALL" --candidate-revision="$GITHUB_SHA"
+          jq -e --arg sha256 "$SHA256" '.status == "passed" and .candidateSha256 == $sha256' "$CONSUMER_EVIDENCE_PATH"
       - uses: actions/upload-artifact@v7
         with:
           name: release
@@ -55,9 +64,23 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with: { name: release, path: tmp/release }
-      - name: Create release
+      - name: Publish and verify release
+        shell: bash
         env:
           GH_TOKEN: '${{ github.token }}'
           VERSION: '${{ needs.package.outputs.version }}'
           TARBALL: '${{ needs.package.outputs.tarball }}'
-        run: gh release create "v$VERSION" "tmp/release/$TARBALL" --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file tmp/release/notes.md
+          SHA256: '${{ needs.package.outputs.sha256 }}'
+        run: |
+          archive="tmp/release/$TARBALL"
+          notes=tmp/release/notes.md
+          checksum_line=$(printf 'SHA-256: `%s`' "$SHA256")
+          printf '%s  %s\n' "$SHA256" "$archive" | sha256sum --check --strict
+          grep -Fx -- "$checksum_line" "$notes"
+
+          gh release create "v$VERSION" "$archive" --repo "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "$VERSION" --notes-file "$notes"
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" |
+            jq -e --arg asset "$TARBALL" --arg digest "sha256:$SHA256" --arg checksum_line "$checksum_line" '
+              any(.assets[]; .name == $asset and .digest == $digest) and
+              (.body | split("\n") | index($checksum_line) != null)
+            '

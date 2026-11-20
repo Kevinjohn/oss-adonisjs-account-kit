@@ -171,6 +171,14 @@ export class PostCommitError extends AccountKitError {
   /** Always true: the transaction committed; an inspection snapshot may still be discarded. */
   readonly committed = true
 }
+/**
+ * Whether Account Kit reported a follow-up failure after committing the transaction.
+ * Recovery depends on the operation. A committed mutation should never be replayed.
+ */
+export function isCommittedFailure(error: unknown): error is DeliveryError | PostCommitError {
+  return error instanceof DeliveryError || error instanceof PostCommitError
+}
+
 /** An operation was called for a capability that is not in `enabled`. */
 export class CapabilityDisabledError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_CAPABILITY_DISABLED'

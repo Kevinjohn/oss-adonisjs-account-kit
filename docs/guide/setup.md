@@ -11,8 +11,8 @@ Setup replaces the configuration step in the [root install instructions](../../R
 `config/account_kit.ts` or the package migrations already exist, setup marks each of them as a
 conflict and `--apply` writes nothing.
 
-1. Install the GitHub release archive using the [root install instructions](../../README.md#install),
-   stopping before `node ace configure` and migrations. npm publication is still pending.
+1. Complete the shared installation steps in the [README](../../README.md#install), then continue here.
+   npm publication is still pending.
 2. Add `() => import('@kevinjohn/adonisjs-account-kit/commands')` to the `commands` array in `adonisrc.ts`.
 3. Install TypeScript 5.9.3 or newer 5.x, or 6.0.3 or newer 6.x, if the app does not have it:
    `pnpm add -D typescript@^5.9.3`. Setup reads your config files with it instead of running
@@ -44,6 +44,11 @@ conflict and `--apply` writes nothing.
    suspend or otherwise restrict accounts, implement its actual rule in `canAccess`. This policy
    prerequisite remains mandatory whenever authentication is selected; setup does not generate an
    authorization policy.
+
+For an existing guided installation, applying the saved choices updates an untouched generated
+config to include its backend origin label. If you customized `config/account_kit.ts`, add
+`backendOriginSetting` to `createActionUrls` with the name of the existing backend environment
+variable, such as `PUBLIC_API_URL`, so configuration errors can name it.
 
 ## Run setup
 

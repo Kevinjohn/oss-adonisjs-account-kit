@@ -43,7 +43,8 @@ test('the check profiles cover every pnpm script the CI workflows run', ({ asser
   // PostgreSQL lifecycle commands provision and clean up the consumer job; they are not gates.
   const prerequisites = new Set(['pg:start', 'pg:stop'])
   // A `--config.<key>=<value>` flag before the script (pre and post hooks off) still runs it.
-  const uncovered = ['checks.yml', 'compat.yml', 'examples.yml', 'docs.yml'].flatMap((workflow) =>
+  const workflows = ['checks.yml', 'compat.yml', 'examples.yml', 'docs.yml', 'release.yml']
+  const uncovered = workflows.flatMap((workflow) =>
     [
       ...readFileSync(join(root, '.github/workflows', workflow), 'utf8').matchAll(
         /\bpnpm (?:--config\.[\w.-]+=\S+ )*([a-z][\w:-]*)/g
@@ -80,9 +81,30 @@ test('every command check:changed can plan runs a profile script or prettier', (
   }
 })
 
-test('full adds to the quick profile and unknown flags are rejected', ({ assert }) => {
-  assert.deepEqual(selectedSteps([]), checkProfiles.quick)
-  assert.deepEqual(selectedSteps(['--full']), [...checkProfiles.quick, ...checkProfiles.full])
+test('quick and full select exactly one SQLite run and retain their other checks', ({ assert }) => {
+  assert.deepEqual(selectedSteps([]), [
+    { script: 'format:check' },
+    { script: 'lint' },
+    { script: 'typecheck' },
+    { script: 'quick:test' },
+    { script: 'build' },
+    { script: 'test:built-exports' },
+    { script: 'test:built-setup' },
+  ])
+  assert.deepEqual(selectedSteps(['--full']), [
+    { script: 'format:check' },
+    { script: 'lint' },
+    { script: 'typecheck' },
+    { script: 'test' },
+    { script: 'build' },
+    { script: 'test:built-exports' },
+    { script: 'test:built-setup' },
+    { script: 'test:pg' },
+    { script: 'test:mysql' },
+    { script: 'test:consumer' },
+    { script: 'test:recipe', args: ['--recipe=api-password-reset'] },
+    { script: 'docs:build' },
+  ])
   assert.throws(() => selectedSteps(['--fast']), /pnpm check/)
 })
 

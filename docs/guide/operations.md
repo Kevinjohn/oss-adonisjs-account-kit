@@ -18,6 +18,10 @@ package guarantees about readiness, delivery and revocation.
 - Schedule `node ace account-kit:prune` to delete expired tokens.
 - Keep proof links out of access logs and analytics.
 
+Doctor checks the backend origin used by guided action URLs and the `APP_URL` setting in
+conventional installations. If the configured users table is missing, check the mapping and
+restore the table or apply the application's own users migration before applying package migrations.
+
 With access-token authentication, doctor checks the configured token table even when account
 export and deletion are disabled. If it is missing, apply the application's Auth migration as
 well as Account Kit migrations.
@@ -114,10 +118,12 @@ pnpm exec node ace account-kit:prune
 ```
 
 The command captures one expiry cutoff for the run, selects IDs in bounded batches, and rechecks
-that each row is still expired at deletion time. Output reports all eight row counts, showing rows
-actually deleted (or rows eligible in dry-run mode). It does not delete users, social identities,
-access tokens, web sessions, team memberships, or application-owned records. If a run reaches its
-batch cap, schedule another run rather than raising the cap without considering database load.
+that each row is still expired at deletion time. Output shows rows deleted (or rows eligible in
+dry-run mode). It marks an unfinished scan as `partial` and a table it did not reach as
+`Not scanned`. A plain zero means the scan for that table completed without finding rows to count.
+The command does not delete users, social identities, access tokens, web sessions, team memberships,
+or application-owned records. If a run reaches its batch cap, schedule another run rather than
+raising the cap without considering database load.
 
 Each invocation starts with recovery tokens again; rotation does not carry across runs. If an
 operator lowers the batch budget while earlier tables have a continuous backlog, later tables can

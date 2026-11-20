@@ -284,6 +284,27 @@ test.group('setup apply', (group) => {
     )
   })
 
+  test('updates an unedited guided config generated before origin labels', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    const first = await planSetup(choices, await inspectSetup(root), {
+      apply: true,
+      timestamp: 1234,
+    })
+    await applySetup(root, first)
+    const config = join(root, 'config/account_kit.ts')
+    const current = await readFile(config, 'utf8')
+    const legacy = current.replace(/^ {4}backendOriginSetting: .*\n/m, '')
+    assert.notEqual(legacy, current)
+    await writeFile(config, legacy)
+
+    const changed = parseSetupChoices({ ...choices, routePrefix: '/api/v2' })
+    const plan = await planSetup(changed, await inspectSetup(root), { apply: true })
+    const change = plan.changes.find(({ path }) => path === 'config/account_kit.ts')
+    assert.equal(change?.action, 'update')
+    await applySetup(root, plan)
+    assert.include(await readFile(config, 'utf8'), 'backendOriginSetting:')
+  })
+
   test('plans and applies a stock schema-composed starter with inert routes until application revocation is verified', async ({
     assert,
   }) => {

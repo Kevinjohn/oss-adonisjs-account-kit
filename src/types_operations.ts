@@ -298,7 +298,13 @@ export interface AccountExport {
     confirmedAt: string | null
     createdAt: string
   }>
-  invitationsSent: Array<{ email: string; role: string; createdAt: string; expiresAt: string }>
+  invitationsSent: Array<{
+    email: string
+    role: string
+    scope: string | null
+    createdAt: string
+    expiresAt: string
+  }>
   /** Present only for the access-token strategy. */
   accessTokens?: Array<{
     id: number | string

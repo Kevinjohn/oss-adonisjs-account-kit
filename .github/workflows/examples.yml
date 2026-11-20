@@ -18,8 +18,10 @@ on:
       - 'docs/guide/**'
       - 'docs/recipes/patches/**'
       - 'bin/test_recipe.ts'
+      - 'bin/copy_templates.ts'
       - 'bin/prepare_example_archive.ts'
       - 'http/**'
+      - 'transaction/**'
       - '.github/workflows/examples.yml'
   schedule:
     - cron: '0 3 * * 1'

@@ -8,6 +8,8 @@ import type { UrlCallbacks } from './types.js'
 export interface ActionUrlOptions {
   /** The API's public origin. */
   backendOrigin: string
+  /** The name of the backend origin setting to show in configuration diagnostics. */
+  backendOriginSetting?: string
   /** The frontend URL the links point at, including any base path. */
   appFrontendUrl: string
   /**
@@ -17,6 +19,8 @@ export interface ActionUrlOptions {
   /** In production, origins must be HTTPS; HTTP is allowed only for loopback in development. */
   environment: 'development' | 'test' | 'production'
 }
+
+export const actionUrlBackendOrigins = new WeakMap<object, { value: string; setting?: string }>()
 
 export function trustedOrigin(value: string, environment: ActionUrlOptions['environment']): URL {
   let url: URL
@@ -43,7 +47,18 @@ export function trustedOrigin(value: string, environment: ActionUrlOptions['envi
 
 /** Build links only from configured values; request Host and forwarded headers are never inputs. */
 export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
-  trustedOrigin(options.backendOrigin, options.environment)
+  const { backendOrigin, backendOriginSetting } = options
+  try {
+    trustedOrigin(backendOrigin, options.environment)
+  } catch (error) {
+    if (!(error instanceof Error) || !options.backendOriginSetting) throw error
+    throw new Error(
+      `account_kit: ${backendOriginSetting}: ${error.message.replace('account_kit: ', '')}`,
+      {
+        cause: error,
+      }
+    )
+  }
   const frontend = trustedOrigin(options.appFrontendUrl, options.environment)
   const base = new URL(frontend.toString().replace(/\/?$/, '/'))
   function link(name: keyof UrlCallbacks, token: string): string {
@@ -87,11 +102,13 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
   for (const [name, destination] of Object.entries(options.destinations)) {
     if (destination !== undefined) link(name as keyof UrlCallbacks, 'check')
   }
-  return {
+  const urls: UrlCallbacks = {
     passwordReset: (token) => link('passwordReset', token),
     emailVerification: (token) => link('emailVerification', token),
     invitation: (token) => link('invitation', token),
     emailChange: (token) => link('emailChange', token),
     magicLink: (token) => link('magicLink', token),
   }
+  actionUrlBackendOrigins.set(urls, { value: backendOrigin, setting: backendOriginSetting })
+  return urls
 }

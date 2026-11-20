@@ -1,5 +1,5 @@
 import type { Database } from '@adonisjs/lucid/database'
-import { trustedOrigin } from './action_urls.js'
+import { actionUrlBackendOrigins, trustedOrigin } from './action_urls.js'
 import { userMetadata } from './db.js'
 import { packageTables } from './package_tables.js'
 import { userOwnedRows } from './user_rows.js'
@@ -50,13 +50,16 @@ const capabilityTables: Record<Capability, string[]> = {
 const migrationFix =
   'Run `node ace configure @kevinjohn/adonisjs-account-kit`, then `node ace migration:run`'
 
-function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['environment']) {
-  const name = 'APP_URL'
-  if (!appUrl)
-    return { name, ok: false, detail: 'is not set', fix: 'Set APP_URL to the public base URL' }
+function backendOriginCheck(
+  name: string,
+  value: string | undefined,
+  environment: DoctorInput['environment']
+): DoctorCheck {
+  if (!value)
+    return { name, ok: false, detail: 'is not set', fix: `Set ${name} to the public base URL` }
   let url: URL
   try {
-    url = new URL(appUrl)
+    url = new URL(value)
   } catch {
     return { name, ok: false, detail: 'is not an absolute URL', fix: 'Use https://example.com' }
   }
@@ -70,7 +73,7 @@ function appUrlCheck(appUrl: string | undefined, environment: DoctorInput['envir
   if (environment === 'production' && url.protocol !== 'https:')
     return { name, ok: false, detail: 'must use HTTPS in production', fix: 'Use an https:// URL' }
   try {
-    trustedOrigin(appUrl, environment)
+    trustedOrigin(value, environment)
   } catch (error) {
     return {
       name,
@@ -133,7 +136,12 @@ async function usersCheck(db: Database, config: ResolvedConfig): Promise<DoctorC
     return { name, ok: false, detail: (error as Error).message }
   }
   if (!(await db.connection().schema.hasTable(table)))
-    return { name, ok: false, detail: `table ${table} does not exist`, fix: migrationFix }
+    return {
+      name,
+      ok: false,
+      detail: `table ${table} does not exist`,
+      fix: `Verify the configured users table mapping. Restore ${table} from a backup or run the application's own users migration as appropriate`,
+    }
   const columns = ['email', 'password', 'unverified_email', 'email_verified_at']
   if (config.authentication) columns.push('credentials_changed_at')
   const missing: string[] = []
@@ -185,7 +193,17 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorCheck[]> {
           fix: 'Run `node ace add @adonisjs/limiter`',
         }
   )
-  checks.push(appUrlCheck(input.appUrl, input.environment))
+  const backendOrigin = input.config && actionUrlBackendOrigins.get(input.config.urls)
+  checks.push(
+    backendOrigin
+      ? backendOriginCheck(
+          backendOrigin.setting ??
+            (backendOrigin.value === input.appUrl ? 'APP_URL' : 'urls.backendOrigin'),
+          backendOrigin.value,
+          input.environment
+        )
+      : backendOriginCheck('APP_URL', input.appUrl, input.environment)
+  )
   if (input.config) {
     checks.push(...(await tableChecks(input.db, input.config)))
     checks.push(await usersCheck(input.db, input.config))

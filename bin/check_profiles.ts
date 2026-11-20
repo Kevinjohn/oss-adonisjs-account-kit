@@ -7,20 +7,24 @@ export interface CheckStep {
 }
 export type CheckProfile = 'quick' | 'full'
 
-/** Steps per profile. `full` runs after `quick`; together they cover the CI scripts. */
-export const checkProfiles: Record<CheckProfile, CheckStep[]> = {
-  quick: [
+function packageChecks(sqliteTest: 'quick:test' | 'test'): CheckStep[] {
+  return [
     { script: 'format:check' },
     { script: 'lint' },
     { script: 'typecheck' },
-    { script: 'quick:test' },
+    { script: sqliteTest },
     { script: 'build' },
     { script: 'test:built-exports' },
     { script: 'test:built-setup' },
-  ],
+  ]
+}
+
+/** The full profile uses the covered SQLite run and adds compatibility and documentation checks. */
+export const checkProfiles: Record<CheckProfile, CheckStep[]> = {
+  quick: packageChecks('quick:test'),
   full: [
+    ...packageChecks('test'),
     { script: 'test:pg' },
-    { script: 'test' },
     { script: 'test:mysql' },
     { script: 'test:consumer' },
     { script: 'test:recipe', args: ['--recipe=api-password-reset'] },
@@ -31,5 +35,5 @@ export const checkProfiles: Record<CheckProfile, CheckStep[]> = {
 export function selectedSteps(flags: string[]): CheckStep[] {
   const unknown = flags.filter((flag) => flag !== '--full')
   if (unknown.length > 0) throw new Error(`Use pnpm check [--full]; got ${unknown}`)
-  return [...checkProfiles.quick, ...(flags.includes('--full') ? checkProfiles.full : [])]
+  return [...checkProfiles[flags.includes('--full') ? 'full' : 'quick']]
 }

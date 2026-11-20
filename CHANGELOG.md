@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Export `isCommittedFailure` for application-owned routes that recover from a failed follow-up.
+- Include the scope of sent invitations in account exports, using `null` for unscoped invitations.
+- Explain the separate service configuration and guided setup paths before configuration starts.
+- Check the configured backend origin in Doctor and explain how to recover a missing application users table.
+- Distinguish incomplete prune dry-run counts from tables with no expired rows.
+- Verify the exact release archive in a fresh SQLite consumer and check the published checksum.
+- Run the coverage-enabled SQLite suite once in the full local check.
+
 ## 0.4.1 - 2026-11-19
 
 ### Fixed

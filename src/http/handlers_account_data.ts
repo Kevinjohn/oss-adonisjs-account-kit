@@ -1,6 +1,6 @@
 /** Managed handlers for the account export and account deletion capabilities. */
 import { exportFault } from '../account_export.js'
-import { DeliveryError, PostCommitError } from '../errors.js'
+import { isCommittedFailure } from '../errors.js'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { recoveryDiagnostic } from './response_helpers.js'
@@ -29,8 +29,7 @@ export const accountDataHandlers = {
       await kit.accountData.delete({ actorId: actorId!, currentPassword, recentProof })
     } catch (error) {
       // The deletion committed even though a follow-up failed; end the session too.
-      if (error instanceof PostCommitError || error instanceof DeliveryError)
-        await endSessionAfterCommit(options.guard, context, route.name)
+      if (isCommittedFailure(error)) await endSessionAfterCommit(options.guard, context, route.name)
       throw error
     }
     await endSessionAfterCommit(options.guard, context, route.name)

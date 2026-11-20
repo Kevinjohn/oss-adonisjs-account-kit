@@ -15,6 +15,7 @@ on:
       - 'src/**'
       - 'adapters/**'
       - 'http/**'
+      - 'transaction/**'
       - 'services/**'
       - 'testing/**'
       - 'providers/**'
@@ -22,6 +23,7 @@ on:
       - 'commands/**'
       - 'examples/api/**'
       - 'bin/test_consumer.ts'
+      - 'bin/copy_templates.ts'
       - 'bin/helpers/consumer/**'
       - '.github/workflows/compat.yml'
 

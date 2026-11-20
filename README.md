@@ -34,13 +34,18 @@ Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install th
 ```sh
 node ace add @adonisjs/limiter
 pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.4.1/kevinjohn-adonisjs-account-kit-0.4.1.tgz
-node ace configure @kevinjohn/adonisjs-account-kit
-node ace migration:run
-node ace account-kit:doctor
 ```
 
-Prefer generated files? Use [guided setup](docs/guide/setup.md) instead of
-`node ace configure`.
+Choose an integration path before configuring the package or running its migrations:
+
+- **Guided setup** generates the integration files. Follow the [guided setup guide](docs/guide/setup.md).
+- **Application-owned integration** configures the package while you wire the routes and policies. Run:
+
+  ```sh
+  node ace configure @kevinjohn/adonisjs-account-kit
+  node ace migration:run
+  node ace account-kit:doctor
+  ```
 
 ### Dynamic providers
 

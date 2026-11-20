@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import AccountKitDoctor from '../commands/doctor.js'
+import { createActionUrls } from '../src/action_urls.js'
 import { defineConfig } from '../src/config.js'
 import { runDoctor, type DoctorInput } from '../src/doctor.js'
 import { aceKernel } from './helpers/ace_kernel.js'
@@ -361,7 +362,9 @@ test.group('account-kit:doctor', (group) => {
     }
   })
 
-  test('reports a users table that does not exist', async ({ assert }) => {
+  test('the Ace command distinguishes a missing users table from missing package columns', async ({
+    assert,
+  }) => {
     const users = makeUsersAdapter(kit.db, kit.hash)
     const config = defineConfig(
       makeConfig({
@@ -371,9 +374,38 @@ test.group('account-kit:doctor', (group) => {
         },
       })
     )
-    assert.deepEqual(failures(await runDoctor(input({ config }))), [
-      'Users table: table absent_users does not exist',
-    ])
+    kit.app.config.set('account_kit', config)
+    const { kernel } = aceKernel(kit, [AccountKitDoctor])
+    const errors: string[] = []
+    kernel.ui.logger.error = (message) => {
+      errors.push(String(message))
+    }
+    const previous = process.env.APP_URL
+    try {
+      process.env.APP_URL = 'https://example.test'
+      const absent = await kernel.exec('account-kit:doctor', [])
+      assert.equal(absent.exitCode, 1)
+      assert.deepEqual(errors, [
+        "Users table: table absent_users does not exist. Verify the configured users table mapping. Restore absent_users from a backup or run the application's own users migration as appropriate",
+      ])
+
+      await kit.db.connection().schema.createTable('absent_users', (table) => {
+        table.increments('id')
+        table.string('email')
+        table.string('password')
+      })
+      errors.length = 0
+      const missingColumns = await kernel.exec('account-kit:doctor', [])
+      assert.equal(missingColumns.exitCode, 1)
+      assert.deepEqual(errors, [
+        'Users table: absent_users is missing unverified_email, email_verified_at. Run `node ace configure @kevinjohn/adonisjs-account-kit`, then `node ace migration:run`',
+      ])
+    } finally {
+      if (previous === undefined) delete process.env.APP_URL
+      else process.env.APP_URL = previous
+      kit.app.config.set('account_kit', undefined)
+      await kit.db.connection().schema.dropTableIfExists('absent_users')
+    }
   })
 
   test('the Ace command prints each check and exits 1 on a failure', async ({ assert }) => {
@@ -449,6 +481,66 @@ for (const environment of ['development', 'production'] as const) {
       }
     })
     const kit = useTestApp(group)
+
+    test('the Ace command checks the effective backend origin when action URLs configure it', async ({
+      assert,
+    }) => {
+      const previous = process.env.APP_URL
+      const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash) })
+      const { kernel } = aceKernel(kit, [AccountKitDoctor])
+      const successes: string[] = []
+      const errors: string[] = []
+      kernel.ui.logger.success = (message) => {
+        successes.push(message)
+      }
+      kernel.ui.logger.error = (message) => {
+        errors.push(String(message))
+      }
+      const options = {
+        backendOrigin: 'https://api.example.test/v1',
+        appFrontendUrl: 'https://web.example.test',
+        destinations: { passwordReset: 'reset-password' },
+        environment: 'development',
+      } as const
+      try {
+        delete process.env.APP_URL
+        for (const setting of ['PUBLIC_API_URL', undefined]) {
+          kit.app.config.set(
+            'account_kit',
+            defineConfig({
+              ...base,
+              urls: createActionUrls({ ...options, backendOriginSetting: setting }),
+            })
+          )
+          const command = await kernel.exec('account-kit:doctor', [])
+          assert.equal(command.exitCode, 0)
+          assert.include(successes, `${setting ?? 'urls.backendOrigin'}: https://api.example.test`)
+          assert.deepEqual(errors, [])
+        }
+        process.env.APP_URL = options.backendOrigin
+        const conventional = await kernel.exec('account-kit:doctor', [])
+        assert.equal(conventional.exitCode, 0)
+        assert.include(successes, 'APP_URL: https://api.example.test')
+        if (environment === 'production') {
+          const urls = createActionUrls({
+            ...options,
+            backendOrigin: 'http://localhost:3333',
+            backendOriginSetting: 'PUBLIC_API_URL',
+          })
+          kit.app.config.set('account_kit', defineConfig({ ...base, urls }))
+          process.env.APP_URL = 'https://example.test'
+          const command = await kernel.exec('account-kit:doctor', [])
+          assert.equal(command.exitCode, 1)
+          assert.deepEqual(errors, [
+            'PUBLIC_API_URL: must use HTTPS in production. Use an https:// URL',
+          ])
+        }
+      } finally {
+        if (previous === undefined) delete process.env.APP_URL
+        else process.env.APP_URL = previous
+        kit.app.config.set('account_kit', undefined)
+      }
+    })
 
     test('the Ace command applies trusted-origin rules without exercising callbacks', async ({
       assert,

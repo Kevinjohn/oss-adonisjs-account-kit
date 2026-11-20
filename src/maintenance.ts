@@ -43,6 +43,12 @@ const TABLES: Array<[keyof PruneCounts, PackageTable]> = [
 
 /** Remove expired rows in small batches, rechecking expiry when each selected batch is deleted. */
 export async function pruneExpired(db: Database, input: PruneInput = {}): Promise<PruneCounts> {
+  const { counts } = await pruneExpiredWithScanStatus(db, input)
+  return counts
+}
+
+/** Track whether each table was fully scanned within the shared batch budget. */
+export async function pruneExpiredWithScanStatus(db: Database, input: PruneInput) {
   const batchSize = input.batchSize ?? 100
   if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 1000)
     throw new RangeError('batchSize must be an integer from 1 to 1000')
@@ -85,5 +91,9 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
       if (selected.length < batchSize) done.add(table)
     }
   }
-  return counts
+  const scans = TABLES.map(([key, table]) => ({
+    key,
+    status: done.has(table) ? 'complete' : cursorsByTable.has(table) ? 'partial' : 'unvisited',
+  }))
+  return { counts, scans }
 }

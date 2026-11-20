@@ -61,13 +61,13 @@ For a copyable reset-request boundary, validate with Vine first so field errors 
 normal response, then preserve the generic acknowledgement for either committed failure:
 
 ```ts
-import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import { DeliveryError, isCommittedFailure } from '@kevinjohn/adonisjs-account-kit/errors'
 
 const acknowledgement = { message: 'If the account exists, instructions will be sent.' }
 try {
   await accountKit.passwordReset.request({ email, clientKey: request.ip() })
 } catch (error) {
-  if (error instanceof DeliveryError || error instanceof PostCommitError) {
+  if (isCommittedFailure(error)) {
     logger.error(
       {
         operation: 'password_reset.request',

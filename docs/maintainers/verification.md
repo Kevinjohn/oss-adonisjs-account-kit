@@ -35,6 +35,45 @@ last recorded outcome. Record the exact source revision and archive SHA-256 with
 11. Record the upgrade impact against the last published package: [upgrade impact and final handoff](#upgrade-impact-and-final-handoff).
 12. Hand the results to the [release gate](release-gate.md); merge, publication and manual checks stay owner actions.
 
+## Admission listing and retirement inventory measurement — 2026-11-20
+
+[Issue #909](https://github.com/Kevinjohn/oss-adonisjs-account-kit/issues/909) covers two service
+paths. The [measurement](../../bin/measure_account_reads.ts) exercised source revision
+`fbf09c74bd51396d6f554d53e99ea8f34be5d4b1` on Linux arm64 (Neoverse-N1) with Node 24.22.2 and
+pnpm 11.23.0. Each case used five warmups and 30 sequential measured calls. The elapsed times
+cover the public service call and same-host database work. Fixture setup, HTTP and remote network
+latency are outside the measurement.
+
+| Service and maintained adapter     | Database         | SQL statements per call | Median (ms) | P95 (ms) |
+| ---------------------------------- | ---------------- | ----------------------- | ----------- | -------- |
+| Admission, SQL adapter, 100 items  | SQLite 3.53.4    | 103                     | 27.44       | 35.46    |
+| Admission, SQL adapter, 1 item     | SQLite 3.53.4    | 4                       | 1.00        | 1.15     |
+| Password retirement, Lucid adapter | SQLite 3.53.4    | 1,008                   | 260.05      | 282.92   |
+| Admission, SQL adapter, 100 items  | PostgreSQL 16.15 | 103                     | 55.71       | 66.38    |
+| Admission, SQL adapter, 1 item     | PostgreSQL 16.15 | 4                       | 2.07        | 2.60     |
+| Password retirement, Lucid adapter | PostgreSQL 16.15 | 1,008                   | 522.59      | 567.05   |
+
+- **Admission.** The fixture seeded 1,001 users and 100 admission records, including the admitted
+  actor. The full page used 101 user lookups, an actor admission read and a page read. Keep the
+  current bounded pagination and per-user reads. The measured scaling cost and the 100-item cap
+  give a baseline for evaluating batching against a production latency target or consumer need.
+- **Retirement.** The password-retirement scan retained Google login, inspected 1,001 accounts
+  and found 1,000 affected accounts. It used 1,001 account lookups, four ID page queries (500, 500,
+  1 and empty), and three confirmed-identity queries. Keep the current inventory reads for this
+  operator check. Revisit batching if a deployed inventory size or runtime target makes the
+  per-account lookup cost material.
+
+Run from the repository root on Node 24. The measurement creates a temporary SQLite file or a
+fresh PostgreSQL schema and cleans up its fixture. The PostgreSQL commands use the repository's
+local test database defaults.
+
+```sh
+DB_CLIENT=better-sqlite3 pnpm exec node --import=@poppinss/ts-exec bin/measure_account_reads.ts
+pnpm pg:start
+DB_CLIENT=pg pnpm exec node --import=@poppinss/ts-exec bin/measure_account_reads.ts
+pnpm pg:stop
+```
+
 ## Current CI coverage — 2026-11-04
 
 The checks workflow runs the full package suite on SQLite and PostgreSQL 16. Formatting, lint,

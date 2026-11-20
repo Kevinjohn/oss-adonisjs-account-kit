@@ -73,6 +73,7 @@ test.group('account data export', (group) => {
           {
             email: 'invitee-a@example.test',
             role: 'member',
+            scope: null,
             createdAt: '2026-11-01T00:00:00.000Z',
             expiresAt: '2026-12-01T00:00:00.000Z',
           },
@@ -84,6 +85,29 @@ test.group('account data export', (group) => {
         },
         application: null,
       }
+    )
+  })
+
+  test('distinguishes invitations to the same address across scopes', async ({ assert }) => {
+    const user = await insertUser(kit)
+    await seedAccountRows(kit, user.id, 'a')
+    const unscoped = await kit.db
+      .from('account_invitations')
+      .where('inviter_id', user.id)
+      .firstOrFail()
+    const { id, ...invitation } = unscoped
+    await kit.db.table('account_invitations').insert([
+      { ...invitation, scope: 'team-a', token_hash: 'scope-a' },
+      { ...invitation, scope: 'team-b', token_hash: 'scope-b' },
+    ])
+
+    const document = await service().account.accountData.export({
+      actorId: user.id,
+      currentPassword: 'password123',
+    })
+    assert.deepEqual(
+      document.invitationsSent.map(({ email, scope }) => ({ email, scope })),
+      [null, 'team-a', 'team-b'].map((scope) => ({ email: invitation.email, scope }))
     )
   })
 
