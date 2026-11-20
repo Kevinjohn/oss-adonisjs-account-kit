@@ -177,6 +177,9 @@ await kit.authentication.withCurrent(current, async ({ account, signInId, trx })
 - SQLite may retry the transaction, so keep `run` database-only and repeatable.
 - `signInId` is the caller's sign-in row under the session strategy with `sessionManagement`
   enabled, and `undefined` otherwise.
+- `readCredentialRevision()` reads the account’s live revision in the same transaction, including
+  earlier changes by that callback. It returns `null` before the first credential change. Call it
+  only inside `run`.
 - `inspectAccountAccess` remains the read-only inspection that needs no credential.
 
 The maintained example applies `AccountAccessMiddleware` to limited routes and
