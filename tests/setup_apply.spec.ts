@@ -293,7 +293,7 @@ test.group('setup apply', (group) => {
     await applySetup(root, first)
     const config = join(root, 'config/account_kit.ts')
     const current = await readFile(config, 'utf8')
-    const legacy = current.replace(/^    backendOriginSetting: .*\n/m, '')
+    const legacy = current.replace(/^ {4}backendOriginSetting: .*\n/m, '')
     assert.notEqual(legacy, current)
     await writeFile(config, legacy)
 
