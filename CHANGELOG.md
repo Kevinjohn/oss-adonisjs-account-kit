@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Let applications read the live credential revision inside an authenticated `withCurrent` transaction.
 - Export `isCommittedFailure` for application-owned routes that recover from a failed follow-up.
 - Include the scope of sent invitations in account exports, using `null` for unscoped invitations.
 - Explain the separate service configuration and guided setup paths before configuration starts.
