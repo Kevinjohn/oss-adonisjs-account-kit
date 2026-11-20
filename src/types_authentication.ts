@@ -60,6 +60,18 @@ export interface CurrentAccount {
   active: boolean
 }
 
+/** The authenticated account and its locked transaction, valid only during `withCurrent`. */
+export interface CurrentAccountContext {
+  /** The account accepted at the start of the callback. */
+  account: CurrentAccount
+  /** The caller's registry row ID when session management is enabled. */
+  signInId?: number
+  /** The Kit-owned transaction for this callback. */
+  trx: Trx
+  /** Read the live credential revision in this transaction, including this callback's writes. */
+  readCredentialRevision(): Promise<string | null>
+}
+
 /**
  * Input for caller-authorized inspection. Adapters and policy callbacks must be read-only through
  * the supplied transaction and safe to retry; unavailable accounts share `AccountAccessDeniedError`.

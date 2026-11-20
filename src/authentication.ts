@@ -32,6 +32,7 @@ import type {
   AccountUser,
   AuthenticationGuard,
   CurrentAccount,
+  CurrentAccountContext,
   CurrentAccountInput,
   PasswordLoginInput,
   SocialProviderName,
@@ -267,12 +268,18 @@ export function authenticationService(deps: ServiceDependencies) {
      */
     withCurrent<T>(
       input: CurrentAccountInput,
-      run: (context: { account: CurrentAccount; signInId?: number; trx: Trx }) => Promise<T>
+      run: (context: CurrentAccountContext) => Promise<T>
     ): Promise<T> {
       return transaction(deps.db, async (trx) => {
         const { account, session } = await currentWithSessionInTransaction(deps, input, trx)
         await lockSignIn(deps, trx, input, session)
-        return run({ account, signInId: session?.id, trx })
+        const userId = account.id
+        return run({
+          account,
+          signInId: session?.id,
+          trx,
+          readCredentialRevision: () => revision(trx, deps.config, userId),
+        })
       })
     },
 

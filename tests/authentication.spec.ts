@@ -338,6 +338,23 @@ test.group('authentication.withCurrent', (group) => {
     assert.equal(result, 'done')
   })
 
+  test('reads the live credential revision through the callback transaction', async ({
+    assert,
+  }) => {
+    await insertUser(kit)
+    const { account } = service()
+    const input = await signIn(account)
+    const changedAt = DateTime.utc().startOf('second')
+    await account.authentication.withCurrent(input, async ({ trx, readCredentialRevision }) => {
+      assert.isNull(await readCredentialRevision())
+      await trx
+        .from('users')
+        .where('id', input.userId)
+        .update({ credentials_changed_at: dbTime(kit, changedAt) })
+      assert.equal(await readCredentialRevision(), changedAt.toISO())
+    })
+  })
+
   test('has no sign-in id under access tokens', async ({ assert }) => {
     const user = await insertUser(kit)
     const { account } = service('access_tokens')
