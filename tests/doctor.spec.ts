@@ -517,6 +517,10 @@ for (const environment of ['development', 'production'] as const) {
           assert.include(successes, `${setting ?? 'urls.backendOrigin'}: https://api.example.test`)
           assert.deepEqual(errors, [])
         }
+        process.env.APP_URL = options.backendOrigin
+        const conventional = await kernel.exec('account-kit:doctor', [])
+        assert.equal(conventional.exitCode, 0)
+        assert.include(successes, 'APP_URL: https://api.example.test')
         if (environment === 'production') {
           const urls = createActionUrls({
             ...options,

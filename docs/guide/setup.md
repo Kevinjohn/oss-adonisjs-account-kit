@@ -45,6 +45,11 @@ conflict and `--apply` writes nothing.
    prerequisite remains mandatory whenever authentication is selected; setup does not generate an
    authorization policy.
 
+For an existing guided installation, applying the saved choices updates an untouched generated
+config to include its backend origin label. If you customized `config/account_kit.ts`, add
+`backendOriginSetting` to `createActionUrls` with the name of the existing backend environment
+variable, such as `PUBLIC_API_URL`, so configuration errors can name it.
+
 ## Run setup
 
 Choose your answers interactively, or start from an example choices file:

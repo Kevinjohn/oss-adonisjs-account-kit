@@ -196,7 +196,12 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorCheck[]> {
   const backendOrigin = input.config && actionUrlBackendOrigins.get(input.config.urls)
   checks.push(
     backendOrigin
-      ? backendOriginCheck(backendOrigin.setting, backendOrigin.value, input.environment)
+      ? backendOriginCheck(
+          backendOrigin.setting ??
+            (backendOrigin.value === input.appUrl ? 'APP_URL' : 'urls.backendOrigin'),
+          backendOrigin.value,
+          input.environment
+        )
       : backendOriginCheck('APP_URL', input.appUrl, input.environment)
   )
   if (input.config) {

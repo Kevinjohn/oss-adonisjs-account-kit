@@ -20,7 +20,7 @@ export interface ActionUrlOptions {
   environment: 'development' | 'test' | 'production'
 }
 
-export const actionUrlBackendOrigins = new WeakMap<object, { value: string; setting: string }>()
+export const actionUrlBackendOrigins = new WeakMap<object, { value: string; setting?: string }>()
 
 export function trustedOrigin(value: string, environment: ActionUrlOptions['environment']): URL {
   let url: URL
@@ -47,7 +47,7 @@ export function trustedOrigin(value: string, environment: ActionUrlOptions['envi
 
 /** Build links only from configured values; request Host and forwarded headers are never inputs. */
 export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
-  const { backendOrigin, backendOriginSetting = 'urls.backendOrigin' } = options
+  const { backendOrigin, backendOriginSetting } = options
   try {
     trustedOrigin(backendOrigin, options.environment)
   } catch (error) {
