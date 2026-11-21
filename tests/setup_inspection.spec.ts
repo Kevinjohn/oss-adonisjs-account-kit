@@ -491,24 +491,36 @@ test('selected scalar environment follows Adonis file precedence without evaluat
   const root = await applicationRoot()
   const previousNodeEnv = process.env.NODE_ENV
   try {
-    process.env.NODE_ENV = 'production'
+    // The selected environment is a complete snapshot, including its profile. It must
+    // not silently take NODE_ENV from the process while reading values from another map.
+    process.env.NODE_ENV = 'test'
+    const production = { NODE_ENV: 'production' }
     await writeFile(join(root, '.env.production.local'), 'ACCOUNT_ORIGIN=https://local.test\n')
     await writeFile(join(root, '.env.local'), 'ACCOUNT_ORIGIN=https://dot-local.test\n')
     await writeFile(join(root, '.env.production'), 'ACCOUNT_ORIGIN=https://production.test\n')
     await writeFile(join(root, '.env'), 'ACCOUNT_ORIGIN=https://default.test\n')
     assert.equal(
-      await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {}),
+      await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', production),
       'https://local.test'
     )
     assert.equal(
+      await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {}),
+      'https://dot-local.test'
+    )
+    assert.equal(
+      await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', { NODE_ENV: 'test' }),
+      'https://default.test'
+    )
+    assert.equal(
       await resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {
+        ...production,
         ACCOUNT_ORIGIN: 'https://process.test',
       }),
       'https://process.test'
     )
     await writeFile(join(root, '.env.production.local'), 'ACCOUNT_ORIGIN=$BASE_URL\n')
     await assert.rejects(
-      () => resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', {}),
+      () => resolveSelectedEnvironmentValue(root, 'ACCOUNT_ORIGIN', production),
       /must be a direct value/
     )
   } finally {
