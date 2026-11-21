@@ -8,7 +8,7 @@ import { addSetupDiagnostic } from './shared.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
 import { PROTECTED_FIELDS } from '../registration_fields.js'
 
-/** Password, registration, callback and unverified-account policy. */
+/** Registration settings, password requirements, access decisions and invitation callbacks. */
 export function addPolicyDiagnostics(
   diagnostics: SetupDiagnostic[],
   choices: SetupChoices,

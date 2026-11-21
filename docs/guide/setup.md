@@ -41,9 +41,38 @@ conflict and `--apply` writes nothing.
    ```
 
    Returning `true` is an explicit application choice, not a safe universal default. If your app can
-   suspend or otherwise restrict accounts, implement its actual rule in `canAccess`. This policy
-   prerequisite remains mandatory whenever authentication is selected; setup does not generate an
-   authorization policy.
+   suspend or otherwise restrict accounts, implement its actual rule in `canAccess`. This
+   prerequisite remains mandatory whenever authentication is selected. Setup generates references
+   to your host-authored module, not the module itself, and does not verify the correctness of its
+   rules. This is not an AdonisJS Bouncer policy.
+
+   If you select invitations, also supply `authorize` with the `invite`, `manageInvitation` and
+   `listInvitations` permission checks and `onInvitationAccepted` to apply the invitation's role or
+   scope when a user accepts it. The former checks whether the actor may manage invitations; the
+   latter writes application state through the transaction supplied by Account Kit. Acceptance
+   does not repeat the original manager's permission check.
+
+   You can keep your own application's naming and responsibilities behind this compatibility
+   adapter, for example:
+
+   ```ts
+   import { canAccess } from '#services/account_access_rules'
+   import { invitationPermissions } from '#services/invitation_rules'
+   import { applyInvitationMembership } from '#services/invitation_acceptance'
+
+   export const accountKitPolicy = {
+     canAccess,
+     authorize: invitationPermissions,
+     onInvitationAccepted: applyInvitationMembership,
+   }
+   ```
+
+   Each host function must implement the corresponding Account Kit callback signature. Read
+   permissions through the supplied transaction when present, and write the membership through
+   the acceptance transaction. See [account operations](account-operations.md) and
+   the [example callbacks](../../examples/api/app/services/account_kit_authorization.ts).
+   Version 1 choices retain the `policy` key for compatibility, along with the existing module
+   and export names.
 
 For an existing guided installation, applying the saved choices updates an untouched generated
 config to include its backend origin label. If you customized `config/account_kit.ts`, add
@@ -62,12 +91,22 @@ Choose your answers interactively, or start from an example choices file:
 
 Both give the same typed choices. The command previews by default:
 
-| Flag           | What it does                                                        |
-| -------------- | ------------------------------------------------------------------- |
-| (none)         | Prints the plan and writes nothing                                  |
-| `--apply`      | Writes the plan, if it has no conflicts                             |
-| `--check`      | Reads the saved choices and checks the current app, without writing |
-| `--production` | Also checks public origins and session security for deployment      |
+| Flag                         | What it does                                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| (none)                       | Prints the plan and writes nothing                                                                       |
+| `--apply`                    | Writes the plan, if it has no conflicts                                                                  |
+| `--check`                    | Reads the saved choices and checks the current app, without writing                                      |
+| `--production`               | Also checks public origins and session security for deployment                                           |
+| `--migration-directory=path` | Confirm the single application-relative Lucid migration directory when it cannot be inspected statically |
+
+Select the deployment environment before running setup. Inspection and planning use the same
+process environment snapshot, with direct process values taking precedence over the selected
+application `.env` files in AdonisJS loading order. Declare the chosen deployment references in
+your application's `start/env.ts` as appropriate. Generated config imports that module for the
+validated `APP_KEY`; it reads the operator-selected origin and mail variable names from the
+environment after AdonisJS has loaded it, so custom names do not require changes to the package's
+type declarations. Setup never persists secret values or starts application configuration to
+choose these settings.
 
 ### Reconfigure saved choices
 
@@ -102,6 +141,21 @@ verification state should be represented before enabling account flows. The migr
 `email_verified_at` null on existing rows; set it where the address is already trusted, or domain
 admission treats those accounts as unconfirmed.
 
+Both `node ace configure @kevinjohn/adonisjs-account-kit` and guided setup inspect the selected
+connection's literal `migrations.paths` in the database config, defaulting to the application's
+`adonisrc.ts` migrations directory (normally `database/migrations`) when the setting is omitted or
+empty. Configure reads the application's configured config directory; guided setup currently
+requires the conventional `config` directory because it also plans other config files. Neither
+executes the database config to choose a directory. For a dynamic path,
+pass the same `--migration-directory` flag on each run, including `--check`, after verifying it is the
+directory Lucid actually runs. A known conflicting path, existing Account Kit files in the default
+directory, or multiple configured paths blocks generation. If Lucid runs several directories,
+review their execution order and install the migrations manually; timestamps cannot establish order
+across directories. New filenames follow existing numeric timestamps in the selected directory.
+If a dependent migration already exists without its prerequisite, setup reports a conflict; reconcile
+the migration history manually rather than renaming applied files. The migration contents and
+existing filenames are never rewritten.
+
 The first apply leaves the managed routes switched off. Keep
 `authentication.applicationRouteRevocation` false for it:
 
@@ -120,7 +174,7 @@ reporting workflow verification as incomplete until you have exercised the flows
 
 The first apply writes three files you use here:
 
-- `config/account_kit.ts` for the selected service policy.
+- `config/account_kit.ts` for the selected service and sign-up settings.
 - `app/services/account_kit_guard.ts`, exporting `accountKitGuard` for the existing named guard.
 - `app/middleware/account_kit_access_middleware.ts` for your own routes.
 
@@ -143,13 +197,15 @@ Wire them up:
    Adapt the example [token](../../examples/api/app/controllers/access_tokens_controller.ts) or
    [session](../../examples/api/app/controllers/session_controller.ts) login controller; the
    [guard example](../../examples/api/app/services/account_kit_guards.ts) shows the same adapter
-   behavior. Logging in through the native guard, or with a test helper such as `loginAs`, does
+   behaviour. The managed adapter delegates to your configured native session or bearer guard;
+   it does not create a second authentication guard. Signing in through the native guard alone,
+   or with a test helper such as `loginAs`, does
    not record the revision.
 
 Then run the check:
 
 1. Create a test account with a known password through your model or a fixture. It must pass your
-   access policy, and have a verified email if verification is required.
+   access check, and have a verified email if verification is required.
 2. Log in and call the protected route with the new credential. It must succeed.
 3. Change the account's credentials through one of the operations your choices selected:
    - With `emailPasswordManagement`, change the password with

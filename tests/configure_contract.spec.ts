@@ -58,7 +58,11 @@ function fakeCommand(
     parsedFlags,
     exitCode: undefined as number | undefined,
     stubsRoot: fileURLToPath(new URL('../stubs', import.meta.url)),
-    app: { makePath: (...parts: string[]) => join(root, ...parts) },
+    app: {
+      makePath: (...parts: string[]) => join(root, ...parts),
+      configPath: (...parts: string[]) => join(root, 'config', ...parts),
+      migrationsPath: (...parts: string[]) => join(root, 'database/migrations', ...parts),
+    },
     logger: {
       info(message: string) {
         calls.infos.push(message)

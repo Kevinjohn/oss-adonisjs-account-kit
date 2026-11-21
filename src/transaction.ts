@@ -220,7 +220,7 @@ async function sqliteAttempt<T>(
   const client = connection.getWriteClient().client
   const sqlite = (await client.acquireConnection()) as SQLiteConnection
   let timeout: number | undefined
-  let outcome: T | undefined
+  let result: T | undefined
   let failure: unknown
   let failed = false
   const cleanup: unknown[] = []
@@ -228,7 +228,7 @@ async function sqliteAttempt<T>(
     timeout = Number(sqlite.pragma('busy_timeout', { simple: true }))
     sqlite.pragma('busy_timeout = 0')
     const trx = await beginSQLiteTransaction(connection, sqlite)
-    outcome = await runAndCommit(
+    result = await runAndCommit(
       trx,
       async (sqliteTrx) => {
         await lockSQLiteTransaction(sqliteTrx)
@@ -262,7 +262,7 @@ async function sqliteAttempt<T>(
     }
   }
   if (failed || cleanup.length > 0) throw combineFailures(failure, cleanup)
-  return outcome as T
+  return result as T
 }
 
 /** Retry SQLite attempts on SQLITE_BUSY until the deadline; never retry after a commit. */

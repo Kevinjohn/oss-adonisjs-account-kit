@@ -1,5 +1,17 @@
 import type { HttpContext, Router } from '@adonisjs/core/http'
+import { RequestFactory } from '@adonisjs/core/factories/http'
+import { IncomingMessage } from 'node:http'
+import { Socket } from 'node:net'
 import type { ManagedGuard } from '../../src/http/managed.js'
+
+/** A real AdonisJS request, including content negotiation, for response fixtures. */
+export function requestWithHeaders(headers: Record<string, string> = {}) {
+  const req = new IncomingMessage(new Socket())
+  req.url = '/'
+  req.method = 'GET'
+  req.headers = headers
+  return new RequestFactory().merge({ req }).create()
+}
 
 export function fakeManagedHttp() {
   const routes = new Map<string, (context: HttpContext) => Promise<unknown>>()
@@ -28,6 +40,7 @@ export function fakeManagedHttp() {
     params: Record<string, string> = {},
     requestHeaders: Record<string, string> = {}
   ) {
+    const request = requestWithHeaders(requestHeaders)
     const headers: Record<string, string> = {}
     const response = {
       header(name: string, value: string) {
@@ -67,6 +80,7 @@ export function fakeManagedHttp() {
       request: {
         ip: () => '192.0.2.1',
         header: (name: string) => requestHeaders[name.toLowerCase()],
+        accepts: request.accepts.bind(request),
         validateUsing: async () => ({ email: 'a@example.test', password: 'password123' }),
       },
       response,

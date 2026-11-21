@@ -1,6 +1,5 @@
-import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
-import db from '@adonisjs/lucid/services/db'
+import { createProofFor } from '../helpers/account_proof.js'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 
@@ -21,20 +20,12 @@ test.group('reset proof browser journey', (group) => {
       email: 'browser-other@example.test',
       password: 'OldPass123!',
     })
-    const token = randomBytes(40).toString('base64url')
-    const now = new Date()
-    await db.table('password_reset_tokens').insert({
-      tokenable_id: owner.id,
-      email: owner.email,
-      hash: createHash('sha256').update(token).digest('hex'),
-      created_at: now.toISOString(),
-      expires_at: new Date(now.getTime() + 3600000).toISOString(),
-    })
+    const { token } = await createProofFor(owner, 'reset-password')
 
     const page = await visit('/login')
     await page.getByLabel('Email').fill(other.email)
-    await page.getByLabel('Password').fill('OldPass123!')
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByLabel('Password', { exact: true }).fill('OldPass123!')
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
 
     await page.goto(new URL(`/reset-password/${token}`, process.env.APP_URL).href)

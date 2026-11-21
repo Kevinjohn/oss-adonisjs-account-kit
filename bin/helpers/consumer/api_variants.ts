@@ -10,8 +10,8 @@ export const exampleRoot = fileURLToPath(new URL('../../../examples/api/', impor
 /** Example files, relative to `examples/api`, whose contents depend on the schema variant. */
 const renderers = {
   'app/models/user.ts': userModel,
-  'app/controllers/admissions_controller.ts': (_: string, idType: UserIdType) =>
-    admissionsController(idType),
+  'app/services/admission_decision.ts': (_: string, idType: UserIdType) =>
+    admissionDecision(idType),
   'database/migrations/1761885935168_create_users_table.ts': createUsersTable,
   'database/migrations/1768620764696_create_access_tokens_table.ts': createAccessTokensTable,
   'database/migrations/1791906000000_create_role_assignments.ts': createRoleAssignments,
@@ -79,7 +79,7 @@ ${table}${selfAssign}  static accessTokens = DbAccessTokensProvider.forModel(Use
 `
 }
 
-function admissionsController(idType: UserIdType) {
+function admissionDecision(idType: UserIdType) {
   const userIdParam =
     idType === 'uuid'
       ? `/** Ids are UUIDs, stored in lower case, so a database never receives a malformed id. */
@@ -107,59 +107,13 @@ function userIdParam(value: string): string {
 import app from '@adonisjs/core/services/app'
 import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
 import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
-import { accountInput } from '#services/account_input'
-import { admissionListValidator } from '#validators/admission'
-
 ${userIdParam}
 
-const admission = () => app.container.make(AccountAdmission)
-
-/**
- * The account's own admission status and request, reachable while not admitted, and the owner's
- * list and decisions. The package sends no notification: this status is how a person learns the
- * decision.
- */
-export default class AdmissionsController {
-  async show(ctx: HttpContext) {
-    const service = await admission()
-    const { decision } = await service.current(accountInput(ctx))
-    return ctx.response.ok(decision)
-  }
-
-  async request(ctx: HttpContext) {
-    const service = await admission()
-    const record = await service.request(accountInput(ctx))
-    return ctx.response.ok({ requestedAt: record.requestedAt })
-  }
-
-  async index(ctx: HttpContext) {
-    const actor = await ctx.auth.getUserOrFail()
-    const { status, cursor, limit } = await ctx.request.validateUsing(admissionListValidator)
-    const service = await admission()
-    return ctx.response.ok(await service.list({ actorId: actor.id, status, cursor, limit }))
-  }
-
-  async approve(ctx: HttpContext) {
-    return this.decide(ctx, 'approve')
-  }
-
-  async reject(ctx: HttpContext) {
-    return this.decide(ctx, 'reject')
-  }
-
-  async revoke(ctx: HttpContext) {
-    return this.decide(ctx, 'revoke')
-  }
-
-  private async decide(ctx: HttpContext, decision: 'approve' | 'reject' | 'revoke') {
-    const actor = await ctx.auth.getUserOrFail()
-    const service = await admission()
-    const record = await service[decision]({
-      actorId: actor.id,
-      userId: userIdParam(ctx.params.id),
-    })
-    return ctx.response.ok({ userId: record.userId, approval: record.approval })
-  }
+export async function decideAdmission(ctx: HttpContext, decision: 'approve' | 'reject' | 'revoke') {
+  const actor = await ctx.auth.getUserOrFail()
+  const service = await app.container.make(AccountAdmission)
+  const record = await service[decision]({ actorId: actor.id, userId: userIdParam(ctx.params.id) })
+  return { userId: record.userId, approval: record.approval }
 }
 `
 }

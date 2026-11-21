@@ -6,7 +6,11 @@ import { InvalidInputError, UserNotFoundError } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { AccountUser } from '../types.js'
 import { requireApproval, requireInvitationRequirement } from './capability.js'
-import { applyTransition, outcome, type AdmissionTransition } from './decisions.js'
+import {
+  applyTransition,
+  approvalStatusByTransition,
+  type AdmissionTransition,
+} from './decisions.js'
 import { AdmissionDecisionError } from './errors.js'
 import { withAdmissionEvent } from './events.js'
 import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.js'
@@ -43,7 +47,7 @@ export async function operatorDecision(
       return applyTransition(trx, subject, transition, null)
     }),
     (record) => ({
-      type: `admission.${outcome[transition]}`,
+      type: `admission.${approvalStatusByTransition[transition]}`,
       userId: record.userId,
       actorId: null,
       operationId,

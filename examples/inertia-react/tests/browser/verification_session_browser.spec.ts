@@ -1,24 +1,8 @@
-import { createHash, randomBytes } from 'node:crypto'
 import { test } from '@japa/runner'
-import db from '@adonisjs/lucid/services/db'
+import { createProofFor } from '../helpers/account_proof.js'
 import User from '#models/user'
 import { setupAccountDatabase } from '../helpers/account_database.js'
 import { lifecycleOverrides } from '../../config/account_kit.js'
-
-async function proofFor(owner: User) {
-  const token = randomBytes(40).toString('base64url')
-  const now = new Date()
-  await db.table('email_verification_tokens').insert({
-    tokenable_id: owner.id,
-    email: owner.email,
-    current_email: owner.email,
-    purpose: 'activation',
-    hash: createHash('sha256').update(token).digest('hex'),
-    created_at: now.toISOString(),
-    expires_at: new Date(now.getTime() + 3600000).toISOString(),
-  })
-  return token
-}
 
 test.group('verification session browser journey', (group) => {
   group.each.setup(setupAccountDatabase)
@@ -39,26 +23,26 @@ test.group('verification session browser journey', (group) => {
         email: `verification-other-${identity.replace(' ', '-')}@example.test`,
         password: 'OldPass123!',
       })
-      const token = await proofFor(owner)
+      const { token } = await createProofFor(owner, 'verify-email')
 
       const page = await visit('/login')
       if (identity !== 'guest') {
         const signedIn = identity === 'same account' ? owner : other
         await page.getByLabel('Email').fill(signedIn.email)
-        await page.getByLabel('Password').fill('OldPass123!')
-        await page.getByRole('button', { name: 'Sign in' }).click()
+        await page.getByLabel('Password', { exact: true }).fill('OldPass123!')
+        await page.getByRole('button', { name: 'Sign in', exact: true }).click()
         await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       }
 
       await page.goto(new URL(`/verify-email/${token}`, process.env.APP_URL).href)
       await page.getByLabel('Password', { exact: true }).fill('NewPass123!')
       await page.getByLabel('Confirm password').fill('NewPass123!')
-      await page.getByRole('button', { name: 'Confirm email' }).click()
+      await page.getByRole('button', { name: 'Confirm email', exact: true }).click()
       await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
 
       await page.getByLabel('Email').fill(owner.email)
-      await page.getByLabel('Password').fill('NewPass123!')
-      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.getByLabel('Password', { exact: true }).fill('NewPass123!')
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click()
       await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
       const signedInOwner = await User.verifyCredentials(owner.email, 'NewPass123!')
       assert.equal(signedInOwner.id, owner.id)
@@ -75,11 +59,11 @@ test.group('verification session browser journey', (group) => {
       unverifiedEmail: 'verification-follow-up@example.test',
       password: 'OldPass123!',
     })
-    const token = await proofFor(owner)
+    const { token } = await createProofFor(owner, 'verify-email')
     const page = await visit('/login')
     await page.getByLabel('Email').fill(owner.email)
-    await page.getByLabel('Password').fill('OldPass123!')
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByLabel('Password', { exact: true }).fill('OldPass123!')
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
 
     const previous = lifecycleOverrides.run
@@ -93,7 +77,7 @@ test.group('verification session browser journey', (group) => {
       await page.goto(new URL(`/verify-email/${token}`, process.env.APP_URL).href)
       await page.getByLabel('Password', { exact: true }).fill('NewPass123!')
       await page.getByLabel('Confirm password').fill('NewPass123!')
-      await page.getByRole('button', { name: 'Confirm email' }).click()
+      await page.getByRole('button', { name: 'Confirm email', exact: true }).click()
       await page.getByRole('heading', { name: 'Welcome back' }).waitFor()
     } finally {
       lifecycleOverrides.run = previous
@@ -101,8 +85,8 @@ test.group('verification session browser journey', (group) => {
     assert.isTrue(followUpFailed)
 
     await page.getByLabel('Email').fill(owner.email)
-    await page.getByLabel('Password').fill('NewPass123!')
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByLabel('Password', { exact: true }).fill('NewPass123!')
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await page.getByRole('heading', { name: 'Your dashboard is ready' }).waitFor()
     const signedInOwner = await User.verifyCredentials(owner.email, 'NewPass123!')
     assert.equal(signedInOwner.id, owner.id)

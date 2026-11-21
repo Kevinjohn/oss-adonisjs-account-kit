@@ -6,7 +6,8 @@ import { mailerSelectionState } from './config_inspection.js'
 export async function planMail(
   choices: SetupChoices,
   state: SetupInspection,
-  diagnostics: SetupDiagnostic[]
+  diagnostics: SetupDiagnostic[],
+  env?: NodeJS.ProcessEnv
 ): Promise<void> {
   if (
     hasEmailFlow(choices) &&
@@ -16,7 +17,8 @@ export async function planMail(
     const selection = await mailerSelectionState(
       state.files['config/mail.ts'],
       state.root,
-      choices.mail.transportEnv
+      choices.mail.transportEnv,
+      env
     )
     if (selection === 'missing')
       addSetupDiagnostic(

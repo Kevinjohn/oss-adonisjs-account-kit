@@ -19,7 +19,8 @@ export async function planSessionConfigIntegration(
   changes: SetupFileChange[],
   state: SetupInspection,
   choices: SetupChoices,
-  diagnostics: SetupDiagnostic[]
+  diagnostics: SetupDiagnostic[],
+  env?: NodeJS.ProcessEnv
 ): Promise<void> {
   const path = 'config/session.ts'
   const previous = state.files[path]
@@ -32,7 +33,7 @@ export async function planSessionConfigIntegration(
   let base: string | null
   let parsed: SetupSource
   try {
-    base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root) : previous
+    base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root, env) : previous
     parsed = await parseSetupSource(previous)
   } catch (error) {
     if (!(error instanceof InvalidSetupSourceError)) throw error
@@ -76,7 +77,7 @@ export async function planSessionConfigIntegration(
   let inspected: NativeSessionConfiguration | null = null
   if (wantsManagedSession) {
     try {
-      inspected = await nativeSessionConfiguration(base, state.root)
+      inspected = await nativeSessionConfiguration(base, state.root, env)
     } catch {
       addSetupDiagnostic(
         diagnostics,

@@ -8,6 +8,7 @@ export { proofHeaders } from './proof_headers.js'
 export {
   managedErrorResponse,
   negotiate,
+  negotiateRequest,
   type ManagedErrorResponse,
   type ManagedMessage,
 } from '../error_response.js'
@@ -26,7 +27,7 @@ export async function renderAccountKitError(
   error: AccountKitError
 ): Promise<void> {
   const mapped = managedErrorResponse(error, {
-    accept: context.request.header('accept'),
+    request: context.request,
     i18n: 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined,
   })
   if (!mapped) return

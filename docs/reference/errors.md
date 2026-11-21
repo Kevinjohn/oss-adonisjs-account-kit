@@ -157,12 +157,13 @@ With `proof`, an `InvalidTokenError` uses its per-kind code instead, so add thos
 [managed routes guide](../guide/managed-http.md) lists them. An application that also uses the
 managed routes keeps one `errors.json` for both.
 
-## Catalog
+## Catalogue {#catalog}
 
 | Error                                     | Code                                           | Status | When                                                                                                                                                         | What to do                                                                                                                                                                 |
 | ----------------------------------------- | ---------------------------------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AccountKitError`                         | `E_ACCOUNT_KIT`                                |    500 | Base class for package-defined account errors. Raw database and application callback errors may propagate unchanged.                                         | Catch it to handle package errors together; let unknown errors reach normal application reporting.                                                                         |
 | `InvalidConfigurationError`               | `E_ACCOUNT_KIT_INVALID_CONFIGURATION`          |    500 | Thrown by configuration and admission validation, including static adapter definitions.                                                                      | Check `field` for the invalid configuration path.                                                                                                                          |
+| `AdapterContractError`                    | `E_ACCOUNT_KIT_ADAPTER_CONTRACT`               |    500 | An application callback or adapter returned a value outside its documented contract.                                                                         | Inspect the adapter or callback implementation privately. Do not expose its diagnostic or causes to clients.                                                               |
 | `InvalidInputError`                       | `E_ACCOUNT_KIT_INVALID_INPUT`                  |    422 | Input fails a package rule, for example a password outside the policy or a malformed email.                                                                  | Validate with VineJS first so users see field errors; treat this as the last line of defense.                                                                              |
 | `InvalidTokenError`                       | `E_ACCOUNT_KIT_INVALID_TOKEN`                  |    400 | A proof token is malformed, unknown, used or expired.                                                                                                        | Show "this link is invalid or has expired" and offer to send a new one.                                                                                                    |
 | `ThrottledError`                          | `E_ACCOUNT_KIT_THROTTLED`                      |    429 | A rate limit is spent. `retryAfterSeconds` says when to retry.                                                                                               | Return 429 with `Retry-After`. Tune budgets with `throttle` and `invitationThrottle`.                                                                                      |
@@ -215,7 +216,7 @@ Their translation keys are `errors.E_ACCOUNT_KIT_ADMISSION_REQUIRED` and
 ## Stability
 
 Error `code` values are public API from the first public release. This covers the codes in the
-catalog above and the managed-route codes in the `errors.json` block in
+catalogue above and the managed-route codes in the `errors.json` block in
 [managed HTTP](../guide/managed-http.md). A code is changed or removed only as a breaking change listed
 in the [changelog](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/CHANGELOG.md).
 Before 1.0 that can happen in a minor release, and it is still listed as breaking.
@@ -225,7 +226,7 @@ Before 1.0 that can happen in a minor release, and it is still listed as breakin
 ## Translating on the client
 
 SPA and mobile clients that translate on their side should key translations on `code`, not
-`message`. The full lists are the catalog above and the `errors.json` block in
+`message`. The full lists are the catalogue above and the `errors.json` block in
 [managed HTTP](../guide/managed-http.md). Every package code starts with `E_`.
 
 Request-validation errors come from VineJS and are keyed on the rule and field instead: `rule` and

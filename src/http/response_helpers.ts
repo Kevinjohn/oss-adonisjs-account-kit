@@ -5,7 +5,7 @@ import type { CurrentAccount } from '../types.js'
 import {
   applyMappedHeaders,
   managedErrorResponse,
-  negotiate,
+  negotiateRequest,
   type ManagedMessage,
 } from './responses.js'
 import type { AccountKitTranslator } from '../translator.js'
@@ -29,7 +29,7 @@ export function invalidProof(
 ): unknown {
   const mapped = managedErrorResponse(new InvalidTokenError(), {
     proof,
-    accept: context.request.header('accept'),
+    request: context.request,
     message,
     i18n: requestTranslator(context),
   })!
@@ -57,7 +57,7 @@ export function sendRuleViolationResponse(
       )
     : fallbackMessage
   // Same media type, caching and shape as the VineJS 422s the managed routes send.
-  const contentType = negotiate(context.request.header('accept'))
+  const contentType = negotiateRequest(context.request)
   context.response.header('Cache-Control', 'no-store')
   context.response.vary('Accept')
   context.response.header('Content-Type', contentType)

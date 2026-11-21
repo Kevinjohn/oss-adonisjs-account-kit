@@ -54,7 +54,7 @@ test('the committed API example is the default rendering of its app-owned files'
     [...rendered.keys()],
     [
       'app/models/user.ts',
-      'app/controllers/admissions_controller.ts',
+      'app/services/admission_decision.ts',
       'database/migrations/1761885935168_create_users_table.ts',
       'database/migrations/1768620764696_create_access_tokens_table.ts',
       'database/migrations/1791906000000_create_role_assignments.ts',
@@ -116,10 +116,10 @@ test('non-default variants change the users table, the ID columns and the model'
   assert.include(model, "statictable='account_users'")
   assert.include(model, 'staticselfAssignPrimaryKey=true')
   assert.include(model, 'Object.assign(user,{id:randomUUID()})')
-  const controller = flat(strings, 'app/controllers/admissions_controller.ts')
-  assert.include(controller, 'functionuserIdParam(value:string):string')
-  assert.include(controller, 'value.length>64')
-  assert.notInclude(controller, 'Number.isSafeInteger')
+  const decisionService = flat(strings, 'app/services/admission_decision.ts')
+  assert.include(decisionService, 'functionuserIdParam(value:string):string')
+  assert.include(decisionService, 'value.length>64')
+  assert.notInclude(decisionService, 'Number.isSafeInteger')
 
   const uuids = await renderApiVariant('users', 'uuid')
   assert.include(
@@ -137,9 +137,9 @@ test('non-default variants change the users table, the ID columns and the model'
   const uuidModel = flat(uuids, 'app/models/user.ts')
   assert.notInclude(uuidModel, 'statictable=')
   assert.include(uuidModel, 'staticselfAssignPrimaryKey=true')
-  const uuidController = flat(uuids, 'app/controllers/admissions_controller.ts')
-  assert.include(uuidController, 'functionuserIdParam(value:string):string')
-  assert.include(uuidController, '[0-9a-f]{12}$/i.test(value)')
+  const uuidDecisionService = flat(uuids, 'app/services/admission_decision.ts')
+  assert.include(uuidDecisionService, 'functionuserIdParam(value:string):string')
+  assert.include(uuidDecisionService, '[0-9a-f]{12}$/i.test(value)')
 
   await assert.rejects(() => renderApiVariant('Account Users', 'integer'), /Invalid users table/)
 })

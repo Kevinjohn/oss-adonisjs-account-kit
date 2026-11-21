@@ -119,6 +119,8 @@ export interface SetupInspection {
   connection: 'default' | 'unknown'
   installedPackages: string[]
   migrationNames: string[]
+  migrationDirectory?: string
+  migrationDirectoryError?: string
   existingPrefix: string | null
   routePaths: string[]
   routeDefinitions: ExistingRoute[]

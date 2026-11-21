@@ -5,11 +5,13 @@ import { limiterConfigurationState } from './config_inspection.js'
 
 export async function planLimiter(
   state: SetupInspection,
-  diagnostics: SetupDiagnostic[]
+  diagnostics: SetupDiagnostic[],
+  env?: NodeJS.ProcessEnv
 ): Promise<void> {
   const limiter = await limiterConfigurationState(
     state.files['config/limiter.ts'] ?? '',
-    state.root
+    state.root,
+    env
   )
   if (limiter === 'invalid')
     addSetupDiagnostic(

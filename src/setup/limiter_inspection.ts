@@ -11,7 +11,8 @@ import { selectedEnvName } from './selected_environment.js'
 
 export async function limiterConfigurationState(
   text: string,
-  root: string
+  root: string,
+  env?: NodeJS.ProcessEnv
 ): Promise<'valid' | 'invalid' | 'unresolved'> {
   let source
   try {
@@ -32,8 +33,14 @@ export async function limiterConfigurationState(
   else {
     try {
       name =
-        (await selectedEnvName(source, root, defaultImportName(source, '#start/env'), selected)) ??
-        null
+        (await selectedEnvName(
+          source,
+          root,
+          defaultImportName(source, '#start/env'),
+          selected,
+          undefined,
+          env
+        )) ?? null
     } catch {
       return 'unresolved'
     }

@@ -1,8 +1,6 @@
-import {
-  accountKitMigrationSuffix,
-  migrationNames,
-  migrationSchema,
-} from './migration_definitions.js'
+import { migrationNames, migrationSchema } from './migration_definitions.js'
+import { orderedMigrations } from './migration_order.js'
+import { defaultMigrationDirectory } from './migration_paths.js'
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { parseSetupSource } from './ts_source.js'
@@ -110,7 +108,7 @@ export async function planSetup(
       throw error
     }
   }
-  await planMail(choices, state, diagnostics)
+  await planMail(choices, state, diagnostics, env)
   await planUserModel(choices, state, diagnostics)
   const changes: SetupFileChange[] = []
   const retainedChoices = retainedGeneratedChoices(state)
@@ -133,7 +131,7 @@ export async function planSetup(
     'config/account_kit.ts',
     accountConfigSource(choices),
     previousConfig,
-    'Configure selected services, policy and operational notification adapters'
+    'Configure selected services, account access callbacks and notification adapters'
   )
   ownedChange(
     changes,
@@ -143,7 +141,7 @@ export async function planSetup(
     state.existingChoices ? generatedEnv(state.existingChoices) : null,
     'Document deployment references'
   )
-  await planSessionConfigIntegration(changes, state, choices, diagnostics)
+  await planSessionConfigIntegration(changes, state, choices, diagnostics, env)
   if (choices.social.status === 'enabled') {
     if (state.files['config/ally.ts'] === undefined) {
       const ally = await generated(['social.'], () => allyConfigSource(choices))
@@ -197,7 +195,7 @@ export async function planSetup(
       choices.authentication?.strategy === 'session'
     )
     await planServerProofMiddleware(changes, state, diagnostics)
-    await planSession(choices, state, diagnostics, options)
+    await planSession(choices, state, diagnostics, { ...options, env })
   }
   const migrationTimestamp = options.timestamp ?? Date.now()
   const schema = await generated(['user.'], () =>
@@ -205,12 +203,25 @@ export async function planSetup(
   )
   // Template reads sit outside `generated` and run without a schema: no reported choice explains
   // a read failure.
-  for (const [index, name] of migrationNames.entries()) {
-    const template = await migrationTemplate(name)
+  const templates = new Map(
+    await Promise.all(
+      migrationNames.map(async (name) => [name, await migrationTemplate(name)] as const)
+    )
+  )
+  const migrationDirectory = state.migrationDirectory ?? defaultMigrationDirectory
+  let migrations: ReturnType<typeof orderedMigrations> = []
+  try {
+    if (state.migrationDirectoryError) throw new Error(state.migrationDirectoryError)
+    migrations = orderedMigrations(state.migrationNames, migrationTimestamp)
+  } catch (error) {
+    addSetupDiagnostic(diagnostics, 'config/database.ts', (error as Error).message)
+  }
+  const migrationPaths = new Set<string>()
+  for (const { name, filename } of migrations) {
+    const template = templates.get(name)!
     if (schema === null) continue
-    const suffix = accountKitMigrationSuffix(name)
-    const existing = state.migrationNames.find((filename) => filename.endsWith(suffix))
-    const path = `database/migrations/${existing ?? `${migrationTimestamp + index}${suffix}`}`
+    const path = `${migrationDirectory}/${filename}`
+    migrationPaths.add(path)
     addChange(
       changes,
       state,
@@ -240,7 +251,7 @@ export async function planSetup(
   for (const change of changes) {
     const keptGenerated =
       change.path === 'config/account_kit.ts' || change.path === '.env.account-kit.example'
-    const keptMigration = /^database\/migrations\/[^/]+_account_kit_[a-z_]+\.ts$/.test(change.path)
+    const keptMigration = migrationPaths.has(change.path)
     if (change.action === 'conflict' && choicesUnchanged && (keptMigration || keptGenerated)) {
       change.action = 'unchanged'
       change.content = state.files[change.path]!
@@ -286,7 +297,7 @@ export async function planSetup(
     : []
   const endpoints = endpointLocations.map(({ name }) => name)
   const missingPackages = await planDependencies(choices, state, diagnostics)
-  await planLimiter(state, diagnostics)
+  await planLimiter(state, diagnostics, env)
   return planSummary({
     choices,
     state,
@@ -296,7 +307,12 @@ export async function planSetup(
     endpoints,
     endpointLocations,
     missingPackages,
-    env,
+    env: {
+      ...env,
+      ...Object.fromEntries(
+        Object.entries(selectedOrigins.values).map(([name, value]) => [name, value ?? undefined])
+      ),
+    },
   })
 }
 

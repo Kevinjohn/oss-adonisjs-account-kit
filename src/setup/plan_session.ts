@@ -13,7 +13,7 @@ export async function planSession(
   choices: SetupChoices,
   state: SetupInspection,
   diagnostics: SetupDiagnostic[],
-  options: { production?: boolean }
+  options: { production?: boolean; env?: NodeJS.ProcessEnv }
 ): Promise<void> {
   if (choices.authentication?.strategy === 'session') {
     const shieldConfig = state.files['config/shield.ts']
@@ -43,13 +43,13 @@ export async function planSession(
       try {
         const current = state.files['config/session.ts']
         const baseline = current.includes('account-kit:session-import:start')
-          ? await unwrapManagedSessionConfig(current, state.root)
+          ? await unwrapManagedSessionConfig(current, state.root, options.env)
           : current
         if (baseline) {
-          inspected = await nativeSessionConfiguration(baseline, state.root)
+          inspected = await nativeSessionConfiguration(baseline, state.root, options.env)
           diagnosticSelection = inspected
             ? { name: inspected.selectedName, kind: inspected.selectedKind }
-            : await selectedSessionDiagnostic(baseline, state.root)
+            : await selectedSessionDiagnostic(baseline, state.root, options.env)
         }
       } catch {
         // The integration diagnostic above already blocks an uninspectable selection.

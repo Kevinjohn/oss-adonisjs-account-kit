@@ -53,7 +53,7 @@ disabled; applications select either explicitly. Every configuration supplies
 calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
 An `emailVerification`-only adapter needs `findById`, `markEmailVerified`, and `setPassword`, but
 does not need `setEmail`. Inactive activation replaces the earlier password with a fresh one;
-active-account email changes retain their separate proof behavior.
+active-account email changes retain their separate proof behaviour.
 
 The service methods accept structured inputs. `emailVerification.send` returns `'sent'` when a
 current activation link is available. During the one-minute resend cooldown it preserves the
@@ -296,7 +296,7 @@ details to the requester. `minRequestMs` defaults to 300ms as a mitigation again
 differences; it is not a guarantee that all requests take the same time.
 
 See the maintained [API reference](../reference/token-reference.md) and its named controllers for
-illustrative route behavior. Adapt it to the application's own transport and error response
+illustrative route behaviour. Adapt it to the application's own transport and error response
 conventions.
 
 ## Files and migrations

@@ -99,7 +99,7 @@ export function registerManagedRoutes<Credential>(
           )
             return context.response.accepted({ committed: true })
           const mapped = managedErrorResponse(error, {
-            accept: context.request.header('accept'),
+            request: context.request,
             message: options.extensions?.message,
             i18n: requestTranslator(context),
             proof: route.proofKind,

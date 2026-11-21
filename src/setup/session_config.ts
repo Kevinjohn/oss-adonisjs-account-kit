@@ -44,7 +44,8 @@ const serverStores = ['database', 'dynamodb', 'file', 'memory', 'redis']
 
 export async function nativeSessionConfiguration(
   text: string,
-  root: string
+  root: string,
+  env?: NodeJS.ProcessEnv
 ): Promise<NativeSessionConfiguration | null> {
   const source = await parseSetupSource(text)
   const { ts, file } = source
@@ -83,7 +84,9 @@ export async function nativeSessionConfiguration(
       source,
       root,
       defaultImportName(source, '#start/env'),
-      store.initializer
+      store.initializer,
+      undefined,
+      env
     )
     if (name === undefined) return null
     selectedName = name
@@ -179,7 +182,8 @@ ${exportEnd}`
 
 export async function unwrapManagedSessionConfig(
   source: string,
-  root: string
+  root: string,
+  env?: NodeJS.ProcessEnv
 ): Promise<string | null> {
   if (!source.startsWith(sessionImport)) return null
   const selectionMatch = source.match(
@@ -194,6 +198,6 @@ export async function unwrapManagedSessionConfig(
     .replace(selectionMatch[0], '')
     .replace('store: accountKitSelectedSessionStore', `store: ${selectionMatch[1]}`)
     .replace(exportMatch[0], 'export default sessionConfig')
-  const inspected = await nativeSessionConfiguration(base, root)
+  const inspected = await nativeSessionConfiguration(base, root, env)
   return inspected && renderManagedSessionConfig(base, inspected) === source ? base : null
 }

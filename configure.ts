@@ -1,12 +1,11 @@
-import { readdir } from 'node:fs/promises'
 import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
+import { relative, resolve, sep } from 'node:path'
 import type Configure from '@adonisjs/core/commands/configure'
 import type * as TypeScript from 'typescript'
-import {
-  accountKitMigrationSuffix,
-  migrationNames,
-  migrationSchema,
-} from './src/setup/migration_definitions.js'
+import { migrationSchema } from './src/setup/migration_definitions.js'
+import { inspectMigrationDirectory } from './src/setup/migration_paths.js'
+import { orderedMigrations } from './src/setup/migration_order.js'
+import { readRegularFile } from './src/setup/safe_path.js'
 import { hasRegisteredCommand } from './src/setup/commands_inspection.js'
 import { inspectProviders } from './src/setup/providers_inspection.js'
 import {
@@ -22,10 +21,6 @@ export {
   migrationSchema,
   type UserIdType,
 } from './src/setup/migration_definitions.js'
-
-function isMissing(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException).code === 'ENOENT'
-}
 
 const providerPath = '@kevinjohn/adonisjs-account-kit/account_kit_provider'
 
@@ -145,7 +140,8 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
  * Runs on `node ace add @kevinjohn/adonisjs-account-kit` or `node ace configure @kevinjohn/adonisjs-account-kit`: writes
  * `config/account_kit.ts`, generates the migrations and registers the provider and commands. Never
  * overwrites existing files. Flags: `--users-table` and `--user-id-type` (`integer`, `string` or
- * `uuid`). For an unsupported dynamic `providers` expression, ensure exactly one current
+ * `uuid`); `--migration-directory` confirms an otherwise uninspectable Lucid path. For an
+ * unsupported dynamic `providers` expression, ensure exactly one current
  * Account Kit provider export is registered, then rerun with `--provider-registered` to leave that
  * expression unchanged. The RC config must be an object literal so Assembler can add the package
  * command while preserving the existing entries.
@@ -205,26 +201,34 @@ export async function configure(command: Configure) {
     }
   }
 
-  await codemods.makeUsingStub(stubsRoot, 'config/account_kit.stub', {})
-
-  let migrationFiles: string[] = []
+  let directory: Awaited<ReturnType<typeof inspectMigrationDirectory>>
+  let migrations: ReturnType<typeof orderedMigrations>
   try {
-    migrationFiles = await readdir(command.app.makePath('database/migrations'))
+    const root = resolve(command.app.makePath(''))
+    directory = await inspectMigrationDirectory(
+      root,
+      (await readRegularFile(root, relative(root, command.app.configPath('database.ts')))) ?? '',
+      command.parsedFlags['migration-directory'],
+      process.env,
+      relative(root, command.app.migrationsPath()).split(sep).join('/')
+    )
+    migrations = orderedMigrations(directory.names, Date.now())
   } catch (error) {
-    if (!isMissing(error)) throw error
+    command.exitCode = 1
+    command.logger.logError((error as Error).message)
+    return
   }
 
-  const timestamp = Date.now()
-  for (const [index, name] of migrationNames.entries()) {
-    const suffix = accountKitMigrationSuffix(name)
-    if (migrationFiles.some((filename) => filename.endsWith(suffix))) {
-      command.logger.info(`Skipped database/migrations/*${suffix}`)
+  await codemods.makeUsingStub(stubsRoot, 'config/account_kit.stub', {})
+  for (const { name, filename, existing } of migrations) {
+    if (existing) {
+      command.logger.info(`Skipped ${directory.path}/${filename}`)
       continue
     }
     await codemods.makeUsingStub(stubsRoot, `migrations/${name}.stub`, {
       migration: {
         ...schema,
-        destination: command.app.makePath(`database/migrations/${timestamp + index}${suffix}`),
+        destination: command.app.makePath(`${directory.path}/${filename}`),
       },
     })
   }

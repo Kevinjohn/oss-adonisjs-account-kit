@@ -45,6 +45,15 @@ export class InvalidConfigurationError extends RuntimeException {
     super(message, { ...options, code: new.target.code, status: new.target.status })
   }
 }
+
+/** An application's adapter returned a value outside its documented contract. */
+export class AdapterContractError extends RuntimeException {
+  static code = 'E_ACCOUNT_KIT_ADAPTER_CONTRACT'
+  static status = 500
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, { ...options, code: new.target.code, status: new.target.status })
+  }
+}
 /**
  * Input failed a package rule, for example a password outside the policy or a malformed email.
  * Validate requests first so users see field errors.

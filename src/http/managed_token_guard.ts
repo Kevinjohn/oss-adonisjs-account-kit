@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidSessionError } from '../errors.js'
+import { AdapterContractError, InvalidSessionError } from '../errors.js'
 import type { UserId } from '../types.js'
 import type { ManagedGuard } from './managed_types.js'
 import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.js'
@@ -47,8 +47,8 @@ export function createTokenGuard<User>(
     strategy: 'access_tokens',
     name: options.name,
     publicCredential(credential: ManagedTokenCredential) {
-      // eslint-disable-next-line no-restricted-syntax -- internal invariant, not reachable from application code
-      if (!credential.value) throw new Error('Token guard did not return a bearer value')
+      if (typeof credential.value !== 'string' || !credential.value)
+        throw new AdapterContractError('Token guard did not return a bearer value')
       return credential.value
     },
     async current(context) {
@@ -77,13 +77,23 @@ export function createTokenGuard<User>(
             abilities,
             Object.keys(createOptions).length ? createOptions : undefined
           )
+          if (!token || typeof token !== 'object')
+            throw new AdapterContractError('Token guard did not return a token')
+          let identifier: UserId
           try {
-            // eslint-disable-next-line no-restricted-syntax -- internal invariant, not reachable from application code
-            if (!token.value) throw new Error('Token guard did not return a bearer value')
-            const identifier = normalizedIdentifier(token.identifier)
+            identifier = normalizedIdentifier(token.identifier)
+          } catch (error) {
+            // An invalid identifier cannot safely identify a token for cleanup.
+            throw new AdapterContractError('Token guard did not return a token identifier', {
+              cause: error,
+            })
+          }
+          try {
+            if (!token.value || typeof token.value.release !== 'function')
+              throw new AdapterContractError('Token guard did not return a bearer value')
             const value = token.value.release()
-            // eslint-disable-next-line no-restricted-syntax -- internal invariant, not reachable from application code
-            if (!value) throw new Error('Token guard did not return a bearer value')
+            if (typeof value !== 'string' || !value)
+              throw new AdapterContractError('Token guard did not return a bearer value')
             return { userId, identifier, value }
           } catch (error) {
             try {

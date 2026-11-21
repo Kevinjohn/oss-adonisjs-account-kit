@@ -16,7 +16,8 @@ import { nativeMailTransports } from './shared.js'
 export async function mailerSelectionState(
   text: string,
   root: string,
-  transportEnv: string | null
+  transportEnv: string | null,
+  env?: NodeJS.ProcessEnv
 ): Promise<'missing' | 'invalid' | 'unsafe' | 'unresolved' | 'present'> {
   let source
   try {
@@ -71,7 +72,8 @@ export async function mailerSelectionState(
   if (selector && ts.isStringLiteral(selector)) selected = selector.text
   else if (selector && transportEnv) {
     try {
-      selected = (await selectedEnvName(source, root, envBinding, selector, transportEnv)) ?? null
+      selected =
+        (await selectedEnvName(source, root, envBinding, selector, transportEnv, env)) ?? null
     } catch {
       return 'unsafe'
     }

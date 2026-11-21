@@ -13,6 +13,8 @@ import {
 import { managedErrorResponse, proofHeaders } from '../src/http/responses.js'
 import { sendRuleViolationResponse } from '../src/http/response_helpers.js'
 import type { HttpContext } from '@adonisjs/core/http'
+import { requestWithHeaders } from './helpers/managed_http_fakes.js'
+import { accountErrorResponse } from '../src/error_response.js'
 
 test.group('managed HTTP responses', () => {
   test('package 422s follow Accept and are never cached', ({ assert }) => {
@@ -21,7 +23,7 @@ test.group('managed HTTP responses', () => {
       const vary: string[] = []
       let sent: { status?: number; body?: unknown } = {}
       const context = {
-        request: { header: () => accept },
+        request: requestWithHeaders(accept ? { accept } : {}),
         response: {
           header: (name: string, value: string) => void (headers[name] = value),
           vary: (value: string) => void vary.push(value),
@@ -121,6 +123,27 @@ test.group('managed HTTP responses', () => {
         ?.contentType,
       'application/vnd.api+json'
     )
+  })
+
+  test('live request negotiation agrees with the public header-only mapper', ({ assert }) => {
+    for (const accept of [
+      undefined,
+      '*/*',
+      'application/*',
+      'text/html',
+      'application/json;q=0.5, application/vnd.api+json',
+      'application/vnd.api+json;q=0, application/json;q=1',
+      'application/*;q=1, application/vnd.api+json;q=0.5',
+      'application/*;q=1, application/vnd.api+json;q=0',
+      'application/vnd.api+json, application/json',
+    ]) {
+      const error = new InvalidTokenError()
+      const request = requestWithHeaders(accept === undefined ? {} : { accept })
+      assert.deepEqual(
+        managedErrorResponse(error, { request }),
+        accountErrorResponse(error, { accept })
+      )
+    }
   })
 
   test('honors quality zero and customizes wording without changing a code', ({ assert }) => {

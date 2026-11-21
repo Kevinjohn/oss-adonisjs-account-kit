@@ -20,6 +20,8 @@ export type ManagedMessage = (code: string, defaultMessage: string) => string
  * equal quality when it is listed before JSON.
  */
 export function negotiate(accept?: string): typeof JSON_API | 'application/json' {
+  // The header-only public mapper has no live request. Keep this framework parser shim
+  // isolated here; actual HTTP responses use their context's request instead.
   const request = new HttpRequest(
     { headers: accept === undefined ? {} : { accept }, url: '/', method: 'GET' } as never,
     {} as never,
@@ -27,6 +29,12 @@ export function negotiate(accept?: string): typeof JSON_API | 'application/json'
     {} as never,
     undefined as never
   )
+  return negotiateRequest(request)
+}
+
+export function negotiateRequest(
+  request: Pick<HttpRequest, 'accepts'>
+): typeof JSON_API | 'application/json' {
   return request.accepts(['json', JSON_API]) === JSON_API ? JSON_API : 'application/json'
 }
 
@@ -42,6 +50,7 @@ export function managedErrorResponse(
   error: unknown,
   options: {
     accept?: string
+    request?: Pick<HttpRequest, 'accepts'>
     proof?: ProofKind
     message?: ManagedMessage
     i18n?: AccountKitTranslator
@@ -52,7 +61,9 @@ export function managedErrorResponse(
   const translated =
     options.i18n?.t(`errors.${identity.code}`, {}, identity.message) ?? identity.message
   const message = options.message?.(identity.code, translated) ?? translated
-  const contentType = negotiate(options.accept)
+  const contentType = options.request
+    ? negotiateRequest(options.request)
+    : negotiate(options.accept)
   const committed = identity.committed ? { committed: true as const } : {}
   const field = identity.code === error.code && identity.status < 500 ? ownField(error) : undefined
   return {

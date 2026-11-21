@@ -1,11 +1,16 @@
-import { readdir, lstat, realpath } from 'node:fs/promises'
-import { readRegularFile, safeSetupPath } from './safe_path.js'
+import { realpath } from 'node:fs/promises'
+import { readRegularFile } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
 import { parseSetupChoices } from './parse.js'
 import { inspectGuards } from './guard_inspection.js'
 import { inspectDatabaseKind } from './database_inspection.js'
 import { staticRouteDefinitions } from './route_inspection.js'
 import { installedPackageVersions } from './installed_packages.js'
+import {
+  guidedMigrationDefault,
+  inspectMigrationDirectory,
+  MigrationDirectoryError,
+} from './migration_paths.js'
 
 const inspectedFiles = [
   'package.json',
@@ -35,7 +40,11 @@ const inspectedFiles = [
 /** Static inspection deliberately does not execute application configuration or read secret values. */
 export async function inspectSetup(
   applicationRoot: string,
-  options: { onInvalidSavedChoices?: (error: unknown) => void } = {}
+  options: {
+    onInvalidSavedChoices?: (error: unknown) => void
+    migrationDirectory?: string
+    env?: NodeJS.ProcessEnv
+  } = {}
 ): Promise<SetupInspection> {
   const root = await realpath(applicationRoot)
   const files: Record<string, string> = {}
@@ -54,17 +63,24 @@ export async function inspectSetup(
   const installedVersions = await installedPackageVersions(root, declaredPackages)
   const installedPackages = Object.keys(installedVersions)
   let migrationNames: string[] = []
+  let migrationDirectory: string | undefined
+  let migrationDirectoryError: string | undefined
   try {
-    const migrationPath = await safeSetupPath(root, 'database/migrations')
-    const migrationStat = await lstat(migrationPath)
-    if (!migrationStat.isDirectory())
-      throw new Error(`Setup refuses non-directory or symlink ${migrationPath}`)
-    migrationNames = await readdir(migrationPath)
+    const directory = await inspectMigrationDirectory(
+      root,
+      files['config/database.ts'] ?? '',
+      options.migrationDirectory,
+      options.env,
+      await guidedMigrationDefault(files['adonisrc.ts'] ?? '')
+    )
+    migrationDirectory = directory.path
+    migrationNames = directory.names
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    if (!(error instanceof MigrationDirectoryError)) throw error
+    migrationDirectoryError = error.message
   }
   for (const name of migrationNames.filter((filename) => filename.includes('_account_kit_'))) {
-    const relative = `database/migrations/${name}`
+    const relative = `${migrationDirectory}/${name}`
     const value = await readRegularFile(root, relative)
     if (value !== null) files[relative] = value
   }
@@ -91,11 +107,13 @@ export async function inspectSetup(
     guardStrategies: strategies,
     guardModels: models,
     guardTokenProviders: tokenProviders,
-    database: await inspectDatabaseKind(files['config/database.ts'] ?? '', root),
+    database: await inspectDatabaseKind(files['config/database.ts'] ?? '', root, options.env),
     connection: files['config/database.ts'] ? 'default' : 'unknown',
     installedPackages,
     installedVersions,
     migrationNames,
+    migrationDirectory,
+    migrationDirectoryError,
     existingPrefix,
     routePaths,
     routeDefinitions,

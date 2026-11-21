@@ -10,15 +10,16 @@ import {
 } from './ts_source.js'
 import { SelectedEnvironmentValueError, selectedEnvName } from './selected_environment.js'
 
-export async function inspectDatabaseKind(
+export async function inspectDatabaseConnection(
   sourceText: string,
-  root: string
-): Promise<SetupInspection['database']> {
-  if (!sourceText) return 'unknown'
+  root: string,
+  env?: NodeJS.ProcessEnv
+) {
+  if (!sourceText) return null
   const source = await parseSetupSource(sourceText)
   const configName = importedName(source, '@adonisjs/lucid', 'defineConfig')
   const config = configName && topLevelConfig(source, configName)?.object
-  if (!config || hasUnsafeObjectEntries(source, config)) return 'unknown'
+  if (!config || hasUnsafeObjectEntries(source, config)) return null
   const connection = directProperty(source, config, 'connection')?.initializer
   const connections = directObject(
     source,
@@ -30,7 +31,7 @@ export async function inspectDatabaseKind(
     connections === config ||
     hasUnsafeObjectEntries(source, connections)
   )
-    return 'unknown'
+    return null
   const { ts } = source
   let selected: string | null = null
   if (ts.isStringLiteral(connection)) selected = connection.text
@@ -43,14 +44,15 @@ export async function inspectDatabaseKind(
           root,
           defaultImportName(source, '#start/env'),
           connection,
-          'DB_CONNECTION'
+          'DB_CONNECTION',
+          env
         )) ?? null
     } catch (error) {
-      if (error instanceof SelectedEnvironmentValueError) return 'unknown'
+      if (error instanceof SelectedEnvironmentValueError) return null
       throw error
     }
   }
-  if (!selected) return 'unknown'
+  if (!selected) return null
   const selectedConnection = directObject(
     source,
     directProperty(source, connections, selected)?.initializer ?? connections
@@ -60,8 +62,20 @@ export async function inspectDatabaseKind(
     selectedConnection === connections ||
     hasUnsafeObjectEntries(source, selectedConnection)
   )
-    return 'unknown'
-  const client = directProperty(source, selectedConnection, 'client')?.initializer
+    return null
+  return { source, connection: selectedConnection }
+}
+
+export async function inspectDatabaseKind(
+  sourceText: string,
+  root: string,
+  env?: NodeJS.ProcessEnv
+): Promise<SetupInspection['database']> {
+  const inspected = await inspectDatabaseConnection(sourceText, root, env)
+  if (!inspected) return 'unknown'
+  const { source, connection } = inspected
+  const { ts } = source
+  const client = directProperty(source, connection, 'client')?.initializer
   if (!client || !ts.isStringLiteral(client)) return 'unknown'
   if (['better-sqlite3', 'sqlite3'].includes(client.text)) return 'sqlite'
   if (['pg', 'postgres', 'postgresql'].includes(client.text)) return 'postgres'

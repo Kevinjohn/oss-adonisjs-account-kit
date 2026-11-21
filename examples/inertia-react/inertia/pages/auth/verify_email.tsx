@@ -34,7 +34,7 @@ export default function VerifyEmail({ token, valid, user }: Props) {
     <>
       <h1 className="auth__title">Confirm your email</h1>
       <p className="auth__sub">
-        Choose the password for this account. It replaces the one used at signup.
+        Choose the password for this account. It replaces the one you used when you signed up.
       </p>
 
       <Form
