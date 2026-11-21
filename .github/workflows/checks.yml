@@ -58,6 +58,7 @@ jobs:
     needs: plan
     if: ${{ needs.plan.outputs.focused != 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
