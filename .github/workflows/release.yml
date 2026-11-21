@@ -11,6 +11,7 @@ jobs:
   # Refuse other branches before the checks spend their minutes.
   main-only:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - run: test "$GITHUB_REF" = "refs/heads/main" || { echo "release runs on main only"; exit 1; }
   checks:

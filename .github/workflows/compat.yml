@@ -38,6 +38,7 @@ jobs:
   min-peers:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       DB_CLIENT: pg
       DB_HOST: 127.0.0.1
@@ -84,6 +85,7 @@ jobs:
   latest-peers:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       DB_CLIENT: pg
       DB_HOST: 127.0.0.1
@@ -129,6 +131,7 @@ jobs:
   consumer:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - name: Configure consumer evidence path
@@ -153,6 +156,7 @@ jobs:
   consumer-variants:
     if: ${{ github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || !github.event.repository.private) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -179,6 +183,7 @@ jobs:
   consumer-sqlite-modes:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -208,6 +213,7 @@ jobs:
   consumer-postgres:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -299,6 +305,7 @@ jobs:
   mysql-experimental:
     if: ${{ github.event_name == 'workflow_dispatch' || !github.event.repository.private }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
