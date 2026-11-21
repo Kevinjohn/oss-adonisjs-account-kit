@@ -75,10 +75,12 @@ test.group('setup generated sources', (group) => {
         users,
         ...migrationNames.map((name, index) => `${9999999999001 + index}_account_kit_${name}.ts`),
       ]
-      assert.deepEqual((await readdir(path)).sort(), expected)
+      const initialNames = await readdir(path)
+      assert.deepEqual(initialNames.sort(), expected)
       const repeated = await planSetup(choices, await inspectSetup(root), { apply: true })
       await applySetup(root, repeated)
-      assert.deepEqual((await readdir(path)).sort(), expected)
+      const repeatedNames = await readdir(path)
+      assert.deepEqual(repeatedNames.sort(), expected)
       assert.deepEqual(await readdir(join(root, 'database')), ['application_migrations'])
       await symlink(
         join(process.cwd(), 'node_modules'),

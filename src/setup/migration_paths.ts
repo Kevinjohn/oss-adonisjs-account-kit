@@ -122,8 +122,8 @@ export async function inspectMigrationDirectory(
 async function readMigrationNames(root: string, directory: string): Promise<string[]> {
   const path = await safeSetupPath(root, directory)
   try {
-    if (!(await lstat(path)).isDirectory())
-      throw new Error(`Setup refuses non-directory or symlink ${path}`)
+    const stat = await lstat(path)
+    if (!stat.isDirectory()) throw new Error(`Setup refuses non-directory or symlink ${path}`)
     return await readdir(path)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error

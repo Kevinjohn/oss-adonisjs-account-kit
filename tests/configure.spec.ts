@@ -303,14 +303,15 @@ test('configures future-dated prerequisites in the selected custom migration dir
       "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/custom'] } } } })"
     )
     await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
-    const initial = (await readdir(directory)).sort()
-    assert.deepEqual(initial, [
+    const initial = await readdir(directory)
+    assert.deepEqual(initial.sort(), [
       prerequisite,
       ...migrationNames.map((name, index) => `${9999999999001 + index}_account_kit_${name}.ts`),
     ])
     assert.deepEqual(await readdir(migrationsDirectory), [])
     await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
-    assert.deepEqual((await readdir(directory)).sort(), initial)
+    const repeated = await readdir(directory)
+    assert.deepEqual(repeated.sort(), initial)
   } finally {
     process.exitCode = exitCode
     await rm(root, { recursive: true, force: true })
