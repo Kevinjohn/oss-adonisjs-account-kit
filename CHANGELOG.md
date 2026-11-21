@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-11-21
+
+- Align setup, managed HTTP responses and compatibility contracts with the current implementation.
+- Document and verify all 63 user stories and their user and implementation flows.
+
 ## 0.4.2 - 2026-11-20
 
 - Let applications read the live credential revision inside an authenticated `withCurrent` transaction.
