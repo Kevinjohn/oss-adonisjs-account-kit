@@ -30,8 +30,8 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.revoke({ actorId, userId })"] --> B["Check actor admission and authorize.decide"]
- B --> C["Transaction loads subject and validates approved-to-revoked transition"]
+ A["AccountAdmission.revoke({ actorId, userId })"] --> B["Require approval; transaction locks and loads actor and subject"]
+ B --> C["Require distinct admitted actor and authorize.decide; validate approved-to-revoked transition"]
  C --> D{"Transition allowed?"}
  D -->|No| E["Abort without session revocation or record change"]
  D -->|Yes| F["Persist revoked state; commit and emit event"]

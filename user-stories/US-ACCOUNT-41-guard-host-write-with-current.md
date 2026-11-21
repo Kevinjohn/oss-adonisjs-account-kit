@@ -14,6 +14,8 @@ As an application developer, I want a host-owned write to share Account Kit's cu
 - `withCurrent` returns the callback result. It checks the current account and credential, then runs the callback under the same transaction. For non-SQLite databases it locks the corresponding token row or tracked session row if that row exists; `signInId` is present only for a tracked session sign-in. SQLite serializes writers instead of locking a sign-in row. With session management disabled there is no registry row to lock.
 - A callback error rolls back Kit and callback writes. Callback work must be database-only and retry-safe. Where a tracked sign-in row is locked, concurrent logout/token deletion waits for this transaction; do not assume a universal logout-wait guarantee for untracked sessions or every database.
 
+- After a transaction has committed, a follow-up failure can be reported as a committed fault. Reconcile the persisted state before deciding how to recover. See the [transaction engine](../src/transaction.ts) and [transaction tests](../tests/transaction.spec.ts).
+
 ## User flow
 
 ```mermaid
@@ -33,14 +35,16 @@ Scope: callback executes inside the Account Kit transaction and must use its `tr
 ```mermaid
 flowchart TD
  A["authentication.withCurrent(current, run)"] --> B["currentWithSessionInTransaction validates account/revision"]
- B --> C{"Is there a sign-in row and does the dialect support row locking?"}
+ B --> C{"Non-SQLite and token or tracked-session ID available?"}
  C -->|Yes| D["Lock token or tracked session row"]
+ D --> V{"Row still present?"}
+ V -->|No| X["Throw InvalidSessionError before callback"]
  C -->|No| E["Continue under transaction/account lock; SQLite serializes writers"]
- D --> F["Invoke run({ account, signInId?, trx })"]
+ V -->|Yes| F["Invoke run({ account, signInId?, trx, readCredentialRevision })"]
  E --> F
  F --> G{"Callback resolves?"}
  G -->|No| H["Transaction rolls back and error propagates unchanged"]
- G -->|Yes| I["Commit and return callback result"]
+ G -->|Yes| I["Commit; return callback result or report committed fault without replay"]
 ```
 
 **Code references:** [`withCurrent` and `lockSignIn`](../src/authentication.ts), [`protected requests guide`](../docs/guide/authentication.md#protected-requests)

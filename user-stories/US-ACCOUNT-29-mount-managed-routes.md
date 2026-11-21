@@ -13,6 +13,10 @@ As an application integrator, I want to register the chosen service-backed endpo
 
 - **Inputs and result:** `registerManagedRoutes(router, { prefix, guard, kit, enabled, ... })` registers only the explicitly enabled route groups under the chosen prefix and guard; `kit()` is required, while `verificationRequired` defaults to `true` when omitted. Exclusions and callbacks are host configuration. Route conflicts are checked when the router commits. The package supplies JSON handlers, not a frontend.
 
+- Account Kit errors negotiate with the live request. JSON uses errors[].message and JSON:API uses errors[].title. Masked invitation denials render a public 404, and throttled errors preserve Retry-After. The renderer leaves unrelated exceptions to the application. See [error handling tests](../tests/http_error_handle.spec.ts).
+
+- A committed callback failure carries `committed: true` in either representation. A JSON field name is exposed only for a matching, unmasked client-error code. The public header-only mapper honours the same negotiation rules as the live renderer. See [negotiation and masking cases](../tests/managed_responses.spec.ts).
+
 ## User flow
 
 ```mermaid

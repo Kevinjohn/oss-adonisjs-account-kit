@@ -41,7 +41,7 @@ flowchart TD
  E --> G["Return per-table counts"]
  F --> G
  G --> H{"Called from account-kit:prune?"}
- H -->|Yes| I["Command prints the counts as a table"]
+ H -->|Yes| I["Command prints counts with partial or not-scanned indicators"]
  H -->|No| J["Host job receives the counts"]
 ```
 

@@ -33,9 +33,9 @@ Scope: paginated read-only account inventory; no retirement is performed.
 flowchart TD
  A["account-kit:retirement-impact"] --> B["authentication.retirementImpact({ passwordLogin, providers })"]
  B --> C["Read adapter-visible users in pages and confirmed provider relationships"]
- C --> D{"Does each account retain an available method?"}
- D -->|No| E["Increment affectedAccounts"]
- D -->|Yes| F["Keep account in inspectedAccounts only"]
+ C --> D{"Had usable method before and will retain none?"}
+ D -->|Yes| E["Increment affectedAccounts and inspectedAccounts"]
+ D -->|No| F["Increment inspectedAccounts only"]
  E --> G["Return counts/provider snapshot and timestamp"]
  F --> G
 ```

@@ -44,7 +44,7 @@ flowchart TD
  F1 -->|No| F2{"Recent activation issued meanwhile?"}
  F2 -->|Yes| E2["Return sent; store and send nothing"]
  F2 -->|No| F3["Store hashed activation token"]
- F3 --> G["Commit and send accountActivationProvision; return sent"]
+ F3 --> G["Commit and send accountActivationProvision; return sent or surface delivery failure with resend cooldown reopened"]
 ```
 
 **Code references:** [`sendVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts)

@@ -30,3 +30,5 @@ US-ACCOUNT-59 records the public `auth.methods` discovery route; its visitor-loc
 - User documentation: [feature overview](../docs/guide/features.md), [guide index](../docs/README.md), [reference index](../docs/reference/README.md), and examples in [`examples/`](../examples/).
 
 `Current` means source exposes a journey when enabled/configured; it is not a runtime test result. Capabilities such as magic link, session management, account data, social auth, admission, OpenAPI, and managed routes require explicit setup. The catalogue uses the six availability definitions and maintenance rules in the portable [TEMPLATE](TEMPLATE.md).
+
+The [managed HTTP paths](PATHS.md) identify the story for every route. [US-ACCOUNT-63](US-ACCOUNT-63-share-transaction-helpers.md) covers the public transaction subpath shared with consuming packages.

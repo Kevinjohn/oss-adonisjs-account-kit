@@ -41,7 +41,7 @@ flowchart TD
  A3 -->|No| A4["ThrottledError; password not checked"]
  A3 -->|Yes| B["Verify password against the current account"]
  A2["begin({ provider, intent: 'reauth', current, purpose, clientChallenge })"] --> C["Bind provider reauthentication to current account, purpose and challenge"]
- C --> D["callback({ state, callback, current }) verifies provider fresh-auth assertion"]
+ C --> D["Resolve provider fresh-auth assertion; transaction consumes state and checks current credential, revision and confirmed subject on passwordless account"]
  B --> E{"Password or provider proof is valid?"}
  D --> E
  E -->|No| F["Reject without issuing recent proof"]

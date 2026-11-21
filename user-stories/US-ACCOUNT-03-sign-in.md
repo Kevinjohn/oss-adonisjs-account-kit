@@ -13,6 +13,8 @@ As an existing account holder, I want to sign in with email and password so that
 
 - **Inputs and result:** `authentication.login({ email, password, clientKey, sessionLabel? }, guard)` returns the safe current account and issued credential through the configured guard. `sessionLabel` is untrusted display text limited to 255 characters; the guard strategy and access policy are configured by the host.
 
+- Access-token issuance requires a usable identifier and a releasable bearer value. A malformed result raises an adapter contract error. On release failure the guard attempts cleanup when it has an identifier. If cleanup also fails it preserves both causes in an AggregateError. See [guard contract cases](../tests/managed_guard.spec.ts).
+
 ## User flow
 
 ```mermaid
@@ -33,8 +35,11 @@ flowchart TD
  B --> C["Transaction loads account, checks password and canAccess; activation is a separate host policy"]
  C --> D{"Login checks pass?"}
  D -->|No| E["Record failed attempt and return generic invalid-credentials error"]
- D -->|Yes| F["Guard establishes credential; registry records sign-in when enabled"]
- F --> G["Return account and credential"]
+ D -->|Yes| R["Release client reservation and clear identity failures"]
+ R --> F["Guard establishes credential; separate locked transaction rechecks account and records registry sign-in when enabled"]
+ F --> H{"Credential establishment and recheck succeed?"}
+ H -->|Yes| G["Return account and credential"]
+ H -->|No| I["Refuse; attempt credential cleanup when possible, preserving cleanup error"]
 ```
 
 **Code references:** [implementation](../src/authentication.ts), [`tests/authentication.spec.ts`](../tests/authentication.spec.ts), [`tests/authentication_throttle.spec.ts`](../tests/authentication_throttle.spec.ts)

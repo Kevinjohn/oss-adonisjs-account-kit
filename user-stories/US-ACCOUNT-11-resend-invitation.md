@@ -28,11 +28,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["invitations.resend"] --> B["Load actor and invitation; check manageInvitation and invite callbacks"]
- B --> C{"Invitation remains eligible?"}
+ A["invitations.resend"] --> B["Validate ID and preflight actor, invitation and both authorization callbacks in transaction"]
+ B --> T["Consume actor and invitation resend budgets"]
+ T --> C{"Transaction rechecks authorization and recipient still unregistered?"}
  C -->|No| D["Return authorization/state refusal"]
  C -->|Yes| E["Rotate token hash and expiry transactionally"]
- E --> F["Commit, deliver new link and return invitation"]
+ E --> F["Commit, deliver new link and emit lifecycle event; return invitation or committed follow-up failure"]
 ```
 
 **Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_resend_revoke.spec.ts`](../tests/invitations_resend_revoke.spec.ts)

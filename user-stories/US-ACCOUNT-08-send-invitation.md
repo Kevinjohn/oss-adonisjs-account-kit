@@ -34,7 +34,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 flowchart TD
  A["invitations.send"] --> B["Require invitations capability; validate email/role/scope; load actor and authorize invite(actor, role, {scope})"]
  B --> C["Spend actor budget before checking registered address"]
- C --> D["Spend recipient budget; refuse an existing same-email/same-scope invite; store token hash transactionally"]
+ C --> D["Spend recipient budget; transaction locks inviter, removes expired matching rows, rechecks authorization and stores a unique same-email/same-scope token hash"]
  D --> E["Commit; deliver invitation and lifecycle event"]
  E --> F["Return Invitation or committed follow-up failure"]
 ```

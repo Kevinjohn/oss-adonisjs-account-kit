@@ -25,7 +25,7 @@ flowchart TD
  E -->|Yes| G{"Is account active and provider subject unused?"}
  G -->|No| H["Refuse link; transaction rolls back proof and state consumption"]
  G -->|Yes| I{"Does optional acceptLink refuse?"}
- I -->|Yes| J["Refuse link; transaction rolls back"]
+ I -->|Yes| J["Callback throws; transaction rolls back"]
  I -->|No| K["Insert identity and commit; notify after commit"]
 ```
 
@@ -40,11 +40,11 @@ flowchart TD
  B -->|Yes| D["Store one-use state with account and optional proof hash"]
  D --> E["Provider returns callback"]
  E --> F["socialAuthentication.callback resolves provider profile, then begins transaction"]
- F --> G["Within the transaction: consume state, recheck current actor, consume proof, check active status, then check provider uniqueness"]
+ F --> G["Within the transaction: lock bound account, consume state, recheck current actor, consume proof, check active status, then check provider uniqueness"]
  G --> H{"Do the ordered transaction checks pass?"}
  H -->|No| I["Refuse link; roll back state and proof consumption"]
  H -->|Yes| J["Run configured acceptLink callback, if present"]
- J --> K{"Did the optional callback refuse?"}
+ J --> K{"Did the optional callback throw?"}
  K -->|Yes| L["Refuse link; roll back transaction"]
  K -->|No| M["Insert social identity and commit"]
  M --> N["Run linked notification after commit"]

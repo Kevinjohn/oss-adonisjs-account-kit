@@ -32,13 +32,15 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["invitations.accept"] --> B["Map registration fields and validate password"]
- B --> C["Transaction consumes selected invitation token and verifies its recipient address"]
- C --> D{"Is selected token valid and address unregistered?"}
- D -->|No| E["Roll back and reject before account creation"]
- D -->|Yes| F["Consume other live invitations for this email across scopes"]
- F --> G["Create verified account and apply every onInvitationAccepted(trx) grant in scope order"]
- G --> H["Commit and return account"]
+ A["invitations.accept"] --> B["Validate password/token shape, map registration fields and prepare password"]
+ B --> C["Transaction finds live invitation candidate and checks recipient address"]
+ C --> D{"Candidate exists and address unregistered?"}
+ D -->|No| E["Roll back and reject"]
+ D -->|Yes| F["Create account to claim unique email, then consume selected token and recheck address"]
+ F --> P{"Proof recheck passes?"}
+ P -->|No| E
+ P -->|Yes| G["Consume other live invitations, mark email verified, apply grants in scope order"]
+ G --> H["Commit; emit invitation acceptance follow-ups; return account or committed follow-up failure"]
 ```
 
 **Code references:** [implementation](../src/invitations.ts), [`tests/invitations_acceptance.spec.ts`](../tests/invitations_acceptance.spec.ts)

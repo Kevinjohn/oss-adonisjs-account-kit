@@ -12,7 +12,7 @@ As a prospective account holder, I want to register so that the application crea
 ## Acceptance criteria
 
 - **Inputs and result:** `registration.register({ email, password, registrationData? })` returns the created account when `registration` is enabled; a disabled capability throws `CapabilityDisabledError`, and a taken address throws `RegistrationEmailAlreadyRegisteredError`. `registrationData` is untrusted and is passed through configured `registration.mapFields`; availability and password rules come from config.
-- **Managed `auth.signup`:** after a successful `register`, the handler attempts a login. When it succeeds the response carries the signed-in account and credential; when the login fails the response is `registered: true, authenticated: false` and the account still exists.
+- **Managed `auth.signup`:** after a successful `register`, or a reported committed registration follow-up failure, the handler attempts a login. When it succeeds the response carries the signed-in account and credential; when the login fails the response is `registered: true, authenticated: false` and the account still exists. A direct service call may surface a delivery or observer error after creation commits.
 
 ## User flow
 
@@ -34,8 +34,10 @@ flowchart TD
  B --> C{"Validation and policy pass?"}
  C -->|No| D["Return defined registration error before account creation"]
  C -->|Yes| E["Transaction creates account and activation proof"]
- E --> F["Commit, then deliver activation provision; return account"]
- F --> G["Managed signup only: authentication.login; on failure return registered: true, authenticated: false"]
+ E --> F["Commit, then deliver activation provision and emit lifecycle event"]
+ F --> J{"Managed signup handler?"}
+ J -->|No| K["Return account or committed follow-up failure"]
+ J -->|Yes| G["Report any committed failure; attempt authentication.login; on failure return registered: true, authenticated: false"]
 ```
 
 **Code references:** [implementation](../src/registration.ts), [`managed signup handler`](../src/http/handlers_registration.ts), [`assertPublicRegistration`](../src/managed_http_service.ts), [`tests/registration.spec.ts`](../tests/registration.spec.ts), [`tests/registration_claim.spec.ts`](../tests/registration_claim.spec.ts)

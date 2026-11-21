@@ -29,10 +29,10 @@ Scope: Account Kit credential validation and safe account projection; the host a
 
 ```mermaid
 flowchart TD
- A["authentication.current(CurrentAccountInput)"] --> B["Transaction reads account and checks credential revision/guard identifier"]
+ A["authentication.current(CurrentAccountInput)"] --> B["Transaction locks and reads account, checks session revision/registry or owned access token and canAccess"]
  B --> C{"Credential still current?"}
  C -->|No| D["Throw InvalidSessionError"]
- C -->|Yes| E["Return CurrentAccount safe-field projection"]
+ C -->|Yes| E["Touch tracked session when present and return CurrentAccount safe-field projection"]
 ```
 
 **Code references:** [`current`](../src/authentication.ts), [`currentInTransaction`](../src/authentication.ts), [`authentication tests`](../tests/authentication.spec.ts)

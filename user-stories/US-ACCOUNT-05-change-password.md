@@ -38,7 +38,7 @@ flowchart TD
     C --> D{"Actor proof accepted?"}
     D -->|No| E["Reject before password mutation"]
     D -->|Yes| F["Store password; clear recovery proofs; credentialsChanged applies keepCurrent"]
-    F --> G["Commit and capture credential revision"]
+    F --> G["Capture credential revision within transaction, then commit"]
     G --> H["Run credential observer, password notice and lifecycle callback"]
     H --> I{"Follow-ups complete?"}
     I -->|Yes| J["Return revision result"]

@@ -31,7 +31,7 @@ Scope: operator service transaction; the role field is historical evidence only.
 ```mermaid
 flowchart TD
  A["account-kit:admission:grant-invitation"] --> B["AccountAdmission.operator.grantInvitation({ email, role? })"]
- B --> C["Require invitation capability and validate optional role"]
+ B --> C["Require admission invitation requirement and validate optional role"]
  C --> D["Lock account and inspect existing evidence"]
  D --> E{"Account/evidence check passes?"}
  E -->|No| F["Throw without replacing evidence"]
