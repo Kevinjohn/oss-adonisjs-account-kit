@@ -40,8 +40,14 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["emailPasswordManagement.requestEmailChange"] --> B["updateProfile validates email and maps configured fields"]
- B --> C["Transaction confirms actor proof and stores pending address/token"]
- C --> D["Commit; issue activation provision for inactive account or email-change provision for active account when needed"]
+ B --> C["Throttle; transaction confirms actor proof and checks requested address"]
+ C --> I{"Address branch?"}
+ I -->|same current| J["Cancel pending email change if any; commit without new provision"]
+ I -->|same pending in cooldown| K["Commit without issuing new link"]
+ I -->|inactive new address| L["Replace email and pending address, issue activation proof and advance credentials"]
+ I -->|active new address| M["Store pending address and email-change proof"]
+ L --> D["Commit; send corresponding provision; credential observer on inactive correction and lifecycle follow-up"]
+ M --> D
  E["emailPasswordManagement.completeEmailChange({ token })"] --> F["Consume proof, replace email and update credential revision transactionally"]
  F --> G["Commit and call configured emailChanged(previousEmail, user); built-in mail helper sends to previous address; host may observe lifecycle separately"]
 ```

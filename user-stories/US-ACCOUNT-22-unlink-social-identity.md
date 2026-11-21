@@ -31,12 +31,12 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["socialAuthentication.unlink({ current, identityId, proof })"] --> B["Check current credential, purpose-bound proof and ownership"]
+ A["socialAuthentication.unlink({ current, identityId, proof })"] --> B["Transaction validates current credential, finds owned identity then consumes purpose-bound proof"]
  B --> C["Transaction enforces at least one remaining sign-in method"]
  C --> D{"All unlink invariants pass?"}
  D -->|No| E["Abort transaction before unlink"]
  D -->|Yes| F["Delete relationship and advance credential state"]
- F --> G["Commit, then notify; follow-up failure does not restore identity"]
+ F --> G["Commit, run credential observer and notify for confirmed identity/address; follow-up failure does not restore identity"]
 ```
 
 **Code references:** [implementation](../src/social_identity.ts), [`tests/social_identity_unlink.spec.ts`](../tests/social_identity_unlink.spec.ts)

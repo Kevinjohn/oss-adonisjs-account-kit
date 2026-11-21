@@ -34,7 +34,8 @@ flowchart TD
  C -->|No| D["Throw InvitationNotFoundError"]
  C -->|Yes| M{"authorize.manageInvitation allows?"}
  M -->|No| N["Throw InvitationManagementDeniedError"]
- M -->|Yes| E["Delete invitation row and resolve void"]
+ M -->|Yes| E["Delete invitation row and commit"]
+ E --> F["Emit lifecycle event; resolve void or surface committed follow-up failure"]
 ```
 
 **Code references:** [implementation](../src/invitation_management.ts), [`tests/invitations_revoke.spec.ts`](../tests/invitations_revoke.spec.ts)

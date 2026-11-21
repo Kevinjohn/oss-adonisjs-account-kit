@@ -12,6 +12,7 @@ As a signed-in account holder, I want to sign out of the current session or toke
 ## Acceptance criteria
 
 - **Inputs and result:** `authentication.logout(guard, credential?, current?)` returns `void`. The host authenticates the request and supplies its guard; a session registry row is removed when a current session handle is supplied and session management is enabled.
+- Managed session logout specifically terminates a session whose guard evidence was read but whose current account check raises `InvalidSessionError`, returning 204 instead of refusing the logout.
 
 ## User flow
 
@@ -20,6 +21,7 @@ flowchart TD
  A["Signed-in person submits sign-out"] --> B{"Does host guard accept current credential?"}
  B -->|No| C["Sign-out request fails authentication"]
  B -->|Yes| D["Terminate current session or token"]
+ B -->|Managed stale session| D
  D --> E["Later use of that credential is denied"]
 ```
 
@@ -30,7 +32,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["authentication.logout"] --> B["Require authentication configuration"]
- B --> C["Delete matching session registry row when current handle is supplied"]
+ B --> C["Delete matching account-owned registry row when registry enabled and current handle supplied"]
  C --> D["Call guard.terminate with current credential"]
  D --> E["Resolve void"]
 ```

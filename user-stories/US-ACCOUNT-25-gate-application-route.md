@@ -34,7 +34,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["Host admissionMiddleware or AccountAdmission.require"] --> B["Check configured guard and current credential inside admission.current"]
+ A["Host admissionMiddleware or AccountAdmission.require"] --> B["Middleware asserts configured guard and obtains evidence; admission.current validates supplied credential"]
  B --> C["Evaluate enabled domain, invitation and approval requirements"]
  C --> D{"Was active:false supplied?"}
  D -->|No| E{"Is account active?"}

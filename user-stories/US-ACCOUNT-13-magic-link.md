@@ -35,18 +35,21 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["magicLink.request"] --> B["Validate client challenge, throttle and create hashed proof transactionally"]
- B --> C["Commit and deliver provision; acknowledge generically"]
+ A["magicLink.request"] --> B["Validate inputs, consume client and email limits, look up account"]
+ B --> B1{"Existing account still active and allowed under transaction lock?"}
+ B1 -->|No| C1["Skip issuance; acknowledge after timing floor"]
+ B1 -->|Yes| B2["Store hashed proof transactionally"]
+ B2 --> C["Commit and run delivery/lifecycle follow-ups; acknowledge after timing floor or surface follow-up failure"]
  D["magicLink.inspect"] --> E["Read token expiry/account status without consuming"]
  F["magicLink.complete"] --> G{"Are token and verifier well-shaped?"}
  G -->|No| H["Reject before transaction; link remains unused"]
  G -->|Yes| I["Transaction tries to consume live token and checks matching account email"]
- I --> J{"Does token address match the account?"}
+ I --> J{"Live token found with matching account address?"}
  J -->|No| O["Throw invalid-token error; transaction rollback preserves token"]
  J -->|Yes| K["Keep consumed token; compare verifier and check active status and canAccess"]
  K --> L{"Do verifier and account checks pass?"}
  L -->|No| M["Commit consumed link and refuse; owner requests a fresh link"]
- L -->|Yes| N["Guard establishes credential and service returns account/credential"]
+ L -->|Yes| N["Commit consumed link; establish credential and revalidate account; return account/credential on success"]
 ```
 
 **Code references:** [implementation](../src/magic_link.ts), [`tests/magic_link.spec.ts`](../tests/magic_link.spec.ts), [`tests/magic_link_completion.spec.ts`](../tests/magic_link_completion.spec.ts)

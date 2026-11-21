@@ -31,7 +31,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 flowchart TD
  A["authentication.sessions.revokeOthers"] --> B["Authenticate current credential and resolve current sign-in in transaction"]
  B --> C["Delete account-owned rows whose id differs from current id"]
- C --> D["Run transaction revocation hook for deleted ids"]
+ C --> D["Run configured transaction revocation hook only if rows were deleted"]
  D --> E["Commit and run post-commit event, then return count; report committed follow-up failure if the event fails"]
 ```
 

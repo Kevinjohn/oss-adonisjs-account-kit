@@ -35,14 +35,16 @@ Scope: callback executes inside the Account Kit transaction and must use its `tr
 ```mermaid
 flowchart TD
  A["authentication.withCurrent(current, run)"] --> B["currentWithSessionInTransaction validates account/revision"]
- B --> C{"Is there a sign-in row and does the dialect support row locking?"}
+ B --> C{"Non-SQLite and token or tracked-session ID available?"}
  C -->|Yes| D["Lock token or tracked session row"]
+ D --> V{"Row still present?"}
+ V -->|No| X["Throw InvalidSessionError before callback"]
  C -->|No| E["Continue under transaction/account lock; SQLite serializes writers"]
- D --> F["Invoke run({ account, signInId?, trx })"]
+ V -->|Yes| F["Invoke run({ account, signInId?, trx, readCredentialRevision })"]
  E --> F
  F --> G{"Callback resolves?"}
  G -->|No| H["Transaction rolls back and error propagates unchanged"]
- G -->|Yes| I["Commit and return callback result"]
+ G -->|Yes| I["Commit; return callback result or report committed fault without replay"]
 ```
 
 **Code references:** [`withCurrent` and `lockSignIn`](../src/authentication.ts), [`protected requests guide`](../docs/guide/authentication.md#protected-requests)

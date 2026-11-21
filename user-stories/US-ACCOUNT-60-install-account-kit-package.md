@@ -33,7 +33,9 @@ flowchart TD
     D -->|No| E["See the inspection error (restructuring guidance for an unsupported shape), fix adonisrc.ts, then rerun; nothing is written"]
     D -->|Yes| P{"Providers list inspectable, or --provider-registered given?"}
     P -->|No| E
-    P -->|Yes| F["Config, migrations, provider, commands and env checks are added without overwriting existing files"]
+    P -->|Yes| M{"Migration path and prerequisites reconciled?"}
+    M -->|No| E2["Report migration path/order error before writes"]
+    M -->|Yes| F["Config, migrations, provider, commands and env checks are added without overwriting existing files"]
     F --> G["Operator runs the migrations and edits the generated config"]
 ```
 
@@ -49,7 +51,9 @@ flowchart TD
     C -->|Yes| E["hasRegisteredProvider inspects adonisrc.ts"]
     E --> F{"Config inspectable, and providers inspectable or provider-registered given?"}
     F -->|No| G["Log the inspection error (with restructuring guidance for an unsupported shape) and set exitCode 1"]
-    F -->|Yes| H["makeUsingStub writes config and migrations; existing files are kept"]
+    F -->|Yes| M{"inspectMigrationDirectory and orderedMigrations succeed?"}
+    M -->|No| D
+    M -->|Yes| H["makeUsingStub writes config and migrations; existing files are kept"]
     H --> I["updateRcFile adds provider when absent, and the commands entry"]
     I --> J["defineEnvValidations declares APP_URL and FRONTEND_URL"]
 ```

@@ -33,6 +33,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["Match session-only GET"] --> B{"Request has a string csrfToken?"}
-    B -->|Yes| C["Set no-store and return token"]
+    B -->|Yes| E["Resolve kit and assert configured guard matches"]
+    E --> C["Set no-store and return token"]
     B -->|No| D["Raise configuration error"]
 ```

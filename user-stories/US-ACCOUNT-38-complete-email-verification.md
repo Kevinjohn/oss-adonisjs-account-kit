@@ -41,8 +41,8 @@ flowchart TD
  B --> C{"Usable?"}
  C -->|No| D["Return false"]
  C -->|Yes| E["emailVerification.complete({ token, password })"]
- E --> F["Transaction consumes proof, confirms email and stores password"]
- F --> G["Clear recovery proofs and apply matching pending invitation in the claim transaction"]
+ E --> F["Validate password and token; transaction consumes proof and stores password"]
+ F --> G["Confirm email, apply matching pending invitations, then clear recovery proofs and pending social state in claim transaction"]
  G --> CRED["credentialsChanged invalidates prior credentials in the claim transaction"]
  CRED --> H["Commit activation and consume proof"]
  H --> I["Run credential observer, lifecycle and invitation follow-ups"]

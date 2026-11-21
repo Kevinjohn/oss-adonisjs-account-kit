@@ -30,7 +30,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["AccountKit construction with configured user adapter"] --> B["Adapter resolves user read/create/update/delete operations"]
+ A["AccountKit construction with configured user adapter"] --> B["Adapter supplies required user reads/updates and optional operations as selected capabilities require"]
  B --> C["Account service passes transaction to adapter at write boundary"]
  C --> D["Lucid, Drizzle, Prisma or SQL adapter persists application user"]
 ```

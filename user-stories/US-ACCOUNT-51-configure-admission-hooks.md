@@ -11,7 +11,7 @@ As an application integrator, I want admission evidence to follow invitation acc
 
 ## Acceptance criteria
 
-- `withInvitationEvidence(next?)` records the consumed invitation evidence using the acceptance transaction, then invokes the optional host callback. `withAdmissionCleanup(next?)` removes the deleted account's admission row and clears it as approver in the deletion transaction before the optional host callback.
+- `withInvitationEvidence(next?)` records the first consumed invitation evidence using the acceptance transaction, attaching a waiting bootstrap approval only for its exact invitation; existing invitation evidence is preserved. It then invokes the optional host callback. `withAdmissionCleanup(next?)` removes the deleted account's admission row and clears it as approver in the deletion transaction before the optional host callback.
 - Host callback writes use the supplied transaction; failure rolls back the associated account lifecycle transaction.
 
 ## User flow
@@ -30,8 +30,10 @@ Scope: these wrappers participate in their caller's transaction and do not add r
 ```mermaid
 flowchart TD
  A["withInvitationEvidence(onInvitationAccepted)"] --> B["Receive user, consumed invitation and trx"]
- B --> C["Write invitation evidence through trx"]
- C --> D["Run optional host acceptance callback"]
+ B --> C{"Invitation evidence already recorded?"}
+ C -->|Yes| D["Run optional host acceptance callback"]
+ C -->|No| C1["Attach matching bootstrap approval or upsert first invitation evidence through trx"]
+ C1 --> D
  E["withAdmissionCleanup(onAccountDeletingTransaction)"] --> F["Delete subject row and clear approver references through trx"]
  F --> G["Run optional host deletion callback"]
 ```

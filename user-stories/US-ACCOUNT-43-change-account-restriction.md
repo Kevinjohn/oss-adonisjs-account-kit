@@ -7,13 +7,13 @@ As an application administrator, I want to change an account's restriction state
 **Entry:** Authorized host service calls `authentication.changeRestriction({ userId, change })` and uses the supplied transaction for its policy-state mutation.
 **Documentation:** [Account security](../docs/guide/authentication.md)
 **Source:** [`src/authentication.ts`](../src/authentication.ts)
-**Coverage:** [`tests/authentication.spec.ts`](../tests/authentication.spec.ts)
+**Coverage:** [`tests/authentication.spec.ts`](../tests/authentication.spec.ts), [`tests/authentication_credentials.spec.ts`](../tests/authentication_credentials.spec.ts)
 
 ## Acceptance criteria
 
 - Input requires target `userId` and an async database-only `change(user, trx)` callback. The method returns `void`; callback mutation and credential revocation commit together.
 - A missing target throws `InvalidCredentialsError`. If that, the callback or the transaction fails before commit, neither the restriction change nor credential revision/revocation commits. After commit, existing credentials are invalidated.
-- No lifecycle post-commit hook, credential observer or notification runs for a restriction change. A failure after the commit still makes the transaction wrapper throw `PostCommitError`: a commit listener that `change(user, trx)` registered on `trx` can throw on any dialect, and on SQLite transaction cleanup can fail. The committed restriction and revocation stay in place.
+- The configured `onCredentialsChanged` observer runs after the commit. No lifecycle event or notification is emitted by this operation. A commit listener, SQLite cleanup or observer failure may surface as `PostCommitError`; the committed restriction and revocation stay in place.
 
 ## User flow
 
@@ -29,7 +29,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: host policy callback and credential revocation share one locked transaction. No lifecycle post-commit hook or observer runs for this operation.
+Scope: host policy callback and credential revocation share one locked transaction. The configured credential observer runs after commit.
 
 ```mermaid
 flowchart TD
@@ -41,8 +41,9 @@ flowchart TD
  D --> E{"Did a pre-commit operation fail?"}
  E -->|Yes| F["Roll back restriction and revocation; propagate error (InvalidCredentialsError for a missing target)"]
  E -->|No| G["Commit restriction and revocation"]
- G --> H{"Did a commit listener or SQLite cleanup fail after the commit?"}
- H -->|Yes| I["Transaction wrapper throws PostCommitError; state remains changed"]
+ G --> O["Run configured onCredentialsChanged observer"]
+ O --> H{"Did commit cleanup/listener or observer fail?"}
+ H -->|Yes| I["Surface PostCommitError; state remains changed"]
  H -->|No| J["Return void"]
 ```
 

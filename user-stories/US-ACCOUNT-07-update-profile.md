@@ -19,7 +19,7 @@ As a signed-in account holder, I want to change profile fields accepted by the h
 flowchart TD
  A["Account holder submits configured profile fields"] --> B{"Did caller provide email or registrationData?"}
  B -->|No| C["Reject empty update without writing"]
- B -->|Yes| D{"Are mapped fields and any email proof accepted?"}
+ B -->|Yes| D{"Are mapped fields and current identity proof accepted?"}
  D -->|No| E["Return validation or identity refusal"]
  D -->|Yes| F["Save mapped profile fields; apply email branch described in US-ACCOUNT-06"]
 ```
@@ -34,7 +34,7 @@ flowchart TD
  B --> C["Throttle and transactionally confirm actor for every update"]
  C --> D{"Configured fields and uniqueness checks pass?"}
  D -->|No| E["Return refusal; do not persist profile update"]
- D -->|Yes| F["Update adapter-supported fields and/or issue email proof"]
+ D -->|Yes| F["Persist adapter-supported fields and apply optional email branch; only issue proof when needed"]
  F --> G["Commit profile update"]
  G --> H{"Do required post-commit callbacks succeed?"}
  H -->|Yes| I["Return updated account"]

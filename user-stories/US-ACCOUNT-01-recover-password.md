@@ -42,11 +42,14 @@ flowchart TD
  REQ_LOOKUP --> REQ_KNOWN{"Was an account found?"}
  REQ_KNOWN -->|No| REQ_SKIP["Skip issuance and delivery"]
  REQ_SKIP --> REQ_ACK["Return generic acknowledgement after timing floor"]
- REQ_KNOWN -->|Yes| REQ_ISSUE["Issue hashed token and commit"]
+ REQ_KNOWN -->|Yes| REQ_LOCK["Lock account and re-read matching email"]
+ REQ_LOCK --> REQ_MATCH{"Account still exists and email matches?"}
+ REQ_MATCH -->|No| REQ_SKIP
+ REQ_MATCH -->|Yes| REQ_ISSUE["Issue hashed token and run configured transaction hook; commit"]
  REQ_ISSUE --> REQ_FOLLOW["Send provision and run follow-up callback"]
  REQ_FOLLOW --> REQ_OK{"Did follow-ups succeed?"}
  REQ_OK -->|Yes| REQ_ACK
- REQ_OK -->|No| REQ_ERROR["Surface service error after commit; issued token remains"]
+ REQ_OK -->|No| REQ_ERROR["Surface service error after commit and timing floor; issued token remains"]
  D["passwordReset.reset"] --> E["Consume token and store password inside transaction"]
  E --> F["If email was never confirmed, confirm it and apply pending invitation grants; invalidate older credentials"]
  F --> G["Commit; run post-commit notices; follow-up failure does not undo reset"]

@@ -35,12 +35,13 @@ Scope: shell-trusted service invocation; never expose this operator API to HTTP.
 ```mermaid
 flowchart TD
  A["account-kit:reset-link"] --> B["operator.resetLink({ email, deliver })"]
- B --> C["Replace reset proof transactionally and run lifecycle hook"]
+ B --> C["Validate delivery and email, find account and replace reset proof with configured issuance hook transactionally"]
  C --> D{"deliver is send or print?"}
  D -->|send| E["Run notification callback"]
- D -->|print| F["Return bearer URL"]
- E --> G["Write JSON result/fault; preserve committed status"]
- F --> G
+ D -->|print| F["Skip delivery; include URL in result"]
+ E --> H["Run operator-sourced lifecycle follow-up"]
+ F --> H
+ H --> G["Write JSON result/fault; preserve committed status"]
 ```
 
 **Code references:** [`ResetLink command`](../commands/reset_link.ts), [`operatorResetLink`](../src/operator.ts), [`operator command tests`](../tests/operator_commands.spec.ts)

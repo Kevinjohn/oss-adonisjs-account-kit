@@ -41,9 +41,10 @@ flowchart TD
  B1 -->|No| C["Transaction replaces any pending invitation for the same email and scope, invalidating its old link, and stores the new token hash"]
  C --> D{"deliver = send or print?"}
  D -->|send| E["Run configured invitation notification callback"]
- D -->|print| F["Return URL for terminal output"]
- E --> G["Write invitation result and any post-commit fault as JSON"]
- F --> G
+ D -->|print| F["Skip delivery; include URL in result"]
+ E --> H["Run operator-sourced lifecycle follow-up"]
+ F --> H
+ H --> G["Write invitation result and any post-commit fault as JSON"]
 ```
 
 **Code references:** [implementation](../commands/invite.ts), [`operatorInvite`](../src/operator.ts), [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)

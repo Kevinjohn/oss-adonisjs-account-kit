@@ -31,7 +31,13 @@ flowchart TD
  E -->|No| J{"Does callback require link, registration data, application approval or email confirmation?"}
  J -->|link_required| K["Authenticate existing account and complete a separate link journey"]
  J -->|registration continuation| L["Host applies signup decision and calls completeRegistration"]
+ L --> P{"Registration result?"}
+ P -->|handoff| F
+ P -->|emailVerificationRequired| M
+ P -->|link_required| K
+ P -->|refusal| N
  J -->|unverified email| M["Confirm address with proof and fresh callback for same provider subject"]
+ M --> F
  J -->|closed policy| N["Refuse account creation"]
  J -->|verified provider email and open registration| O["Create account and issue a handoff code"]
  O --> F
@@ -46,7 +52,7 @@ flowchart TD
  A["socialAuthentication.begin"] --> B["Store one-use state, intent, challenge and optional account/proof binding"]
  B --> C["Configured adapter returns authorization URL"]
  C --> D["socialAuthentication.callback resolves provider profile before consuming one-use state"]
- D --> E{"Confirmed linked subject, new account, link_required or confirmation?"}
+ D --> E{"Callback path?"}
  E -->|linked| F["Return handoffCode bound to association and credential revision"]
  F --> G{"Which managed guard strategy is configured?"}
  G -->|session| HS_SESSION["Callback redeems with verifier retained in server session; returns safe account data"]
@@ -54,19 +60,24 @@ flowchart TD
  G -->|host-managed| HS_HOST["Host calls redeemHandoff({ code, verifier, guard })"]
  HS_TOKEN --> HS_TOKEN_DONE["Token endpoint establishes access token"]
  HS_HOST --> HS_HOST_DONE["Selected guard establishes credential; service returns account and credential"]
- E -->|new| I["Apply open/closed/application policy and configured field mapping"]
+ E -->|closed or refused| ERR["Reject callback; no credential issued"]
+ E -->|new| I["Apply open/application policy and configured field mapping"]
  I --> J{"Does this path need a trusted continuation?"}
  J -->|Yes| K["Return continuation to host"]
  K --> L{"Does host accept and call completeRegistration?"}
  L -->|No| M["No account is created"]
- L -->|Yes| N["Consume continuation with trusted host admit callback"]
+ L -->|Yes| N["Consume continuation; recheck provider, email and signup policy; create account through configured mapping and optional/required admit callback"]
+ N -->|email collision| T
+ N -->|refusal| ERR
  J -->|No| O["Create account directly under open policy"]
  N --> P{"Is provider email confirmed?"}
  O --> P
  P -->|No| Q["Return emailVerificationRequired; wait for joint email/provider confirmation"]
+ Q --> R
  P -->|Yes| F
  E -->|unverified| R["beginConfirmation binds verification token to fresh confirm state"]
  R --> S["callback confirms same pending provider identity and activates account"]
+ S --> F
  E -->|link_required| T["Return no credential; existing account must prove and link"]
 ```
 

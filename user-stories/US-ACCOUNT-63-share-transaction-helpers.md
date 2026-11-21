@@ -12,7 +12,7 @@ As a package consumer, I want to use Account Kit’s transaction helpers so that
 
 **Source:** [transaction/main.ts](../transaction/main.ts), [src/transaction.ts](../src/transaction.ts)
 
-**Coverage:** [tests/transaction_export.spec.ts](../tests/transaction_export.spec.ts)
+**Coverage:** [tests/transaction_export.spec.ts](../tests/transaction_export.spec.ts), [tests/transaction_sqlite.spec.ts](../tests/transaction_sqlite.spec.ts)
 
 ## Acceptance criteria
 
@@ -32,7 +32,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Open transaction and supply client"] --> B{"Callback and commit complete?"}
-    B -->|Yes| C["Return callback result"]
-    B -->|No| D["Handle rollback or committed fault"]
+    A["transaction rejects nested or already transactional connection"] --> S{"SQLite?"}
+    S -->|Yes| L["Acquire database writer via migrated singleton; bounded busy retries"]
+    S -->|No| T["Begin transaction"]
+    L --> R["Run database-only callback with trx"]
+    T --> R
+    R --> B{"Commit reached?"}
+    B -->|No| D["Rollback pre-commit writes; propagate failure"]
+    B -->|Yes| F{"Committed cleanup or listener failure?"}
+    F -->|No| C["Return callback result"]
+    F -->|Yes| E["Report PostCommitError; do not replay committed write"]
 ```
