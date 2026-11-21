@@ -3,6 +3,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 
 /** Refuse any link between the application root and a path read or written by setup. */
 export async function safeSetupPath(root: string, name: string): Promise<string> {
+  root = resolve(root)
   const path = resolve(root, name)
   const fromRoot = relative(root, path)
   if (

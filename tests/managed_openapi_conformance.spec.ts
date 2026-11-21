@@ -64,7 +64,7 @@ function mount(
     key: string,
     input: { body?: Record<string, unknown>; params?: Record<string, string>; accept?: string } = {}
   ) {
-    const ctx = context(input.params)
+    const ctx = context(input.params, input.accept ? { accept: input.accept } : {})
     const body = input.body ?? {}
     Object.assign(ctx.request, {
       csrfToken: 'csrf-token',

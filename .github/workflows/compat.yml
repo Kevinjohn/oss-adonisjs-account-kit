@@ -80,6 +80,10 @@ jobs:
           pnpm add -D $PEERS
           pnpm list --depth 0 $(echo $PEERS | sed 's/@[^ @]*\( \|$\)/ /g')
       - run: pnpm test
+      - name: Verify SQLite transaction contract at minimum peers
+        env:
+          DB_CLIENT: better-sqlite3
+        run: pnpm quick:test --files=transaction_sqlite.spec.ts
       - run: pnpm build
 
   latest-peers:
@@ -126,6 +130,10 @@ jobs:
             }')
           pnpm update $PEERS
       - run: pnpm test
+      - name: Verify SQLite transaction contract at latest peers
+        env:
+          DB_CLIENT: better-sqlite3
+        run: pnpm quick:test --files=transaction_sqlite.spec.ts
       - run: pnpm build
 
   consumer:

@@ -1,4 +1,5 @@
-// Keeps a revocation's outcome on the committed-fault error, so callers can still end the session.
+// Records whether an already committed revocation affected the current session, even when a
+// follow-up throws. It does not infer whether a server committed after a lost client response.
 import { isCommittedFailure } from './errors.js'
 
 const revocationOutcomesByError = new WeakMap<Error, { current: boolean }>()

@@ -1,9 +1,8 @@
 import { createReadStream } from 'node:fs'
 import { lstat } from 'node:fs/promises'
-import { relative } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseEnv } from 'node:util'
-import { EnvLoader } from '@adonisjs/core/env'
 import { envName } from './diagnostics.js'
 import { safeSetupPath } from './safe_path.js'
 
@@ -22,6 +21,18 @@ function hasClosingQuote(text: string, quote: string): boolean {
   return text.includes(quote)
 }
 
+/** Match AdonisJS EnvLoader precedence without changing global process.env to select a profile. */
+function selectedDotenvPaths(root: string, env: NodeJS.ProcessEnv): string[] {
+  const base = resolve(root, env.ENV_PATH || '')
+  const mode = env.NODE_ENV
+  return [
+    ...(mode ? [join(base, `.env.${mode}.local`)] : []),
+    ...(!mode || !['test', 'testing'].includes(mode) ? [join(base, '.env.local')] : []),
+    ...(mode ? [join(base, `.env.${mode}`)] : []),
+    join(base, '.env'),
+  ]
+}
+
 async function resolveEnvironmentValue(
   root: string,
   variable: string,
@@ -34,7 +45,7 @@ async function resolveEnvironmentValue(
   const assignmentStart = new RegExp(`^\\s*(?:export\\s+)?${escapedVariable}\\b`)
   const assignmentValue = new RegExp(`^\\s*(?:export\\s+)?${escapedVariable}\\s*=`)
   if (Object.hasOwn(env, variable)) return env[variable] ?? null
-  for (const candidate of new EnvLoader(root).getPaths()) {
+  for (const candidate of selectedDotenvPaths(root, env)) {
     const name = relative(root, candidate)
     const path = await safeSetupPath(root, name)
     let stat

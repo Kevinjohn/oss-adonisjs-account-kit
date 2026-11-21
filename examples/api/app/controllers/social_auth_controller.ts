@@ -1,14 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import {
-  InvalidInputError,
-  type SocialCallbackResult,
-  type SocialProviderName,
-} from '@kevinjohn/adonisjs-account-kit'
+import { InvalidInputError, type SocialProviderName } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
-import User from '#models/user'
-import UserTransformer from '#transformers/user_transformer'
-import { accountKitSessionGuard } from '#services/account_kit_guards'
-import { rememberLastUsedMethod } from '#services/last_used_method'
+import { finishSocialCallback } from '#services/social_callback_response'
 import {
   beginBrowserTransaction,
   forgetBrowserContinuation,
@@ -90,25 +83,7 @@ export default class SocialAuthController {
       if (pending) rememberBrowserContinuation(ctx, result.continuation, pending)
       return ctx.response.ok({ status: 'new', continuation: result.continuation })
     }
-    return this.finishCallback(ctx, result, pending?.verifier)
-  }
-
-  private async finishCallback(
-    ctx: HttpContext,
-    result: SocialCallbackResult,
-    browserVerifier?: string
-  ) {
-    if ('handoffCode' in result && result.handoffCode && browserVerifier) {
-      const redeemed = await accountKit.socialAuthentication.redeemHandoff({
-        code: result.handoffCode,
-        verifier: browserVerifier,
-        guard: accountKitSessionGuard(ctx),
-      })
-      const user = await User.findOrFail(redeemed.account.id)
-      rememberLastUsedMethod(ctx, redeemed.provider)
-      return ctx.serialize({ status: result.status, user: UserTransformer.transform(user) })
-    }
-    return ctx.response.ok(result)
+    return finishSocialCallback(ctx, result, pending?.verifier)
   }
 
   async completeRegistration(ctx: HttpContext) {
@@ -124,7 +99,7 @@ export default class SocialAuthController {
     })
     if (pending) {
       forgetBrowserContinuation(ctx)
-      return this.finishCallback(ctx, result, pending.verifier)
+      return finishSocialCallback(ctx, result, pending.verifier)
     }
     return ctx.response.ok(result)
   }

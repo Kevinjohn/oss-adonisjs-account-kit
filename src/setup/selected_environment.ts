@@ -20,7 +20,8 @@ export async function selectedEnvName(
   root: string,
   envBinding: string | null,
   expression: TypeScript.Expression,
-  variable?: string
+  variable?: string,
+  env?: NodeJS.ProcessEnv
 ): Promise<string | null | undefined> {
   const { ts } = source
   if (
@@ -41,7 +42,7 @@ export async function selectedEnvName(
   )
     return undefined
   return (
-    (await resolveSelectedEnvironment(root, args[0].text)) ??
+    (await resolveSelectedEnvironment(root, args[0].text, env)) ??
     (args.length === 2 ? (args[1] as TypeScript.StringLiteral).text : null)
   )
 }

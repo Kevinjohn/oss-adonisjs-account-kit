@@ -286,6 +286,59 @@ test('configures the package idempotently without replacing application-owned fi
   }
 }).timeout(30_000)
 
+test('configures future-dated prerequisites in the selected custom migration directory once', async ({
+  assert,
+}) => {
+  const project = await createConfigureProject()
+  const { root, configDirectory, existingMigrationPath, migrationsDirectory, ignitorFor } = project
+  const exitCode = process.exitCode
+  try {
+    await rm(existingMigrationPath)
+    const directory = join(root, 'database/custom')
+    await mkdir(directory)
+    const prerequisite = '9999999999000_create_users_table.ts'
+    await writeFile(join(directory, prerequisite), '// existing users migration\n')
+    await writeFile(
+      join(configDirectory, 'database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/custom'] } } } })"
+    )
+    await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+    const initial = await readdir(directory)
+    assert.deepEqual(initial.sort(), [
+      prerequisite,
+      ...migrationNames.map((name, index) => `${9999999999001 + index}_account_kit_${name}.ts`),
+    ])
+    assert.deepEqual(await readdir(migrationsDirectory), [])
+    await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+    const repeated = await readdir(directory)
+    assert.deepEqual(repeated.sort(), initial)
+  } finally {
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
+test('configure reports partially generated dependency conflicts before writing', async ({
+  assert,
+}) => {
+  const { root, migrationsDirectory, configPath, ignitorFor } = await createConfigureProject()
+  const exitCode = process.exitCode
+  try {
+    await writeFile(
+      join(migrationsDirectory, '9999999999000_account_kit_add_scope_to_account_invitations.ts'),
+      '// existing successor'
+    )
+    const before = await readdir(migrationsDirectory)
+    await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+    assert.equal(process.exitCode, 1)
+    assert.deepEqual(await readdir(migrationsDirectory), before)
+    await assert.rejects(() => readFile(configPath), /ENOENT/)
+  } finally {
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
 test('does not duplicate a command loader written with double quotes', async ({ assert }) => {
   const { root, ignitorFor } = await createConfigureProject()
   const originalProcessExitCode = process.exitCode

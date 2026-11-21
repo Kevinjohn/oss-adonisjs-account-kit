@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { InvalidSessionError } from '../src/errors.js'
+import { AdapterContractError, InvalidSessionError } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
 import { admissionMiddleware } from '../src/admission/middleware.js'
 import { fakeAuthenticator } from './helpers/managed_http_fakes.js'
@@ -105,9 +105,82 @@ test.group('managed existing-guard adapters', () => {
     })
     await assert.rejects(
       () => adapter.forRequest({} as never).establish(42, ['*'], null),
-      /bearer value/
+      AdapterContractError
     )
     assert.deepEqual(deleted, [18])
+  })
+
+  test('preserves token release and cleanup errors without disguising adapter failures', async ({
+    assert,
+  }) => {
+    const releaseFailure = new Error('release failed')
+    const cleanupFailure = new Error('cleanup failed')
+    let cleanupFails = false
+    let value: unknown = {
+      release: () => {
+        throw releaseFailure
+      },
+    }
+    const adapter = createManagedGuard({
+      strategy: 'access_tokens',
+      name: 'api',
+      loadUser: async () => ({
+        findOrFail: async () => ({ id: 42 }),
+        accessTokens: {
+          create: async () => ({ identifier: 18, value: value as { release(): string } }),
+          delete: async () => {
+            if (cleanupFails) throw cleanupFailure
+          },
+        },
+      }),
+    })
+    const establish = () => adapter.forRequest({} as never).establish(42, ['*'], null)
+    try {
+      await establish()
+      assert.fail('expected release failure')
+    } catch (error) {
+      assert.strictEqual(error, releaseFailure)
+    }
+    value = { release: () => 1 }
+    await assert.rejects(establish, AdapterContractError)
+    value = {
+      release: () => {
+        throw releaseFailure
+      },
+    }
+    cleanupFails = true
+    try {
+      await establish()
+      assert.fail('expected aggregate failure')
+    } catch (error) {
+      assert.instanceOf(error, AggregateError)
+      assert.deepEqual((error as AggregateError).errors, [releaseFailure, cleanupFailure])
+    }
+  })
+
+  test('does not invoke cleanup when a malformed issuance returns no usable identifier', async ({
+    assert,
+  }) => {
+    let issued: unknown = null
+    let deleted = false
+    const adapter = createManagedGuard({
+      strategy: 'access_tokens',
+      name: 'api',
+      loadUser: async () => ({
+        findOrFail: async () => ({ id: 42 }),
+        accessTokens: {
+          create: async () => issued as never,
+          delete: async () => {
+            deleted = true
+          },
+        },
+      }),
+    })
+    const establish = () => adapter.forRequest({} as never).establish(42, ['*'], null)
+    await assert.rejects(establish, AdapterContractError)
+    issued = { identifier: null, value: { release: () => 'token' } }
+    await assert.rejects(establish, AdapterContractError)
+    assert.isFalse(deleted)
   })
   test('refuses sessions without the protected configuration before issuing or trusting a credential', async ({
     assert,

@@ -30,7 +30,8 @@ function envVariable(source: SetupSource, expression: TypeScript.Expression): st
 /** A diagnostic-only classifier; it never authorizes automatic attestation. */
 export async function selectedSessionDiagnostic(
   text: string,
-  root: string
+  root: string,
+  env?: NodeJS.ProcessEnv
 ): Promise<{
   name: string | null
   kind: string | null
@@ -47,7 +48,7 @@ export async function selectedSessionDiagnostic(
   if (source.ts.isStringLiteral(store.initializer)) name = store.initializer.text
   else {
     const variable = envVariable(source, store.initializer)
-    if (variable) name = await resolveSelectedEnvironment(root, variable)
+    if (variable) name = await resolveSelectedEnvironment(root, variable, env)
   }
   if (!name) return { name: null, kind: null }
   const storesName = importedName(source, '@adonisjs/session', 'stores') ?? 'stores'

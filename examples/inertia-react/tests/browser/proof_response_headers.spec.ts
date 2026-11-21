@@ -1,7 +1,7 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep raw response assertions beside their requests. */
-import { createHash, randomBytes } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
 import { test } from '@japa/runner'
+import { createProofFor } from '../helpers/account_proof.js'
 import type { Assert } from '@japa/assert'
 import { Session } from '@adonisjs/session'
 import db from '@adonisjs/lucid/services/db'
@@ -89,7 +89,6 @@ class ProofSession {
 }
 
 async function proofFor(family: Family, expired = false) {
-  const token = randomBytes(40).toString('base64url')
   const email = `${family}@example.test`
   const user = await User.create({
     fullName: 'Proof Owner',
@@ -102,23 +101,7 @@ async function proofFor(family: Family, expired = false) {
           ? 'changed@example.test'
           : null,
   })
-  const hash = createHash('sha256').update(token).digest('hex')
-  const table = family === 'reset-password' ? 'password_reset_tokens' : 'email_verification_tokens'
-  const now = new Date()
-  await db.table(table).insert({
-    tokenable_id: user.id,
-    email: family === 'confirm-email' ? 'changed@example.test' : email,
-    ...(family === 'reset-password'
-      ? {}
-      : {
-          current_email: email,
-          purpose: family === 'confirm-email' ? 'email_change' : 'activation',
-        }),
-    hash,
-    created_at: now.toISOString(),
-    expires_at: new Date(now.getTime() + (expired ? -1000 : 3600000)).toISOString(),
-  })
-  return { user, token, hash, table, path: `/${family}/${token}` }
+  return createProofFor(user, family, expired)
 }
 
 function protectedResponse(assert: Assert, response: Response) {
@@ -469,8 +452,8 @@ test.group('standalone React proof response boundary', (group) => {
       })
       const page = await visit('/login')
       await page.getByLabel('Email').fill(other.email)
-      await page.getByLabel('Password').fill('OldPass123!')
-      await page.getByRole('button', { name: 'Sign in' }).click()
+      await page.getByLabel('Password', { exact: true }).fill('OldPass123!')
+      await page.getByRole('button', { name: 'Sign in', exact: true }).click()
       await page.waitForURL('**/dashboard')
       const response = await page.goto(new URL(proof.path, origin).href)
       assert.equal(response!.headers()['cache-control'], 'no-store')

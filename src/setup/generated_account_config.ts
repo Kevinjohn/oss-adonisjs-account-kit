@@ -10,7 +10,7 @@ export function accountConfigSource(
   const managedMail = emailEnabled && choices.mail.integration === 'adonisjs-mail'
   const social = choices.social.status === 'enabled' ? choices.social : null
   const serviceCapabilities = choices.features.filter((name) => name !== 'authentication')
-  const usesPolicy =
+  const usesAccountCallbacks =
     choices.policy.accessRestrictionHook || choices.features.includes('invitations')
   const imports = [
     "import env from '#start/env'",
@@ -28,7 +28,9 @@ export function accountConfigSource(
     ...(!emailEnabled || managedMail
       ? []
       : ["import { accountKitNotifications } from '#services/account_kit_notifications'"]),
-    ...(usesPolicy ? ["import { accountKitPolicy } from '#services/account_kit_policy'"] : []),
+    ...(usesAccountCallbacks
+      ? ["import { accountKitPolicy } from '#services/account_kit_policy'"]
+      : []),
     ...(choices.policy.registrationFields.length
       ? ["import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit/errors'"]
       : []),

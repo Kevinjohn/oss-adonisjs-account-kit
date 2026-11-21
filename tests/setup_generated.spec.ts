@@ -1,8 +1,10 @@
-import { readdir, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { randomUUID } from 'node:crypto'
 import { test } from '@japa/runner'
 import { MigrationRunner } from '@adonisjs/lucid/migration'
+import { Env } from '@adonisjs/core/env'
 import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import { createActionUrls } from '../src/action_urls.js'
@@ -23,6 +25,110 @@ import { parseSetupChoices } from '../src/setup/parse.js'
 
 test.group('setup generated sources', (group) => {
   registerSetupTeardown(group)
+
+  test('runs custom-directory migrations after a future-dated users migration and reapplies without duplicates', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const kit = await bootTestApp({
+      postgresSchema: `account_schema_fixture_${randomUUID().replaceAll('-', '')}`,
+    })
+    try {
+      // The PostgreSQL fixture owns a new schema; SQLite owns a new file. MySQL is
+      // experimental and reuses its test database, so remove previous fixture tables first.
+      if (kit.db.connection().dialect.name === 'mysql') {
+        for (const table of [
+          'auth_access_tokens',
+          'login_link_tokens',
+          'account_sessions',
+          'social_handoff_codes',
+          'social_sensitive_proofs',
+          'social_transactions',
+          'social_identities',
+          'account_transaction_lock',
+          'account_invitations',
+          'password_reset_tokens',
+          'email_verification_tokens',
+          'adonis_schema_versions',
+          'adonis_schema',
+          'users',
+        ])
+          await kit.db.connection().schema.dropTableIfExists(table)
+      }
+      const directory = 'database/application_migrations'
+      const path = join(root, directory)
+      await mkdir(path, { recursive: true })
+      await writeFile(
+        join(root, 'config/database.ts'),
+        `import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['${directory}'] } } } })`
+      )
+      const users = '9999999999000_create_users_table.ts'
+      const usersSource = `import { BaseSchema } from '@adonisjs/lucid/schema'\nexport default class extends BaseSchema { async up() { this.schema.createTable('users', table => { table.increments('id'); table.string('email', 254).notNullable().unique(); table.string('password').nullable(); table.timestamp('created_at').notNullable() }) } async down() { this.schema.dropTable('users') } }`
+      await writeFile(join(path, users), usersSource)
+      const plan = await planSetup(choices, await inspectSetup(root), { apply: true })
+      assert.isFalse(
+        plan.diagnostics.some(({ severity }) => severity === 'error'),
+        JSON.stringify(plan.diagnostics)
+      )
+      await applySetup(root, plan)
+      const expected = [
+        users,
+        ...migrationNames.map((name, index) => `${9999999999001 + index}_account_kit_${name}.ts`),
+      ]
+      const initialNames = await readdir(path)
+      assert.deepEqual(initialNames.sort(), expected)
+      const repeated = await planSetup(choices, await inspectSetup(root), { apply: true })
+      await applySetup(root, repeated)
+      const repeatedNames = await readdir(path)
+      assert.deepEqual(repeatedNames.sort(), expected)
+      assert.deepEqual(await readdir(join(root, 'database')), ['application_migrations'])
+      await symlink(
+        join(process.cwd(), 'node_modules'),
+        join(kit.migrationDirectory, 'node_modules')
+      )
+      for (const migration of plan.changes.filter(({ path: name }) =>
+        name.startsWith(`${directory}/`)
+      ))
+        await writeFile(
+          join(kit.migrationDirectory, migration.path.split('/').at(-1)!),
+          migration.content
+        )
+      await writeFile(join(kit.migrationDirectory, users), usersSource)
+      const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
+      await runner.run()
+      if (runner.error) throw runner.error
+      assert.isTrue(await kit.db.connection().schema.hasColumn('users', 'credentials_changed_at'))
+      assert.isTrue(await kit.db.connection().schema.hasTable('social_handoff_codes'))
+    } finally {
+      await kit.close()
+    }
+  })
+
+  test('reports missing predecessor and ambiguous migration paths without planning migrations', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const directory = join(root, 'database/migrations')
+    await mkdir(directory, { recursive: true })
+    await writeFile(
+      join(directory, '9999999999000_account_kit_create_social_handoff_codes.ts'),
+      '// existing successor'
+    )
+    let plan = await planSetup(choices, await inspectSetup(root))
+    assert.isTrue(
+      plan.diagnostics.some(({ message }) => message.includes('Migration order conflict'))
+    )
+    assert.isFalse(plan.changes.some(({ path }) => path.startsWith('database/migrations/')))
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/a', 'database/b'] } } } })"
+    )
+    plan = await planSetup(choices, await inspectSetup(root))
+    assert.isTrue(
+      plan.diagnostics.some(({ message }) => message.includes('one migration directory'))
+    )
+    assert.isFalse(plan.changes.some(({ path }) => path.includes('_account_kit_')))
+  })
 
   for (const [usersTable, timestamp] of [
     ['users', undefined],
@@ -187,14 +293,25 @@ test.group('setup generated sources', (group) => {
       compilerOptions: { module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 },
     }).outputText
     const previous = {
+      APP_KEY: process.env.APP_KEY,
       ACCOUNT_MAIL_FROM: process.env.ACCOUNT_MAIL_FROM,
       PUBLIC_API_URL: process.env.PUBLIC_API_URL,
       PUBLIC_WEB_URL: process.env.PUBLIC_WEB_URL,
     }
     process.env.ACCOUNT_MAIL_FROM = 'accounts@example.test'
     process.env.PUBLIC_API_URL = 'https://api.example.test'
-    process.env.PUBLIC_WEB_URL = 'https://web.example.test'
+    delete process.env.PUBLIC_WEB_URL
     try {
+      await writeFile(
+        join(root, '.env'),
+        'APP_KEY=fixture-only-secret\nPUBLIC_API_URL=https://ignored.example.test\nPUBLIC_WEB_URL=https://web.example.test\n'
+      )
+      const env = await Env.create(pathToFileURL(`${root}/`), {
+        APP_KEY: Env.schema.secret(),
+        PUBLIC_API_URL: Env.schema.string({ format: 'url', tld: false }),
+        PUBLIC_WEB_URL: Env.schema.string({ format: 'url', tld: false }),
+        ACCOUNT_MAIL_FROM: Env.schema.string(),
+      })
       const evaluate = new Function(
         'env',
         'app',
@@ -208,7 +325,7 @@ test.group('setup generated sources', (group) => {
       )
       const loadConfig = () =>
         evaluate(
-          { get: () => ({ release: () => 'test-secret' }) },
+          env,
           { inProduction: false, inTest: true },
           () => ({}),
           createActionUrls,

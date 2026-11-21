@@ -146,24 +146,24 @@ export async function completeVerification(
       return { user: reloaded, invitationIds }
     })
   )
-  const outcome = claimed.user
+  const claimedUser = claimed.user
   await finishCommitted(fault, 'Verification committed but follow-up failed', () =>
     postCommit('Verification follow-up failed', [
       {
         kind: 'observer',
         run: () =>
-          deps.config.onCredentialsChanged?.(outcome, {
+          deps.config.onCredentialsChanged?.(claimedUser, {
             operation: 'registration_claim',
             operationId,
-            userId: outcome.id,
+            userId: claimedUser.id,
           }),
       },
       lifecycle(deps.config, {
         type: 'verification.completed',
-        userId: outcome.id,
+        userId: claimedUser.id,
         operationId,
       }),
-      ...emitInvitationAccepted(deps.config, claimed.invitationIds, outcome.id, operationId),
+      ...emitInvitationAccepted(deps.config, claimed.invitationIds, claimedUser.id, operationId),
     ])
   )
   return 'verified'

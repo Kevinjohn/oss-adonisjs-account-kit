@@ -28,6 +28,11 @@ export default class SetupAccountKit extends BaseCommand {
   @flags.boolean({ description: 'Check production origin and session prerequisites' })
   declare production: boolean
 
+  @flags.string({
+    description: 'Application-relative Lucid migration directory for dynamic config',
+  })
+  declare migrationDirectory?: string
+
   @flags.boolean({
     description: 'Confirm login retirement runs inside a credential-change maintenance window',
   })
@@ -89,17 +94,19 @@ export default class SetupAccountKit extends BaseCommand {
 
   async run(): Promise<void> {
     const root = this.app.makePath('')
+    const env = { ...process.env }
     let invalidSavedChoices = false
-    const state = await inspectSetup(
-      root,
-      !this.check
+    const state = await inspectSetup(root, {
+      migrationDirectory: this.migrationDirectory,
+      env,
+      ...(!this.check
         ? {
             onInvalidSavedChoices: () => {
               invalidSavedChoices = true
             },
           }
-        : {}
-    )
+        : {}),
+    })
     if (!this.check && invalidSavedChoices && this.input) {
       writeWarning(
         this,
@@ -126,6 +133,7 @@ export default class SetupAccountKit extends BaseCommand {
       retirementImpact,
       retirementMaintenanceWindow: this.retirementMaintenanceWindow,
       runtimeInventoryUnavailable,
+      env,
     })
     // The report alone goes to stdout, so `--check | jq` works; everything else goes to stderr.
     this.logger.log(

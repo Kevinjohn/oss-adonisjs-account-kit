@@ -15,7 +15,7 @@ import type { AdmissionApprovalStatus, AdmissionRecord } from './types.js'
 export type AdmissionTransition = 'approve' | 'reject' | 'revoke'
 type Decided = Exclude<AdmissionApprovalStatus, 'pending'>
 
-export const outcome: Record<AdmissionTransition, Decided> = {
+export const approvalStatusByTransition: Record<AdmissionTransition, Decided> = {
   approve: 'approved',
   reject: 'rejected',
   revoke: 'revoked',
@@ -34,7 +34,7 @@ export function nextApprovalStatus(from: Decided | null, transition: AdmissionTr
     throw new AdmissionDecisionError(
       `Cannot ${transition} an account whose approval is ${from ?? 'pending'}`
     )
-  return outcome[transition]
+  return approvalStatusByTransition[transition]
 }
 
 /** Apply a transition to the locked subject and return the updated record. */
@@ -88,7 +88,7 @@ export async function decideAdmission(
       return applyTransition(trx, subject, transition, actor.id)
     }),
     (record) => ({
-      type: `admission.${outcome[transition]}`,
+      type: `admission.${approvalStatusByTransition[transition]}`,
       userId: record.userId,
       actorId: input.actorId,
       operationId,

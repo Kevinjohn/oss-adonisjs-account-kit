@@ -78,13 +78,22 @@ without `setPasswordHash`.
 The Lucid, SQL, Drizzle and Prisma adapters implement both methods with their `hashPassword`
 option. By default the Lucid adapter hashes and verifies with the AdonisJS hash service; when the
 model's `withAuthFinder` uses a different hasher, pass matching `hashPassword` and `verifyPassword`
-options. It writes the hash with a query, so the model's hashing hook does not run on it. When it
-is given `verifyPassword` alone, it leaves both methods out and the model hook
+options. During prepared-hash creation, instance creation/save hooks observe the initial `null`
+password. The adapter subsequently writes the prepared hash using a transaction-bound query,
+without invoking instance update/save hooks, and updates the returned model's in-memory password.
+Both writes share the same transaction: there is no committed intermediate null-password row.
+Password replacement also writes the prepared hash directly, so audit or synchronisation logic
+in instance update/save hooks must not treat those hooks as a complete record of credential changes.
+When the adapter is given `verifyPassword` alone, it leaves both methods out and the model hook
 hashes inside the transaction, as before. Two trade-offs: a sign-up with an address that is already
 registered now hashes before it is refused, and completing a password reset or an activation hashes
 before the token is checked, so a request with a bogus token also costs a hash. Account Kit does
 not throttle those completions; throttle the routes that call them, for example with
 `@adonisjs/limiter`.
+
+The [hash timing regression tests](../../tests/password_hash_timing.spec.ts) exercise both modes,
+including a real Lucid model and the hash-once guarantee. Neither mode promises exactly-once
+external effects from application hooks.
 
 ## Required columns
 
