@@ -14,6 +14,8 @@ As an application developer, I want a host-owned write to share Account Kit's cu
 - `withCurrent` returns the callback result. It checks the current account and credential, then runs the callback under the same transaction. For non-SQLite databases it locks the corresponding token row or tracked session row if that row exists; `signInId` is present only for a tracked session sign-in. SQLite serializes writers instead of locking a sign-in row. With session management disabled there is no registry row to lock.
 - A callback error rolls back Kit and callback writes. Callback work must be database-only and retry-safe. Where a tracked sign-in row is locked, concurrent logout/token deletion waits for this transaction; do not assume a universal logout-wait guarantee for untracked sessions or every database.
 
+- After a transaction has committed, a follow-up failure can be reported as a committed fault. Reconcile the persisted state before deciding how to recover. See the [transaction engine](../src/transaction.ts) and [transaction tests](../tests/transaction.spec.ts).
+
 ## User flow
 
 ```mermaid

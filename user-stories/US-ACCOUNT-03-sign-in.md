@@ -13,6 +13,8 @@ As an existing account holder, I want to sign in with email and password so that
 
 - **Inputs and result:** `authentication.login({ email, password, clientKey, sessionLabel? }, guard)` returns the safe current account and issued credential through the configured guard. `sessionLabel` is untrusted display text limited to 255 characters; the guard strategy and access policy are configured by the host.
 
+- Access-token issuance requires a usable identifier and a releasable bearer value. A malformed result raises an adapter contract error. On release failure the guard attempts cleanup when it has an identifier. If cleanup also fails it preserves both causes in an AggregateError. See [guard contract cases](../tests/managed_guard.spec.ts).
+
 ## User flow
 
 ```mermaid

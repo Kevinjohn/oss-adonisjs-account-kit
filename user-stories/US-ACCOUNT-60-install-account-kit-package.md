@@ -4,7 +4,7 @@ As an application operator, I want to run the package's configure step so that a
 
 **Status:** Operator
 **Access:** Requires shell access to the application. The step never overwrites existing files; the operator still runs the migrations and reviews the generated config.
-**Entry:** Run `node ace configure @kevinjohn/adonisjs-account-kit [--users-table] [--user-id-type] [--provider-registered]` after installing the GitHub release archive ([root install section](../README.md#install)). `node ace add` is not a substitute: it installs the package from the npm registry first, and the package ships as a release archive. [US-ACCOUNT-31](US-ACCOUNT-31-configure-account-kit.md) covers the later `account-kit:setup` action.
+**Entry:** Run `node ace configure @kevinjohn/adonisjs-account-kit [--users-table] [--user-id-type] [--provider-registered] [--migration-directory=path]` after installing the GitHub release archive ([root install section](../README.md#install)). `node ace add` is not a substitute: it installs the package from the npm registry first, and the package ships as a release archive. [US-ACCOUNT-31](US-ACCOUNT-31-configure-account-kit.md) covers the later `account-kit:setup` action.
 **Documentation:** [getting-started.md](../docs/guide/getting-started.md), [root install section](../README.md#install), [custom-schema.md](../docs/guide/custom-schema.md)
 **Source:** [`configure.ts`](../configure.ts), exported as `configure` from [`index.ts`](../index.ts)
 **Coverage:** [`tests/configure.spec.ts`](../tests/configure.spec.ts), [`tests/configure_contract.spec.ts`](../tests/configure_contract.spec.ts)
@@ -20,6 +20,8 @@ As an application operator, I want to run the package's configure step so that a
 - The step writes `config/account_kit.ts`, generates the package migrations (skipping any whose migration file already exists, with a `Skipped` message), adds the `account_kit_provider` provider unless it is already registered, adds the package `commands` entry, and declares `APP_URL` and `FRONTEND_URL` in `start/env.ts`.
 - Existing application-owned files are not replaced, so a rerun is safe.
 - An `adonisrc.ts` whose `defineConfig` call, config properties or syntax cannot be inspected (not a static object literal, computed properties, spreads that do not expose `providers` and `commands`, TypeScript syntax errors) stops with exit code 1 before any write, whatever the flags. A shape it cannot inspect logs restructuring guidance; a syntax error or an unloadable `adonisrc.ts` logs only `Unable to inspect adonisrc.ts: <reason>.` A `providers` list that cannot be inspected stops with exit code 1 and guidance unless `--provider-registered` is given.
+
+- Both setup and configure inspect the selected Lucid connection’s literal migrations.paths. Empty or omitted paths use the application migrations directory. Confirm a dynamic path using `--migration-directory` on each run. Multiple configured paths, a conflicting override or an installed dependent missing its prerequisite require reconciliation before generation. New filenames follow existing numeric timestamps. See [path selection](../src/setup/migration_paths.ts), [ordering](../src/setup/migration_order.ts) and [configure cases](../tests/configure.spec.ts).
 
 ## User flow
 

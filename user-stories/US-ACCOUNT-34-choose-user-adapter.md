@@ -13,6 +13,8 @@ As an application integrator, I want to connect Account Kit to a supported user 
 
 - **Inputs and result:** The adapter contract lets `AccountKit` read, create, update and delete the application user inside supplied database transactions. Lucid is the default adapter; Drizzle, Prisma and SQL factories are included. Integrators configure the adapter and use the same service API; schema/driver compatibility follows the adapter guide and contract suite.
 
+- With prepared hashing, Lucid create/save hooks observe the initial null password. A transaction-bound query stores the hash and updates the returned model. Both writes commit together. The instance update/save hooks do not observe prepared hash replacement. Supplying verifyPassword alone leaves hashing to the model inside the transaction. See [adapter semantics](../docs/guide/adapters.md) and [hash timing tests](../tests/password_hash_timing.spec.ts).
+
 ## User flow
 
 ```mermaid

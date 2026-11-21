@@ -1,6 +1,8 @@
 # User story catalogue
 
-Source baseline: `74cd9f6f2e8be35f5853725d15287d1b24c8d0c0` (origin/main, 2026-11-14). Scope: public package exports, account and recovery journeys, optional magic-link/session/data/social/admission capabilities, managed HTTP/OpenAPI, package installation, setup and operator actions, adapters and notifications. Source reviewed; no runtime journeys were exercised for this catalogue.
+Source baseline: `9619f683793cf3fdd39d0aaac54c625ab663002f` (origin/main, 2026-11-21). Scope: public package exports, account and recovery journeys, optional magic-link/session/data/social/admission capabilities, managed HTTP/OpenAPI, package installation, setup and operator actions, adapters and notifications. The audit traced the package source and ran 45 focused tests covering managed authentication, guard adapters, error responses and the transaction subpath. Host application journeys remain outside that test scope.
+
+[Find a story by managed HTTP path, public import or Ace command](PATHS.md).
 
 ## Index
 
@@ -66,6 +68,9 @@ Source baseline: `74cd9f6f2e8be35f5853725d15287d1b24c8d0c0` (origin/main, 2026-1
 | [US-ACCOUNT-58](US-ACCOUNT-58-check-domain-eligibility.md)            | Check admission domain eligibility                 | Current when the admission module is installed                                                          |
 | [US-ACCOUNT-59](US-ACCOUNT-59-discover-authentication-methods.md)     | Discover available authentication methods          | Current when `socialAuthentication` and its public managed `auth.methods` route are enabled and mounted |
 | [US-ACCOUNT-60](US-ACCOUNT-60-install-account-kit-package.md)         | Install the Account Kit package                    | Operator                                                                                                |
+| [US-ACCOUNT-61](US-ACCOUNT-61-obtain-session-csrf-token.md)           | Obtain a session CSRF token                        | Current                                                                                                 |
+| [US-ACCOUNT-62](US-ACCOUNT-62-read-managed-profile.md)                | Read my managed profile                            | Current                                                                                                 |
+| [US-ACCOUNT-63](US-ACCOUNT-63-share-transaction-helpers.md)           | Share transaction and timestamp helpers            | Current                                                                                                 |
 
 ## Catalogue references
 
