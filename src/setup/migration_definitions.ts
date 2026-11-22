@@ -21,8 +21,12 @@ export function accountKitMigrationSuffix(name: string): string {
   return `_account_kit_${name}.ts`
 }
 
-export function matchesAccountKitMigration(file: string, operation: string): boolean {
-  return file.replace(/\.(?:[cm]?js|ts)$/, '.ts').endsWith(accountKitMigrationSuffix(operation))
+/**
+ * Reports whether a migration file, as `.ts`, `.js`, `.cjs` or `.mjs`, is the Account Kit migration
+ * with this name, whatever its timestamp or subdirectory.
+ */
+export function matchesAccountKitMigration(file: string, name: string): boolean {
+  return file.replace(/\.(?:[cm]?js|ts)$/, '.ts').endsWith(accountKitMigrationSuffix(name))
 }
 
 const userIdTypes = ['integer', 'string', 'uuid'] as const

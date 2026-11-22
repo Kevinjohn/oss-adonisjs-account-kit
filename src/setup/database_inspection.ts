@@ -10,6 +10,11 @@ import {
 } from './ts_source.js'
 import { SelectedEnvironmentValueError, selectedEnvName } from './selected_environment.js'
 
+/**
+ * Finds the connection a Lucid database config selects, reading `DB_CONNECTION` from the selected
+ * environment when the config uses it, without executing the config. Returns `null` when the
+ * connection cannot be established statically.
+ */
 export async function inspectDatabaseConnection(
   sourceText: string,
   root: string,

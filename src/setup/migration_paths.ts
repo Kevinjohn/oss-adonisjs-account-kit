@@ -13,8 +13,10 @@ import {
 import { safeSetupPath } from './safe_path.js'
 import { matchesAccountKitMigration, migrationNames } from './migration_definitions.js'
 
+/** The AdonisJS default Lucid migration directory, relative to the application root. */
 export const defaultMigrationDirectory = 'database/migrations'
 
+/** Setup cannot choose or read the Lucid migration directory; reported as a setup diagnostic. */
 export class MigrationDirectoryError extends Error {
   /** The setup diagnostic field: the directory at fault, or the database config that chose it. */
   readonly field: string
@@ -35,8 +37,11 @@ async function withinDirectory<T>(directory: string, action: () => Promise<T>): 
   }
 }
 
-/** Guided setup writes conventional config files; refuse a custom config directory rather than
- * silently inspecting or modifying the wrong files. It can inspect a literal migrations override. */
+/**
+ * Returns the migrations directory set in `adonisrc.ts`, or the AdonisJS default. Throws for a
+ * custom config directory, because guided setup writes conventional config files, and for
+ * directories it cannot read statically.
+ */
 export async function guidedMigrationDefault(rc: string): Promise<string> {
   if (!rc) return defaultMigrationDirectory
   let source
@@ -50,7 +55,8 @@ export async function guidedMigrationDefault(rc: string): Promise<string> {
     source,
     importedName(source, '@adonisjs/core/app', 'defineConfig') ?? undefined
   )
-  if (!config) return defaultMigrationDirectory // other setup checks report an unsupported RC shape
+  // Other setup checks report an unsupported RC shape.
+  if (!config) return defaultMigrationDirectory
   if (hasUnsafeObjectEntries(source, config))
     throw new MigrationDirectoryError(
       'Guided setup cannot establish directory settings from an ambiguous adonisrc.ts config; expose its directories statically before setup',
@@ -80,7 +86,11 @@ export async function guidedMigrationDefault(rc: string): Promise<string> {
   return migrationsPath.text
 }
 
-/** Never execute the application database config when choosing a destination. */
+/**
+ * Chooses the application-relative Lucid migration directory and lists its migration files,
+ * reading the database config statically and never executing it. Throws a
+ * {@link MigrationDirectoryError} when the directory cannot be chosen or read.
+ */
 export async function inspectMigrationDirectory(
   root: string,
   config: string,

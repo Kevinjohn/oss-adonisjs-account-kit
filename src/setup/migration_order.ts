@@ -19,8 +19,12 @@ function runsBefore(first: string, second: string) {
   )
 }
 
-/** Plan before writing anything: existing files are immutable, including their relative paths. */
-export function orderedMigrations(files: string[], now: number, operations = migrationNames) {
+/**
+ * Lists each named migration with its existing file or a new timestamped filename after the
+ * existing ones, without writing anything. Existing files keep their relative paths. Throws when
+ * the order cannot be established.
+ */
+export function orderedMigrations(files: string[], now: number, names = migrationNames) {
   const hasTimestamp = (file: string) => /^[0-9]+_/.test(posix.basename(file))
   const timestamped = files.filter(hasTimestamp).sort()
   const last = timestamped.at(-1)
@@ -30,7 +34,7 @@ export function orderedMigrations(files: string[], now: number, operations = mig
     const prefix = Number(posix.basename(file).split('_')[0])
     timestamp = Math.max(timestamp, prefix + 1)
   }
-  const entries = operations.map((name) => {
+  const entries = names.map((name) => {
     const matches = files.filter((file) => matchesAccountKitMigration(file, name))
     if (matches.length > 1)
       throw new Error(
@@ -47,11 +51,10 @@ export function orderedMigrations(files: string[], now: number, operations = mig
   })
   // Host migrations can supply prerequisite tables even without a timestamp. Known Account Kit
   // files with custom names only impose ordering through the dependencies below.
-  const managedOperations = [...migrationNames, ...operations]
+  const managedNames = [...migrationNames, ...names]
   const prior = files.filter(
     (file) =>
-      hasTimestamp(file) ||
-      !managedOperations.some((name) => matchesAccountKitMigration(file, name))
+      hasTimestamp(file) || !managedNames.some((name) => matchesAccountKitMigration(file, name))
   )
   if (
     entries.some(
