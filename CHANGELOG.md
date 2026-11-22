@@ -4,13 +4,13 @@
 
 ### Added
 
-- Corrects the 0.5.0 notes, which omitted this addition: the `--migration-directory` flag on `node ace configure @kevinjohn/adonisjs-account-kit`, `account-kit:setup` and `account-kit:admission:install` names the application-relative Lucid migration directory when setup cannot read it statically.
+- Corrects the 0.5.0 notes, which omitted this addition: the `--migration-directory` flag on `node ace configure @kevinjohn/adonisjs-account-kit` and `account-kit:setup` (since 0.5.0) and on `account-kit:admission:install` (since 0.5.1) names the application-relative Lucid migration directory when setup cannot read it statically.
 - Corrects the 0.5.0 notes, which omitted this addition: the exported `AdapterContractError`, code `E_ACCOUNT_KIT_ADAPTER_CONTRACT`, reports an invalid `authentication.canAccess` result or token guard value.
 
 ### Changed
 
-- **Breaking since 0.5.0** (omitted from the 0.5.0 notes): `configure` and `account-kit:admission:install` exit with code 1 without writing when the Lucid migration path is dynamic and `--migration-directory` is not passed, when existing migration filenames are untimestamped or of mixed timestamp width, or when Account Kit migrations sit in `database/migrations` beside a different configured path. `account-kit:setup` reports the same cases as errors.
-- **Breaking since 0.5.0** (omitted from the 0.5.0 notes): an existing install whose Lucid migration path is dynamic must pass `--migration-directory` on every setup, configure and admission-install run, including `account-kit:setup --check` in CI.
+- **Breaking since 0.5.0** (omitted from the 0.5.0 notes): `configure` exits with code 1 without writing when the Lucid migration path is dynamic and `--migration-directory` is not passed, when existing migration filenames are of mixed timestamp width, or when Account Kit migrations sit in `database/migrations` beside a different configured path. `account-kit:setup` reports the same cases as errors. Since 0.5.1, `account-kit:admission:install` refuses the same cases, and untimestamped host migration filenames are refused too.
+- **Breaking since 0.5.0** (omitted from the 0.5.0 notes): an existing install whose Lucid migration path is dynamic must pass `--migration-directory` on every setup and configure run, including `account-kit:setup --check` in CI, and since 0.5.1 on every admission-install run.
 - `AdapterContractError` now extends `AccountKitError`, so an invalid `canAccess` result or token guard value is answered with the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 by the managed routes, `accountErrorResponse` and, on the application's own routes, `AccountKitError.handle`. Its class name and `E_ACCOUNT_KIT_ADAPTER_CONTRACT` code are unchanged.
 - Managed routes log every masked 5xx error, other than an already-reported committed failure, through the request logger with the error and the route name, so the operator can find the cause the client does not see.
 
