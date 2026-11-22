@@ -762,7 +762,7 @@ test.group('setup apply', (group) => {
     )
   })
 
-  test('inspection refuses linked parent paths and setup refuses an existing apply lock', async ({
+  test('inspection refuses linked parent paths and reports a linked migration directory, and setup refuses an existing apply lock', async ({
     assert,
   }) => {
     const { root, choices } = await fixture()
@@ -785,6 +785,8 @@ test.group('setup apply', (group) => {
     const migration = await fixture()
     await mkdir(join(migration.root, 'database'))
     await symlink(outside, join(migration.root, 'database/migrations'))
-    await assert.rejects(() => inspectSetup(migration.root), /non-directory or symlink/)
+    const linked = await inspectSetup(migration.root)
+    assert.match(linked.migrationDirectoryError!, /non-directory or symlink/)
+    assert.equal(linked.migrationDirectoryErrorField, 'database/migrations')
   })
 })

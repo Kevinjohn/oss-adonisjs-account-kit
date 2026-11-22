@@ -210,12 +210,18 @@ export async function planSetup(
   )
   const migrationDirectory = state.migrationDirectory ?? defaultMigrationDirectory
   let migrations: ReturnType<typeof orderedMigrations> = []
-  try {
-    if (state.migrationDirectoryError) throw new Error(state.migrationDirectoryError)
-    migrations = orderedMigrations(state.migrationNames, migrationTimestamp)
-  } catch (error) {
-    addSetupDiagnostic(diagnostics, 'config/database.ts', (error as Error).message)
-  }
+  if (state.migrationDirectoryError)
+    addSetupDiagnostic(
+      diagnostics,
+      state.migrationDirectoryErrorField ?? 'config/database.ts',
+      state.migrationDirectoryError
+    )
+  else
+    try {
+      migrations = orderedMigrations(state.migrationNames, migrationTimestamp)
+    } catch (error) {
+      addSetupDiagnostic(diagnostics, migrationDirectory, (error as Error).message)
+    }
   const migrationPaths = new Set<string>()
   for (const { name, filename } of migrations) {
     const template = templates.get(name)!

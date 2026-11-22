@@ -117,6 +117,75 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     )
   })
 
+  test('reports a configured migration path outside the application as one diagnostic', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['../shared/migrations'] } } } })`
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.deepEqual(
+      plan.diagnostics.filter(({ severity }) => severity === 'error'),
+      [
+        {
+          field: '../shared/migrations',
+          message: 'Setup path escapes the application: ../shared/migrations',
+          severity: 'error',
+        },
+      ]
+    )
+    assert.equal(plan.migrationState, 'unknown')
+  })
+
+  test('reports a non-directory migration path against that path', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await mkdir(join(root, 'database'))
+    await writeFile(join(root, 'database/migrations'), '')
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.deepEqual(
+      plan.diagnostics.filter(({ severity }) => severity === 'error').map(({ field }) => field),
+      ['database/migrations']
+    )
+  })
+
+  test('does not report migrations as missing when their directory could not be used', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await applySetup(root, await planSetup(choices, await inspectSetup(root), { apply: true }))
+    await writeFile(
+      join(root, 'config/database.ts'),
+      `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/tenant'] } } } })`
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    assert.equal(plan.migrationState, 'unknown')
+    assert.deepEqual(
+      plan.diagnostics.filter(({ severity }) => severity === 'error').map(({ field }) => field),
+      ['database/migrations']
+    )
+  })
+
+  test('files migration ordering conflicts under the migration directory', async ({ assert }) => {
+    const { root, choices } = await fixture()
+    await mkdir(join(root, 'database/migrations'), { recursive: true })
+    await writeFile(
+      join(
+        root,
+        'database/migrations/9999999999000_account_kit_add_scope_to_account_invitations.ts'
+      ),
+      '// existing successor'
+    )
+    const plan = await planSetup(choices, await inspectSetup(root))
+    const conflict = plan.diagnostics.find(({ message }) =>
+      message.startsWith('Migration order conflict')
+    )
+    assert.equal(conflict?.field, 'database/migrations')
+  })
+
   test('accepts a Lucid path inside the conventional directory without mistaking it for legacy history', async ({
     assert,
   }) => {

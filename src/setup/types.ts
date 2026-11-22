@@ -121,6 +121,8 @@ export interface SetupInspection {
   migrationNames: string[]
   migrationDirectory?: string
   migrationDirectoryError?: string
+  /** The diagnostic field for `migrationDirectoryError`: a directory or `config/database.ts`. */
+  migrationDirectoryErrorField?: string
   existingPrefix: string | null
   routePaths: string[]
   routeDefinitions: ExistingRoute[]
@@ -158,7 +160,8 @@ export interface SetupPlan {
   prerequisites: string[]
   endpoints: string[]
   endpointLocations: Array<{ name: string; method: string; path: string }>
-  migrationState: 'not-generated' | 'generated-application-unknown' | 'partially-generated'
+  migrationState:
+    'not-generated' | 'generated-application-unknown' | 'partially-generated' | 'unknown'
   readiness: {
     configurationGenerated: boolean
     configurationValid: boolean
