@@ -243,6 +243,54 @@ export default class extends BaseSchema {
     }
   }).timeout(commandTimeout)
 
+  test('refuses a selected path that lacks the admission migration another configured path holds', async ({
+    assert,
+  }) => {
+    const { root, run } = await fixture()
+    const previousExitCode = process.exitCode
+    const errors: string[] = []
+    const logError = console.error
+    try {
+      await rm(join(root, 'database/migrations'), { recursive: true })
+      await mkdir(join(root, 'database/landlord'))
+      await mkdir(join(root, 'database/tenant'))
+      await writeFile(
+        join(root, 'config/database.ts'),
+        "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/landlord', 'database/tenant'] } } } })"
+      )
+      // Other Account Kit migrations elsewhere do not block the admission migration.
+      await writeFile(
+        join(root, 'database/landlord/1700000000000_account_kit_create_account_invitations.ts'),
+        '// existing migration'
+      )
+      await run('--migration-directory=database/tenant')
+      assert.equal(process.exitCode, 0)
+      assert.lengthOf(await readdir(join(root, 'database/tenant')), 1)
+
+      // Wrong path: the admission migration exists in tenant, landlord selected.
+      await rm(join(root, 'config/admission.ts'))
+      process.exitCode = undefined
+      console.error = (...parts: unknown[]) => errors.push(parts.join(' '))
+      await run('--migration-directory=database/landlord')
+      console.error = logError
+      assert.equal(process.exitCode, 1)
+      assert.isTrue(
+        errors.some(
+          (line) =>
+            line.includes(
+              'The configured Lucid migration path database/tenant already holds Account Kit migrations that database/landlord lacks'
+            ) && line.includes('Nothing was written')
+        )
+      )
+      assert.lengthOf(await readdir(join(root, 'database/landlord')), 1)
+      await assert.rejects(() => readFile(join(root, 'config', 'admission.ts'), 'utf8'))
+    } finally {
+      console.error = logError
+      process.exitCode = previousExitCode
+      await rm(root, { recursive: true, force: true })
+    }
+  }).timeout(commandTimeout)
+
   test('does not duplicate an admission command loader written with double quotes', async ({
     assert,
   }) => {

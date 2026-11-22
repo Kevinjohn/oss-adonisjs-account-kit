@@ -162,10 +162,27 @@ async function normalizeMigrationDirectory(root: string, name: string) {
   return relative(root, path).split(sep).join('/')
 }
 
+/** A configured literal Lucid path and its normalised form, or the reason it is unusable. */
+interface ConfiguredPath {
+  path: string
+  normalized?: string
+  problem?: string
+}
+
+async function normalizeConfiguredPath(root: string, path: string): Promise<ConfiguredPath> {
+  try {
+    return { path, normalized: await normalizeMigrationDirectory(root, path) }
+  } catch (error) {
+    if (!(error instanceof MigrationDirectoryError)) throw error
+    return { path, problem: error.message }
+  }
+}
+
 /**
  * Chooses one of several configured Lucid paths: the one named by `--migration-directory`, or the
- * one that already holds every required migration. Setup never spreads new migrations across
- * paths, because timestamps cannot order files in different directories.
+ * one that already holds every required migration. A literal path setup cannot use is skipped
+ * while choosing. Setup never spreads new migrations across paths, because timestamps cannot
+ * order files in different directories.
  */
 async function selectConfiguredPath(
   root: string,
@@ -175,24 +192,68 @@ async function selectConfiguredPath(
 ): Promise<string | undefined> {
   const literal = configured.filter((path) => path !== undefined)
   const listed = literal.join(', ')
+  const paths: ConfiguredPath[] = []
+  for (const path of literal) paths.push(await normalizeConfiguredPath(root, path))
   if (explicit) {
     const selected = await normalizeMigrationDirectory(root, explicit)
-    for (const path of literal)
-      if ((await normalizeMigrationDirectory(root, path)) === selected) return path
+    const match = paths.find(({ path, normalized, problem }) => {
+      if (problem) throw new MigrationDirectoryError(problem, path)
+      return normalized === selected
+    })
     // A dynamic entry may be the named directory; it is used as given, as for one dynamic path.
-    if (literal.length < configured.length) return undefined
-    throw new MigrationDirectoryError(
-      `The explicit migration directory is not one of the configured Lucid migration paths: ${listed}`
-    )
+    if (!match && literal.length === configured.length)
+      throw new MigrationDirectoryError(
+        `The explicit migration directory is not one of the configured Lucid migration paths: ${listed}`
+      )
+    await refuseMigrationsInOtherPaths(root, selected, paths, required)
+    return match?.path
   }
-  for (const path of literal) {
-    const names = await readMigrationNames(root, await normalizeMigrationDirectory(root, path))
+  for (const { path, normalized, problem } of paths) {
+    if (normalized === undefined) throw new MigrationDirectoryError(problem!, path)
+    const names = await readMigrationNames(root, normalized)
     if (required.every((name) => names.some((file) => matchesAccountKitMigration(file, name))))
       return path
   }
   throw new MigrationDirectoryError(
     `The Lucid connection lists several migration paths (${listed}) and Account Kit generates into one of them; pass --migration-directory with the configured path to use`
   )
+}
+
+/**
+ * Lucid runs every configured path, so a required migration that another path already holds and
+ * the selected path lacks would be generated twice. A path that cannot be inspected might hold
+ * one, so it is refused too unless the selected path already holds every required migration.
+ */
+async function refuseMigrationsInOtherPaths(
+  root: string,
+  selected: string,
+  paths: ConfiguredPath[],
+  required: readonly string[]
+) {
+  const names = await readMigrationNames(root, selected)
+  const missing = required.filter(
+    (name) => !names.some((file) => matchesAccountKitMigration(file, name))
+  )
+  if (!missing.length) return
+  for (const { path, normalized, problem } of paths) {
+    if (normalized === selected) continue
+    let other: string[]
+    try {
+      if (normalized === undefined) throw new MigrationDirectoryError(problem!, path)
+      other = await readMigrationNames(root, normalized)
+    } catch (error) {
+      if (!(error instanceof MigrationDirectoryError)) throw error
+      throw new MigrationDirectoryError(
+        `Setup cannot inspect the configured Lucid migration path ${path} (${error.message}), so it cannot rule out Account Kit migrations there that ${selected} lacks; Lucid runs every configured path. Make ${path} inspectable or reconcile the migration paths manually`,
+        path
+      )
+    }
+    if (other.some((file) => missing.some((name) => matchesAccountKitMigration(file, name))))
+      throw new MigrationDirectoryError(
+        `The configured Lucid migration path ${path} already holds Account Kit migrations that ${selected} lacks, and Lucid runs every configured path; select the path that holds them with --migration-directory or reconcile the migration paths manually before generating another copy`,
+        path
+      )
+  }
 }
 
 function readMigrationNames(root: string, directory: string): Promise<string[]> {

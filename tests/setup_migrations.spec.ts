@@ -1,4 +1,4 @@
-import { mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
@@ -115,6 +115,52 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
       other.migrationDirectoryError,
       'The explicit migration directory is not one of the configured Lucid migration paths: database/migrations, ./database/tenant'
     )
+  })
+
+  test('refuses a selected path that lacks Account Kit migrations another configured path holds', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    const lucidPaths = async (paths: string) =>
+      writeFile(
+        join(root, 'config/database.ts'),
+        `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: [${paths}] } } } })`
+      )
+    const place = async (directory: string, names: readonly string[]) => {
+      await mkdir(join(root, directory), { recursive: true })
+      for (const [index, name] of names.entries())
+        await writeFile(
+          join(root, directory, `${1_700_000_000_000 + index}_account_kit_${name}.ts`),
+          '// existing migration'
+        )
+    }
+
+    // Split install: half the migrations in each path.
+    await lucidPaths("'database/migrations', 'database/tenant'")
+    await place('database/migrations', migrationNames.slice(0, 6))
+    await place('database/tenant', migrationNames.slice(6))
+    const split = await inspectSetup(root, { migrationDirectory: 'database/migrations' })
+    assert.equal(
+      split.migrationDirectoryError,
+      'The configured Lucid migration path database/tenant already holds Account Kit migrations that database/migrations lacks, and Lucid runs every configured path; select the path that holds them with --migration-directory or reconcile the migration paths manually before generating another copy'
+    )
+    assert.equal(split.migrationDirectoryErrorField, 'database/tenant')
+
+    // Wrong path: every migration in the other path.
+    await lucidPaths("'database/landlord', 'database/tenant'")
+    await rm(join(root, 'database'), { recursive: true })
+    await place('database/landlord', migrationNames)
+    await mkdir(join(root, 'database/tenant'))
+    const wrong = await inspectSetup(root, { migrationDirectory: 'database/tenant' })
+    assert.equal(wrong.migrationDirectoryErrorField, 'database/landlord')
+    assert.include(
+      wrong.migrationDirectoryError,
+      'database/landlord already holds Account Kit migrations that database/tenant lacks'
+    )
+    const right = await inspectSetup(root, { migrationDirectory: 'database/landlord' })
+    assert.isUndefined(right.migrationDirectoryError)
+    assert.equal(right.migrationDirectory, 'database/landlord')
   })
 
   test('reports a configured migration path outside the application as one diagnostic', async ({

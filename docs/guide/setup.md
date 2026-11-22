@@ -158,7 +158,10 @@ every Account Kit migration, setup uses it, so `--check` passes on an installed 
 generate, pass `--migration-directory` with one of the configured paths on every run, including
 `--check`; the new migrations go there, after its existing timestamped files. Review the order in
 which Lucid runs the other paths first: a path that runs earlier must not depend on Account Kit
-tables. Without the flag, setup reports an error, and configure and the admission installer stop
+tables. Because Lucid runs every configured path, the flag is refused when another configured path
+already holds an Account Kit migration that the named path lacks (for the admission installer, its
+migration), or when another configured path cannot be inspected and the named path does not
+already hold every Account Kit migration; the error names that path. Without the flag, setup reports an error, and configure and the admission installer stop
 before writing any file, including `config/account_kit.ts` and the provider registration.
 Setup also discovers migrations in subdirectories. When allocating new migrations, it uses the
 directory of the last timestamped migration so the new files run after existing ones.
