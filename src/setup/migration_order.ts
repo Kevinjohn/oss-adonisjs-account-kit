@@ -11,8 +11,6 @@ const prerequisites: Record<string, string> = {
   create_social_handoff_codes: 'create_social_identities',
 }
 
-const managedOperations = [...migrationNames, 'admission_create_account_admissions']
-
 function runsBefore(first: string, second: string) {
   // Lucid compares relative paths, optionally with natural sort. Require both orders to agree.
   return (
@@ -49,6 +47,7 @@ export function orderedMigrations(files: string[], now: number, operations = mig
   })
   // Host migrations can supply prerequisite tables even without a timestamp. Known Account Kit
   // files with custom names only impose ordering through the dependencies below.
+  const managedOperations = [...migrationNames, ...operations]
   const prior = files.filter(
     (file) =>
       hasTimestamp(file) ||
