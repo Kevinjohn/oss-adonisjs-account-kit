@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
-import { requireAccountAccessDecision } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_decision.js'
 import { inspectAccountAccess } from './account_access_inspection.js'
 import { requireAuthentication } from './authentication_config.js'
 import { buildAccountProjection } from './account_projection.js'
@@ -156,7 +156,7 @@ export function authenticationService(deps: ServiceDependencies) {
 
     /**
      * Looks up the account, checks its password and `canAccess`, then signs in through `guard`.
-     * Unknown accounts, passwordless accounts, wrong passwords and access-policy denials throw
+     * Unknown accounts, passwordless accounts, wrong passwords and access-decision denials throw
      * `InvalidCredentialsError`, count against failed-login limits and wait out `minRequestMs`.
      * Malformed input also throws `InvalidCredentialsError`, without counting or waiting.
      * Guard/configuration errors, throttling, infrastructure failures and credential-establishment

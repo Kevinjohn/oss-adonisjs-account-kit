@@ -434,7 +434,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
   'auth.magicLink.inspect': {
     summary: 'Check a magic sign-in link without using it',
     success: ok(
-      'The stored link exists and is unexpired, and the account email and active state currently match. Completion still checks the verifier and access policy.',
+      'The stored link exists and is unexpired, and the account email and active state currently match. Completion still checks the verifier and access decision.',
       closed({ valid: constant(true) })
     ),
   },

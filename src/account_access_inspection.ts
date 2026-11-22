@@ -1,5 +1,5 @@
 // Account access inspection: eligibility and credential revision of one account, read under its lock, with no credential for it.
-import { requireAccountAccessDecision } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_decision.js'
 import { transaction, userMetadata } from './db.js'
 import { readIsoTimestamp } from './timestamps.js'
 import { requireAuthentication } from './authentication_config.js'

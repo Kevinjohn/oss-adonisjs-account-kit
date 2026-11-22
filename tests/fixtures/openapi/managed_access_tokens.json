@@ -1144,7 +1144,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The stored link exists and is unexpired, and the account email and active state currently match. Completion still checks the verifier and access policy.",
+            "description": "The stored link exists and is unexpired, and the account email and active state currently match. Completion still checks the verifier and access decision.",
             "headers": {
               "Cache-Control": {
                 "$ref": "#/components/headers/NoStore"

@@ -18,7 +18,7 @@ export const PROTECTED_FIELDS: ReadonlySet<string> = new Set([
   'roles',
 ])
 
-/** Map untrusted account-creation fields through application policy before reaching an adapter. */
+/** Map untrusted account-creation fields through `registration.mapFields` before reaching an adapter. */
 export async function mapRegistrationFields(
   config: Pick<ResolvedConfig, 'registration'>,
   input: unknown

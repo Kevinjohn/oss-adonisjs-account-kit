@@ -73,7 +73,7 @@ export interface CurrentAccountContext {
 }
 
 /**
- * Input for caller-authorized inspection. Adapters and policy callbacks must be read-only through
+ * Input for caller-authorized inspection. Adapters and access callbacks must be read-only through
  * the supplied transaction and safe to retry; unavailable accounts share `AccountAccessDeniedError`.
  */
 export interface AccountAccessInput {

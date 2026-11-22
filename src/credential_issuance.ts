@@ -1,5 +1,5 @@
 // Issues a guard credential after a verified sign-in and re-checks the account under its lock.
-import { requireAccountAccessDecision } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_decision.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
 import {
