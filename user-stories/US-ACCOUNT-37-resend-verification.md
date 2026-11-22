@@ -12,13 +12,13 @@ As an account holder with an unconfirmed address, I want to request another veri
 ## Acceptance criteria
 
 - Required input is the account `userId`; an unknown id throws `InvalidInputError`. The result is `sent` or `already_verified`. A repeated request during the one-minute cooldown reuses the active link and does not send another message.
-- An already-confirmed account returns `already_verified` without spending the per-user throttle budget; an eligible unconfirmed account receives an activation provision after issuance commits.
+- An active account returns `already_verified` without spending the per-user throttle budget. An account is active when its pending email differs from its current email, including when the pending email is null. The historical verification timestamp does not determine activation. An eligible pending-only account receives an activation provision after issuance commits.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Account holder asks host to resend verification"] --> B{"Is account already verified?"}
+ A["Account holder asks host to resend verification"] --> B{"Is the account active?"}
  B -->|Yes| C["Show already verified outcome"]
  B -->|No| D{"Is resend inside one-minute cooldown?"}
  D -->|Yes| E["Acknowledge without another delivery"]
@@ -33,13 +33,13 @@ Scope: service issuance and notification; the host owns the authenticated userId
 flowchart TD
  A["emailVerification.send({ userId })"] --> B{"Account found?"}
  B -->|No| X["Throw InvalidInputError"]
- B -->|Yes| C{"Already verified?"}
+ B -->|Yes| C{"Does pending email differ from current email?"}
  C -->|Yes| D["Return already_verified before any throttle"]
  C -->|No| T["Consume verification:user throttle budget"]
  T --> R{"Recent activation issue?"}
  R -->|Yes| E["Return sent; reuse link state and send no message"]
  R -->|No| F["Transaction locks account and reloads it"]
- F --> F1{"Account missing or verified meanwhile?"}
+ F --> F1{"Account missing or pending email now differs from current email?"}
  F1 -->|Yes| D2["Return already_verified; nothing stored"]
  F1 -->|No| F2{"Recent activation issued meanwhile?"}
  F2 -->|Yes| E2["Return sent; store and send nothing"]

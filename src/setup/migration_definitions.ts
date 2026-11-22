@@ -21,6 +21,10 @@ export function accountKitMigrationSuffix(name: string): string {
   return `_account_kit_${name}.ts`
 }
 
+export function matchesAccountKitMigration(file: string, operation: string): boolean {
+  return file.replace(/\.(?:[cm]?js|ts)$/, '.ts').endsWith(accountKitMigrationSuffix(operation))
+}
+
 const userIdTypes = ['integer', 'string', 'uuid'] as const
 export type UserIdType = (typeof userIdTypes)[number]
 

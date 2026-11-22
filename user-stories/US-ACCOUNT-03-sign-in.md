@@ -19,7 +19,10 @@ As an existing account holder, I want to sign in with email and password so that
 
 ```mermaid
 flowchart TD
- A["Person submits email and password"] --> B{"Are credentials, account state and access policy accepted?"}
+ A["Person submits email and password"] --> M{"Does the host supply text inputs and a nonempty client key?"}
+ M -->|No| N["Return generic login refusal before reserving attempts"]
+ N --> A
+ M -->|Yes| B{"Are credentials and access policy accepted?"}
  B -->|No| C["Return generic login refusal; apply failed-attempt budgets"]
  C --> A
  B -->|Yes| D["Issue configured session or token and show signed-in state"]
@@ -31,7 +34,9 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["authentication.login"] --> B["Reserve client and identity attempt budgets"]
+ A["authentication.login"] --> M{"Email and password are strings and client key is a nonempty string?"}
+ M -->|No| N["Throw InvalidCredentialsError before reserving attempts"]
+ M -->|Yes| B["Reserve client and identity attempt budgets"]
  B --> C["Transaction loads account, checks password and canAccess; activation is a separate host policy"]
  C --> D{"Login checks pass?"}
  D -->|No| E["Record failed attempt and return generic invalid-credentials error"]

@@ -236,13 +236,13 @@ opaque and checked; a forged one is `InvalidInputError`.
 
 ## Commands
 
-| Command                                                          | Does                                                                                                                                            |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `account-kit:admission:install [--users-table] [--user-id-type]` | Writes the migration and `config/admission.ts` (never overwriting), registers the provider and the command loader, and prints the manual steps. |
-| `account-kit:admission:approve <email>`                          | Operator approval, through the same transitions. For the first administrator and for recovery.                                                  |
-| `account-kit:admission:revoke <email>`                           | Operator revocation.                                                                                                                            |
-| `account-kit:admission:grant-invitation <email> [--role]`        | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
-| `account-kit:admission:bootstrap <email> --role <role>`          | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
+| Command                                                                                  | Does                                                                                                                                            |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `account-kit:admission:install [--users-table] [--user-id-type] [--migration-directory]` | Writes the migration and `config/admission.ts` (never overwriting), registers the provider and the command loader, and prints the manual steps. |
+| `account-kit:admission:approve <email>`                                                  | Operator approval, through the same transitions. For the first administrator and for recovery.                                                  |
+| `account-kit:admission:revoke <email>`                                                   | Operator revocation.                                                                                                                            |
+| `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
+| `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
 
 The runtime commands write one JSON line to stdout and report failures on stderr with the error
 code and exit code 1, like `account-kit:invite`.
@@ -336,12 +336,15 @@ authorization policy.
 `account-kit:admission:install` adds:
 
 - `config/admission.ts`, from the stub, when it does not exist;
-- `database/migrations/<timestamp>_account_kit_admission_create_account_admissions.ts`, when no
-  migration with that suffix exists;
+- `<timestamp>_account_kit_admission_create_account_admissions.ts` in the primary Lucid
+  connection's migration directory, when no admission migration already exists;
 - the provider `@kevinjohn/adonisjs-account-kit/admission/provider` and the command loader
   `@kevinjohn/adonisjs-account-kit/admission/commands` in `adonisrc.ts`.
 
-It changes no other file.
+The installer follows the [setup migration path rules](setup.md), including the application
+default when the primary connection has no paths. It allocates the new migration after existing
+timestamped migrations, including the application's users-table migration. If the configured path
+is dynamic, pass `--migration-directory` with the single application-relative directory Lucid uses.
 
 ## Manual steps
 

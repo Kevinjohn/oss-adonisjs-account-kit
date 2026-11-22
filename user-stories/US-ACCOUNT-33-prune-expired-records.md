@@ -4,7 +4,7 @@ As an application operator, I want to remove eligible expired rows in bounded ba
 
 **Status:** Operator
 **Access:** Explicit scheduled invocation; dry-run is available; batch limits come from the run flags or `prune` input (both default to 100, range 1–1000), not from configuration.
-**Entry:** Run `account-kit:prune [--dry-run] [--batch-size] [--max-batches]`, or call the public `AccountKit.maintenance.prune({ batchSize?, maxBatches?, dryRun? })` from a scheduled host job; the command and the service both call `pruneExpired`.
+**Entry:** Run `account-kit:prune [--dry-run] [--batch-size] [--max-batches]`, or call the public `AccountKit.maintenance.prune({ batchSize?, maxBatches?, dryRun? })` from a scheduled host job; the command uses `pruneExpiredWithScanStatus`, while the service uses the counts-only `pruneExpired` wrapper around the same scan.
 **Documentation:** [operations.md](../docs/guide/operations.md)
 **Source:** [`commands/prune.ts`](../commands/prune.ts), [`src/maintenance.ts`](../src/maintenance.ts)
 **Coverage:** [`tests/maintenance.spec.ts`](../tests/maintenance.spec.ts)
@@ -33,16 +33,19 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["account-kit:prune or maintenance.prune"] --> B["Capture expiry cutoff and validate batchSize/maxBatches"]
+ A["account-kit:prune"] --> S["pruneExpiredWithScanStatus"]
+ M["maintenance.prune"] --> W["pruneExpired wrapper"]
+ W --> S
+ S --> B["Capture expiry cutoff and validate batchSize/maxBatches"]
  B --> C["Select bounded row IDs and recheck each expiry at action time"]
  C --> D{"dryRun?"}
  D -->|Yes| E["Count candidates; perform no deletes"]
  D -->|No| F["Delete rows still expired and count actual removals"]
- E --> G["Return per-table counts"]
+ E --> G["Return per-table counts and scan status"]
  F --> G
  G --> H{"Called from account-kit:prune?"}
  H -->|Yes| I["Command prints counts with partial or not-scanned indicators"]
- H -->|No| J["Host job receives the counts"]
+ H -->|No| J["pruneExpired returns only the counts"]
 ```
 
 **Code references:** [implementation](../commands/prune.ts), [`pruneExpired`](../src/maintenance.ts), [`maintenance` service](../src/account_kit.ts), [`tests/maintenance.spec.ts`](../tests/maintenance.spec.ts)

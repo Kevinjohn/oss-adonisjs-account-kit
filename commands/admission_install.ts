@@ -1,16 +1,12 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
+import { relative, resolve, sep } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import {
-  accountKitMigrationSuffix,
-  migrationSchema,
-  type UserIdType,
-} from '../src/setup/migration_definitions.js'
+import { migrationSchema, type UserIdType } from '../src/setup/migration_definitions.js'
+import { inspectMigrationDirectory } from '../src/setup/migration_paths.js'
+import { orderedMigrations } from '../src/setup/migration_order.js'
+import { readRegularFile } from '../src/setup/safe_path.js'
 import { hasRegisteredCommand } from '../src/setup/commands_inspection.js'
 import { stubsRoot } from '../stubs/main.js'
-
-export const admissionMigrationSuffix = accountKitMigrationSuffix(
-  'admission_create_account_admissions'
-)
 
 /**
  * Adds the optional admission module: the `account_admissions` migration and `config/admission.ts`
@@ -27,13 +23,33 @@ export default class InstallAdmission extends BaseCommand {
   @flags.string({ description: 'User id column type: integer, string or uuid (default integer)' })
   declare userIdType?: string
 
+  @flags.string({
+    description: 'Application-relative directory used by Lucid when the path is dynamic',
+  })
+  declare migrationDirectory?: string
+
   async run(): Promise<void> {
     let schema: ReturnType<typeof migrationSchema>
+    let migrationPath: string
+    let existing: boolean
     try {
       schema = migrationSchema(
         this.usersTable ?? 'users',
         (this.userIdType ?? 'integer') as UserIdType
       )
+      const root = resolve(this.app.makePath(''))
+      const directory = await inspectMigrationDirectory(
+        root,
+        (await readRegularFile(root, relative(root, this.app.configPath('database.ts')))) ?? '',
+        this.migrationDirectory,
+        process.env,
+        relative(root, this.app.migrationsPath()).split(sep).join('/')
+      )
+      const [migration] = orderedMigrations(directory.names, Date.now(), [
+        'admission_create_account_admissions',
+      ])
+      migrationPath = `${directory.path}/${migration.filename}`
+      existing = migration.existing
     } catch (error) {
       this.exitCode = 1
       this.logger.logError((error as Error).message)
@@ -43,22 +59,10 @@ export default class InstallAdmission extends BaseCommand {
     codemods.overwriteExisting = false
     await codemods.makeUsingStub(stubsRoot, 'config/admission.stub', {})
 
-    let migrations: string[] = []
-    try {
-      migrations = await readdir(this.app.makePath('database/migrations'))
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    }
-    if (migrations.some((name) => name.endsWith(admissionMigrationSuffix)))
-      this.logger.info(`Skipped database/migrations/*${admissionMigrationSuffix}`)
+    if (existing) this.logger.info(`Skipped ${migrationPath}`)
     else
       await codemods.makeUsingStub(stubsRoot, 'migrations/create_account_admissions.stub', {
-        migration: {
-          ...schema,
-          destination: this.app.makePath(
-            `database/migrations/${Date.now()}${admissionMigrationSuffix}`
-          ),
-        },
+        migration: { ...schema, destination: this.app.makePath(migrationPath) },
       })
 
     const rcContents = await readFile(this.app.makePath('adonisrc.ts'), 'utf8')

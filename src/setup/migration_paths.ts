@@ -1,5 +1,5 @@
 import { lstat, readdir } from 'node:fs/promises'
-import { relative, sep } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { inspectDatabaseConnection } from './database_inspection.js'
 import {
   directObject,
@@ -73,7 +73,7 @@ export async function inspectMigrationDirectory(
     if (!migrations) directory = fallbackDirectory
     else {
       const settings = directObject(source, migrations)
-      if (settings) {
+      if (settings && !hasUnsafeObjectEntries(source, settings)) {
         const paths = directProperty(source, settings, 'paths')?.initializer
         if (!paths) directory = fallbackDirectory
         else if (source.ts.isArrayLiteralExpression(paths)) {
@@ -111,7 +111,13 @@ export async function inspectMigrationDirectory(
   const names = await readMigrationNames(root, path)
   if (path !== defaultMigrationDirectory) {
     const legacy = await readMigrationNames(root, defaultMigrationDirectory)
-    if (legacy.some((name) => name.includes('_account_kit_')))
+    if (
+      legacy.some(
+        (name) =>
+          name.includes('_account_kit_') &&
+          !`${defaultMigrationDirectory}/${name}`.startsWith(`${path}/`)
+      )
+    )
       throw new MigrationDirectoryError(
         'Account Kit migrations already exist in database/migrations; reconcile the migration paths and applied history manually before generating another copy'
       )
@@ -121,12 +127,19 @@ export async function inspectMigrationDirectory(
 
 async function readMigrationNames(root: string, directory: string): Promise<string[]> {
   const path = await safeSetupPath(root, directory)
-  try {
-    const stat = await lstat(path)
-    if (!stat.isDirectory()) throw new Error(`Setup refuses non-directory or symlink ${path}`)
-    return await readdir(path)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    return []
-  }
+  const stat = await lstat(path).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT') throw error
+    return null
+  })
+  if (!stat) return []
+  if (!stat.isDirectory()) throw new Error(`Setup refuses non-directory or symlink ${path}`)
+  // Lucid walks regular script files recursively and skips hidden entries and symlinks.
+  const files = await readdir(path, { recursive: true, withFileTypes: true })
+  return files
+    .filter(
+      (entry) =>
+        entry.isFile() && /\.(?:[cm]?js|json|ts)$/.test(entry.name) && !entry.name.endsWith('.d.ts')
+    )
+    .map((entry) => relative(path, join(entry.parentPath, entry.name)).split(sep).join('/'))
+    .filter((name) => !name.split('/').some((segment) => segment.startsWith('.')))
 }
