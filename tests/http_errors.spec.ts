@@ -3,6 +3,7 @@ import { test } from '@japa/runner'
 import * as errors from '../src/errors.js'
 import {
   AccountKitError,
+  AdapterContractError,
   AuthorizationError,
   DeliveryError,
   InvitationManagementDeniedError,
@@ -70,6 +71,16 @@ test.group('account HTTP error mapping', () => {
       errors: [{ code: operationFailed, message: 'Account operation failed.', committed: true }],
     })
     assert.notInclude(JSON.stringify(response), 'listener failed')
+  })
+
+  test('masks an adapter contract violation as the generic operation failure', ({ assert }) => {
+    const error = new AdapterContractError('account_kit: canAccess must resolve to a boolean')
+    assert.equal(error.code, 'E_ACCOUNT_KIT_ADAPTER_CONTRACT')
+    const response = managedErrorResponse(error)!
+    assert.equal(response.status, 500)
+    assert.deepEqual(response.body, {
+      errors: [{ code: operationFailed, message: 'Account operation failed.' }],
+    })
   })
 
   test('returns null for errors outside the package contract', ({ assert }) => {

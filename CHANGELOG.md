@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- `AdapterContractError` now extends `AccountKitError`, so managed routes and `accountErrorResponse` answer an invalid `canAccess` result or token guard value with the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 instead of leaving it to the application's exception handler. Its class name and `E_ACCOUNT_KIT_ADAPTER_CONTRACT` code are unchanged.
+
 ### Fixed
 
 - Accept `--migration-directory` naming one of several configured Lucid migration paths, and pass guided setup checks when one configured path already holds every Account Kit migration. Configure and the admission installer now say that nothing was written when they stop on a migration-destination problem.

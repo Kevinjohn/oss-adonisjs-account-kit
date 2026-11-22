@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { InvalidCredentialsError, InvalidTokenError } from '../src/errors.js'
+import { AdapterContractError, InvalidCredentialsError, InvalidTokenError } from '../src/errors.js'
 import { clientChallengeFor } from '../src/magic_link.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -435,7 +435,7 @@ test.group('magic-link policy contract routing', (group) => {
             .complete({ token, verifier }, guard)
             .catch((caught: unknown) => caught)
         }
-        assert.instanceOf(error, Error)
+        assert.instanceOf(error, AdapterContractError)
         assert.notInstanceOf(error, InvalidTokenError)
         assert.notInstanceOf(error, InvalidCredentialsError)
         assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')

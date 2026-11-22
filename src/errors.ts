@@ -46,13 +46,15 @@ export class InvalidConfigurationError extends RuntimeException {
   }
 }
 
-/** An application's adapter returned a value outside its documented contract. */
-export class AdapterContractError extends RuntimeException {
+/**
+ * The `authentication.canAccess` callback resolved to a value other than a boolean, or the
+ * application's token guard returned no token, token identifier or bearer value to a managed
+ * route. Managed routes and `accountErrorResponse` answer with the generic
+ * `E_ACCOUNT_KIT_OPERATION_FAILED` 500; the message and cause stay on the error for logs.
+ */
+export class AdapterContractError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_ADAPTER_CONTRACT'
   static status = 500
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, { ...options, code: new.target.code, status: new.target.status })
-  }
 }
 /**
  * Input failed a package rule, for example a password outside the policy or a malformed email.

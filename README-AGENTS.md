@@ -100,7 +100,8 @@ Commands:
 | `account-kit:openapi`           | Writes the managed routes' OpenAPI document                |
 | `account-kit:retirement-impact` | Counts accounts that would lose their only sign-in method  |
 
-Every error extends `AccountKitError` and has a stable `code` and HTTP `status`. See the
+Every account operation and request error extends `AccountKitError` and has a stable `code` and
+HTTP `status`; `InvalidConfigurationError`, raised for invalid configuration, is separate. See the
 [error reference](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/errors.md)
 for the full table and fixes. Common errors include `InvalidTokenError` (expired, used or unknown
 link), `ThrottledError` (429, `retryAfterSeconds`), `InvalidCredentialsError`,

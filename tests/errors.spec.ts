@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import {
   AccountAccessDeniedError,
   AccountKitError,
+  AdapterContractError,
   AuthorizationError,
   DeliveryError,
   EmailAlreadyRegisteredError,
@@ -42,6 +43,7 @@ test.group('account kit errors', () => {
       InvitationPendingError,
       DeliveryError,
       PostCommitError,
+      AdapterContractError,
     ]
     assert.isTrue(new AccountKitError('base').code === 'E_ACCOUNT_KIT')
     for (const ErrorType of errorTypes) {

@@ -6,7 +6,12 @@ import { accessTokenDefaults } from './helpers/access_tokens.js'
 import { insertUser, makeService, tokenFrom, unwrapId } from './helpers/fakes.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
-import { InvalidCredentialsError, InvalidSessionError, PostCommitError } from '../src/errors.js'
+import {
+  AdapterContractError,
+  InvalidCredentialsError,
+  InvalidSessionError,
+  PostCommitError,
+} from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 
 const sessionGuard = (events: string[] = []) => ({
@@ -642,7 +647,7 @@ test.group('authentication policy result contract', (group) => {
               boundary === 'current' ? InvalidSessionError : InvalidCredentialsError
             )
           } else {
-            assert.instanceOf(result.error, Error)
+            assert.instanceOf(result.error, AdapterContractError)
             assert.notInstanceOf(result.error, InvalidCredentialsError)
             assert.notInstanceOf(result.error, InvalidSessionError)
             assert.equal(
@@ -713,6 +718,7 @@ test.group('authentication policy result contract', (group) => {
       assert.instanceOf(error, AggregateError)
       const causes = (error as AggregateError).errors
       assert.lengthOf(causes, 2)
+      assert.instanceOf(causes[0], AdapterContractError)
       assert.equal(causes[0].message, 'account_kit: canAccess must resolve to a boolean')
       assert.strictEqual(causes[1], cleanupFault)
       assert.isNotNull(await kit.db.from('auth_access_tokens').where('id', issuedId!).first())
