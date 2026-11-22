@@ -65,11 +65,18 @@ authentication, mail, social providers and policy.
 and it works once.
 
 **Provision.** A notification that delivers a proof link: `passwordResetProvision`,
-`accountActivationProvision`, `invitationProvision` and `emailChangeProvision`. Other
-notifications are notices, such as `passwordChanged`.
+`accountActivationProvision`, `invitationProvision`, `emailChangeProvision` and
+`magicLinkProvision`. Other notifications are notices, such as `passwordChanged`.
 
-**Recent proof.** Short-lived evidence that a user just re-entered their password, required before
-sensitive social actions on accounts without a password.
+**Recent proof.** A 10-minute, single-use value bound to one sensitive purpose (`social_link`,
+`social_unlink`, `password_change`, `email_change`, `account_export` or `account_delete`), showing
+that the signed-in user just authenticated again. An existing session never counts. A user with a
+password gets it by re-entering that password through `socialAuthentication.provePassword`. Fresh
+provider authentication (`begin({ intent: 'reauth' })` then `callback`) can mint it only with a
+custom adapter that implements `verifyFreshAuthentication`; the stock Google and GitHub adapters
+cannot. A social-only user on the stock adapters first sets a password through password reset,
+when `passwordReset` is enabled, then re-enters it. See
+[provider-only recent proof](../guide/social-authentication.md#provider-only-recent-proof).
 
 **Registration availability.** Who may create an account: `registration.availability` is `open`,
 `closed` or `application` (your code decides). Compare _admission_.

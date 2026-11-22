@@ -85,13 +85,15 @@ export function planSummary({
     prerequisites,
     endpoints: [...new Set(endpoints)],
     endpointLocations,
-    migrationState: !state.migrationNames.some((file) => file.includes('_account_kit_'))
-      ? 'not-generated'
-      : migrationNames.every((name) =>
-            state.migrationNames.some((file) => matchesAccountKitMigration(file, name))
-          )
-        ? 'generated-application-unknown'
-        : 'partially-generated',
+    migrationState: state.migrationDirectoryError
+      ? 'unknown'
+      : !state.migrationNames.some((file) => file.includes('_account_kit_'))
+        ? 'not-generated'
+        : migrationNames.every((name) =>
+              state.migrationNames.some((file) => matchesAccountKitMigration(file, name))
+            )
+          ? 'generated-application-unknown'
+          : 'partially-generated',
     readiness: {
       configurationGenerated: changes.every((change) => change.action === 'unchanged'),
       configurationValid: !hasError,

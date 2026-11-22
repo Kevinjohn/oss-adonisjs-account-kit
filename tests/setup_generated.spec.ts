@@ -115,7 +115,7 @@ test.group('setup generated sources', (group) => {
     )
     plan = await planSetup(choices, await inspectSetup(root))
     assert.isTrue(
-      plan.diagnostics.some(({ message }) => message.includes('one migration directory'))
+      plan.diagnostics.some(({ message }) => message.includes('several migration paths'))
     )
     assert.isFalse(plan.changes.some(({ path }) => path.includes('_account_kit_')))
   })

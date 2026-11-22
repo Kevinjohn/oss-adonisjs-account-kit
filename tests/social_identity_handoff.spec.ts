@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { SocialTransactionError } from '../src/errors.js'
+import { AdapterContractError, SocialTransactionError } from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
@@ -373,7 +373,7 @@ test.group('social policy contract routing', (group) => {
                 guard,
               })
         ).catch((caught: unknown) => caught)
-        assert.instanceOf(error, Error)
+        assert.instanceOf(error, AdapterContractError)
         assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
         assert.equal(established, boundary === 'issuance')
         assert.equal(terminated, boundary === 'issuance')

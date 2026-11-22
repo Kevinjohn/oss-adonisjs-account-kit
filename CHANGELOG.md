@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Changed
+
+- `AdapterContractError` now extends `AccountKitError`, so an invalid `canAccess` result or token guard value is answered with the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 by the managed routes, `accountErrorResponse` and, on the application's own routes, `AccountKitError.handle`. Its class name and `E_ACCOUNT_KIT_ADAPTER_CONTRACT` code are unchanged.
+- Managed routes log every masked 5xx error, other than an already-reported committed failure, through the request logger with the error and the route name, so the operator can find the cause the client does not see.
+
+### Fixed
+
+- Accept `--migration-directory` naming one of several configured Lucid migration paths, and pass guided setup checks when one configured path already holds every Account Kit migration. Configure and the admission installer now say that nothing was written when they stop on a migration-destination problem.
+- Refuse `--migration-directory` when another configured Lucid path already holds an Account Kit migration (for the admission installer, its migration) that the named path lacks, or cannot be inspected, instead of planning a second copy that `migration:run` would fail on. The error names that path.
+- Skip a configured Lucid migration path that setup cannot use, such as one outside the application, when choosing among several paths, so its position in `paths` no longer blocks selecting a valid path.
+- Report a Lucid migration path outside the application, or a migration directory that is not a plain directory, as a guided setup diagnostic instead of an exception. Such diagnostics and migration ordering conflicts now name the migration directory (or `adonisrc.ts`) rather than `config/database.ts`, and the report's `migrationState` is `unknown` instead of `not-generated` when the directory could not be used.
+- Reject an unsupported or repeated name in `account-kit:retirement-impact --providers` with a flag-specific message, exit code 1 and the `invalid_providers` failure, instead of reporting the inventory as unavailable.
+- Describe password-reset follow-up failures accurately in the README and tutorial: a `DeliveryError` is an email failure, a `PostCommitError` a failed observer or listener. Explain in the glossary how recent proof is obtained, and list `magicLinkProvision` among proof-link notifications.
+
 ## 0.5.1 - 2026-11-22
 
 - Preserve the identity and exact filesystem paths of existing nested migrations when rerunning guided setup or configure.

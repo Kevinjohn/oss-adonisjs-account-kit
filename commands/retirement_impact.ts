@@ -1,15 +1,33 @@
 import { BaseCommand, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
+import { isSocialProviderName, socialProviderNames } from '../src/social_providers.js'
 import type { SocialProviderName } from '../src/types.js'
 
-/** Parse `--providers`: absent keeps every configured provider; `none` or an empty list retires them all. */
+class InvalidProvidersFlagError extends Error {}
+
+/**
+ * Parses `--providers`: absent keeps every configured provider; `none` or an empty list retires
+ * them all. Throws an {@link InvalidProvidersFlagError} for an unsupported or repeated name.
+ */
 function parseProviders(value?: string): SocialProviderName[] | undefined {
   if (value === undefined) return undefined
   if (value.trim() === 'none') return []
-  return value
+  const names = value
     .split(',')
     .map((name) => name.trim())
-    .filter(Boolean) as SocialProviderName[]
+    .filter(Boolean)
+  const usage = `use a comma-separated list of ${socialProviderNames.join(', ')}, or none`
+  for (const [index, name] of names.entries()) {
+    if (!isSocialProviderName(name))
+      throw new InvalidProvidersFlagError(
+        `Invalid --providers: ${name} is not a supported provider; ${usage}`
+      )
+    if (names.indexOf(name) !== index)
+      throw new InvalidProvidersFlagError(
+        `Invalid --providers: ${name} is listed more than once; ${usage}`
+      )
+  }
+  return names as SocialProviderName[]
 }
 
 /** Booted, read-only inventory for proposed login-method retirement. */
@@ -33,14 +51,25 @@ export default class RetirementImpact extends BaseCommand {
   declare providers: string
 
   impact: Awaited<ReturnType<AccountKit['authentication']['retirementImpact']>> | null = null
-  failure: 'inventory_unavailable' | null = null
+  /** `invalid_providers` for a rejected `--providers` value; `inventory_unavailable` otherwise. */
+  failure: 'inventory_unavailable' | 'invalid_providers' | null = null
 
   async run(): Promise<void> {
+    let providers: SocialProviderName[] | undefined
+    try {
+      providers = parseProviders(this.providers)
+    } catch (error) {
+      if (!(error instanceof InvalidProvidersFlagError)) throw error
+      this.failure = 'invalid_providers'
+      this.exitCode = 1
+      if (!this.quiet) this.logger.error(error.message)
+      return
+    }
     try {
       const kit = await this.app.container.make(AccountKit)
       this.impact = await kit.authentication.retirementImpact({
         passwordLogin: this.keepPasswordLogin === true,
-        providers: parseProviders(this.providers),
+        providers,
         ...(this.quiet && this.onlyWhenRetiring ? { onlyWhenRetiring: true } : {}),
       })
       if (!this.quiet) this.logger.log(JSON.stringify(this.impact))

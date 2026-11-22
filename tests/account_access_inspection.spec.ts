@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
 import {
   AccountAccessDeniedError,
+  AdapterContractError,
   CapabilityDisabledError,
   InvalidInputError,
 } from '../src/errors.js'
@@ -196,6 +197,7 @@ test.group('account access inspection', (group) => {
         }).authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
       )
       assert.notInstanceOf(error, AccountAccessDeniedError)
+      assert.instanceOf(error, AdapterContractError)
       assert.equal(error.message, 'account_kit: canAccess must resolve to a boolean')
     }
   })

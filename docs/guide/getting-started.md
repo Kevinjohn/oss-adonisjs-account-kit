@@ -185,10 +185,16 @@ export default class PasswordResetsController {
     try {
       await kit.passwordReset.request({ email, clientKey: ctx.request.ip() })
     } catch (error) {
-      // Delivery happens after commit. Keep one response for known and unknown accounts.
+      // Both errors follow a committed reset. Keep one response for known and unknown accounts,
+      // and log no address or link.
       if (!(error instanceof DeliveryError || error instanceof PostCommitError))
         return knownError(ctx, error)
-      ctx.logger.error({ code: error.code }, 'password reset email failed')
+      ctx.logger.error(
+        { code: error.code },
+        error instanceof DeliveryError
+          ? 'reset email failed'
+          : 'reset follow-up failed; the email may have been sent'
+      )
     }
     return ctx.response.accepted(acknowledgement)
   }
@@ -204,13 +210,18 @@ export default class PasswordResetsController {
     } catch (error) {
       if (!(error instanceof DeliveryError || error instanceof PostCommitError))
         return knownError(ctx, error)
-      // The password and token revocation already committed.
-      ctx.logger.error({ code: error.code }, 'password reset notice failed')
+      // The password and token revocation already committed; the notice may have been sent.
+      ctx.logger.error({ code: error.code }, 'password reset follow-up failed')
     }
     return ctx.response.ok({ message: 'Password reset.' })
   }
 }
 ```
+
+Both errors arrive after the change committed. A `DeliveryError` means only the email failed. A
+`PostCommitError` means a lifecycle observer or commit listener failed: the email may have been
+sent, and when it failed too, its error is part of the `cause`. Log the `code` and keep the cause in
+private reporting; never log the address or the link.
 
 Register the routes:
 

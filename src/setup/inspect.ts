@@ -65,6 +65,7 @@ export async function inspectSetup(
   let migrationNames: string[] = []
   let migrationDirectory: string | undefined
   let migrationDirectoryError: string | undefined
+  let migrationDirectoryErrorField: string | undefined
   try {
     const directory = await inspectMigrationDirectory(
       root,
@@ -78,6 +79,7 @@ export async function inspectSetup(
   } catch (error) {
     if (!(error instanceof MigrationDirectoryError)) throw error
     migrationDirectoryError = error.message
+    migrationDirectoryErrorField = error.field
   }
   for (const name of migrationNames.filter((filename) => filename.includes('_account_kit_'))) {
     const relative = `${migrationDirectory}/${name}`
@@ -114,6 +116,7 @@ export async function inspectSetup(
     migrationNames,
     migrationDirectory,
     migrationDirectoryError,
+    migrationDirectoryErrorField,
     existingPrefix,
     routePaths,
     routeDefinitions,

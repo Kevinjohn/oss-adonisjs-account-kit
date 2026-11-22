@@ -318,6 +318,181 @@ test('configures future-dated prerequisites in the selected custom migration dir
   }
 }).timeout(30_000)
 
+test('configure writes into the configured path named by --migration-directory and otherwise writes nothing', async ({
+  assert,
+}) => {
+  const {
+    root,
+    configDirectory,
+    configPath,
+    existingMigrationPath,
+    migrationsDirectory,
+    ignitorFor,
+  } = await createConfigureProject()
+  const exitCode = process.exitCode
+  const errors: string[] = []
+  const logError = console.error
+  try {
+    await rm(existingMigrationPath)
+    const tenant = join(root, 'database/tenant')
+    await mkdir(tenant)
+    await writeFile(
+      join(configDirectory, 'database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/migrations', 'database/tenant'] } } } })"
+    )
+    console.error = (...parts: unknown[]) => errors.push(parts.join(' '))
+    await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+    console.error = logError
+    assert.equal(process.exitCode, 1)
+    assert.isTrue(
+      errors.some(
+        (line) =>
+          line.includes('pass --migration-directory with the configured path to use') &&
+          line.includes('Nothing was written')
+      )
+    )
+    await assert.rejects(() => readFile(configPath), /ENOENT/)
+    assert.notInclude(await readFile(join(root, 'adonisrc.ts'), 'utf8'), 'account_kit_provider')
+
+    process.exitCode = undefined
+    await ignitorFor(root)
+      .ace()
+      .handle([
+        'configure',
+        '@kevinjohn/adonisjs-account-kit',
+        '--force',
+        '--migration-directory=database/tenant',
+      ])
+    assert.equal(process.exitCode, 0)
+    assert.lengthOf(await readdir(tenant), migrationNames.length)
+    assert.deepEqual(await readdir(migrationsDirectory), [])
+    assert.include(await readFile(join(root, 'adonisrc.ts'), 'utf8'), 'account_kit_provider')
+  } finally {
+    console.error = logError
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
+test('configure writes into the --migration-directory named for a dynamic Lucid path', async ({
+  assert,
+}) => {
+  const { root, configDirectory, existingMigrationPath, migrationsDirectory, ignitorFor } =
+    await createConfigureProject()
+  const exitCode = process.exitCode
+  try {
+    await rm(existingMigrationPath)
+    await writeFile(
+      join(configDirectory, 'database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nconst paths = ['database/custom']\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths } } } })"
+    )
+    process.exitCode = undefined
+    await ignitorFor(root)
+      .ace()
+      .handle([
+        'configure',
+        '@kevinjohn/adonisjs-account-kit',
+        '--force',
+        '--migration-directory=database/custom',
+      ])
+    assert.equal(process.exitCode, 0)
+    assert.lengthOf(await readdir(join(root, 'database/custom')), migrationNames.length)
+    assert.deepEqual(await readdir(migrationsDirectory), [])
+  } finally {
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
+test('configure refuses a selected path that lacks Account Kit migrations another configured path holds', async ({
+  assert,
+}) => {
+  const {
+    root,
+    configDirectory,
+    configPath,
+    existingMigrationPath,
+    migrationsDirectory,
+    ignitorFor,
+  } = await createConfigureProject()
+  const exitCode = process.exitCode
+  const errors: string[] = []
+  const logError = console.error
+  const lucidPaths = (paths: string) =>
+    writeFile(
+      join(configDirectory, 'database.ts'),
+      `import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: [${paths}] } } } })`
+    )
+  const place = async (directory: string, names: readonly string[]) => {
+    await mkdir(directory, { recursive: true })
+    for (const [index, name] of names.entries())
+      await writeFile(
+        join(directory, `${1_700_000_000_000 + index}_account_kit_${name}.ts`),
+        '// existing migration\n'
+      )
+  }
+  const configure = async (directory: string) => {
+    process.exitCode = undefined
+    errors.length = 0
+    console.error = (...parts: unknown[]) => errors.push(parts.join(' '))
+    try {
+      await ignitorFor(root)
+        .ace()
+        .handle([
+          'configure',
+          '@kevinjohn/adonisjs-account-kit',
+          '--force',
+          `--migration-directory=${directory}`,
+        ])
+    } finally {
+      console.error = logError
+    }
+  }
+  try {
+    // Split install: the existing password-reset migration here, five more in the tenant path.
+    await rm(existingMigrationPath)
+    await place(migrationsDirectory, migrationNames.slice(0, 6))
+    const tenant = join(root, 'database/tenant')
+    await place(tenant, migrationNames.slice(6))
+    await lucidPaths("'database/migrations', 'database/tenant'")
+    await configure('database/migrations')
+    assert.equal(process.exitCode, 1)
+    assert.isTrue(
+      errors.some(
+        (line) =>
+          line.includes(
+            'The configured Lucid migration path database/tenant already holds Account Kit migrations that database/migrations lacks'
+          ) && line.includes('Nothing was written')
+      )
+    )
+    assert.lengthOf(await readdir(migrationsDirectory), 6)
+    assert.lengthOf(await readdir(tenant), 6)
+    await assert.rejects(() => readFile(configPath), /ENOENT/)
+
+    // Wrong path: every migration in the landlord path, tenant selected.
+    await rm(join(root, 'database'), { recursive: true })
+    const landlord = join(root, 'database/landlord')
+    await place(landlord, migrationNames)
+    await mkdir(tenant)
+    await lucidPaths("'database/landlord', 'database/tenant'")
+    await configure('database/tenant')
+    assert.equal(process.exitCode, 1)
+    assert.isTrue(
+      errors.some((line) =>
+        line.includes(
+          'The configured Lucid migration path database/landlord already holds Account Kit migrations that database/tenant lacks'
+        )
+      )
+    )
+    assert.deepEqual(await readdir(tenant), [])
+    await assert.rejects(() => readFile(configPath), /ENOENT/)
+  } finally {
+    console.error = logError
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
 test('configure keeps invitations in a nested directory containing a hash on rerun', async ({
   assert,
 }) => {

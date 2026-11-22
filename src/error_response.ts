@@ -32,6 +32,7 @@ export function negotiate(accept?: string): typeof JSON_API | 'application/json'
   return negotiateRequest(request)
 }
 
+/** Picks the error media type from a live request's `Accept` header, as {@link negotiate} does. */
 export function negotiateRequest(
   request: Pick<HttpRequest, 'accepts'>
 ): typeof JSON_API | 'application/json' {

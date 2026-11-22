@@ -344,7 +344,8 @@ authorization policy.
 The installer follows the [setup migration path rules](setup.md), including the application
 default when the primary connection has no paths. It allocates the new migration after existing
 timestamped migrations, including the application's users-table migration. If the configured path
-is dynamic, pass `--migration-directory` with the single application-relative directory Lucid uses.
+is dynamic, or the connection lists several paths, pass `--migration-directory` with the
+application-relative directory to use.
 
 ## Manual steps
 

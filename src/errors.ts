@@ -46,13 +46,17 @@ export class InvalidConfigurationError extends RuntimeException {
   }
 }
 
-/** An application's adapter returned a value outside its documented contract. */
-export class AdapterContractError extends RuntimeException {
+/**
+ * The `authentication.canAccess` callback resolved to a value other than a boolean, or the
+ * application's token guard returned no token, token identifier or bearer value to a managed
+ * route. Clients get the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 from the managed routes,
+ * `accountErrorResponse` and `AccountKitError.handle`. Managed routes log the error with the route
+ * name through the request logger; on the application's own routes the AdonisJS exception handler
+ * reports it, and a caller of `accountErrorResponse` logs it itself.
+ */
+export class AdapterContractError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_ADAPTER_CONTRACT'
   static status = 500
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, { ...options, code: new.target.code, status: new.target.status })
-  }
 }
 /**
  * Input failed a package rule, for example a password outside the policy or a malformed email.

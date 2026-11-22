@@ -101,9 +101,15 @@ export default class PasswordResetsController {
     try {
       await kit.passwordReset.request({ email: request.input('email'), clientKey: request.ip() })
     } catch (error) {
-      // Mail is sent after commit. Keep one response for known and unknown addresses.
+      // Both errors follow a committed reset. Keep one response for known and unknown addresses,
+      // and log no address or link.
       if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-      logger.error({ code: error.code }, 'password reset email failed')
+      logger.error(
+        { code: error.code },
+        error instanceof DeliveryError
+          ? 'reset email failed'
+          : 'reset follow-up failed; the email may have been sent'
+      )
     }
     return response.accepted({ message: 'If the account exists, instructions will be sent.' })
   }
