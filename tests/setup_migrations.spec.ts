@@ -264,6 +264,99 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     assert.match(migrations.at(-1)!.path, /_add_scope_to_account_invitations\.ts$/)
   })
 
+  for (const [name, rc, message] of [
+    [
+      'an ambiguous adonisrc.ts config',
+      'const shared = {}\nexport default { ...shared, providers: [] }\n',
+      'Guided setup cannot establish directory settings from an ambiguous adonisrc.ts config; expose its directories statically before setup',
+    ],
+    [
+      'adonisrc.ts directories that are not an object literal',
+      'const directories = {}\nexport default { providers: [], directories: directories }\n',
+      'Guided setup requires statically inspectable adonisrc.ts directories',
+    ],
+    [
+      'a custom adonisrc.ts config directory',
+      "export default { providers: [], directories: { config: 'settings' } }\n",
+      'Guided setup requires the conventional config directory; use configure or reconcile setup manually',
+    ],
+    [
+      'a dynamic adonisrc.ts migrations directory',
+      "const migrations = 'database/custom'\nexport default { providers: [], directories: { migrations: migrations } }\n",
+      'Guided setup requires a literal adonisrc.ts migrations directory',
+    ],
+  ] as const) {
+    test(`refuses ${name}`, async ({ assert }) => {
+      const { root } = await fixture()
+      await writeFile(join(root, 'adonisrc.ts'), rc)
+      const state = await inspectSetup(root)
+      assert.equal(state.migrationDirectoryError, message)
+      assert.equal(state.migrationDirectoryErrorField, 'adonisrc.ts')
+    })
+  }
+
+  for (const [name, paths, explicit, message] of [
+    [
+      'a dynamic Lucid path without --migration-directory',
+      'paths',
+      undefined,
+      'Unable to determine the Lucid migration directory statically; pass --migration-directory with the application-relative directory used by the selected connection',
+    ],
+    [
+      'a --migration-directory with URL syntax',
+      'paths',
+      'database/custom#review',
+      'Use a plain application-relative Lucid migration directory',
+    ],
+    [
+      'a --migration-directory that differs from the configured path',
+      "paths: ['database/custom']",
+      'database/other',
+      'The explicit migration directory differs from the configured Lucid migration directory',
+    ],
+  ] as const) {
+    test(`refuses ${name}`, async ({ assert }) => {
+      const { root } = await fixture()
+      await writeFile(
+        join(root, 'config/database.ts'),
+        `import { defineConfig } from '@adonisjs/lucid'
+const paths = ['database/custom']
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { ${paths} } } } })`
+      )
+      const state = await inspectSetup(root, { migrationDirectory: explicit })
+      assert.equal(state.migrationDirectoryError, message)
+    })
+  }
+
+  test('accepts a --migration-directory that may be a dynamic entry among several paths', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      `import { defineConfig } from '@adonisjs/lucid'
+const tenant = 'database/custom'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/migrations', tenant] } } } })`
+    )
+    const state = await inspectSetup(root, { migrationDirectory: 'database/custom' })
+    assert.isUndefined(state.migrationDirectoryError)
+    assert.equal(state.migrationDirectory, 'database/custom')
+  })
+
+  test('refuses two existing copies of one Account Kit migration', ({ assert }) => {
+    assert.throws(
+      () =>
+        orderedMigrations(
+          [
+            '1790000000000_account_kit_create_password_reset_tokens.ts',
+            'prior/1780000000000_account_kit_create_password_reset_tokens.ts',
+          ],
+          1790000000001
+        ),
+      'Multiple existing migrations for create_password_reset_tokens; reconcile their history before setup'
+    )
+  })
+
   test('refuses new migrations that would run before an untimestamped host migration', ({
     assert,
   }) => {

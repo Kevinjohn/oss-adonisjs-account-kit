@@ -89,6 +89,38 @@ test.group('setup Ace command', (group) => {
     )
   })
 
+  test('applies migrations into the --migration-directory named for a dynamic Lucid path', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    const input = join(root, 'choices.json')
+    await writeFile(input, `${JSON.stringify(choices)}\n`)
+    await writeFile(
+      join(root, 'config/database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nconst paths = ['database/custom']\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths } } } })"
+    )
+    const ignitor = new IgnitorFactory()
+      .withCoreProviders()
+      .withCoreConfig()
+      .merge({
+        rcFileContents: {
+          providers: [],
+          commands: [async () => new ListLoader([SetupAccountKit])],
+        },
+      })
+      .create(pathToFileURL(`${root}/`))
+    const result = await runSetup(ignitor, [
+      `--input=${input}`,
+      '--apply',
+      '--migration-directory=database/custom',
+    ])
+    assert.equal(result.commandExitCode, 0)
+    const written = await readdir(join(root, 'database/custom'))
+    assert.isTrue(
+      written.some((name) => name.endsWith('_account_kit_create_password_reset_tokens.ts'))
+    )
+  })
+
   test('interactive Ace reconfiguration seeds prompts from saved choices', async ({ assert }) => {
     const { root, choices } = await fixture()
     const saved = structuredClone(choices)

@@ -374,6 +374,36 @@ test('configure writes into the configured path named by --migration-directory a
   }
 }).timeout(30_000)
 
+test('configure writes into the --migration-directory named for a dynamic Lucid path', async ({
+  assert,
+}) => {
+  const { root, configDirectory, existingMigrationPath, migrationsDirectory, ignitorFor } =
+    await createConfigureProject()
+  const exitCode = process.exitCode
+  try {
+    await rm(existingMigrationPath)
+    await writeFile(
+      join(configDirectory, 'database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nconst paths = ['database/custom']\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths } } } })"
+    )
+    process.exitCode = undefined
+    await ignitorFor(root)
+      .ace()
+      .handle([
+        'configure',
+        '@kevinjohn/adonisjs-account-kit',
+        '--force',
+        '--migration-directory=database/custom',
+      ])
+    assert.equal(process.exitCode, 0)
+    assert.lengthOf(await readdir(join(root, 'database/custom')), migrationNames.length)
+    assert.deepEqual(await readdir(migrationsDirectory), [])
+  } finally {
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
 test('configure keeps invitations in a nested directory containing a hash on rerun', async ({
   assert,
 }) => {

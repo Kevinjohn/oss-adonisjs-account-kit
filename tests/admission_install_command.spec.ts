@@ -220,6 +220,29 @@ export default class extends BaseSchema {
     }
   }).timeout(commandTimeout)
 
+  test('installs into the --migration-directory named for a dynamic Lucid path', async ({
+    assert,
+  }) => {
+    const { root, run } = await fixture()
+    const previousExitCode = process.exitCode
+    try {
+      await writeFile(
+        join(root, 'config/database.ts'),
+        "import { defineConfig } from '@adonisjs/lucid'\nconst paths = ['database/custom']\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths } } } })"
+      )
+      process.exitCode = undefined
+      await run('--migration-directory=database/custom')
+      assert.equal(process.exitCode, 0)
+      const written = await readdir(join(root, 'database/custom'))
+      assert.lengthOf(written, 1)
+      assert.match(written[0], /_account_kit_admission_create_account_admissions\.ts$/)
+      assert.lengthOf(await readdir(join(root, 'database/migrations')), 0)
+    } finally {
+      process.exitCode = previousExitCode
+      await rm(root, { recursive: true, force: true })
+    }
+  }).timeout(commandTimeout)
+
   test('does not duplicate an admission command loader written with double quotes', async ({
     assert,
   }) => {
