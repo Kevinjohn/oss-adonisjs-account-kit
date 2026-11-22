@@ -7,6 +7,14 @@ import { decideAdmission } from '#services/admission_decision'
 
 const admission = () => app.container.make(AccountAdmission)
 
+/** Applies the signed-in owner's decision to the user named in the route. */
+async function decide(ctx: HttpContext, transition: 'approve' | 'reject' | 'revoke') {
+  const actor = await ctx.auth.getUserOrFail()
+  return ctx.response.ok(
+    await decideAdmission({ actorId: actor.id, userId: ctx.params.id, transition })
+  )
+}
+
 /**
  * The account's own admission status and request, reachable while not admitted, and the owner's
  * list and decisions. The package sends no notification: this status is how a person learns the
@@ -33,14 +41,14 @@ export default class AdmissionsController {
   }
 
   async approve(ctx: HttpContext) {
-    return ctx.response.ok(await decideAdmission(ctx, 'approve'))
+    return decide(ctx, 'approve')
   }
 
   async reject(ctx: HttpContext) {
-    return ctx.response.ok(await decideAdmission(ctx, 'reject'))
+    return decide(ctx, 'reject')
   }
 
   async revoke(ctx: HttpContext) {
-    return ctx.response.ok(await decideAdmission(ctx, 'revoke'))
+    return decide(ctx, 'revoke')
   }
 }

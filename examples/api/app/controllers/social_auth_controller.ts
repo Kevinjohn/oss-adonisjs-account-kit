@@ -1,7 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError, type SocialProviderName } from '@kevinjohn/adonisjs-account-kit'
+import {
+  InvalidInputError,
+  type SocialCallbackResult,
+  type SocialProviderName,
+} from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
-import { finishSocialCallback } from '#services/social_callback_response'
+import UserTransformer from '#transformers/user_transformer'
+import { accountKitSessionGuard } from '#services/account_kit_guards'
+import { rememberLastUsedMethod } from '#services/last_used_method'
+import { redeemSocialHandoff } from '#services/social_handoff_redemption'
 import {
   beginBrowserTransaction,
   forgetBrowserContinuation,
@@ -21,6 +28,24 @@ import { socialRegistrationValidator } from '#validators/user'
 function providerParam(value: string): SocialProviderName {
   if (value !== 'google' && value !== 'github') throw new InvalidInputError('Unknown provider')
   return value
+}
+
+/** Finish a callback or continuation with its original browser transaction. */
+async function finishSocialCallback(
+  ctx: HttpContext,
+  result: SocialCallbackResult,
+  browserVerifier?: string
+) {
+  if ('handoffCode' in result && result.handoffCode && browserVerifier) {
+    const { user, provider } = await redeemSocialHandoff({
+      code: result.handoffCode,
+      verifier: browserVerifier,
+      guard: accountKitSessionGuard(ctx),
+    })
+    rememberLastUsedMethod(ctx, provider)
+    return ctx.serialize({ status: result.status, user: UserTransformer.transform(user) })
+  }
+  return ctx.response.ok(result)
 }
 
 export default class SocialAuthController {

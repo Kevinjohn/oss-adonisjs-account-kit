@@ -1,4 +1,3 @@
-import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
 import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
 import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
@@ -11,9 +10,19 @@ function userIdParam(value: string): number {
   return id
 }
 
-export async function decideAdmission(ctx: HttpContext, decision: 'approve' | 'reject' | 'revoke') {
-  const actor = await ctx.auth.getUserOrFail()
+/**
+ * Records an owner's admission decision for one user, after validating the user ID from the
+ * route, and returns the user's new approval state.
+ */
+export async function decideAdmission(input: {
+  actorId: number | string
+  userId: string
+  transition: 'approve' | 'reject' | 'revoke'
+}) {
   const service = await app.container.make(AccountAdmission)
-  const record = await service[decision]({ actorId: actor.id, userId: userIdParam(ctx.params.id) })
+  const record = await service[input.transition]({
+    actorId: input.actorId,
+    userId: userIdParam(input.userId),
+  })
   return { userId: record.userId, approval: record.approval }
 }
