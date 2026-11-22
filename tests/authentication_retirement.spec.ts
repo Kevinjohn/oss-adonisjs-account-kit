@@ -237,6 +237,80 @@ test.group('authentication retirement impact', (group) => {
     assert.deepEqual(skipped.impact?.currentProviders, [])
   })
 
+  test('Ace retirement inventory validates --providers before reading accounts', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'password@example.test' })
+    const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
+    const requested: unknown[] = []
+    const retirementImpact = account.authentication.retirementImpact.bind(account.authentication)
+    kit.app.container.bindValue(AccountKit, {
+      authentication: {
+        retirementImpact: async (input: Parameters<typeof retirementImpact>[0]) => {
+          requested.push(input.providers)
+          return retirementImpact(input)
+        },
+      },
+    } as unknown as AccountKit)
+    const { kernel, logs } = aceKernel(kit, [RetirementImpact])
+    const run = (...args: string[]) =>
+      kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', args)
+
+    for (const [flag, providers] of [
+      ['--providers=google, github', ['google', 'github']],
+      ['--providers=none', []],
+    ] as const) {
+      const accepted = await run(flag)
+      assert.isNull(accepted.failure, flag)
+      assert.equal(accepted.exitCode ?? 0, 0, flag)
+      assert.deepEqual(requested.pop(), providers)
+    }
+    const omitted = await run()
+    assert.isNull(omitted.failure)
+    assert.isUndefined(requested.pop())
+
+    for (const [flag, message] of [
+      [
+        '--providers=google,twitter',
+        'Invalid --providers: twitter is not a supported provider; use a comma-separated list of google, github, or none',
+      ],
+      [
+        '--providers=github,github',
+        'Invalid --providers: github is listed more than once; use a comma-separated list of google, github, or none',
+      ],
+    ] as const) {
+      const before = logs().length
+      const refused = await run(flag)
+      assert.equal(refused.failure, 'invalid_providers', flag)
+      assert.equal(refused.exitCode, 1, flag)
+      assert.isNull(refused.impact, flag)
+      assert.isTrue(
+        logs()
+          .slice(before)
+          .some(({ message: line }) => line.includes(message)),
+        flag
+      )
+    }
+    assert.lengthOf(requested, 0)
+
+    kit.app.container.bindValue(AccountKit, {
+      authentication: {
+        retirementImpact: async () => {
+          throw new Error('database unavailable')
+        },
+      },
+    } as unknown as AccountKit)
+    const before = logs().length
+    const unavailable = await run('--providers=github')
+    assert.equal(unavailable.failure, 'inventory_unavailable')
+    assert.equal(unavailable.exitCode, 1)
+    assert.isTrue(
+      logs()
+        .slice(before)
+        .some(({ message }) => message.includes('Account inventory unavailable'))
+    )
+  })
+
   test('service-only configuration returns an empty retirement inventory without reading accounts', async ({
     assert,
   }) => {

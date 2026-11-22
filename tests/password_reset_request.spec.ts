@@ -144,6 +144,48 @@ test.group('passwordReset.request', (group) => {
     assert.lengthOf(recorder.calls, 1)
   })
 
+  test('distinguishes delivery-only, observer-only and combined follow-up failures', async ({
+    assert,
+  }) => {
+    const observerFault = new Error('observer failed')
+    const run = async (delivery: boolean, observer: boolean) => {
+      const user = await insertUser(kit, { email: `${delivery}-${observer}@example.test` })
+      const recorder = makeNotify()
+      if (delivery) recorder.failOn('passwordResetProvision')
+      const { account } = service({
+        notify: recorder.notify,
+        onLifecycleEvent: async () => {
+          if (observer) throw observerFault
+        },
+      })
+      const error = await account.passwordReset
+        .request({ email: user.email, clientKey: `${delivery}-${observer}` })
+        .then(
+          () => null,
+          (caught: unknown) => caught
+        )
+      return { error, user }
+    }
+
+    const deliveryOnly = await run(true, false)
+    assert.instanceOf(deliveryOnly.error, DeliveryError)
+
+    const observerOnly = await run(false, true)
+    assert.instanceOf(observerOnly.error, PostCommitError)
+    assert.equal((observerOnly.error as PostCommitError).cause, observerFault)
+
+    const combined = await run(true, true)
+    assert.instanceOf(combined.error, PostCommitError)
+    const cause = (combined.error as PostCommitError).cause
+    assert.instanceOf(cause, AggregateError)
+    assert.deepEqual(
+      (cause as AggregateError).errors.map((error: Error) => error.message),
+      ['notify.passwordResetProvision failed', 'observer failed']
+    )
+    for (const { error, user } of [deliveryOnly, observerOnly, combined])
+      assert.notInclude((error as Error).message, user.email)
+  })
+
   test('verified issuance commit fault still captures its delivery once', async ({ assert }) => {
     const user = await createUser()
     const recorder = makeNotify()
