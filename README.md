@@ -103,10 +103,13 @@ export default class PasswordResetsController {
     } catch (error) {
       // Both errors follow a committed reset. Keep one response for known and unknown addresses,
       // and log no address or link.
-      if (error instanceof DeliveryError) logger.error({ code: error.code }, 'reset email failed')
-      else if (error instanceof PostCommitError)
-        logger.error({ code: error.code }, 'reset follow-up failed; the email may have been sent')
-      else throw error
+      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      logger.error(
+        { code: error.code },
+        error instanceof DeliveryError
+          ? 'reset email failed'
+          : 'reset follow-up failed; the email may have been sent'
+      )
     }
     return response.accepted({ message: 'If the account exists, instructions will be sent.' })
   }
