@@ -113,10 +113,10 @@ urls: {
 },
 ```
 
-Keep the generated invitation authorization callbacks, which deny invitation management in this
+Keep the generated invitation authorisation callbacks, which deny invitation management in this
 walkthrough. Run `node ace account-kit:doctor`: its green installation checks and **Unverified**
 summary do not claim that these routes, delivery, or revocation work. The requests below check
-those behaviors.
+those behaviours.
 
 ## 3. Adapt the starter's opaque token guard
 
@@ -577,7 +577,7 @@ test.group('copied core API journey', (group) => {
 
 Run `node ace codegen`, `pnpm format`, `pnpm lint`, and `pnpm typecheck`, then
 `node ace test functional --files=core_account_journey.spec.ts --timeout=15000`. Formatting also
-normalizes generated config and migrations. The test needs the migrations from step 1.
+normalises generated config and migrations. The test needs the migrations from step 1.
 Run migrations in the test database first if it differs from your development database.
 
 ## 7. Run the whole journey

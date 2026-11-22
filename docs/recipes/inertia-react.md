@@ -26,7 +26,7 @@ revision in `accountKitRevision`. It clears and regenerates the session on termi
 starter signup controller keeps its validation and `User.create`, then uses the same credential
 adapter for its automatic login, so the new revision check does not break signup. The patch also
 trims and lowercases the starter's shared email rule in `app/validators/user.ts`, because Account Kit
-looks addresses up in that form; normalize existing addresses before enabling the recipe.
+looks addresses up in that form; normalise existing addresses before enabling the recipe.
 
 Enable only `passwordReset` and select `authentication: { strategy: 'session', guard: 'web',
 canAccess: async () => true }` in `config/account_kit.ts`; replace the permissive callback with
@@ -39,7 +39,7 @@ all generated migrations. The patch refuses the cookie store. A shared server-si
 required in production; this recipe exercises SQLite-backed sessions locally. Existing sessions
 without `accountKitRevision` must sign in again.
 
-The router middleware order is body parser, session, Shield, Auth initialization, native silent
+The router middleware order is body parser, session, Shield, Auth initialisation, native silent
 authentication, then `session_revision_middleware`. The revision middleware calls
 `kit.authentication.current` for the authenticated user, passes the saved revision (including an
 explicit null before the first change), and terminates missing/stale sessions. The native auth
@@ -132,7 +132,7 @@ The spec signs two distinct native sessions in before reset and verifies each re
 protected dashboard. “Unchanged” means byte-identical stored hash and successful protected
 requests from both saved sessions, rather than a reset response or database token count.
 
-| Case                    | Expected behavior and assertions                                                                                           |
+| Case                    | Expected behaviour and assertions                                                                                          |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Known / unknown request | Same visible generic acknowledgement; only known account emits captured proof                                              |
 | Valid proof GET twice   | Both pages allow a new password; proof still completes later                                                               |

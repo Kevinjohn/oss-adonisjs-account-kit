@@ -11,7 +11,7 @@ As a person with a configured provider identity, I want to sign in through Googl
 
 ## Acceptance criteria
 
-- `begin` takes provider (`google` or `github`), intent `login`, a 43-character base64url SHA-256 `clientChallenge`, and optional adapter context; it returns `{ state, url }`. `beginConfirmation` takes provider, activation `verificationToken`, the same challenge shape and optional context, returning `{ state, url }`. Callback takes `{ state, callback, provider?, admit? }` and returns `linked`/`new` with userId and optional handoffCode, `new` with continuation, `new` with `emailVerificationRequired`, `link_required`, or `reauthenticated` with proof. It does not issue an Adonis credential in the provider redirect.
+- `begin` takes provider (`google` or `github`), intent `login`, a 43-character base64url SHA-256 `clientChallenge`, and optional adapter context; it returns `{ state, url }`. `beginConfirmation` takes provider, activation `verificationToken`, the same challenge shape and optional context, returning `{ state, url }`. Callback takes `{ state, callback, provider?, admit? }` and returns `linked`/`new` with userId and optional handoffCode, `new` with continuation, `new` with `emailVerificationRequired`, `link_required`, or `reauthenticated` with proof. It does not issue an AdonisJS credential in the provider redirect.
 - A confirmed `linked` result carries userId and a short-lived handoffCode; `redeemHandoff({ code, verifier, guard })` checks that the verifier is a well-formed PKCE verifier (43 to 128 unreserved characters; the managed token endpoint bounds it the same way), compares it with the stored challenge in constant time, and returns account, actual guard credential and provider. A matching email without a relationship returns `link_required`, not sign-in.
 - A `new` continuation is completed by trusted host code with `completeRegistration({ continuation, email?, registrationData?, admit? })`; closed signup refuses and application policy remains host-owned. An unverified provider email cannot sign in; confirmation uses `beginConfirmation({ provider, verificationToken, clientChallenge, context? })` followed by `callback({ state, callback })`, matching the email proof to the same pending subject.
 - Managed session clients retain the verifier server-side and redeem the handoff inside the callback. Managed token clients return a short-lived code for the client to redeem with its verifier at the token endpoint; both strategies support this sign-in action.
@@ -50,7 +50,7 @@ Scope: provider adapter supplies provider URL/profile; Account Kit owns state, l
 ```mermaid
 flowchart TD
  A["socialAuthentication.begin"] --> B["Store one-use state, intent, challenge and optional account/proof binding"]
- B --> C["Configured adapter returns authorization URL"]
+ B --> C["Configured adapter returns authorisation URL"]
  C --> D["socialAuthentication.callback resolves provider profile before consuming one-use state"]
  D --> E{"Callback path?"}
  E -->|linked| F["Return handoffCode bound to association and credential revision"]

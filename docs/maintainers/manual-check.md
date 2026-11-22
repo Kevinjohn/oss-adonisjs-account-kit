@@ -8,14 +8,14 @@ Verified on 2026-10-13 against source commit `64e154203c0bf1aaf36957e97f39f2d440
 
 Toolchain and consumer versions: Node `24.19.0`, pnpm `11.23.0`, AdonisJS Core `7.6.0`, Lucid `22.4.2`, Auth `10.1.0`, limiter `3.0.1`, better-sqlite3 `13.0.3`, and pg `8.23.1`. PostgreSQL was `16.15`. The app used its generated SQLite database and a separate local PostgreSQL database. SQLite foreign keys were enabled for every connection. The generated User model used `withAuthFinder` for password hashing, and its email verification timestamp was added by the package migration.
 
-The consumer applied eight migrations on each database: two API-kit base migrations, four package migrations, the limiter table migration, and one consumer-only role fixture migration. Consumer typecheck passed. One real HTTP Japa workflow test passed on each dialect. The SQLite pool was configured with `min: 1` and `max: 4`. Invite and management authorization callbacks performed normal database reads to validate the actor. It covered:
+The consumer applied eight migrations on each database: two API-kit base migrations, four package migrations, the limiter table migration, and one consumer-only role fixture migration. Consumer typecheck passed. One real HTTP Japa workflow test passed on each dialect. The SQLite pool was configured with `min: 1` and `max: 4`. Invite and management authorisation callbacks performed normal database reads to validate the actor. It covered:
 
 - Password reset requests for known, unknown, and notification-failure cases all returned the same 202 acknowledgement. Invalid email input was rejected. Repeated GET inspection preserved the token, reset stored a verified account with a new hashed password, and replay was rejected. Password reset, verification, invitation inspection, invitation acceptance, and email-change token responses set `Referrer-Policy: no-referrer`.
 - Verification sending required authentication; completion returned `verified` and then `already_verified`, and a later send returned `already_verified` without a second notification.
 - Invitation sending required authentication. Inspection did not consume the link. Acceptance created a verified user with a hashed password, and the application role callback wrote its assignment through the supplied transaction. Replay was rejected. The confirmation was sent to the invited mailbox.
 - Invitation resend and revoke both ran through authenticated HTTP routes. The management callback queried the actor through the ordinary database connection; the larger SQLite pool supported that lookup while the package held its write transaction. Resend rotated the token, the old link failed, and the new link remained usable until revoke.
 - Password change required the current password, stored the new hash, and removed the user’s API access tokens after commit. An invalid proof returned the same generic credential error.
-- Email-change request required authentication and the current password. The confirmation went to the requested new mailbox, and the GET landing route did not consume the token. POST changed and verified the normalized email, notified the old address after commit, invalidated API access tokens, and rejected replay.
+- Email-change request required authentication and the current password. The confirmation went to the requested new mailbox, and the GET landing route did not consume the token. POST changed and verified the normalised email, notified the old address after commit, invalidated API access tokens, and rejected replay.
 - Authenticated routes rejected anonymous requests, and invalid request bodies received validation errors.
 
 At the T8.1 checkpoint, package validation passed on the same Node 24 toolchain:
@@ -29,7 +29,7 @@ pnpm build
 
 These T8.1 totals precede the additional SQLite-only regression test documented under T8.2. Both database runs use the package test harness; the fresh consumer uses a distinct PostgreSQL database. The HTTP rehearsal used `pnpm exec node ace migration:run`, `pnpm typecheck`, and `pnpm exec node ace test --suite=functional` for each selected connection.
 
-The starter-kit fork, fork-derived stubs and documentation synchronization, browser checks, and owner application integration remain deferred to stage 7.
+The starter-kit fork, fork-derived stubs and documentation synchronisation, browser checks, and owner application integration remain deferred to stage 7.
 
 ## T8.2: upgrade an existing consumer
 
@@ -37,7 +37,7 @@ Verified on 2026-10-13 in a second fresh official API-kit app. The app first ins
 
 The app was then upgraded to the stage-6 candidate archive recorded above. The installed package resolved from that archive and remained version `0.0.0`. Candidate configure skipped the existing application config, provider, and all four migration files. The config SHA-256 remained `ae636bcaa3dfe5b93cdd6548b9c98045ec3458eb153cbce6c21a4712986ab4b8`, and migration runs reported no pending migrations on either database. The pre-existing verified account remained present. The password reset baseline passed again after upgrade on both dialects. A consumer-only role fixture migration was added after this check, leaving eight total migration rows, four belonging to the package.
 
-The upgraded app passed two functional HTTP tests on each dialect and passed consumer typecheck. The expanded workflow included resend and revoke through authenticated routes with authorization callbacks that perform ordinary database reads. Its SQLite pool used `min: 1` and `max: 4`, so those reads could use a separate connection while the package held a transaction. Email-change confirmation was delivered to the requested new address, with the change notice sent to the old address.
+The upgraded app passed two functional HTTP tests on each dialect and passed consumer typecheck. The expanded workflow included resend and revoke through authenticated routes with authorisation callbacks that perform ordinary database reads. Its SQLite pool used `min: 1` and `max: 4`, so those reads could use a separate connection while the package held a transaction. Email-change confirmation was delivered to the requested new address, with the change notice sent to the old address.
 
 Consumer versions were Node `24.19.0`, pnpm `11.23.0`, Core `7.6.0`, assembler `8.5.2`, Lucid `22.4.2`, Auth `10.1.0`, Knex `3.3.0`, Luxon `3.7.2`, better-sqlite3 `13.0.3` with SQLite `3.53.4`, pg `8.23.1`, and PostgreSQL `16.15`.
 
@@ -48,7 +48,7 @@ After a SQLite-only package regression test was added, package source checks pas
 The earlier independent review completed on 2026-10-13 against the approved public API and operation
 specifications. Its conclusion that no outstanding required fixes remained describes that earlier
 review only; it was superseded by the consolidated review below. The review identified a SQLite integration
-requirement: invitation management authorization can perform ordinary database reads only when
+requirement: invitation management authorisation can perform ordinary database reads only when
 another pool connection is available. The README now documents callback placement, retry safety,
 and connection capacity. An isolated two-connection regression verifies separate policy and
 transaction connections; the fresh and upgraded HTTP consumers exercise this pattern on both
@@ -65,7 +65,7 @@ That review recorded these follow-ups, addressed by the corrections below:
   contract accepted values such as `Infinity` and `NaN`; the default is 300 ms.
 - **P3, optional:** Strengthen [password reset rollback coverage](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/tests/recovery.spec.ts#L447) with an adapter that
   writes the password and then throws. The earlier password reset case threw before that write;
-  credential-change tests already cover write-then-throw behavior.
+  credential-change tests already cover write-then-throw behaviour.
 - **P3, optional:** The [default email lookup](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/a6b3fa65d1b7ad4a992e977595e7f2d259910452/stubs/config/account_kit.stub#L27) applied `LOWER(TRIM(email))`.
   This may require an expression index for efficient lookup at larger user counts; no workload
   performance claim was tested.
@@ -86,7 +86,7 @@ operation, zero commit events/callbacks on failure, restored durable state, conn
 rejection of active global transactions. Both dialects exercise the stricter password/reset race,
 password reset write-then-throw rollback and full invitation/password reset/email-change workflow with UUID
 strings and matching text foreign keys. SQLite also checks exact unique-column classification
-through Lucid's query-prefixed errors. The new bug regressions failed against the original behavior
+through Lucid's query-prefixed errors. The new bug regressions failed against the original behaviour
 before their fixes were applied.
 
 Password reset retains its configured response-duration floor; it does not establish constant response
@@ -98,13 +98,13 @@ The final repaired archive SHA-256 is
 `74396513d353372f63e2f427c36ff2c60c2b567b58992813eda725c6e60a2383`.
 A private copy of the retained configured API consumer installed this archive through pnpm with a
 frozen lockfile and dependency scripts disabled. Consumer `pnpm typecheck` passed, followed by two
-functional HTTP tests on SQLite and two on PostgreSQL. The copied adapter used the new normalized
+functional HTTP tests on SQLite and two on PostgreSQL. The copied adapter used the new normalised
 email equality lookup; the application's notification, role and credential callbacks were retained.
 Fresh migrations had already passed on the copied SQLite file and a separate PostgreSQL database.
 
 These checks exercised invitation acceptance, role assignment, authenticated resend/revoke,
 password reset acknowledgement/inspection/reset/replay, verification, password change/access-token
-revocation, and normalized email-change confirmation/notification/replay. This was a copied
+revocation, and normalised email-change confirmation/notification/replay. This was a copied
 configured app, not a newly generated app or a repeat of the full stage-3 upgrade rehearsal.
 Earlier consumer passes and hashes remain historical evidence.
 

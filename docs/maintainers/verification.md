@@ -11,9 +11,9 @@ The default relative-path and heading checks in `tests/docs_links.spec.ts` exclu
 GitHub links into this repository's `main` tree still includes the changelog. These checks do
 not fetch external URLs.
 
-Preserve dated release prose and external artifact URLs. Review changed current-relative
+Preserve dated release prose and external artefact URLs. Review changed current-relative
 changelog links against their actual destinations and headings; correct a proven broken link,
-or use an immutable historical source when its artifact was intentionally removed. Run
+or use an immutable historical source when its artefact was intentionally removed. Run
 `pnpm quick:test --files=docs_links.spec.ts` for the applicable checked links, without claiming
 it validates the excluded relative changelog links.
 
@@ -86,7 +86,7 @@ fresh/latest, minimum, and service-only on SQLite and PostgreSQL. Each PostgreSQ
 an isolated Ubuntu 24.04 runner, verifies native PostgreSQL 16 tools, starts the managed cluster,
 and creates the dedicated `account_kit_consumer` database before starting the consumer. Each leg is
 configured to upload its `evidence.json` and available `commands.log` even after a failed command;
-missing evidence makes artifact upload fail.
+missing evidence makes artefact upload fail.
 
 The [4 November 2026 compatibility run](https://github.com/Kevinjohn/oss-adonisjs-account-kit/actions/runs/41917496086)
 passed all six consumer legs. Their retained records identify checkout `0a3f88a20c9aea96b2f4bab8f8f717207c2a008c`
@@ -94,7 +94,7 @@ passed all six consumer legs. Their retained records identify checkout `0a3f88a2
 `0cfa93a6692cb44eec0b4785dd6de45264059cd172905d633f81419d95b52343`, Node 24.22.1,
 pnpm 11.23.0, installed package/driver versions and SQLite 3.53.2 or PostgreSQL 16.15.
 Both service-only records confirm that all six optional backend integrations are absent.
-These are dated candidate results; use the current run and all six artifacts for later candidates.
+These are dated candidate results; use the current run and all six artefacts for later candidates.
 
 The local full check profile explicitly runs
 `pnpm test:recipe --recipe=api-password-reset`. The changed-file planner rejects a selected test gate
@@ -210,7 +210,7 @@ seven named cases account for seven MySQL skips. Existing package MySQL migratio
 MySQL session-cleanup failure probes separately proved restoration on the same physical connection
 and replacement of a session whose setting could not be restored. PostgreSQL contention tests
 observe the specific waiting and blocking backend pair. SQLite checks describe global writer
-serialization and do not claim per-user row locks.
+serialisation and do not claim per-user row locks.
 
 All four disposable reference apps passed their own lint, typecheck and build. API token journeys
 passed 51 tests (19 session-only skips), and its stale-session callback executed with the exact
@@ -285,7 +285,7 @@ Each row ran the corresponding repository script (`pnpm lint`, `pnpm typecheck`,
 | `test_adapter`       | A      | 8 passed; 225ms; exit 0                            | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
 | `docs_build`         | A      | Passed; 4.20s; exit 0                              | `3c38c999a0d6eb6c5c17663b9c77ce99c87ccc6a0d7f0b9104742ea1d596d693` |
 
-The SQLite skips cover PostgreSQL COMMIT rejection and UUID canonicalization. PostgreSQL skips
+The SQLite skips cover PostgreSQL COMMIT rejection and UUID canonicalisation. PostgreSQL skips
 cover SQLite cleanup failure, corrupt-revision storage and integer token timestamps. The service
 checks exercise their own PostgreSQL service lifecycle. The docs build reports its existing large
 bundle warning; it exits successfully.
@@ -352,7 +352,7 @@ Recipe database engine: SQLite `3.53.4`; Core `7.6.0`. Browser recipes exercise 
 The API and invitation recipes capture links locally and make HTTP assertions; they do not prove
 recipient delivery or a browser journey. The browser recipes add actual password-reset, validation,
 replay, expiry and prior-session checks, including Edge without JavaScript. They do not establish
-PostgreSQL recipe behavior, viewport coverage, keyboard accessibility or production mail delivery.
+PostgreSQL recipe behaviour, viewport coverage, keyboard accessibility or production mail delivery.
 Earlier recipe mutation checks and accepted client-types/monorepo assessments remain dated evidence
 in their recipe and example records; these runs do not replace or broaden those claims.
 
@@ -548,10 +548,10 @@ effects and pruning. Installed-consumer outcomes are recorded separately for the
 package test totals alone do not establish distribution compatibility.
 
 The review fixes add regression coverage for early consumer-mode rejection, standalone dotenv
-ignore rules, bounded cursor decoding, expiry-filtered indexed pagination, and normalized setter
+ignore rules, bounded cursor decoding, expiry-filtered indexed pagination, and normalised setter
 values that survive commit. The copied environment template boots with its SQLite default after
 an application key is supplied. The API fixture adds three authentication tests to its two existing
-HTTP workflows: normalized known/unknown login limits, the client budget across rotating identities,
+HTTP workflows: normalised known/unknown login limits, the client budget across rotating identities,
 and the shared 128-character password boundary. Login keeps legacy passwords usable without an
 input length cap. The independent review found no remaining correctness or security findings in
 this tactical change.
@@ -669,7 +669,7 @@ each failure was checked against its named test rather than an empty test run or
 
 | Mutation                                          | Evidence                                                                                                                                  |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Denial status 403 → 404                           | The dedicated denial-identity unit test and error-reference catalog test fail                                                             |
+| Denial status 403 → 404                           | The dedicated denial-identity unit test and error-reference catalogue test fail                                                           |
 | Accept empty-string user IDs                      | The user-ID domain test fails                                                                                                             |
 | Remove adapter/witness ID comparison              | Test 13, different-account substitution, fails                                                                                            |
 | Replace strict boolean validation with `!allowed` | Test 9 fails, including an isolated numeric `1` case                                                                                      |
@@ -684,7 +684,7 @@ each failure was checked against its named test rather than an empty test run or
 | Remove witness `.forUpdate()`                     | PostgreSQL's reader-lock probe test fails because `55P03` is absent; both SQLite tests still pass under its transaction-start writer lock |
 
 The changelog includes `AccountAccessDeniedError` and
-`authentication.inspectAccountAccess`. These archives are consumable candidate artifacts; no
+`authentication.inspectAccountAccess`. These archives are consumable candidate artefacts; no
 package version was changed and nothing was published to the package registry.
 
 ##### Review corrections and MySQL follow-up: 21 October 2026
@@ -694,7 +694,7 @@ initial candidate above. The responsibility split was committed separately and p
 required package gate at `9ae5b9b2fcd7f2b5a0e58b33b343f697727b99b3` before subsequent changes.
 Projection and configuration guards now have focused modules, with original exports preserved;
 core inspection, schema compatibility and effects/failure suites have separate files. No inspection
-behavior or test assertions were removed. The subsequent independent assembled review closed all
+behaviour or test assertions were removed. The subsequent independent assembled review closed all
 reported findings, including error/retry guidance, historical evidence labels, API comments,
 changelog adjacency and concurrency evidence.
 
@@ -824,7 +824,7 @@ DB_CLIENT=pg DB_HOST=127.0.0.1 DB_PORT=55432 DB_USER=account_kit DB_PASSWORD= DB
 
 `bash bin/pg.sh status` reports the owned cluster's state (exit 0 running, 3 stopped). Readiness
 at the selected port is diagnostic only. `bash bin/pg.sh reset` stops and deletes only the owned
-disposable data, initializes it again and leaves a fresh server running; use `pnpm pg:stop`
+disposable data, initialises it again and leaves a fresh server running; use `pnpm pg:stop`
 afterward. Wrong-version or incomplete data requires this explicit reset.
 
 After SIGKILL or power loss, a `postmaster.pid` left by a dead server is treated as stopped and
@@ -957,9 +957,9 @@ with the restart case completing in 880.53 ms.
 
 ### Mutation evidence
 
-The previous SQLite application-row locking regression reproduced a phantom UPDATE-trigger audit entry before replacement. Normalized input and missing setup-hook regressions were demonstrated before their fixes. The current expiry-refresh pruning regression preserves a row refreshed after batch selection.
+The previous SQLite application-row locking regression reproduced a phantom UPDATE-trigger audit entry before replacement. Normalised input and missing setup-hook regressions were demonstrated before their fixes. The current expiry-refresh pruning regression preserves a row refreshed after batch selection.
 
-Nineteen scoped mutation runs deliberately weakened changed guards for normalized email, the
+Nineteen scoped mutation runs deliberately weakened changed guards for normalised email, the
 actual generated acceptance hook, trusted registration, capability checks, credential-hook
 exclusivity, HMAC framing, the four invitation budgets, the three atomic credential hooks,
 password notices, independent post-commit effects, pruning expiry rechecks, central PostgreSQL
@@ -982,13 +982,13 @@ Recorded 22 October 2026 from the official [starter-kits](https://github.com/ado
 | Inertia Vue   | `pnpm create adonisjs@3.4.0 <dir> --kit=github:adonisjs/starter-kits/inertia-vue#46d235932e3eb6472a16b740fa0b47b5f69fc6fc --pkg=pnpm`   | `27ccef05198e15a784d42e5c968a39c68c5f8731` | `758adec76940f6069bf43c0a7856f44f4af76ed247c4af723527a2ad187be2e4` |
 | Hypermedia    | `pnpm create adonisjs@3.4.0 <dir> --kit=github:adonisjs/starter-kits/hypermedia#46d235932e3eb6472a16b740fa0b47b5f69fc6fc --pkg=pnpm`    | `4a4be43278a59ea7e9ca30362dbe14e419268a9b` | `15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea` |
 
-The scaffolder's optional Git initialization is disabled by default. Each disposable project was initialized and committed as `starter` after scaffold preparation and before any Account Kit changes. Comparing each generated tree with its matching pinned upstream directory found them **identical except generated files**: the scaffolder removes the upstream README and `.yarnrc.yml`, renames the package, clears the sample `APP_KEY` in `.env.example`, writes `.env` with a fresh key, and creates the pnpm lockfile and SQLite database. It also formats the API kit's generated `database/schema.ts`; other application source files match byte-for-byte. The database file is ignored and is not in the baseline commit.
+The scaffolder's optional Git initialisation is disabled by default. Each disposable project was initialised and committed as `starter` after scaffold preparation and before any Account Kit changes. Comparing each generated tree with its matching pinned upstream directory found them **identical except generated files**: the scaffolder removes the upstream README and `.yarnrc.yml`, renames the package, clears the sample `APP_KEY` in `.env.example`, writes `.env` with a fresh key, and creates the pnpm lockfile and SQLite database. It also formats the API kit's generated `database/schema.ts`; other application source files match byte-for-byte. The database file is ignored and is not in the baseline commit.
 
 Each check ran before Account Kit installation or configuration. The API test used its original token-login route and protected profile route; browser tests used each starter's own login form and made both the post-login and a second direct request to its protected dashboard.
 
 | Kit           | Check command                                    | Original login and protected route result                                                                                                                                                    |
 | ------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API           | `pnpm test --files=pinned_starter_login.spec.ts` | 1/1 passed in 274 ms. Guest `GET /api/v1/account/profile` returned 401; `POST /api/v1/auth/login` returned a bearer token; the token then authorized the protected profile request with 200. |
+| API           | `pnpm test --files=pinned_starter_login.spec.ts` | 1/1 passed in 274 ms. Guest `GET /api/v1/account/profile` returned 401; `POST /api/v1/auth/login` returned a bearer token; the token then authorised the protected profile request with 200. |
 | Inertia React | `pnpm test --files=pinned_starter_login.spec.ts` | 1/1 passed in 847 ms. Submitted the native `/login` form, then loaded `/dashboard` and made a second direct `/dashboard` request.                                                            |
 | Inertia Vue   | `pnpm test --files=pinned_starter_login.spec.ts` | 1/1 passed in 970 ms. Submitted the native `/login` form, then loaded `/dashboard` and made a second direct `/dashboard` request.                                                            |
 | Hypermedia    | `pnpm test --files=pinned_starter_login.spec.ts` | 1/1 passed in 408 ms. Submitted the native `/login` form, then loaded `/dashboard` and made a second direct `/dashboard` request.                                                            |

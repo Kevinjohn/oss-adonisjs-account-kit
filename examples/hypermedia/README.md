@@ -1,7 +1,7 @@
 # Hypermedia account example
 
 A runnable AdonisJS 7 application showing Account Kit in server rendered Edge forms. Account
-operations live in controllers and the application owns its model, validation, authorization and
+operations live in controllers and the application owns its model, validation, authorisation and
 English copy. Forms work without JavaScript: Shield checks CSRF tokens, failures redirect with
 field errors and safe old input, and successful posts use POST/redirect/GET.
 

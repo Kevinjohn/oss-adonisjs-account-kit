@@ -13,12 +13,12 @@ guard. The [API consumer example](../../examples/api/README.md)
 shows a complete AdonisJS application. Its [route table](../../examples/api/start/routes.ts),
 [session reference](../reference/session-reference.md), and
 [access-token reference](../reference/token-reference.md) give the concrete paths, payloads, guard setup,
-and responses this guide summarizes.
+and responses this guide summarises.
 
 ## Configuration
 
 Configure the user adapter, enabled capabilities, registration availability, password policy,
-authorization and notification callbacks in `config/account_kit.ts` with `defineConfig`. The API
+authorisation and notification callbacks in `config/account_kit.ts` with `defineConfig`. The API
 example uses a lazy Lucid user adapter and explicitly maps validated registration data; it never
 spreads request fields onto the user model. Account Kit accepts new passwords from 8 to 256
 UTF-16 code units by default. Applications may choose a stricter `passwordPolicy` and matching
@@ -41,7 +41,7 @@ fixture owns them under `/api/v1`:
 | `GET`/`POST /api/v1/auth/email-verification/:token`                                                                                                              | Inspect without consuming, then activate with a fresh password.                                          |
 | `GET`/`POST /api/v1/auth/email-change/:token`, `GET`/`POST /api/v1/auth/invitations/:token`                                                                      | Inspect links without consuming; complete only after explicit client action.                             |
 | `GET`/`PATCH /api/v1/account/profile`, `POST /api/v1/account/password`, `POST /api/v1/account/email-verification/send`                                           | Authenticate the actor, apply account-access or verified-account middleware, and allowlist the response. |
-| `POST /api/v1/account/logout`, `POST`/`GET /api/v1/account/invitations`, `POST /api/v1/account/invitations/:id/resend`, `DELETE /api/v1/account/invitations/:id` | Apply the selected guard and application invitation authorization.                                       |
+| `POST /api/v1/account/logout`, `POST`/`GET /api/v1/account/invitations`, `POST /api/v1/account/invitations/:id/resend`, `DELETE /api/v1/account/invitations/:id` | Apply the selected guard and application invitation authorisation.                                       |
 
 The fixture selects either the existing `web` session guard or `api` access-token guard through
 `ACCOUNT_KIT_AUTH_STRATEGY`.
@@ -70,14 +70,14 @@ This shows provider and container resolution explicitly. For ordinary controller
 short default service import is `import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'`.
 
 Keep each route's middleware and capability selection explicit. Apply the selected authentication
-integration before loading an actor, and apply verified-account or application authorization checks
+integration before loading an actor, and apply verified-account or application authorisation checks
 where the operation requires them. The [authentication guide](authentication.md) and the two
 reference guides document CSRF, session revision checks, token revocation, and route protection.
 
 ## How it works
 
 Account Kit owns the account transaction: tokens, locking, revocation and events. Your app owns the
-HTTP layer, validation, authorization and the user model.
+HTTP layer, validation, authorisation and the user model.
 
 ### Transaction helpers for packages built on Account Kit
 
@@ -103,7 +103,7 @@ run twice on SQLite.
 
 ### Validate requests before calling account operations
 
-Use AdonisJS validators to normalize and validate request bodies, query values, and route
+Use AdonisJS validators to normalise and validate request bodies, query values, and route
 parameters. Pass only the validated fields required by the operation. For authenticated actions,
 derive `actorId` from the authenticated user; never accept a caller-supplied identifier as proof of
 authority. The example's [validators](../../examples/api/app/validators) and
@@ -182,7 +182,7 @@ inspection succeeds with 200 and invalid, expired, replayed, or mismatched proof
 or log proofs, full URLs, passwords, provider data, or unnecessary personal data.
 
 At the HTTP boundary, return the same 404 code and body for an invitation that is missing and one
-the actor is not authorized to manage. The service may retain separate exceptions for private
+the actor is not authorised to manage. The service may retain separate exceptions for private
 diagnosis.
 
 For example, an invalid login is a 401 with code `E_INVALID_CREDENTIALS`; the same
@@ -243,14 +243,14 @@ later Mail transport failure is reported by Mail. Log only safe operation IDs an
 diagnostics separate from message URLs and delivery payloads.
 For durable delivery, persist an application outbox intent transactionally and deliver it from an
 application worker. The [notification guide](notifications.md) defines the durability boundary and
-required worker behavior; the fixture's sample dispatcher is not production outbox infrastructure.
+required worker behaviour; the fixture's sample dispatcher is not production outbox infrastructure.
 
 ### Replace one route at a time
 
-When an application needs different policy or response behavior, keep that route application-owned
+When an application needs different policy or response behaviour, keep that route application-owned
 and call the relevant public operation from its controller. For example, replacing
 `PATCH /api/v1/account/profile` still calls `emailPasswordManagement.updateProfile` with the guard's
-actor ID and returns an explicit allowlist of account fields. Retain the route's authorization,
+actor ID and returns an explicit allowlist of account fields. Retain the route's authorisation,
 validation, proof redaction, and response disclosure checks; other routes can keep their existing
 controllers. The [service usage guide](usage.md) lists public operations and the
 [compatibility guide](../reference/compatibility.md) states the supported adapter and database boundary.
@@ -275,7 +275,7 @@ routes; resolving `AccountKit` only provides its services.
 2. Select the existing `web` session or `api` access-token guard. For session mode, configure a
    server-side store and CSRF middleware; for both modes, set trusted proxies before deriving
    limiter keys and protect every application-owned route.
-3. Define request validators, middleware, response schemas, and authorization policy in the
+3. Define request validators, middleware, response schemas, and authorisation policy in the
    application. Derive actor identity from the selected guard.
 4. Map each HTTP action to a public service operation. Keep account writes in package transactions,
    use `trx` for related application writes, and move durable notification delivery to an
@@ -283,7 +283,7 @@ routes; resolving `AccountKit` only provides its services.
 5. Exercise the enabled lifecycle against the installed package and selected database. Keep the
    frontend, public origins, mail transport, and deployment configuration in application scope.
    For managed setup, the command resolves selected mail-origin values from the process environment
-   first, then from the selected Adonis environment-file paths, and validates those direct
+   first, then from the selected AdonisJS environment-file paths, and validates those direct
    assignments. It reads only the selected origin values; it does not load the application's full
    runtime environment. Values in a selected environment file do not need to be passed separately.
    A remaining origin diagnostic means a selected value was missing, invalid, or insecure.

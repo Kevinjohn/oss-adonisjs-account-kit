@@ -1,6 +1,6 @@
 # Usage
 
-`AccountKit` is registered by the package provider and resolved from the Adonis container. The
+`AccountKit` is registered by the package provider and resolved from the AdonisJS container. The
 complete application wiring is in the [API consumer example](../../examples/api/README.md), including
 routes, validation, central HTTP error mapping, Lucid model setup, and notification callbacks.
 See [authentication integration](authentication.md) for the selected guard, session/CSRF
@@ -110,7 +110,7 @@ snapshot. Invitations created, revoked, or expired between requests can change l
 A password reset proof's lifetime starts after acquiring the account lock and verifying that the
 current account still matches the requested address.
 
-Password reset requests consume both a client-key budget and a normalized-email budget. A throttled
+Password reset requests consume both a client-key budget and a normalised-email budget. A throttled
 request does not replace the currently stored password reset token, so an already-issued unexpired link
 remains redeemable. A later successful issuance rotates the user's token and invalidates its
 predecessor.
@@ -141,19 +141,19 @@ maintained Lucid adapter implements through `mapRegistrationData`. The field wri
 pending-address change share one transaction. Return values are reloaded account records;
 application HTTP responses should use an explicit account transformer.
 
-Build the password reset `clientKey` from `request.ip()` only after configuring Adonis trusted proxies
+Build the password reset `clientKey` from `request.ip()` only after configuring AdonisJS trusted proxies
 for the known proxy addresses and forwarded-header policy. Do not accept a client-provided key or
 trust arbitrary `X-Forwarded-For` headers. Keep `APP_URL` set to the public HTTPS origin and build
 links from that configured value, not from request `Host` or forwarded-host headers.
 
 An invitation carries an opaque `scope` (a team or workspace, or null) next to its opaque `role`.
-A normalized address can hold one pending invitation per scope; a second send for the same address
+A normalised address can hold one pending invitation per scope; a second send for the same address
 and scope throws `InvitationPendingError`. Sending an invitation to an address that already belongs
 to a user is rejected. `authorize.invite` and `authorize.listInvitations` receive the scope in
 `context.scope`; `invitations.list` filters by `scope` when given and lists every scope otherwise.
 Accepting any invitation applies every pending invitation for the address in the same transaction,
 in ascending `scope` order, calling `onInvitationAccepted` once per invitation. Acceptance does not
-recheck the inviter's authorization. The application's `onInvitationAccepted` callback assigns the
+recheck the inviter's authorisation. The application's `onInvitationAccepted` callback assigns the
 role; the package does not create tenant or team membership records unless the callback does so.
 
 ## Adapter and registration data
@@ -169,7 +169,7 @@ before the write transaction with the AdonisJS hash service and stored as is; se
 [adapters](adapters.md).
 
 Users tables defined with Drizzle or Prisma, or with no ORM, use the shipped
-[Drizzle, Prisma and SQL adapters](adapters.md). If using a custom adapter, implement normalized email equality, a unique email constraint, password
+[Drizzle, Prisma and SQL adapters](adapters.md). If using a custom adapter, implement normalised email equality, a unique email constraint, password
 hashing, and transaction-aware reads/writes. Provide `resolveMetadata()` with the physical table
 and `primaryKey: 'id'`, or configure `usersTable` as the metadata fallback. The package acquires
 the PostgreSQL user-row lock centrally from that metadata; SQLite uses its package-owned singleton
@@ -177,25 +177,25 @@ transaction lock. See the [`UsersAdapter` type](https://github.com/Kevinjohn/oss
 [adapter contract suite](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/testing/adapter_contract.ts). Review the
 [identity creation contract](identity-creation.md) before enabling creation flows.
 
-## Authorization and callbacks
+## Authorisation and callbacks {#authorization-and-callbacks}
 
-Authorization callbacks must return exactly `true` to allow. Use `actorId` inputs so the package
-loads the actor via the adapter. Invitation resend performs a preflight authorization transaction,
-charges limiter budgets after that transaction commits, then locks and reauthorizes before changing
+Authorisation callbacks must return exactly `true` to allow. Use `actorId` inputs so the package
+loads the actor via the adapter. Invitation resend performs a preflight authorisation transaction,
+charges limiter budgets after that transaction commits, then locks and reauthorises before changing
 the invitation. Revoke locks and reloads the actor in its deletion transaction. Resend and revoke
 lock the users row before the invitation row, so their callbacks receive current actor state and
 keep the same lock order as invitation send. Resend callbacks can run in both phases; SQLite
 transaction retries can call them again. Keep callbacks read-only and repeatable, and use the
-optional authorization context's `trx` to read current permission state in each phase. The package
+optional authorisation context's `trx` to read current permission state in each phase. The package
 does not lock application-owned permission records; lock mutable permission rows through `trx`
-when the application's policy requires serialization. Limiter consumption stays outside the write
+when the application's policy requires serialisation. Limiter consumption stays outside the write
 transaction to avoid a same-database limiter deadlock with a one-connection SQLite pool.
 
 Invitation send works the same way. `invite` runs once before throttling without a context, then
 again inside the insert transaction with `context.trx`, after the package locks the actor row.
 SQLite retries can repeat the second call, so keep it read-only through `trx` and repeatable. Lock
 the application's membership row through `context.trx` in the second call if a demotion must be
-serialized with the send. A denial in the second call does not refund throttle budget.
+serialised with the send. A denial in the second call does not refund throttle budget.
 
 `onPasswordResetIssuedTransaction(user, trx)` is an optional hook for password reset issuance. After the
 issuance limiter and initial email lookup, the package starts its root transaction, locks and
@@ -242,7 +242,7 @@ Packages built on Account Kit import the same runner, row lock and timestamp hel
 `@kevinjohn/adonisjs-account-kit/transaction`; see the
 [application-owned integration guide](application-owned-integration.md#transaction-helpers-for-packages-built-on-account-kit).
 
-SQLite uses the package-owned `account_transaction_lock` singleton row to serialize account
+SQLite uses the package-owned `account_transaction_lock` singleton row to serialise account
 transactions, then may retry write contention. Therefore transaction callbacks can run more than
 once and must be repeatable. The lock migration must be applied before package writes. PostgreSQL
 uses row-level locks and does not retry failed transactions. Transient database errors can
@@ -261,7 +261,7 @@ and deliver it from an application-owned worker. See the
 The package does not define application routes, request validators, session policy, or password
 requirements. Validate request bodies and path IDs in the application. Map package errors centrally
 using their `E_ACCOUNT_KIT_*` code and status metadata; do not expose internal messages or causes.
-At the HTTP boundary, map missing and unauthorized invitation-management results to the same
+At the HTTP boundary, map missing and unauthorised invitation-management results to the same
 not-found code and response body to avoid revealing the invitation's existence. The exception
 classes retain separate codes for application-side diagnosis.
 

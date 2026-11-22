@@ -27,8 +27,8 @@ protection. Managed session authentication also requires
 SessionMiddleware starts. Its `verifyStore(actual)` callback must attest that the actual selected
 store centrally revokes destroyed session IDs; a `destroy` method by itself is not proof. The
 wrapper rejects cookie-backed stores, including aliases and subclasses. Setup can generate this
-wrapper for conventional `defineConfig` session configuration and recognize its inspected database
-or development-memory selection, but static inspection does not prove actual revocation behavior.
+wrapper for conventional `defineConfig` session configuration and recognise its inspected database
+or development-memory selection, but static inspection does not prove actual revocation behaviour.
 A database session store needs its table migration applied. Memory storage is for development only;
 production requires persistent shared session storage. Unsupported custom or dynamic syntax blocks
 `account-kit:setup --apply`. Convert it to the supported conventional shape to use automated setup.
@@ -40,7 +40,7 @@ that establish authentication or change state. Keep BodyParser, session, Shield,
 in that order. The setup session-policy booleans record operator checks; they do not configure the
 session backend or prove it works at runtime. Use a shared limiter store when limits must apply across
 instances. An in-memory store gives each process its own budgets and is suitable only where that
-behavior is intended, such as isolated tests. See [authentication](../guide/authentication.md) and
+behaviour is intended, such as isolated tests. See [authentication](../guide/authentication.md) and
 [managed HTTP](../guide/managed-http.md) for the guard and request contract.
 
 Installing `@adonisjs/limiter` does not configure its runtime service. If it is missing, run
@@ -60,7 +60,7 @@ backend and frontend origins must both resolve to HTTPS.
 
 When email flows select maintained AdonisJS Mail, setup inspects the selected configuration before
 activation. A missing mailer, plainly non-callable provider, unsafe configuration, or ambiguous
-runtime binding blocks setup writes. An opaque custom factory or a recognized transport still needs
+runtime binding blocks setup writes. An opaque custom factory or a recognised transport still needs
 manual verification against the deployed configuration and a real delivery check; static
 inspection does not mark external delivery as configured.
 
@@ -90,7 +90,7 @@ to 10 sends per actor per hour, 3 sends per recipient per hour, 10 resends per a
 3 resends per invitation per hour. Override individual budgets with `throttle` and
 `invitationThrottle` in config. Keep budgets consistent across instances sharing limiter storage.
 
-Password reset issuance is limited by both client key and normalized email. When a request is throttled,
+Password reset issuance is limited by both client key and normalised email. When a request is throttled,
 the existing unexpired password reset link remains redeemable; the next successful issuance replaces it.
 Use a client key derived from the request IP only behind correctly configured trusted proxies, and
 do not trust arbitrary forwarded-IP headers. See [password reset and invitation rules](../guide/usage.md#a-reset-link-works-once-then-expires).

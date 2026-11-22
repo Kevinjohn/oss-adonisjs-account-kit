@@ -1,6 +1,6 @@
 # US-ACCOUNT-26 — Review an admission request
 
-As an authorized application approver, I want to approve or reject a pending person so that I can record an accountable admission decision.
+As an authorised application approver, I want to approve or reject a pending person so that I can record an accountable admission decision.
 
 **Status:** Current when approval is enabled
 **Access:** Host `approval.authorize` decides who may list or decide; Account Kit defines no application roles or admin UI.
@@ -17,8 +17,8 @@ As an authorized application approver, I want to approve or reject a pending per
 
 ```mermaid
 flowchart TD
- A["Approver selects pending person and approve or reject"] --> B{"Is actor admitted and authorized to decide?"}
- B -->|No| C["Return authorization refusal"]
+ A["Approver selects pending person and approve or reject"] --> B{"Is actor admitted and authorised to decide?"}
+ B -->|No| C["Return authorisation refusal"]
  B -->|Yes| D{"Does requested transition apply to this record?"}
  D -->|No| E["Return transition refusal; decision unchanged"]
  D -->|Yes| F["Record actor and decision; emit event after commit"]
@@ -33,7 +33,7 @@ flowchart TD
  A["AccountAdmission.approve/reject({ actorId, userId })"] --> B["Load distinct actor and subject; check admitted actor and authorize.decide"]
  B --> C["Approve from no decision/rejected/revoked, or reject from no decision"]
  C --> D{"Is requested transition allowed?"}
- D -->|No| E["Abort write with authorization/decision error"]
+ D -->|No| E["Abort write with authorisation/decision error"]
  D -->|Yes| F["Persist decision and actor; commit and emit event"]
 ```
 

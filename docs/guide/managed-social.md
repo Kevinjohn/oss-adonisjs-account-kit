@@ -74,7 +74,7 @@ account lookup is made for this public response.
   read it.
 - The value is allowlisted to `password` and enabled providers, contains no account identifier,
   and is never authentication authority. Record it only after a successful login or handoff, in a
-  signed cookie or server-side session, and never use it to identify or authorize an account.
+  signed cookie or server-side session, and never use it to identify or authorise an account.
 - A failed hint write cannot turn an established credential into a failed login.
 
 ### Session clients
@@ -160,7 +160,7 @@ when requested. Common statuses:
 | 429    | Rate limited, with `Retry-After`          |
 
 The stable social service error codes are preserved; internal exception and database messages are
-not serialized. There is no idempotency-key contract.
+not serialised. There is no idempotency-key contract.
 
 ## Files and migrations
 
@@ -188,6 +188,6 @@ and explicit route mount; no social controller is generated for the standard flo
    registration, linking, unlinking, and both guard flows. Deterministic fixtures alone do not
    establish a live-provider result.
 
-On suspected unauthorized association, call `account.socialIdentities.unlink` and reset the
+On suspected unauthorised association, call `account.socialIdentities.unlink` and reset the
 password; either order is safe, because both end every established session and token. List the
 linked identities again afterwards to confirm nothing was relinked in between.

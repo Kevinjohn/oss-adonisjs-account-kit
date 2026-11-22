@@ -87,7 +87,7 @@ signed-in but not-yet-verified account to update its profile while still checkin
 and application access policy.
 
 Keep the existing `fullName` mapping if the application already accepts it. In the Lucid adapter,
-assign only recognized fields that are present; profile updates can supply `displayName` without
+assign only recognised fields that are present; profile updates can supply `displayName` without
 resending `fullName`, while a new account still requires it:
 
 ```ts
@@ -135,7 +135,7 @@ registration: {
 
 Import `InvalidInputError` from `@kevinjohn/adonisjs-account-kit`. Keep the application's signup validator
 responsible for requiring its existing `fullName`. The service mapper independently rejects
-unrecognized keys and invalid values from non-HTTP callers, and the adapter rejects a new account
+unrecognised keys and invalid values from non-HTTP callers, and the adapter rejects a new account
 without `fullName`, which managed signup, invitation and social registration can otherwise send. The adapter never mass-assigns a
 request object; map only fields owned by the application.
 

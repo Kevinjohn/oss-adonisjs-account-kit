@@ -3,7 +3,7 @@
 ## Before you start
 
 - For a bug, open an issue with a reproduction first, unless the fix is a one-line change.
-- For a new feature or a behavior change, open an issue to agree on the shape before writing code.
+- For a new feature or a behaviour change, open an issue to agree on the shape before writing code.
   Account Kit keeps a small public surface on purpose.
 - Report security problems privately, as described in [SECURITY.md](SECURITY.md). Do not open a
   public issue.
@@ -13,7 +13,7 @@
 Every change follows these.
 
 - **Built for everyone who uses AdonisJS.** Follow the open-source AdonisJS packages and starter
-  kits for names, shapes and behavior. Match AdonisJS Plus only where that costs nothing; Plus
+  kits for names, shapes and behaviour. Match AdonisJS Plus only where that costs nothing; Plus
   compatibility is not a goal and never outweighs consistency for open-source users.
 - **The application owns its language.** Do what the official AdonisJS packages do: look up
   user-facing text through `@adonisjs/i18n` when the application uses it, with English as the
@@ -98,13 +98,30 @@ has landed. Reference material for contributors goes in `docs/maintainers/` inst
 - Keep each pull request to one change.
 - Add or update tests. A bug fix should include a test that fails without the fix.
 - Update the relevant page in `docs/` and add a line under `## Unreleased` in
-  [CHANGELOG.md](CHANGELOG.md) when behavior visible to users changes.
+  [CHANGELOG.md](CHANGELOG.md) when behaviour visible to users changes.
 - A changelog entry for documentation or audit work says what was done and how it was checked,
   for example "Document the user stories; 45 focused tests", not "verify".
 - Error `code` values are public API. Changing or removing one needs a breaking entry in
   [CHANGELOG.md](CHANGELOG.md); see [error code stability](docs/reference/errors.md#stability).
 - Write commit messages in the imperative mood, describing the change ("Reject expired invitation
   tokens on resend").
+
+## Spelling
+
+Prose is British English ("behaviour", "authorisation", "normalise", "catalogue"), and the
+framework is "AdonisJS", never "Adonis". This covers `docs/` (except the generated
+`docs/reference/api`), the READMEs, `AGENTS.md`, this file and `user-stories/`; new comments and changelog
+entries follow it too. These keep their existing spelling:
+
+- identifiers, configuration keys, file names and error codes, such as `authorize`,
+  `normalizeEmail` and `E_ACCOUNT_KIT_AUTHORIZATION`;
+- heading anchors: a renamed heading on the documentation site keeps its old anchor with
+  `{#old-anchor}`, and a heading in a file read only on GitHub keeps its text;
+- quoted framework, HTTP and product names, such as the `Authorization` header;
+- test titles, test-asserted messages and English fallback messages, which change only with the
+  code that owns them;
+- code samples;
+- published changelog entries.
 
 ## Repository-specific
 
@@ -132,7 +149,7 @@ both together.
 ### Adapters
 
 A users adapter for another ORM is a good first contribution. The adapter contract suite in
-`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behavior the
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` checks an adapter against the same behaviour the
 Lucid adapter passes.
 
 ## Code of conduct

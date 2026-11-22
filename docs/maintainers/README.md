@@ -5,7 +5,7 @@ repository and left out of the npm package.
 
 - [Releasing](releasing.md): the current GitHub release process and versioned documentation updates.
 - [Release gate](release-gate.md): local/workflow gate boundaries, the reviewed starting baseline
-  and clearly labeled historical candidate evidence.
+  and clearly labelled historical candidate evidence.
 - [Verification](verification.md): the release check list, then the dated local check results and consumer outcomes.
 - [Lucid and Knex upgrades](dependency-upgrades.md): the transaction invariants and the procedure for changing those dependencies.
 - [Source map](source-map.md): public subpath coverage, comment policy and deliberate compatibility differences.

@@ -34,8 +34,8 @@ passes on it, but CI does not run it on every change. Account access inspection 
 native MySQL 8.4.13; see the dated [verification record](../maintainers/verification.md#account-access-inspection). The generated schema uses integer user IDs by default; run
 configure with `--user-id-type=string` or `--user-id-type=uuid` when appropriate. Match the generated
 foreign-key column types to the application schema and inspect all migrations before running them.
-The package requires a unique email constraint and normalized lowercase storage. PostgreSQL
-duplicate classification discovers a single-column email unique index from the catalog by default;
+The package requires a unique email constraint and normalised lowercase storage. PostgreSQL
+duplicate classification discovers a single-column email unique index from the catalogue by default;
 configure `emailConstraint` when relying on a custom constraint name. The Lucid adapter derives the
 model's table and requires the physical primary-key column to be `id` on the default connection.
 
@@ -186,7 +186,7 @@ describe the audited revision, not the current dependency tree.
 The consumer audit changes the previous production-risk assessment: its full audit and
 `pnpm audit --prod` each report high advisory
 [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) in `braces 3.0.3`, with no
-patched version published in the audit data. The path is through the optional Adonis assembler
+patched version published in the audit data. The path is through the optional AdonisJS assembler
 peer, then `fast-glob > micromatch > braces`; the consumer uses assembler `8.5.2`. Although
 assembler is a build/configuration tool and the inspected `fast-glob` call handles configured
 metadata-file globs during build, the consumer's production audit still reports this optional-peer
@@ -201,7 +201,7 @@ to `DateTime.fromRFC2822`; the patched 3.x floor is `3.2.1`. Core `7.0.0` has mo
 `response.redirect().back()` and `response.redirect('back')`. Its metadata lists Core `7.3.1` as
 patched, while its remediation recommends `^7.4.0`. Account Kit does not call the affected Luxon
 method, and the API reference returns JSON without these redirects. This trace does not assess
-other consumer application code. Compatibility floors describe verified behavior, not a security
+other consumer application code. Compatibility floors describe verified behaviour, not a security
 guarantee: use the tested latest-compatible Core `7.6.0` and Luxon `3.7.2` for production rather
 than the older minimum test points. Those latest versions have neither direct advisory; the
 optional assembler advisory above remains unresolved.

@@ -42,7 +42,7 @@ The migrations add `unverified_email`, `email_verified_at` and `credentials_chan
 `users` and create the token tables. AdonisJS regenerates `database/schema.ts`, so the `User` model
 picks up the new columns.
 
-Account Kit stores email addresses trimmed and lowercase. If your model does not normalize them
+Account Kit stores email addresses trimmed and lowercase. If your model does not normalise them
 yet, add a hook:
 
 ```ts
@@ -57,7 +57,7 @@ static normalizeEmail(user: User) {
 ```
 
 Keep the starter's hashed password column, `withAuthFinder` password verification, `api` guard,
-`User.accessTokens` provider and `auth_access_tokens` migration. Normalize existing email rows
+`User.accessTokens` provider and `auth_access_tokens` migration. Normalise existing email rows
 and resolve duplicates before enabling recovery.
 
 ## 3. Print emails to the terminal
@@ -100,7 +100,7 @@ This explicit `canAccess` policy permits every account through Account Kit authe
 The unchanged starter login and protected routes use their own checks; enforce any suspension
 policy there separately. `tokenExpiresIn` and `tokenAbilities` configure tokens issued by Account
 Kit, while the starter login retains its own issuance settings. Broad `['*']` ability does not
-replace route authorization. With this integration,
+replace route authorisation. With this integration,
 Account Kit deletes all of the user's rows in `auth_access_tokens` in the password-reset
 transaction. The empty callback is justified only when there are no other application-owned
 credentials. If you issue separate sessions, remember-me tokens or API keys, revoke them using

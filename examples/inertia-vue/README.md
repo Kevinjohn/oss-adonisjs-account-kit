@@ -2,7 +2,7 @@
 
 A runnable AdonisJS 7 application that composes signup, email verification, login, protected access,
 account settings, password reset and logout with Account Kit. The backend owns the user model,
-validation, authorization, English copy, delivery callback and session policy. Account Kit handles
+validation, authorisation, English copy, delivery callback and session policy. Account Kit handles
 proof consumption and credential revisions.
 
 The supported starting point is the pinned official Inertia Vue starter at
@@ -74,7 +74,7 @@ The reset integration steps for an existing Vue/Inertia application are document
   password; other sessions are rejected on their next request by the credential revision check.
 - Logout is a protected POST and ends the current session.
 
-Forms submit through Inertia. Vine validation errors remain associated with labels, are summarized
+Forms submit through Inertia. Vine validation errors remain associated with labels, are summarised
 in a focusable alert, and move keyboard focus to that summary. Password fields clear after form
 errors and success; ordinary invalid fields remain in the Inertia form. Plain HTML validation
 flashes only the non-secret signup name and email fields. Signup requires an email and password;
@@ -91,7 +91,7 @@ This application follows the Vue starter's `<script setup>` pages, Inertia Vue `
 plugin, Vue page indexing and AdonisJS server conventions. Account Kit adds the user/account schema,
 Lucid adapter, signup and session controllers, proof pages and controllers, settings validators,
 session guard/revision middleware, exception handling, SQLite tests and the notification logger.
-The React example's server files are reused as application behavior; its React components and
+The React example's server files are reused as application behaviour; its React components and
 runtime are not included.
 
 ## Minimum transplant map
@@ -108,7 +108,7 @@ from this example rather than replacing the existing frontend foundation:
 
 Also adapt `config/account_kit.ts`, the `User` model and migrations, `start/kernel.ts`, exception
 handler, shared Inertia props and your application's own layouts. Keep your existing user fields,
-validation rules, authorization policy and language. If you use `@adonisjs/i18n`, resolve copy in the
+validation rules, authorisation policy and language. If you use `@adonisjs/i18n`, resolve copy in the
 application and use its English fallback. Do not add package-level locale detection or translation
 files. Choose and document which routes require verified email and whether a successful credential
 change keeps the current session or ends it.
@@ -139,7 +139,7 @@ pnpm test
 ```
 
 Browser tests use an isolated SQLite database, temporary file notification callbacks and memory
-limiter/session stores. They exercise rendered form behavior and callback URLs, not delivery into a
+limiter/session stores. They exercise rendered form behaviour and callback URLs, not delivery into a
 recipient inbox. The tested starter source is
 [`adonisjs/starter-kits/inertia-vue` revision `46d235932e3eb6472a16b740fa0b47b5f69fc6fc`](https://github.com/adonisjs/starter-kits/tree/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue).
 This example was based on Account Kit source `ae42132e6182690f7a91d4119a97dee98d66ce25`.

@@ -11,11 +11,11 @@ Treat setup readiness fields as separate evidence. `configurationValid` can be t
 result is a static plan assessment, not a successful live transport or provider check. Apply
 migrations separately, then verify real external integrations and account workflows in the target
 environment before declaring the deployment ready. Presence of application-owned policy or
-notification files does not establish their callback contracts or delivery behavior; keep those
+notification files does not establish their callback contracts or delivery behaviour; keep those
 checks unresolved until the selected flows are exercised against the running application.
 
 Setup route inspection reads literal routes in `start/routes.ts`; it does not boot the application.
-Grouped, imported, or programmatically generated routes require the package's committed Adonis
+Grouped, imported, or programmatically generated routes require the package's committed AdonisJS
 route-graph check during application boot, followed by exercising the selected endpoints. A passing
 static `configurationValid` result does not certify that runtime route graph or set
 `workflowVerified` or `productionReady`.

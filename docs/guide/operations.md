@@ -40,7 +40,7 @@ backup instead of running `down()`.
 Review the final physical user table shown in setup's preview, whether explicitly chosen or the
 selected default, against the effective model and generated migration target before migration.
 Setup's automatic Lucid model inspection is static and conservative; custom class metadata or other
-dynamic initialization needs manual reconciliation because inspection cannot certify model metadata
+dynamic initialisation needs manual reconciliation because inspection cannot certify model metadata
 produced at application boot. See [how setup works](how-setup-works.md) for the supported model shapes.
 
 Run `node ace account-kit:setup --check --production` as a source preflight while the parser and
@@ -82,7 +82,7 @@ guard and account-access middleware with an inert `start/account_kit_routes.ts`;
 are mounted and the endpoint inventory is empty. Review and run the generated migrations, attach the
 middleware to a temporary application-owned protected route, then follow the [revocation bootstrap
 procedure](setup.md#prove-revocation-before-route-activation). It uses the public Account Kit login
-through the generated guard: native guard login or `loginAs` alone does not enroll the package
+through the generated guard: native guard login or `loginAs` alone does not enrol the package
 credential revision. Use the public revocation operation for the selected capability: change the
 password when `emailPasswordManagement` is selected, complete a delivered reset when only
 `passwordReset` is selected, or restrict and then restore the account when authentication alone is
@@ -138,7 +138,7 @@ installed command options.
 
 Two booted Ace commands let someone with shell access act without the HTTP surface, for example to
 bootstrap the first administrator or help a locked-out user. They run in operator context: no actor
-authorization callback and no rate limit applies, so never expose the underlying
+authorisation callback and no rate limit applies, so never expose the underlying
 `kit.operator` services to an HTTP request. Each command still requires its capability
 (`invitations` or `passwordReset`) and the configured URL and notification callbacks.
 
@@ -229,7 +229,7 @@ unnecessary personal data. AdonisJS Mail's `mail:queueing` and `mail:queued` eve
 include rendered message bodies and proof links; do not log those payloads wholesale. Record only
 allowlisted, redacted diagnostic fields such as message kind, transport outcome, and an application
 correlation ID. A correlation ID is diagnostic data, never authentication material. See
-[notifications](notifications.md) for exact delivery failure behavior.
+[notifications](notifications.md) for exact delivery failure behaviour.
 
 ## Files and migrations
 
@@ -240,6 +240,6 @@ application's worker, mail, limiter, session, and revocation setup.
 ## Before deployment
 
 Use the deployment and rotation procedures above in a staging environment first. Verify a throttled
-request, an outstanding proof, a credential change, the selected session/token revocation behavior,
+request, an outstanding proof, a credential change, the selected session/token revocation behaviour,
 and scheduled pruning using the application's real stores and callbacks. Add alerts and retry policy
 to any application-owned notification dispatcher.

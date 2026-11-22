@@ -3,8 +3,8 @@
 As an application administrator, I want to change an account's restriction state through my host policy so that restricted credentials stop working.
 
 **Status:** Current when authentication is configured
-**Access:** The host must authorize the administrator before calling this service; Account Kit supplies no universal administrator role.
-**Entry:** Authorized host service calls `authentication.changeRestriction({ userId, change })` and uses the supplied transaction for its policy-state mutation.
+**Access:** The host must authorise the administrator before calling this service; Account Kit supplies no universal administrator role.
+**Entry:** Authorised host service calls `authentication.changeRestriction({ userId, change })` and uses the supplied transaction for its policy-state mutation.
 **Documentation:** [Account security](../docs/guide/authentication.md)
 **Source:** [`src/authentication.ts`](../src/authentication.ts)
 **Coverage:** [`tests/authentication.spec.ts`](../tests/authentication.spec.ts), [`tests/authentication_credentials.spec.ts`](../tests/authentication_credentials.spec.ts)
@@ -19,7 +19,7 @@ As an application administrator, I want to change an account's restriction state
 
 ```mermaid
 flowchart TD
- A["Host administrator asks to restrict or restore an account"] --> B{"Did host authorize this administrator?"}
+ A["Host administrator asks to restrict or restore an account"] --> B{"Did host authorise this administrator?"}
  B -->|No| C["Refuse before calling Account Kit"]
  B -->|Yes| D["Change host restriction state under account transaction"]
  D --> E{"Did the transaction commit?"}

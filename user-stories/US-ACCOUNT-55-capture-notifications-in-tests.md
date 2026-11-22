@@ -12,7 +12,7 @@ As an application developer, I want to capture Account Kit notification callback
 ## Acceptance criteria
 
 - **Inputs and result:** `captureNotifications()` returns `notify`, an in-memory `messages` array, `last(kind, to?)`, `tokenFor(kind, to?)` and `clear()`. The callbacks record notification kind, recipient, raw arguments and, for action links, the URL and parsed token. `last` returns the newest matching kind/recipient or `undefined` when there is no match. `tokenFor` returns the stored token from that newest matching message and throws when no matching message or token exists; it does not search older matching messages. `clear()` empties the shared array. Passing `notify` to an account operation records callbacks for tests; it neither sends nor queues a message.
-- **Test outcome:** A test can take a recorded proof token and call the matching account operation, then assert the resulting notifications. Observing the in-memory callback proves callback execution in that test only; it does not prove delivery, durable storage or production transport behavior.
+- **Test outcome:** A test can take a recorded proof token and call the matching account operation, then assert the resulting notifications. Observing the in-memory callback proves callback execution in that test only; it does not prove delivery, durable storage or production transport behaviour.
 
 ## User flow
 

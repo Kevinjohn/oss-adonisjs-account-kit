@@ -20,7 +20,7 @@ preserve the starting application's working login and selected guard:
 - [Add an application-specific user field](custom-user-model.md).
 - [Replace one managed endpoint](replace-managed-endpoint.md).
 
-Each recipe names prerequisites, changed files, middleware order where applicable, expected behavior and its
+Each recipe names prerequisites, changed files, middleware order where applicable, expected behaviour and its
 execution evidence. Use the stack variants it actually supports; a JSON response does not prove a
 browser form.
 

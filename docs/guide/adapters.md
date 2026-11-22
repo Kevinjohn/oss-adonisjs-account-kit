@@ -55,7 +55,7 @@ The Drizzle and Prisma adapters therefore read only your table definition. Every
 through Lucid, on the same database Lucid is connected to. Drizzle and Prisma do not need a
 connection of their own for Account Kit, and their clients are never called.
 
-As a result, ORM runtime behavior does not run for rows Account Kit writes:
+As a result, ORM runtime behaviour does not run for rows Account Kit writes:
 
 - Drizzle `$defaultFn` and `$onUpdate`.
 - Prisma `@default(cuid())`, `@default(uuid())` and `@updatedAt`.
@@ -177,7 +177,7 @@ export default defineConfig({
 })
 ```
 
-`@@map` and `@map` are honored. Lucid must connect to the same database as Prisma.
+`@@map` and `@map` are honoured. Lucid must connect to the same database as Prisma.
 
 ## Plain SQL
 
@@ -231,6 +231,6 @@ input-validation and field-error path.
 
 ## Proving an adapter
 
-`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` runs the behavior checks every shipped adapter
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` runs the behaviour checks every shipped adapter
 passes, including rollback of each write. Run it against your adapter and database in your test
 suite; see [custom adapter](../recipes/custom-adapter.md).

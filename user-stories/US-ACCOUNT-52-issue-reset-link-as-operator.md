@@ -3,7 +3,7 @@
 As an application operator, I want to issue a reset link from the trusted shell so that I can help an account holder recover access without exposing a privileged HTTP operation.
 
 **Status:** Operator
-**Access:** Shell access and enabled `passwordReset`; command bypasses actor authorization and public request throttles.
+**Access:** Shell access and enabled `passwordReset`; command bypasses actor authorisation and public request throttles.
 **Entry:** Run `account-kit:reset-link <email> [--print]`; default sends through configured notification callback, while `--print` outputs the bearer URL instead.
 **Documentation:** [Operator commands](../docs/guide/operations.md#operator-commands)
 **Source:** [`commands/reset_link.ts`](../commands/reset_link.ts)

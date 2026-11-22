@@ -25,7 +25,7 @@ For Ally 6, a request-scoped adapter may use
 `ally.use(provider).stateless().user()`; the package's one-use database state supplies callback
 binding.
 
-The exported `createAllySocialProvider` helper maps Ally's normalized profile and discards provider
+The exported `createAllySocialProvider` helper maps Ally's normalised profile and discards provider
 tokens and original fields. Account Kit does not store those tokens or implement OAuth exchange
 itself.
 
@@ -200,7 +200,7 @@ The maintained Google and GitHub Ally adapters do not provide this assurance, so
 `begin({ intent: 'reauth' })` is unavailable with them and ordinary provider callbacks cannot mint
 sensitive-operation proofs. [Google documents](https://developers.google.com/identity/siwg/security-bundle)
 that it does not support account reauthentication requests;
-[GitHub's OAuth authorization flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps)
+[GitHub's OAuth authorisation flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps)
 does not provide an attested authentication time.
 
 With the standard adapters, a social-only user can use the existing password-reset proof to
@@ -266,6 +266,6 @@ email, password, role, or verification after association.
    real-provider result.
 8. Configure a confirmed-address notice delivery callback.
 
-On suspected unauthorized association, unlink through the account service/endpoints and reset the
+On suspected unauthorised association, unlink through the account service/endpoints and reset the
 password; either order is safe, because both steps end every established session and token. After
 both, list the linked providers again to confirm that nothing was relinked in between.

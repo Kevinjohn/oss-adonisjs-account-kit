@@ -62,7 +62,7 @@ links point to the current example source so you can compare each file while ada
   for verification, reset, and password changes. Keep both modules when transplanting any flow.
   Signup and reset also use
   [`app/services/delivery_failure.ts`](app/services/delivery_failure.ts)
-  to recognize committed delivery or post-commit failures; include it when adding either flow and
+  to recognise committed delivery or post-commit failures; include it when adding either flow and
   keep the response consistent with the operation's committed outcome.
 - **Guard and server-side sessions:** Adapt
   [`config/auth.ts`](config/auth.ts),
@@ -79,7 +79,7 @@ links point to the current example source so you can compare each file while ada
 - **Middleware order:** Register
   [`proof_response_headers_middleware.ts`](app/middleware/proof_response_headers_middleware.ts)
   first in `server.use` in [`start/kernel.ts`](start/kernel.ts), before body parsing, Shield and
-  routing. Keep Shield/CSRF and session initialization before
+  routing. Keep Shield/CSRF and session initialisation before
   authentication, then run the app's
   [`silent_auth_middleware.ts`](app/middleware/silent_auth_middleware.ts)
   before
@@ -138,7 +138,7 @@ links point to the current example source so you can compare each file while ada
   layout rather than replacing its visual design.
 - **Notifications:** `createLogNotifications` is a development/test fixture and refuses to run in
   production. Configure your own transport and message copy; `@adonisjs/mail` and
-  `createMailNotifications` are optional when you choose Adonis Mail.
+  `createMailNotifications` are optional when you choose AdonisJS Mail.
 - **Verified-account policy:** Route-level `auth` middleware only requires a signed-in user. Add
   your own verified-account check on routes that require confirmed email and choose its message in
   your application; a session guard does not imply a verified-account policy.
@@ -245,7 +245,7 @@ links point to the current example source so you can compare each file while ada
   confirm both sessions end. The owner signs in with the new address; the other account keeps its
   own sign-in address.
 
-Forms, route authorization, account policy, and English text are application decisions. Adapt the
+Forms, route authorisation, account policy, and English text are application decisions. Adapt the
 shared form summary, flash renderer, user transformer, middleware, and layouts to the existing
 application. The complete example styles, verification mail logger, invitation and social-provider
 code are fixtures or unrelated features; copy them only if your application needs them.

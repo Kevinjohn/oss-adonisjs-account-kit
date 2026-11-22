@@ -59,23 +59,23 @@ native application uses GET/POST forms; `_method` input must not change the meth
 parsing and Shield enforcement. The early middleware still protects parser and CSRF failures.
 
 The starter's alert component normally uses `x-cloak`, which hides reset acknowledgements until
-Alpine runs. Remove that cloak while keeping its `x-show` behavior so server-rendered success and
+Alpine runs. Remove that cloak while keeping its `x-show` behaviour so server-rendered success and
 failure alerts remain visible when JavaScript is disabled. The signup controller also authenticates
 through the same session adapter after creating the user; this saves the initial credential
 revision while preserving the starter's signup form and dashboard redirect. The patch also trims
 and lowercases the starter's shared email rule in `app/validators/user.ts`, because Account Kit
-looks addresses up in that form; normalize existing addresses before enabling the recipe.
+looks addresses up in that form; normalise existing addresses before enabling the recipe.
 
 The login controller should call `kit.authentication.login` with the existing `web` guard adapter.
 That adapter regenerates the native session, logs the user in through AdonisJS auth and stores the
-credential revision. Register the revision middleware after Shield, auth initialization and silent
+credential revision. Register the revision middleware after Shield, auth initialisation and silent
 auth, before route authentication. On each request it checks the stored revision with
 `kit.authentication.current`; a stale session is terminated so a protected dashboard request uses
 the starter's existing redirect to `/login`.
 
 Use the application's English copy and validation rules. The included failure policy retains safe
 fields and clears both password inputs after validation errors. Keep password reset and session
-behavior in the application; Account Kit supplies the proof and credential operations.
+behaviour in the application; Account Kit supplies the proof and credential operations.
 
 ## Failure coverage
 
@@ -118,7 +118,7 @@ pnpm test:recipe -- --recipe=hypermedia-password-reset
 
 **4 November 2026.** The fresh pinned-starter harness passed the original login baseline (1/1)
 and the reset acceptance suite (33/33), including the response and recovery cases above.
-A migration-initialized evidence replay also passed 33/33. The generated app's build,
+A migration-initialised evidence replay also passed 33/33. The generated app's build,
 typecheck and full lint passed after formatting setup/generated files. These runs cover SQLite,
 Chromium and local notification capture; the earlier dated records below remain historical.
 
@@ -136,7 +136,7 @@ The generated manifest uses `@adonisjs/core` `^7.5.2`, `@adonisjs/auth` `^10.1.0
 `@vinejs/vine` `^4.4.0`, `edge.js` `^6.5.1`, `@japa/browser-client` `^2.3.0`, and
 `@japa/runner` `^5.3.0`. See the [complete pinned starter manifest](https://github.com/adonisjs/starter-kits/blob/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/hypermedia/package.json).
 Its pre-install lockfile SHA-256 was
-`15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea`. Manual Git initialization
+`15448961b3b6caa132cbe17fe3ec0b5c4a044694eebb4221815ddb1fbad74bea`. Manual Git initialisation
 produced starter commit `4e5f3b4379e0d2f0b945281a8b7fb073260fdb7e`; the original native-login
 check passed 1/1 in 328 ms before Account Kit installation. Configuration was recorded at
 `f5e67a9b6b0adb3686b69a049d6b4ec1879707ef` before the patch was applied.
@@ -188,7 +188,7 @@ That test has since moved to `password_reset_journey.spec.ts`; pass
 The original vendor archive was reinstalled; its digest and installed member were checked against
 the original bytes. The same command then passed 1/1 in 991 ms. The candidate archive itself was
 never changed. These tests capture notifications in process and prove link generation and
-application behavior; they do not establish recipient delivery, PostgreSQL behavior, or a new
+application behaviour; they do not establish recipient delivery, PostgreSQL behaviour, or a new
 manual viewport and keyboard inspection.
 
 The shared P7 check was also run after the green P6 result in retained scaffold

@@ -180,7 +180,7 @@ routes cannot carry this middleware; they stay the limited surface.
 
 After the middleware, `ctx.auth.user`, `ctx.auth.isAuthenticated` and `ctx.auth.getUserOrFail()`
 answer for the selected guard, as they do after `middleware.auth({ guards: [name] })`, so the
-default Bouncer initializer and application code see the signed-in user without a second
+default Bouncer initialiser and application code see the signed-in user without a second
 `auth` middleware. `managedAccountMiddleware` does the same.
 
 ### Errors
@@ -294,7 +294,7 @@ one command, before the account exists:
   writes. To prevent both effects, revoke the invitation separately with
   `kit.invitations.revoke({ actorId, invitationId })` (see the [invitation service operations](usage.md#capabilities))
   or the [managed HTTP `account.invitation.revoke` route](managed-http.md#how-it-works), when the
-  actor is authorized by the application.
+  actor is authorised by the application.
 - `list` and decisions never show an approval that waits for its account.
 - Nothing prunes these rows. Cancel waiting approval and revoke its invitation separately when you
   want to remove both outcomes.
@@ -318,7 +318,7 @@ above keeps working.
 
 The [API example README](../../examples/api/README.md#admission-routes) maps its status, request,
 owner-list, and decision endpoints to their controller, validator, route gates, and application
-authorization policy.
+authorisation policy.
 
 | File                                              | Holds                                                                                                                          |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |

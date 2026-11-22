@@ -11,14 +11,14 @@ As an application operator, I want to add admission migration, configuration, pr
 
 ## Acceptance criteria
 
-- **Inputs and result:** `InstallAdmission.run()` handles `account-kit:admission:install [--users-table=<table>] [--user-id-type=<integer|string|uuid>] [--migration-directory=<path>]`; defaults are `users` and `integer`. Invalid schema inputs or unresolved migration order or destination report an error and set the command exit code. New migrations go in the primary Lucid connection's migration directory, after existing timestamped migrations. For a dynamic path, the operator confirms the directory with `--migration-directory`; with several configured paths, the flag selects one, and is refused when another configured path already holds the admission migration. On a destination problem the installer writes nothing and says so. It writes missing config/migration and registers the provider/command loader, while preserving existing config and migration files. It does not define application roles, authorization callbacks or protected routes; the operator must review config and run migrations.
+- **Inputs and result:** `InstallAdmission.run()` handles `account-kit:admission:install [--users-table=<table>] [--user-id-type=<integer|string|uuid>] [--migration-directory=<path>]`; defaults are `users` and `integer`. Invalid schema inputs or unresolved migration order or destination report an error and set the command exit code. New migrations go in the primary Lucid connection's migration directory, after existing timestamped migrations. For a dynamic path, the operator confirms the directory with `--migration-directory`; with several configured paths, the flag selects one, and is refused when another configured path already holds the admission migration. On a destination problem the installer writes nothing and says so. It writes missing config/migration and registers the provider/command loader, while preserving existing config and migration files. It does not define application roles, authorisation callbacks or protected routes; the operator must review config and run migrations.
 
 ## User flow
 
 ```mermaid
 flowchart TD
  A["Operator runs admission installer"] --> B{"Are target files already present?"}
- B -->|Yes| C["Keep existing files and report skipped artifacts"]
+ B -->|Yes| C["Keep existing files and report skipped artefacts"]
  B -->|No| D["Write migration and admission config; register provider and commands"]
  C --> E["Operator configures requirements and approval authority"]
  D --> E

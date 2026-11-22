@@ -75,7 +75,7 @@ conflict and `--apply` writes nothing.
    and export names.
 
 For an existing guided installation, applying the saved choices updates an untouched generated
-config to include its backend origin label. If you customized `config/account_kit.ts`, add
+config to include its backend origin label. If you customised `config/account_kit.ts`, add
 `backendOriginSetting` to `createActionUrls` with the name of the existing backend environment
 variable, such as `PUBLIC_API_URL`, so configuration errors can name it.
 

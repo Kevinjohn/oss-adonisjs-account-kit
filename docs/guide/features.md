@@ -75,7 +75,7 @@ Turn on: `enabled: [..., 'magicLinkLogin']`. Guide: [magic-link sign-in](magic-l
 
 ### Signed-in devices and sign out everywhere
 
-Users see where they are signed in and end sessions they do not recognize.
+Users see where they are signed in and end sessions they do not recognise.
 
 - List sign-ins, with a label, when each started and when it was last used.
 - Sign out one device, every other device, or everywhere.
