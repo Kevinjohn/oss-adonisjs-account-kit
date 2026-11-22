@@ -2,8 +2,12 @@
 
 ## Unreleased
 
-- Preserve nested Account Kit migrations when rerunning guided setup or configure.
-- Write the admission migration in the primary Lucid connection's migration directory after existing timestamped migrations.
+## 0.5.1 - 2026-11-22
+
+- Preserve the identity and exact filesystem paths of existing nested migrations when rerunning guided setup or configure.
+- Check the order of every planned migration, including against host migrations without numeric timestamps, and refuse unsafe plans before writing.
+- Write the optional admission migration in the primary Lucid migration directory after existing prerequisites.
+- Correct the generated API migration count and the sign-in, admission, pruning and verification stories.
 
 ## 0.5.0 - 2026-11-21
 
