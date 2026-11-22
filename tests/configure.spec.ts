@@ -318,6 +318,62 @@ test('configures future-dated prerequisites in the selected custom migration dir
   }
 }).timeout(30_000)
 
+test('configure writes into the configured path named by --migration-directory and otherwise writes nothing', async ({
+  assert,
+}) => {
+  const {
+    root,
+    configDirectory,
+    configPath,
+    existingMigrationPath,
+    migrationsDirectory,
+    ignitorFor,
+  } = await createConfigureProject()
+  const exitCode = process.exitCode
+  const errors: string[] = []
+  const logError = console.error
+  try {
+    await rm(existingMigrationPath)
+    const tenant = join(root, 'database/tenant')
+    await mkdir(tenant)
+    await writeFile(
+      join(configDirectory, 'database.ts'),
+      "import { defineConfig } from '@adonisjs/lucid'\nexport default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/migrations', 'database/tenant'] } } } })"
+    )
+    console.error = (...parts: unknown[]) => errors.push(parts.join(' '))
+    await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])
+    console.error = logError
+    assert.equal(process.exitCode, 1)
+    assert.isTrue(
+      errors.some(
+        (line) =>
+          line.includes('pass --migration-directory with the configured path to use') &&
+          line.includes('Nothing was written')
+      )
+    )
+    await assert.rejects(() => readFile(configPath), /ENOENT/)
+    assert.notInclude(await readFile(join(root, 'adonisrc.ts'), 'utf8'), 'account_kit_provider')
+
+    process.exitCode = undefined
+    await ignitorFor(root)
+      .ace()
+      .handle([
+        'configure',
+        '@kevinjohn/adonisjs-account-kit',
+        '--force',
+        '--migration-directory=database/tenant',
+      ])
+    assert.equal(process.exitCode, 0)
+    assert.lengthOf(await readdir(tenant), migrationNames.length)
+    assert.deepEqual(await readdir(migrationsDirectory), [])
+    assert.include(await readFile(join(root, 'adonisrc.ts'), 'utf8'), 'account_kit_provider')
+  } finally {
+    console.error = logError
+    process.exitCode = exitCode
+    await rm(root, { recursive: true, force: true })
+  }
+}).timeout(30_000)
+
 test('configure keeps invitations in a nested directory containing a hash on rerun', async ({
   assert,
 }) => {

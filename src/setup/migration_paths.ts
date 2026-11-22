@@ -11,6 +11,7 @@ import {
   parseSetupSource,
 } from './ts_source.js'
 import { safeSetupPath } from './safe_path.js'
+import { matchesAccountKitMigration, migrationNames } from './migration_definitions.js'
 
 export const defaultMigrationDirectory = 'database/migrations'
 
@@ -63,7 +64,8 @@ export async function inspectMigrationDirectory(
   config: string,
   explicit?: string,
   env?: NodeJS.ProcessEnv,
-  fallbackDirectory = defaultMigrationDirectory
+  fallbackDirectory = defaultMigrationDirectory,
+  required: readonly string[] = migrationNames
 ) {
   const inspected = await inspectDatabaseConnection(config, root, env)
   let directory: string | undefined = config ? undefined : (explicit ?? fallbackDirectory)
@@ -77,13 +79,13 @@ export async function inspectMigrationDirectory(
         const paths = directProperty(source, settings, 'paths')?.initializer
         if (!paths) directory = fallbackDirectory
         else if (source.ts.isArrayLiteralExpression(paths)) {
-          if (paths.elements.length > 1)
-            throw new MigrationDirectoryError(
-              'Account Kit needs one migration directory; review ordering across configured Lucid migration paths and install migrations manually'
-            )
-          const path = paths.elements[0]
-          if (!path) directory = fallbackDirectory
-          else if (source.ts.isStringLiteral(path)) directory = path.text
+          const configured = paths.elements.map((path) =>
+            source.ts.isStringLiteral(path) ? path.text : undefined
+          )
+          if (configured.length > 1)
+            directory = await selectConfiguredPath(root, configured, explicit, required)
+          else if (!configured.length) directory = fallbackDirectory
+          else directory = configured[0]
         }
       }
     }
@@ -92,17 +94,7 @@ export async function inspectMigrationDirectory(
     throw new MigrationDirectoryError(
       'Unable to determine the Lucid migration directory statically; pass --migration-directory with the application-relative directory used by the selected connection'
     )
-  const normalize = async (name: string) => {
-    // Lucid resolves these as URLs relative to the app root. Refuse references that
-    // could resolve to different paths under URL and filesystem rules.
-    if (/[?#%\\:]/.test(name))
-      throw new MigrationDirectoryError(
-        'Use a plain application-relative Lucid migration directory'
-      )
-    return relative(root, await safeSetupPath(root, name))
-      .split(sep)
-      .join('/')
-  }
+  const normalize = (name: string) => normalizeMigrationDirectory(root, name)
   if (explicit && directory && (await normalize(explicit)) !== (await normalize(directory)))
     throw new MigrationDirectoryError(
       'The explicit migration directory differs from the configured Lucid migration directory'
@@ -123,6 +115,49 @@ export async function inspectMigrationDirectory(
       )
   }
   return { path, names }
+}
+
+async function normalizeMigrationDirectory(root: string, name: string) {
+  // Lucid resolves these as URLs relative to the app root. Refuse references that
+  // could resolve to different paths under URL and filesystem rules.
+  if (/[?#%\\:]/.test(name))
+    throw new MigrationDirectoryError('Use a plain application-relative Lucid migration directory')
+  return relative(root, await safeSetupPath(root, name))
+    .split(sep)
+    .join('/')
+}
+
+/**
+ * Chooses one of several configured Lucid paths: the one named by `--migration-directory`, or the
+ * one that already holds every required migration. Setup never spreads new migrations across
+ * paths, because timestamps cannot order files in different directories.
+ */
+async function selectConfiguredPath(
+  root: string,
+  configured: (string | undefined)[],
+  explicit: string | undefined,
+  required: readonly string[]
+): Promise<string | undefined> {
+  const literal = configured.filter((path) => path !== undefined)
+  const listed = literal.join(', ')
+  if (explicit) {
+    const selected = await normalizeMigrationDirectory(root, explicit)
+    for (const path of literal)
+      if ((await normalizeMigrationDirectory(root, path)) === selected) return path
+    // A dynamic entry may be the named directory; it is used as given, as for one dynamic path.
+    if (literal.length < configured.length) return undefined
+    throw new MigrationDirectoryError(
+      `The explicit migration directory is not one of the configured Lucid migration paths: ${listed}`
+    )
+  }
+  for (const path of literal) {
+    const names = await readMigrationNames(root, await normalizeMigrationDirectory(root, path))
+    if (required.every((name) => names.some((file) => matchesAccountKitMigration(file, name))))
+      return path
+  }
+  throw new MigrationDirectoryError(
+    `The Lucid connection lists several migration paths (${listed}) and Account Kit generates into one of them; pass --migration-directory with the configured path to use`
+  )
 }
 
 async function readMigrationNames(root: string, directory: string): Promise<string[]> {

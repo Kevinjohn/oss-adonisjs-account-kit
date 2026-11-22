@@ -140,9 +140,10 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
  * Runs on `node ace add @kevinjohn/adonisjs-account-kit` or `node ace configure @kevinjohn/adonisjs-account-kit`: writes
  * `config/account_kit.ts`, generates the migrations and registers the provider and commands. Never
  * overwrites existing files. Flags: `--users-table` and `--user-id-type` (`integer`, `string` or
- * `uuid`); `--migration-directory` confirms an otherwise uninspectable Lucid path. For an
- * unsupported dynamic `providers` expression, ensure exactly one current
- * Account Kit provider export is registered, then rerun with `--provider-registered` to leave that
+ * `uuid`); `--migration-directory` confirms an otherwise uninspectable Lucid path or selects one
+ * of several configured paths. For an unsupported dynamic `providers` expression, ensure exactly
+ * one current Account Kit provider export is registered, then rerun with `--provider-registered`
+ * to leave that
  * expression unchanged. The RC config must be an object literal so Assembler can add the package
  * command while preserving the existing entries.
  */
@@ -215,7 +216,9 @@ export async function configure(command: Configure) {
     migrations = orderedMigrations(directory.names, Date.now())
   } catch (error) {
     command.exitCode = 1
-    command.logger.logError((error as Error).message)
+    command.logger.logError(
+      `${(error as Error).message}. Nothing was written: config/account_kit.ts, the migrations, the provider and the commands are unchanged. Rerun configure after resolving the migration destination.`
+    )
     return
   }
 

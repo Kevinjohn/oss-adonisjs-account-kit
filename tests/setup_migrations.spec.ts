@@ -67,6 +67,56 @@ test.group('guided migration destinations', (group) => {
     )
   })
 
+  test('checks an installed application whose Lucid connection lists several paths', async ({
+    assert,
+  }) => {
+    const { root, choices } = await fixture()
+    await applySetup(root, await planSetup(choices, await inspectSetup(root), { apply: true }))
+    await writeFile(
+      join(root, 'config/database.ts'),
+      `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/migrations', 'database/tenant'] } } } })`
+    )
+    const state = await inspectSetup(root)
+    assert.isUndefined(state.migrationDirectoryError)
+    assert.equal(state.migrationDirectory, 'database/migrations')
+    const plan = await planSetup(choices, state)
+    assert.deepEqual(
+      plan.diagnostics.filter(({ severity }) => severity === 'error'),
+      []
+    )
+    assert.equal(plan.migrationState, 'generated-application-unknown')
+    assert.isTrue(
+      plan.changes
+        .filter(({ path }) => path.includes('_account_kit_'))
+        .every(({ action }) => action === 'unchanged')
+    )
+  })
+
+  test('generates in the configured path named by --migration-directory and refuses otherwise', async ({
+    assert,
+  }) => {
+    const { root } = await fixture()
+    await writeFile(
+      join(root, 'config/database.ts'),
+      `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: ['database/migrations', './database/tenant'] } } } })`
+    )
+    const unselected = await inspectSetup(root)
+    assert.equal(
+      unselected.migrationDirectoryError,
+      'The Lucid connection lists several migration paths (database/migrations, ./database/tenant) and Account Kit generates into one of them; pass --migration-directory with the configured path to use'
+    )
+    const selected = await inspectSetup(root, { migrationDirectory: 'database/tenant' })
+    assert.isUndefined(selected.migrationDirectoryError)
+    assert.equal(selected.migrationDirectory, 'database/tenant')
+    const other = await inspectSetup(root, { migrationDirectory: 'database/other' })
+    assert.equal(
+      other.migrationDirectoryError,
+      'The explicit migration directory is not one of the configured Lucid migration paths: database/migrations, ./database/tenant'
+    )
+  })
+
   test('accepts a Lucid path inside the conventional directory without mistaking it for legacy history', async ({
     assert,
   }) => {

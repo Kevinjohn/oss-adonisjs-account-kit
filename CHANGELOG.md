@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Accept `--migration-directory` naming one of several configured Lucid migration paths, and pass guided setup checks when one configured path already holds every Account Kit migration. Configure and the admission installer now say that nothing was written when they stop on a migration-destination problem.
+
 ## 0.5.1 - 2026-11-22
 
 - Preserve the identity and exact filesystem paths of existing nested migrations when rerunning guided setup or configure.

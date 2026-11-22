@@ -8,6 +8,8 @@ import { readRegularFile } from '../src/setup/safe_path.js'
 import { hasRegisteredCommand } from '../src/setup/commands_inspection.js'
 import { stubsRoot } from '../stubs/main.js'
 
+const admissionMigration = 'admission_create_account_admissions'
+
 /**
  * Adds the optional admission module: the `account_admissions` migration and `config/admission.ts`
  * from stubs, and the provider and command loader in `adonisrc.ts`. Never overwrites a file.
@@ -24,7 +26,8 @@ export default class InstallAdmission extends BaseCommand {
   declare userIdType?: string
 
   @flags.string({
-    description: 'Application-relative directory used by Lucid when the path is dynamic',
+    description:
+      'Application-relative Lucid migration directory: a dynamic path or one of several paths',
   })
   declare migrationDirectory?: string
 
@@ -43,16 +46,17 @@ export default class InstallAdmission extends BaseCommand {
         (await readRegularFile(root, relative(root, this.app.configPath('database.ts')))) ?? '',
         this.migrationDirectory,
         process.env,
-        relative(root, this.app.migrationsPath()).split(sep).join('/')
+        relative(root, this.app.migrationsPath()).split(sep).join('/'),
+        [admissionMigration]
       )
-      const [migration] = orderedMigrations(directory.names, Date.now(), [
-        'admission_create_account_admissions',
-      ])
+      const [migration] = orderedMigrations(directory.names, Date.now(), [admissionMigration])
       migrationPath = `${directory.path}/${migration.filename}`
       existing = migration.existing
     } catch (error) {
       this.exitCode = 1
-      this.logger.logError((error as Error).message)
+      this.logger.logError(
+        `${(error as Error).message}. Nothing was written: config/admission.ts, the migration, the provider and the commands are unchanged.`
+      )
       return
     }
     const codemods = await this.createCodemods()

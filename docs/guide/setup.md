@@ -91,13 +91,13 @@ Choose your answers interactively, or start from an example choices file:
 
 Both give the same typed choices. The command previews by default:
 
-| Flag                         | What it does                                                                                             |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| (none)                       | Prints the plan and writes nothing                                                                       |
-| `--apply`                    | Writes the plan, if it has no conflicts                                                                  |
-| `--check`                    | Reads the saved choices and checks the current app, without writing                                      |
-| `--production`               | Also checks public origins and session security for deployment                                           |
-| `--migration-directory=path` | Confirm the single application-relative Lucid migration directory when it cannot be inspected statically |
+| Flag                         | What it does                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------- |
+| (none)                       | Prints the plan and writes nothing                                                     |
+| `--apply`                    | Writes the plan, if it has no conflicts                                                |
+| `--check`                    | Reads the saved choices and checks the current app, without writing                    |
+| `--production`               | Also checks public origins and session security for deployment                         |
+| `--migration-directory=path` | Name the Lucid migration directory: a dynamic path, or one of several configured paths |
 
 Select the deployment environment before running setup. Inspection and planning use the same
 process environment snapshot, with direct process values taking precedence over the selected
@@ -149,10 +149,18 @@ empty. Configure reads the application's configured config directory; guided set
 requires the conventional `config` directory because it also plans other config files. Neither
 executes the database config to choose a directory. For a dynamic path,
 pass the same `--migration-directory` flag on each run, including `--check`, after verifying it is the
-directory Lucid actually runs. A known conflicting path, existing Account Kit files in the default
-directory, or multiple configured paths blocks generation. If Lucid runs several directories,
-review their execution order and install the migrations manually; timestamps cannot establish order
-across directories. Setup also discovers migrations in subdirectories. When allocating new migrations, it uses the
+directory Lucid actually runs. A known conflicting path or existing Account Kit files in the default
+directory blocks generation.
+
+When the connection lists several paths, setup and configure never spread migrations across them,
+because timestamps cannot establish order across directories. If one configured path already holds
+every Account Kit migration, setup uses it, so `--check` passes on an installed application. To
+generate, pass `--migration-directory` with one of the configured paths on every run, including
+`--check`; the new migrations go there, after its existing timestamped files. Review the order in
+which Lucid runs the other paths first: a path that runs earlier must not depend on Account Kit
+tables. Without the flag, setup reports an error, and configure and the admission installer stop
+before writing any file, including `config/account_kit.ts` and the provider registration.
+Setup also discovers migrations in subdirectories. When allocating new migrations, it uses the
 directory of the last timestamped migration so the new files run after existing ones.
 If a dependent migration already exists without its prerequisite, setup reports a conflict; reconcile
 the migration history manually rather than renaming applied files. The migration contents and

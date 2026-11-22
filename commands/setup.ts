@@ -29,7 +29,8 @@ export default class SetupAccountKit extends BaseCommand {
   declare production: boolean
 
   @flags.string({
-    description: 'Application-relative Lucid migration directory for dynamic config',
+    description:
+      'Application-relative Lucid migration directory: a dynamic path or one of several paths',
   })
   declare migrationDirectory?: string
 
