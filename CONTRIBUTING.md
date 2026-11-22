@@ -99,6 +99,8 @@ has landed. Reference material for contributors goes in `docs/maintainers/` inst
 - Add or update tests. A bug fix should include a test that fails without the fix.
 - Update the relevant page in `docs/` and add a line under `## Unreleased` in
   [CHANGELOG.md](CHANGELOG.md) when behavior visible to users changes.
+- A changelog entry for documentation or audit work says what was done and how it was checked,
+  for example "Document the user stories; 45 focused tests", not "verify".
 - Error `code` values are public API. Changing or removing one needs a breaking entry in
   [CHANGELOG.md](CHANGELOG.md); see [error code stability](docs/reference/errors.md#stability).
 - Write commit messages in the imperative mood, describing the change ("Reject expired invitation
