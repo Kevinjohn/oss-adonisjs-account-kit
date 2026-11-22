@@ -11,6 +11,8 @@ const prerequisites: Record<string, string> = {
   create_social_handoff_codes: 'create_social_identities',
 }
 
+const managedOperations = [...migrationNames, 'admission_create_account_admissions']
+
 function runsBefore(first: string, second: string) {
   // Lucid compares relative paths, optionally with natural sort. Require both orders to agree.
   return (
@@ -21,7 +23,8 @@ function runsBefore(first: string, second: string) {
 
 /** Plan before writing anything: existing files are immutable, including their relative paths. */
 export function orderedMigrations(files: string[], now: number, operations = migrationNames) {
-  const timestamped = files.filter((file) => /^[0-9]+_/.test(posix.basename(file))).sort()
+  const hasTimestamp = (file: string) => /^[0-9]+_/.test(posix.basename(file))
+  const timestamped = files.filter(hasTimestamp).sort()
   const last = timestamped.at(-1)
   const directory = last ? posix.dirname(last) : '.'
   let timestamp = now
@@ -44,10 +47,20 @@ export function orderedMigrations(files: string[], now: number, operations = mig
       existing: false,
     }
   })
-  const firstNew = entries.find((entry) => !entry.existing)
-  if (firstNew && timestamped.some((file) => !runsBefore(file, firstNew.filename)))
+  // Host migrations can supply prerequisite tables even without a timestamp. Known Account Kit
+  // files with custom names only impose ordering through the dependencies below.
+  const prior = files.filter(
+    (file) =>
+      hasTimestamp(file) ||
+      !managedOperations.some((name) => matchesAccountKitMigration(file, name))
+  )
+  if (
+    entries.some(
+      (entry) => !entry.existing && prior.some((file) => !runsBefore(file, entry.filename))
+    )
+  )
     throw new Error(
-      'Cannot establish migration order for mixed-width or non-conventional timestamp prefixes; install the remaining Account Kit migrations manually after reviewing existing history'
+      'Cannot establish migration order for mixed-width or non-conventional migration filenames; install the remaining Account Kit migrations manually after reviewing existing history'
     )
   for (const entry of entries) {
     const dependency = entries.find(({ name }) => name === prerequisites[entry.name])

@@ -145,6 +145,22 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     assert.match(migrations.at(-1)!.path, /_add_scope_to_account_invitations\.ts$/)
   })
 
+  test('refuses new migrations that would run before an untimestamped host migration', ({
+    assert,
+  }) => {
+    assert.throws(
+      () => orderedMigrations(['prior/create_users.ts'], 1790000000000),
+      /Cannot establish migration order/
+    )
+  })
+
+  test('refuses new migrations that cross a timestamp width boundary mid-plan', ({ assert }) => {
+    assert.throws(
+      () => orderedMigrations(['9999999999998_create_users.ts'], 1790000000000),
+      /mixed-width/
+    )
+  })
+
   test('refuses timestamp prefixes for which numeric and lexical orders disagree', ({ assert }) => {
     assert.throws(() => orderedMigrations(['9999_create_users.ts'], 1790000000000), /mixed-width/)
     assert.throws(

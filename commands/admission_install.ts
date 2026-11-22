@@ -29,6 +29,7 @@ export default class InstallAdmission extends BaseCommand {
   declare migrationDirectory?: string
 
   async run(): Promise<void> {
+    const root = resolve(this.app.makePath(''))
     let schema: ReturnType<typeof migrationSchema>
     let migrationPath: string
     let existing: boolean
@@ -37,7 +38,6 @@ export default class InstallAdmission extends BaseCommand {
         this.usersTable ?? 'users',
         (this.userIdType ?? 'integer') as UserIdType
       )
-      const root = resolve(this.app.makePath(''))
       const directory = await inspectMigrationDirectory(
         root,
         (await readRegularFile(root, relative(root, this.app.configPath('database.ts')))) ?? '',
@@ -62,7 +62,7 @@ export default class InstallAdmission extends BaseCommand {
     if (existing) this.logger.info(`Skipped ${migrationPath}`)
     else
       await codemods.makeUsingStub(stubsRoot, 'migrations/create_account_admissions.stub', {
-        migration: { ...schema, destination: this.app.makePath(migrationPath) },
+        migration: { ...schema, destination: resolve(root, migrationPath) },
       })
 
     const rcContents = await readFile(this.app.makePath('adonisrc.ts'), 'utf8')

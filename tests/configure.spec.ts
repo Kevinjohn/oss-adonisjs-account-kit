@@ -318,13 +318,15 @@ test('configures future-dated prerequisites in the selected custom migration dir
   }
 }).timeout(30_000)
 
-test('configure keeps the original nested invitations migration on rerun', async ({ assert }) => {
+test('configure keeps invitations in a nested directory containing a hash on rerun', async ({
+  assert,
+}) => {
   const { root, existingMigrationPath, migrationsDirectory, ignitorFor } =
     await createConfigureProject()
   const exitCode = process.exitCode
   try {
     await rm(existingMigrationPath)
-    const directory = join(migrationsDirectory, 'prior')
+    const directory = join(migrationsDirectory, 'prior#review')
     await mkdir(directory)
     const existing = '1999999999999_account_kit_create_account_invitations.ts'
     const contents = '// existing invitations migration\n'
@@ -337,7 +339,7 @@ test('configure keeps the original nested invitations migration on rerun', async
         .filter((name) => name !== 'create_account_invitations')
         .map((name, index) => `${2000000000000 + index}_account_kit_${name}.ts`),
     ]
-    assert.deepEqual(await readdir(migrationsDirectory), ['prior'])
+    assert.deepEqual(await readdir(migrationsDirectory), ['prior#review'])
     const first = await readdir(directory)
     assert.deepEqual(first.sort(), expected)
     await ignitorFor(root).ace().handle(['configure', '@kevinjohn/adonisjs-account-kit', '--force'])

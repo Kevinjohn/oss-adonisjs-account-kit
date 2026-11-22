@@ -114,7 +114,7 @@ test.group('admission install command', () => {
     assert,
   }) => {
     const { root, run } = await fixture()
-    const directory = join(root, 'db/company')
+    const directory = join(root, 'db/company/prior#review')
     const configPath = join(root, 'config/database.ts')
     const users = '9999999999000_create_users.ts'
     const admission = '9999999999001_account_kit_admission_create_account_admissions.ts'
@@ -138,6 +138,7 @@ export default class extends BaseSchema {
       )
       await run()
       assert.deepEqual((await readdir(directory)).sort(), [users, admission])
+      assert.deepEqual(await readdir(join(root, 'db/company')), ['prior#review'])
       assert.deepEqual(await readdir(join(root, 'database/migrations')), [])
       const migration = await readFile(join(directory, admission), 'utf8')
       await run()
@@ -165,7 +166,7 @@ export default class extends BaseSchema {
         const rows = await db.from('adonis_schema').select('name').orderBy('id')
         assert.deepEqual(
           rows.map(({ name }) => name),
-          [users, admission].map((file) => `db/company/${file.slice(0, -3)}`)
+          [users, admission].map((file) => `db/company/prior#review/${file.slice(0, -3)}`)
         )
         const dates = { created_at: '2026-11-22', updated_at: '2026-11-22' }
         await assert.rejects(
