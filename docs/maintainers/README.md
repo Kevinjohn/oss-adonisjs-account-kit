@@ -7,6 +7,7 @@ repository and left out of the npm package.
 - [Release gate](release-gate.md): local/workflow gate boundaries, the reviewed starting baseline
   and clearly labeled historical candidate evidence.
 - [Verification](verification.md): the release check list, then the dated local check results and consumer outcomes.
+- [Lucid and Knex upgrades](dependency-upgrades.md): the transaction invariants and the procedure for changing those dependencies.
 - [Source map](source-map.md): public subpath coverage, comment policy and deliberate compatibility differences.
 - [Release assessment](release-assessment.md): how to rerun it, then the acceptance scenarios mapped to tests.
 - [Manual check](manual-check.md): dated manual consumer installs.

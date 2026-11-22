@@ -120,14 +120,14 @@ export default class PasswordResetsController {
 
 This table describes configured CI coverage, not the result of a pending workflow run.
 
-| Check                          | Checks workflow (pull requests) | Compatibility workflow (scheduled, pre-release, matching pull requests) |
-| ------------------------------ | ------------------------------- | ----------------------------------------------------------------------- |
-| Node.js                        | 24                              | 24                                                                      |
-| AdonisJS core, Lucid and peers | Locked versions                 | Minimum and latest peer versions                                        |
-| Package test suite             | SQLite and PostgreSQL 16        | PostgreSQL 16 at minimum and latest peer versions                       |
-| Built exports and setup        | SQLite leg after build          | —                                                                       |
-| Packed consumers               | —                               | Fresh/latest, minimum, and service-only on SQLite and PostgreSQL 16     |
-| MySQL 8.4                      | —                               | Experimental                                                            |
+| Check                          | Checks workflow (pull requests) | Compatibility workflow (scheduled, pre-release, matching pull requests)            |
+| ------------------------------ | ------------------------------- | ---------------------------------------------------------------------------------- |
+| Node.js                        | 24                              | 24                                                                                 |
+| AdonisJS core, Lucid and peers | Locked versions                 | Minimum and latest peer versions                                                   |
+| Package test suite             | SQLite and PostgreSQL 16        | PostgreSQL 16 and the SQLite transaction suite at minimum and latest peer versions |
+| Built exports and setup        | SQLite leg after build          | —                                                                                  |
+| Packed consumers               | —                               | Fresh/latest, minimum, and service-only on SQLite and PostgreSQL 16                |
+| MySQL 8.4                      | —                               | Experimental                                                                       |
 
 ## Documentation
 
