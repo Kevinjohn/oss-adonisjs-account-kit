@@ -29,6 +29,8 @@ export interface BootOptions {
   sqlitePoolMax?: number
   accountKitProvider?: 'source' | 'build'
   postgresSchema?: string
+  /** A caller-owned migration directory. The caller handles its cleanup. */
+  migrationDirectory?: string
 }
 
 export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
@@ -37,7 +39,8 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
     client === 'better-sqlite3' ? await mkdtemp(join(tmpdir(), 'account-kit-')) : null
   const sqliteFilename = sqliteDirectory ? join(sqliteDirectory, 'test.sqlite') : undefined
   const appRootPath = fileURLToPath(new URL('../..', import.meta.url))
-  const migrationDirectory = await mkdtemp(join(tmpdir(), 'account-kit-migrations-'))
+  const migrationDirectory =
+    options.migrationDirectory ?? (await mkdtemp(join(tmpdir(), 'account-kit-migrations-')))
   let postgresSchemaCreated = false
 
   const connection = testConnection(client, {
@@ -107,7 +110,8 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
             await ignitor.terminate()
           } finally {
             if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
-            await rm(migrationDirectory, { recursive: true, force: true })
+            if (options.migrationDirectory === undefined)
+              await rm(migrationDirectory, { recursive: true, force: true })
           }
         }
       },
@@ -133,7 +137,8 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
         )
       } finally {
         if (sqliteDirectory) await rm(sqliteDirectory, { recursive: true, force: true })
-        await rm(migrationDirectory, { recursive: true, force: true })
+        if (options.migrationDirectory === undefined)
+          await rm(migrationDirectory, { recursive: true, force: true })
       }
     }
     throw failure
@@ -144,7 +149,10 @@ export async function bootTestApp(options: BootOptions = {}): Promise<TestApp> {
  * Boot one app and migrate the schema per group, then empty the tables and the limiter before
  * each test. The returned object is filled in by the group setup hook.
  */
-export function useTestApp(group: Group, options: BootOptions = {}): TestApp {
+export function useTestApp(
+  group: Group,
+  options: Omit<BootOptions, 'migrationDirectory'> = {}
+): TestApp {
   const kit = {} as TestApp
   group.setup(async () => {
     Object.assign(kit, await bootTestApp(options))

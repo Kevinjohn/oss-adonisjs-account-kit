@@ -30,7 +30,10 @@ test.group('setup generated sources', (group) => {
     assert,
   }) => {
     const { root, choices } = await fixture()
+    const directory = 'database/application_migrations'
+    const path = join(root, directory)
     const kit = await bootTestApp({
+      migrationDirectory: path,
       postgresSchema: `account_schema_fixture_${randomUUID().replaceAll('-', '')}`,
     })
     try {
@@ -55,8 +58,6 @@ test.group('setup generated sources', (group) => {
         ])
           await kit.db.connection().schema.dropTableIfExists(table)
       }
-      const directory = 'database/application_migrations'
-      const path = join(root, directory)
       await mkdir(path, { recursive: true })
       await writeFile(
         join(root, 'config/database.ts'),
@@ -82,18 +83,7 @@ test.group('setup generated sources', (group) => {
       const repeatedNames = await readdir(path)
       assert.deepEqual(repeatedNames.sort(), expected)
       assert.deepEqual(await readdir(join(root, 'database')), ['application_migrations'])
-      await symlink(
-        join(process.cwd(), 'node_modules'),
-        join(kit.migrationDirectory, 'node_modules')
-      )
-      for (const migration of plan.changes.filter(({ path: name }) =>
-        name.startsWith(`${directory}/`)
-      ))
-        await writeFile(
-          join(kit.migrationDirectory, migration.path.split('/').at(-1)!),
-          migration.content
-        )
-      await writeFile(join(kit.migrationDirectory, users), usersSource)
+      await symlink(join(process.cwd(), 'node_modules'), join(path, 'node_modules'))
       const runner = new MigrationRunner(kit.db, kit.app, { direction: 'up' })
       await runner.run()
       if (runner.error) throw runner.error
