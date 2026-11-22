@@ -49,8 +49,10 @@ export class InvalidConfigurationError extends RuntimeException {
 /**
  * The `authentication.canAccess` callback resolved to a value other than a boolean, or the
  * application's token guard returned no token, token identifier or bearer value to a managed
- * route. Managed routes and `accountErrorResponse` answer with the generic
- * `E_ACCOUNT_KIT_OPERATION_FAILED` 500; the message and cause stay on the error for logs.
+ * route. Clients get the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 from the managed routes,
+ * `accountErrorResponse` and `AccountKitError.handle`. Managed routes log the error with the route
+ * name through the request logger; on the application's own routes the AdonisJS exception handler
+ * reports it, and a caller of `accountErrorResponse` logs it itself.
  */
 export class AdapterContractError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_ADAPTER_CONTRACT'

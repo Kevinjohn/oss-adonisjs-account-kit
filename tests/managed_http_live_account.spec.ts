@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { registerManagedRoutes } from '../src/http/managed.js'
+import { AdapterContractError } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeNotify, makeService } from './helpers/fakes.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
@@ -48,6 +49,44 @@ test.group('managed HTTP verification policy with live account state', (group) =
     await app.db.from('users').where('id', user.id).update({ disabled_at: null })
     await account.authentication.changeRestriction({ userId: user.id, change: async () => {} })
     assert.equal(((await run()) as { status: number }).status, 401)
+  })
+
+  test('logs a masked canAccess contract violation with its operation', async ({ assert }) => {
+    const user = await insertUser(app)
+    const { account } = makeService(app, {
+      authentication: {
+        strategy: 'session',
+        guard: 'web',
+        canAccess: async () => 'yes' as unknown as boolean,
+      },
+    })
+    const { router, routes, context } = fakeManagedHttp()
+    registerManagedRoutes(router, {
+      prefix: '/api/v1',
+      kit: async () => account,
+      guard: stubGuard({ current: async () => ({ userId: user.id, revision: null }) }),
+      enabled: ['invitations'],
+    })
+    const logged: Array<{ err: unknown; operation: string }> = []
+    const ctx = context()
+    Object.assign(ctx, {
+      logger: { error: (data: { err: unknown; operation: string }) => logged.push(data) },
+    })
+    const output = (await routes.get('GET /api/v1/account/invitations')!(ctx)) as {
+      status: number
+      body: unknown
+    }
+    assert.equal(output.status, 500)
+    assert.deepEqual(output.body, {
+      errors: [{ code: 'E_ACCOUNT_KIT_OPERATION_FAILED', message: 'Account operation failed.' }],
+    })
+    assert.lengthOf(logged, 1)
+    assert.instanceOf(logged[0].err, AdapterContractError)
+    assert.equal(
+      (logged[0].err as Error).message,
+      'account_kit: canAccess must resolve to a boolean'
+    )
+    assert.equal(logged[0].operation, 'account.invitation.list')
   })
 
   test('email-only profile update omits registration data for a required field mapper', async ({

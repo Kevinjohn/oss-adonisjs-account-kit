@@ -105,6 +105,13 @@ export function registerManagedRoutes<Credential>(
             proof: route.proofKind,
           })
           if (!mapped) throw error
+          // The client gets the masked envelope, so the operator's only record is this log entry.
+          // Committed failures were reported above; the error carries no request body or token.
+          if (mapped.status >= 500)
+            context.logger?.error(
+              { err: error, operation: route.name },
+              'Managed account operation failed'
+            )
           applyMappedHeaders(context, mapped)
           return context.response.status(mapped.status).send(mapped.body)
         }

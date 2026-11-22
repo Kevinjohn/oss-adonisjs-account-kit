@@ -4,7 +4,8 @@
 
 ### Changed
 
-- `AdapterContractError` now extends `AccountKitError`, so managed routes and `accountErrorResponse` answer an invalid `canAccess` result or token guard value with the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 instead of leaving it to the application's exception handler. Its class name and `E_ACCOUNT_KIT_ADAPTER_CONTRACT` code are unchanged.
+- `AdapterContractError` now extends `AccountKitError`, so an invalid `canAccess` result or token guard value is answered with the generic `E_ACCOUNT_KIT_OPERATION_FAILED` 500 by the managed routes, `accountErrorResponse` and, on the application's own routes, `AccountKitError.handle`. Its class name and `E_ACCOUNT_KIT_ADAPTER_CONTRACT` code are unchanged.
+- Managed routes log every masked 5xx error, other than an already-reported committed failure, through the request logger with the error and the route name, so the operator can find the cause the client does not see.
 
 ### Fixed
 
