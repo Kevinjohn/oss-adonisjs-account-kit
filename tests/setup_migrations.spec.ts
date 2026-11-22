@@ -186,6 +186,48 @@ export default defineConfig({ connection: 'sqlite', connections: { sqlite: { cli
     assert.equal(plan.migrationState, 'unknown')
   })
 
+  test('skips an unusable configured path while choosing another, in either order', async ({
+    assert,
+  }) => {
+    for (const paths of [
+      "'../shared/migrations', 'database/migrations'",
+      "'database/migrations', '../shared/migrations'",
+    ]) {
+      const { root, choices } = await fixture()
+      const lucidPaths = (list: string) =>
+        writeFile(
+          join(root, 'config/database.ts'),
+          `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'sqlite', connections: { sqlite: { client: 'better-sqlite3', migrations: { paths: [${list}] } } } })`
+        )
+      await lucidPaths(paths)
+      // Nothing generated yet: the unusable path cannot be ruled out, so setup says so.
+      const fresh = await inspectSetup(root)
+      assert.equal(
+        fresh.migrationDirectoryError,
+        `The Lucid connection lists several migration paths (${paths.replaceAll("'", '')}) and Account Kit generates into one of them; pass --migration-directory with the configured path to use`,
+        paths
+      )
+      const named = await inspectSetup(root, { migrationDirectory: 'database/migrations' })
+      assert.equal(
+        named.migrationDirectoryError,
+        'Setup cannot inspect the configured Lucid migration path ../shared/migrations (Setup path escapes the application: ../shared/migrations), so it cannot rule out Account Kit migrations there that database/migrations lacks; Lucid runs every configured path. Make ../shared/migrations inspectable or reconcile the migration paths manually',
+        paths
+      )
+      assert.equal(named.migrationDirectoryErrorField, '../shared/migrations', paths)
+
+      // Installed: the usable path holds every migration, with or without the flag.
+      await lucidPaths("'database/migrations'")
+      await applySetup(root, await planSetup(choices, await inspectSetup(root), { apply: true }))
+      await lucidPaths(paths)
+      for (const migrationDirectory of [undefined, 'database/migrations']) {
+        const installed = await inspectSetup(root, { migrationDirectory })
+        assert.isUndefined(installed.migrationDirectoryError, paths)
+        assert.equal(installed.migrationDirectory, 'database/migrations', paths)
+      }
+    }
+  })
+
   test('reports a non-directory migration path against that path', async ({ assert }) => {
     const { root, choices } = await fixture()
     await mkdir(join(root, 'database'))

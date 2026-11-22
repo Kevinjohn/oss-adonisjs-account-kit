@@ -196,10 +196,7 @@ async function selectConfiguredPath(
   for (const path of literal) paths.push(await normalizeConfiguredPath(root, path))
   if (explicit) {
     const selected = await normalizeMigrationDirectory(root, explicit)
-    const match = paths.find(({ path, normalized, problem }) => {
-      if (problem) throw new MigrationDirectoryError(problem, path)
-      return normalized === selected
-    })
+    const match = paths.find(({ normalized }) => normalized === selected)
     // A dynamic entry may be the named directory; it is used as given, as for one dynamic path.
     if (!match && literal.length === configured.length)
       throw new MigrationDirectoryError(
@@ -208,8 +205,8 @@ async function selectConfiguredPath(
     await refuseMigrationsInOtherPaths(root, selected, paths, required)
     return match?.path
   }
-  for (const { path, normalized, problem } of paths) {
-    if (normalized === undefined) throw new MigrationDirectoryError(problem!, path)
+  for (const { path, normalized } of paths) {
+    if (normalized === undefined) continue
     const names = await readMigrationNames(root, normalized)
     if (required.every((name) => names.some((file) => matchesAccountKitMigration(file, name))))
       return path
