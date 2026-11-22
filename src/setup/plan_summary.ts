@@ -1,5 +1,5 @@
 // Setup planning phase: prerequisites, migration state, readiness and pillar summary of a plan.
-import { accountKitMigrationSuffix, migrationNames } from './migration_definitions.js'
+import { matchesAccountKitMigration, migrationNames } from './migration_definitions.js'
 import type {
   SetupChoices,
   SetupFileChange,
@@ -88,7 +88,7 @@ export function planSummary({
     migrationState: !state.migrationNames.some((file) => file.includes('_account_kit_'))
       ? 'not-generated'
       : migrationNames.every((name) =>
-            state.migrationNames.some((file) => file.endsWith(accountKitMigrationSuffix(name)))
+            state.migrationNames.some((file) => matchesAccountKitMigration(file, name))
           )
         ? 'generated-application-unknown'
         : 'partially-generated',

@@ -201,10 +201,10 @@ export async function configure(command: Configure) {
     }
   }
 
+  const root = resolve(command.app.makePath(''))
   let directory: Awaited<ReturnType<typeof inspectMigrationDirectory>>
   let migrations: ReturnType<typeof orderedMigrations>
   try {
-    const root = resolve(command.app.makePath(''))
     directory = await inspectMigrationDirectory(
       root,
       (await readRegularFile(root, relative(root, command.app.configPath('database.ts')))) ?? '',
@@ -228,7 +228,7 @@ export async function configure(command: Configure) {
     await codemods.makeUsingStub(stubsRoot, `migrations/${name}.stub`, {
       migration: {
         ...schema,
-        destination: command.app.makePath(`${directory.path}/${filename}`),
+        destination: resolve(root, directory.path, filename),
       },
     })
   }

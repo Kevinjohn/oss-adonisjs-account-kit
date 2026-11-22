@@ -34,15 +34,21 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["Host admissionMiddleware or AccountAdmission.require"] --> B["Middleware asserts configured guard and obtains evidence; admission.current validates supplied credential"]
- B --> C["Evaluate enabled domain, invitation and approval requirements"]
+ A["admissionMiddleware"] --> M["Assert configured guard and obtain credential evidence"]
+ M --> R["AccountAdmission.require"]
+ S["Direct service caller supplies credential evidence"] --> R
+ R --> B{"Does admission.current validate the credential and find the account?"}
+ B -->|No| X["Throw InvalidSessionError"]
+ B -->|Yes| C["Evaluate enabled domain, invitation and approval requirements"]
  C --> D{"Was active:false supplied?"}
  D -->|No| E{"Is account active?"}
  E -->|No| F["Throw UnverifiedEmailError"]
  E -->|Yes| G{"Does admission decision admit account?"}
  D -->|Yes| G
  G -->|No| H["Throw AdmissionRequiredError"]
- G -->|Yes| I["Return account/decision and continue host handler"]
+ G -->|Yes| I["AccountAdmission.require returns account and decision"]
+ I -->|Direct service caller| J["Use account and decision"]
+ I -->|Middleware caller| K["Middleware returns next()"]
 ```
 
 **Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts)

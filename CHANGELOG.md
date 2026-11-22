@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Preserve nested Account Kit migrations when rerunning guided setup or configure.
+- Write the admission migration in the primary Lucid connection's migration directory after existing timestamped migrations.
+
 ## 0.5.0 - 2026-11-21
 
 - Align setup, managed HTTP responses and compatibility contracts with the current implementation.

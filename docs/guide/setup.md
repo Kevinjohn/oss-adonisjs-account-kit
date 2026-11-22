@@ -126,10 +126,11 @@ precedence and does not start the interview; `--check` reads saved choices witho
 
 <AnimatedRecording
   recording="setup"
-  description="account-kit:setup previewing and applying the API choices and 11-migration inventory"
+  description="Historical account-kit:setup recording showing the earlier 11-migration API inventory"
 />
 
-The API choices shown here generate 11 migrations.
+The current API choices generate 12 migrations, including `add_scope_to_account_invitations`.
+The recording shows the earlier 11-migration inventory.
 
 The generated migrations assume the application users table already exists. On a fresh application,
 create that table with the application's own migration before running Account Kit migrations. The
@@ -151,7 +152,8 @@ pass the same `--migration-directory` flag on each run, including `--check`, aft
 directory Lucid actually runs. A known conflicting path, existing Account Kit files in the default
 directory, or multiple configured paths blocks generation. If Lucid runs several directories,
 review their execution order and install the migrations manually; timestamps cannot establish order
-across directories. New filenames follow existing numeric timestamps in the selected directory.
+across directories. Setup also discovers migrations in subdirectories. When allocating new migrations, it uses the
+directory of the last timestamped migration so the new files run after existing ones.
 If a dependent migration already exists without its prerequisite, setup reports a conflict; reconcile
 the migration history manually rather than renaming applied files. The migration contents and
 existing filenames are never rewritten.

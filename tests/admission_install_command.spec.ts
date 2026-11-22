@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { test } from '@japa/runner'
 import { ListLoader } from '@adonisjs/core/ace'
 import { IgnitorFactory } from '@adonisjs/core/factories'
+import { MigrationRunner } from '@adonisjs/lucid/migration'
 import InstallAdmission from '../commands/admission_install.js'
 
 // Each test runs a full ace command; V8 coverage instrumentation roughly triples its time.
@@ -104,6 +105,80 @@ test.group('admission install command', () => {
           ?.length,
         1
       )
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  }).timeout(commandTimeout)
+
+  test('installs after users in the primary Lucid path, runs with foreign keys, and preserves the migration on rerun', async ({
+    assert,
+  }) => {
+    const { root, run } = await fixture()
+    const directory = join(root, 'db/company/prior#review')
+    const configPath = join(root, 'config/database.ts')
+    const users = '9999999999000_create_users.ts'
+    const admission = '9999999999001_account_kit_admission_create_account_admissions.ts'
+    try {
+      await mkdir(directory, { recursive: true })
+      await writeFile(
+        configPath,
+        `import { defineConfig } from '@adonisjs/lucid'
+export default defineConfig({ connection: 'company', connections: {
+  other: { client: 'better-sqlite3', connection: { filename: ':memory:' } },
+  company: { client: 'better-sqlite3', connection: { filename: ':memory:' }, useNullAsDefault: true,
+    migrations: { paths: ['db/company'] } }
+} })`
+      )
+      await writeFile(
+        join(directory, users),
+        `import { BaseSchema } from '@adonisjs/lucid/schema'
+export default class extends BaseSchema {
+  async up() { this.schema.createTable('users', (table) => table.increments('id')) }
+}`
+      )
+      await run()
+      assert.deepEqual((await readdir(directory)).sort(), [users, admission])
+      assert.deepEqual(await readdir(join(root, 'db/company')), ['prior#review'])
+      assert.deepEqual(await readdir(join(root, 'database/migrations')), [])
+      const migration = await readFile(join(directory, admission), 'utf8')
+      await run()
+      assert.deepEqual((await readdir(directory)).sort(), [users, admission])
+      assert.equal(await readFile(join(directory, admission), 'utf8'), migration)
+
+      const { default: database } = await import(pathToFileURL(configPath).href)
+      const app = new IgnitorFactory()
+        .withCoreProviders()
+        .withCoreConfig()
+        .merge({
+          rcFileContents: { providers: [() => import('@adonisjs/lucid/database_provider')] },
+          config: { database },
+        })
+        .create(pathToFileURL(`${root}/`))
+        .createApp('console')
+      await app.init()
+      await app.boot()
+      const db = await app.container.make('lucid.db')
+      try {
+        await db.rawQuery('PRAGMA foreign_keys = ON').exec()
+        const runner = new MigrationRunner(db, app, { direction: 'up' })
+        await runner.run()
+        if (runner.error) throw runner.error
+        const rows = await db.from('adonis_schema').select('name').orderBy('id')
+        assert.deepEqual(
+          rows.map(({ name }) => name),
+          [users, admission].map((file) => `db/company/prior#review/${file.slice(0, -3)}`)
+        )
+        const dates = { created_at: '2026-11-22', updated_at: '2026-11-22' }
+        await assert.rejects(
+          () => db.table('account_admissions').insert({ ...dates, user_id: 1 }),
+          /FOREIGN KEY constraint failed/
+        )
+        await db.table('users').insert({ id: 1 })
+        await db.table('account_admissions').insert({ ...dates, user_id: 1 })
+        assert.equal((await db.from('account_admissions').first()).user_id, 1)
+      } finally {
+        await app.terminate()
+      }
     } finally {
       await rm(root, { recursive: true, force: true })
     }
