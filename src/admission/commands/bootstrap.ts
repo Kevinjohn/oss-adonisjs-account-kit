@@ -5,6 +5,7 @@ import {
   writeResult,
 } from '../../../commands/operator_output.js'
 import { InvalidInputError } from '../../errors.js'
+import { BootstrapApprovalChangedError } from '../errors.js'
 import { AccountAdmission } from '../service.js'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
@@ -49,6 +50,12 @@ export default class BootstrapAdmission extends BaseCommand {
   }
 
   completed(): boolean {
+    if (this.error instanceof BootstrapApprovalChangedError) {
+      const { code, diagnostic } = BootstrapApprovalChangedError
+      this.logger.error(`${code}: ${diagnostic}`)
+      this.failure = this.error.code
+      return true
+    }
     return completeOperatorCommand(this)
   }
 }

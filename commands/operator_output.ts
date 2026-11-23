@@ -1,6 +1,5 @@
 // Shared output rules for operator commands: one JSON line on stdout, warnings and errors on stderr.
 import type { BaseCommand } from '@adonisjs/core/ace'
-import { BootstrapApprovalChangedError } from '../src/admission/errors.js'
 import { AccountKitError } from '../src/errors.js'
 import type { OperatorFault } from '../src/types.js'
 
@@ -37,11 +36,7 @@ export function completeOperatorCommand(
   const error: unknown = command.error
   const code = error instanceof AccountKitError ? error.code : 'E_ACCOUNT_KIT_OPERATOR'
   const diagnosticCode = Object.hasOwn(FAILURE_MESSAGES, code) ? code : 'E_ACCOUNT_KIT_OPERATOR'
-  const message =
-    error instanceof BootstrapApprovalChangedError
-      ? BootstrapApprovalChangedError.diagnostic
-      : FAILURE_MESSAGES[diagnosticCode]
-  command.logger.error(`${diagnosticCode}: ${message}`)
+  command.logger.error(`${diagnosticCode}: ${FAILURE_MESSAGES[diagnosticCode]}`)
   command.failure = code
   return true
 }
