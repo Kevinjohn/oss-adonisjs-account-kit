@@ -19,7 +19,7 @@ As an application operator, I want to run the package's configure step so that a
 | `--provider-registered` | Boolean flag | Optional. Only for an `adonisrc.ts` whose `providers` list cannot be inspected statically: it states that Account Kit is already registered exactly once, and the provider list is left unchanged. |
 
 - The step writes `config/account_kit.ts`, generates the package migrations (skipping any whose migration file already exists, with a `Skipped` message), adds the `account_kit_provider` provider unless it is already registered, adds the package `commands` entry, and declares `APP_URL` and `FRONTEND_URL` in `start/env.ts`.
-- Existing application-owned files are not replaced, so a rerun is safe.
+- Existing generated config and migration files are kept. Configure still updates registration in `adonisrc.ts`. If you replaced the default loader with [`defineCommands`](US-ACCOUNT-66-select-account-kit-commands.md), a rerun can add the default loader again. Review the `commands` array after configure and remove the added default entry to preserve your selection.
 - An `adonisrc.ts` whose `defineConfig` call, config properties or syntax cannot be inspected (not a static object literal, computed properties, spreads that do not expose `providers` and `commands`, TypeScript syntax errors) stops with exit code 1 before any write, whatever the flags. A shape it cannot inspect logs restructuring guidance; a syntax error or an unloadable `adonisrc.ts` logs only `Unable to inspect adonisrc.ts: <reason>.` A `providers` list that cannot be inspected stops with exit code 1 and guidance unless `--provider-registered` is given.
 
 - Configure uses the [shared migration destination and ordering rules](../docs/guide/setup.md#reconfigure-saved-choices). It reports an unsafe destination or migration order before writing any files.
@@ -59,4 +59,4 @@ flowchart TD
     I --> J["defineEnvValidations declares APP_URL and FRONTEND_URL"]
 ```
 
-**Code references:** [`configure`](../configure.ts), [`migrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)
+**Code references:** [`configure`](../configure.ts), [`migrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)
