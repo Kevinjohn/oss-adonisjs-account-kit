@@ -84,9 +84,10 @@ export class AccountKitSessionGuard<
         ...(handle ? { sessionHandle: handle } : {}),
       })
     } catch (error) {
-      if (!(error instanceof InvalidSessionError)) throw error
+      // `SessionGuard.authenticate` marked the request authenticated before the kit check.
       this.user = undefined
       this.isAuthenticated = false
+      if (!(error instanceof InvalidSessionError)) throw error
       throw new errors.E_UNAUTHORIZED_ACCESS('Invalid or expired user session', {
         guardDriverName: this.driverName,
       })

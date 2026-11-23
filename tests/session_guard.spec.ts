@@ -12,7 +12,11 @@ import { protectedContext } from './helpers/protected_context.js'
 test.group('accountKitSessionGuard', (group) => {
   const kit = useTestApp(group, { accountKitProvider: 'source' })
   const denied = new Set<UserId>()
-  group.each.setup(() => denied.clear())
+  let broken = false
+  group.each.setup(() => {
+    denied.clear()
+    broken = false
+  })
 
   group.setup(() => {
     kit.app.config.set(
@@ -24,7 +28,10 @@ test.group('accountKitSessionGuard', (group) => {
           authentication: {
             strategy: 'session',
             guard: 'web',
-            canAccess: async (user) => !denied.has(user.id),
+            canAccess: async (user) => {
+              if (broken) throw new Error('access check failed')
+              return !denied.has(user.id)
+            },
           },
         })
       )
@@ -100,6 +107,16 @@ test.group('accountKitSessionGuard', (group) => {
     }
     await kit.db.from('account_sessions').where('user_id', user.id).delete()
     const { guard } = await request(session)
+    await assert.rejects(() => guard.authenticate(), errors.E_UNAUTHORIZED_ACCESS)
+  })
+
+  test('a kit check that throws leaves the request unauthenticated', async ({ assert }) => {
+    const { session } = await signedIn()
+    const { auth, guard } = await request(session)
+    broken = true
+    await assert.rejects(() => guard.authenticate(), 'access check failed')
+    assert.isUndefined(guard.user)
+    assert.isFalse(auth.isAuthenticated)
     await assert.rejects(() => guard.authenticate(), errors.E_UNAUTHORIZED_ACCESS)
   })
 
