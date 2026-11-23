@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- `defineCommands({ exclude })` from the new `@kevinjohn/adonisjs-account-kit/define_commands` subpath: a lazy command loader for `adonisrc.ts` that leaves the named commands out.
+
 ## 0.5.2 - 2026-11-23
 
 ### Added

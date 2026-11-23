@@ -1,0 +1,66 @@
+// A command loader for `adonisrc.ts` that can leave commands out. It imports the commands only
+// when Ace first asks for them, so loading `adonisrc.ts` stays cheap.
+import type { BaseCommand } from '@adonisjs/core/ace'
+import type { CommandMetaData } from '@adonisjs/core/types/ace'
+import { InvalidConfigurationError } from './errors.js'
+
+/** Every command name the package's `./commands` loader registers. */
+export type AccountKitCommandName =
+  | 'account-kit:admission:install'
+  | 'account-kit:doctor'
+  | 'account-kit:invite'
+  | 'account-kit:openapi'
+  | 'account-kit:prune'
+  | 'account-kit:reset-link'
+  | 'account-kit:retirement-impact'
+  | 'account-kit:setup'
+
+export interface AccountKitCommandsOptions {
+  /** Commands to leave out. */
+  exclude?: readonly AccountKitCommandName[]
+}
+
+export interface AccountKitCommandsLoader {
+  getMetaData(): Promise<CommandMetaData[]>
+  getCommand(metaData: CommandMetaData): Promise<typeof BaseCommand | null>
+}
+
+const accountKitCommandNames: readonly AccountKitCommandName[] = [
+  'account-kit:admission:install',
+  'account-kit:doctor',
+  'account-kit:invite',
+  'account-kit:openapi',
+  'account-kit:prune',
+  'account-kit:reset-link',
+  'account-kit:retirement-impact',
+  'account-kit:setup',
+]
+
+/** A lazy command loader for the `commands` array in `adonisrc.ts`. */
+export function defineCommands(
+  options: AccountKitCommandsOptions = {}
+): () => Promise<AccountKitCommandsLoader> {
+  const excluded = new Set<string>()
+  for (const name of options.exclude ?? []) {
+    if (!accountKitCommandNames.includes(name) || excluded.has(name))
+      throw new InvalidConfigurationError(
+        'commands.exclude',
+        `account_kit: unknown command ${name} in exclude`
+      )
+    excluded.add(name)
+  }
+  return async () => {
+    const loader = await import('../commands/main.js')
+    return {
+      async getMetaData() {
+        const commands = await loader.getMetaData()
+        return commands.filter((command) => !excluded.has(command.commandName))
+      },
+      getCommand(metaData) {
+        return excluded.has(metaData.commandName)
+          ? Promise.resolve(null)
+          : loader.getCommand(metaData)
+      },
+    }
+  }
+}

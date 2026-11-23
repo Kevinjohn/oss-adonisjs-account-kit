@@ -170,6 +170,21 @@ If the row commits but a follow-up (delivery or `onLifecycleEvent`) fails, the c
 the committed result, including the link with `--print`, adds a `fault` with the error name and
 message, and exits with status 1. Lifecycle events from these commands carry `source: 'operator'`.
 
+#### Leaving out a command
+
+Replace the `./commands` entry in the `commands` array of `adonisrc.ts`
+with `defineCommands`, which loads the same commands without the ones you name. It imports the
+commands only when Ace first needs them, and throws `InvalidConfigurationError` (field
+`commands.exclude`) for an unknown or repeated name.
+
+```ts
+import { defineCommands } from '@kevinjohn/adonisjs-account-kit/define_commands'
+
+export default defineConfig({
+  commands: [defineCommands({ exclude: ['account-kit:reset-link'] })],
+})
+```
+
 ### Secret rotation
 
 Account Kit stores hashes of random, one-use proof tokens; it does not encrypt or sign those proofs

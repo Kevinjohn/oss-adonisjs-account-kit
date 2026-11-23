@@ -38,6 +38,7 @@
     "./transaction": "./build/transaction/main.js",
     "./ally": "./build/src/ally_social_provider.js",
     "./commands": "./build/commands/main.js",
+    "./define_commands": "./build/src/define_commands.js",
     "./admission": "./build/src/admission/main.js",
     "./admission/provider": "./build/src/admission/provider.js",
     "./admission/commands": "./build/src/admission/commands/main.js"
@@ -172,6 +173,7 @@
       "./http/main.ts",
       "./transaction/main.ts",
       "./commands/main.ts",
+      "./src/define_commands.ts",
       "./commands/prune.ts",
       "./commands/setup.ts",
       "./commands/retirement_impact.ts",
