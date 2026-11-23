@@ -33,7 +33,7 @@ Requires Node.js 24+, AdonisJS 7 with Lucid, and `@adonisjs/limiter`. Install th
 
 ```sh
 node ace add @adonisjs/limiter
-pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.5.2/kevinjohn-adonisjs-account-kit-0.5.2.tgz
+pnpm add https://github.com/Kevinjohn/oss-adonisjs-account-kit/releases/download/v0.6.0/kevinjohn-adonisjs-account-kit-0.6.0.tgz
 ```
 
 Choose an integration path before configuring the package or running its migrations:
