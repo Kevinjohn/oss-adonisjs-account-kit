@@ -249,8 +249,9 @@ opaque and checked; a forged one is `InvalidInputError`.
 | `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
 | `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
 
-The runtime commands write one JSON line to stdout and report failures on stderr with the error
-code and exit code 1, like `account-kit:invite`.
+The runtime commands write one JSON result line to stdout when an operation returns a result.
+A thrown runtime failure leaves the original error on Ace's `command.error`, reports one safe
+diagnostic with a code on stderr and exits with code 1.
 
 ## Turning a requirement on later
 

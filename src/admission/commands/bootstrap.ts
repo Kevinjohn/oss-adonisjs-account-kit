@@ -1,7 +1,7 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import {
   reportOperatorOutcome,
-  writeFailure,
+  completeOperatorCommand,
   writeResult,
 } from '../../../commands/operator_output.js'
 import { InvalidInputError } from '../../errors.js'
@@ -26,29 +26,29 @@ export default class BootstrapAdmission extends BaseCommand {
   failure: string | null = null
 
   async run(): Promise<void> {
-    try {
-      const admission = await this.app.container.make(AccountAdmission)
-      if (this.cancel) {
-        const cancelled = await admission.operator.cancelBootstrap({ email: this.email })
-        writeResult(this, { result: cancelled ? 'cancelled' : 'none', email: this.email })
-        return
-      }
-      if (this.role === undefined) throw new InvalidInputError('Invalid role')
-      const result = await admission.operator.bootstrap({ email: this.email, role: this.role })
-      this.failure = reportOperatorOutcome(this, {
-        result,
-        printed: true,
-        fields: {
-          id: result.invitation.id,
-          email: result.invitation.email,
-          role: result.invitation.role,
-          expiresAt: result.invitation.expiresAt.toISO(),
-          approval: 'approved',
-        },
-        faultLabel: 'Invitation',
-      })
-    } catch (error) {
-      this.failure = writeFailure(this, error)
+    const admission = await this.app.container.make(AccountAdmission)
+    if (this.cancel) {
+      const cancelled = await admission.operator.cancelBootstrap({ email: this.email })
+      writeResult(this, { result: cancelled ? 'cancelled' : 'none', email: this.email })
+      return
     }
+    if (this.role === undefined) throw new InvalidInputError('Invalid role')
+    const result = await admission.operator.bootstrap({ email: this.email, role: this.role })
+    this.failure = reportOperatorOutcome(this, {
+      result,
+      printed: true,
+      fields: {
+        id: result.invitation.id,
+        email: result.invitation.email,
+        role: result.invitation.role,
+        expiresAt: result.invitation.expiresAt.toISO(),
+        approval: 'approved',
+      },
+      faultLabel: 'Invitation',
+    })
+  }
+
+  completed(): boolean {
+    return completeOperatorCommand(this)
   }
 }

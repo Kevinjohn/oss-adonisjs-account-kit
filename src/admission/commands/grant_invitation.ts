@@ -1,5 +1,5 @@
 import { BaseCommand, args, flags } from '@adonisjs/core/ace'
-import { writeFailure, writeResult } from '../../../commands/operator_output.js'
+import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.js'
 import { AccountAdmission } from '../service.js'
 import type { AdmissionRecord } from '../types.js'
 
@@ -19,20 +19,20 @@ export default class GrantInvitationEvidence extends BaseCommand {
   failure: string | null = null
 
   async run(): Promise<void> {
-    try {
-      const admission = await this.app.container.make(AccountAdmission)
-      this.result = await admission.operator.grantInvitation({
-        email: this.email,
-        ...(this.role === undefined ? {} : { role: this.role }),
-      })
-      writeResult(this, {
-        result: 'granted',
-        userId: this.result.userId,
-        email: this.result.email,
-        role: this.result.invitation?.role ?? null,
-      })
-    } catch (error) {
-      this.failure = writeFailure(this, error)
-    }
+    const admission = await this.app.container.make(AccountAdmission)
+    this.result = await admission.operator.grantInvitation({
+      email: this.email,
+      ...(this.role === undefined ? {} : { role: this.role }),
+    })
+    writeResult(this, {
+      result: 'granted',
+      userId: this.result.userId,
+      email: this.result.email,
+      role: this.result.invitation?.role ?? null,
+    })
+  }
+
+  completed(): boolean {
+    return completeOperatorCommand(this)
   }
 }

@@ -3,6 +3,7 @@ import { Kernel } from '@adonisjs/core/ace'
 import InviteAccount from '../commands/invite.js'
 import ResetLink from '../commands/reset_link.js'
 import * as commandLoader from '../commands/main.js'
+import { EmailAlreadyRegisteredError, InvalidInputError, UserNotFoundError } from '../src/errors.js'
 import { AccountKit } from '../src/account_kit.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { aceKernel } from './helpers/ace_kernel.js'
@@ -64,8 +65,42 @@ test.group('operator commands', (group) => {
     ])
     assert.equal(command.exitCode, 1)
     assert.equal(command.failure, 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED')
+    assert.instanceOf(command.error, EmailAlreadyRegisteredError)
     assert.lengthOf(stdout(), 0)
+    assert.lengthOf(stderr(), 1)
     assert.include(stderr()[0].message, 'E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED')
+  })
+
+  test('invite keeps a URL builder error without printing its proof or cause', async ({
+    assert,
+  }) => {
+    const cause = new Error('private callback failure')
+    const error = new InvalidInputError('private URL builder failure', { cause })
+    let proof: string | undefined
+    const { kernel, stdout, stderr } = kernelFor(kit, {
+      enabled: ['invitations'],
+      urls: {
+        invitation: (token) => {
+          proof = token
+          error.message = `Could not build https://example.test/invitation/${token}`
+          throw error
+        },
+      },
+    })
+    const command = await kernel.exec<typeof InviteAccount>('account-kit:invite', [
+      'new@example.test',
+      '--role=admin',
+      '--print',
+    ])
+    assert.strictEqual(command.error, error)
+    assert.equal(command.exitCode, 1)
+    assert.equal(command.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.isString(proof)
+    assert.lengthOf(stdout(), 0)
+    assert.lengthOf(stderr(), 1)
+    assert.include(stderr()[0].message, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.notInclude(stderr()[0].message, proof!)
+    assert.notInclude(stderr()[0].message, cause.message)
   })
 
   test('invite requires --role', async ({ assert }) => {
@@ -75,7 +110,7 @@ test.group('operator commands', (group) => {
   })
 
   test('invite keeps the printed link when a follow-up fails and exits 1', async ({ assert }) => {
-    const { kernel, stdout } = kernelFor(kit, {
+    const { kernel, stdout, stderr } = kernelFor(kit, {
       onLifecycleEvent: async () => {
         throw new Error('observer down')
       },
@@ -89,6 +124,13 @@ test.group('operator commands', (group) => {
     const output = JSON.parse(stdout()[0].message)
     assert.isString(output.url)
     assert.equal(output.fault.name, 'PostCommitError')
+    assert.equal(command.failure, 'PostCommitError')
+    assert.isUndefined(command.error)
+    assert.lengthOf(stderr(), 2)
+    assert.include(stderr()[0].message, 'bearer secret')
+    assert.include(stderr()[1].message, 'committed but a follow-up failed')
+    assert.notInclude(stderr()[1].message, output.url)
+    assert.notInclude(stderr()[1].message, 'observer down')
   })
 
   test('reset-link sends by default and --print prints a working link', async ({ assert }) => {
@@ -109,6 +151,33 @@ test.group('operator commands', (group) => {
     })
   })
 
+  test('reset-link keeps an unexpected configured builder error and prints one diagnostic', async ({
+    assert,
+  }) => {
+    await insertUser(kit, { email: 'person@example.test' })
+    const error = new Error('private configured reset failure')
+    const { kernel, stdout, stderr } = kernelFor(kit, {
+      enabled: ['passwordReset'],
+      urls: {
+        passwordReset: () => {
+          throw error
+        },
+      },
+    })
+
+    const command = await kernel.exec<typeof ResetLink>('account-kit:reset-link', [
+      'person@example.test',
+    ])
+
+    assert.strictEqual(command.error, error)
+    assert.equal(command.failure, 'E_ACCOUNT_KIT_OPERATOR')
+    assert.equal(command.exitCode, 1)
+    assert.lengthOf(stdout(), 0)
+    assert.lengthOf(stderr(), 1)
+    assert.include(stderr()[0].message, 'E_ACCOUNT_KIT_OPERATOR')
+    assert.notInclude(stderr()[0].message, error.message)
+  })
+
   test('reset-link warns for an inactive account and fails for an unknown one', async ({
     assert,
   }) => {
@@ -121,6 +190,8 @@ test.group('operator commands', (group) => {
     ])
     assert.equal(missing.exitCode, 1)
     assert.equal(missing.failure, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
+    assert.instanceOf(missing.error, UserNotFoundError)
+    assert.include(stderr().at(-1)!.message, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
     assert.lengthOf(stdout(), 1)
   })
 

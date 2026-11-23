@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import BootstrapAdmission from '../src/admission/commands/bootstrap.js'
 import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
 import { AccountAdmission } from '../src/admission/service.js'
+import { InvalidInputError } from '../src/errors.js'
 import { aceKernel } from './helpers/ace_kernel.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission } from './helpers/admission.js'
@@ -36,5 +37,13 @@ test.group('admission bootstrap', (group) => {
       ['boss@example.test']
     )
     assert.equal(missingRole.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.instanceOf(missingRole.error, InvalidInputError)
+    assert.equal(missingRole.exitCode, 1)
+    assert.lengthOf(stdout(), 2)
+    const stderr = logs().filter((entry) => entry.stream === 'stderr')
+    assert.lengthOf(stderr, 2)
+    assert.include(stderr[0].message, 'bearer secret')
+    assert.include(stderr[1].message, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.notInclude(stderr[1].message, printed.url)
   })
 })
