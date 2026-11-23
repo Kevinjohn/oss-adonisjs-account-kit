@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Align the invitation OpenAPI fields with shared input bounds and managed role trimming.
+
 ## 0.6.0 - 2026-11-23
 
 ### Added
