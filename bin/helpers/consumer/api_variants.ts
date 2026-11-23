@@ -10,8 +10,7 @@ export const exampleRoot = fileURLToPath(new URL('../../../examples/api/', impor
 /** Example files, relative to `examples/api`, whose contents depend on the schema variant. */
 const renderers = {
   'app/models/user.ts': userModel,
-  'app/services/admission_decision.ts': (_: string, idType: UserIdType) =>
-    admissionDecision(idType),
+  'app/validators/admission.ts': (_: string, idType: UserIdType) => admissionValidator(idType),
   'database/migrations/1761885935168_create_users_table.ts': createUsersTable,
   'database/migrations/1768620764696_create_access_tokens_table.ts': createAccessTokensTable,
   'database/migrations/1791906000000_create_role_assignments.ts': createRoleAssignments,
@@ -79,18 +78,18 @@ ${table}${selfAssign}  static accessTokens = DbAccessTokensProvider.forModel(Use
 `
 }
 
-function admissionDecision(idType: UserIdType) {
+function admissionValidator(idType: UserIdType) {
   const userIdParam =
     idType === 'uuid'
       ? `/** Ids are UUIDs, stored in lower case, so a database never receives a malformed id. */
-function userIdParam(value: string): string {
+export function userIdParam(value: unknown): string {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value))
     throw new InvalidInputError('Invalid user ID')
   return value.toLowerCase()
 }`
       : idType === 'integer'
         ? `/** Integer ids must be positive integers, so a database never receives a malformed id. */
-function userIdParam(value: string): number {
+export function userIdParam(value: unknown): number {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
     throw new InvalidInputError('Invalid user ID')
   const id = /^[1-9]\\d*$/.test(value) ? Number(value) : Number.NaN
@@ -98,32 +97,21 @@ function userIdParam(value: string): number {
   return id
 }`
         : `/** Ids are opaque strings; a database never receives an empty or oversized id. */
-function userIdParam(value: string): string {
+export function userIdParam(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
     throw new InvalidInputError('Invalid user ID')
   return value
 }`
-  return `import app from '@adonisjs/core/services/app'
+  return `import vine from '@vinejs/vine'
 import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
-import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
-${userIdParam}
 
-/**
- * Records an owner's admission decision for one user, after validating the user ID from the
- * route, and returns the user's new approval state.
- */
-export async function decideAdmission(input: {
-  actorId: number | string
-  userId: string
-  transition: 'approve' | 'reject' | 'revoke'
-}) {
-  const service = await app.container.make(AccountAdmission)
-  const record = await service[input.transition]({
-    actorId: input.actorId,
-    userId: userIdParam(input.userId),
-  })
-  return { userId: record.userId, approval: record.approval }
-}
+export const admissionListValidator = vine.create({
+  status: vine.enum(['pending', 'approved', 'rejected', 'revoked'] as const).optional(),
+  limit: vine.number().min(1).max(100).optional(),
+  cursor: vine.string().optional(),
+})
+
+${userIdParam}
 `
 }
 

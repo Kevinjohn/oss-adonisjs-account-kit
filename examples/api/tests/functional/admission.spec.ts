@@ -215,7 +215,11 @@ test.group('Admission', (group) => {
       [email]
     )
 
-    for (const id of ['0', `0${person.id}`, `${person.id}e0`, '9007199254740992', '1'.repeat(65)]) {
+    const invalidIds = ['1'.repeat(65)]
+    if (typeof person.id === 'number') {
+      invalidIds.push('0', `0${person.id}`, `${person.id}e0`, '9007199254740992')
+    }
+    for (const id of invalidIds) {
       const malformed = await as(client.post(`/api/v1/account/admissions/${id}/approve`), owner)
       assert.equal(malformed.status(), 422)
       assert.deepEqual(malformed.body(), {
