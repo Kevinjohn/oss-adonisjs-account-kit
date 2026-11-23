@@ -105,6 +105,7 @@
     "@adonisjs/session": "^8.3.0",
     "@adonisjs/tsconfig": "^2.0.0",
     "@formatjs/icu-messageformat-parser": "^3.5.22",
+    "@japa/api-client": "^3.2.1",
     "@japa/assert": "^4.2.0",
     "@japa/runner": "^5.3.0",
     "@kevinjohn/adonisjs-lucid-soft-delete": "https://github.com/Kevinjohn/oss-adonisjs-lucid-soft-delete/releases/download/v0.2.1/kevinjohn-adonisjs-lucid-soft-delete-0.2.1.tgz",
