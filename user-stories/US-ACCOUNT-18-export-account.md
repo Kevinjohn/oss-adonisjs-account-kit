@@ -4,14 +4,16 @@ As an account holder, I want to download a JSON export of account data so that I
 
 **Status:** Current when `dataExport` is enabled
 **Access:** Recent password/sign-in proof required. The host may supply `exportAccountData`; without it, the export's `application` value is `null`.
-**Entry:** Host endpoint calls `accountData.export`; managed export route is optional.
+**Entry:** Host calls `accountData.export` or mounts `account.data.export` (POST `account/export`, limited access).
 **Documentation:** [account-data.md](../docs/guide/account-data.md)
 **Source:** [`src/account_export.ts`](../src/account_export.ts)
 **Coverage:** [`tests/account_export.spec.ts`](../tests/account_export.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `accountData.export({ actorId, currentPassword? , recentProof? })` returns the version 1 JSON export. Password accounts prove the current password; password-less accounts use purpose-bound `account_export` proof. When supplied, `exportAccountData` contributes application data; otherwise `application` is `null`. The operation also consumes the user throttle budget and, for social-only proof, consumes a one-use proof transactionally; it does not change account fields.
+- **Inputs and result:** `accountData.export({ actorId, currentPassword?, recentProof? })` returns the version 1 JSON export. Password accounts prove the current password; password-less accounts use purpose-bound `account_export` proof and require `socialAuthentication`. When supplied, `exportAccountData` contributes application data; otherwise `application` is `null`. The operation also consumes the user throttle budget and, for social-only proof, consumes a one-use proof transactionally; it does not change account fields.
+
+- The callback receives the current user and transaction and must return JSON-serialisable data. Managed success returns the document as a 200 `account-export.json` attachment with `Cache-Control: no-store`. If a transaction follow-up fails after the document is complete, the managed handler records a diagnostic and still sends the export.
 
 ## User flow
 
@@ -24,19 +26,19 @@ flowchart TD
 
 ## Code flow
 
-Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
-
 ```mermaid
 flowchart TD
- A["accountData.export"] --> B["Throttle and transactionally confirm actor for account_export"]
- B --> C{"Proof valid?"}
- C -->|No| D["Abort read with identity refusal"]
- C -->|Yes| E["Read AccountExport fields"]
- E --> F{"Is exportAccountData configured?"}
- F -->|Yes| G["Invoke optional host callback and return its data in versioned JSON"]
- F -->|No| H["Return versioned JSON with application: null"]
- G --> I["Account fields are unchanged; proof and limiter state are consumed"]
- H --> I
+  M["Managed export resolves actor and validates proof fields"] --> A["accountData.export"]
+  A --> B["Check capability, throttle actor and confirm proof for account_export in transaction"]
+  B -->|Refused| D["Roll back and return no export data"]
+  B -->|Accepted| E["Read package-held metadata after confirmation has consumed any required one-use proof"]
+  E --> F{"Host export callback configured?"}
+  F -->|Yes| G["Invoke exportAccountData(user, trx) and serialise result"]
+  F -->|No| H["Set application to null"]
+  G -->|Callback error or invalid JSON| D
+  G -->|Success| I["Commit, associate any post-commit fault with document and return document"]
+  H --> I
+  I -->|Managed| J["Report any fault diagnostically; return no-store 200 attachment"]
 ```
 
-**Code references:** [implementation](../src/account_export.ts), [`tests/account_export.spec.ts`](../tests/account_export.spec.ts)
+**Code references:** [implementation](../src/account_export.ts), [`tests/account_export.spec.ts`](../tests/account_export.spec.ts), [managed account data](../src/http/handlers_account_data.ts), [actor confirmation](../src/actor_confirmation.ts)

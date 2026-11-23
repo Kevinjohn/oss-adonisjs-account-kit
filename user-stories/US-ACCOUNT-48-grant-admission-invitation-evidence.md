@@ -11,17 +11,19 @@ As an application operator, I want to record invitation evidence for an existing
 
 ## Acceptance criteria
 
-- Email is required; role is optional and, when present, must be 1–64 characters. The service returns the account’s admission record and emits an operator-sourced event after commit.
-- Unknown account or existing invitation evidence is refused without replacing evidence. Role is recorded only; it grants no host permission.
+- The email identifies an existing account. Role is optional and accepts 1–64 characters; when omitted it is stored as null. The invitation requirement must be enabled. Existing evidence causes refusal. The record preserves any approval decision and stores evidence with `source: 'operator'` and a null invitation ID. The role records history and confers no host permission.
+- On success the service returns the admission record and the command prints `result: 'granted'`, `userId` and `email` and role (or null). The configured observer receives `admission.invitation_granted` with operator source after commit. The command reports a committed observer failure on stderr with exit code 1 and the write saved.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Operator enters existing account email and optional role"] --> B{"Does account exist and lack invitation evidence?"}
- B -->|No| C["Report invalid account or existing-evidence refusal"]
- B -->|Yes| D["Record operator invitation evidence"]
- D --> E["Admission decision can now count the invitation requirement"]
+ A["Operator supplies the account email and optional role"] --> B{"Are the inputs valid, and can the enabled operation record operator invitation evidence?"}
+ B -->|No| C["Report failure without saving the requested change"]
+ B -->|Yes| D["Save the requested admission change"]
+ D --> E{"Did a follow-up fail?"}
+ E -->|Yes| F["Report failure with the change saved"]
+ E -->|No| G["Print the granted result"]
 ```
 
 ## Code flow
@@ -30,13 +32,17 @@ Scope: operator service transaction; the role field is historical evidence only.
 
 ```mermaid
 flowchart TD
- A["account-kit:admission:grant-invitation"] --> B["AccountAdmission.operator.grantInvitation({ email, role? })"]
- B --> C["Require admission invitation requirement and validate optional role"]
- C --> D["Lock account and inspect existing evidence"]
- D --> E{"Account/evidence check passes?"}
- E -->|No| F["Throw without replacing evidence"]
- E -->|Yes| G["Upsert source=operator invitation evidence and commit"]
- G --> H["Emit admission.invitation_granted after commit"]
+ A["GrantInvitationEvidence.run resolves AccountAdmission and calls operator.grantInvitation"] --> B{"requireInvitationRequirement and optional role validation passes?"}
+ B -->|No| X["writeFailure reports error and exit code 1"]
+ B -->|Yes| C{"In transaction, lockSubject validates email and finds and reloads locked account?"}
+ C -->|No| X
+ C -->|Yes| D{"No existing invitation evidence?"}
+ D -->|No| X
+ D -->|Yes| E["Upsert invitation evidence with operator source and decision preserved"]
+ E --> F["Commit; withAdmissionEvent invokes configured admission.invitation_granted observer"]
+ F --> G{"Follow-ups succeed?"}
+ G -->|No| H["writeFailure reports PostCommitError and exit code 1 with change saved"]
+ G -->|Yes| I["Service returns AdmissionRecord and writeResult prints granted, userId and email, role"]
 ```
 
-**Code references:** [`operatorGrantInvitation`](../src/admission/operator.ts), [`grant command`](../src/admission/commands/grant_invitation.ts), [`operator tests`](../tests/admission_operator.spec.ts)
+**Code references:** [`operatorGrantInvitation`](../src/admission/operator.ts), [`grant command`](../src/admission/commands/grant_invitation.ts), [`operator tests`](../tests/admission_operator.spec.ts), [committed events](../src/admission/events.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)

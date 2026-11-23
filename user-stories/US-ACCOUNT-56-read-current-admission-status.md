@@ -11,19 +11,16 @@ As a signed-in account holder, I want the application to show my admission statu
 
 ## Acceptance criteria
 
-- `current(input)` checks the current credential and returns `{ account, decision }` in one transaction. The decision reports enabled admission requirements; this is not the protected-route gate and does not require `account.active` or `decision.admitted`.
-- Invalid or revoked credentials fail with `InvalidSessionError`. A host may use the result on a limited surface and must still apply `require` or its gate to protected actions.
+- `current(input)` checks the guard evidence and evaluates admission in one transaction, returning `{ account, decision }`. Session evidence is `userId` and the current `revision` (explicit `null` before the first revision change), plus `sessionHandle` when sign-in tracking is enabled. Access-token evidence is `userId` and `tokenId` for the user's token. A valid tracked session can have its activity updated.
+- Unknown users, invalid or revoked credentials, and accounts refused by `authentication.canAccess(user, trx)` fail with `InvalidSessionError`. A non-boolean access decision throws `AdapterContractError`. An account may be inactive or lack admission and still receive status. The decision contains only enabled requirements and the combined `admitted` result. The host controls what it displays and applies the [protected-route gate](US-ACCOUNT-25-gate-application-route.md) separately.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Signed-in person opens the host's admission status surface"] --> B{"Does the current credential validate?"}
- B -->|No| C["Ask the person to sign in again"]
- B -->|Yes| D["Show account activation and admission requirement status"]
- D --> E{"Is the person admitted and active?"}
- E -->|No| F["Keep limited status and recovery actions available"]
- E -->|Yes| G["The host may offer its protected application journey"]
+ A["Signed-in person opens the host's admission status surface"] --> B{"Does the current account credential still allow access?"}
+ B -->|No| C["Refuse status read"]
+ B -->|Yes| D["Host can show current account and enabled admission requirements"]
 ```
 
 ## Code flow
@@ -32,11 +29,24 @@ Scope: Account Kit validates the supplied credential and evaluates admission; th
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.current(CurrentAccountInput)"] --> B["Transaction checks currentInTransaction and loads the user"]
- B --> C{"Credential and user are valid?"}
- C -->|No| D["Throw InvalidSessionError"]
- C -->|Yes| E["AccountAdmission.decide(user, trx) reads admission row"]
- E --> F["Return account and enabled-requirement decision"]
+ A["AccountAdmission.current starts transaction and calls currentInTransaction"] --> B{"Authentication enabled?"}
+ B -->|No| L["Throw CapabilityDisabledError"]
+ B -->|Yes| M{"Lock and find user?"}
+ M -->|No| G
+ M -->|Yes| C{"Which credential strategy?"}
+ C -->|Session| D["Check revision and, when tracked, require live session handle"]
+ C -->|Access token| E["Check token row belongs to user"]
+ D --> F{"Credential valid?"}
+ E --> F
+ F -->|No| G["Throw InvalidSessionError for refusal"]
+ F -->|Yes| N{"What does canAccess return?"}
+ N -->|False| G
+ N -->|Non-boolean| O["Throw AdapterContractError"]
+ N -->|True| H["Touch tracked session if applicable and build account projection"]
+ H --> I{"users.findById reloads user?"}
+ I -->|No| G
+ I -->|Yes| J["decide reads admission row and evaluateAdmission checks enabled requirements"]
+ J --> K["Commit and return account and decision"]
 ```
 
-**Code references:** [`AccountAdmission.current` and `decide`](../src/admission/service.ts), [`currentInTransaction`](../src/authentication.ts), [`admission gate tests`](../tests/admission_gate.spec.ts)
+**Code references:** [`AccountAdmission.current` and `decide`](../src/admission/service.ts), [`currentInTransaction`](../src/authentication.ts), [`admission gate tests`](../tests/admission_gate.spec.ts), [requirement evaluation](../src/admission/decision.ts), [credential types](../src/types_authentication.ts), [access decision validation](../src/account_access_decision.ts)

@@ -30,10 +30,15 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["Account service invokes configured notification provision"] --> B["createMailNotifications or createLogNotifications formats/routes message"]
- B --> C{"Callback/transport succeeds?"}
+ A["Service runs postCommit effects after a saved operation"] --> B{"Which notify callback is configured?"}
+ B -->|Mail| M["createMailNotifications renders message and calls mail.sendLater"]
+ B -->|Log| L["createLogNotifications records development/test output"]
+ B -->|Host| H["Invoke host callback with the operation-specific arguments"]
+ M --> C{"Callback resolves?"}
+ L --> C
+ H --> C
  C -->|No| D["Surface or report committed delivery failure per operation contract"]
  C -->|Yes| E["Resolve callback; mail queue acceptance does not confirm recipient delivery"]
 ```
 
-**Code references:** [implementation](../src/notifications.ts), [`tests/notifications.spec.ts`](../tests/notifications.spec.ts)
+**Code references:** [mail callbacks](../src/notifications.ts), [development log callbacks](../src/log_notifications.ts), [follow-up effects](../src/effects.ts), [`tests/notifications.spec.ts`](../tests/notifications.spec.ts)

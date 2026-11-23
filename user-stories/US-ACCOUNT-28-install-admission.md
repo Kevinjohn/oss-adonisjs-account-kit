@@ -3,7 +3,7 @@
 As an application operator, I want to add admission migration, configuration, provider and commands so that I can make admission available for explicit host configuration.
 
 **Status:** Operator
-**Access:** Operator must configure at least one requirement, host approval authority and route middleware; installer does not create app roles/routes.
+**Access:** Operator runs the installer in an existing Account Kit app. Host chooses at least one requirement, approval authority when enabled, and the guarded routes.
 **Entry:** Run `account-kit:admission:install [--users-table=<table>] [--user-id-type=<integer|string|uuid>] [--migration-directory=<path>]`; defaults are `users` and `integer`. Then review migration/config and run migrations.
 **Documentation:** [admission.md](../docs/guide/admission.md)
 **Source:** [`commands/admission_install.ts`](../commands/admission_install.ts)
@@ -11,18 +11,19 @@ As an application operator, I want to add admission migration, configuration, pr
 
 ## Acceptance criteria
 
-- **Inputs and result:** `InstallAdmission.run()` handles `account-kit:admission:install [--users-table=<table>] [--user-id-type=<integer|string|uuid>] [--migration-directory=<path>]`; defaults are `users` and `integer`. Invalid schema inputs or unresolved migration order or destination report an error and set the command exit code. New migrations go in the primary Lucid connection's migration directory, after existing timestamped migrations. For a dynamic path, the operator confirms the directory with `--migration-directory`; with several configured paths, the flag selects one, and is refused when another configured path already holds the admission migration. On a destination problem the installer writes nothing and says so. It writes missing config/migration and registers the provider/command loader, while preserving existing config and migration files. It does not define application roles, authorisation callbacks or protected routes; the operator must review config and run migrations.
+- The users table defaults to `users` and ID type to `integer`. The installer accepts `integer`, `string` or `uuid`. An application-relative `--migration-directory` confirms a dynamic path or selects one of several configured paths. If the selected path lacks the admission migration, the command refuses to generate a duplicate already in another configured path. It also refuses a non-default destination when core Account Kit migrations remain in the default directory.
+- It validates the schema and resolves the primary Lucid migration destination and filename order before writing. Invalid destination or ordering (including untimestamped filenames and mixed timestamp widths) exits with code 1 and reports that nothing was written.
+- It preserves existing artefacts, writes missing config and migration, and registers the provider and command loader. Generated config enables approval with both authorisers returning `false`. An operator chooses requirements and supplies approval authority when approval is enabled, either [inline or through the registry](../docs/guide/admission.md#configuration), applies the migration and sets up host routes and applicable lifecycle wrappers.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Operator runs admission installer"] --> B{"Are target files already present?"}
- B -->|Yes| C["Keep existing files and report skipped artefacts"]
- B -->|No| D["Write migration and admission config; register provider and commands"]
- C --> E["Operator configures requirements and approval authority"]
- D --> E
- E --> F["Review migration, apply schema and gate host routes"]
+ A["Operator runs admission installer with optional schema and directory flags"] --> B{"Can the installer validate inputs and resolve the migration destination and order?"}
+ B -->|No| C["Report failure without writing files"]
+ B -->|Yes| D["Keep existing artefacts, fill in missing files and register provider and commands"]
+ D --> E["Review requirements and provide approval authorisers if enabled"]
+ E --> F["Apply migration and configure host routes and applicable lifecycle hooks"]
 ```
 
 ## Code flow
@@ -31,13 +32,16 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["InstallAdmission.run"] --> B{"Do supplied table and ID type produce a valid migration schema?"}
- B -->|No| C["Report schema error and set nonzero exit code"]
- B -->|Yes| M{"Can the installer resolve the primary Lucid path and migration order?"}
- M -->|No| N["Report migration error and set nonzero exit code"]
- M -->|Yes| D["Render config and migration stubs only when absent"]
- D --> E["Register admission provider and command loader in adonisrc"]
- E --> F["Report manual policy, migration and route-gating steps"]
+ A["InstallAdmission.run"] --> B{"migrationSchema, inspectMigrationDirectory and orderedMigrations succeed?"}
+ B -->|No| C["Set exitCode 1 and log that nothing was written"]
+ B -->|Yes| D["makeUsingStub generates config with overwriteExisting false"]
+ D --> E{"Admission migration already exists at chosen destination?"}
+ E -->|Yes| F["Log skipped migration"]
+ E -->|No| G["Render admission migration"]
+ F --> H["Read adonisrc.ts and inspect registered command loader"]
+ G --> H
+ H --> I["updateRcFile adds provider and adds command loader only if missing"]
+ I --> J["Print instructions for host policy, lifecycle hooks, route gating and migration"]
 ```
 
-**Code references:** [implementation](../commands/admission_install.ts), [`tests/admission_install_command.spec.ts`](../tests/admission_install_command.spec.ts)
+**Code references:** [implementation](../commands/admission_install.ts), [`tests/admission_install_command.spec.ts`](../tests/admission_install_command.spec.ts), [migration directories](../src/setup/migration_paths.ts), [migration order](../src/setup/migration_order.ts), [generated config](../stubs/config/admission.stub)

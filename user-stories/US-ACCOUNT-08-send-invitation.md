@@ -4,7 +4,7 @@ As an authorised inviter, I want to send an invitation for a recipient and appli
 
 **Status:** Current when the host explicitly enables the opt-in `invitations` capability
 **Access:** Host `authorize.invite(actor, role, { scope, trx? })` authorises the inviter, role and scope. It receives no target email; recipient-specific policy is host-owned separately. The host decides what an invitation role means.
-**Entry:** Host calls `invitations.send`; optional managed invitation route.
+**Entry:** Host calls `invitations.send` or mounts `account.invitation.send` (POST `account/invitations`, active access by default).
 **Documentation:** [usage.md](../docs/guide/usage.md)
 **Source:** [`src/invitations.ts`](../src/invitations.ts)
 **Coverage:** [`tests/invitations_send.spec.ts`](../tests/invitations_send.spec.ts)
@@ -14,6 +14,8 @@ As an authorised inviter, I want to send an invitation for a recipient and appli
 - **Inputs and result:** `invitations.send({ actorId, email, role, scope? })` returns the invitation. Email must be email-shaped; role is a string of 1–64 characters; scope is an optional string of 1–255 characters, with omitted or `null` meaning unscoped. Host `authorize.invite(actor, role, { scope, trx? })` decides permission and role meaning, without receiving the target email.
 
 - A registered recipient or an existing pending invitation for the same normalised email and scope is refused with its defined error; a pending invitation in another scope does not block this send. Delivery failure after commit leaves the new invitation recorded and is surfaced.
+- Managed send validates the email and trims the role before applying length limits. Omit scope for an unscoped invitation. Managed success returns 201 with `{ id }`.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
@@ -24,19 +26,22 @@ flowchart TD
  B -->|Yes| D{"Does recipient already have an account or a pending invite in this scope?"}
  D -->|Yes| E["Refuse with EmailAlreadyRegisteredError or same-scope InvitationPendingError"]
  D -->|No| F["Store invitation and deliver link after commit"]
+ F -->|Delivery fails| G["Invitation remains recorded; request a resend"]
 ```
 
 ## Code flow
 
-Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
-
 ```mermaid
 flowchart TD
- A["invitations.send"] --> B["Require invitations capability; validate email/role/scope; load actor and authorise invite(actor, role, {scope})"]
- B --> C["Spend actor budget before checking registered address"]
- C --> D["Spend recipient budget; transaction locks inviter, removes expired matching rows, rechecks authorisation and stores a unique same-email/same-scope token hash"]
- D --> E["Commit; deliver invitation and lifecycle event"]
- E --> F["Return Invitation or committed follow-up failure"]
+  M["Managed route resolves account and validates email, role and scope"] --> A["invitations.send"]
+  A --> B["Check capability and inputs; require actor and authorize.invite with scope"]
+  B --> C["Spend actor budget"]
+  C -->|Address already registered| R["Refuse before recipient budget"]
+  C -->|Available| D["Spend recipient budget"]
+  D --> E["Transaction locks inviter, deletes expired rows in the same email and scope, rechecks authorize.invite with transaction and scope"]
+  E --> F["Insert hashed token; same-email same-scope uniqueness failure rolls back as InvitationPendingError"]
+  F --> G["Commit; send provision and lifecycle event"]
+  G --> H["Return Invitation or managed 201 with ID; surface committed follow-up error if one occurs"]
 ```
 
-**Code references:** [implementation](../src/invitations.ts), [`tests/invitations_send.spec.ts`](../tests/invitations_send.spec.ts)
+**Code references:** [implementation](../src/invitations.ts), [`tests/invitations_send.spec.ts`](../tests/invitations_send.spec.ts), [managed invitations](../src/http/handlers_invitations.ts), [scope validation](../src/invitation_scope.ts), [managed committed-failure response](../src/http/managed.ts)

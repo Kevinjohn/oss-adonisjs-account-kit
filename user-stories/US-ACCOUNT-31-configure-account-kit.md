@@ -14,7 +14,7 @@ As an application operator, I want to configure package integration from reviewe
 - **Inputs and result:** `account-kit:setup` accepts the interactive prompts or the same JSON keys with `--input`; defaults, exact prompt labels, options and conditional questions are listed in the [setup choices reference](../docs/reference/setup-choices.md#interactive-interview). No flag previews by default, `--apply` writes a conflict-free plan, `--check` inspects saved choices, and `--production` adds deployment checks. It writes selected integration files only; migration execution, guard policy and active route cutover remain operator-controlled.
 - Removing an existing password or social login method is blocked when the impact inventory is unavailable or any account would lose its last usable method. With zero affected accounts, apply still requires `--retirement-maintenance-window` to acknowledge a host-operated maintenance window. The flag does not lock credentials or prevent concurrent changes; the operator must enforce the window.
 
-- Both setup and configure inspect the selected Lucid connection’s literal migrations.paths. Empty or omitted paths use the application migrations directory. Confirm a dynamic path using `--migration-directory` on each run. With several configured paths, setup uses the one that already holds every Account Kit migration; otherwise `--migration-directory` selects one of them on each run, and is refused when another configured path holds an Account Kit migration the named path lacks or cannot be inspected. A conflicting override or an installed dependent missing its prerequisite requires reconciliation before generation; configure stops without writing. New filenames follow existing numeric timestamps. See [path selection](../src/setup/migration_paths.ts), [ordering](../src/setup/migration_order.ts) and [configure cases](../tests/configure.spec.ts). The host supplies the generated configuration’s callbacks. Authentication requires canAccess. Invitation management uses authorise, while onInvitationAccepted writes membership in the supplied transaction.
+- Setup uses the [shared migration destination and ordering rules](../docs/guide/setup.md#reconfigure-saved-choices). Destination errors are blocking diagnostics. The host supplies the generated configuration’s callbacks, either inline or through the [provider callback registry](US-ACCOUNT-65-register-provider-callbacks.md).
 
 - Setup inspects its supplied environment snapshot. A supplied variable takes precedence over files. Dotenv lookup then checks the mode-specific local file, the generic local file outside test/testing, the mode-specific file, and finally the base file. See [selected environment resolution](../src/setup/selected_environment_values.ts).
 
@@ -29,7 +29,9 @@ flowchart TD
  R -->|No| H["Resolve diagnostics, migrate affected credentials, or arrange and acknowledge the maintenance window; no apply writes"]
  R -->|Yes| E{"Operator chose --apply?"}
  E -->|No| F["Keep preview/check read-only"]
- E -->|Yes| G["Write selected files; operator reviews migrations and route activation separately"]
+ E -->|Yes| J{"Does apply complete?"}
+ J -->|Yes| G["Review the generated files before running migrations or enabling routes"]
+ J -->|No| I["Review the reported failure and any files already written before retrying"]
 ```
 
 ## Code flow
@@ -39,11 +41,17 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["account-kit:setup"] --> B["Inspect project files and load interactive or JSON choices"]
- B --> C["When saved choices exist, run runtimeInventory; then planSetup"]
- C --> R["planSetup calls validate: diagnostics include retirement inventory, affected accounts and maintenance acknowledgement"]
- R --> D{"Apply requested, conflict-free and no blocking diagnostics?"}
- D -->|No| E["Report preview/check results or blockers without apply writes"]
- D -->|Yes| F["Write allowed generated files and report readiness/next steps"]
+ B --> C["With saved choices, run runtimeInventory for the proposed retirement"]
+ C --> R["planSetup validates choices; log JSON report"]
+ R --> D{"Check, preview or apply?"}
+ D -->|--check| E["Exit with configuration-validity result; no writes"]
+ D -->|Preview| P["Exit nonzero on error diagnostics; no writes"]
+ D -->|Apply| G{"Blocking diagnostics or apply conflict?"}
+ G -->|Yes| H["Refuse application"]
+ G -->|No| L["Run applySetup"]
+ L -->|Completes| F["Report written count"]
+ L -->|Failure before writing| H
+ L -->|Interrupted after a write| I["Report files already written; review before rerunning"]
 ```
 
-**Code references:** [implementation](../commands/setup.ts), [planSetup](../src/setup/plan.ts), [validate and retirementDiagnostics](../src/setup/validate.ts), [`tests/setup_command.spec.ts`](../tests/setup_command.spec.ts)
+**Code references:** [implementation](../commands/setup.ts), [planSetup](../src/setup/plan.ts), [validate and retirementDiagnostics](../src/setup/validate.ts), [applySetup](../src/setup/apply.ts), [`tests/setup_command.spec.ts`](../tests/setup_command.spec.ts)

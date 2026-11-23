@@ -4,14 +4,14 @@ As an application operator, I want to write a contract for the managed endpoints
 
 **Status:** Operator
 **Access:** Managed routes must already be registered in the application route inventory.
-**Entry:** Run `account-kit:openapi [--output]`; command writes OpenAPI 3.1 for the discovered route set.
+**Entry:** Run `account-kit:openapi [--output <path>] [--title <title>] [--api-version <version>]`.
 **Documentation:** [OpenAPI reference](../docs/reference/openapi.md)
 **Source:** [`commands/openapi.ts`](../commands/openapi.ts)
 **Coverage:** [`tests/openapi_command.spec.ts`](../tests/openapi_command.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `account-kit:openapi` accepts optional `--output`, `--title` and `--api-version`; without output it prints JSON to stdout. It commits/inspects the host router and refuses when no managed route registration exists.
+- **Inputs and result:** `account-kit:openapi` accepts optional `--output`, `--title` and `--api-version`; title and version default to the host package name and version, with `Account API` and `0.0.0` as fallbacks. Without output it prints JSON to stdout. An output path is resolved from the application root. It commits/inspects the host router and refuses when no managed route registration exists.
 
 ## User flow
 
@@ -39,7 +39,10 @@ flowchart TD
  V -->|No| D
  V -->|Yes| F{"--output supplied?"}
  F -->|No| G["Print JSON"]
- F -->|Yes| H["Write JSON to resolved application path"]
+ F -->|Yes| H["Resolve path and write JSON"]
+ H --> I{"Write succeeds?"}
+ I -->|Yes| J["Report written path"]
+ I -->|No| K["Propagate file error"]
 ```
 
 **Code references:** [implementation](../commands/openapi.ts), [`tests/openapi_command.spec.ts`](../tests/openapi_command.spec.ts)

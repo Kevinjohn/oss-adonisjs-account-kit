@@ -2,83 +2,94 @@
 
 As a person with a configured provider identity, I want to sign in through Google or GitHub so that I can use an account under the host signup policy.
 
-**Status:** Current for configured Ally provider and enabled `socialAuthentication`
-**Access:** State and client challenge bind the callback. Existing linked identities must be confirmed; new-account eligibility follows the shared registration policy. Host owns provider credentials and callback routes.
-**Entry:** Host calls `socialAuthentication.begin({ provider, intent: 'login', clientChallenge, context? })`, handles callback with `state`, then redeems a linked handoff with `redeemHandoff({ code, verifier, guard })`.
-**Documentation:** [Social authentication](../docs/guide/social-authentication.md) and [managed social routes](../docs/guide/managed-social.md)
-**Source:** [`src/social_identity.ts`](../src/social_identity.ts)
-**Coverage:** [`tests/social_identity_handoff.spec.ts`](../tests/social_identity_handoff.spec.ts), [`tests/social_identity_continuation.spec.ts`](../tests/social_identity_continuation.spec.ts), [`tests/managed_social_http.spec.ts`](../tests/managed_social_http.spec.ts)
+**Status:** Current when `socialAuthentication` is enabled with a configured provider
+**Access:** Provider state binds the callback and the initiating client's verifier binds credential redemption. Confirmed relationships may sign in under closed registration if the account passes `canAccess`. New accounts follow the shared registration policy.
+**Entry:** Host calls `socialAuthentication.begin({ provider, intent: 'login', clientChallenge, context? })`, or a managed client posts to `auth.oauth.redirect`.
+**Documentation:** [Social authentication](../docs/guide/social-authentication.md) and [managed social routes](../docs/guide/managed-social.md#endpoints)
+**Source:** [Service entry points](../src/social_identity.ts), [managed provider handlers](../src/http/social.ts)
+**Coverage:** [Handoff](../tests/social_identity_handoff.spec.ts), [continuation](../tests/social_identity_continuation.spec.ts), [managed social](../tests/managed_social_http.spec.ts)
 
 ## Acceptance criteria
 
-- `begin` takes provider (`google` or `github`), intent `login`, a 43-character base64url SHA-256 `clientChallenge`, and optional adapter context; it returns `{ state, url }`. `beginConfirmation` takes provider, activation `verificationToken`, the same challenge shape and optional context, returning `{ state, url }`. Callback takes `{ state, callback, provider?, admit? }` and returns `linked`/`new` with userId and optional handoffCode, `new` with continuation, `new` with `emailVerificationRequired`, `link_required`, or `reauthenticated` with proof. It does not issue an AdonisJS credential in the provider redirect.
-- A confirmed `linked` result carries userId and a short-lived handoffCode; `redeemHandoff({ code, verifier, guard })` checks that the verifier is a well-formed PKCE verifier (43 to 128 unreserved characters; the managed token endpoint bounds it the same way), compares it with the stored challenge in constant time, and returns account, actual guard credential and provider. A matching email without a relationship returns `link_required`, not sign-in.
-- A `new` continuation is completed by trusted host code with `completeRegistration({ continuation, email?, registrationData?, admit? })`; closed signup refuses and application policy remains host-owned. An unverified provider email cannot sign in; confirmation uses `beginConfirmation({ provider, verificationToken, clientChallenge, context? })` followed by `callback({ state, callback })`, matching the email proof to the same pending subject.
-- Managed session clients retain the verifier server-side and redeem the handoff inside the callback. Managed token clients return a short-lived code for the client to redeem with its verifier at the token endpoint; both strategies support this sign-in action.
+- `begin` accepts `google` or `github` when configured, `intent: 'login'`, a 43-character base64url SHA-256 `clientChallenge` and optional adapter `context`. It returns `{ state, url }`. The host sends the callback as `{ state, callback, provider?, intent?, admit? }`. Managed begin defaults to login and returns `{ authorizationUrl }`. The session strategy generates and retains its verifier, and the access-token client supplies a challenge and retains its verifier. Session POST routes require Shield CSRF.
+- A confirmed linked subject yields `linked` and a handoff. A matching address without that relationship yields `link_required`. Missing email, configured field mapping or application signup policy yields a `new` continuation when signup is available. Submit `completeRegistration({ continuation, email?, registrationData?, admit? })` through trusted host code or managed `auth.oauth.registration`. The stored provider email takes precedence. Application signup requires the trusted `admit({ provider, subject, email }, trx)` callback. An existing email found during continuation can consume the continuation without creating an account.
+- An unverified provider email creates an inactive account with a pending identity. A repeat login for that pending identity can resend activation. Start confirmation with `beginConfirmation({ provider, verificationToken, clientChallenge, context? })` or managed `auth.oauth.confirmation`. The fresh callback must match the same pending subject. Managed access-token confirmation forwards `intent: 'confirm'` along with the provider code and state to `auth.oauth.complete`.
+- `redeemHandoff({ code, verifier, guard })` accepts a two-minute one-use code and a 43–128 character unreserved PKCE verifier. The transaction checks the challenge, access decision, current revision and original confirmed association. After it commits, the service issues and rechecks the selected credential and returns `{ account, credential, provider }`. An issuance failure after consumption requires a fresh flow.
+- Managed session completion redeems with the stored verifier and returns `{ status, account }`. Managed access-token completion returns `{ status, code }`; post `{ code, verifier }` to `auth.oauth.token` for `{ account, token }`. A committed callback, registration or token exchange follow-up failure can return 202 `{ committed: true }`; reconcile before restarting with fresh state.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Initiating client or session host keeps verifier and sends its challenge to begin provider login"] --> B["Provider returns callback to host"]
- B --> C{"Does one-use state and provider response validate?"}
- C -->|No| D["Refuse callback without issuing credential"]
- C -->|Yes| E{"Is provider subject already confirmed and linked?"}
- E -->|Yes| F["Receive one-use handoff code"]
- F --> G{"Does redeemHandoff verifier match original challenge?"}
- G -->|No| H["Refuse redemption; no credential is issued"]
- G -->|Yes| I["Establish configured session or token guard"]
- E -->|No| J{"Does callback require link, registration data, application approval or email confirmation?"}
- J -->|link_required| K["Authenticate existing account and complete a separate link journey"]
- J -->|registration continuation| L["Host applies signup decision and calls completeRegistration"]
- L --> P{"Registration result?"}
- P -->|handoff| F
- P -->|emailVerificationRequired| M
- P -->|link_required| K
- P -->|refusal| N
- J -->|unverified email| M["Confirm address with proof and fresh callback for same provider subject"]
- M --> F
- J -->|closed policy| N["Refuse account creation"]
- J -->|verified provider email and open registration| O["Create account and issue a handoff code"]
- O --> F
+ A["Start sign-in and follow the provider URL"] --> B{"Does the provider callback validate?"}
+ B -->|Refused or expired| X["Start again when ready"]
+ B -->|Accepted| R{"What does the sign-in return?"}
+ R -->|Matching existing email| L["Sign in to the existing account and link separately"]
+ R -->|More information or signup decision needed| I["Submit missing details to finish registration"]
+ I --> R
+ R -->|Email confirmation needed| E["Use the activation email and return through the same provider identity"]
+ E --> B
+ R -->|Signup refused| F["See signup refusal"]
+ R -->|Committed follow-up fault| G["Reconcile account state before starting a fresh flow"]
+ R -->|Ready to sign in| H{"How is the verifier held?"}
+ H -->|Managed browser session| U["Server exchanges the handoff using its stored verifier"]
+ U -->|Accepted| S["Receive signed-in account"]
+ U -->|Refused| X
+ H -->|Client or host| T["Exchange the handoff using the original verifier"]
+ T -->|Accepted| S
+ T -->|Refused| X
 ```
 
 ## Code flow
 
-Scope: provider adapter supplies provider URL/profile; Account Kit owns state, local identity resolution and handoff. Host owns Ally credentials, routes and application signup decision.
+Scope: host service and managed strategy entry points through sign-in. See [US-ACCOUNT-21](US-ACCOUNT-21-link-social-identity.md) for the separate linking journey.
 
 ```mermaid
 flowchart TD
- A["socialAuthentication.begin"] --> B["Store one-use state, intent, challenge and optional account/proof binding"]
- B --> C["Configured adapter returns authorisation URL"]
- C --> D["socialAuthentication.callback resolves provider profile before consuming one-use state"]
- D --> E{"Callback path?"}
- E -->|linked| F["Return handoffCode bound to association and credential revision"]
- F --> G{"Which managed guard strategy is configured?"}
- G -->|session| HS_SESSION["Callback redeems with verifier retained in server session; returns safe account data"]
- G -->|access tokens| HS_TOKEN["Callback returns code; client posts code and verifier to auth.oauth.token for redemption"]
- G -->|host-managed| HS_HOST["Host calls redeemHandoff({ code, verifier, guard })"]
- HS_TOKEN --> HS_TOKEN_DONE["Token endpoint establishes access token"]
- HS_HOST --> HS_HOST_DONE["Selected guard establishes credential; service returns account and credential"]
- E -->|closed or refused| ERR["Reject callback; no credential issued"]
- E -->|new| I["Apply open/application policy and configured field mapping"]
- I --> J{"Does this path need a trusted continuation?"}
- J -->|Yes| K["Return continuation to host"]
- K --> L{"Does host accept and call completeRegistration?"}
- L -->|No| M["No account is created"]
- L -->|Yes| N["Consume continuation; recheck provider, email and signup policy; create account through configured mapping and optional/required admit callback"]
- N -->|email collision| T
- N -->|refusal| ERR
- J -->|No| O["Create account directly under open policy"]
- N --> P{"Is provider email confirmed?"}
- O --> P
- P -->|No| Q["Return emailVerificationRequired; wait for joint email/provider confirmation"]
- Q --> R
- P -->|Yes| F
- E -->|unverified| R["beginConfirmation binds verification token to fresh confirm state"]
- R --> S["callback confirms same pending provider identity and activates account"]
- S --> F
- E -->|link_required| T["Return no credential; existing account must prove and link"]
+ A["Host begin or auth.oauth.redirect; managed session generates challenge and verifier"] --> B["begin validates provider and challenge, inserts login state and returns provider URL; managed session retains verifier"]
+ B -->|Refusal| X["Return error"]
+ B --> C["Host passes state and provider callback context; oauthCallback reads code and state and restores saved session context"]
+ Y["Host beginConfirmation or auth.oauth.confirmation checks activation proof and pending identity, then stores confirm state and returns provider URL"] --> C
+ Y -->|Refusal| X
+ C -->|Refusal or denial| X
+ C --> B2["socialCallback checks candidate state and resolves the provider profile"]
+ B2 -->|Refusal| X
+ B2 --> D["Lock bound or associated account when present and consume state"]
+ D -->|Confirm| E["Match pending subject; completeActivationByHash consumes email proof and confirms association"]
+ D -->|Login| F{"Provider identity and signup result?"}
+ D -->|Transaction refusal| X
+ F -->|Confirmed and allowed| P
+ F -->|Pending and inactive| V
+ F -->|Missing or denied owner of existing relationship| X
+ F -->|Matching address with no relationship| L["Return link_required without credential"]
+ F -->|Closed signup| X
+ F -->|Missing email or mapping or application policy| I["Commit continuation; managed session rebinds verifier"]
+ I --> J["Host completeRegistration or auth.oauth.registration consumes continuation and checks stored profile and email"]
+ J -->|Matching email or duplicate creation| L
+ J -->|Refusal| X
+ F -->|Direct creation| K["createAccount applies policy and mapping; creates account and relationship"]
+ J --> K
+ K -->|Duplicate creation outcome| L
+ K -->|Refusal| X
+ K -->|Unverified email| V["Commit pending outcome, send activation and return emailVerificationRequired"]
+ K -->|Verified email| P["createHandoff stores challenge, association and revision"]
+ E --> P
+ P --> U["Commit; run applicable invitation follow-ups; return handoff"]
+ U -->|Committed follow-up issue| Z["Report committed fault; managed callback, registration or token exchange returns 202 committed"]
+ V -->|Committed follow-up issue| Z
+ U --> H{"Who redeems?"}
+ H -->|Host| HH["Host calls redeemHandoff with original verifier and guard"]
+ H -->|Managed session| HS["finishHandoff redeems with saved verifier and guard.forRequest"]
+ H -->|Managed access tokens| HT["Return code; auth.oauth.token receives code and original verifier"]
+ HH --> W
+ HS --> W
+ HT --> W
+ W["redeemSocialHandoff consumes code under account lock and checks verifier, access, revision and association"] -->|Refusal rolls back consumption| X
+ W --> WC["Commit code consumption"]
+ WC -->|Committed follow-up fault| Z
+ WC --> G["establishCredential issues and rechecks account, revision and association"]
+ G -->|Issuance fault| Q["Attempt applicable credential cleanup; restart with fresh state"]
+ G --> O["Return service account, credential and provider; managed session status and account or managed token account and token"]
 ```
 
-**Code references:** [`client_challenge`](../src/client_challenge.ts), [`social identity methods`](../src/social_identity.ts), [`provider callback flow`](../src/http/social.ts), [`handoff tests`](../tests/social_identity_handoff.spec.ts), [`continuation tests`](../tests/social_identity_continuation.spec.ts)
+**Code references:** [begin and confirmation](../src/social_identity.ts), [callback](../src/social_callback.ts), [registration continuation](../src/social_registration.ts), [account creation](../src/social_account_creation.ts), [handoff](../src/social_handoff.ts), [credential issuance](../src/credential_issuance.ts), [managed handlers](../src/http/social.ts), [session state](../src/http/social_session_state.ts), [activation](../src/activation_claim.ts), [managed error and committed response](../src/http/managed.ts)

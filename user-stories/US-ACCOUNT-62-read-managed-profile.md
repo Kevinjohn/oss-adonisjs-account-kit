@@ -6,7 +6,7 @@ As a signed-in account holder, I want to read the representation exposed by my a
 
 **Access:** Limited-access route under the authentication capability.
 
-**Entry:** `GET account/profile`
+**Entry:** `account.profile.show` (GET `account/profile`) under the configured managed prefix.
 
 **Documentation:** [Guide](../docs/guide/managed-http.md)
 
@@ -18,6 +18,7 @@ As a signed-in account holder, I want to read the representation exposed by my a
 
 - The guard resolves the current credential and authentication.current loads the account. Limited access allows accounts pending verification to reach this read.
 - A stale or refused credential fails before representation. On success the handler returns 200 with account set to the host representation when supplied or the default public representation.
+- The default representation returns `id`, `email`, `unverifiedEmail`, `hasPassword` and `active`. A registry-backed session check can update its last-seen timestamp.
 
 ## User flow
 
@@ -32,7 +33,14 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Read guard evidence"] --> B{"Current account resolves?"}
-    B -->|Yes| C["Represent account and return 200"]
-    B -->|No| D["Propagate refusal"]
+  A["executeManagedRequest resolves kit and asserts configured guard"] --> B["Configured managed guard reads session or access-token evidence"]
+  B -->|Refused| D["Propagate refusal"]
+  B -->|Evidence available| E["authentication.current locks account and checks revision/registry or token ownership and expiry, then canAccess"]
+  E -->|Refused| D
+  E -->|Accepted| F["Update session last-seen when due, then project current account"]
+  F --> G["account.profile.show awaits host representation or default projection"]
+  G -->|Success| H["Return 200 with account"]
+  G -->|Host representation fails| D
 ```
+
+**Code references:** [managed dispatch](../src/http/managed_execution.ts), [profile handler](../src/http/handlers_authentication.ts), [current account check](../src/authentication.ts), [public projection](../src/http/response_helpers.ts)

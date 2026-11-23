@@ -4,14 +4,16 @@ As an account holder, I want to close the account after proving identity so that
 
 **Status:** Current when `accountDeletion` is enabled
 **Access:** Current password required for password accounts, or purpose-bound `account_delete` recent proof for password-less accounts, which also requires `socialAuthentication` to be enabled (otherwise `NoPasswordError`); host defines and implements deletion callback for application-owned rows/retention.
-**Entry:** Host-owned endpoint calls `accountData.delete`; managed deletion route is optional.
+**Entry:** Host calls `accountData.delete` or mounts `account.delete` (DELETE `account`, limited access).
 **Documentation:** [account-data.md](../docs/guide/account-data.md)
 **Source:** [`src/account_deletion.ts`](../src/account_deletion.ts)
 **Coverage:** [`tests/account_deletion.spec.ts`](../tests/account_deletion.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `accountData.delete({ actorId, currentPassword? , recentProof? })` returns `void`. Password accounts prove the current password; password-less accounts use purpose-bound `account_delete` proof and need `socialAuthentication` enabled; without it they are refused with `NoPasswordError`, even when a proof is supplied. The configured transaction callback handles application-owned rows before package/user deletion.
+- **Inputs and result:** `accountData.delete({ actorId, currentPassword?, recentProof? })` returns `void`. Password accounts prove the current password; password-less accounts use purpose-bound `account_delete` proof and need `socialAuthentication` enabled; without it they are refused with `NoPasswordError`, even when a proof is supplied. The configured transaction callback handles application-owned rows before package/user deletion.
+- Managed deletion validates proof fields and returns 204 on success. The session handler attempts browser session termination after commit, including when a committed follow-up failure is surfaced.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
@@ -25,19 +27,19 @@ flowchart TD
 
 ## Code flow
 
-Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
-
 ```mermaid
 flowchart TD
- A["accountData.delete"] --> B{"users.delete adapter method available?"}
- B -->|No| D0["Throw before the throttle is spent; user remains"]
- B -->|Yes| T["Consume identity:user throttle budget"]
- T --> C["Transaction locks actor and confirmActor checks password or account_delete proof"]
- C --> P{"Proof accepted?"}
- P -->|No| D["Abort transaction; user remains"]
- P -->|Yes| E["Run onAccountDeletingTransaction, delete package rows, then user row"]
- E --> F["Commit deletion"]
- F --> G["Send notice and lifecycle event; report follow-up error without rollback"]
+  M["Managed deletion resolves actor and validates proof fields"] --> A["accountData.delete"]
+  A --> B{"Capability enabled and users.delete available?"}
+  B -->|No| D0["Refuse before spending throttle"]
+  B -->|Yes| T["Consume identity:user budget"]
+  T --> C["Transaction locks actor and confirms password or account_delete proof"]
+  C -->|Refused| D["Abort transaction; user remains"]
+  C -->|Accepted| E["Run onAccountDeletingTransaction, delete package rows, then delete user"]
+  E -->|Error| D
+  E -->|Success| F["Commit deletion"]
+  F --> G["Run deletion notice and lifecycle event; return void or committed error"]
+  G -->|Managed| H["Attempt browser session termination after commit; return 204 on success or rethrow for the managed committed-failure response"]
 ```
 
-**Code references:** [implementation](../src/account_deletion.ts), [`confirmActor`](../src/actor_confirmation.ts), [`tests/account_deletion.spec.ts`](../tests/account_deletion.spec.ts)
+**Code references:** [implementation](../src/account_deletion.ts), [`confirmActor`](../src/actor_confirmation.ts), [`tests/account_deletion.spec.ts`](../tests/account_deletion.spec.ts), [managed account data](../src/http/handlers_account_data.ts), [session termination](../src/http/session_end.ts), [package-owned rows](../src/user_rows.ts), [managed committed-failure response](../src/http/managed.ts)

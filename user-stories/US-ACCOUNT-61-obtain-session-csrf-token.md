@@ -4,9 +4,9 @@ As a browser client, I want the CSRF token for my session so that I can submit p
 
 **Status:** Current
 
-**Access:** Public session route under the authentication capability.
+**Access:** Public session-only route. Managed route planning includes it for any nonempty capability selection unless explicitly excluded.
 
-**Entry:** `GET auth/csrf`
+**Entry:** `auth.csrf` (GET `auth/csrf`) under the configured managed prefix.
 
 **Documentation:** [Guide](../docs/guide/managed-http.md)
 
@@ -23,17 +23,19 @@ As a browser client, I want the CSRF token for my session so that I can submit p
 
 ```mermaid
 flowchart TD
-    A["Browser requests session CSRF token"] --> B{"Shield enabled?"}
+    A["Browser requests session CSRF token"] --> B{"Is the session endpoint configured and available?"}
     B -->|Yes| C["Receive token for protected writes"]
-    B -->|No| D["Ask operator to configure Shield"]
+    B -->|No| D["See configuration failure or unavailable endpoint"]
 ```
 
 ## Code flow
 
 ```mermaid
 flowchart TD
-    A["Match session-only GET"] --> B{"Request has a string csrfToken?"}
-    B -->|Yes| E["Resolve kit and assert configured guard matches"]
-    E --> C["Set no-store and return token"]
-    B -->|No| D["Raise configuration error"]
+  A["planManagedRoutes adds auth.csrf for nonempty session route selection unless excluded"] --> B["executeManagedRequest checks request.csrfToken"]
+  B -->|Missing or non-string| D["Throw Shield configuration error before resolving Account Kit"]
+  B -->|String| E["Resolve kit and assert guard name and strategy match configuration"]
+  E --> C["auth.csrf handler sets Cache-Control no-store and returns 200 with csrfToken"]
 ```
+
+**Code references:** [managed route selection](../src/http/routes.ts), [managed dispatch](../src/http/managed_execution.ts), [CSRF handler](../src/http/handlers_authentication.ts)

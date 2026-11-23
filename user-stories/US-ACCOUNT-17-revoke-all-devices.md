@@ -4,7 +4,7 @@ As a signed-in account holder, I want to revoke every recorded sign-in so that I
 
 **Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; action may end the credential used for this request.
-**Entry:** Host calls `authentication.sessions.revokeAll({ current })`; optional managed route.
+**Entry:** Host calls `authentication.sessions.revokeAll({ current })` or mounts `account.sessions.revokeAll` (POST `account/sessions/revoke-all`, limited access).
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)
 **Source:** [`src/session_management.ts`](../src/session_management.ts)
 **Coverage:** [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
@@ -12,6 +12,8 @@ As a signed-in account holder, I want to revoke every recorded sign-in so that I
 ## Acceptance criteria
 
 - **Inputs and result:** `authentication.sessions.revokeAll({ current })` returns `void`. It changes credential revision so every existing session/token, including the current one, must authenticate again.
+- Managed success returns 204. The managed browser handler attempts session termination after commit, including when a post-commit follow-up fails.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
@@ -25,16 +27,15 @@ flowchart TD
 
 ## Code flow
 
-Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
-
 ```mermaid
 flowchart TD
- A["authentication.sessions.revokeAll"] --> B["Authenticate and load account under transaction"]
- B --> C["credentialsChanged advances revision and invalidates all existing credentials"]
- C --> D["Commit account change"]
- D --> E{"Post-commit observer/event succeeds?"}
- E -->|Yes| F["Resolve void"]
- E -->|No| G["Report committed follow-up failure; all sign-ins remain invalid"]
+  M["Managed route resolves current credential"] --> A["authentication.sessions.revokeAll"]
+  A --> B["Require configuration; transaction rechecks credential and resolves its sign-in"]
+  B -->|Refused| X["Propagate current-credential refusal"]
+  B -->|Accepted| C["credentialsChanged advances revision and invalidates existing credentials"]
+  C --> D["Commit; run credential observer and lifecycle event"]
+  D --> E["Return void or surface committed follow-up failure"]
+  E -->|Managed| F["Attempt browser termination after commit; return 204 on success or rethrow for the managed committed-failure response"]
 ```
 
-**Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
+**Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts), [managed sessions](../src/http/handlers_session_management.ts), [session termination](../src/http/session_end.ts), [credential mutation](../src/credential_revision.ts), [managed committed-failure response](../src/http/managed.ts)

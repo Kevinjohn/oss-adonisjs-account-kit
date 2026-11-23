@@ -4,7 +4,7 @@ As a signed-in account holder, I want to revoke one of my recorded sign-ins so t
 
 **Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; target id is scoped to the account. The service allows revoking the current sign-in and reports that fact.
-**Entry:** Host calls `authentication.sessions.revoke({ current, id })`; optional managed route.
+**Entry:** Host calls `authentication.sessions.revoke({ current, id })` or mounts `account.sessions.revoke` (DELETE `account/sessions/:id`, limited access).
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)
 **Source:** [`src/session_management.ts`](../src/session_management.ts)
 **Coverage:** [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
@@ -12,31 +12,34 @@ As a signed-in account holder, I want to revoke one of my recorded sign-ins so t
 ## Acceptance criteria
 
 - **Inputs and result:** `authentication.sessions.revoke({ current, id })` returns `{ current: boolean }`. It deletes only the caller’s matching sign-in; `current: true` means the target was the credential used for this request.
+- Managed success returns 204. For a revoked current browser session, the handler attempts session termination after commit, including on a committed follow-up failure. Token revocation is complete through row deletion.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Account holder selects a sign-in id"] --> B{"Is this id a positive integer naming one of the caller's sign-ins?"}
- B -->|No| C["Return not-found refusal without exposing another account's sign-in"]
+ A["Account holder selects a sign-in"] --> B{"Is the current credential accepted and does the selected sign-in belong to the account?"}
+ B -->|No| C["Show authentication refusal, or not found for a missing or out-of-account sign-in"]
  B -->|Yes| D["Delete that sign-in, including the current one when selected"]
  D --> E{"Was it current?"}
- E -->|Yes| F["Current request may finish; next use requires a new sign-in"]
+ E -->|Yes| F["Current sign-in ends; sign in again to make another request"]
  E -->|No| G["Selected device is signed out; current device stays active"]
 ```
 
 ## Code flow
 
-Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
-
 ```mermaid
 flowchart TD
- A["authentication.sessions.revoke"] --> B["Parse positive signIn id and verify current account in transaction"]
- B --> C["Delete row only where owner and id match"]
- C --> D{"Exactly one row deleted?"}
- D -->|No| E["Throw SessionNotFoundError"]
- D -->|Yes| F["Run transaction hook and commit"]
- F --> G["Run post-commit revocation event; then return { current }, or report committed follow-up failure"]
+  M["Managed route resolves current credential and passes route ID"] --> A["authentication.sessions.revoke"]
+  A --> B["Parse positive sign-in ID, require configuration and recheck credential in transaction"]
+  B -->|Refused| X["Propagate current or ID refusal"]
+  B -->|Accepted| C["Delete only the matching account-owned row"]
+  C --> D{"Exactly one row deleted?"}
+  D -->|No| E["Throw SessionNotFoundError"]
+  D -->|Yes| F["Run configured transaction hook, retain current marker and commit"]
+  F --> G["Run revocation event and return current marker or record it on committed error"]
+  G -->|Managed| H["Attempt browser session termination if current was revoked; return 204 on success or rethrow for the managed committed-failure response"]
 ```
 
-**Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
+**Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts), [managed sessions](../src/http/handlers_session_management.ts), [session termination](../src/http/session_end.ts), [managed committed-failure response](../src/http/managed.ts)

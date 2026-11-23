@@ -11,7 +11,7 @@ As an application developer, I want to check admission state inside my authorise
 
 ## Acceptance criteria
 
-- `record` returns the stored admission record or `null` for an unknown user or missing row. `isAdmitted` evaluates the enabled requirements and returns `false` for an unknown user; it does not validate a credential or require an active account unless an enabled requirement does.
+- `record` returns the stored admission record or `null` for an unknown user or missing row. `isAdmitted` evaluates the enabled requirements and returns `false` for an unknown user; it evaluates enabled requirements without credential validation or an independent activation check. A domain requirement needs a confirmed address.
 - Passing the host's transaction lets `record` and `isAdmitted` observe its uncommitted admission writes. `decide(user, trx)` evaluates a loaded user using that transaction and requires the caller to hold the user lock.
 - These lookups do not authenticate or authorise the caller; the host owns that boundary.
 
@@ -21,9 +21,10 @@ As an application developer, I want to check admission state inside my authorise
 flowchart TD
  A["Host workflow needs a user's admission state"] --> B{"Is the host caller authorised?"}
  B -->|No| C["Host refuses before calling Account Kit"]
- B -->|Yes| D{"Does the workflow need the record or the admitted result?"}
- D -->|Record| E["Use stored record, or handle null for unknown user or no row"]
- D -->|Admitted result| F["Use the current enabled-requirement result"]
+ B -->|Yes| D{"Which result does the workflow need?"}
+ D -->|Record| E["Use stored record or handle null"]
+ D -->|Admitted result| F["Use whether the user is admitted"]
+ D -->|Requirement details| G["Use the decision for a user already locked in the host transaction"]
 ```
 
 ## Code flow
@@ -33,12 +34,16 @@ Scope: host authorisation precedes these service methods; `decide` is evaluated 
 ```mermaid
 flowchart TD
  A["Host authorises caller"] --> B{"Which admission read is needed?"}
- B -->|record| C["AccountAdmission.record loads user and admission row with optional trx"]
- B -->|isAdmitted| D["AccountAdmission.isAdmitted loads user and evaluates requirements"]
- B -->|decide| E["Call decide(user, trx) while holding user lock"]
- C --> F["Return record or null"]
- D --> G["Return admitted boolean"]
- E --> H["Return admission decision"]
+ B -->|record| C{"AccountAdmission.record finds user with given ID and optional trx?"}
+ C -->|No| F["Return null"]
+ C -->|Yes| L{"Admission row exists in supplied trx or default connection?"}
+ L -->|No| F
+ L -->|Yes| M["Project stored record with current user email"]
+ B -->|isAdmitted| D{"AccountAdmission.isAdmitted finds user with given ID and optional trx?"}
+ D -->|No| G["Return false"]
+ D -->|Yes| J["Read row through supplied trx or default connection; return evaluateAdmission result's admitted boolean"]
+ B -->|decide| E["With caller-held user lock, AccountAdmission.decide reads row in trx"]
+ E --> H["Return complete evaluateAdmission decision"]
 ```
 
-**Code references:** [`AccountAdmission.record`, `isAdmitted` and `decide`](../src/admission/service.ts), [`record tests`](../tests/admission_record.spec.ts), [`decision tests`](../tests/admission_decision.spec.ts)
+**Code references:** [`AccountAdmission.record`, `isAdmitted` and `decide`](../src/admission/service.ts), [`record tests`](../tests/admission_record.spec.ts), [`decision tests`](../tests/admission_decision.spec.ts), [requirement evaluation](../src/admission/decision.ts)
