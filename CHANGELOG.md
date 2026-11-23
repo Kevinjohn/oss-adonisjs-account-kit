@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.2 - 2026-11-23
+
 ### Added
 
 - Corrects the 0.5.0 notes, which omitted this addition: the `--migration-directory` flag on `node ace configure @kevinjohn/adonisjs-account-kit` and `account-kit:setup` (since 0.5.0) and on `account-kit:admission:install` (since 0.5.1) names the application-relative Lucid migration directory when setup cannot read it statically.
