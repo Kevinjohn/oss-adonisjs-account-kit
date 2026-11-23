@@ -33,6 +33,8 @@ flowchart TD
 
 Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
 
+The runnable API example traces the controller and middleware entry in its [admission code flow](../examples/api/README.md#admission-code-flow).
+
 ```mermaid
 flowchart TD
  A["AccountAdmission.revoke calls decideAdmission with revoke"] --> B{"requireApproval passes?"}

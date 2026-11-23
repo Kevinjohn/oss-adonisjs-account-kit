@@ -1,10 +1,14 @@
-import type { NotificationCallbacks } from '@kevinjohn/adonisjs-account-kit/types'
+import type {
+  NotificationCallbacks,
+  AuthorizationCallbacks,
+} from '@kevinjohn/adonisjs-account-kit/types'
 /* eslint-disable @unicorn/no-await-expression-member -- Keep the transaction-aware Lucid query and result together in the adapter callbacks. */
 
 import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import { createLucidAdapter, defineConfig } from '@kevinjohn/adonisjs-account-kit'
 import {
+  AccountAdmission,
   withAdmissionCleanup,
   withInvitationEvidence,
 } from '@kevinjohn/adonisjs-account-kit/admission'
@@ -12,11 +16,12 @@ import { notifications } from '#services/account_kit_notifications'
 import { createNotify } from './account_kit_notifications.js'
 import { onCredentialsChangedTransaction } from './account_kit_credential_notice.js'
 import {
-  authorize,
   canAccess,
-  exportAccountData,
+  invitableRoles,
+  isAdmittedOwner,
   onInvitationAccepted,
 } from '#services/account_kit_authorization'
+import { exportAccountData } from '#services/account_kit_export'
 import { registrationFullName } from '#services/registration_fields'
 import { referencePasswordLimits } from '#validators/password'
 import { allySocialProvider } from '#services/social_provider'
@@ -51,6 +56,19 @@ const notify = Object.fromEntries(
     (...args: unknown[]) => overridable[name](...args),
   ])
 ) as unknown as NotificationCallbacks
+
+// Admission also depends on Account Kit. Resolve it only when these callbacks run.
+const admission = () => app.container.make(AccountAdmission)
+
+// Invitation routes accept any valid credential. The callback checks admission and the owner role.
+const authorize: AuthorizationCallbacks = {
+  invite: async (actor, role, context) =>
+    invitableRoles.includes(role) && isAdmittedOwner(await admission(), actor.id, context?.trx),
+  manageInvitation: async (actor, _invitation, context) =>
+    isAdmittedOwner(await admission(), actor.id, context?.trx),
+  listInvitations: async (actor, context) =>
+    isAdmittedOwner(await admission(), actor.id, context?.trx),
+}
 
 const loadUser = async () => (await import('#models/user')).default
 const users = createLucidAdapter(loadUser, {
@@ -105,7 +123,7 @@ export default defineConfig({
   onInvitationAccepted: withInvitationEvidence(onInvitationAccepted),
   // Inactive here: they run only when `accountDeletion` and `dataExport` are enabled.
   onAccountDeletingTransaction: withAdmissionCleanup(),
-  exportAccountData,
+  exportAccountData: async (user, trx) => exportAccountData(await admission(), user, trx),
   onCredentialsChangedTransaction,
   onLifecycleEvent: async (event) => notifications.recordLifecycle(event),
 })

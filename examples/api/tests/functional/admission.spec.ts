@@ -168,7 +168,7 @@ test.group('Admission', (group) => {
     client,
     assert,
   }) => {
-    const { credential: owner } = await createOwner(client)
+    const { owner: ownerUser, credential: owner } = await createOwner(client)
     const email = `invited-${randomUUID()}@example.test`
     assert.equal((await acceptInvitation(client, await invite(client, owner, email))).status(), 201)
     const person = await User.findByOrFail('email', email)
@@ -215,17 +215,39 @@ test.group('Admission', (group) => {
       [email]
     )
 
-    const malformed = await as(
-      client.post(`/api/v1/account/admissions/${'1'.repeat(65)}/approve`),
-      owner
-    )
-    assert.equal(malformed.status(), 422, JSON.stringify(malformed.body()))
+    for (const id of ['0', `0${person.id}`, `${person.id}e0`, '9007199254740992', '1'.repeat(65)]) {
+      const malformed = await as(client.post(`/api/v1/account/admissions/${id}/approve`), owner)
+      assert.equal(malformed.status(), 422)
+      assert.deepEqual(malformed.body(), {
+        errors: [{ code: 'E_ACCOUNT_KIT_INVALID_INPUT', message: 'Account request rejected.' }],
+      })
+    }
     const approved = await as(client.post(`/api/v1/account/admissions/${person.id}/approve`), owner)
     assert.equal(approved.status(), 200, JSON.stringify(approved.body()))
+    const approvedBody = approved.body() as { approval: { decidedAt: string } }
+    assert.isString(approvedBody.approval.decidedAt)
+    assert.deepEqual(approvedBody, {
+      userId: person.id,
+      approval: {
+        status: 'approved',
+        actorId: ownerUser.id,
+        decidedAt: approvedBody.approval.decidedAt,
+      },
+    })
     assert.equal((await as(client.get('/api/v1/reports'), session)).status(), 200)
 
     const revoked = await as(client.post(`/api/v1/account/admissions/${person.id}/revoke`), owner)
     assert.equal(revoked.status(), 200, JSON.stringify(revoked.body()))
+    const revokedBody = revoked.body() as { approval: { decidedAt: string } }
+    assert.isString(revokedBody.approval.decidedAt)
+    assert.deepEqual(revokedBody, {
+      userId: person.id,
+      approval: {
+        status: 'revoked',
+        actorId: ownerUser.id,
+        decidedAt: revokedBody.approval.decidedAt,
+      },
+    })
     const afterRevoke = await as(client.get('/api/v1/reports'), session)
     assert.equal(afterRevoke.status(), 403)
     assert.equal(refusal(afterRevoke).decision.requirements.approval?.status, 'revoked')

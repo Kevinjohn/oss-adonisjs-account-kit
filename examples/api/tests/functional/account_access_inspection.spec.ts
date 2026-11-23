@@ -5,11 +5,8 @@ import app from '@adonisjs/core/services/app'
 import db from '@adonisjs/lucid/services/db'
 import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
 import User from '#models/user'
-import {
-  compareAccountRevisionForOwner,
-  inspectAccountForOwner,
-} from '#services/account_access_inspection'
-import { grantAdmittedOwner } from '#tests/helpers/admission'
+import { AccountAccessInspection } from '#services/account_access_inspection'
+import { grantAdmission, grantAdmittedOwner } from '#tests/helpers/admission'
 import { truncateDatabase } from '#tests/helpers/database'
 
 test.group('application account access inspection', (group) => {
@@ -43,21 +40,23 @@ test.group('application account access inspection', (group) => {
       password: 'InactivePass123!',
     })
     await grantAdmittedOwner(owner)
+    await grantAdmission(member)
+    const inspection = await app.container.make(AccountAccessInspection)
 
-    assert.isNull(await inspectAccountForOwner(member, target.id))
+    assert.isNull(await inspection.inspect(member.id, target.id))
     const missingUserId = typeof owner.id === 'number' ? 999999 : randomUUID()
-    assert.isNull(await inspectAccountForOwner(owner, missingUserId))
+    assert.isNull(await inspection.inspect(owner.id, missingUserId))
 
-    const inactiveSnapshot = await inspectAccountForOwner(owner, inactive.id)
+    const inactiveSnapshot = await inspection.inspect(owner.id, inactive.id)
     assert.isNotNull(inactiveSnapshot)
     if (!inactiveSnapshot) return
     assert.isFalse(inactiveSnapshot.account.active)
 
-    const first = await inspectAccountForOwner(owner, target.id)
+    const first = await inspection.inspect(owner.id, target.id)
     assert.isNotNull(first)
     if (!first) return
     assert.isNull(first.revision)
-    const unchanged = await compareAccountRevisionForOwner(owner, target.id, null)
+    const unchanged = await inspection.compare(owner.id, target.id, null)
     assert.equal(unchanged.outcome, 'current')
     if (unchanged.outcome !== 'current') return
     assert.isNull(unchanged.snapshot.revision)
@@ -68,13 +67,13 @@ test.group('application account access inspection', (group) => {
       change: async () => {},
     })
 
-    assert.deepEqual(await compareAccountRevisionForOwner(member, target.id, first.revision), {
+    assert.deepEqual(await inspection.compare(member.id, target.id, first.revision), {
       outcome: 'denied',
     })
-    const stale = await compareAccountRevisionForOwner(owner, target.id, first.revision)
+    const stale = await inspection.compare(owner.id, target.id, first.revision)
     assert.equal(stale.outcome, 'changed')
 
-    const refreshed = await inspectAccountForOwner(owner, target.id)
+    const refreshed = await inspection.inspect(owner.id, target.id)
     assert.isNotNull(refreshed)
     if (!refreshed) return
     assert.notEqual(refreshed.revision, first.revision)
@@ -85,7 +84,7 @@ test.group('application account access inspection', (group) => {
         await trx.table('role_assignments').insert({ user_id: target.id, role: 'disabled' })
       },
     })
-    assert.isNull(await inspectAccountForOwner(owner, target.id))
+    assert.isNull(await inspection.inspect(owner.id, target.id))
   })
 
   test('rechecks owner permission before comparing a captured revision', async ({ assert }) => {
@@ -102,12 +101,13 @@ test.group('application account access inspection', (group) => {
       emailVerifiedAt: DateTime.utc(),
     })
     await grantAdmittedOwner(owner)
-    const captured = await inspectAccountForOwner(owner, target.id)
+    const inspection = await app.container.make(AccountAccessInspection)
+    const captured = await inspection.inspect(owner.id, target.id)
     assert.isNotNull(captured)
     if (!captured) return
 
     await db.from('role_assignments').where('user_id', owner.id).where('role', 'owner').delete()
-    assert.deepEqual(await compareAccountRevisionForOwner(owner, target.id, captured.revision), {
+    assert.deepEqual(await inspection.compare(owner.id, target.id, captured.revision), {
       outcome: 'denied',
     })
   })
@@ -139,22 +139,22 @@ test.group('application account access inspection', (group) => {
     } as unknown as AccountKit
     app.container.swap(AccountKit, () => fakeAccountKit)
 
-    let inspectionError: unknown
-    let comparisonError: unknown
     try {
-      await inspectAccountForOwner(owner, target.id)
-    } catch (error) {
-      inspectionError = error
-    }
-    try {
-      await compareAccountRevisionForOwner(owner, target.id, null)
-    } catch (error) {
-      comparisonError = error
+      const inspection = await app.container.make(AccountAccessInspection)
+      for (const action of [
+        () => inspection.inspect(owner.id, target.id),
+        () => inspection.compare(owner.id, target.id, null),
+      ]) {
+        let caught: unknown
+        try {
+          await action()
+        } catch (error) {
+          caught = error
+        }
+        assert.equal(caught, failure)
+      }
     } finally {
       app.container.restore(AccountKit)
     }
-
-    assert.equal(inspectionError, failure)
-    assert.equal(comparisonError, failure)
   })
 })
