@@ -54,7 +54,7 @@ test('the committed API example is the default rendering of its app-owned files'
     [...rendered.keys()],
     [
       'app/models/user.ts',
-      'app/services/admission_decision.ts',
+      'app/validators/admission.ts',
       'database/migrations/1761885935168_create_users_table.ts',
       'database/migrations/1768620764696_create_access_tokens_table.ts',
       'database/migrations/1791906000000_create_role_assignments.ts',
@@ -116,10 +116,10 @@ test('non-default variants change the users table, the ID columns and the model'
   assert.include(model, "statictable='account_users'")
   assert.include(model, 'staticselfAssignPrimaryKey=true')
   assert.include(model, 'Object.assign(user,{id:randomUUID()})')
-  const decisionService = flat(strings, 'app/services/admission_decision.ts')
-  assert.include(decisionService, 'functionuserIdParam(value:string):string')
-  assert.include(decisionService, 'value.length>64')
-  assert.notInclude(decisionService, 'Number.isSafeInteger')
+  const admissionValidator = flat(strings, 'app/validators/admission.ts')
+  assert.include(admissionValidator, 'exportfunctionuserIdParam(value:unknown):string')
+  assert.include(admissionValidator, 'value.length>64')
+  assert.notInclude(admissionValidator, 'Number.isSafeInteger')
 
   const uuids = await renderApiVariant('users', 'uuid')
   assert.include(
@@ -137,9 +137,16 @@ test('non-default variants change the users table, the ID columns and the model'
   const uuidModel = flat(uuids, 'app/models/user.ts')
   assert.notInclude(uuidModel, 'statictable=')
   assert.include(uuidModel, 'staticselfAssignPrimaryKey=true')
-  const uuidDecisionService = flat(uuids, 'app/services/admission_decision.ts')
-  assert.include(uuidDecisionService, 'functionuserIdParam(value:string):string')
-  assert.include(uuidDecisionService, '[0-9a-f]{12}$/i.test(value)')
+  const uuidAdmissionValidator = flat(uuids, 'app/validators/admission.ts')
+  assert.include(uuidAdmissionValidator, 'exportfunctionuserIdParam(value:unknown):string')
+  assert.include(uuidAdmissionValidator, '[0-9a-f]{12}$/i.test(value)')
+  assert.include(uuidAdmissionValidator, 'returnvalue.toLowerCase()')
+
+  const integer = await renderApiVariant('users', 'integer')
+  const defaultValidator = flat(integer, 'app/validators/admission.ts')
+  const listValidator = /exportconstadmissionListValidator=.*?(?=\/\*\*)/.exec(defaultValidator)![0]
+  assert.include(admissionValidator, listValidator)
+  assert.include(uuidAdmissionValidator, listValidator)
 
   await assert.rejects(() => renderApiVariant('Account Users', 'integer'), /Invalid users table/)
 })

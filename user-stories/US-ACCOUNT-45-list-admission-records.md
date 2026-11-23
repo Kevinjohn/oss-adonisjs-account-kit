@@ -34,6 +34,8 @@ flowchart TD
 
 Scope: approval capability, actor eligibility, callback authorisation and bounded page query.
 
+The runnable API example traces the controller and middleware entry in its [admission code flow](../examples/api/README.md#admission-code-flow).
+
 ```mermaid
 flowchart TD
  A["AccountAdmission.list calls listAdmissions"] --> B{"Approval enabled, and limit, status and cursor valid?"}
