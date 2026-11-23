@@ -7,7 +7,7 @@ As an application developer, I want AdonisJS Auth middleware to use Account Kit'
 **Entry:** In `config/auth.ts`, configure `accountKitSessionGuard({ provider })` from `@kevinjohn/adonisjs-account-kit/auth` and select it in Auth middleware.
 **Documentation:** [Account Kit session guard](../docs/guide/authentication.md#account-kit-session-guard)
 **Source:** [Auth export](../auth/main.ts), [guard implementation](../src/auth/session_guard.ts)
-**Coverage:** [Guard tests](../tests/session_guard.spec.ts), [package export tests](../tests/package_exports.spec.ts)
+**Coverage:** [Guard tests](../tests/session_guard.spec.ts), [Japa `loginAs` HTTP test](../tests/session_guard_login_as.spec.ts), [package export tests](../tests/package_exports.spec.ts)
 
 ## Acceptance criteria
 
@@ -49,7 +49,7 @@ flowchart TD
  S -->|Store unmarked| AA["Reject current or forRequest"]
  S -->|current| T["Authenticate selected guard, mark Auth, and return credential input"]
  S -->|forRequest| R["Return establish and terminate adapter for Account Kit login and logout"]
- B --> J["authenticateAsClient maps provider model to user ID"]
+ B --> J["authenticateAsClient uses createUserForGuard and reads getId()"]
  J --> U["Lock and load account; check canAccess and read revision"]
  U -->|Denied or missing| V["Throw InvalidCredentialsError"]
  U --> W["establishCredential prepares session data, then rechecks under lock and records tracked sign-in if enabled"]
