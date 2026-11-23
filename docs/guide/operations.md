@@ -151,9 +151,11 @@ pnpm exec node ace account-kit:reset-link person@example.com --print
 
 By default the link is emailed through the configured `notify` callback. `--print` prints it
 instead and sends nothing; the link is never both sent and printed. Each command writes one JSON
-line to stdout (`result`, identifiers, `expiresAt` for invitations, and `url` with `--print`) and
-writes warnings and errors to stderr, so the output can be piped. A printed link is a bearer
-secret: share it only over a trusted channel.
+result line to stdout when the operation returns a result. It includes `result`, identifiers,
+`expiresAt` for invitations and `url` with `--print`. Warnings and errors go to stderr, so stdout
+can be piped. Share printed links only over a trusted channel because they are bearer secrets.
+A thrown runtime failure leaves the original error on Ace's `command.error`, exits nonzero and
+prints one safe diagnostic to stderr.
 
 - `account-kit:invite` replaces any invitation already issued for the address and scope
   (`--scope`, unscoped by default), so rerunning it with the same scope after a lost link works. The invitation has no inviter (`inviterId` is `null`). It refuses an

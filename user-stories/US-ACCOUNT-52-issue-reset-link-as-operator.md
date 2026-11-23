@@ -13,13 +13,14 @@ As an application operator, I want to issue a reset link from the trusted shell 
 
 - Input is email and delivery choice `send` or `print`; service returns user, optional URL and optional committed follow-up fault. Unknown email is reported distinctly rather than using the public generic response. A printed URL is a bearer secret.
 - The command replaces the user's live reset link. For an unverified account it warns that a completed reset activates the account. It reports committed issuance and exits nonzero if a follow-up fails.
+- A thrown runtime error stays on Ace's `command.error`, exits nonzero and produces one safe diagnostic on stderr.
 
 ## User flow
 
 ```mermaid
 flowchart TD
  A["Operator enters account email and chooses delivery"] --> B{"Does account exist and passwordReset capability run?"}
- B -->|No| C["Report operator lookup/capability error"]
+ B -->|No| C["Print one safe diagnostic; issue no reset link"]
  B -->|Yes| D["Replace live reset proof"]
  D --> E{"Send or explicitly print?"}
  E -->|Send| F["Deliver link through configured notification"]
@@ -36,7 +37,7 @@ Scope: shell-trusted service invocation; never expose this operator API to HTTP.
 flowchart TD
  A["account-kit:reset-link"] --> B["operator.resetLink({ email, deliver })"]
  B --> C{"Valid input, matching account and issueResetToken succeeds?"}
- C -->|No| X["writeFailure prints error and sets exitCode 1"]
+ C -->|No| X["Ace retains error; completed prints one diagnostic and exits nonzero"]
  C -->|Yes| D{"deliver is send or print?"}
  D -->|send| E["Run notification callback"]
  D -->|print| F["Skip delivery; include URL in result"]

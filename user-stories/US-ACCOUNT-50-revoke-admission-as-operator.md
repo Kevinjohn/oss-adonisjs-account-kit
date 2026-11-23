@@ -13,16 +13,17 @@ As an application operator, I want to revoke an approved account from the truste
 
 - The email identifies an existing approved account and approval must be enabled. The decision stores a null actor ID and the decision time. It preserves credentials, and later admission gates refuse the account while approval is required and revoked.
 - On success the service returns the admission record and the command prints `result: 'revoked'`, `userId` and `email`. The configured observer receives `admission.revoked` with operator source after commit. The command reports a committed observer failure on stderr with exit code 1 and the write saved.
+- A thrown runtime error, including a `PostCommitError`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
 
 ## User flow
 
 ```mermaid
 flowchart TD
  A["Operator supplies the account email"] --> B{"Are the inputs valid, and can the enabled operation record revocation?"}
- B -->|No| C["Report failure without saving the requested change"]
+ B -->|No| C["Print one safe diagnostic; no change saved"]
  B -->|Yes| D["Save the requested admission change"]
  D --> E{"Did a follow-up fail?"}
- E -->|Yes| F["Report failure with the change saved"]
+ E -->|Yes| F["Print one diagnostic that the follow-up failed; change stays saved"]
  E -->|No| G["Print the revoked result"]
  D --> J["Later admission gates reevaluate the revoked decision"]
 ```
@@ -34,7 +35,7 @@ Scope: operator admission transition; it does not invalidate sessions.
 ```mermaid
 flowchart TD
  A["RevokeAdmission.run resolves AccountAdmission and calls operator.revoke"] --> B{"requireApproval passes?"}
- B -->|No| X["writeFailure reports error and exit code 1"]
+ B -->|No| X["Ace retains error; completed prints one diagnostic and exits nonzero"]
  B -->|Yes| C{"In transaction, lockSubject validates email and finds and reloads locked account?"}
  C -->|No| X
  C -->|Yes| D{"nextApprovalStatus permits transition?"}
@@ -42,7 +43,7 @@ flowchart TD
  D -->|Yes| E["applyTransition stores revoked status, decision time and null actor ID"]
  E --> F["Commit; withAdmissionEvent invokes configured admission.revoked observer"]
  F --> G{"Follow-ups succeed?"}
- G -->|No| H["writeFailure reports PostCommitError and exit code 1 with change saved"]
+ G -->|No| H["Ace retains PostCommitError; completed prints one diagnostic and exits nonzero"]
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints revoked, userId and email"]
 ```
 

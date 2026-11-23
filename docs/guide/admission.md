@@ -249,8 +249,9 @@ opaque and checked; a forged one is `InvalidInputError`.
 | `account-kit:admission:grant-invitation <email> [--role]`                                | Records operator invitation evidence for an existing account; refused when evidence exists. `--role` is stored only; it grants nothing.         |
 | `account-kit:admission:bootstrap <email> --role <role>`                                  | Issues an operator invitation, prints its link and writes an approval for the account it creates. `--cancel` deletes that approval instead.     |
 
-The runtime commands write one JSON line to stdout and report failures on stderr with the error
-code and exit code 1, like `account-kit:invite`.
+The runtime commands write one JSON result line to stdout when an operation returns a result.
+A thrown runtime failure leaves the original error on Ace's `command.error`, reports one safe
+diagnostic with a code on stderr and exits with code 1.
 
 ## Turning a requirement on later
 
@@ -328,10 +329,10 @@ authorisation policy.
 | File                                              | Holds                                                                                                                          |
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `config/admission.ts`                             | The requirements; owners decide and list                                                                                       |
-| `config/account_kit.ts`                           | `withInvitationEvidence`, `withAdmissionCleanup`, and `exportAccountData` with the admission record                            |
-| `app/services/account_kit_authorization.ts`       | `isAdmitted`; `authorize.*` require an admitted owner; `admissionAuthorize`                                                    |
-| `app/middleware/admitted_account_middleware.ts`   | The gate, like `verified_account_middleware.ts`                                                                                |
-| `app/controllers/admissions_controller.ts`        | Status, request, list, approve, reject, revoke                                                                                 |
+| `config/account_kit.ts`                           | Invitation evidence and cleanup hooks. Invitation authorisation and export callbacks resolve admission lazily                  |
+| `app/services/account_kit_authorization.ts`       | `isAdmittedOwner` for invitation policy and `admissionAuthorize` for list and decision policy                                  |
+| `app/middleware/admitted_account_middleware.ts`   | Admission gate with injected `AccountAdmission`                                                                                |
+| `app/controllers/admissions_controller.ts`        | Status, request, list and decisions with injected `AccountAdmission` and controller input validation                           |
 | `app/exceptions/handler.ts`                       | Adds `decision` to the 403 body (`meta.decision` for JSON:API)                                                                 |
 | `start/routes.ts`                                 | `GET /account/admission` and `POST /account/admission/request` (limited); the list and decisions and `GET /reports` (admitted) |
 | `examples/api/tests/functional/admission.spec.ts` | The flows above, for both guard strategies                                                                                     |

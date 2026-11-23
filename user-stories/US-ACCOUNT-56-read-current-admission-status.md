@@ -27,6 +27,8 @@ flowchart TD
 
 Scope: Account Kit validates the supplied credential and evaluates admission; the host provides the status route. With tracked sessions, current-credential validation may update session activity metadata.
 
+The runnable API example traces the controller and middleware entry in its [admission code flow](../examples/api/README.md#admission-code-flow).
+
 ```mermaid
 flowchart TD
  A["AccountAdmission.current starts transaction and calls currentInTransaction"] --> B{"Authentication enabled?"}

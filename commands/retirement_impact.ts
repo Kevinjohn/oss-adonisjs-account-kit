@@ -20,7 +20,7 @@ function parseProviders(value?: string): SocialProviderName[] | undefined {
   for (const [index, name] of names.entries()) {
     if (!isSocialProviderName(name))
       throw new InvalidProvidersFlagError(
-        `Invalid --providers: ${name} is not a supported provider; ${usage}`
+        `Invalid --providers: the list contains an unsupported provider; ${usage}`
       )
     if (names.indexOf(name) !== index)
       throw new InvalidProvidersFlagError(
@@ -55,31 +55,27 @@ export default class RetirementImpact extends BaseCommand {
   failure: 'inventory_unavailable' | 'invalid_providers' | null = null
 
   async run(): Promise<void> {
-    let providers: SocialProviderName[] | undefined
-    try {
-      providers = parseProviders(this.providers)
-    } catch (error) {
-      if (!(error instanceof InvalidProvidersFlagError)) throw error
-      this.failure = 'invalid_providers'
-      this.exitCode = 1
-      if (!this.quiet) this.logger.error(error.message)
-      return
-    }
-    try {
-      const kit = await this.app.container.make(AccountKit)
-      this.impact = await kit.authentication.retirementImpact({
-        passwordLogin: this.keepPasswordLogin === true,
-        providers,
-        ...(this.quiet && this.onlyWhenRetiring ? { onlyWhenRetiring: true } : {}),
-      })
-      if (!this.quiet) this.logger.log(JSON.stringify(this.impact))
-    } catch {
-      this.failure = 'inventory_unavailable'
-      this.exitCode = 1
-      if (!this.quiet)
-        this.logger.error(
-          'Account inventory unavailable; verify Account Kit configuration and database access'
-        )
-    }
+    const providers = parseProviders(this.providers)
+    const kit = await this.app.container.make(AccountKit)
+    this.impact = await kit.authentication.retirementImpact({
+      passwordLogin: this.keepPasswordLogin === true,
+      providers,
+      ...(this.quiet && this.onlyWhenRetiring ? { onlyWhenRetiring: true } : {}),
+    })
+    if (!this.quiet) this.logger.log(JSON.stringify(this.impact))
+  }
+
+  completed(): boolean {
+    if (this.exitCode === 0) return false
+    const error: unknown = this.error
+    this.failure =
+      error instanceof InvalidProvidersFlagError ? 'invalid_providers' : 'inventory_unavailable'
+    if (!this.quiet)
+      this.logger.error(
+        error instanceof InvalidProvidersFlagError
+          ? error.message
+          : 'Account inventory unavailable; verify Account Kit configuration and database access'
+      )
+    return true
   }
 }

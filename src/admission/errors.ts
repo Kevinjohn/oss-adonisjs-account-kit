@@ -1,5 +1,5 @@
 // Errors the admission module throws; `accountErrorResponse` maps them like core errors.
-import { AccountKitError } from '../errors.js'
+import { AccountKitError, InvalidInputError } from '../errors.js'
 import type { AdmissionDecision } from './types.js'
 
 /**
@@ -22,4 +22,14 @@ export class AdmissionRequiredError extends AccountKitError {
 export class AdmissionDecisionError extends AccountKitError {
   static code = 'E_ACCOUNT_KIT_ADMISSION_DECISION'
   static status = 409
+}
+
+/** The invitation committed, but its matching waiting approval is no longer available. */
+export class BootstrapApprovalChangedError extends InvalidInputError {
+  static readonly diagnostic = 'Bootstrap approval was replaced or cancelled. Run bootstrap again.'
+
+  constructor() {
+    super(BootstrapApprovalChangedError.diagnostic)
+    this.name = InvalidInputError.name
+  }
 }

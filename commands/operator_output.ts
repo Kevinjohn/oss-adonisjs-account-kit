@@ -16,16 +16,29 @@ export function writeWarning(command: BaseCommand, message: string): void {
   command.logger.logError(command.logger.prepareWarning(message))
 }
 
-/** Report a failure on stderr without causes, stacks or URLs, and fail the command. */
-export function writeFailure(command: BaseCommand, error: unknown): string {
+const FAILURE_MESSAGES: Record<string, string> = {
+  E_ACCOUNT_KIT_ADMISSION_DECISION: 'The current admission record does not allow this operation',
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED: 'Check that the required capability is enabled',
+  E_ACCOUNT_KIT_DELIVERY: 'The change committed but delivery failed',
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED: 'An account already uses that email address',
+  E_ACCOUNT_KIT_INVALID_INPUT: 'Check the command arguments and options',
+  E_ACCOUNT_KIT_OPERATOR: 'Operator command failed. Check configuration',
+  E_ACCOUNT_KIT_POST_COMMIT: 'The change committed but a follow-up failed',
+  E_ACCOUNT_KIT_USER_NOT_FOUND: 'No account uses that email address',
+}
+
+/** Report an Ace runtime failure once, preserving its error and the command's failure code. */
+export function completeOperatorCommand(
+  command: BaseCommand & { failure: string | null }
+): boolean {
+  // Ace sets the exit code even when the thrown value is falsy.
+  if (command.exitCode === 0 || command.failure !== null) return false
+  const error: unknown = command.error
   const code = error instanceof AccountKitError ? error.code : 'E_ACCOUNT_KIT_OPERATOR'
-  const message =
-    error instanceof AccountKitError
-      ? error.message
-      : 'Operator command failed; check configuration'
-  command.logger.error(`${code}: ${message}`)
-  command.exitCode = 1
-  return code
+  const diagnosticCode = Object.hasOwn(FAILURE_MESSAGES, code) ? code : 'E_ACCOUNT_KIT_OPERATOR'
+  command.logger.error(`${diagnosticCode}: ${FAILURE_MESSAGES[diagnosticCode]}`)
+  command.failure = code
+  return true
 }
 
 /** What an operator command that saves a link and then emails or prints it reports. */

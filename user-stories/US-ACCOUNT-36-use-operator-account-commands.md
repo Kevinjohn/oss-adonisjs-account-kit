@@ -12,15 +12,16 @@ As an application operator, I want to issue an invitation from the trusted shell
 ## Acceptance criteria
 
 - **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. `role` is required and must contain 1–64 characters. The command and service preserve supplied whitespace. Sending is the default CLI mode. The service API scope is an optional string of 1–255 characters; omitted or `null` means unscoped. At the CLI, omitting `--scope` requests an unscoped invitation. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret. If the address already belongs to an account, `operator.invite` throws `EmailAlreadyRegisteredError` before it stores anything, and the command reports the failure.
+- A thrown runtime error stays on Ace's `command.error`, exits nonzero and produces one safe diagnostic on stderr.
 
 ## User flow
 
 ```mermaid
 flowchart TD
  A["Operator chooses an invitation recipient, role and delivery mode"] --> B{"Is invitations enabled?"}
- B -->|No| C["Report disabled capability; issue no invitation"]
+ B -->|No| C["Print one safe diagnostic; issue no invitation"]
  B -->|Yes| D{"Does target already have an account?"}
- D -->|Yes| E["Report registered recipient; issue no invitation"]
+ D -->|Yes| E["Print one diagnostic for existing account; issue no invitation"]
  D -->|No| F["Replace pending invitation for same email and scope, invalidating its old link"]
  F --> G{"Is delivery send or explicit print?"}
  G -->|Send| H["Deliver link through configured callback"]
@@ -39,7 +40,7 @@ flowchart TD
  B --> I{"Capability and inputs accepted?"}
  I -->|No| B2
  I -->|Yes| B1{"Address already registered?"}
- B1 -->|Yes| B2["writeFailure reports error and exits nonzero without a new invitation"]
+ B1 -->|Yes| B2["Ace retains error; completed prints one diagnostic and exits nonzero"]
  B1 -->|No| C["Transaction replaces any pending invitation for the same email and scope, invalidating its old link, and stores the new token hash"]
  C --> D{"deliver = send or print?"}
  D -->|send| E["Run configured invitation notification callback"]

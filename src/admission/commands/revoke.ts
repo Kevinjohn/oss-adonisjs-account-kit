@@ -1,5 +1,5 @@
 import { BaseCommand, args } from '@adonisjs/core/ace'
-import { writeFailure, writeResult } from '../../../commands/operator_output.js'
+import { completeOperatorCommand, writeResult } from '../../../commands/operator_output.js'
 import { AccountAdmission } from '../service.js'
 import type { AdmissionRecord } from '../types.js'
 
@@ -16,16 +16,16 @@ export default class RevokeAdmission extends BaseCommand {
   failure: string | null = null
 
   async run(): Promise<void> {
-    try {
-      const admission = await this.app.container.make(AccountAdmission)
-      this.result = await admission.operator.revoke({ email: this.email })
-      writeResult(this, {
-        result: 'revoked',
-        userId: this.result.userId,
-        email: this.result.email,
-      })
-    } catch (error) {
-      this.failure = writeFailure(this, error)
-    }
+    const admission = await this.app.container.make(AccountAdmission)
+    this.result = await admission.operator.revoke({ email: this.email })
+    writeResult(this, {
+      result: 'revoked',
+      userId: this.result.userId,
+      email: this.result.email,
+    })
+  }
+
+  completed(): boolean {
+    return completeOperatorCommand(this)
   }
 }

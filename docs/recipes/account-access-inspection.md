@@ -16,24 +16,34 @@ The controller snippets use the API example's bearer-token strategy: `ACCOUNT_KI
 Mount the route behind the example's `auth()` and `accountAccess()` middleware. Auth first
 establishes the caller's identity; account access then checks that caller's current credential and
 restriction state. In the controller, check the example's admitted-owner policy before looking up
-the target or reading captured state, then pass the authenticated user to the service. The service
+the target or reading captured state, then pass the authenticated actor ID to the service. The service
 checks owner permission again immediately before inspection. The controller bodies below are
 composition examples for your application-owned `AdminAccountsController`; the runnable service
 and its integration tests are included in the API example:
 
 ```ts
+import { inject } from '@adonisjs/core'
+import { AccountAccessInspection } from '#services/account_access_inspection'
+
+@inject()
+export default class AdminAccountsController {
+  constructor(private readonly inspection: AccountAccessInspection) {}
+
+  // Add show and compare using the bodies below.
+}
+```
+
+```ts
 import User from '#models/user'
-import { inspectAccountForOwner } from '#services/account_access_inspection'
-import { isAdmittedOwner } from '#services/account_kit_authorization'
 
 // In a controller after auth and accountAccess middleware have run:
 const actor = ctx.auth.use('api').getUserOrFail()
-if (!(await isAdmittedOwner(actor.id))) {
+if (!(await this.inspection.canInspect(actor.id))) {
   return ctx.response.notFound({ error: 'Account unavailable' })
 }
 const target = await User.find(ctx.params.userId)
 if (!target) return ctx.response.notFound({ error: 'Account unavailable' })
-const snapshot = await inspectAccountForOwner(actor, target.id)
+const snapshot = await this.inspection.inspect(actor.id, target.id)
 if (!snapshot) return ctx.response.notFound({ error: 'Account unavailable' })
 ctx.session.put(`accountInspection:${actor.id}:${target.id}`, {
   inspected: true,
@@ -60,10 +70,12 @@ router
 
 The service implementation lives in
 [`examples/api/app/services/account_access_inspection.ts`](../../examples/api/app/services/account_access_inspection.ts).
-It checks `isAdmittedOwner(actor.id)`, then calls:
+AdonisJS injects `AccountKit` and `AccountAdmission` into `AccountAccessInspection`.
+The controller passes the authenticated actor ID and canonical target ID. The service checks
+admission and the owner role before calling:
 
 ```ts
-accountKit.authentication.inspectAccountAccess({ userId: targetUserId, requireActive: false })
+this.accountKit.authentication.inspectAccountAccess({ userId: targetUserId, requireActive: false })
 ```
 
 An unauthorised operator is stopped by the application policy before inspection. A missing target
@@ -102,11 +114,9 @@ captured revision with a fresh inspection before continuing:
 
 ```ts
 import User from '#models/user'
-import { compareAccountRevisionForOwner } from '#services/account_access_inspection'
-import { isAdmittedOwner } from '#services/account_kit_authorization'
 
 const actor = ctx.auth.use('api').getUserOrFail()
-if (!(await isAdmittedOwner(actor.id))) {
+if (!(await this.inspection.canInspect(actor.id))) {
   return ctx.response.notFound({ error: 'Account unavailable' })
 }
 const target = await User.find(ctx.params.userId)
@@ -123,7 +133,7 @@ if (
 }
 
 const expectedRevision = captured.revision as string | null
-const result = await compareAccountRevisionForOwner(actor, target.id, expectedRevision)
+const result = await this.inspection.compare(actor.id, target.id, expectedRevision)
 if (result.outcome === 'denied') return ctx.response.notFound({ error: 'Account unavailable' })
 if (result.outcome === 'changed') {
   return ctx.response.conflict({ error: 'Inspect the account again' })
@@ -135,7 +145,7 @@ return ctx.response.ok(result.snapshot)
 
 For an account whose revision is initially `null`, persist a tagged session value such as
 `{ inspected: true, revision: null }`; do not use a missing session value to mean `null`. The
-example service's `compareAccountRevisionForOwner` rechecks owner authorisation and compares the
+example service's `compare` rechecks owner authorisation and compares the
 stored revision with a fresh snapshot. If the account changed, ask the caller to inspect again.
 After a successful comparison, perform the application operation and store a fresh snapshot if the
 flow continues. Keep the captured snapshot in authenticated, integrity-protected application state

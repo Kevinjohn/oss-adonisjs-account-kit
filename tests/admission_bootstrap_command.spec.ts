@@ -1,10 +1,13 @@
 import { test } from '@japa/runner'
 import BootstrapAdmission from '../src/admission/commands/bootstrap.js'
+import { BootstrapApprovalChangedError } from '../src/admission/errors.js'
 import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
 import { AccountAdmission } from '../src/admission/service.js'
+import { InvalidInputError } from '../src/errors.js'
 import { aceKernel } from './helpers/ace_kernel.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission } from './helpers/admission.js'
+import { tokenFrom } from './helpers/fakes.js'
 
 test.group('admission bootstrap', (group) => {
   const kit = useAdmissionApp(group)
@@ -36,5 +39,56 @@ test.group('admission bootstrap', (group) => {
       ['boss@example.test']
     )
     assert.equal(missingRole.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.instanceOf(missingRole.error, InvalidInputError)
+    assert.equal(missingRole.exitCode, 1)
+    assert.lengthOf(stdout(), 2)
+    const stderr = logs().filter((entry) => entry.stream === 'stderr')
+    assert.lengthOf(stderr, 2)
+    assert.include(stderr[0].message, 'bearer secret')
+    assert.include(stderr[1].message, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.notInclude(stderr[1].message, printed.url)
+  })
+
+  test('bootstrap explains how to recover if its waiting approval is cancelled after commit', async ({
+    assert,
+  }) => {
+    const email = 'boss@example.test'
+    let url: string | undefined
+    let cancelled = false
+    const { admission } = makeAdmission(kit, allRequirements, {
+      enabled: ['invitations'],
+      urls: {
+        invitation: (proof) => {
+          url = `https://example.test/invitation/${proof}`
+          return url
+        },
+      },
+      onLifecycleEvent: async (event) => {
+        if (event.type === 'invitation.sent') {
+          cancelled = await admission.operator.cancelBootstrap({ email })
+        }
+      },
+    })
+    kit.app.container.bindValue(AccountAdmission, admission)
+    const { kernel, logs } = aceKernel(kit, [BootstrapAdmission])
+    const command = await kernel.exec<typeof BootstrapAdmission>(
+      'account-kit:admission:bootstrap',
+      [email, '--role=owner']
+    )
+
+    assert.isTrue(cancelled)
+    assert.isString(url)
+    assert.instanceOf(command.error, BootstrapApprovalChangedError)
+    assert.instanceOf(command.error, InvalidInputError)
+    assert.equal(command.error.name, 'InvalidInputError')
+    assert.equal(command.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.equal(command.exitCode, 1)
+    assert.lengthOf(logs(), 1)
+    assert.equal(logs()[0].stream, 'stderr')
+    assert.include(
+      logs()[0].message,
+      'Bootstrap approval was replaced or cancelled. Run bootstrap again.'
+    )
+    assert.notInclude(logs()[0].message, tokenFrom(url))
   })
 })

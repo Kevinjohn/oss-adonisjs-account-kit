@@ -221,7 +221,7 @@ rejected, or revoked.
 | `GET /api/v1/account/admission`                                        | [`AdmissionsController.show`](app/controllers/admissions_controller.ts) returns the current decision.                                                                                                                                                         | `auth()` only; available before admission.                                                                    |
 | `POST /api/v1/account/admission/request`                               | [`AdmissionsController.request`](app/controllers/admissions_controller.ts) records an idempotent request; no request body.                                                                                                                                    | `auth()` only; available before admission. The service refuses an unconfirmed account.                        |
 | `GET /api/v1/account/admissions?status=&cursor=&limit=`                | [`AdmissionsController.index`](app/controllers/admissions_controller.ts) validates the query with [`admissionListValidator`](app/validators/admission.ts). `status` is `pending`, `approved`, `rejected`, or `revoked`; `limit` is 1–100; `cursor` is opaque. | `auth()` then `admittedAccount()`, followed by `admissionAuthorize.list`; the example policy allows owners.   |
-| `POST /api/v1/account/admissions/:id/approve`, `/reject`, or `/revoke` | [`AdmissionsController.approve`, `.reject`, and `.revoke`](app/controllers/admissions_controller.ts) take the subject ID from the path and no request body.                                                                                                   | `auth()` then `admittedAccount()`, followed by `admissionAuthorize.decide`; the example policy allows owners. |
+| `POST /api/v1/account/admissions/:id/approve`, `/reject`, or `/revoke` | [`AdmissionsController.approve`, `.reject`, and `.revoke`](app/controllers/admissions_controller.ts) validate the path ID as a positive safe integer. The actions accept no request body.                                                                     | `auth()` then `admittedAccount()`, followed by `admissionAuthorize.decide`; the example policy allows owners. |
 
 The route gates are placed in [`start/routes.ts`](start/routes.ts). The selected guard is
 authenticated by the account group; among these admission routes, `admittedAccount()` is attached
@@ -238,6 +238,36 @@ instead consume a matching invitation automatically. See the [social invitation 
 
 The [token reference](../../docs/reference/token-reference.md) and [session reference](../../docs/reference/session-reference.md) walk through bearer and
 browser clients.
+
+### Admission code flow
+
+AdonisJS injects the provider's `AccountAdmission` binding into `AdmittedAccountMiddleware` and
+`AdmissionsController`. For invitation authorisation and account export, the callbacks in
+[`config/account_kit.ts`](config/account_kit.ts) resolve admission when called and pass it into
+the policy or export function. This keeps admission resolution out of Account Kit configuration
+loading. `accountInput` supplies the authenticated user ID and the session revision or access-token
+identifier for credential checks.
+
+```mermaid
+flowchart TD
+ A["auth() authenticates the selected guard"] -->|Authenticated| B{"Admission route"}
+ A -->|Unauthenticated| U["Refuse before the controller"]
+ B -->|Status or request| C["AdmissionsController.show or request calls current or request with accountInput"]
+ C -->|Success| D["Return 200 with decision or requestedAt"]
+ C -->|Refused| R["Exception handler maps the status or request error"]
+ B -->|List or decision| E["AdmittedAccountMiddleware calls require with accountInput"]
+ E -->|Refused| X["Exception handler maps the gate error"]
+ E -->|List passes gate| F["AdmissionsController.index reads actor ID and validates list query"]
+ E -->|Decision passes gate| G["AdmissionsController.decide reads actor ID and validates the path ID with userIdParam"]
+ F -->|Valid| H["AccountAdmission.list checks admission and admissionAuthorize.list"]
+ F -->|Invalid| Y["Framework responds to Vine validation failure"]
+ H -->|Allowed| J["Return 200 with items and nextCursor"]
+ H -->|Refused| L["Exception handler maps the list error"]
+ G -->|Valid| I["AccountAdmission approve, reject or revoke checks admission and admissionAuthorize.decide"]
+ G -->|Invalid| Z["Exception handler maps InvalidInputError to 422"]
+ I -->|Allowed| K["Return 200 with userId and approval"]
+ I -->|Refused| M["Exception handler maps the decision error"]
+```
 
 ## How the example works
 

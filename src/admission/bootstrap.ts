@@ -7,6 +7,7 @@ import { CapabilityDisabledError, InvalidInputError } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { OperatorInviteResult } from '../types.js'
 import { requireApproval } from './capability.js'
+import { BootstrapApprovalChangedError } from './errors.js'
 import { admissionTable } from './rows.js'
 import type { AdmissionContext } from './service.js'
 
@@ -52,8 +53,7 @@ export async function operatorBootstrap(
     .whereNull('user_id')
     .where('invitation_id', issued.invitation.id)
     .first()
-  if (!pending)
-    throw new InvalidInputError('Bootstrap approval was replaced or cancelled; run bootstrap again')
+  if (!pending) throw new BootstrapApprovalChangedError()
   return issued
 }
 
