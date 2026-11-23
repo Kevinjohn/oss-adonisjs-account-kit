@@ -6,6 +6,9 @@ import ApproveAdmission from '../src/admission/commands/approve.js'
 import RevokeAdmission from '../src/admission/commands/revoke.js'
 import GrantInvitationEvidence from '../src/admission/commands/grant_invitation.js'
 import * as admissionCommands from '../src/admission/commands/main.js'
+import type { AdmissionConfig } from '../src/admission/types.js'
+import { AdmissionDecisionError } from '../src/admission/errors.js'
+import { PostCommitError, UserNotFoundError } from '../src/errors.js'
 import { AccountAdmission } from '../src/admission/service.js'
 import { aceKernel } from './helpers/ace_kernel.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
@@ -15,8 +18,8 @@ import { insertUser } from './helpers/fakes.js'
 test.group('admission runtime commands', (group) => {
   const kit = useAdmissionApp(group)
 
-  function kernelFor() {
-    const service = makeAdmission(kit, allRequirements)
+  function kernelFor(config: AdmissionConfig = allRequirements) {
+    const service = makeAdmission(kit, config)
     kit.app.container.bindValue(AccountAdmission, service.admission)
     const { kernel, logs } = aceKernel(kit, [
       ApproveAdmission,
@@ -60,7 +63,9 @@ test.group('admission runtime commands', (group) => {
     ])
     assert.equal(command.exitCode, 1)
     assert.equal(command.failure, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
+    assert.instanceOf(command.error, UserNotFoundError)
     assert.lengthOf(stdout(), 0)
+    assert.lengthOf(stderr(), 1)
     assert.include(stderr()[0].message, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
 
     await insertUser(kit, { email: 'person@example.test' })
@@ -68,6 +73,49 @@ test.group('admission runtime commands', (group) => {
       'person@example.test',
     ])
     assert.equal(revoke.failure, 'E_ACCOUNT_KIT_ADMISSION_DECISION')
+    assert.equal(revoke.exitCode, 1)
+    assert.instanceOf(revoke.error, AdmissionDecisionError)
+    assert.lengthOf(stderr(), 2)
+    assert.include(stderr()[1].message, 'E_ACCOUNT_KIT_ADMISSION_DECISION')
+
+    const grant = await kernel.exec<typeof GrantInvitationEvidence>(
+      'account-kit:admission:grant-invitation',
+      ['missing@example.test']
+    )
+    assert.equal(grant.failure, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
+    assert.equal(grant.exitCode, 1)
+    assert.instanceOf(grant.error, UserNotFoundError)
+    assert.lengthOf(stdout(), 0)
+    assert.lengthOf(stderr(), 3)
+    assert.include(stderr()[2].message, 'E_ACCOUNT_KIT_USER_NOT_FOUND')
+  })
+
+  test('approve exposes a committed observer error and reports the saved change', async ({
+    assert,
+  }) => {
+    const person = await insertUser(kit, { email: 'boss@example.test' })
+    const cause = new Error('private observer failure')
+    const { kernel, stdout, stderr } = kernelFor({
+      ...allRequirements,
+      onAdmissionEvent: async () => {
+        throw cause
+      },
+    })
+
+    const command = await kernel.exec<typeof ApproveAdmission>('account-kit:admission:approve', [
+      'boss@example.test',
+    ])
+
+    assert.instanceOf(command.error, PostCommitError)
+    assert.equal(command.failure, 'E_ACCOUNT_KIT_POST_COMMIT')
+    assert.equal(command.exitCode, 1)
+    assert.isNull(command.result)
+    assert.lengthOf(stdout(), 0)
+    assert.lengthOf(stderr(), 1)
+    assert.include(stderr()[0].message, 'committed')
+    assert.notInclude(stderr()[0].message, cause.message)
+    const row = await kit.db.from('account_admissions').where('user_id', person.id).first()
+    assert.equal(row.approval_status, 'approved')
   })
 
   test('the loaders list the install and runtime commands', async ({ assert }) => {

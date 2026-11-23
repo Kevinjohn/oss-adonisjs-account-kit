@@ -2,7 +2,7 @@ import { BaseCommand, args, flags } from '@adonisjs/core/ace'
 import { AccountKit } from '../src/account_kit.js'
 import { isActiveAccount } from '../src/account_projection.js'
 import type { OperatorResetLinkResult } from '../src/types.js'
-import { reportOperatorOutcome, writeFailure } from './operator_output.js'
+import { reportOperatorOutcome, completeOperatorCommand } from './operator_output.js'
 
 /** Operator password-reset link: no throttles; replaces the account's live reset link. */
 export default class ResetLink extends BaseCommand {
@@ -20,25 +20,25 @@ export default class ResetLink extends BaseCommand {
   failure: string | null = null
 
   async run(): Promise<void> {
-    try {
-      const kit = await this.app.container.make(AccountKit)
-      const result = await kit.operator.resetLink({
-        email: this.email,
-        deliver: this.print ? 'print' : 'send',
-      })
-      this.result = result
-      const unverified = !isActiveAccount(result.user)
-      this.failure = reportOperatorOutcome(this, {
-        result,
-        printed: this.print,
-        fields: { userId: result.user.id, email: result.user.email },
-        faultLabel: 'Reset link',
-        warnings: unverified
-          ? ['This account has not verified its email; completing the reset will activate it.']
-          : [],
-      })
-    } catch (error) {
-      this.failure = writeFailure(this, error)
-    }
+    const kit = await this.app.container.make(AccountKit)
+    const result = await kit.operator.resetLink({
+      email: this.email,
+      deliver: this.print ? 'print' : 'send',
+    })
+    this.result = result
+    const unverified = !isActiveAccount(result.user)
+    this.failure = reportOperatorOutcome(this, {
+      result,
+      printed: this.print,
+      fields: { userId: result.user.id, email: result.user.email },
+      faultLabel: 'Reset link',
+      warnings: unverified
+        ? ['This account has not verified its email; completing the reset will activate it.']
+        : [],
+    })
+  }
+
+  completed(): boolean {
+    return completeOperatorCommand(this)
   }
 }

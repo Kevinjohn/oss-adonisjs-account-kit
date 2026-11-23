@@ -13,13 +13,14 @@ As an application operator, I want to cancel a waiting bootstrap approval so tha
 
 - Supply a valid email and `--cancel`. This branch runs before the role check and needs no role or enabled approval requirement. Admission service resolution and the table are required.
 - Output is `{ result: 'cancelled' | 'none', email }`. The command deletes a matching waiting row only when it has no linked user. The unchanged invitation may still be accepted and trigger the host's invitation callback. To remove both effects, revoke that link separately through the [invitation workflow](US-ACCOUNT-12-revoke-invitation.md).
+- A thrown cancellation error stays on Ace's `command.error`, exits nonzero and produces one safe diagnostic on stderr.
 
 ## User flow
 
 ```mermaid
 flowchart TD
  A["Operator cancels waiting bootstrap approval for an email"] --> B{"Can the command resolve admission and validate the address?"}
- B -->|No| X["Report command failure"]
+ B -->|No| X["Print one safe diagnostic and exit nonzero"]
  B -->|Yes| C{"Was a waiting approval deleted?"}
  C -->|No| D["Report none"]
  C -->|Yes| E["Report cancelled"]
@@ -37,7 +38,7 @@ flowchart TD
  Y -->|No| X
  Y -->|Yes| B["AccountAdmission.operator.cancelBootstrap calls cancelBootstrap"]
  B --> C{"requireEmail validates and normalises the address?"}
- C -->|No| X["writeFailure logs error and sets exit code 1"]
+ C -->|No| X["Ace retains error; completed prints one diagnostic and exits nonzero"]
  C -->|Yes| D["Delete matching bootstrap_email row where user_id is null"]
  D -->|Write fails| X
  D -->|Write succeeds| E{"deletedCount greater than zero?"}

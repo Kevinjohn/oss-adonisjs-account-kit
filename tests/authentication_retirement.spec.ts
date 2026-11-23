@@ -210,7 +210,7 @@ test.group('authentication retirement impact', (group) => {
     await insertUser(kit, { email: 'other@example.test', password: null })
     const { account } = makeService(kit, { authentication: { strategy: 'session', guard: 'web' } })
     kit.app.container.bindValue(AccountKit, account)
-    const { kernel } = aceKernel(kit, [RetirementImpact])
+    const { kernel, logs } = aceKernel(kit, [RetirementImpact])
     const result = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [
       '--quiet',
     ])
@@ -235,6 +235,12 @@ test.group('authentication retirement impact', (group) => {
     assert.equal(skipped.impact?.affectedAccounts, 0)
     assert.equal(skipped.impact?.currentPasswordLogin, true)
     assert.deepEqual(skipped.impact?.currentProviders, [])
+    assert.lengthOf(logs(), 0)
+
+    const printed = await kernel.exec<typeof RetirementImpact>('account-kit:retirement-impact', [])
+    assert.lengthOf(logs(), 1)
+    assert.equal(logs()[0].stream, 'stdout')
+    assert.deepEqual(JSON.parse(logs()[0].message), printed.impact)
   })
 
   test('Ace retirement inventory validates --providers before reading accounts', async ({
@@ -271,8 +277,8 @@ test.group('authentication retirement impact', (group) => {
 
     for (const [flag, message] of [
       [
-        '--providers=google,twitter',
-        'Invalid --providers: twitter is not a supported provider; use a comma-separated list of google, github, or none',
+        '--providers=google,https://example.test/proof/private-input',
+        'Invalid --providers: the list contains an unsupported provider; use a comma-separated list of google, github, or none',
       ],
       [
         '--providers=github,github',
@@ -284,31 +290,43 @@ test.group('authentication retirement impact', (group) => {
       assert.equal(refused.failure, 'invalid_providers', flag)
       assert.equal(refused.exitCode, 1, flag)
       assert.isNull(refused.impact, flag)
-      assert.isTrue(
-        logs()
-          .slice(before)
-          .some(({ message: line }) => line.includes(message)),
-        flag
-      )
+      assert.instanceOf(refused.error, Error, flag)
+      const diagnostics = logs().slice(before)
+      assert.lengthOf(diagnostics, 1, flag)
+      assert.equal(diagnostics[0].stream, 'stderr', flag)
+      assert.include(diagnostics[0].message, message, flag)
+      assert.notInclude(diagnostics[0].message, 'private-input', flag)
+      const quiet = await run(flag, '--quiet')
+      assert.equal(quiet.failure, 'invalid_providers', flag)
+      assert.equal(quiet.exitCode, 1, flag)
+      assert.lengthOf(logs(), before + 1, flag)
     }
     assert.lengthOf(requested, 0)
 
+    const error = new Error('private database cause')
     kit.app.container.bindValue(AccountKit, {
       authentication: {
         retirementImpact: async () => {
-          throw new Error('database unavailable')
+          throw error
         },
       },
     } as unknown as AccountKit)
     const before = logs().length
     const unavailable = await run('--providers=github')
+    assert.strictEqual(unavailable.error, error)
     assert.equal(unavailable.failure, 'inventory_unavailable')
     assert.equal(unavailable.exitCode, 1)
-    assert.isTrue(
-      logs()
-        .slice(before)
-        .some(({ message }) => message.includes('Account inventory unavailable'))
-    )
+    const diagnostics = logs().slice(before)
+    assert.lengthOf(diagnostics, 1)
+    assert.equal(diagnostics[0].stream, 'stderr')
+    assert.include(diagnostics[0].message, 'Account inventory unavailable')
+    assert.notInclude(diagnostics[0].message, error.message)
+
+    const quiet = await run('--providers=github', '--quiet')
+    assert.strictEqual(quiet.error, error)
+    assert.equal(quiet.failure, 'inventory_unavailable')
+    assert.equal(quiet.exitCode, 1)
+    assert.lengthOf(logs(), before + 1)
   })
 
   test('service-only configuration returns an empty retirement inventory without reading accounts', async ({
