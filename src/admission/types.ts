@@ -47,9 +47,23 @@ export interface AdmissionConfig {
   domain?: AdmissionDomainConfig
   /** Admit only people with invitation evidence, recorded by `withInvitationEvidence`. */
   invitation?: { required: true }
-  /** Admit only people an approver, or an operator command, approved. */
-  approval?: { required: true; authorize: AdmissionAuthorizeCallbacks }
+  /**
+   * Admit only people an approver, or an operator command, approved. `authorize` is required here
+   * or through `AdmissionCallbackRegistry`.
+   */
+  approval?: { required: true; authorize?: AdmissionAuthorizeCallbacks }
   /** Receives admission events after commit, for audit logs and notifications. */
+  onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
+}
+
+/**
+ * Callbacks an application provider registers through `AdmissionCallbackRegistry` instead of
+ * passing them to `defineAdmission`. Each field may come from one place only.
+ */
+export interface AdmissionCallbacks {
+  /** `AdmissionConfig.approval.authorize`. */
+  approvalAuthorize?: AdmissionAuthorizeCallbacks
+  /** `AdmissionConfig.onAdmissionEvent`. */
   onAdmissionEvent?: (event: AdmissionEvent) => Promise<void>
 }
 

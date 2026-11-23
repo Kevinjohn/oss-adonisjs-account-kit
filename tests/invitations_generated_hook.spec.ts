@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { test } from '@japa/runner'
 import ts from 'typescript'
 import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig } from '../src/config.js'
 import { useTestApp } from './helpers/app.js'
 import {
   insertUser,
@@ -57,7 +58,7 @@ test.group('generated invitation acceptance setup hook', (group) => {
   }) => {
     const base = makeConfig({ users: makeUsersAdapter(kit.db, kit.hash), enabled: ['invitations'] })
     assert.throws(
-      () => defineConfig({ ...base, onInvitationAccepted: undefined }),
+      () => resolveConfig({ ...base, onInvitationAccepted: undefined }, false),
       /onInvitationAccepted must be a function/
     )
     assert.throws(

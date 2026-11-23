@@ -3,6 +3,7 @@ import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import { InvalidConfigurationError } from '../src/errors.js'
 import { defineConfig } from '../src/account_kit.js'
+import { resolveConfig } from '../src/config.js'
 import { expiresAt } from '../src/ttl.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -131,10 +132,30 @@ test.group('account kit configuration and service surface', (group) => {
     }
   })
 
+  test('leaves the fields the callback registry can supply to be checked on resolution', ({
+    assert,
+  }) => {
+    const { users, authorize, onInvitationAccepted, ...rest } = makeConfig({
+      users: makeUsersAdapter(kit.db, kit.hash),
+    })
+    assert.isDefined(users && authorize && onInvitationAccepted)
+    const resolved = defineConfig(rest)
+    assert.isUndefined(resolved.users)
+    assert.throws(() => resolveConfig(rest, false), /users adapter must be configured/)
+    assert.throws(
+      () => resolveConfig({ ...rest, users }, false),
+      /authorize\.invite must be a function/
+    )
+    assert.throws(
+      () => resolveConfig({ ...rest, users, authorize }, false),
+      /onInvitationAccepted must be a function/
+    )
+  })
+
   test('identifies invalid configuration fields with a stable error code', ({ assert }) => {
     let error: unknown
     try {
-      defineConfig({} as never)
+      resolveConfig({} as never, false)
     } catch (caught) {
       error = caught
     }

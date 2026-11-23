@@ -50,6 +50,11 @@ export default defineAdmission({
 - `approval.authorize.decide` or `approval.authorize.list` is not a function;
 - `onAdmissionEvent` is present and not a function.
 
+`approval.authorize` and `onAdmissionEvent` may come from the `account_admission.callbacks`
+registry instead, as `approvalAuthorize` and `onAdmissionEvent`; see
+[registering callbacks from a provider](../../README.md#registering-callbacks-from-a-provider).
+The `approval.authorize` checks then run when the admission service is first resolved.
+
 Register the provider in `adonisrc.ts`:
 
 ```ts

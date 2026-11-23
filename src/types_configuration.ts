@@ -20,8 +20,11 @@ import type {
 
 /** The configuration passed to `defineConfig` in `config/account_kit.ts`. */
 export interface AccountKitConfig {
-  /** Reads and writes your users. Use `createLucidAdapter` for a Lucid model. */
-  users: UsersAdapter
+  /**
+   * Reads and writes your users. Use `createLucidAdapter` for a Lucid model. Required here or
+   * through `AccountKitCallbackRegistry`.
+   */
+  users?: UsersAdapter
   /**
    * The capabilities to turn on. Defaults to `passwordReset`, `emailVerification` and
    * `emailPasswordManagement`.
@@ -185,6 +188,7 @@ export interface PasswordPolicy {
 /** `AccountKitConfig` after `defineConfig` has validated it and filled in every default. */
 export interface ResolvedConfig extends Omit<
   AccountKitConfig,
+  | 'users'
   | 'enabled'
   | 'authorize'
   | 'urls'
@@ -203,6 +207,7 @@ export interface ResolvedConfig extends Omit<
   | 'sessionManagement'
   | 'accountDeletion'
 > {
+  users: UsersAdapter
   enabled: Capability[]
   authorize: AuthorizationCallbacks
   urls: UrlCallbacks
@@ -225,4 +230,23 @@ export interface ResolvedConfig extends Omit<
   passwordPolicy: PasswordPolicy
   sessionManagement: Required<SessionManagementConfig>
   accountDeletion: Required<AccountDeletionConfig>
+}
+
+/**
+ * Callbacks an application provider registers through `AccountKitCallbackRegistry` instead of
+ * passing them to `defineConfig`. Each field may come from one place only.
+ */
+export interface AccountKitCallbacks {
+  /** `AccountKitConfig.users`. */
+  users?: AccountKitConfig['users']
+  /** `AccountKitConfig.authorize`. */
+  authorize?: AccountKitConfig['authorize']
+  /** `AccountKitConfig.registration.mapFields`. */
+  mapRegistrationFields?: NonNullable<AccountKitConfig['registration']['mapFields']>
+  /** `AccountKitConfig.onInvitationAccepted`. */
+  onInvitationAccepted?: AccountKitConfig['onInvitationAccepted']
+  /** `AccountKitConfig.onCredentialsChangedTransaction`. */
+  onCredentialsChangedTransaction?: AccountKitConfig['onCredentialsChangedTransaction']
+  /** `AccountKitConfig.onAccountDeletingTransaction`. */
+  onAccountDeletingTransaction?: AccountKitConfig['onAccountDeletingTransaction']
 }

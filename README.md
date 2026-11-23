@@ -81,6 +81,41 @@ node ace configure @kevinjohn/adonisjs-account-kit --provider-registered
 This flag confirms that you registered the provider yourself. Configure then preserves the dynamic
 provider expression and completes the remaining setup. Running it again is safe.
 
+## Registering callbacks from a provider
+
+`config/account_kit.ts` and `config/admission.ts` may leave out the callbacks that call
+application code. Register them from an application provider instead, listed in `adonisrc.ts`
+before `@kevinjohn/adonisjs-account-kit/account_kit_provider`. Call `register` in `boot()`; the
+factory runs when the service is first resolved, so it can import application services lazily.
+
+```ts
+import type { ApplicationService } from '@adonisjs/core/types'
+
+export default class PackageCallbacksProvider {
+  constructor(protected app: ApplicationService) {}
+
+  async boot() {
+    const accountKit = await this.app.container.make('account_kit.callbacks')
+    accountKit.register(async () => {
+      const { users } = await import('#services/account_kit/users')
+      return { users, onInvitationAccepted: async (user, invitation, trx) => {} }
+    })
+    const admission = await this.app.container.make('account_admission.callbacks')
+    admission.register(async () => {
+      const { admissionAuthorize } = await import('#services/account_kit/policy')
+      return { approvalAuthorize: admissionAuthorize }
+    })
+  }
+}
+```
+
+Account Kit accepts `users`, `authorize`, `mapRegistrationFields` (`registration.mapFields`),
+`onInvitationAccepted`, `onCredentialsChangedTransaction` and `onAccountDeletingTransaction`;
+admission accepts `approvalAuthorize` (`approval.authorize`) and `onAdmissionEvent`. A field set in
+both the config file and the registry, a second `register` call, or a call after the service was
+first resolved throws `InvalidConfigurationError`. A config file that passes every callback keeps
+working with nothing registered.
+
 ## User stories
 
 See the [user story catalogue](user-stories/README.md) for source-reviewed account journeys, opt-in capabilities and operator surfaces.

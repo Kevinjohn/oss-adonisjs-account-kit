@@ -64,12 +64,32 @@ function bindCallbacks<T extends object>(container: object | undefined, defaults
   return freezeResolved(result) as T
 }
 
+/** The input behind each config `defineConfig` returned, for `resolveAccountKitConfig`. */
+export const configInputs = new WeakMap<ResolvedConfig, AccountKitConfig>()
+
 /**
  * Validates the Account Kit config and fills in defaults. Throws at boot, with the field name, for
- * a missing callback an enabled capability needs or an out-of-range value.
+ * a missing callback an enabled capability needs or an out-of-range value. `users`, `authorize` and
+ * `onInvitationAccepted` may be left out for `AccountKitCallbackRegistry` to supply; they are
+ * checked when the service is first resolved.
  */
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
-  if (!config || typeof config !== 'object' || !config.users || typeof config.users !== 'object')
+  const resolved = resolveConfig(config, true)
+  configInputs.set(resolved, config)
+  return resolved
+}
+
+/**
+ * The checks and defaults of `defineConfig`. With `deferCallbacks`, a field the callback registry
+ * can supply is not required yet.
+ */
+export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean): ResolvedConfig {
+  if (
+    !config ||
+    typeof config !== 'object' ||
+    (!(deferCallbacks && config.users === undefined) &&
+      (!config.users || typeof config.users !== 'object'))
+  )
     throw new InvalidConfigurationError('users', 'account_kit: users adapter must be configured')
   if (
     config.delivery !== undefined &&
@@ -97,7 +117,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   for (const name of ['authorize', 'urls', 'notify', 'expiresIn', 'invitationThrottle'] as const) {
     if (config[name] !== undefined) assertObject(config[name], name)
   }
-  if (config.users.hashPassword !== undefined) {
+  if (config.users?.hashPassword !== undefined) {
     if (typeof config.users.hashPassword !== 'function')
       throw new InvalidConfigurationError(
         'users.hashPassword',
@@ -111,7 +131,7 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   }
   for (const capability of enabled) {
     for (const method of capabilityRegistry[capability].adapterMethods) {
-      if (typeof config.users[method] !== 'function')
+      if (config.users && typeof config.users[method] !== 'function')
         throw new InvalidConfigurationError(
           `users.${method}`,
           `account_kit: users.${method} must be a function`
@@ -119,6 +139,12 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
     }
     for (const path of capabilityRegistry[capability].requiredHooks) {
       const parts = path.split('.')
+      if (
+        deferCallbacks &&
+        (parts[0] === 'authorize' || parts[0] === 'onInvitationAccepted') &&
+        config[parts[0]] === undefined
+      )
+        continue
       const parent =
         parts.length === 1 ? config : config[parts[0] as 'urls' | 'notify' | 'authorize']
       if (typeof (parent as Record<string, unknown> | undefined)?.[parts.at(-1)!] !== 'function')
@@ -231,14 +257,14 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const sessionManagement = resolveSessionManagement(config)
   const accountDeletion = resolveAccountDeletion(config)
   if (
-    config.users.resolveMetadata !== undefined &&
+    config.users?.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
   )
     throw new InvalidConfigurationError(
       'users.resolveMetadata',
       'account_kit: users.resolveMetadata must be a function'
     )
-  if (config.users.resolveMetadata && config.usersTable !== undefined)
+  if (config.users?.resolveMetadata && config.usersTable !== undefined)
     throw new InvalidConfigurationError(
       'usersTable',
       'account_kit: usersTable is for custom adapters; the Lucid adapter derives its table'
@@ -262,7 +288,8 @@ export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const backendOrigin = actionUrlBackendOrigins.get(config.urls)
   if (backendOrigin) actionUrlBackendOrigins.set(urls, backendOrigin)
   return freezeResolved({
-    users: config.users,
+    // Deferred only by `defineConfig`, whose result `resolveAccountKitConfig` checks again.
+    users: config.users!,
     emailConstraint: config.emailConstraint,
     socialAuthentication: config.socialAuthentication,
     onCredentialsChanged: config.onCredentialsChanged?.bind(config),
