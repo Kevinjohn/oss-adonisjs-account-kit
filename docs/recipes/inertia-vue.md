@@ -8,8 +8,8 @@ configuration command.
 
 The pinned official Vue starter and its pre-install login check are recorded in the
 [starter baselines](../maintainers/verification.md#starter-baselines). A copied reference example is
-not a clean existing-application integration. Keep your own email normalization, password policy,
-authorization rules, language, page layouts and styling.
+not a clean existing-application integration. Keep your own email normalisation, password policy,
+authorisation rules, language, page layouts and styling.
 
 ## Keep the original login and protect existing sessions
 
@@ -77,7 +77,7 @@ protection, and the app's current error-summary and field-error components. Keep
 recovery copy in the application. The reference form clears both password inputs on an error or
 success; it does not retain secrets in Inertia state. See
 [`account_form_errors.spec.ts`](../../examples/inertia-vue/tests/browser/account_form_errors.spec.ts)
-for the mismatch behavior. Use `autocomplete="email"`/`username` and `autocomplete="new-password"`,
+for the mismatch behaviour. Use `autocomplete="email"`/`username` and `autocomplete="new-password"`,
 keep labels associated with controls, announce errors and focus the error summary.
 
 Review every generated migration before applying it. Selecting only `passwordReset` does not make
@@ -126,8 +126,8 @@ pnpm build
 pnpm test
 ```
 
-Browser tests use SQLite and local callback capture. They prove application behavior and proof URL
-generation, not inbox delivery or PostgreSQL behavior.
+Browser tests use SQLite and local callback capture. They prove application behaviour and proof URL
+generation, not inbox delivery or PostgreSQL behaviour.
 
 ## Clean application check
 
@@ -140,7 +140,7 @@ Chromium and local notification capture; the earlier dated records below remain 
 
 After migrations and code generation in a fresh configured scaffold, run `pnpm format` before the
 full-app `pnpm lint` check. Starter/configurator output and generated migration/schema files carry
-formatting differences that this normalizes in the disposable scaffold.
+formatting differences that this normalises in the disposable scaffold.
 
 The native `/login` form passed before Account Kit installation: its original credentials opened the
 protected `/dashboard`, which also returned successfully on a second direct request. In the fresh P6
@@ -158,8 +158,8 @@ The generated starter manifest used these relevant ranges: `@adonisjs/auth` `^10
 [pinned official Vue starter manifest](https://github.com/adonisjs/starter-kits/blob/46d235932e3eb6472a16b740fa0b47b5f69fc6fc/inertia-vue/package.json)
 for the complete generated dependency ranges. Its pre-install lockfile SHA-256 was
 `1361cab418a9cd17746e6b0deb372505a013575d6adf8fb5eb6c851366939fc3`; the clean starter commit was
-`ae2ee4c73b8b668161435e8d74d853707bdc3a7f` after manual Git initialization because the creator does
-not initialize a repository. Account Kit was configured at checkpoint
+`ae2ee4c73b8b668161435e8d74d853707bdc3a7f` after manual Git initialisation because the creator does
+not initialise a repository. Account Kit was configured at checkpoint
 `40e070424d6bda22579a4ea8f8b242c3b770db40` before applying the committed patch. See the verification
 record for the original P1 baseline and source comparison.
 
@@ -196,7 +196,7 @@ when rerun with the harness-printed command and retained test environment from r
 ```
 
 Notifications were captured by an in-process callback; this verifies link generation, not delivery
-to an inbox. These checks use SQLite and do not establish PostgreSQL behavior.
+to an inbox. These checks use SQLite and do not establish PostgreSQL behaviour.
 
 ### Consumed-proof session preservation — 23 October 2026
 

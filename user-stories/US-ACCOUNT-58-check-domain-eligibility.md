@@ -32,7 +32,7 @@ Scope: this pure preflight checks only the configured domain rule; the host owns
 flowchart TD
  A["AccountAdmission.eligibleDomain(email)"] --> B{"Is a domain rule configured?"}
  B -->|No| C["Return true without input validation"]
- B -->|Yes| D["Normalize and parse the email domain"]
+ B -->|Yes| D["Normalise and parse the email domain"]
  D --> E{"Is the address valid and domain allowed?"}
  E -->|No| F["Return false"]
  E -->|Yes| G["Return true"]

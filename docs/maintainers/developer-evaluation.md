@@ -8,7 +8,7 @@ run. The fallback follows the same task set and documentation-only guidance rule
 technical walkthrough evidence; it does not establish human usability or participant success.
 
 The walkthrough installed the candidate in a fresh conventional AdonisJS API starter using Node
-`v24.21.0`, pnpm `11.23.0`, Adonis core `7.5.x`, Lucid `22.4.x`, SQLite via `better-sqlite3`, and
+`v24.21.0`, pnpm `11.23.0`, AdonisJS core `7.5.x`, Lucid `22.4.x`, SQLite via `better-sqlite3`, and
 the starter's existing `api` access-token guard with its native access-token table. The evaluated
 candidate source revision was `f4f067233ad5e96652d7ee0250ec125b0e0b8262`; its package archive had
 SHA-256 `cc7976d8b1a485ffdae4ea149c2e0050d2e611b7a76d025554d276d4637ac9b7`. The archive digest
@@ -85,9 +85,9 @@ identify which changes belong to package setup and which responsibilities remain
   an application boot failure.
 - Local capture allowed proof inspection but did not send mail. No SMTP transport, recipient
   delivery, or production delivery readiness was demonstrated. Public origins, real transport,
-  delivery worker/retry behavior, application guard and token policy, and deployment checks remain
+  delivery worker/retry behaviour, application guard and token policy, and deployment checks remain
   application responsibilities.
-- PostgreSQL was not evaluated. No claim is made about PostgreSQL behavior from this walkthrough.
+- PostgreSQL was not evaluated. No claim is made about PostgreSQL behaviour from this walkthrough.
 - No human participants were evaluated. There is no participant mix, human task-success result,
   usability finding, novice-success claim, setup-time measurement, or time guarantee.
 
@@ -96,7 +96,7 @@ The attempt record also retains these execution events:
 - A zsh wrapper tried to assign its read-only `status` variable after the first preview. Its output
   was captured and a separately named preview completed with exit code 0; preview made no writes.
 - The sandbox rejected the assigned HTTP listener with `EPERM`; the same app then started through
-  the host-authorized execution route on the assigned localhost port.
+  the host-authorised execution route on the assigned localhost port.
 - The first signup assertion expected 200 or 202 and exited on 201. The endpoint documentation
   specifies 201; the assertion was corrected to the documented status and the activation flow
   completed.

@@ -3,7 +3,7 @@
 As an account holder with an unconfirmed address, I want to request another verification link so that I can activate my account.
 
 **Status:** Current when `emailVerification` is enabled
-**Access:** The host supplies a userId from its authorized request context; Account Kit rate-limits per user.
+**Access:** The host supplies a userId from its authorised request context; Account Kit rate-limits per user.
 **Entry:** Host calls `emailVerification.send({ userId })`; optional managed resend endpoint is explicitly enabled.
 **Documentation:** [Registration](../docs/guide/registration.md)
 **Source:** [`src/verification.ts`](../src/verification.ts)

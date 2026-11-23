@@ -7,7 +7,7 @@ that stores the credential revision, revision-check middleware, and a server-sid
 as database or Redis. The API recipe uses bearer-token revocation without a session adapter. The
 [annotated API starter diff](password-reset-starter-diff.md) shows the changes in context. Account
 Kit supplies account operations; the application supplies request validation,
-authorization, notification delivery and browser/proof pages. All executable paths require Node 24
+authorisation, notification delivery and browser/proof pages. All executable paths require Node 24
 and pnpm; the [compatibility page](../reference/compatibility.md) describes supported databases.
 
 | Your stack      | Add password reset to an existing application                           | Start a new application (secondary path)                                                                                         |
@@ -56,7 +56,7 @@ uses English fallback when the app does not supply translations.
   then follows the specific error; a green doctor result still needs an operational smoke test.
 
 Within an API path choose [application-owned controllers](application-owned-integration.md)
-when you own HTTP behavior, or [managed JSON routes](managed-http.md) for selected package
+when you own HTTP behaviour, or [managed JSON routes](managed-http.md) for selected package
 endpoints. [Guided setup](setup.md) can generate integration files for either choice. Browser
 examples call services from their own controllers; managed JSON is not a prerequisite for a form.
 

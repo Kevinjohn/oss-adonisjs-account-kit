@@ -48,7 +48,7 @@ use `createMailNotifications` with configured AdonisJS Mail.
 
 The starter stores email addresses as typed, but Account Kit looks them up trimmed and lowercase,
 so a mixed-case signup could never request a reset. Trim and lowercase the shared `email` rule in
-`app/validators/user.ts`, as the patch does, and normalize existing addresses before enabling the
+`app/validators/user.ts`, as the patch does, and normalise existing addresses before enabling the
 recipe.
 
 Add `start/account_kit_routes.ts` with a separate prefix so it cannot replace an existing starter
@@ -79,7 +79,7 @@ import './account_kit_routes.js'
 ```
 
 The request, proof inspection and completion routes are public; do not place this mount inside the
-starter's `auth` route group. Wrap `managedProofHeadersMiddleware` in a default-exported Adonis
+starter's `auth` route group. Wrap `managedProofHeadersMiddleware` in a default-exported AdonisJS
 middleware class and register it in the early server stack before the body parser. Use the same
 `/account-kit` prefix and `['passwordReset']` selection, so malformed proof requests also get
 `Cache-Control: no-store` and `Referrer-Policy: no-referrer`:
@@ -148,7 +148,7 @@ Node executable, and removes inherited external database settings. Run the print
 any directory when checking a mutation; running the bare spec command with different environment
 settings does not reproduce the recorded run.
 
-The spec checks the following observable behavior:
+The spec checks the following observable behaviour:
 
 - Two credentials obtained through `/api/v1/auth/login` each reach the original protected profile.
 - Known and unknown reset requests receive the same generic `202` acknowledgement.
@@ -203,7 +203,7 @@ pnpm create adonisjs@3.4.0 <directory> \
   --pkg=pnpm
 ```
 
-The creator did not initialize Git; the harness recorded each baseline with `git init`,
+The creator did not initialise Git; the harness recorded each baseline with `git init`,
 `git add -A` and `git commit -m starter`. Its evidence JSON retains the generated manifest,
 resolved dependency versions in the lockfile, generated-file inventory, command outputs,
 post-configure checkpoint, local database path and exact replay command. The generated starter

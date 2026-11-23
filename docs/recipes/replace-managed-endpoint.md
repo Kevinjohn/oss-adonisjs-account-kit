@@ -58,7 +58,7 @@ The access order is native `auth()` first, then `accountAccess()` for the curren
 revision and application restriction policy. This profile read is a `limited` route, so use
 `accountAccess()` rather than the verified-email-only `verifiedAccount()` gate.
 
-Project only public fields from the authenticated user; do not serialize the model wholesale:
+Project only public fields from the authenticated user; do not serialise the model wholesale:
 
 ```ts
 import type { HttpContext } from '@adonisjs/core/http'

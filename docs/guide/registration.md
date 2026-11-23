@@ -50,7 +50,7 @@ length and character variety; a long passphrase can score higher without mixed c
   description="Signup creates an unverified account and emails a verification link; after the link is used, login returns an active account"
 />
 
-`registration.register({ email, password, registrationData? })` normalizes the address and creates
+`registration.register({ email, password, registrationData? })` normalises the address and creates
 an inactive account with `email` and `unverifiedEmail` equal. The account and a hashed one-use
 activation proof commit in one transaction. A unique email constraint decides concurrent attempts;
 all duplicate account states produce `RegistrationEmailAlreadyRegisteredError` (422). An HTTP
@@ -72,7 +72,7 @@ An activation proof for an inactive account now requires a fresh password:
 `emailVerification.complete({ token, password })`. The claimant's password replaces the earlier
 password under the account lock. The same transaction invalidates prior bearer credentials or
 advances the browser-session revision. In-flight login cannot issue a usable credential from the
-old password after that claim. Active-account email changes retain their separate proof behavior.
+old password after that claim. Active-account email changes retain their separate proof behaviour.
 
 ## Files and migrations
 
@@ -86,7 +86,7 @@ it uses the users and verification-proof schema described in
 ## Before deployment
 
 Set registration availability explicitly, review the trusted field mapping and user adapter, and
-confirm the users table has a unique normalized email key. Wire the application-owned signup
+confirm the users table has a unique normalised email key. Wire the application-owned signup
 controller to validate request fields and translate duplicate errors consistently. Give inactive
 credentials access only to verification resend, logout, and other intentionally limited actions.
 Completion is a POST with a fresh password and confirmation; a token alone does not claim an

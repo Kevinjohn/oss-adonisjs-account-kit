@@ -90,7 +90,7 @@ password verifier and selected `canAccess` policy.
 | Budget                           | Failures | Window   | Block      |
 | -------------------------------- | -------- | -------- | ---------- |
 | Per client                       | 10       | 1 minute | none       |
-| Per client plus normalized email | 5        | 1 minute | 20 minutes |
+| Per client plus normalised email | 5        | 1 minute | 20 minutes |
 
 - Failed attempts consume both HMAC-keyed limits; successful attempts do not consume either.
 - A successful login resets only that identity's failure count; it preserves failures against other
@@ -141,7 +141,7 @@ transaction and would wait on itself. A `PostCommitError` means the snapshot was
 a retry is safe.
 
 See the [worked account access inspection recipe](../recipes/account-access-inspection.md) for a
-caller-authorized application flow with generic denial handling and revision comparison.
+caller-authorised application flow with generic denial handling and revision comparison.
 
 ### Protected requests
 

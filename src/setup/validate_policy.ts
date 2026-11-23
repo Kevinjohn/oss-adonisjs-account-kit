@@ -107,13 +107,13 @@ export function addPolicyDiagnostics(
     addSetupDiagnostic(
       diagnostics,
       'policy',
-      'Provide #services/account_kit_policy callbacks before activation'
+      'Provide the callbacks in #services/account_kit_policy before activation'
     )
   else if (choices.policy.accessRestrictionHook || choices.features.includes('invitations'))
     addSetupDiagnostic(
       diagnostics,
       'policy.callbacks',
-      'Verify the application-owned policy callbacks implement the selected access and invitation contracts at runtime',
+      'Verify the application-owned access and invitation callbacks implement the selected contracts at runtime',
       'action'
     )
   if (choices.authentication && !choices.policy.accessRestrictionHook)

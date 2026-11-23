@@ -32,7 +32,7 @@ direct token issuance.
 
 `tokenAbilities: ['*']` is the starter-compatible default: it makes
 `currentAccessToken.allows(...)` true for every ability. A narrower ability list can limit which
-operations a token is intended to call, but abilities alone do not authorize access to a workspace,
+operations a token is intended to call, but abilities alone do not authorise access to a workspace,
 record, or role. Keep the application's resource and role policy check on the route as well.
 The empty `onCredentialsChangedTransaction` is appropriate only if the application holds no other
 credentials. Revoke application-owned sessions, remember-me credentials or API keys in that

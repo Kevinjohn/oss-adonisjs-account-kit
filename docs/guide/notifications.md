@@ -84,7 +84,7 @@ only to the intended backend operation. These controls apply to both configured 
 and any manual development path.
 
 Call `notificationReadiness` with the selected environment, delivery mode, origins, enabled
-capabilities, destination paths, and the application's selected `transport` behavior (`delivery`,
+capabilities, destination paths, and the application's selected `transport` behaviour (`delivery`,
 `capture`, or `discard`). It reports missing destinations, insecure origins, and
 capture in production. `delivery: 'durable'` is an application declaration: verify its worker,
 retry and terminal-failure handling for both action links and security notices, then pass
@@ -166,7 +166,7 @@ to the previous address after an email change, capture that address transactiona
 is replaced.
 
 Development capture must be explicit in the application's Mail transport and should identify
-captured messages as local artifacts. Do not use a silent discard transport in production or
+captured messages as local artefacts. Do not use a silent discard transport in production or
 present a captured message as delivered to its recipient.
 
 ## Files and migrations

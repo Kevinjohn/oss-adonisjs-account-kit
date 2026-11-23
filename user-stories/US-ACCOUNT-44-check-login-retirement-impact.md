@@ -12,7 +12,7 @@ As an application operator, I want to count accounts affected by a proposed logi
 ## Acceptance criteria
 
 - The command reports inspected/affected adapter-visible account counts, checkedAt, current providers and current password-login state. `--providers` names unique supported providers remaining; omitted means currently configured providers, `none` means none. `--keep-password-login` opts into retaining password login; otherwise password login is considered removed. `--quiet` suppresses success and error text while preserving the structured `impact` or `failure` result and nonzero exit status on error.
-- Invalid configuration or unavailable inventory exits nonzero with a generic inventory-unavailable result; the command changes no account or provider state.
+- An unsupported or repeated `--providers` name exits with code 1, a flag-specific message and the `invalid_providers` failure before the inventory runs. Invalid configuration or unavailable inventory exits nonzero with a generic inventory-unavailable result. The command changes no account or provider state.
 
 ## User flow
 

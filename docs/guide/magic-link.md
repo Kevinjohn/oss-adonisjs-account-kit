@@ -80,7 +80,7 @@ With `registerManagedRoutes`, add `magicLinkLogin` to `enabled`:
   still replace that account’s previous link. Unused requests may leave a count until the latest
   acknowledged request’s configured magic-link lifetime expires; the next request or completion
   clears expired state. This supports successive requests with overlapping links; applications
-  must serialize concurrent session writes if their session store requires it.
+  must serialise concurrent session writes if their session store requires it.
 - **Access-token guards** require `clientChallenge` on request and `verifier` on completion, and
   the mount requires `publicCredential`.
 - The request route answers `202` with the same body for known and unknown addresses, including

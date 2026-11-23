@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Start with the error code and the part of the integration that produced it. Package error codes,
-HTTP status mappings, and committed-failure behavior are listed in the [error reference](../reference/errors.md).
+HTTP status mappings, and committed-failure behaviour are listed in the [error reference](../reference/errors.md).
 
 ## Setup cannot apply a change
 
@@ -12,7 +12,7 @@ application, then run setup again.
 ## A managed route returns an unexpected response
 
 Check that the route capability is enabled and that the selected authentication guard matches the
-application. The [managed HTTP guide](managed-http.md) describes route behavior and the
+application. The [managed HTTP guide](managed-http.md) describes route behaviour and the
 [endpoint reference](../reference/endpoints.md) lists each route and its access requirements.
 
 ## A service operation fails

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
-import { requireAccountAccessDecision } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_decision.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction, isUserEmailUniqueViolation, isUniqueViolation } from './db.js'
 import { consumeRows } from './consume_rows.js'

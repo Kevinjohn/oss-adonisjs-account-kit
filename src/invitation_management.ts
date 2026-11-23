@@ -77,8 +77,8 @@ export async function resendInvitation(
   await requireUser(deps.config, input.actorId)
   const token = generateToken(deps.config.tokenSecretLength)
   const operationId = randomUUID()
-  // Both policy reads receive a transaction. The first commits before the limiter touches its
-  // store; the second protects the row through rotation and catches intervening policy changes.
+  // Both permission reads receive a transaction. The first commits before the limiter touches its
+  // store; the second protects the row through rotation and catches intervening permission changes.
   const preflight = await transaction(deps.db, (trx) =>
     lockResendable(deps.config, trx, input.actorId, input.invitationId)
   )

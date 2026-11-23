@@ -26,12 +26,12 @@ flowchart TD
 
 ## Code flow
 
-Scope: operator helper deletes by normalized bootstrap email only when user_id is null.
+Scope: operator helper deletes by normalised bootstrap email only when user_id is null.
 
 ```mermaid
 flowchart TD
  A["account-kit:admission:bootstrap --cancel"] --> B["AccountAdmission.operator.cancelBootstrap({ email })"]
- B --> C["Normalize and validate email"]
+ B --> C["Normalise and validate email"]
  C --> D["Delete matching bootstrap_email row where user_id is null"]
  D --> E{"Any row deleted?"}
  E -->|No| F["Return false; command prints none"]

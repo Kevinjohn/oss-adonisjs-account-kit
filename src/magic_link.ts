@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { DateTime } from 'luxon'
-import { requireAccountAccessDecision } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_decision.js'
 import { isActiveAccount, buildAccountProjection } from './account_projection.js'
 import { requireAuthentication } from './authentication_config.js'
 import { revision } from './credential_revision.js'

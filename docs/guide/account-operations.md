@@ -62,13 +62,13 @@ a purpose-bound `recentProof` for a social-only account. The email follows the s
 as `requestEmailChange`, while `registrationData` passes through the configured field mapper
 before the adapter. Both writes occur under one account lock and transaction; a failure in
 either rolls back both. The returned account is reloaded after those writes. Transform it to
-an explicit HTTP representation instead of serializing adapter or model internals.
+an explicit HTTP representation instead of serialising adapter or model internals.
 
 ### Invitation authority is fixed at issuance
 
 Send, resend, list, and revoke require configured application permission. Acceptance is
 password-based and consumes the invitation once. Different scoped links for the same address
-serialize on the unique user email before consuming invitations; after one acceptance consumes them, another
+serialise on the unique user email before consuming invitations; after one acceptance consumes them, another
 acceptance receives the normal used-link refusal. It does not recheck the inviter's later
 permission or disabled state. The `role` and `scope` are opaque application data; use
 `onInvitationAccepted(user, invitation, trx)` for required membership or role writes in the

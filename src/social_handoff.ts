@@ -1,5 +1,5 @@
 // Social handoff codes: issuing a one-time code after a social callback and redeeming it for a credential.
-import { requireAccountAccessDecision } from './account_access_policy.js'
+import { requireAccountAccessDecision } from './account_access_decision.js'
 import { sqlTimestamp } from './timestamps.js'
 import { establishCredential } from './credential_issuance.js'
 import { DateTime } from 'luxon'

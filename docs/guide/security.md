@@ -2,12 +2,12 @@
 
 This page lists what Account Kit defends against, how, and what remains the application's job. It
 describes the package defaults; each value can be changed in `config/account_kit.ts`. Each
-defense names the source that implements it and the test that pins it, so you can check the claim
+defence names the source that implements it and the test that pins it, so you can check the claim
 yourself.
 
 ## At a glance
 
-| Threat                                   | Defense                                                                             |
+| Threat                                   | Defence                                                                             |
 | ---------------------------------------- | ----------------------------------------------------------------------------------- |
 | A leaked database used to reset accounts | Links carry 40 random bytes; only a SHA-256 hash is stored.                         |
 | Old or replayed links                    | Every link is single use and expires, checked inside the write transaction.         |
@@ -70,8 +70,8 @@ Limits use `@adonisjs/limiter`. A limited request throws `ThrottledError` (HTTP 
 
 | Operation                          | Keys                                     | Default                              | Option                         |
 | ---------------------------------- | ---------------------------------------- | ------------------------------------ | ------------------------------ |
-| Password reset request             | client, normalized email                 | 5 per 15 minutes                     | `throttle`                     |
-| Magic-link request                 | client, normalized email                 | 5 per 15 minutes                     | `throttle`                     |
+| Password reset request             | client, normalised email                 | 5 per 15 minutes                     | `throttle`                     |
+| Magic-link request                 | client, normalised email                 | 5 per 15 minutes                     | `throttle`                     |
 | Verification resend                | user                                     | 5 per 15 minutes                     | `throttle`                     |
 | Password, email and profile change | user                                     | 5 per 15 minutes                     | `throttle`                     |
 | Social password proof              | user                                     | 5 per 15 minutes                     | `throttle`                     |
@@ -148,7 +148,7 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
 ## Transactions and races
 
 - **One transaction per operation.** Each account operation runs in one package-owned transaction.
-  PostgreSQL and MySQL lock the user row (`SELECT ... FOR UPDATE`); SQLite serializes package
+  PostgreSQL and MySQL lock the user row (`SELECT ... FOR UPDATE`); SQLite serialises package
   writes through a lock row ([`user_lock.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/user_lock.ts), [`transaction.ts`](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/src/transaction.ts)).
 - **No half-finished changes.** If an adapter or hook fails, the token use, the password change and
   the revocation roll back together. Pinned by "adapter failure rolls back token consumption and
@@ -195,8 +195,8 @@ See [authentication](authentication.md) and [signed-in devices](signed-in-device
   analytics, error reporting and logged `mail:queueing` payloads. Links printed by
   `account-kit:invite --print` and `account-kit:reset-link --print` are equally sensitive; keep
   them out of shell history files and shared terminals.
-- **Authorize at the HTTP boundary.** Invitation authorization callbacks are the package's only
-  business authorization. Route protection, roles and tenancy belong to the application.
+- **Authorise at the HTTP boundary.** Invitation authorisation callbacks are the package's only
+  business authorisation. Route protection, roles and tenancy belong to the application.
 - **Validate request shape and confirmations.** Account Kit enforces its password policy on new
   passwords, but validators own field shapes, password confirmation and terms acceptance.
 - **Route account changes through Account Kit.** Direct database writes to users, tokens or
@@ -220,4 +220,4 @@ Follow the private process in [SECURITY.md](../../SECURITY.md).
 
 Further detail: [operations](operations.md) covers secrets, pruning and redaction,
 [production requirements](../reference/production-requirements.md) cover budgets, and
-[authentication](authentication.md) covers guard and session behavior.
+[authentication](authentication.md) covers guard and session behaviour.

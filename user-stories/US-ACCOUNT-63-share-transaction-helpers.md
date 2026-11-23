@@ -8,7 +8,7 @@ As a package consumer, I want to use Account Kit’s transaction helpers so that
 
 **Entry:** `@kevinjohn/adonisjs-account-kit/transaction`
 
-**Documentation:** [Guide](../docs/guide/core-api.md)
+**Documentation:** [Transaction helpers](../docs/guide/application-owned-integration.md#transaction-helpers-for-packages-built-on-account-kit)
 
 **Source:** [transaction/main.ts](../transaction/main.ts), [src/transaction.ts](../src/transaction.ts)
 

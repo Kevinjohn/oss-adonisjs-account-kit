@@ -31,7 +31,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: admission operator service binds the approval inside the shell-trusted invitation transaction, serialized by the unique invitation address and scope.
+Scope: admission operator service binds the approval inside the shell-trusted invitation transaction, serialised by the unique invitation address and scope.
 
 ```mermaid
 flowchart TD

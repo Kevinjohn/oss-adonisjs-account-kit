@@ -3,7 +3,7 @@
 Follow [Releasing](releasing.md) for the current GitHub release procedure. The release workflow
 runs `checks`, `compat` and `examples` as prerequisites. The read-only `package` job runs
 `bin/release_check.sh`, tests that archive in a fresh SQLite consumer and compares the consumer's
-recorded SHA-256 with the digest from packaging. The consumer check must pass before the artifact
+recorded SHA-256 with the digest from packaging. The consumer check must pass before the artefact
 is uploaded. The `release` job verifies the downloaded archive and notes before publishing, then
 checks the digest in the GitHub release asset metadata and notes. Only the `release` job has
 `contents: write`. The documentation site build is a separate workflow gate.

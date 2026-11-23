@@ -1,7 +1,7 @@
 # Account Kit examples
 
 These reference applications show how an AdonisJS app can own its account routes, validation,
-authorization, and user-facing messages while using Account Kit for account operations. Read the
+authorisation, and user-facing messages while using Account Kit for account operations. Read the
 [example acceptance contract](../docs/guide/example-acceptance.md) before using their checks as
 evidence for an application.
 

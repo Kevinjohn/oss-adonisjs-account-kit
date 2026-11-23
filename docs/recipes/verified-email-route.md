@@ -21,7 +21,7 @@ includes optional Session support; remove it from this app with `pnpm remove @ad
 remove the Session command and provider from `adonisrc.ts`, remove its middleware from
 `start/kernel.ts`, and delete `config/session.ts` and `SESSION_DRIVER` from `.env` and
 `start/env.ts`. Remove `sessionApiClient` from `tests/bootstrap.ts` if the app has that test plugin.
-Keep body parsing before Auth initialization in the router stack, and apply `auth()` before
+Keep body parsing before Auth initialisation in the router stack, and apply `auth()` before
 `verifiedAccount()` on the route. These changes leave the helper and route independent of Session.
 
 This recipe's helper and middleware have no session dependency. In an API app, `accountInput` reads
@@ -38,7 +38,7 @@ export function accountInput(ctx: HttpContext) {
 ```
 
 The verified middleware uses that input. Register both named middlewares in `start/kernel.ts`;
-keep Adonis Auth initialization in the router stack as in the API app:
+keep AdonisJS Auth initialisation in the router stack as in the API app:
 
 ## Add the gate after authentication
 
@@ -103,7 +103,7 @@ unverified denial and current-credential checks; its
 [session race tests](../../examples/api/tests/functional/session_guard_races.spec.ts) cover the
 session variant.
 
-This API example does not claim browser behavior, translated frontend form errors, or a Vue/Edge
+This API example does not claim browser behaviour, translated frontend form errors, or a Vue/Edge
 integration. Keep messages and any guest redirect in the application; Account Kit supplies stable
 error codes and the verification decision. See [AdonisJS Auth middleware](https://docs.adonisjs.com/guides/auth/introduction)
 and the [authentication reference](../guide/authentication.md) for the selected guard setup.
@@ -133,5 +133,5 @@ route reached its handler only for the verified account. Removing `verifiedAccou
 unverified result from 403 to 200; restoring it returned the test green. An earlier `examples/api`
 fixture check is not used as Session-free evidence because that reference app retains optional
 browser-strategy code.
-This verifies the API guard and route middleware, not browser redirects or localized frontend
+This verifies the API guard and route middleware, not browser redirects or localised frontend
 messages. See the [example acceptance record](../guide/example-acceptance.md).

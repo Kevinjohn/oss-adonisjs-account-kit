@@ -38,7 +38,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  REQ["passwordReset.request"] --> REQ_THROTTLE["Throttle client and address"]
- REQ_THROTTLE --> REQ_LOOKUP["Find account by normalized email"]
+ REQ_THROTTLE --> REQ_LOOKUP["Find account by normalised email"]
  REQ_LOOKUP --> REQ_KNOWN{"Was an account found?"}
  REQ_KNOWN -->|No| REQ_SKIP["Skip issuance and delivery"]
  REQ_SKIP --> REQ_ACK["Return generic acknowledgement after timing floor"]

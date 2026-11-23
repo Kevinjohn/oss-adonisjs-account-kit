@@ -1,10 +1,10 @@
 # Add invitations to an existing API application
 
-This recipe adds one invitation flow to an existing AdonisJS API application that uses bearer access tokens. It keeps the application's user model, bearer guard, and login endpoint. The application owns the role table, owner policy, invitation routes, and mail delivery. Session-based authorization is out of scope; do not use this bearer ability check unchanged with a session guard.
+This recipe adds one invitation flow to an existing AdonisJS API application that uses bearer access tokens. It keeps the application's user model, bearer guard, and login endpoint. The application owns the role table, owner policy, invitation routes, and mail delivery. Session-based authorisation is out of scope; do not use this bearer ability check unchanged with a session guard.
 
 Install Account Kit using the [README installation instructions](../../README.md#install), then configure it with `node ace configure @kevinjohn/adonisjs-account-kit`. Follow the shared [existing-application guide](../guide/password-reset-existing-app.md) for the package setup and generated-file review.
 
-## Application-owned authorization
+## Application-owned authorisation {#application-owned-authorization}
 
 The patch creates `app_user_roles`, keyed by `user_id` and `role`. Assign `owner` only through a trusted, existing provisioning path. Do not add an owner signup option or an admin screen as part of this recipe. The `authorize.invite`, `authorize.manageInvitation`, and `authorize.listInvitations` callbacks query this table. Sending invitations additionally requires the `invitations:create` access-token ability, and the callback permits only the `member` role. No admission state or admission helper participates in these decisions.
 
@@ -22,7 +22,7 @@ The acceptance callback inserts the invitation's permitted role for the newly cr
 | `start/kernel.ts`                                       | Patch                 | Registers the invitation proof middleware in the server stack before body parsing.                                                                                                                |
 | `start/invitation_routes.ts`                            | Patch                 | Defines the invitation send, inspection and acceptance routes.                                                                                                                                    |
 | `start/routes.ts`                                       | Patch                 | Imports the invitation routes beside the application's existing API routes.                                                                                                                       |
-| `config/account_kit.ts`                                 | Patch                 | Enables invitations and validates `fullName` in `registration.mapFields` and assigns it to the Lucid model through `mapRegistrationData`, alongside authorization, delivery, and role assignment. |
+| `config/account_kit.ts`                                 | Patch                 | Enables invitations and validates `fullName` in `registration.mapFields` and assigns it to the Lucid model through `mapRegistrationData`, alongside authorisation, delivery, and role assignment. |
 | `tests/functional/` (copied spec)                       | Acceptance spec       | Exercises policy, acceptance, and replay against the scaffold.                                                                                                                                    |
 
 The invitation proof middleware must run in the server stack before the router body parser, so malformed proof submissions retain private-cache and referrer headers. Copy the middleware and its kernel registration with the proof routes. Copy the committed [acceptance spec](../../examples/api/tests/recipes/invitations-existing-app.spec.ts) into the application’s `tests/functional/` directory.
@@ -73,7 +73,7 @@ pnpm create adonisjs@3.4.0 <directory> \
   --pkg=pnpm
 ```
 
-The creator did not initialize Git. The baseline was recorded with `git init`, `git add -A`, and `git commit -m starter`. The supplied-archive acceptance run used:
+The creator did not initialise Git. The baseline was recorded with `git init`, `git add -A`, and `git commit -m starter`. The supplied-archive acceptance run used:
 
 ```sh
 pnpm test:recipe -- --recipe=invitations-existing-app \
@@ -81,9 +81,9 @@ pnpm test:recipe -- --recipe=invitations-existing-app \
   --candidate-revision=402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf
 ```
 
-The harness then ran `pnpm test --files=invitations-existing-app.spec.ts` in the retained scaffold. A repeatability replay ran the same command against that scaffold after truncating its test database before and after the spec; it passed 1/1. The result covers SQLite and local callback capture only; it does not establish email delivery, PostgreSQL behavior, or browser coverage.
+The harness then ran `pnpm test --files=invitations-existing-app.spec.ts` in the retained scaffold. A repeatability replay ran the same command against that scaffold after truncating its test database before and after the spec; it passed 1/1. The result covers SQLite and local callback capture only; it does not establish email delivery, PostgreSQL behaviour, or browser coverage.
 
-For P7, the installed package’s invitation-send authorization check was temporarily bypassed
+For P7, the installed package’s invitation-send authorisation check was temporarily bypassed
 while the route’s token-ability check stayed enabled. The same retained replay failed explicitly
 when an actor without the owner role received `201` instead of `403` (1 failed, 94 ms total).
 The implementation was restored from the exact JavaScript member of the supplied archive,

@@ -5,8 +5,8 @@
 - [Generated API reference](https://kevinjohn.github.io/oss-adonisjs-account-kit/reference/api/): generated
   documentation for the root, HTTP, and testing entry points.
 - [Usage](../guide/usage.md): configuration, capabilities, and service operation signatures.
-- [Account operations](../guide/account-operations.md): operation contracts and callback behavior.
-- [Notifications](../guide/notifications.md): message kinds, templates, and delivery behavior.
+- [Account operations](../guide/account-operations.md): operation contracts and callback behaviour.
+- [Notifications](../guide/notifications.md): message kinds, templates, and delivery behaviour.
 - [OpenAPI document](openapi.md): generate a document for the managed routes you mounted.
 
 ## HTTP and setup

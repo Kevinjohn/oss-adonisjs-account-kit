@@ -1,9 +1,9 @@
 # US-ACCOUNT-12 — Revoke an invitation
 
-As an authorized inviter, I want to cancel an outstanding invitation so that I can prevent its token from granting membership.
+As an authorised inviter, I want to cancel an outstanding invitation so that I can prevent its token from granting membership.
 
 **Status:** Current when the host explicitly enables the opt-in `invitations` capability
-**Access:** Host authorization callback must permit managing this invitation.
+**Access:** Host authorisation callback must permit managing this invitation.
 **Entry:** Host calls `invitations.revoke`; no built-in revoke UI.
 **Documentation:** [usage.md](../docs/guide/usage.md)
 **Source:** [`src/invitation_management.ts`](../src/invitation_management.ts)
@@ -17,8 +17,8 @@ As an authorized inviter, I want to cancel an outstanding invitation so that I c
 
 ```mermaid
 flowchart TD
- A["Authorized inviter chooses revoke on an invitation"] --> B{"Does manageInvitation allow this action?"}
- B -->|No| C["Return authorization refusal"]
+ A["Authorised inviter chooses revoke on an invitation"] --> B{"Does manageInvitation allow this action?"}
+ B -->|No| C["Return authorisation refusal"]
  B -->|Yes| D["Delete the invitation"]
  D --> E["A later acceptance with its token fails"]
 ```

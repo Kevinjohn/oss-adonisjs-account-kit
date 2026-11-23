@@ -3,7 +3,7 @@
 As an application operator, I want to bootstrap an application invitation through trusted operator commands so that I can bootstrap an invitation without exposing a privileged HTTP capability.
 
 **Status:** Operator
-**Access:** Requires shell access and configured invitations capability; operator commands bypass actor authorization and throttles.
+**Access:** Requires shell access and configured invitations capability; operator commands bypass actor authorisation and throttles.
 **Entry:** Run `account-kit:invite <email> --role <role> [--scope <scope>] [--print]`; `invitations` must be explicitly enabled.
 **Documentation:** [operations.md](../docs/guide/operations.md)
 **Source:** [`commands/invite.ts`](../commands/invite.ts)

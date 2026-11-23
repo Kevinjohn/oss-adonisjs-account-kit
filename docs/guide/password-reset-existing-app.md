@@ -1,7 +1,7 @@
 # Keep your login; add password reset
 
 Add password reset to an existing AdonisJS 7 application while keeping its login route, user model,
-route namespaces, selected Auth guard and authorization policies. Use this shared checklist before
+route namespaces, selected Auth guard and authorisation policies. Use this shared checklist before
 following the token or browser recipe. Every step marked **Required** applies even when reset is
 the only enabled capability; **Optional** steps depend on the application's choices.
 
@@ -12,15 +12,15 @@ the only enabled capability; **Optional** steps depend on the application's choi
 | Account transaction          | Owns proof writes, account locking, password updates, credential revision and transactional hooks. | Supplies application writes through the provided transaction; never wraps an operation in another transaction.                           |
 | Proof lifecycle              | Issues, hashes, inspects, expires, replaces and consumes reset proofs once.                        | Chooses proof-page URLs and keeps tokens out of logs, analytics and referrers.                                                           |
 | Credential lifecycle         | Advances `credentials_changed_at`; deletes configured access tokens in the reset transaction.      | Selects the real guard/table, revokes extra credential types and enforces revision checks on existing session routes.                    |
-| Validation and authorization | Exposes service input contracts and stable error codes.                                            | Owns request validation, account restrictions, route authorization and public response policy.                                           |
+| Validation and authorisation | Exposes service input contracts and stable error codes.                                            | Owns request validation, account restrictions, route authorisation and public response policy.                                           |
 | User interface and language  | Supplies operations and optional managed JSON routes.                                              | Owns forms, proof pages, redirects, recovery feedback, accessibility and application translations.                                       |
 | Notifications                | Invokes configured callbacks and distinguishes committed follow-up failure.                        | Chooses capture, logging or mail transport, delivery retry and production operations; callback invocation alone does not prove delivery. |
 
 ## 1. Confirm the starting application — Required
 
 Use Node 24 and pnpm with AdonisJS 7, Lucid, a working Auth guard, and the application's existing
-user model. Keep its unique, normalized email address and hashed password configuration. Resolve
-pre-existing duplicate/unnormalized addresses before enabling recovery. Match the user ID type
+user model. Keep its unique, normalised email address and hashed password configuration. Resolve
+pre-existing duplicate/unnormalised addresses before enabling recovery. Match the user ID type
 and users table when configuring the package.
 
 For a reproducible disposable application, use the pinned official starter command in the

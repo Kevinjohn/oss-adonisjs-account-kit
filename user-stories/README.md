@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `9619f683793cf3fdd39d0aaac54c625ab663002f` (origin/main, 2026-11-21). Scope: public package exports, account and recovery journeys, optional magic-link/session/data/social/admission capabilities, managed HTTP/OpenAPI, package installation, setup and operator actions, adapters and notifications. The audit traced the package source and ran 45 focused tests covering managed authentication, guard adapters, error responses and the transaction subpath. Host application journeys remain outside that test scope.
+Source baseline: `2be256482dfd9a3a16f72bf9bb842a9eb9b34ad9` (2026-11-22). The stories were first written against `9619f683` (2026-11-21); for this baseline the source changes since then were reviewed and the stories they affect corrected (US-ACCOUNT-28, -31, -44 and -60, plus the US-ACCOUNT-63 guide link); the other stories were not audited again. Scope: public package exports, account and recovery journeys, optional magic-link/session/data/social/admission capabilities, managed HTTP/OpenAPI, package installation, setup and operator actions, adapters and notifications. The first audit traced the package source and ran 45 focused tests covering managed authentication, guard adapters, error responses and the transaction subpath. Host application journeys remain outside that test scope.
 
 [Find a story by managed HTTP path, public import or Ace command](PATHS.md).
 

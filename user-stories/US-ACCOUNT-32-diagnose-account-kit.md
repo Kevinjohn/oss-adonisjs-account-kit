@@ -3,7 +3,7 @@
 As an application operator, I want to check configuration and integration readiness so that I can find missing or inconsistent setup before serving account journeys.
 
 **Status:** Operator
-**Access:** Requires configured application; diagnostic output does not prove live workflow behavior.
+**Access:** Requires configured application; diagnostic output does not prove live workflow behaviour.
 **Entry:** Run `account-kit:doctor` in the host application.
 **Documentation:** [operations.md](../docs/guide/operations.md)
 **Source:** [`commands/doctor.ts`](../commands/doctor.ts)

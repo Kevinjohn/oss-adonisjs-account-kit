@@ -2,7 +2,7 @@
 
 Use this contract when evaluating or changing a reference application. A passing service test does
 not establish that a browser form works. An implemented page does not establish that it was tested.
-The application owns its user model, validation, authorization, language, delivery callbacks and
+The application owns its user model, validation, authorisation, language, delivery callbacks and
 session policy; Account Kit owns proof consumption and credential-revision guarantees.
 
 ## Common journey
@@ -30,7 +30,7 @@ document it. Check desktop and narrow layouts, pending submission and success fe
 
 - **Inertia React/Vue:** forms submit through Inertia, server validation becomes form errors,
   successful mutations redirect, and page props/flash supply status. Inspect rendered browser
-  behavior as well as HTTP responses.
+  behaviour as well as HTTP responses.
 - **Hypermedia/Edge:** native forms include CSRF; validation redirects with flashed errors and
   useful old input, and success follows POST/redirect/GET. The baseline works without JavaScript.
 - **API:** requests carry the selected guard credential and receive JSON status/error envelopes.
@@ -80,7 +80,7 @@ successful mutation response. Missing boundaries remain explicit follow-up accep
   the API validator says the email has already been taken, including for restricted users. This
   field-level feedback reveals whether an address is registered. It is an application-owned privacy
   tradeoff, not an Account Kit guarantee or a reason to infer generic signup responses. An app that
-  needs non-disclosure must adapt its validator/response policy and verify known/unknown behavior.
+  needs non-disclosure must adapt its validator/response policy and verify known/unknown behaviour.
   Reset requests still require the same generic acknowledgement for known and unknown addresses.
 - **Unrecorded boundaries:** the existing evidence does not establish every proof-expiry case,
   recipient mail delivery, or all manual layout checks. Add focused example tests/checks for a

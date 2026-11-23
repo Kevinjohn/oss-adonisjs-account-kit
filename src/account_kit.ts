@@ -139,7 +139,7 @@ export class AccountKit {
   /** Self-service signup, for `registration`. */
   readonly registration = {
     /**
-     * Creates an account under the configured admission policy and sends the confirmation link.
+     * Creates an account when registration availability allows it and sends the confirmation link.
      * Throws `RegistrationEmailAlreadyRegisteredError` for a taken address.
      */
     register: (input: RegistrationInput): Promise<AccountUser> =>

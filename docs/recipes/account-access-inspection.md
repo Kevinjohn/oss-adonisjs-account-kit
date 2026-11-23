@@ -2,7 +2,7 @@
 
 Use `authentication.inspectAccountAccess` when an application operator needs a safe account
 summary and its credential revision. Account Kit does not authenticate the operator for this
-operation. The application must authenticate and authorize the caller first.
+operation. The application must authenticate and authorise the caller first.
 
 This recipe follows the API example's admitted-owner policy. The operator comes from the already
 authenticated AdonisJS guard; the target is resolved from the application's canonical account
@@ -11,7 +11,7 @@ grant authority to inspect it.
 
 The controller snippets use the API example's bearer-token strategy: `ACCOUNT_KIT_AUTH_STRATEGY=access_tokens` with the `api` guard.
 
-## Authorize, inspect, and map denial
+## Authorise, inspect, and map denial {#authorize-inspect-and-map-denial}
 
 Mount the route behind the example's `auth()` and `accountAccess()` middleware. Auth first
 establishes the caller's identity; account access then checks that caller's current credential and
@@ -66,7 +66,7 @@ It checks `isAdmittedOwner(actor.id)`, then calls:
 accountKit.authentication.inspectAccountAccess({ userId: targetUserId, requireActive: false })
 ```
 
-An unauthorized operator is stopped by the application policy before inspection. A missing target
+An unauthorised operator is stopped by the application policy before inspection. A missing target
 uses the same generic response as an unavailable or restricted target; the controller uses
 `User.find` so a framework `NotFound` error cannot produce a different body. Missing and restricted
 targets raise the same `AccountAccessDeniedError` at the package boundary, which the service maps to
@@ -97,7 +97,7 @@ so the comparison below always answers "Inspect the account again". For such cli
 captured revision server-side instead, for example in an application table or cache entry keyed
 by actor and target, and read it back with the same checks.
 
-On the next request, resolve the same target and actor again, authorize again, then compare the
+On the next request, resolve the same target and actor again, authorise again, then compare the
 captured revision with a fresh inspection before continuing:
 
 ```ts
@@ -135,7 +135,7 @@ return ctx.response.ok(result.snapshot)
 
 For an account whose revision is initially `null`, persist a tagged session value such as
 `{ inspected: true, revision: null }`; do not use a missing session value to mean `null`. The
-example service's `compareAccountRevisionForOwner` rechecks owner authorization and compares the
+example service's `compareAccountRevisionForOwner` rechecks owner authorisation and compares the
 stored revision with a fresh snapshot. If the account changed, ask the caller to inspect again.
 After a successful comparison, perform the application operation and store a fresh snapshot if the
 flow continues. Keep the captured snapshot in authenticated, integrity-protected application state

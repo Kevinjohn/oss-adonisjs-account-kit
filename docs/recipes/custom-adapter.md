@@ -41,7 +41,7 @@ password hash.
 
 ## Prove it with the contract suite
 
-`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` runs the same behavior checks the Lucid adapter
+`@kevinjohn/adonisjs-account-kit/testing/adapter_contract` runs the same behaviour checks the Lucid adapter
 passes: creation, lookups, password hashing, email changes, verification, and row locking.
 The application validates signup fields and presents field errors before calling the service; its
 `registration.mapFields` callback selects and validates allowed profile data. The adapter receives
@@ -88,7 +88,7 @@ remains. A failure or interruption before that point can leave either fixture be
 failure cases roll back their own transaction; the helper does not wrap the suite in one rollback
 transaction and does not guarantee a clean database when it returns. The locking check holds one
 transaction open while an independent writer transaction attempts to update the same user row, so
-a suite-wide rollback would remove the independent-connection behavior being tested.
+a suite-wide rollback would remove the independent-connection behaviour being tested.
 
 Run this contract spec only against an isolated, disposable database with the same schema and
 connection arrangement your adapter expects. The custom adapter and Account Kit's Lucid connection

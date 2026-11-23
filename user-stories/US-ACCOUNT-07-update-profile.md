@@ -3,7 +3,7 @@
 As a signed-in account holder, I want to change profile fields accepted by the host configuration so that I can keep account details current.
 
 **Status:** Current when `emailPasswordManagement` is enabled
-**Access:** Current account; host defines allowed fields, mapping and request authorization.
+**Access:** Current account; host defines allowed fields, mapping and request authorisation.
 **Entry:** Host calls `emailPasswordManagement.updateProfile`; optional managed profile route with configured validator/representation.
 **Documentation:** [account-operations.md](../docs/guide/account-operations.md)
 **Source:** [`src/profile_update.ts`](../src/profile_update.ts)

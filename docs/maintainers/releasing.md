@@ -15,8 +15,8 @@ the SHA-256. `bash bin/release_check.sh` prepares a candidate locally.
 The workflow does not rewrite version-bearing documentation for you. It requires successful
 `checks`, `compat` and `examples` jobs. A `package` job with the default read-only token then
 builds and packs the release archive, then requires a fresh SQLite consumer to pass on that
-archive with the expected SHA-256 before uploading `tmp/release/` as an artifact. Only the `release`
-job has `contents: write`. It downloads the artifact, checks the archive and notes, publishes the
+archive with the expected SHA-256 before uploading `tmp/release/` as an artefact. Only the `release`
+job has `contents: write`. It downloads the artefact, checks the archive and notes, publishes the
 prerelease and verifies GitHub's asset digest and notes.
 
 Use `Added`, `Changed`, `Fixed` and `Removed` sections as applicable for new entries, with

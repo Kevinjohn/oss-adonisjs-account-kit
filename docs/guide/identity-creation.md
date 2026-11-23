@@ -5,7 +5,7 @@
 The application owns its user model and chooses the conventional Lucid adapter or a custom
 `UsersAdapter`. The conventional mapping requires PostgreSQL 16, MySQL 8.4 or bundled SQLite on the
 default connection, a physical `id` key (`integer`, `string`, or `uuid`), and a users table with
-unique, normalized `email`, nullable `password`, nullable `unverified_email`, and nullable
+unique, normalised `email`, nullable `password`, nullable `unverified_email`, and nullable
 `email_verified_at`. The application supplies the ordinary user columns, including `id` and
 `email`; Account Kit's user migration adds only its account columns and makes `password` nullable.
 Pass a custom users table and ID type to configure with `--users-table` and `--user-id-type`. Other
@@ -38,7 +38,7 @@ uses these application user fields:
 
 An account is active when `unverified_email` differs from `email`. This includes
 `unverified_email = null`: existing records with a null value are treated as active, regardless of
-`email_verified_at`. A new inactive account stores the same normalized address in both `email` and
+`email_verified_at`. A new inactive account stores the same normalised address in both `email` and
 `unverified_email`; a verified or invited account has `unverified_email = null`. Do not infer current
 verification status from `email_verified_at` alone. A confirmed address needs both: an active
 account and a non-null `email_verified_at`. The admission domain requirement and the social
@@ -49,7 +49,7 @@ link and unlink security notices check for a confirmed address, so an active row
 ## Fresh installation
 
 Create the application's ordinary users table through its own migration, including `id`, unique
-normalized `email`, and `password` (nullable if the application allows passwordless accounts). To
+normalised `email`, and `password` (nullable if the application allows passwordless accounts). To
 install and configure Account Kit, follow the [root install instructions](../../README.md#install)
 for the available GitHub release archive; npm publication is still pending. For an already installed
 package, run `node ace configure @kevinjohn/adonisjs-account-kit`. Configure generates `config/account_kit.ts`,
@@ -73,7 +73,7 @@ For an existing ordinary AdonisJS users table, first check that its ID type and 
 columns match the configured Lucid mapping. `configure` adds the same package migrations described
 above; its user migration alters the configured users table, so that table must already exist. It
 adds the three nullable account columns and makes `password` nullable. It does not alter the `email`
-column, normalize addresses, populate verification state, change application roles or model hooks,
+column, normalise addresses, populate verification state, change application roles or model hooks,
 or migrate any old proof table. Review the
 [`add_account_columns_to_users` stub](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/stubs/migrations/add_account_columns_to_users.stub) before
 running it.
@@ -85,7 +85,7 @@ contract. If legacy records include unverified accounts, setting the new column 
 row would make those records active. Inspect existing `email`, any verification flags or timestamps,
 pending email changes, reset/activation proofs, and social identity records; choose and implement an
 application-specific data change and proof-handling policy before enabling affected flows. Check
-that chosen values obey your unique normalized email policy and that only the intended accounts
+that chosen values obey your unique normalised email policy and that only the intended accounts
 become active. Account Kit does not provide automatic backfills, legacy proof migration, column
 renames, or an upgrade guarantee for unpublished package releases.
 
@@ -118,7 +118,7 @@ pending change. An active account's activation resend cannot replace its pending
 an inactive account's resend replaces the older proof after the suppression window, and only the
 latest can be used. Password change cancels a distinct pending change while leaving equal addresses
 inactive. An email-bound password reset cancels a distinct pending change and activates an account
-with equal addresses, preserving the previous reset behavior. Changing an inactive account's
+with equal addresses, preserving the previous reset behaviour. Changing an inactive account's
 confirmed address invokes the configured credential revocation hook in its transaction-aware or
 post-commit form; post-commit delivery still runs if that observer fails.
 

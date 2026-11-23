@@ -29,7 +29,7 @@ flowchart TD
 
 ## Code flow
 
-Scope: the service transaction and configured post-commit callbacks. The host owns the screen and caller authorization; the optional managed handler owns request validation and refreshes a session guard from the returned revision.
+Scope: the service transaction and configured post-commit callbacks. The host owns the screen and caller authorisation; the optional managed handler owns request validation and refreshes a session guard from the returned revision.
 
 ```mermaid
 flowchart TD

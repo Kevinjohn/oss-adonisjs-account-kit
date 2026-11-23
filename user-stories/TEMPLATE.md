@@ -73,7 +73,7 @@ empty or artificial field rows. For example, an action without input fields coul
 - **Prune** removes rows that are still expired at deletion time and reports the counts removed.
 ```
 
-Use the actual control and behavior in the product. Include confirmation controls and relevant
+Use the actual control and behaviour in the product. Include confirmation controls and relevant
 cancellation or failure results when they affect the action. Keep both diagrams in these stories.
 
 ## Writing and maintenance rules
@@ -88,7 +88,7 @@ cancellation or failure results when they affect the action. Keep both diagrams 
   required/optional state, defaults, limits, available options and dependent choices. For dynamic
   choices, describe their source and filtering rules rather than listing transient data.
 - Edit forms include current-value prefills. API/library/CLI actions document real argument names,
-  required values, omission/null defaults, flag/prompt behavior and limits. Verify what callbacks
+  required values, omission/null defaults, flag/prompt behaviour and limits. Verify what callbacks
   receive before assigning host policy to them.
 - Move repeated or lengthy field lists, technical schemas and protocol details to one cohesive
   repository guide/reference with a direct section link. Keep relevant controls, outcomes and
@@ -96,11 +96,11 @@ cancellation or failure results when they affect the action. Keep both diagrams 
 - Keep acceptance criteria concise and observable. Avoid detailed test scripts and exhaustive
   backend guarantees; keep those in tests and the authoritative decision record.
 - Keep identifiers and filenames stable. Add the next unused identifier within the area. Retain
-  intent and mark availability when a feature disappears, unless retirement is explicitly authorized.
+  intent and mark availability when a feature disappears, unless retirement is explicitly authorised.
 - Use the availability definitions below. Explain unavailable entries and identify historical or
-  intended controls clearly. Retention does not promise restoration or authorize new functionality.
+  intended controls clearly. Retention does not promise restoration or authorise new functionality.
   State opt-in capabilities and required hooks; trace account-state and permission requirements
-  for this operation instead of copying them from a neighboring action.
+  for this operation instead of copying them from a neighbouring action.
 - An optional **Coverage:** test link identifies supporting tests; it does not claim they were run.
   Keep runtime results separate from source-reviewed availability.
 - Verify source rather than inheriting stale copy. Update the index (README.md), coverage matrix
@@ -140,7 +140,7 @@ semantics and explain their mapping where an established scheme differs.
 - Trace producers and consumers: entry, handler, state or service, persistence where applicable
   and resulting UI. A retained component or setter alone does not prove a reachable journey.
 - Distinguish server writes, device preferences and read-only actions. Verify the demo's actual
-  path. Do not infer server authorization from hidden controls.
+  path. Do not infer server authorisation from hidden controls.
 - Trace each client and authentication strategy separately. Show actual response fields and
   prerequisite-token sources; browser rendering, API acknowledgements and audit events may differ.
   Keep real calls on the branches that execute them, including client-specific queries.
@@ -154,7 +154,7 @@ semantics and explain their mapping where an established scheme differs.
   actual missing entry/trigger and retained support in the code flow without implying execution.
 - Reconcile labels and branches against source. Parse changed Mermaid diagrams and inspect
   representative rendering; report any check that could not be completed. Syntax validation does
-  not establish behavioral correctness or prove a browser journey was exercised.
+  not establish behavioural correctness or prove a browser journey was exercised.
 
 ## Verification and sign-off
 

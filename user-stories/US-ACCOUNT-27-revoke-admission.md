@@ -1,9 +1,9 @@
 # US-ACCOUNT-27 — Revoke a prior admission decision
 
-As an authorized application approver, I want to revoke an admitted account’s decision so that I can remove admission eligibility while preserving the account credential.
+As an authorised application approver, I want to revoke an admitted account’s decision so that I can remove admission eligibility while preserving the account credential.
 
 **Status:** Current when approval is enabled
-**Access:** Host approval authorization callback; revocation does not itself sign the user out.
+**Access:** Host approval authorisation callback; revocation does not itself sign the user out.
 **Entry:** Host-owned controller calls `AccountAdmission.revoke`; no built-in admission routes.
 **Documentation:** [admission.md](../docs/guide/admission.md)
 **Source:** [`src/admission/decisions.ts`](../src/admission/decisions.ts)
@@ -11,7 +11,7 @@ As an authorized application approver, I want to revoke an admitted account’s 
 
 ## Acceptance criteria
 
-- **Inputs and result:** `AccountAdmission.revoke({ actorId, userId })` returns the updated record. The host approval callback authorizes the actor; only an approved decision can be revoked. Existing sessions remain, but later gated requests reevaluate admission and are refused.
+- **Inputs and result:** `AccountAdmission.revoke({ actorId, userId })` returns the updated record. The host approval callback authorises the actor; only an approved decision can be revoked. Existing sessions remain, but later gated requests reevaluate admission and are refused.
 
 ## User flow
 

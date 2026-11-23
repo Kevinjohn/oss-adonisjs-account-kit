@@ -63,7 +63,7 @@ loopback URLs.
 ### Recent authentication
 
 The standard Google and GitHub Ally adapters do not provide verified authentication-freshness
-evidence. A new authorization code, consent screen, or account picker cannot establish recent
+evidence. A new authorisation code, consent screen, or account picker cannot establish recent
 authentication for `reauth`, so provider-only `reauth` starts fail closed and do not issue
 sensitive-action proof. [Google states that it does not support Google Account reauthentication
 requests](https://developers.google.com/identity/siwg/security-bundle);
@@ -135,7 +135,7 @@ linked provider labels, and `lastUsedMethod`. The response omits provider subjec
 `lastUsedMethod` is an optional signed visitor cookie containing only `password`, `google`, or
 `github`. It is written after a successful password login or social handoff redemption, then read
 only while that method is enabled for the current account or configuration. It is a convenience
-hint across accounts in the same browser, never an identity assertion or authorization input.
+hint across accounts in the same browser, never an identity assertion or authorisation input.
 
 To unlink, send `{ "password": "…", "purpose": "social_unlink" }` to
 `POST /api/v1/account/social/proof`, then pass its returned `proof` in the JSON body of
@@ -161,10 +161,10 @@ returns a generic 429 with `Retry-After`.
 
 - Social and proof responses, including early parser, CSRF, and authentication failures, carry
   `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
-- A provider outage during authorization start returns a generic 503.
+- A provider outage during authorisation start returns a generic 503.
 - A provider failure wrapped by the account service during callback maps to its safe 400 response.
 - Other unexpected failures return a generic public error with a correlation ID; private logs
-  record only a sanitized failure category and that ID.
+  record only a sanitised failure category and that ID.
 
 ## Files and migrations
 

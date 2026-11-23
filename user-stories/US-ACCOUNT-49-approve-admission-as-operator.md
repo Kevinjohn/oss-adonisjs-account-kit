@@ -1,9 +1,9 @@
 # US-ACCOUNT-49 — Approve an account as an operator
 
-As an application operator, I want to approve an account from the trusted shell so that I can bootstrap or recover admission when no authorized approver is available.
+As an application operator, I want to approve an account from the trusted shell so that I can bootstrap or recover admission when no authorised approver is available.
 
 **Status:** Operator
-**Access:** Shell access and enabled approval requirement; command bypasses actor authorization callbacks.
+**Access:** Shell access and enabled approval requirement; command bypasses actor authorisation callbacks.
 **Entry:** Run `account-kit:admission:approve <email>`.
 **Documentation:** [Admission operator commands](../docs/guide/admission.md#commands)
 **Source:** [`src/admission/operator.ts`](../src/admission/operator.ts)
