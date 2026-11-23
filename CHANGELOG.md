@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-- Refresh the Account Kit user-story catalogue for 0.6.0, with 66 source-reviewed stories and checked Mermaid flows.
-
 ## 0.6.0 - 2026-11-23
 
 ### Added
