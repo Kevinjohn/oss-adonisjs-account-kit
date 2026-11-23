@@ -4,7 +4,7 @@ As an account holder with an activation link, I want to confirm my email address
 
 **Status:** Current when `emailVerification` is enabled
 **Access:** A valid single-use activation token and a password accepted by configured policy are required.
-**Entry:** Host calls `emailVerification.inspect({ token })` to check without consuming, then `emailVerification.complete({ token, password })`; the optional managed route also requires the confirmation field in the [managed password fields reference](REFERENCE.md#managed-password-fields).
+**Entry:** Host calls `emailVerification.inspect` or `emailVerification.complete`. Managed GET/POST `auth/email-verification/:token` are public proof routes. The POST requires the [managed password fields](REFERENCE.md#managed-password-fields).
 **Documentation:** [Registration](../docs/guide/registration.md)
 **Source:** [`src/verification.ts`](../src/verification.ts)
 **Coverage:** [`tests/verification.spec.ts`](../tests/verification.spec.ts)
@@ -12,43 +12,39 @@ As an account holder with an activation link, I want to confirm my email address
 ## Acceptance criteria
 
 - Inspection takes `token` and returns a boolean without spending it. Completion takes `token` and a new policy-valid password and returns `verified`.
-- An invalid, expired or already-used token does not activate the account; a valid token is consumed once, confirms the address, sets the password, invalidates prior credentials, clears applicable recovery proofs and applies any matching pending invitation grant.
+- An invalid, expired or already-used token does not activate the account; a valid token is consumed once, confirms the address, sets the password, invalidates prior credentials, clears applicable recovery proofs and applies all live matching invitation grants when invitations are enabled.
 - Credential observers and lifecycle callbacks run after commit. If a follow-up fails, activation and proof consumption remain committed; the user must not retry the consumed link as though activation rolled back.
+- Managed inspection returns 200 with `{ valid: true }` or an invalid-proof response. Managed completion returns 200 with `{ verified: true }` on success.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Account holder opens activation link"] --> B{"Does emailVerification.inspect return true?"}
- B -->|No| C["Ask host for a fresh verification link"]
- B -->|Yes| D["Submit token and new password"]
- D --> E{"Is password accepted by configured policy?"}
- E -->|No| F["Keep account inactive and correct password"]
- F --> D
- E -->|Yes| G["Confirm address, set password, invalidate prior credentials, clear recovery proofs and apply a matching pending invitation"]
- G --> H{"Did post-commit observers and lifecycle follow-ups succeed?"}
- H -->|Yes| I["Show activation complete"]
- H -->|No| J["Report follow-up failure; activation remains committed and this link cannot be retried"]
+  A["Open activation link and optionally check it"] --> B{"Link usable?"}
+  B -->|No| C["Request a fresh verification link"]
+  B -->|Yes or skipped check| D["Submit token and new password"]
+  D -->|Password refused| F["Correct the password and resubmit"]
+  D -->|Expired, used or stale link| C
+  D -->|Committed| G["Address confirmed, password set and prior credentials invalidated"]
+  G -->|Success| I["See verification complete"]
+  G -->|Follow-up failure| J["Activation remains committed; use the new password"]
 ```
 
 ## Code flow
 
-Scope: verification transaction and service result. Host owns the form, route and error presentation.
-
 ```mermaid
 flowchart TD
- A["emailVerification.inspect({ token })"] --> B["Read proof status without consuming"]
- B --> C{"Usable?"}
- C -->|No| D["Return false"]
- C -->|Yes| E["emailVerification.complete({ token, password })"]
- E --> F["Validate password and token; transaction consumes proof and stores password"]
- F --> G["Confirm email, apply matching pending invitations, then clear recovery proofs and pending social state in claim transaction"]
- G --> CRED["credentialsChanged invalidates prior credentials in the claim transaction"]
- CRED --> H["Commit activation and consume proof"]
- H --> I["Run credential observer, lifecycle and invitation follow-ups"]
- I --> J{"Follow-ups succeeded?"}
- J -->|Yes| K["Return verified"]
- J -->|No| L["Surface follow-up failure; committed activation and consumed proof remain"]
+  M["Managed inspection or host inspection"] --> A["emailVerification.inspect checks capability and reads live matching activation proof without consuming"]
+  A --> Q["Return boolean or managed proof response"]
+  N["Managed POST checks password and confirmation; host may call directly"] --> E["emailVerification.complete checks capability, password and token, then prepares password"]
+  E --> F["Transaction consumes live matching activation proof"]
+  F -->|Refused| R["Roll back and surface invalid token"]
+  F -->|Accepted| G["Store password; activateClaim confirms email, applies live invitation grants, and clears password reset proofs and pending social state as configured"]
+  G --> H["credentialsChanged invalidates prior credentials; commit"]
+  H --> I["Run credential observer, lifecycle and invitation follow-ups"]
+  I -->|Success| K["Return verified or managed verified acknowledgement"]
+  I -->|Failure| L["Surface follow-up failure with activation and consumption committed"]
 ```
 
-**Code references:** [`inspectVerification` and `completeVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts)
+**Code references:** [`inspectVerification` and `completeVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts), [managed verification](../src/http/handlers_email_verification.ts), [activation transaction](../src/activation_claim.ts), [managed committed-failure response](../src/http/managed.ts)

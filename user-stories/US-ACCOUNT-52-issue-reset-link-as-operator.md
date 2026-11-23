@@ -12,7 +12,7 @@ As an application operator, I want to issue a reset link from the trusted shell 
 ## Acceptance criteria
 
 - Input is email and delivery choice `send` or `print`; service returns user, optional URL and optional committed follow-up fault. Unknown email is reported distinctly rather than using the public generic response. A printed URL is a bearer secret.
-- The command replaces the user's live reset link and records a committed result even if delivery/observer follow-up fails; command reports the fault and nonzero outcome without implying rollback.
+- The command replaces the user's live reset link. For an unverified account it warns that a completed reset activates the account. It reports committed issuance and exits nonzero if a follow-up fails.
 
 ## User flow
 
@@ -35,13 +35,14 @@ Scope: shell-trusted service invocation; never expose this operator API to HTTP.
 ```mermaid
 flowchart TD
  A["account-kit:reset-link"] --> B["operator.resetLink({ email, deliver })"]
- B --> C["Validate delivery and email, find account and replace reset proof with configured issuance hook transactionally"]
- C --> D{"deliver is send or print?"}
+ B --> C{"Valid input, matching account and issueResetToken succeeds?"}
+ C -->|No| X["writeFailure prints error and sets exitCode 1"]
+ C -->|Yes| D{"deliver is send or print?"}
  D -->|send| E["Run notification callback"]
  D -->|print| F["Skip delivery; include URL in result"]
  E --> H["Run operator-sourced lifecycle follow-up"]
  F --> H
- H --> G["Write JSON result/fault; preserve committed status"]
+ H --> G["Warn for unverified account; reportOperatorOutcome prints JSON and exits 1 for committed fault"]
 ```
 
-**Code references:** [`ResetLink command`](../commands/reset_link.ts), [`operatorResetLink`](../src/operator.ts), [`operator command tests`](../tests/operator_commands.spec.ts)
+**Code references:** [`ResetLink command`](../commands/reset_link.ts), [`operatorResetLink`](../src/operator.ts), [`reportOperatorOutcome`](../commands/operator_output.ts), [`operator command tests`](../tests/operator_commands.spec.ts)

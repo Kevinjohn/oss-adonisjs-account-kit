@@ -30,7 +30,7 @@ As a [role], I want to [action] so that [useful outcome].
 | [Exact visible label] | [Control type] | [Required/optional, default, limits, options, dependent choices, visibility, read-only state] |
 
 - [Observable success result.]
-- [Relevant cancellation, refusal and failure behavior.]
+- [Relevant cancellation, refusal and failure behaviour.]
 
 ## User flow
 
@@ -137,8 +137,10 @@ semantics and explain their mapping where an established scheme differs.
   validation into one boundary with one refusal path; field rules stay in criteria or a reference.
   Expand only for materially different access, persisted effects, commit/consumption or recovery.
   Preserve material ordering without making a node for each field, message or helper.
-- Trace producers and consumers: entry, handler, state or service, persistence where applicable
-  and resulting UI. A retained component or setter alone does not prove a reachable journey.
+- Trace each action from its actual caller before drafting or reviewing the Code flow. Record
+  the owning checks, order, persisted effects, returned data and material outcomes. Reuse
+  that trace when checking the finished diagram. Follow producers and consumers through the
+  handler, service or state and visible result. A retained component or setter alone does not prove a reachable journey.
 - Distinguish server writes, device preferences and read-only actions. Verify the demo's actual
   path. Do not infer server authorisation from hidden controls.
 - Trace each client and authentication strategy separately. Show actual response fields and
@@ -148,8 +150,9 @@ semantics and explain their mapping where an established scheme differs.
   scope/replacement effects and refusals that consume proof or leave committed state in place.
   Distinguish confirmation/completion recipients and attempted cleanup from guaranteed removal;
   show recovery when these differences affect the action. Bounded counts describe the current run.
-- Code labels must name existing symbols or explicitly identify absent/intended controls. State
-  the scope when a diagram stops at a shared boundary.
+- Code labels must name existing symbols or explicitly identify absent/intended controls. Trace
+  a verified shared path once. Name the entry and where the action joins that path. When a
+  diagram ends at a handoff, name the last verified step and link directly to the next owner.
 - For Hidden, Removed or Planned features, label the intended user flow as unavailable. Show the
   actual missing entry/trigger and retained support in the code flow without implying execution.
 - Reconcile labels and branches against source. Parse changed Mermaid diagrams and inspect
@@ -165,8 +168,14 @@ content revision, supporting source references and finding dispositions, actual 
 review outcome when required, and delivery/PR state. CI evidence must match the final published
 head. Keep source review, documentation checks and runtime journeys distinct.
 
+For an initial review or full sign-off, verify each in-scope Code flow as a whole, including
+unchanged branches. Record one evidence row per story with its ID, material paths, source links
+and status (Verified, Verified to a named handoff, or Unverified with the missing evidence).
+When independent review applies, give the reviewer the finished diagrams and pinned source.
+
 For correction rounds, verify the agreed items and affected guarantees; record unrelated new
 observations separately. Recheck introduced defects and invalidated review evidence while retaining
-acceptance for unaffected content. Closing the latest finding list establishes that list's closure;
+acceptance for unaffected content. Return invalidated guarantees to the same reviewer when
+review is required. Closing the latest finding list establishes that list's closure;
 a catalogue-wide baseline claim needs reconciliation of the agreed catalogue scope. Preserve the
 requested merge boundary; catalogue work grants no merge permission.

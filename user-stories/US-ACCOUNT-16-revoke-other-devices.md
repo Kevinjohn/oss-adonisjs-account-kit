@@ -4,7 +4,7 @@ As a signed-in account holder, I want to end every other recorded sign-in so tha
 
 **Status:** Current when `sessionManagement` is enabled and `authentication` is configured
 **Access:** Authenticated current account; operation excludes the current sign-in.
-**Entry:** Host calls `authentication.sessions.revokeOthers({ current })`; optional managed route.
+**Entry:** Host calls `authentication.sessions.revokeOthers({ current })` or mounts `account.sessions.revokeOthers` (POST `account/sessions/revoke-others`, limited access).
 **Documentation:** [signed-in-devices.md](../docs/guide/signed-in-devices.md)
 **Source:** [`src/session_management.ts`](../src/session_management.ts)
 **Coverage:** [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
@@ -12,6 +12,8 @@ As a signed-in account holder, I want to end every other recorded sign-in so tha
 ## Acceptance criteria
 
 - **Inputs and result:** `authentication.sessions.revokeOthers({ current })` returns `{ count }`. It deletes other sign-in rows owned by the current account and preserves the sign-in that authenticated the action.
+- Managed success returns 200 with the same `{ count }`. A count of zero skips the per-row transaction callback; the configured lifecycle observer still receives the result.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
@@ -25,14 +27,18 @@ flowchart TD
 
 ## Code flow
 
-Scope: this is the Account Kit service/command path. Host UI, route policy and external systems remain host-owned unless named.
-
 ```mermaid
 flowchart TD
- A["authentication.sessions.revokeOthers"] --> B["Authenticate current credential and resolve current sign-in in transaction"]
- B --> C["Delete account-owned rows whose id differs from current id"]
- C --> D["Run configured transaction revocation hook only if rows were deleted"]
- D --> E["Commit and run post-commit event, then return count; report committed follow-up failure if the event fails"]
+  M["Managed route resolves current credential"] --> A["authentication.sessions.revokeOthers"]
+  A --> B["Require configuration and recheck credential and current sign-in in transaction"]
+  B -->|Refused| X["Propagate current-credential refusal"]
+  B -->|Accepted| C["Delete account-owned rows excluding current ID"]
+  C -->|Deleted rows| D["Run configured transaction hook with deleted IDs"]
+  C -->|Zero deleted| E["Commit without per-row hook"]
+  D --> E2["Commit"]
+  E --> F["Run lifecycle event with count; return count or committed follow-up error"]
+  E2 --> F
+  F -->|Managed success| G["Return 200 with count"]
 ```
 
-**Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts)
+**Code references:** [implementation](../src/session_management.ts), [`tests/session_management.spec.ts`](../tests/session_management.spec.ts), [managed sessions](../src/http/handlers_session_management.ts), [managed committed-failure response](../src/http/managed.ts)

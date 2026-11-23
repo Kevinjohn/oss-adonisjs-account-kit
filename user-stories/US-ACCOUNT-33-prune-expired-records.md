@@ -11,7 +11,7 @@ As an application operator, I want to remove eligible expired rows in bounded ba
 
 ## Acceptance criteria
 
-- **Inputs and result:** `account-kit:prune` accepts `--dry-run`, `--batch-size` and `--max-batches`, and `maintenance.prune` takes the matching `dryRun`, `batchSize` and `maxBatches` options (all optional); an out-of-range value throws `RangeError`. Batch values are 1–1000, with defaults of 100. Reported counts cover this run only; `max-batches` is shared across all tables and dry-run batches use the same budget. It reports eligible rows in dry-run or rows actually deleted across expired proof/session tables; it does not delete users or application records.
+- **Inputs and result:** `account-kit:prune` accepts `--dry-run`, `--batch-size` and `--max-batches`, and `maintenance.prune` takes the matching `dryRun`, `batchSize` and `maxBatches` options (all optional); an out-of-range value throws `RangeError`. Batch values are integers from 1 to 1,000, with defaults of 100. Reported counts cover this run only; `max-batches` is shared across all tables and dry-run batches use the same budget. It reports eligible rows in dry-run or rows actually deleted across expired proof/session tables; it does not delete users or application records.
 
 ## User flow
 
@@ -36,11 +36,12 @@ flowchart TD
  A["account-kit:prune"] --> S["pruneExpiredWithScanStatus"]
  M["maintenance.prune"] --> W["pruneExpired wrapper"]
  W --> S
- S --> B["Capture expiry cutoff and validate batchSize/maxBatches"]
- B --> C["Select bounded row IDs and recheck each expiry at action time"]
+ S --> B{"Valid batchSize and maxBatches?"}
+ B -->|No| X["Throw RangeError before scanning"]
+ B -->|Yes| C["Capture cutoff; page eligible IDs under the shared budget"]
  C --> D{"dryRun?"}
- D -->|Yes| E["Count candidates; perform no deletes"]
- D -->|No| F["Delete rows still expired and count actual removals"]
+ D -->|Yes| E["Recheck expiry against cutoff and count; no deletes"]
+ D -->|No| F["Delete only rows still expired at cutoff; count actual removals"]
  E --> G["Return per-table counts and scan status"]
  F --> G
  G --> H{"Called from account-kit:prune?"}

@@ -3,7 +3,7 @@
 As an authorised application approver, I want to approve or reject a pending person so that I can record an accountable admission decision.
 
 **Status:** Current when approval is enabled
-**Access:** Host `approval.authorize` decides who may list or decide; Account Kit defines no application roles or admin UI.
+**Access:** Host `approval.authorize.decide` controls who may decide; Account Kit defines no application roles or admin UI.
 **Entry:** Host-owned controller invokes `AccountAdmission.approve` or `.reject` with actor and target; operator commands are a separate shell path.
 **Documentation:** [admission.md](../docs/guide/admission.md)
 **Source:** [`src/admission/decisions.ts`](../src/admission/decisions.ts)
@@ -11,17 +11,22 @@ As an authorised application approver, I want to approve or reject a pending per
 
 ## Acceptance criteria
 
-- **Inputs and result:** `AccountAdmission.approve({ actorId, userId })` or `.reject({ actorId, userId })` returns the updated admission record. The actor must be a different, admitted account; `approval.authorize.decide(actor, subject, context)` must return `true`. Approval can transition a record with no decision or a prior `rejected`/`revoked` decision to `approved`; rejection applies only when there is no decision yet. A disallowed transition leaves the record unchanged.
+- `approve({ actorId, userId })` and `reject({ actorId, userId })` require approval to be enabled. The subject and actor must exist, the actor must differ from the subject and be admitted, and `approval.authorize.decide(actor, subject, { trx })` must return exactly `true`. The host supplies the actor from its authorised context.
+- Approve from no decision, `rejected` or `revoked`; reject only from no decision. Neither action requires a prior request. A refused transition preserves the existing decision.
+- Success returns the record with decision, actor and decision time. The configured observer receives `admission.approved` or `admission.rejected` after commit. If it fails, `PostCommitError` reports the already-saved decision.
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Approver selects pending person and approve or reject"] --> B{"Is actor admitted and authorised to decide?"}
- B -->|No| C["Return authorisation refusal"]
- B -->|Yes| D{"Does requested transition apply to this record?"}
- D -->|No| E["Return transition refusal; decision unchanged"]
- D -->|Yes| F["Record actor and decision; emit event after commit"]
+ A["Approver selects an account and chooses approve or reject"] --> B{"Is approval enabled and the actor admitted and authorised for this account?"}
+ B -->|No| C["Refuse the decision"]
+ B -->|Yes| D{"Does the chosen transition apply?"}
+ D -->|No| E["Refuse and keep the existing decision"]
+ D -->|Yes| F["Save the decision, approver and time"]
+ F --> G{"Did a follow-up fail?"}
+ G -->|Yes| H["Report failure with the decision saved"]
+ G -->|No| I["Return updated admission record"]
 ```
 
 ## Code flow
@@ -30,11 +35,18 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.approve/reject({ actorId, userId })"] --> B["Load distinct actor and subject; check admitted actor and authorize.decide"]
- B --> C["Approve from no decision/rejected/revoked, or reject from no decision"]
- C --> D{"Is requested transition allowed?"}
- D -->|No| E["Abort write with authorisation/decision error"]
- D -->|Yes| F["Persist decision and actor; commit and emit event"]
+ A["AccountAdmission.approve or reject calls decideAdmission"] --> B{"requireApproval passes?"}
+ B -->|No| X["Throw CapabilityDisabledError"]
+ B -->|Yes| C["In transaction, lock actor and subject in ID order"]
+ C --> D{"Subject and distinct admitted actor exist, and authorize.decide returns true with trx?"}
+ D -->|No| Y["Abort with lookup or authorisation error"]
+ D -->|Yes| E{"Does nextApprovalStatus allow the transition?"}
+ E -->|No| Z["Throw AdmissionDecisionError"]
+ E -->|Yes| F["applyTransition upserts decision, actor and time"]
+ F --> G["Commit; withAdmissionEvent invokes configured observer"]
+ G --> H{"Follow-ups succeed?"}
+ H -->|Yes| I["Return updated AdmissionRecord"]
+ H -->|No| J["Throw PostCommitError with decision saved"]
 ```
 
-**Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decision.spec.ts`](../tests/admission_decision.spec.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts)
+**Code references:** [implementation](../src/admission/decisions.ts), [`tests/admission_decision.spec.ts`](../tests/admission_decision.spec.ts), [`tests/admission_decisions.spec.ts`](../tests/admission_decisions.spec.ts), [service entry](../src/admission/service.ts), [committed events](../src/admission/events.ts)

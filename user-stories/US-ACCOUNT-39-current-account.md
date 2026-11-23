@@ -11,8 +11,8 @@ As a signed-in account holder, I want the application to check my current accoun
 
 ## Acceptance criteria
 
-- `CurrentAccountInput` includes `userId` and the strategy-specific credential data: revision, tokenId for access-token guards, and sessionHandle when session management is enabled. `current` returns only id, email, unverifiedEmail, hasPassword and active.
-- A revoked credential, mismatched revision or missing/foreign sign-in handle is rejected; host must not treat the returned snapshot as a replacement credential.
+- `CurrentAccountInput` includes `userId` and the strategy-specific credential data: an explicit `revision` (initially `null`) for session guards, plus `sessionHandle` when session management is enabled, or `tokenId` for access-token guards. `current` returns only id, email, unverifiedEmail, hasPassword and active.
+- A missing account, stale revision, invalid sign-in row or denied `canAccess(user, trx)` produces `InvalidSessionError`. An invalid decision value raises `AdapterContractError`. The selected host guard authenticates the incoming request and checks token expiry.
 
 ## User flow
 
@@ -25,14 +25,22 @@ flowchart TD
 
 ## Code flow
 
-Scope: Account Kit credential validation and safe account projection; the host authenticates the incoming request.
+Scope: the selected guard supplies trusted credential data. Account Kit checks current sign-in and policy in a transaction.
 
 ```mermaid
 flowchart TD
- A["authentication.current(CurrentAccountInput)"] --> B["Transaction locks and reads account, checks session revision/registry or owned access token and canAccess"]
- B --> C{"Credential still current?"}
- C -->|No| D["Throw InvalidSessionError"]
- C -->|Yes| E["Touch tracked session when present and return CurrentAccount safe-field projection"]
+ A["authentication.current calls currentInTransaction"] --> B["currentWithSessionInTransaction locks and loads account"]
+ B --> S{"Configured strategy?"}
+ S -->|Session| R["Check captured revision and requireLiveSession if tracking is enabled"]
+ S -->|Access tokens| T["Check tokenId names a row owned by this user"]
+ R --> P["Evaluate canAccess under the same transaction"]
+ T --> P
+ B -->|Missing account| D["Throw InvalidSessionError"]
+ R -->|Invalid sign-in| D
+ T -->|Invalid sign-in| D
+ P -->|Denied| D
+ P -->|Invalid decision| V["Throw AdapterContractError"]
+ P -->|Allowed| E["Touch tracked session if due, project CurrentAccount and return after commit"]
 ```
 
-**Code references:** [`current`](../src/authentication.ts), [`currentInTransaction`](../src/authentication.ts), [`authentication tests`](../tests/authentication.spec.ts)
+**Code references:** [`current`](../src/authentication.ts), [session checks](../src/session_registry.ts), [decision validation](../src/account_access_decision.ts), [account projection](../src/account_projection.ts), [`authentication tests`](../tests/authentication.spec.ts)

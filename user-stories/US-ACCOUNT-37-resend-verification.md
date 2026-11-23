@@ -4,7 +4,7 @@ As an account holder with an unconfirmed address, I want to request another veri
 
 **Status:** Current when `emailVerification` is enabled
 **Access:** The host supplies a userId from its authorised request context; Account Kit rate-limits per user.
-**Entry:** Host calls `emailVerification.send({ userId })`; optional managed resend endpoint is explicitly enabled.
+**Entry:** Host calls `emailVerification.send({ userId })` or mounts `account.emailVerification.send` (POST `account/email-verification/send`, limited access).
 **Documentation:** [Registration](../docs/guide/registration.md)
 **Source:** [`src/verification.ts`](../src/verification.ts)
 **Coverage:** [`tests/verification.spec.ts`](../tests/verification.spec.ts)
@@ -12,7 +12,9 @@ As an account holder with an unconfirmed address, I want to request another veri
 ## Acceptance criteria
 
 - Required input is the account `userId`; an unknown id throws `InvalidInputError`. The result is `sent` or `already_verified`. A repeated request during the one-minute cooldown reuses the active link and does not send another message.
-- An active account returns `already_verified` without spending the per-user throttle budget. An account is active when its pending email differs from its current email, including when the pending email is null. The historical verification timestamp does not determine activation. An eligible pending-only account receives an activation provision after issuance commits.
+- An active account returns `already_verified` without spending the per-user throttle budget. An account is active when its pending email differs from its current email, including when the pending email is null. The historical verification timestamp does not determine activation. A pending account outside the cooldown gets an activation provision after issuance commits.
+- The managed handler derives `userId` from the authenticated account and returns 200 with `{ result }`. When delivery fails after issuance commits, the service attempts to reopen the cooldown so another request can deliver a fresh link.
+- If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
 
 ## User flow
 
@@ -23,15 +25,15 @@ flowchart TD
  B -->|No| D{"Is resend inside one-minute cooldown?"}
  D -->|Yes| E["Acknowledge without another delivery"]
  D -->|No| F["Issue current activation link and deliver it"]
+ F -->|Delivery failure| G["Request another link when eligible"]
 ```
 
 ## Code flow
 
-Scope: service issuance and notification; the host owns the authenticated userId selection and response.
-
 ```mermaid
 flowchart TD
- A["emailVerification.send({ userId })"] --> B{"Account found?"}
+ M["Managed route resolves actor; host may supply authorised ID directly"] --> A["emailVerification.send checks emailVerification capability"]
+ A --> B{"Account found?"}
  B -->|No| X["Throw InvalidInputError"]
  B -->|Yes| C{"Does pending email differ from current email?"}
  C -->|Yes| D["Return already_verified before any throttle"]
@@ -44,7 +46,7 @@ flowchart TD
  F1 -->|No| F2{"Recent activation issued meanwhile?"}
  F2 -->|Yes| E2["Return sent; store and send nothing"]
  F2 -->|No| F3["Store hashed activation token"]
- F3 --> G["Commit and send accountActivationProvision; return sent or surface delivery failure with resend cooldown reopened"]
+ F3 --> G["Commit and send accountActivationProvision; return sent or surface delivery failure after attempting to reopen cooldown"]
 ```
 
-**Code references:** [`sendVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts)
+**Code references:** [`sendVerification`](../src/verification.ts), [`verification tests`](../tests/verification.spec.ts), [managed verification send](../src/http/handlers_email_verification.ts), [resend cooldown](../src/token_reuse.ts), [managed committed-failure response](../src/http/managed.ts)

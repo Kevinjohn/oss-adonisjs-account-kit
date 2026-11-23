@@ -11,8 +11,8 @@ As an application developer, I want to check whether an email meets the configur
 
 ## Acceptance criteria
 
-- When a domain requirement is disabled, `eligibleDomain` returns `true` before validating the input. When enabled, a malformed address or a domain outside the configured rule returns `false`; a matching domain returns `true`.
-- This preflight does not check invitation or approval requirements, confirm an address, or admit an account. The host still applies registration and admission policy.
+- When the domain requirement is disabled, `eligibleDomain(email)` returns `true` before validating the input. Otherwise it normalises the address, and returns `true` for an allowed ASCII domain or its subdomain when `includeSubdomains` is enabled. Malformed or unmatched input returns `false`.
+- This preflight evaluates domain eligibility before confirmation. The host still applies registration and admission policy.
 
 ## User flow
 
@@ -32,10 +32,12 @@ Scope: this pure preflight checks only the configured domain rule; the host owns
 flowchart TD
  A["AccountAdmission.eligibleDomain(email)"] --> B{"Is a domain rule configured?"}
  B -->|No| C["Return true without input validation"]
- B -->|Yes| D["Normalise and parse the email domain"]
- D --> E{"Is the address valid and domain allowed?"}
- E -->|No| F["Return false"]
- E -->|Yes| G["Return true"]
+ B -->|Yes| D{"Is email a string?"}
+ D -->|No| F["Return false"]
+ D -->|Yes| E["normalizeEmail then domainOf extracts a valid address's domain"]
+ E --> H{"Domain exists and domainAllowed matches the configured rule?"}
+ H -->|No| F
+ H -->|Yes| G["Return true"]
 ```
 
-**Code references:** [`AccountAdmission.eligibleDomain`](../src/admission/service.ts), [`domain helpers`](../src/admission/domain.ts), [`eligibility tests`](../tests/admission_decision.spec.ts)
+**Code references:** [`AccountAdmission.eligibleDomain`](../src/admission/service.ts), [`domain helpers`](../src/admission/domain.ts), [`eligibility tests`](../tests/admission_decision.spec.ts), [email normalisation](../src/email.ts)

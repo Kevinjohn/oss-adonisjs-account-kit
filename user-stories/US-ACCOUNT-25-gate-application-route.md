@@ -11,7 +11,8 @@ As an application developer, I want to require admission before protected applic
 
 ## Acceptance criteria
 
-- **Inputs and result:** `AccountAdmission.require(current, { active? } = {})` returns account and decision or throws for invalid credential, inactive account when `active` is not false, or an unmet requirement. The host applies it only to routes that should require admission.
+- `admissionMiddleware({ admission, guard, active? })` resolves admission, checks the selected guard's name and strategy, and passes the credential evidence from `guard.current(context)` to `require`. The managed session and access-token adapters both authenticate and make the selected guard available to downstream application code.
+- `AccountAdmission.require(input, { active? } = {})` evaluates current credentials and admission as in [US-ACCOUNT-56](US-ACCOUNT-56-read-current-admission-status.md). It then refuses an inactive account unless `active: false`, and refuses any unmet enabled requirement with `AdmissionRequiredError` carrying the decision. A direct caller receives `{ account, decision }`; middleware continues to the host handler.
 
 ## User flow
 
@@ -34,21 +35,26 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["admissionMiddleware"] --> M["Assert configured guard and obtain credential evidence"]
- M --> R["AccountAdmission.require"]
- S["Direct service caller supplies credential evidence"] --> R
- R --> B{"Does admission.current validate the credential and find the account?"}
- B -->|No| X["Throw InvalidSessionError"]
- B -->|Yes| C["Evaluate enabled domain, invitation and approval requirements"]
- C --> D{"Was active:false supplied?"}
- D -->|No| E{"Is account active?"}
- E -->|No| F["Throw UnverifiedEmailError"]
- E -->|Yes| G{"Does admission decision admit account?"}
- D -->|Yes| G
- G -->|No| H["Throw AdmissionRequiredError"]
- G -->|Yes| I["AccountAdmission.require returns account and decision"]
- I -->|Direct service caller| J["Use account and decision"]
- I -->|Middleware caller| K["Middleware returns next()"]
+ A["admissionMiddleware resolves admission and calls kit.managedHttp.assertGuard"] --> B{"Guard matches configured name and strategy?"}
+ B -->|No| X["Throw guard configuration error"]
+ B -->|Yes| C{"Which managed guard.current adapter?"}
+ C -->|Session| D["Authenticate selected guard, mark auth and read revision and optional handle"]
+ C -->|Access token| E["Authenticate selected guard, mark auth and read token identifier"]
+ D --> Q{"guard.current succeeds?"}
+ E --> Q
+ Q -->|No| Z["Propagate guard refusal"]
+ Q -->|Yes| F["AccountAdmission.require(input, options)"]
+ S["Direct host caller supplies credential evidence"] --> F
+ F --> G["Await AccountAdmission.current as traced in US-ACCOUNT-56"]
+ G --> H{"Current succeeds?"}
+ H -->|No| Y["Propagate credential or configuration error"]
+ H -->|Yes| I{"Activation required and account inactive?"}
+ I -->|Yes| J["Throw UnverifiedEmailError"]
+ I -->|No| K{"Decision admitted?"}
+ K -->|No| L["Throw AdmissionRequiredError with decision"]
+ K -->|Yes| M["Return account and decision"]
+ M -->|Middleware| N["Return next()"]
+ M -->|Direct caller| O["Host receives account and decision"]
 ```
 
-**Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts)
+**Code references:** [implementation](../src/admission/middleware.ts), [`tests/admission_gate.spec.ts`](../tests/admission_gate.spec.ts), [require](../src/admission/service.ts), [current credential trace](US-ACCOUNT-56-read-current-admission-status.md#code-flow), [session guard adapter](../src/http/managed_session_guard.ts), [access-token guard adapter](../src/http/managed_token_guard.ts), [guard configuration check](../src/managed_http_service.ts)

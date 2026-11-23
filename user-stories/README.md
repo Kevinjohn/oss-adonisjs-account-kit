@@ -1,6 +1,6 @@
 # User story catalogue
 
-Source baseline: `2be256482dfd9a3a16f72bf9bb842a9eb9b34ad9` (2026-11-22). The stories were first written against `9619f683` (2026-11-21); for this baseline the source changes since then were reviewed and the stories they affect corrected (US-ACCOUNT-28, -31, -44 and -60, plus the US-ACCOUNT-63 guide link); the other stories were not audited again. Scope: public package exports, account and recovery journeys, optional magic-link/session/data/social/admission capabilities, managed HTTP/OpenAPI, package installation, setup and operator actions, adapters and notifications. The first audit traced the package source and ran 45 focused tests covering managed authentication, guard adapters, error responses and the transaction subpath. Host application journeys remain outside that test scope.
+Source baseline: `becffc90271b79c3ce6d2c1dfe0e0b3e871a9fc8` (Account Kit 0.6.0). The refresh reconciles 66 stories with public package exports, managed HTTP, Ace commands, and the guides, examples and tests supporting those entry points. Story availability is source-reviewed. Application-owned screens, routes and policies depend on the host integration.
 
 [Find a story by managed HTTP path, public import or Ace command](PATHS.md).
 
@@ -8,7 +8,7 @@ Source baseline: `2be256482dfd9a3a16f72bf9bb842a9eb9b34ad9` (2026-11-22). The st
 
 | Story                                                                 | Action                                             | Status                                                                                                  |
 | --------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| [US-ACCOUNT-01](US-ACCOUNT-01-recover-password.md)                    | Request and complete password recovery             | Current                                                                                                 |
+| [US-ACCOUNT-01](US-ACCOUNT-01-recover-password.md)                    | Request and complete password recovery             | Current when `passwordReset` is enabled                                                                 |
 | [US-ACCOUNT-02](US-ACCOUNT-02-create-and-verify-account.md)           | Register an account                                | Current when `registration` is enabled and its availability allows signup                               |
 | [US-ACCOUNT-03](US-ACCOUNT-03-sign-in.md)                             | Sign in with configured credentials                | Current                                                                                                 |
 | [US-ACCOUNT-04](US-ACCOUNT-04-sign-out.md)                            | Sign out the current credential                    | Current                                                                                                 |
@@ -27,10 +27,10 @@ Source baseline: `2be256482dfd9a3a16f72bf9bb842a9eb9b34ad9` (2026-11-22). The st
 | [US-ACCOUNT-17](US-ACCOUNT-17-revoke-all-devices.md)                  | Sign out everywhere                                | Current when `sessionManagement` is enabled and `authentication` is configured                          |
 | [US-ACCOUNT-18](US-ACCOUNT-18-export-account.md)                      | Export account data                                | Current when `dataExport` is enabled                                                                    |
 | [US-ACCOUNT-19](US-ACCOUNT-19-delete-account.md)                      | Delete an account                                  | Current when `accountDeletion` is enabled                                                               |
-| [US-ACCOUNT-20](US-ACCOUNT-20-social-sign-in.md)                      | Sign in with a social provider                     | Current for configured Ally provider and enabled `socialAuthentication`                                 |
-| [US-ACCOUNT-21](US-ACCOUNT-21-link-social-identity.md)                | Link a social identity                             | Current when social authentication is configured                                                        |
-| [US-ACCOUNT-22](US-ACCOUNT-22-unlink-social-identity.md)              | Unlink a social identity                           | Current when social authentication is configured                                                        |
-| [US-ACCOUNT-23](US-ACCOUNT-23-prove-social-action.md)                 | Prove a recent social action                       | Current when social authentication is configured                                                        |
+| [US-ACCOUNT-20](US-ACCOUNT-20-social-sign-in.md)                      | Sign in with a social provider                     | Current when `socialAuthentication` is enabled with a configured provider                               |
+| [US-ACCOUNT-21](US-ACCOUNT-21-link-social-identity.md)                | Link a social identity                             | Current when `socialAuthentication` is enabled                                                          |
+| [US-ACCOUNT-22](US-ACCOUNT-22-unlink-social-identity.md)              | Unlink a social identity                           | Current when `socialAuthentication` is enabled                                                          |
+| [US-ACCOUNT-23](US-ACCOUNT-23-prove-social-action.md)                 | Prove a recent social action                       | Current when `socialAuthentication` is enabled                                                          |
 | [US-ACCOUNT-24](US-ACCOUNT-24-request-admission.md)                   | Request application admission                      | Current when admission module is installed and approval requirement enabled                             |
 | [US-ACCOUNT-25](US-ACCOUNT-25-gate-application-route.md)              | Gate a protected route by admission                | Current when admission is installed and app applies middleware                                          |
 | [US-ACCOUNT-26](US-ACCOUNT-26-decide-admission.md)                    | Review an admission request                        | Current when approval is enabled                                                                        |
@@ -71,6 +71,9 @@ Source baseline: `2be256482dfd9a3a16f72bf9bb842a9eb9b34ad9` (2026-11-22). The st
 | [US-ACCOUNT-61](US-ACCOUNT-61-obtain-session-csrf-token.md)           | Obtain a session CSRF token                        | Current                                                                                                 |
 | [US-ACCOUNT-62](US-ACCOUNT-62-read-managed-profile.md)                | Read my managed profile                            | Current                                                                                                 |
 | [US-ACCOUNT-63](US-ACCOUNT-63-share-transaction-helpers.md)           | Share transaction and timestamp helpers            | Current                                                                                                 |
+| [US-ACCOUNT-64](US-ACCOUNT-64-use-adonisjs-session-guard.md)          | Use the Account Kit guard with AdonisJS Auth       | Current, opt-in since 0.6.0                                                                             |
+| [US-ACCOUNT-65](US-ACCOUNT-65-register-provider-callbacks.md)         | Register configuration callbacks from a provider   | Current with the provider for the service being configured                                              |
+| [US-ACCOUNT-66](US-ACCOUNT-66-select-account-kit-commands.md)         | Select which Account Kit commands Ace loads        | Operator                                                                                                |
 
 ## Catalogue references
 

@@ -15,13 +15,14 @@ As an application operator, I want to run the package's configure step so that a
 | ----------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--users-table`         | String flag  | Optional; defaults to `users`. Must be a plain SQL identifier, otherwise the step stops with exit code 1 before any write.                                                                         |
 | `--user-id-type`        | String flag  | Optional; defaults to `integer`. Allowed values are `integer`, `string` and `uuid`; they set the user-keyed column types in the generated migrations. Anything else stops with exit code 1.        |
+| `--migration-directory` | String flag  | Optional application-relative path for a dynamic or multi-path Lucid migration configuration; pass it on every run when required.                                                                  |
 | `--provider-registered` | Boolean flag | Optional. Only for an `adonisrc.ts` whose `providers` list cannot be inspected statically: it states that Account Kit is already registered exactly once, and the provider list is left unchanged. |
 
 - The step writes `config/account_kit.ts`, generates the package migrations (skipping any whose migration file already exists, with a `Skipped` message), adds the `account_kit_provider` provider unless it is already registered, adds the package `commands` entry, and declares `APP_URL` and `FRONTEND_URL` in `start/env.ts`.
-- Existing application-owned files are not replaced, so a rerun is safe.
+- Existing generated config and migration files are kept. Configure still updates registration in `adonisrc.ts`. If you replaced the default loader with [`defineCommands`](US-ACCOUNT-66-select-account-kit-commands.md), a rerun can add the default loader again. Review the `commands` array after configure and remove the added default entry to preserve your selection.
 - An `adonisrc.ts` whose `defineConfig` call, config properties or syntax cannot be inspected (not a static object literal, computed properties, spreads that do not expose `providers` and `commands`, TypeScript syntax errors) stops with exit code 1 before any write, whatever the flags. A shape it cannot inspect logs restructuring guidance; a syntax error or an unloadable `adonisrc.ts` logs only `Unable to inspect adonisrc.ts: <reason>.` A `providers` list that cannot be inspected stops with exit code 1 and guidance unless `--provider-registered` is given.
 
-- Both setup and configure inspect the selected Lucid connection’s literal migrations.paths. Empty or omitted paths use the application migrations directory. Confirm a dynamic path using `--migration-directory` on each run. With several configured paths, setup uses the one that already holds every Account Kit migration; otherwise `--migration-directory` selects one of them on each run, and is refused when another configured path holds an Account Kit migration the named path lacks or cannot be inspected. A conflicting override or an installed dependent missing its prerequisite requires reconciliation before generation; configure stops without writing. New filenames follow existing numeric timestamps. See [path selection](../src/setup/migration_paths.ts), [ordering](../src/setup/migration_order.ts) and [configure cases](../tests/configure.spec.ts).
+- Configure uses the [shared migration destination and ordering rules](../docs/guide/setup.md#reconfigure-saved-choices). It reports an unsafe destination or migration order before writing any files.
 
 ## User flow
 
@@ -58,4 +59,4 @@ flowchart TD
     I --> J["defineEnvValidations declares APP_URL and FRONTEND_URL"]
 ```
 
-**Code references:** [`configure`](../configure.ts), [`migrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)
+**Code references:** [`configure`](../configure.ts), [`migrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)

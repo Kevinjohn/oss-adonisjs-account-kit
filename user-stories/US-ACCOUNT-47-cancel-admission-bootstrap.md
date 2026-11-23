@@ -11,17 +11,20 @@ As an application operator, I want to cancel a waiting bootstrap approval so tha
 
 ## Acceptance criteria
 
-- Command input is email and `--cancel`; output reports `cancelled` when a waiting row existed or `none` when there was nothing to cancel. A row already claimed by a user is not deleted.
-- Cancellation prevents a still-unclaimed invitation from being paired with the removed approval; it does not delete an invitation or account.
+- Supply a valid email and `--cancel`. This branch runs before the role check and needs no role or enabled approval requirement. Admission service resolution and the table are required.
+- Output is `{ result: 'cancelled' | 'none', email }`. The command deletes a matching waiting row only when it has no linked user. The unchanged invitation may still be accepted and trigger the host's invitation callback. To remove both effects, revoke that link separately through the [invitation workflow](US-ACCOUNT-12-revoke-invitation.md).
 
 ## User flow
 
 ```mermaid
 flowchart TD
- A["Operator requests bootstrap cancellation for an email"] --> B{"Is there an unclaimed waiting approval?"}
- B -->|No| C["Report none; leave invitation/account state unchanged"]
- B -->|Yes| D["Delete waiting approval and report cancelled"]
- D --> E["Invitation itself remains an invitation and grants no approval"]
+ A["Operator cancels waiting bootstrap approval for an email"] --> B{"Can the command resolve admission and validate the address?"}
+ B -->|No| X["Report command failure"]
+ B -->|Yes| C{"Was a waiting approval deleted?"}
+ C -->|No| D["Report none"]
+ C -->|Yes| E["Report cancelled"]
+ D --> F["Any existing invitation can still be used"]
+ E --> F
 ```
 
 ## Code flow
@@ -30,12 +33,16 @@ Scope: operator helper deletes by normalised bootstrap email only when user_id i
 
 ```mermaid
 flowchart TD
- A["account-kit:admission:bootstrap --cancel"] --> B["AccountAdmission.operator.cancelBootstrap({ email })"]
- B --> C["Normalise and validate email"]
- C --> D["Delete matching bootstrap_email row where user_id is null"]
- D --> E{"Any row deleted?"}
- E -->|No| F["Return false; command prints none"]
- E -->|Yes| G["Return true; command prints cancelled"]
+ A["BootstrapAdmission.run on --cancel"] --> Y{"Can it resolve AccountAdmission?"}
+ Y -->|No| X
+ Y -->|Yes| B["AccountAdmission.operator.cancelBootstrap calls cancelBootstrap"]
+ B --> C{"requireEmail validates and normalises the address?"}
+ C -->|No| X["writeFailure logs error and sets exit code 1"]
+ C -->|Yes| D["Delete matching bootstrap_email row where user_id is null"]
+ D -->|Write fails| X
+ D -->|Write succeeds| E{"deletedCount greater than zero?"}
+ E -->|No| F["Return false; writeResult outputs none and email"]
+ E -->|Yes| G["Return true; writeResult outputs cancelled and email"]
 ```
 
-**Code references:** [`cancelBootstrap`](../src/admission/bootstrap.ts), [`bootstrap command`](../src/admission/commands/bootstrap.ts)
+**Code references:** [`cancelBootstrap`](../src/admission/bootstrap.ts), [`bootstrap command`](../src/admission/commands/bootstrap.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)

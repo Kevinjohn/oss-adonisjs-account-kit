@@ -11,7 +11,7 @@ As an application integrator, I want to connect Account Kit to a supported user 
 
 ## Acceptance criteria
 
-- **Inputs and result:** The adapter contract lets `AccountKit` read, create, update and delete the application user inside supplied database transactions. Lucid is the default adapter; Drizzle, Prisma and SQL factories are included. Integrators configure the adapter and use the same service API; schema/driver compatibility follows the adapter guide and contract suite.
+- **Inputs and result:** The adapter contract lets `AccountKit` read, create, update and delete the application user inside supplied database transactions. The generated config selects Lucid; Drizzle, Prisma and SQL factories are included. Set `users` in config or supply it through the [provider callback registry](US-ACCOUNT-65-register-provider-callbacks.md), then use the same service API; schema/driver compatibility follows the adapter guide and contract suite.
 
 - With prepared hashing, Lucid create/save hooks observe the initial null password. A transaction-bound query stores the hash and updates the returned model. Both writes commit together. The instance update/save hooks do not observe prepared hash replacement. Supplying verifyPassword alone leaves hashing to the model inside the transaction. See [adapter semantics](../docs/guide/adapters.md) and [hash timing tests](../tests/password_hash_timing.spec.ts).
 
@@ -30,9 +30,10 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["AccountKit construction with configured user adapter"] --> B["Adapter supplies required user reads/updates and optional operations as selected capabilities require"]
- B --> C["Account service passes transaction to adapter at write boundary"]
+ A["Supply users to defineConfig or AccountKitCallbackRegistry"] --> B{"resolveConfig accepts the adapter for the selected capabilities?"}
+ B -->|No| X["Reject configuration before the service is used"]
+ B -->|Yes| C["Account service passes transaction to adapter at write boundary"]
  C --> D["Lucid, Drizzle, Prisma or SQL adapter persists application user"]
 ```
 
-**Code references:** [implementation](../adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)
+**Code references:** [adapter validation](../src/config.ts), [config resolution](../src/config_resolution.ts), [Lucid implementation](../adapters/lucid.ts), [`tests/drizzle_adapter.spec.ts`](../tests/drizzle_adapter.spec.ts), [`tests/prisma_adapter.spec.ts`](../tests/prisma_adapter.spec.ts), [`tests/sql_adapter.spec.ts`](../tests/sql_adapter.spec.ts)

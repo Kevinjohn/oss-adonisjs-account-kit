@@ -1,6 +1,6 @@
 # US-ACCOUNT-36 — Issue an invitation from the shell
 
-As an application operator, I want to bootstrap an application invitation through trusted operator commands so that I can bootstrap an invitation without exposing a privileged HTTP capability.
+As an application operator, I want to issue an invitation from the trusted shell so that I can invite someone without exposing a privileged HTTP capability.
 
 **Status:** Operator
 **Access:** Requires shell access and configured invitations capability; operator commands bypass actor authorisation and throttles.
@@ -11,7 +11,7 @@ As an application operator, I want to bootstrap an application invitation throug
 
 ## Acceptance criteria
 
-- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. The service API scope is an optional string of 1–255 characters; omitted or `null` means unscoped. At the CLI, omitting `--scope` requests an unscoped invitation. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret. If the address already belongs to an account, `operator.invite` throws `EmailAlreadyRegisteredError` before it stores anything, and the command reports the failure.
+- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. `role` is required and must contain 1–64 characters. Sending is the default CLI mode. The service API scope is an optional string of 1–255 characters; omitted or `null` means unscoped. At the CLI, omitting `--scope` requests an unscoped invitation. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret. If the address already belongs to an account, `operator.invite` throws `EmailAlreadyRegisteredError` before it stores anything, and the command reports the failure.
 
 ## User flow
 
@@ -36,15 +36,17 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["account-kit:invite"] --> B["Call operator.invite with email, role, optional scope and deliver"]
- B --> B1{"Address already registered?"}
- B1 -->|Yes| B2["Throw EmailAlreadyRegisteredError before storing; command reports failure"]
+ B --> I{"Capability and inputs accepted?"}
+ I -->|No| B2
+ I -->|Yes| B1{"Address already registered?"}
+ B1 -->|Yes| B2["writeFailure reports error and exits nonzero without a new invitation"]
  B1 -->|No| C["Transaction replaces any pending invitation for the same email and scope, invalidating its old link, and stores the new token hash"]
  C --> D{"deliver = send or print?"}
  D -->|send| E["Run configured invitation notification callback"]
  D -->|print| F["Skip delivery; include URL in result"]
  E --> H["Run operator-sourced lifecycle follow-up"]
  F --> H
- H --> G["Write invitation result and any post-commit fault as JSON"]
+ H --> G["reportOperatorOutcome prints JSON; follow-up fault also sets exit code 1"]
 ```
 
-**Code references:** [implementation](../commands/invite.ts), [`operatorInvite`](../src/operator.ts), [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)
+**Code references:** [implementation](../commands/invite.ts), [`operatorInvite`](../src/operator.ts), [`reportOperatorOutcome`](../commands/operator_output.ts), [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)
