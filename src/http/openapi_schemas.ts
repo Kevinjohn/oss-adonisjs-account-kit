@@ -3,6 +3,11 @@
  * The record is keyed by `ManagedEndpointName`, so a route added without schemas does not compile.
  * Request schemas mirror `validators.ts`; cross-field rules are described in text.
  */
+import {
+  invitationPageSize,
+  invitationRoleLength,
+  invitationScopeLength,
+} from '../invitation_input.js'
 import { sensitivePurposes } from '../social_enums.js'
 export interface EndpointResponse {
   description: string
@@ -242,12 +247,17 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       buildRequestBodySchema(
         {
           email: email(),
-          role: string({ minLength: 1, maxLength: 64 }),
-          scope: string({
-            minLength: 1,
-            maxLength: 255,
-            description: 'The team or workspace the invitation is for.',
+          role: string({
+            ...invitationRoleLength,
+            pattern: '\\S',
+            description: 'Supply trimmed role text. The server trims before applying the bounds.',
           }),
+          scope: {
+            type: ['string', 'null'],
+            ...invitationScopeLength,
+            description:
+              'Exact team or workspace scope. Omit it or send null for an unscoped invitation.',
+          },
         },
         ['email', 'role']
       ),
@@ -262,7 +272,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       {
         name: 'limit',
         description: 'Page size.',
-        schema: { type: 'integer', minimum: 1, maximum: 100 },
+        schema: { type: 'integer', ...invitationPageSize },
       },
       {
         name: 'cursor',
@@ -271,8 +281,8 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       },
       {
         name: 'scope',
-        description: 'Only invitations for this team or workspace.',
-        schema: string({ minLength: 1, maxLength: 255 }),
+        description: 'Exact scope to filter by. Omit it to list invitations across scopes.',
+        schema: string(invitationScopeLength),
       },
     ],
     success: ok('One page of invitations.', ref('InvitationPage')),

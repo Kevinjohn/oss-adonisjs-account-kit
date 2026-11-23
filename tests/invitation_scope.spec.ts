@@ -1,3 +1,4 @@
+import { RequestValidator } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { transaction } from '../src/db.js'
@@ -7,7 +8,7 @@ import { registerManagedRoutes } from '../src/http/managed.js'
 import type { AccountKitConfig, AuthorizationContext, LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { allowAll, insertUser, makeService, tokenFrom } from './helpers/fakes.js'
-import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
+import { fakeManagedHttp, requestWithHeaders, stubGuard } from './helpers/managed_http_fakes.js'
 
 test.group('invitation scope', (group) => {
   const kit = useTestApp(group)
@@ -233,9 +234,88 @@ test.group('invitation scope', (group) => {
     assert.deepEqual(managed, ['team-a', 'team-a', 'team-a'])
   })
 
-  test('the managed send and list routes pass the scope through', async ({ assert }) => {
+  test('direct invitations preserve role and scope text and enforce the input bounds', async ({
+    assert,
+  }) => {
     const actor = await insertUser(kit, { email: 'actor@example.test' })
-    const { account, lists } = setup({ authentication: { strategy: 'session', guard: 'web' } })
+    const { account, invites, lists } = setup()
+    const maxRole = 'r'.repeat(64)
+    const maxScope = 's'.repeat(255)
+    const inputs = [
+      { role: 'r', scope: 's' },
+      { role: maxRole, scope: maxScope },
+      { role: ' r ' },
+      { role: ' ', scope: null },
+    ]
+    for (const [index, input] of inputs.entries()) {
+      const recipient = `direct-${index}@example.test`
+      const invitation = await account.invitations.send({
+        actorId: actor.id,
+        email: ` ${recipient.toUpperCase()} `,
+        ...input,
+      })
+      assert.deepInclude(invitation, {
+        email: recipient,
+        role: input.role,
+        scope: input.scope ?? null,
+      })
+    }
+    assert.deepEqual(
+      invites.map(({ role, scope }) => ({ role, scope })),
+      inputs.flatMap(({ role, scope }) => Array(2).fill({ role, scope: scope ?? null }))
+    )
+
+    for (const [input, field] of [
+      [{ role: '' }, 'role'],
+      [{ role: 'r'.repeat(65) }, 'role'],
+      [{ role: ` ${maxRole} ` }, 'role'],
+      [{ role: 'r', scope: '' }, 'scope'],
+      [{ role: 'r', scope: 's'.repeat(256) }, 'scope'],
+    ] as const) {
+      const error = await account.invitations
+        .send({ actorId: actor.id, email, ...input })
+        .catch((failure: unknown) => failure)
+      assert.instanceOf(error, InvalidInputError)
+      assert.deepInclude(error as InvalidInputError, {
+        message: `Invalid ${field}`,
+        code: 'E_ACCOUNT_KIT_INVALID_INPUT',
+        status: 422,
+      })
+    }
+
+    const first = await account.invitations.list({ actorId: actor.id, limit: 1 })
+    assert.lengthOf(first.items, 1)
+    const filtered = await account.invitations.list({
+      actorId: actor.id,
+      limit: 100,
+      scope: maxScope,
+    })
+    assert.lengthOf(filtered.items, 1)
+    const unscoped = await account.invitations.list({ actorId: actor.id, scope: null })
+    assert.lengthOf(unscoped.items, 2)
+    for (const limit of [0, 101, 1.5]) {
+      const error = await account.invitations
+        .list({ actorId: actor.id, limit })
+        .catch((failure: unknown) => failure)
+      assert.instanceOf(error, InvalidInputError)
+      assert.deepInclude(error as InvalidInputError, {
+        message: 'Invalid invitation page limit',
+        code: 'E_ACCOUNT_KIT_INVALID_INPUT',
+        status: 422,
+      })
+    }
+    assert.deepEqual(lists, [{}, { scope: maxScope }, { scope: null }])
+    assert.lengthOf(invites, 8)
+    assert.lengthOf(await kit.db.from('account_invitations'), 4)
+  })
+
+  test('managed invitation routes validate inputs before calling the service', async ({
+    assert,
+  }) => {
+    const actor = await insertUser(kit, { email: 'actor@example.test' })
+    const { account, invites, lists } = setup({
+      authentication: { strategy: 'session', guard: 'web' },
+    })
     const { router, routes, context } = fakeManagedHttp()
     registerManagedRoutes(router, {
       prefix: '/api/v1',
@@ -244,25 +324,87 @@ test.group('invitation scope', (group) => {
       enabled: ['invitations'],
       verificationRequired: false,
     })
-    const send = context()
-    Object.assign(send.request, {
-      csrfToken: 'proof',
-      validateUsing: async () => ({ email, role: 'member', scope: 'team-a' }),
-    })
-    const sent = (await routes.get('POST /api/v1/account/invitations')!(send)) as { status: number }
-    assert.equal(sent.status, 201)
-    const list = context()
-    list.request.validateUsing = (async () => ({ scope: 'team-a' })) as never
-    const page = (await routes.get('GET /api/v1/account/invitations')!(list)) as {
-      status: number
-      body: { items: Array<{ scope: string | null }> }
+    async function call(method: 'GET' | 'POST', data: Record<string, unknown>) {
+      const ctx = context()
+      const request = requestWithHeaders()
+      if (method === 'GET') request.updateQs(data)
+      else request.updateBody(data)
+      ctx.request = request
+      const validator = new RequestValidator(ctx)
+      Object.assign(request, {
+        csrfToken: 'proof',
+        validateUsing: validator.validateUsing.bind(validator),
+      })
+      return routes.get(`${method} /api/v1/account/invitations`)!(ctx) as Promise<{
+        status: number
+        body: { items: Array<{ scope: string | null }> }
+      }>
     }
-    assert.equal(page.status, 200)
+
+    const maxRole = 'r'.repeat(64)
+    const maxScope = 's'.repeat(255)
+    const inputs = [
+      { role: ' r ', scope: ' ' },
+      { role: ` ${maxRole} `, scope: maxScope },
+      { role: 'guest' },
+      { role: ' guest ', scope: null },
+    ]
+    for (const [index, input] of inputs.entries()) {
+      const sent = await call('POST', { email: ` MANAGED-${index}@example.test `, ...input })
+      assert.equal(sent.status, 201)
+    }
+    const rows = await kit.db
+      .from('account_invitations')
+      .select('email', 'role', 'scope')
+      .orderBy('id')
     assert.deepEqual(
-      page.body.items.map((item) => item.scope),
-      ['team-a']
+      rows,
+      inputs.map(({ role, scope }, index) => ({
+        email: `managed-${index}@example.test`,
+        role: role.trim(),
+        scope: scope ?? '',
+      }))
     )
-    assert.deepEqual(lists, [{ scope: 'team-a' }])
+    assert.deepEqual(
+      invites.map(({ role, scope }) => ({ role, scope })),
+      inputs.flatMap(({ role, scope }) =>
+        Array(2).fill({ role: role.trim(), scope: scope ?? null })
+      )
+    )
+
+    for (const [method, input, field] of [
+      ['POST', { role: ' ' }, 'role'],
+      ['POST', { role: 'r'.repeat(65) }, 'role'],
+      ['POST', { role: 'r', scope: '' }, 'scope'],
+      ['POST', { role: 'r', scope: 's'.repeat(256) }, 'scope'],
+      ['GET', { limit: '0' }, 'limit'],
+      ['GET', { limit: '101' }, 'limit'],
+      ['GET', { limit: '1.5' }, 'limit'],
+    ] as const) {
+      const data = method === 'POST' ? { email, ...input } : input
+      const error = await call(method, data).catch((failure: unknown) => failure)
+      assert.deepInclude(error as object, { status: 422, code: 'E_VALIDATION_ERROR' })
+      assert.deepEqual(
+        (error as { messages: Array<{ field: string }> }).messages.map((message) => message.field),
+        [field]
+      )
+    }
+
+    const first = await call('GET', { limit: '1' })
+    assert.equal(first.status, 200)
+    assert.lengthOf(first.body.items, 1)
+    const filtered = await call('GET', { limit: '100', scope: maxScope })
+    assert.equal(filtered.status, 200)
+    assert.deepEqual(
+      filtered.body.items.map((item) => item.scope),
+      [maxScope]
+    )
+    const all = await call('GET', {})
+    assert.equal(all.status, 200)
+    assert.lengthOf(all.body.items, 4)
+    assert.deepEqual(lists, [{}, { scope: maxScope }, {}])
+    assert.lengthOf(invites, 8)
+    assert.lengthOf(await kit.db.from('account_invitations'), 4)
   })
 
   test('default policy helpers still allow unscoped use', async ({ assert }) => {

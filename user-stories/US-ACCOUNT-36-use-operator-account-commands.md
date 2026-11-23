@@ -5,13 +5,13 @@ As an application operator, I want to issue an invitation from the trusted shell
 **Status:** Operator
 **Access:** Requires shell access and configured invitations capability; operator commands bypass actor authorisation and throttles.
 **Entry:** Run `account-kit:invite <email> --role <role> [--scope <scope>] [--print]`; `invitations` must be explicitly enabled.
-**Documentation:** [operations.md](../docs/guide/operations.md)
+**Documentation:** [Operator commands](../docs/guide/operations.md), [invitation input rules](../docs/guide/account-operations.md#invitation-input-rules)
 **Source:** [`commands/invite.ts`](../commands/invite.ts)
 **Coverage:** [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)
 
 ## Acceptance criteria
 
-- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. `role` is required and must contain 1–64 characters. Sending is the default CLI mode. The service API scope is an optional string of 1–255 characters; omitted or `null` means unscoped. At the CLI, omitting `--scope` requests an unscoped invitation. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret. If the address already belongs to an account, `operator.invite` throws `EmailAlreadyRegisteredError` before it stores anything, and the command reports the failure.
+- **Inputs and result:** `operator.invite({ email, role, scope?, deliver })` returns an invitation, optional printed URL and optional follow-up fault. `role` is required and must contain 1–64 characters. The command and service preserve supplied whitespace. Sending is the default CLI mode. The service API scope is an optional string of 1–255 characters; omitted or `null` means unscoped. At the CLI, omitting `--scope` requests an unscoped invitation. `deliver` is `send` or `print`. Shell access is the authority boundary: this operation has no actor callback or public throttle; a printed URL is a bearer secret. If the address already belongs to an account, `operator.invite` throws `EmailAlreadyRegisteredError` before it stores anything, and the command reports the failure.
 
 ## User flow
 

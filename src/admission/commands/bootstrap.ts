@@ -5,6 +5,7 @@ import {
   writeResult,
 } from '../../../commands/operator_output.js'
 import { InvalidInputError } from '../../errors.js'
+import { invitationRoleLength } from '../../invitation_input.js'
 import { AccountAdmission } from '../service.js'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
@@ -17,7 +18,9 @@ export default class BootstrapAdmission extends BaseCommand {
   @args.string({ description: 'Email address to invite' })
   declare email: string
 
-  @flags.string({ description: 'Role stored on the invitation (1-64 characters)' })
+  @flags.string({
+    description: `Role stored on the invitation (${invitationRoleLength.minLength}-${invitationRoleLength.maxLength} characters)`,
+  })
   declare role?: string
 
   @flags.boolean({ description: 'Delete the waiting approval for the address instead' })

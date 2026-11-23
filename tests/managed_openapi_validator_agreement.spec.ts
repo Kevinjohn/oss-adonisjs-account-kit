@@ -115,12 +115,38 @@ test.group('managed request schemas match the validators', () => {
       { email: 'a@example.test', role: 'admin' },
     ],
     ['account.invitation.send', invitationSendValidator, { email: 'a@example.test', role: '' }],
+    ['account.invitation.send', invitationSendValidator, { email: 'a@example.test', role: ' ' }],
     [
       'account.invitation.send',
       invitationSendValidator,
       { email: 'a@example.test', role: 'r'.repeat(65) },
     ],
     ['account.invitation.send', invitationSendValidator, { email: 'a@example.test' }],
+    [
+      'account.invitation.send',
+      invitationSendValidator,
+      { email: 'a@example.test', role: 'r', scope: 's' },
+    ],
+    [
+      'account.invitation.send',
+      invitationSendValidator,
+      { email: 'a@example.test', role: 'r'.repeat(64), scope: 's'.repeat(255) },
+    ],
+    [
+      'account.invitation.send',
+      invitationSendValidator,
+      { email: 'a@example.test', role: 'r', scope: null },
+    ],
+    [
+      'account.invitation.send',
+      invitationSendValidator,
+      { email: 'a@example.test', role: 'r', scope: '' },
+    ],
+    [
+      'account.invitation.send',
+      invitationSendValidator,
+      { email: 'a@example.test', role: 'r', scope: 's'.repeat(256) },
+    ],
     ['auth.oauth.complete', socialCallbackValidator, { code: 'c', state: 's' }],
     ['auth.oauth.complete', socialCallbackValidator, { code: 'c', state: '' }],
     ['auth.oauth.registration', socialRegistrationValidator, { continuation: 'c' }],
@@ -192,12 +218,34 @@ test.group('managed request schemas match the validators', () => {
   test('the invitation list query matches the validator', async ({ assert }) => {
     const parameters = (session.paths['/api/v1/account/invitations'].get as any).parameters
     const limit = compileEmbedded(session, parameters[0].schema)
-    for (const value of [1, 100, 0, 101, 1.5]) {
+    const scope = compileEmbedded(session, parameters[2].schema)
+    for (const [value, accepted] of [
+      [1, true],
+      [100, true],
+      [0, false],
+      [101, false],
+      [1.5, false],
+    ] as const) {
       const vine = await invitationListValidator.validate({ limit: value }).then(
         () => true,
         () => false
       )
-      assert.equal(limit(value), vine, String(value))
+      assert.equal(limit(value), accepted, String(value))
+      assert.equal(vine, accepted, String(value))
+    }
+    assert.equal(parameters[0].schema.default, 25)
+    for (const [value, accepted] of [
+      ['s', true],
+      ['s'.repeat(255), true],
+      ['', false],
+      ['s'.repeat(256), false],
+    ] as const) {
+      const vine = await invitationListValidator.validate({ scope: value }).then(
+        () => true,
+        () => false
+      )
+      assert.equal(scope(value), accepted)
+      assert.equal(vine, accepted)
     }
   })
 })

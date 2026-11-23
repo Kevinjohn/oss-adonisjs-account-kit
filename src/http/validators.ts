@@ -1,4 +1,9 @@
 import vine from '@vinejs/vine'
+import {
+  invitationPageSize,
+  invitationRoleLength,
+  invitationScopeLength,
+} from '../invitation_input.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../password.js'
 
 const email = () => vine.string().trim().toLowerCase().email().maxLength(254)
@@ -45,11 +50,20 @@ export const profileUpdateValidator = vine.compile(
     registrationData: registrationData(),
   })
 )
-const scope = () => vine.string().minLength(1).maxLength(255).optional()
+const scope = () =>
+  vine
+    .string()
+    .minLength(invitationScopeLength.minLength)
+    .maxLength(invitationScopeLength.maxLength)
+    .optional()
 export const invitationSendValidator = vine.compile(
   vine.object({
     email: email(),
-    role: vine.string().trim().minLength(1).maxLength(64),
+    role: vine
+      .string()
+      .trim()
+      .minLength(invitationRoleLength.minLength)
+      .maxLength(invitationRoleLength.maxLength),
     scope: scope(),
   })
 )
@@ -62,7 +76,12 @@ export const invitationAcceptValidator = vine.compile(
 )
 export const invitationListValidator = vine.compile(
   vine.object({
-    limit: vine.number().withoutDecimals().min(1).max(100).optional(),
+    limit: vine
+      .number()
+      .withoutDecimals()
+      .min(invitationPageSize.minimum)
+      .max(invitationPageSize.maximum)
+      .optional(),
     cursor: vine.string().optional(),
     scope: scope(),
   })

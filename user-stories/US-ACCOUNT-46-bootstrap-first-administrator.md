@@ -4,7 +4,7 @@ As an application operator, I want to invite an administrator and prepare its ap
 
 **Status:** Operator
 **Access:** Shell access and explicitly enabled `invitations` and admission approval capabilities; host must configure `withInvitationEvidence` from [US-ACCOUNT-51](US-ACCOUNT-51-configure-admission-hooks.md) for acceptance to attach invitation evidence and claim the waiting approval. Command issues a printed bearer link.
-**Entry:** Run `account-kit:admission:bootstrap <email> --role <role>`; the role is required and 1–64 characters.
+**Entry:** Run `account-kit:admission:bootstrap <email> --role <role>`; the role is required and accepts 1–64 characters as supplied, including whitespace.
 **Documentation:** [Admission bootstrap](../docs/guide/admission.md#first-administrator)
 **Source:** [`src/admission/bootstrap.ts`](../src/admission/bootstrap.ts)
 **Coverage:** [`tests/admission_bootstrap_command.spec.ts`](../tests/admission_bootstrap_command.spec.ts), [`tests/admission_bootstrap.spec.ts`](../tests/admission_bootstrap.spec.ts)

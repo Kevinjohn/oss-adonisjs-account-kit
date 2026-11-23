@@ -38,6 +38,34 @@ test.group('operator commands', (group) => {
     assert.equal(service.recorder.calls[0].method, 'invitationProvision')
   })
 
+  test('invite stores accepted role text exactly and rejects an out-of-range role', async ({
+    assert,
+  }) => {
+    const { kernel } = kernelFor(kit)
+    const inputs = [' ', ' admin ', 'r'.repeat(64)]
+    for (const [index, role] of inputs.entries()) {
+      const command = await kernel.exec<typeof InviteAccount>('account-kit:invite', [
+        `operator-${index}@example.test`,
+        `--role=${role}`,
+      ])
+      assert.equal(command.exitCode ?? 0, 0)
+      assert.equal(command.result?.invitation.role, role)
+    }
+
+    const rejectedRole = 'r'.repeat(65)
+    const command = await kernel.exec<typeof InviteAccount>('account-kit:invite', [
+      'invalid@example.test',
+      `--role=${rejectedRole}`,
+    ])
+    assert.equal(command.exitCode, 1)
+    assert.equal(command.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    const rows = await kit.db.from('account_invitations').orderBy('id')
+    assert.deepEqual(
+      rows.map((row) => row.role),
+      inputs
+    )
+  })
+
   test('invite --print prints the link, warns on stderr, and sends nothing', async ({ assert }) => {
     const { kernel, service, stdout, stderr } = kernelFor(kit)
     await kernel.exec('account-kit:invite', ['boss@example.test', '--role=admin', '--print'])

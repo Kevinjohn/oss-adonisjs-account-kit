@@ -1,12 +1,15 @@
 // The opaque invitation scope: validation, its stored form and the order invitations apply in.
 import { InvalidInputError } from './errors.js'
+import { invitationScopeLength } from './invitation_input.js'
 
-const MAX_SCOPE_LENGTH = 255
-
-/** `null` for an unscoped invitation; otherwise a 1 to 255 character string. */
+/** Omitted and null values resolve to unscoped; supplied scope text is opaque. */
 export function normalizeScope(value: unknown): string | null {
   if (value === undefined || value === null) return null
-  if (typeof value !== 'string' || value.length < 1 || value.length > MAX_SCOPE_LENGTH)
+  if (
+    typeof value !== 'string' ||
+    value.length < invitationScopeLength.minLength ||
+    value.length > invitationScopeLength.maxLength
+  )
     throw new InvalidInputError('Invalid scope')
   return value
 }

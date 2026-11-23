@@ -10,6 +10,7 @@ import {
   InvitationNotFoundError,
   InvitationManagementDeniedError,
 } from './errors.js'
+import { invitationPageSize } from './invitation_input.js'
 import { toInvitation } from './invitation_rows.js'
 import { normalizeScope, scopeColumn } from './invitation_scope.js'
 import { requireUser } from './actor_confirmation.js'
@@ -160,8 +161,12 @@ export async function listInvitations(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsListInput
 ): Promise<InvitationPage> {
-  const limit = input.limit ?? 25
-  if (!Number.isInteger(limit) || limit < 1 || limit > 100)
+  const limit = input.limit ?? invitationPageSize.default
+  if (
+    !Number.isInteger(limit) ||
+    limit < invitationPageSize.minimum ||
+    limit > invitationPageSize.maximum
+  )
     throw new InvalidInputError('Invalid invitation page limit')
   const position =
     input.cursor === undefined

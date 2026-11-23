@@ -3664,13 +3664,18 @@
                   "role": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 64
+                    "maxLength": 64,
+                    "pattern": "\\S",
+                    "description": "Supply trimmed role text. The server trims before applying the bounds."
                   },
                   "scope": {
-                    "type": "string",
+                    "type": [
+                      "string",
+                      "null"
+                    ],
                     "minLength": 1,
                     "maxLength": 255,
-                    "description": "The team or workspace the invitation is for."
+                    "description": "Exact team or workspace scope. Omit it or send null for an unscoped invitation."
                   }
                 },
                 "required": [
@@ -3880,7 +3885,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 100
+              "maximum": 100,
+              "default": 25
             }
           },
           {
@@ -3894,7 +3900,7 @@
           {
             "in": "query",
             "name": "scope",
-            "description": "Only invitations for this team or workspace.",
+            "description": "Exact scope to filter by. Omit it to list invitations across scopes.",
             "schema": {
               "type": "string",
               "minLength": 1,

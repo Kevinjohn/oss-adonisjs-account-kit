@@ -1,6 +1,7 @@
 // Operator bootstrap: an operator invitation plus an approval waiting for the account it creates.
 import { deletedCount } from '../consume_rows.js'
 import { issueOperatorInvitation } from '../operator.js'
+import { isInvitationRole } from '../invitation_input.js'
 import { isEmailShaped, normalizeEmail } from '../email.js'
 import { CapabilityDisabledError, InvalidInputError } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
@@ -24,8 +25,7 @@ export async function operatorBootstrap(
 ): Promise<OperatorInviteResult> {
   requireApproval(deps.config)
   const email = requireEmail(input.email)
-  if (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
-    throw new InvalidInputError('Invalid role')
+  if (!isInvitationRole(input.role)) throw new InvalidInputError('Invalid role')
   if (!deps.accountConfig.enabled.includes('invitations'))
     throw new CapabilityDisabledError('invitations is disabled')
   const issued = await issueOperatorInvitation(
