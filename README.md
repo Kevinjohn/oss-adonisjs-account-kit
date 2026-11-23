@@ -81,6 +81,14 @@ node ace configure @kevinjohn/adonisjs-account-kit --provider-registered
 This flag confirms that you registered the provider yourself. Configure then preserves the dynamic
 provider expression and completes the remaining setup. Running it again is safe.
 
+## Session guard
+
+`accountKitSessionGuard({ provider })` from `@kevinjohn/adonisjs-account-kit/auth` is an AdonisJS
+Auth session guard for `config/auth.ts` that authenticates through Account Kit, so `auth.user` is
+the signed-in model and the Auth Japa plugin's `loginAs(user)` works in tests (register both
+`sessionApiClient` and `authApiClient`). `createManagedGuard` stays available. See
+[the session guard guide](docs/guide/authentication.md#account-kit-session-guard).
+
 ## Registering callbacks from a provider
 
 `config/account_kit.ts` and `config/admission.ts` may leave out the callbacks that call

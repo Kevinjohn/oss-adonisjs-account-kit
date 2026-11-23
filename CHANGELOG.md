@@ -6,6 +6,7 @@
 
 - `defineCommands({ exclude })` from the new `@kevinjohn/adonisjs-account-kit/define_commands` subpath: a lazy command loader for `adonisrc.ts` that leaves the named commands out.
 - `AccountKitCallbackRegistry` (container alias `account_kit.callbacks`) and, from `@kevinjohn/adonisjs-account-kit/admission`, `AdmissionCallbackRegistry` (`account_admission.callbacks`): an application provider registers the callbacks that call application code, so the config files hold plain options. `users` and `approval.authorize` become optional in the config types; `defineConfig` and `defineAdmission` check the registry-supplied fields when the service is first resolved, with the same errors as before. `account-kit:doctor` reads the merged config.
+- `accountKitSessionGuard({ provider })` from the new `@kevinjohn/adonisjs-account-kit/auth` subpath: an `@adonisjs/auth` session guard that checks the Account Kit credential revision and sign-in handle, sets `auth.user`, offers `current()` and `forRequest()` for the authentication service, and supports `loginAs` through `authenticateAsClient`. `@adonisjs/auth` `^10.0.0` is a new optional peer dependency, needed only for this subpath.
 
 ## 0.5.2 - 2026-11-23
 

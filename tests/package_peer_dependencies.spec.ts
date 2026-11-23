@@ -8,6 +8,7 @@ test('keeps peer dependency floors at the oldest supported versions', async ({ a
   // only when the package needs the newer version, with a changelog entry, and update this list.
   assert.deepEqual(manifest.peerDependencies, {
     '@adonisjs/assembler': '^8.0.0',
+    '@adonisjs/auth': '^10.0.0',
     '@adonisjs/core': '^7.0.0',
     '@adonisjs/limiter': '^3.0.0',
     '@adonisjs/lucid': '^22.4.2',
