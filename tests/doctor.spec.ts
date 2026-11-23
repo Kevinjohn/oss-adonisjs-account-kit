@@ -4,7 +4,7 @@ import { createActionUrls } from '../src/action_urls.js'
 import { defineConfig } from '../src/config.js'
 import { runDoctor, type DoctorInput } from '../src/doctor.js'
 import { aceKernel } from './helpers/ace_kernel.js'
-import { useTestApp } from './helpers/app.js'
+import { bootTestApp, useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
 import { resetSchema } from './helpers/schema.js'
 import { provider } from './helpers/social_identity.js'
@@ -405,6 +405,39 @@ test.group('account-kit:doctor', (group) => {
       else process.env.APP_URL = previous
       kit.app.config.set('account_kit', undefined)
       await kit.db.connection().schema.dropTableIfExists('absent_users')
+    }
+  })
+
+  test('the Ace command reads users registered through account_kit.callbacks', async ({
+    assert,
+  }) => {
+    const app = await bootTestApp({ accountKitProvider: 'source' })
+    const previous = process.env.APP_URL
+    try {
+      const users = makeUsersAdapter(app.db, app.hash)
+      const config = makeConfig({ users: undefined })
+      app.app.config.set('account_kit', defineConfig({ ...config, authorize: undefined }))
+      const registry = await app.app.container.make('account_kit.callbacks')
+      registry.register(() => ({
+        authorize: config.authorize,
+        users: {
+          ...users,
+          resolveMetadata: async () => ({ table: 'absent_users', primaryKey: 'id' as const }),
+        },
+      }))
+      const { kernel } = aceKernel(app, [AccountKitDoctor])
+      const errors: string[] = []
+      kernel.ui.logger.error = (message) => {
+        errors.push(String(message))
+      }
+      process.env.APP_URL = 'https://example.test'
+      const command = await kernel.exec('account-kit:doctor', [])
+      assert.equal(command.exitCode, 1)
+      assert.match(errors.join('\n'), /table absent_users does not exist/)
+    } finally {
+      if (previous === undefined) delete process.env.APP_URL
+      else process.env.APP_URL = previous
+      await app.close()
     }
   })
 

@@ -10,6 +10,7 @@
     "test": "node --import=@poppinss/ts-exec --enable-source-maps run.ts"
   },
   "dependencies": {
+    "@adonisjs/auth": "^10.0.0",
     "@adonisjs/core": "^7.0.0",
     "@adonisjs/limiter": "^3.0.0",
     "@adonisjs/lucid": "^22.4.2",

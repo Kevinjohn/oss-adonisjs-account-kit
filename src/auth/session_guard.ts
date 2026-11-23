@@ -1,0 +1,164 @@
+// An `@adonisjs/auth` session guard that authenticates through Account Kit.
+import { errors, type symbols } from '@adonisjs/auth'
+import { SessionGuard } from '@adonisjs/auth/session'
+import type { AuthClientResponse, GuardConfigProvider } from '@adonisjs/auth/types'
+import type { SessionUserProviderContract } from '@adonisjs/auth/types/session'
+import type { HttpContext } from '@adonisjs/core/http'
+import type { ApplicationService, ConfigProvider } from '@adonisjs/core/types'
+import { requireAccountAccessDecision } from '../account_access_decision.js'
+import { buildAccountProjection } from '../account_projection.js'
+import { requireAuthentication } from '../authentication_config.js'
+import { establishCredential } from '../credential_issuance.js'
+import { revision } from '../credential_revision.js'
+import { lockUser, transaction } from '../db.js'
+import { InvalidCredentialsError, InvalidSessionError } from '../errors.js'
+import { createSessionGuard } from '../http/managed_session_guard.js'
+import type { AuthenticationGuard, CurrentAccountInput, UserId } from '../types.js'
+
+type RealUser<P extends SessionUserProviderContract<unknown>> = P[typeof symbols.PROVIDER_REAL_USER]
+
+const revisionKey = 'accountKitRevision'
+const handleKey = 'accountKitSession'
+
+/**
+ * A session guard for `config/auth.ts` that authenticates through Account Kit: the session must
+ * hold a live registry handle and the current credential revision, exactly as
+ * `authentication.current` checks. `ctx.auth.use(name).user` and `ctx.auth.user` are the
+ * signed-in model; `authenticateAsClient(user)` creates a real registry sign-in, so
+ * `@adonisjs/auth`'s `authApiClient` provides `loginAs`.
+ */
+export class AccountKitSessionGuard<
+  UserProvider extends SessionUserProviderContract<unknown>,
+> extends SessionGuard<false, UserProvider> {
+  readonly #name: string
+  readonly #ctx: HttpContext
+  readonly #provider: UserProvider
+  readonly #app: ApplicationService
+
+  constructor(
+    name: string,
+    ctx: HttpContext,
+    emitter: ConstructorParameters<typeof SessionGuard<false, UserProvider>>[3],
+    provider: UserProvider,
+    app: ApplicationService
+  ) {
+    super(name, ctx, { useRememberMeTokens: false }, emitter, provider)
+    this.#name = name
+    this.#ctx = ctx
+    this.#provider = provider
+    this.#app = app
+  }
+
+  #managed() {
+    return createSessionGuard({
+      strategy: 'session',
+      name: this.#name,
+      loadUser: async () => ({
+        findOrFail: async (id: UserId) => {
+          const user = await this.#provider.findById(id)
+          if (!user) throw new InvalidSessionError()
+          return user.getOriginal()
+        },
+      }),
+    })
+  }
+
+  /**
+   * Authenticates the session as `SessionGuard` does, then checks its credential revision and
+   * registry handle as `authentication.current` does. Fails with `E_UNAUTHORIZED_ACCESS`.
+   */
+  async authenticate(): Promise<RealUser<UserProvider>> {
+    if (this.authenticationAttempted) return this.getUserOrFail()
+    const user = await super.authenticate()
+    // `SessionGuard.authenticate` has already required a session.
+    const { session } = this.#ctx as HttpContext & { session: { get(key: string): unknown } }
+    const stored = session.get(revisionKey)
+    const handle = session.get(handleKey)
+    try {
+      if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
+      if (handle !== undefined && typeof handle !== 'string') throw new InvalidSessionError()
+      const kit = await this.#app.container.make('account_kit')
+      await kit.authentication.current({
+        userId: (user as { id: UserId }).id,
+        ...(stored === undefined ? {} : { revision: stored === '' ? null : stored }),
+        ...(handle ? { sessionHandle: handle } : {}),
+      })
+    } catch (error) {
+      // `SessionGuard.authenticate` marked the request authenticated before the kit check.
+      this.user = undefined
+      this.isAuthenticated = false
+      if (!(error instanceof InvalidSessionError)) throw error
+      throw new errors.E_UNAUTHORIZED_ACCESS('Invalid or expired user session', {
+        guardDriverName: this.driverName,
+      })
+    }
+    return user
+  }
+
+  /**
+   * Creates a registry sign-in for `user`, with the `canAccess` checks of `authentication.login`
+   * after its password check, and returns the session data for the test client.
+   */
+  async authenticateAsClient(user: RealUser<UserProvider>): Promise<AuthClientResponse> {
+    const guardUser = await this.#provider.createUserForGuard(user)
+    const userId = guardUser.getId() as UserId
+    const kit = await this.#app.container.make('account_kit')
+    const deps = kit['deps']
+    const auth = requireAuthentication(deps.config)
+    const verified = await transaction(deps.db, async (trx) => {
+      await lockUser(trx, deps.config, userId)
+      const account = await deps.config.users.findById(userId, trx)
+      if (!account || !requireAccountAccessDecision(await auth.canAccess(account, trx)))
+        throw new InvalidCredentialsError()
+      return {
+        account: buildAccountProjection(account),
+        revision: await revision(trx, deps.config, account.id),
+      }
+    })
+    const session: Record<string, unknown> = {}
+    const sessionKey = this.sessionKeyName
+    await establishCredential(
+      deps,
+      auth,
+      {
+        strategy: 'session',
+        name: this.#name,
+        async establish(id, stamp, handle) {
+          session[sessionKey] = id
+          session[revisionKey] = stamp ?? ''
+          if (handle) session[handleKey] = handle
+        },
+        async terminate() {},
+      },
+      verified,
+      { rejected: () => new InvalidCredentialsError(), cleanupFailed: 'Client sign-in failed' }
+    )
+    return { session }
+  }
+
+  /** The verified sign-in for `authentication.current` / `withCurrent`; `ManagedGuard.current` without a context. */
+  current(): Promise<CurrentAccountInput> {
+    return this.#managed().current(this.#ctx)
+  }
+
+  /** The request adapter for `authentication.login` / `logout`; `ManagedGuard.forRequest` without a context. */
+  forRequest(): AuthenticationGuard<undefined> {
+    return this.#managed().forRequest(this.#ctx)
+  }
+}
+
+/** Configures an `AccountKitSessionGuard` in `config/auth.ts`, as `sessionGuard` does. */
+export function accountKitSessionGuard<
+  UserProvider extends SessionUserProviderContract<unknown>,
+>(config: {
+  provider: UserProvider | ConfigProvider<UserProvider>
+}): GuardConfigProvider<(ctx: HttpContext) => AccountKitSessionGuard<UserProvider>> {
+  return {
+    async resolver(name, app) {
+      const emitter = await app.container.make('emitter')
+      const provider =
+        'resolver' in config.provider ? await config.provider.resolver(app) : config.provider
+      return (ctx) => new AccountKitSessionGuard(name, ctx, emitter as never, provider, app)
+    },
+  }
+}

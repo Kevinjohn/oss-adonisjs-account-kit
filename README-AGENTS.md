@@ -100,6 +100,19 @@ Commands:
 | `account-kit:openapi`           | Writes the managed routes' OpenAPI document                |
 | `account-kit:retirement-impact` | Counts accounts that would lose their only sign-in method  |
 
+Leaving out a command: replace the `./commands` entry in the `commands` array of `adonisrc.ts`
+with `defineCommands`, which loads the same commands without the ones you name. It imports the
+commands only when Ace first needs them, and throws `InvalidConfigurationError` (field
+`commands.exclude`) for an unknown or repeated name.
+
+```ts
+import { defineCommands } from '@kevinjohn/adonisjs-account-kit/define_commands'
+
+export default defineConfig({
+  commands: [defineCommands({ exclude: ['account-kit:reset-link'] })],
+})
+```
+
 Every account operation and request error extends `AccountKitError` and has a stable `code` and
 HTTP `status`; `InvalidConfigurationError`, raised for invalid configuration, is separate. See the
 [error reference](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/errors.md)

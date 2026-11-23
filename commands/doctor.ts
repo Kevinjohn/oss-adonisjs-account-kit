@@ -1,6 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/ace'
 import { runDoctor } from '../src/doctor.js'
-import type { ResolvedConfig } from '../src/types.js'
+import { resolveAccountKitConfig } from '../src/config_resolution.js'
 
 export default class AccountKitDoctor extends BaseCommand {
   static commandName = 'account-kit:doctor'
@@ -8,7 +8,7 @@ export default class AccountKitDoctor extends BaseCommand {
   static options = { startApp: true }
 
   async run(): Promise<void> {
-    const config = this.app.config.get<ResolvedConfig | undefined>('account_kit')
+    const config = await resolveAccountKitConfig(this.app)
     const checks = await runDoctor({
       config,
       db: await this.app.container.make('lucid.db'),

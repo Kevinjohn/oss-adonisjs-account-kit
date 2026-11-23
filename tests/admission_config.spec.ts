@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { defineAdmission } from '../src/admission/config.js'
+import { defineAdmission, resolveAdmissionConfig } from '../src/admission/config.js'
 import type { AdmissionConfig } from '../src/admission/types.js'
 
 const authorize = { decide: async () => true, list: async () => true }
@@ -76,7 +76,12 @@ test.group('admission config', () => {
   })
 
   test('requires both approval callbacks', ({ assert }) => {
-    assert.throws(define({ approval: { required: true } }), /approval\.authorize must be an object/)
+    // A missing `authorize` may still be registered; the provider checks it on first resolution.
+    const deferred = defineAdmission({ approval: { required: true } })
+    assert.throws(
+      () => resolveAdmissionConfig(deferred, undefined),
+      /approval\.authorize must be an object/
+    )
     assert.throws(
       define({ approval: { required: true, authorize: { list: async () => true } } }),
       /approval\.authorize\.decide must be a function/

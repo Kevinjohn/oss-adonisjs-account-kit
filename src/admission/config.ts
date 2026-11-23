@@ -3,9 +3,12 @@ import { InvalidConfigurationError } from '../errors.js'
 import { isDomainName } from './domain.js'
 import type {
   AdmissionAuthorizeCallbacks,
+  AdmissionCallbacks,
   AdmissionConfig,
   ResolvedAdmissionConfig,
 } from './types.js'
+
+const admissionInputs = new WeakMap<ResolvedAdmissionConfig, AdmissionConfig>()
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -16,9 +19,56 @@ function fail(field: string, message: string): never {
 
 /**
  * Validates the admission config. Throws at boot for a config with no requirement, a malformed
- * domain, or a missing `authorize` callback.
+ * domain, or an invalid `authorize` callback. A missing `approval.authorize` may come from
+ * `AdmissionCallbackRegistry`; it is checked when the admission service is first resolved.
  */
 export function defineAdmission(config: AdmissionConfig): ResolvedAdmissionConfig {
+  const resolved = checkAdmission(config, true)
+  admissionInputs.set(resolved, config)
+  return resolved
+}
+
+/**
+ * The admission config merged with the registered callbacks, with every `defineAdmission` check
+ * run on the result. A config `defineAdmission` did not build is used as it is.
+ */
+export function resolveAdmissionConfig(
+  config: ResolvedAdmissionConfig,
+  callbacks: AdmissionCallbacks | undefined
+): ResolvedAdmissionConfig {
+  const input = admissionInputs.get(config)
+  if (!input) return config
+  if (!callbacks) {
+    checkAdmission(input, false)
+    return config
+  }
+  if (typeof callbacks !== 'object' || callbacks === null)
+    fail('callbacks', 'callbacks must be an object')
+  const { approvalAuthorize, onAdmissionEvent } = callbacks
+  if (approvalAuthorize !== undefined && input.approval?.authorize !== undefined)
+    bothPlaces('approval.authorize')
+  if (onAdmissionEvent !== undefined && input.onAdmissionEvent !== undefined)
+    bothPlaces('onAdmissionEvent')
+  return checkAdmission(
+    {
+      ...input,
+      ...(input.approval !== undefined && approvalAuthorize !== undefined
+        ? { approval: { ...input.approval, authorize: approvalAuthorize } }
+        : {}),
+      ...(onAdmissionEvent !== undefined ? { onAdmissionEvent } : {}),
+    },
+    false
+  )
+}
+
+function bothPlaces(field: string): never {
+  fail(
+    `admission.${field}`,
+    `${field} is set in both config/admission.ts and the registered callbacks`
+  )
+}
+
+function checkAdmission(config: AdmissionConfig, deferCallbacks: boolean): ResolvedAdmissionConfig {
   if (!isObject(config)) fail('admission', 'config must be an object')
   const { domain, invitation, approval, onAdmissionEvent } = config
   if (domain === undefined && invitation === undefined && approval === undefined)
@@ -51,14 +101,16 @@ export function defineAdmission(config: AdmissionConfig): ResolvedAdmissionConfi
     if (!isObject(approval) || approval.required !== true)
       fail('admission.approval', 'approval must have required: true; omit it to disable')
     const authorize = approval.authorize
-    if (!isObject(authorize))
-      fail('admission.approval.authorize', 'approval.authorize must be an object')
-    for (const name of ['decide', 'list'] as const)
-      if (typeof authorize[name] !== 'function')
-        fail(
-          `admission.approval.authorize.${name}`,
-          `approval.authorize.${name} must be a function`
-        )
+    if (!deferCallbacks || authorize !== undefined) {
+      if (!isObject(authorize))
+        fail('admission.approval.authorize', 'approval.authorize must be an object')
+      for (const name of ['decide', 'list'] as const)
+        if (typeof authorize[name] !== 'function')
+          fail(
+            `admission.approval.authorize.${name}`,
+            `approval.authorize.${name} must be a function`
+          )
+    }
     resolvedApproval = { authorize: authorize as unknown as AdmissionAuthorizeCallbacks }
   }
 

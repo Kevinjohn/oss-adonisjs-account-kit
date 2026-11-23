@@ -1,6 +1,7 @@
 // The public entry point of `@kevinjohn/adonisjs-account-kit/admission`.
 export { defineAdmission } from './config.js'
 export { AccountAdmission } from './service.js'
+export { AdmissionCallbackRegistry } from './callback_registry.js'
 export type { AdmissionDependencies } from './service.js'
 export type { AdmissionPage } from './listing.js'
 export { admissionMiddleware } from './middleware.js'
@@ -10,6 +11,7 @@ export { AdmissionDecisionError, AdmissionRequiredError } from './errors.js'
 export type {
   AdmissionApprovalStatus,
   AdmissionAuthorizeCallbacks,
+  AdmissionCallbacks,
   AdmissionConfig,
   AdmissionDecision,
   AdmissionDomainConfig,

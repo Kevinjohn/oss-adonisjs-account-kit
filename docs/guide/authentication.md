@@ -51,6 +51,40 @@ authentication: {
 - A fixed public HTTPS origin and explicit CORS/origin policy for your browser client. CORS does
   not authenticate requests.
 
+### Account Kit session guard
+
+`accountKitSessionGuard` from `@kevinjohn/adonisjs-account-kit/auth` is an AdonisJS Auth session
+guard that authenticates through Account Kit. It needs `@adonisjs/auth` 10, an optional peer
+dependency that only this subpath imports. Use it in `config/auth.ts` in place of `sessionGuard`:
+
+```ts
+import { defineConfig } from '@adonisjs/auth'
+import { sessionUserProvider } from '@adonisjs/auth/session'
+import { accountKitSessionGuard } from '@kevinjohn/adonisjs-account-kit/auth'
+
+export default defineConfig({
+  default: 'web',
+  guards: {
+    web: accountKitSessionGuard({
+      provider: sessionUserProvider({ model: () => import('#models/user') }),
+    }),
+  },
+})
+```
+
+- `authenticate()` (and so `middleware.auth()`) accepts a session only when it holds the current
+  credential revision and, with `sessionManagement`, a live sign-in handle, as
+  `kit.authentication.current` checks; otherwise it fails with `E_UNAUTHORIZED_ACCESS`. Read the
+  signed-in model as `auth.user`. Remember-me tokens are off.
+- `auth.use('web').current()` and `auth.use('web').forRequest()` return what
+  `createManagedGuard({ strategy: 'session', name: 'web', ... })` returns for the request, for
+  `kit.authentication.current`, `withCurrent`, `login` and `logout`. `createManagedGuard` keeps
+  working with a guard built this way.
+- `authenticateAsClient(user)` creates a sign-in with the `canAccess` checks of `login`, without a
+  password, and returns its session data. With the `sessionApiClient` (`@adonisjs/session`) and
+  `authApiClient` (`@adonisjs/auth`) Japa plugins registered, `client.get(url).loginAs(user)`
+  sends a request as that user. Each `loginAs` request is a new sign-in.
+
 ### Token guard requirements
 
 - AdonisJS Auth's opaque access-token provider and its token table.

@@ -38,6 +38,8 @@
     "./transaction": "./build/transaction/main.js",
     "./ally": "./build/src/ally_social_provider.js",
     "./commands": "./build/commands/main.js",
+    "./define_commands": "./build/src/define_commands.js",
+    "./auth": "./build/auth/main.js",
     "./admission": "./build/src/admission/main.js",
     "./admission/provider": "./build/src/admission/provider.js",
     "./admission/commands": "./build/src/admission/commands/main.js"
@@ -92,6 +94,7 @@
   },
   "devDependencies": {
     "@adonisjs/assembler": "^8.6.0",
+    "@adonisjs/auth": "^10.0.0",
     "@adonisjs/core": "^7.0.1",
     "@adonisjs/eslint-config": "^3.0.0",
     "@adonisjs/i18n": "^3.0.1",
@@ -128,6 +131,7 @@
   },
   "peerDependencies": {
     "@adonisjs/assembler": "^8.0.0",
+    "@adonisjs/auth": "^10.0.0",
     "@adonisjs/core": "^7.0.0",
     "@adonisjs/limiter": "^3.0.0",
     "@adonisjs/lucid": "^22.4.2",
@@ -139,6 +143,9 @@
   },
   "peerDependenciesMeta": {
     "@adonisjs/assembler": {
+      "optional": true
+    },
+    "@adonisjs/auth": {
       "optional": true
     },
     "@adonisjs/mail": {
@@ -170,8 +177,10 @@
       "./testing/notifications.ts",
       "./services/main.ts",
       "./http/main.ts",
+      "./auth/main.ts",
       "./transaction/main.ts",
       "./commands/main.ts",
+      "./src/define_commands.ts",
       "./commands/prune.ts",
       "./commands/setup.ts",
       "./commands/retirement_impact.ts",
