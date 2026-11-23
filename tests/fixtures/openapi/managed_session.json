@@ -3664,9 +3664,8 @@
                   "role": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 64,
-                    "pattern": "\\S",
-                    "description": "Supply trimmed role text. The server trims before applying the bounds."
+                    "pattern": "^\\s*\\S(?:[\\s\\S]{0,62}\\S)?\\s*$",
+                    "description": "The server trims surrounding whitespace, then requires 1–64 UTF-16 code units. The schema counts Unicode code points."
                   },
                   "scope": {
                     "type": [
@@ -3675,7 +3674,7 @@
                     ],
                     "minLength": 1,
                     "maxLength": 255,
-                    "description": "Exact team or workspace scope. Omit it or send null for an unscoped invitation."
+                    "description": "Exact scope. The server requires 1–255 UTF-16 code units. The schema counts Unicode code points. Omit it or send null for an unscoped invitation."
                   }
                 },
                 "required": [
@@ -3900,7 +3899,7 @@
           {
             "in": "query",
             "name": "scope",
-            "description": "Exact scope to filter by. Omit it to list invitations across scopes.",
+            "description": "Exact scope. The server requires 1–255 UTF-16 code units. The schema counts Unicode code points. Omit it to list invitations across scopes.",
             "schema": {
               "type": "string",
               "minLength": 1,

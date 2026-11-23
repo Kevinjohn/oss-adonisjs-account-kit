@@ -9,6 +9,12 @@ import {
   invitationScopeLength,
 } from '../invitation_input.js'
 import { sensitivePurposes } from '../social_enums.js'
+
+// Permit surrounding whitespace while bounding the text from its first to last non-whitespace character.
+const invitationRolePattern = `^\\s*\\S(?:[\\s\\S]{0,${invitationRoleLength.maxLength - 2}}\\S)?\\s*$`
+
+const invitationScopeDescription = `Exact scope. The server requires ${invitationScopeLength.minLength}–${invitationScopeLength.maxLength} UTF-16 code units. The schema counts Unicode code points.`
+
 export interface EndpointResponse {
   description: string
   /** Omitted for responses without a body. */
@@ -248,15 +254,14 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
         {
           email: email(),
           role: string({
-            ...invitationRoleLength,
-            pattern: '\\S',
-            description: 'Supply trimmed role text. The server trims before applying the bounds.',
+            minLength: invitationRoleLength.minLength,
+            pattern: invitationRolePattern,
+            description: `The server trims surrounding whitespace, then requires ${invitationRoleLength.minLength}–${invitationRoleLength.maxLength} UTF-16 code units. The schema counts Unicode code points.`,
           }),
           scope: {
             type: ['string', 'null'],
             ...invitationScopeLength,
-            description:
-              'Exact team or workspace scope. Omit it or send null for an unscoped invitation.',
+            description: `${invitationScopeDescription} Omit it or send null for an unscoped invitation.`,
           },
         },
         ['email', 'role']
@@ -281,7 +286,7 @@ export const managedEndpointSchemas: Record<ManagedEndpointName, EndpointSchemas
       },
       {
         name: 'scope',
-        description: 'Exact scope to filter by. Omit it to list invitations across scopes.',
+        description: `${invitationScopeDescription} Omit it to list invitations across scopes.`,
         schema: string(invitationScopeLength),
       },
     ],

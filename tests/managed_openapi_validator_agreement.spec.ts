@@ -215,6 +215,68 @@ test.group('managed request schemas match the validators', () => {
     )
   })
 
+  test('invitation role bounds apply after surrounding whitespace is trimmed', async ({
+    assert,
+  }) => {
+    const roleSchema = compileEmbedded(session, requestSchema(session, 'account.invitation.send'))
+    const email = 'a@example.test'
+    for (const [role, accepted] of [
+      [' r ', true],
+      [` ${'r'.repeat(64)} `, true],
+      [` ${'r'.repeat(65)} `, false],
+      [' \t\n ', false],
+    ] as const) {
+      const input = { email, role }
+      assert.equal(roleSchema(input), accepted)
+      const [, validated] = await invitationSendValidator.tryValidate(input)
+      assert.equal(validated?.role ?? null, accepted ? role.trim() : null)
+    }
+  })
+
+  test('invitation schemas document the stricter server length for supplementary characters', async ({
+    assert,
+  }) => {
+    const sendSchema = requestSchema(session, 'account.invitation.send')
+    const send = compileEmbedded(session, sendSchema)
+    const parameters = (session.paths['/api/v1/account/invitations'].get as any).parameters
+    const scopeParameter = parameters.find(({ name }: { name: string }) => name === 'scope')
+    const listScope = compileEmbedded(session, scopeParameter.schema)
+    const email = 'a@example.test'
+    const character = '😀'
+    const roles = { accepted: character.repeat(32), rejected: character.repeat(33) }
+    const scopes = { accepted: `${character.repeat(127)}s`, rejected: character.repeat(128) }
+    assert.isTrue(send({ email, role: roles.accepted, scope: scopes.accepted }))
+    assert.deepInclude(
+      await invitationSendValidator.validate({
+        email,
+        role: roles.accepted,
+        scope: scopes.accepted,
+      }),
+      { role: roles.accepted, scope: scopes.accepted }
+    )
+    assert.isTrue(listScope(scopes.accepted))
+    assert.deepInclude(await invitationListValidator.validate({ scope: scopes.accepted }), {
+      scope: scopes.accepted,
+    })
+
+    for (const [field, input] of [
+      ['role', { email, role: roles.rejected }],
+      ['scope', { email, role: 'r', scope: scopes.rejected }],
+    ] as const) {
+      assert.isTrue(send(input))
+      const [error] = await invitationSendValidator.tryValidate(input)
+      assert.deepInclude(error?.messages[0], { field, rule: 'maxLength' })
+    }
+    assert.isTrue(listScope(scopes.rejected))
+    const [error] = await invitationListValidator.tryValidate({ scope: scopes.rejected })
+    assert.deepInclude(error?.messages[0], { field: 'scope', rule: 'maxLength' })
+
+    const { properties } = sendSchema as { properties: Record<string, { description: string }> }
+    assert.include(properties.role.description, '1–64 UTF-16 code units')
+    assert.include(properties.scope.description, '1–255 UTF-16 code units')
+    assert.include(scopeParameter.description, '1–255 UTF-16 code units')
+  })
+
   test('the invitation list query matches the validator', async ({ assert }) => {
     const parameters = (session.paths['/api/v1/account/invitations'].get as any).parameters
     const limit = compileEmbedded(session, parameters[0].schema)
