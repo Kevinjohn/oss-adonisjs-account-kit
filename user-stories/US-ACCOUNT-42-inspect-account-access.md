@@ -30,7 +30,7 @@ flowchart TD
 
 Scope: the host authorises the caller, then Account Kit opens a separate transaction. Adapters and `canAccess` must make retry-safe, read-only calls through that transaction.
 
-The [API example recipe](../docs/recipes/account-access-inspection.md#authorize-inspect-and-map-denial) passes the authenticated actor ID and canonical target ID to `AccountAccessInspection.inspect`. The service uses injected `AccountAdmission` to check the caller's admission, checks the owner role, then uses injected `AccountKit` to inspect the target. `compare` follows the same path on every comparison before checking the returned revision.
+The [API example recipe](../docs/recipes/account-access-inspection.md) passes the authenticated actor ID and canonical target ID to `AccountAccessInspection.inspect`. The service uses injected `AccountAdmission` to check the caller's admission, checks the owner role, then uses injected `AccountKit` to inspect the target. `compare` follows the same path on every comparison before checking the returned revision.
 
 ```mermaid
 flowchart TD
