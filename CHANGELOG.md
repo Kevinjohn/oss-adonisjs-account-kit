@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Report Ace operator failures once with safe guidance while preserving the original command error.
+
 ## 0.6.0 - 2026-11-23
 
 ### Added
