@@ -15,7 +15,7 @@ const users = createLucidAdapter(async () => {
   return User
 })
 
-const notConfigured = (method: string) => async () => {
+const createUnconfiguredNotifier = (method: string) => async () => {
   throw new Error('account_kit: configure notify.' + method)
 }
 
@@ -68,13 +68,13 @@ export default defineConfig({
    * Delivers account notices. Each one throws until you connect your mailer.
    */
   notify: {
-    passwordResetProvision: notConfigured('passwordResetProvision'),
-    accountActivationProvision: notConfigured('accountActivationProvision'),
-    invitationProvision: notConfigured('invitationProvision'),
-    emailChangeProvision: notConfigured('emailChangeProvision'),
-    emailChanged: notConfigured('emailChanged'),
-    passwordResetCompleted: notConfigured('passwordResetCompleted'),
-    passwordChanged: notConfigured('passwordChanged'),
+    passwordResetProvision: createUnconfiguredNotifier('passwordResetProvision'),
+    accountActivationProvision: createUnconfiguredNotifier('accountActivationProvision'),
+    invitationProvision: createUnconfiguredNotifier('invitationProvision'),
+    emailChangeProvision: createUnconfiguredNotifier('emailChangeProvision'),
+    emailChanged: createUnconfiguredNotifier('emailChanged'),
+    passwordResetCompleted: createUnconfiguredNotifier('passwordResetCompleted'),
+    passwordChanged: createUnconfiguredNotifier('passwordChanged'),
   },
 
   /**

@@ -110,7 +110,7 @@ index 0000000..5ca1830
 +  sentInvitations.push(url)
 +}
 diff --git a/config/account_kit.ts b/config/account_kit.ts
-index 11d9e2c..7eeb576 100644
+index 3613a3f..97d6289 100644
 --- a/config/account_kit.ts
 +++ b/config/account_kit.ts
 @@ -1,5 +1,8 @@
@@ -149,7 +149,7 @@ index 11d9e2c..7eeb576 100644
 +  }
 +)
  
- const notConfigured = (method: string) => async () => {
+ const createUnconfiguredNotifier = (method: string) => async () => {
    throw new Error('account_kit: configure notify.' + method)
 @@ -27,12 +44,20 @@ export default defineConfig({
    /**
@@ -204,13 +204,13 @@ index 11d9e2c..7eeb576 100644
    }),
 @@ -69,7 +93,7 @@ export default defineConfig({
    notify: {
-     passwordResetProvision: notConfigured('passwordResetProvision'),
-     accountActivationProvision: notConfigured('accountActivationProvision'),
--    invitationProvision: notConfigured('invitationProvision'),
+     passwordResetProvision: createUnconfiguredNotifier('passwordResetProvision'),
+     accountActivationProvision: createUnconfiguredNotifier('accountActivationProvision'),
+-    invitationProvision: createUnconfiguredNotifier('invitationProvision'),
 +    invitationProvision: deliverInvitation,
-     emailChangeProvision: notConfigured('emailChangeProvision'),
-     emailChanged: notConfigured('emailChanged'),
-     passwordResetCompleted: notConfigured('passwordResetCompleted'),
+     emailChangeProvision: createUnconfiguredNotifier('emailChangeProvision'),
+     emailChanged: createUnconfiguredNotifier('emailChanged'),
+     passwordResetCompleted: createUnconfiguredNotifier('passwordResetCompleted'),
 @@ -87,7 +111,7 @@ export default defineConfig({
    /**
     * Grants the invited role inside the acceptance transaction.

@@ -37,8 +37,11 @@ with a server-side store in step 5.
 
 Follow the [root install instructions](../../README.md#install) for the released archive and
 configuration command. For development verification, install the archive built and packed from
-the source revision being checked, and record its digest; keep release and development evidence
-separate.
+the source revision being checked and record its digest.
+
+Recipe patches apply to the generated configuration from the same Account Kit revision. If you
+installed a release archive, use the patch from that release tag’s `docs/recipes/patches` directory.
+The development harness uses the patch and generated configuration from the checkout it tests.
 
 The required peers are AdonisJS Core 7, Lucid, Limiter and Luxon within the declared
 [compatibility ranges](../reference/compatibility.md). The application supplies its database driver. Preserve

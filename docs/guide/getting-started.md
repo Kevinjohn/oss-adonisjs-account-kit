@@ -70,8 +70,8 @@ import app from '@adonisjs/core/services/app'
 import { createLogNotifications } from '@kevinjohn/adonisjs-account-kit'
 ```
 
-Replace the whole `notify: { ... }` block, and delete the `notConfigured` helper above
-`defineConfig`, which is now unused:
+Replace the whole `notify: { ... }` block and delete the generated placeholder notification
+factory above `defineConfig`. The new block uses `createLogNotifications`:
 
 ```ts
 notify: createLogNotifications({
