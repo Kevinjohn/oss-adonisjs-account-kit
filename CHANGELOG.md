@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document that callback factories run while `AccountKit` or `AccountAdmission` is being built, so application services that depend on them are resolved inside the callbacks; the README admission example now does this. Checked against the registry, provider and container code paths named in the issue, with the format and docs-build checks.
+
 ## 0.6.1 - 2026-11-24
 
 - Report Ace operator failures once with safe guidance while preserving the original command error.
