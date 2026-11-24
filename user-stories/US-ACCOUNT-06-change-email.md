@@ -48,14 +48,20 @@ flowchart TD
   I -->|Same current address| J["Clear pending different address and verification proof, if present"]
   I -->|Different and already registered| X["Roll back with E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED"]
   I -->|Same pending email change in cooldown| K["Keep existing proof without new delivery"]
-  J --> J0["Commit and return account, or propagate committed fault; no delivery"]
+  J --> J0["Commit without new delivery"]
   K --> J0
+  J0 -->|Success| Y{"Request caller?"}
+  J0 -->|Committed fault| CF["Propagate committed fault; managed response depends on recognised failure"]
   I -->|Inactive, different and available| L["Replace current and pending email, clear reset proof, upsert activation proof and advance credentials"]
   I -->|Active, different and available| M["Upsert pending address and email-change proof"]
   L --> D["Commit; run observer for correction, corresponding provision and lifecycle event"]
   M --> D
-  D --> Z["Return saved result or committed follow-up failure; managed correction invokes optional session refresh when revision is available"]
+  D --> Z["Finish updateProfile; managed correction invokes optional session refresh when revision is available"]
+  Z -->|Success| Y
+  Z -->|Committed fault| CF
   Z -->|Refresh fails| R["Propagate refresh error; correction remains saved"]
+  Y -->|requestEmailChange| VR["Resolve void"]
+  Y -->|updateProfile| VA["Return account; managed handler represents it"]
   Q["Managed inspection or direct inspectEmailChange"] --> T["Check live email_change proof and current/pending email match without consumption"]
   E["Managed completion or direct completeEmailChange"] --> F["Transaction consumes matching proof and checks new email still available"]
   F -->|Refused| X2["Roll back and surface invalid proof or email collision"]
