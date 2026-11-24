@@ -6,7 +6,6 @@ import {
   E_INVALID_CREDENTIALS,
   E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
   E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
-  E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE,
   E_ACCOUNT_KIT_INVALID_TOKEN,
   E_ACCOUNT_KIT_INVALID_SESSION,
   E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
@@ -106,10 +105,7 @@ export function mapPublicErrorIdentity(
   if (error instanceof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     return buildPublicErrorIdentity(403, 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED')
   // Hide whether the callback reached the upstream provider after matching a stored state.
-  if (
-    error instanceof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED ||
-    error instanceof E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE
-  )
+  if (error instanceof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED)
     return buildPublicErrorIdentity(400, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID.code)
   const protectedSocial = protectedSocialCodes[error.code]
   if (protectedSocial) return buildPublicErrorIdentity(error.status, protectedSocial)

@@ -271,6 +271,7 @@ Copy this file to `resources/lang/<locale>/errors.json` and translate the values
   "E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING": "Account request rejected.",
+  "E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID": "Account request rejected.",
   "E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED": "Account request rejected.",

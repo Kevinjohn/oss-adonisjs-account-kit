@@ -1,7 +1,10 @@
 import {
   E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
   E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE,
+  E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED,
 } from '../src/errors.js'
+import { accountErrorResponse } from '../src/error_response.js'
 import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
@@ -37,10 +40,11 @@ test.group('social reauthentication proof atomicity', (group) => {
     if (created.status !== 'new' || !('userId' in created))
       throw new Error('Expected social account')
     const actor = current(created.userId)
-    adapters.google = createAllySocialProvider({
+    const allyAdapter = createAllySocialProvider({
       authorizationUrl: async (state) => `https://provider.test/start?state=${state}`,
       user: async () => ({ id: subject, email, emailVerificationState: 'verified' }),
     })
+    adapters.google = allyAdapter
     await assert.rejects(
       () =>
         account.socialAuthentication.begin({
@@ -50,7 +54,7 @@ test.group('social reauthentication proof atomicity', (group) => {
           current: actor,
           clientChallenge,
         }),
-      'Invalid recent authentication proof'
+      E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE
     )
     const begin = async () =>
       account.socialAuthentication.begin({
@@ -100,6 +104,21 @@ test.group('social reauthentication proof atomicity', (group) => {
       ...provider(subject, email, true),
       verifyFreshAuthentication: async () => valid(),
     }
+    const withoutFreshAuthentication = await begin()
+    const freshAdapter = adapters.google
+    adapters.google = allyAdapter
+    const callbackFailure = await account.socialAuthentication
+      .callback({ state: withoutFreshAuthentication.state, callback: {}, current: actor })
+      .catch((error: unknown) => error)
+    assert.instanceOf(callbackFailure, E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED)
+    const failure = callbackFailure as InstanceType<typeof E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED>
+    assert.instanceOf(failure.cause, E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE)
+    assert.equal(accountErrorResponse(failure)?.status, 400)
+    assert.equal(
+      accountErrorResponse(failure)?.body.errors[0].code,
+      'E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID'
+    )
+    adapters.google = freshAdapter
     const staleRevision = await begin()
     const state = await kit.db
       .from('social_transactions')

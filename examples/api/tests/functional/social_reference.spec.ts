@@ -130,7 +130,7 @@ test.group('Social reference', (group) => {
     assert.equal(reauth.status(), 403)
     assert.equal(
       (body(reauth).errors as { code: string }[])[0].code,
-      'E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID'
+      'E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE'
     )
     const relation = await db.from('social_identities').where('user_id', created.id).first()
     const withoutProof = await client

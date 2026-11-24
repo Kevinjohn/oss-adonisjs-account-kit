@@ -153,11 +153,7 @@ export async function completeSocialCallback(
       })
     }
   } catch (cause) {
-    if (
-      cause instanceof E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID ||
-      cause instanceof E_ACCOUNT_KIT_SOCIAL_FRESH_AUTH_UNAVAILABLE
-    )
-      throw cause
+    if (cause instanceof E_ACCOUNT_KIT_SOCIAL_PROFILE_INVALID) throw cause
     throw new E_ACCOUNT_KIT_SOCIAL_PROVIDER_FAILED({ cause })
   }
   let userCreateFailure: unknown
