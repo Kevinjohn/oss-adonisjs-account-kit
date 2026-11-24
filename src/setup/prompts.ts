@@ -1,5 +1,5 @@
 // Interactive setup questionnaire: turns prompt answers into SetupChoices.
-import { defaultSetupChoices } from './defaults.js'
+import { buildDefaultSetupChoices } from './defaults.js'
 import {
   featureNames,
   guardStrategies,
@@ -14,8 +14,8 @@ import {
 } from './types.js'
 import { collectSocialChoices } from './prompts_social.js'
 import { emailDestinations, hasEmailFlow } from './mail_flow.js'
-import { selectedManagedRoutes } from './shared.js'
-import { parseSetupChoices } from './parse.js'
+import { planSelectedManagedRoutes } from './shared.js'
+import { requireSetupChoices } from './parse.js'
 
 function list(value: string): string[] {
   return value
@@ -24,7 +24,7 @@ function list(value: string): string[] {
     .filter(Boolean)
 }
 
-function selected<const T extends string>(
+function requireSelectedOptions<const T extends string>(
   value: string,
   field: string,
   options: readonly T[]
@@ -58,10 +58,10 @@ export async function collectSetupChoices(
     return answer.trim()
   }
   const hasSavedChoices = initialChoices !== undefined
-  const choices = parseSetupChoices(structuredClone(initialChoices ?? defaultSetupChoices()))
+  const choices = requireSetupChoices(structuredClone(initialChoices ?? buildDefaultSetupChoices()))
   const savedRoutePrefix = choices.routePrefix
   const savedStrategy = choices.authentication?.strategy
-  const confirmed = async (question: string, fallback = false) => {
+  const promptForConfirmation = async (question: string, fallback = false) => {
     const input = await ask(question)
     const answer = input.trim().toLowerCase()
     if (answer && !['yes', 'y', 'no', 'n'].includes(answer))
@@ -78,7 +78,7 @@ export async function collectSetupChoices(
   const enabledServices = await ask(
     `Enabled services, comma separated (${featureNames.join(', ')}; current: ${choices.features.join(', ')})`
   )
-  choices.features = selected(
+  choices.features = requireSelectedOptions(
     enabledServices.trim() || choices.features.join(','),
     'features',
     featureNames
@@ -110,7 +110,7 @@ export async function collectSetupChoices(
   choices.managed =
     choices.mode === 'services'
       ? []
-      : selected(
+      : requireSelectedOptions(
           managedGroups.trim() ||
             (hasSavedChoices
               ? choices.managed.filter((feature) => choices.features.includes(feature))
@@ -148,7 +148,7 @@ export async function collectSetupChoices(
     choices.user.idType
   )
   if (choices.features.includes('authentication') || choices.managed.length) {
-    const defaults = defaultSetupChoices().authentication!
+    const defaults = buildDefaultSetupChoices().authentication!
     choices.authentication ??= structuredClone(defaults)
     choices.authentication.strategy = answerChoice(
       await ask(
@@ -174,19 +174,19 @@ export async function collectSetupChoices(
         )
       choices.authentication.session = session
       delete choices.authentication.token
-      session.secureCookie = await confirmed(
+      session.secureCookie = await promptForConfirmation(
         `Secure session cookie configured? (yes/no; current: ${session.secureCookie ? 'yes' : 'no'})`,
         session.secureCookie
       )
-      session.csrf = await confirmed(
+      session.csrf = await promptForConfirmation(
         `Shield CSRF protection configured? (yes/no; current: ${session.csrf ? 'yes' : 'no'})`,
         session.csrf
       )
-      session.originChecked = await confirmed(
+      session.originChecked = await promptForConfirmation(
         `Trusted origin and proxy configuration verified? (yes/no; current: ${session.originChecked ? 'yes' : 'no'})`,
         session.originChecked
       )
-      session.persistentStore = await confirmed(
+      session.persistentStore = await promptForConfirmation(
         `Persistent session storage verified? (yes/no; current: ${session.persistentStore ? 'yes' : 'no'})`,
         session.persistentStore
       )
@@ -198,7 +198,7 @@ export async function collectSetupChoices(
         abilities: ['*'],
       }
       choices.authentication.token = {
-        revocation: await confirmed(
+        revocation: await promptForConfirmation(
           `Token revocation configured? (yes/no; current: ${token.revocation ? 'yes' : 'no'})`,
           token.revocation
         ),
@@ -209,7 +209,7 @@ export async function collectSetupChoices(
         ),
       }
     }
-    choices.authentication.applicationRouteRevocation = await confirmed(
+    choices.authentication.applicationRouteRevocation = await promptForConfirmation(
       `Application-owned protected routes use account revision checks? (yes/no; current: ${choices.authentication.applicationRouteRevocation ? 'yes' : 'no'})`,
       choices.authentication.applicationRouteRevocation
     )
@@ -235,7 +235,7 @@ export async function collectSetupChoices(
     )
     choices.mail.durableWorkerVerified =
       choices.mail.delivery === 'durable' &&
-      (await confirmed(
+      (await promptForConfirmation(
         `Application queue worker, retries and terminal failures verified? (yes/no; current: ${choices.mail.durableWorkerVerified ? 'yes' : 'no'})`,
         choices.mail.durableWorkerVerified
       ))
@@ -273,7 +273,7 @@ export async function collectSetupChoices(
         )
     )
     const defaultDestinations = {
-      ...defaultSetupChoices().mail.destinations,
+      ...buildDefaultSetupChoices().mail.destinations,
       invitation: 'account/invitation',
       magicLink: 'account/magic-link',
     }
@@ -290,7 +290,7 @@ export async function collectSetupChoices(
         (await ask(`${name} relative frontend path (${value})`)) || value
     }
   } else {
-    choices.mail = defaultSetupChoices().mail
+    choices.mail = buildDefaultSetupChoices().mail
   }
   const askRegistrationPolicy = async () => {
     choices.policy.registration = answerChoice(
@@ -313,7 +313,7 @@ export async function collectSetupChoices(
   if (maxLength.trim().toLowerCase() === 'none') choices.policy.password.maxLength = null
   else if (maxLength.trim()) choices.policy.password.maxLength = Number(maxLength)
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
-    choices.policy.password[key] = await confirmed(
+    choices.policy.password[key] = await promptForConfirmation(
       `Require password ${key}? (yes/no; current: ${choices.policy.password[key] ? 'yes' : 'no'})`,
       choices.policy.password[key]
     )
@@ -322,14 +322,14 @@ export async function collectSetupChoices(
   )
   if (minScore) choices.policy.password.minScore = Number(minScore)
   if (verificationEnabled) {
-    choices.policy.verificationRequired = await confirmed(
+    choices.policy.verificationRequired = await promptForConfirmation(
       'Require verified email for account access? (yes/no)',
       choices.policy.verificationRequired
     )
     const unverifiedActions = await ask(
       `Allowed actions before verification (logout,verificationResend,passwordReset; current: ${choices.policy.unverifiedActions.join(', ')})`
     )
-    choices.policy.unverifiedActions = selected(
+    choices.policy.unverifiedActions = requireSelectedOptions(
       unverifiedActions.trim() || choices.policy.unverifiedActions.join(','),
       'policy.unverifiedActions',
       unverifiedActionNames
@@ -344,12 +344,12 @@ export async function collectSetupChoices(
   if (registrationFieldsApplicable) await askRegistrationFields()
   else choices.policy.registrationFields = []
   if (choices.authentication)
-    choices.policy.accessRestrictionHook = await confirmed(
+    choices.policy.accessRestrictionHook = await promptForConfirmation(
       `Application restricted-account policy callback provided? (yes/no; current: ${choices.policy.accessRestrictionHook ? 'yes' : 'no'})`,
       choices.policy.accessRestrictionHook
     )
   if (choices.features.includes('invitations'))
-    choices.policy.invitationPermissionHook = await confirmed(
+    choices.policy.invitationPermissionHook = await promptForConfirmation(
       `Application invitation permission callbacks provided? (yes/no; current: ${choices.policy.invitationPermissionHook ? 'yes' : 'no'})`,
       choices.policy.invitationPermissionHook
     )
@@ -365,7 +365,7 @@ export async function collectSetupChoices(
     choices.routePrefix !== '/'
   ) {
     const availableRoutes = new Set(
-      selectedManagedRoutes({ ...choices, managedExcept: [] }).map(({ name }) => name)
+      planSelectedManagedRoutes({ ...choices, managedExcept: [] }).map(({ name }) => name)
     )
     choices.managedExcept = (choices.managedExcept ?? []).filter((name) =>
       availableRoutes.has(name)

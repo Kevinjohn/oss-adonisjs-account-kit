@@ -3,9 +3,9 @@ import { requireAccountAccessDecision } from './account_access_decision.js'
 import { revision } from './credential_revision.js'
 import { lockUser, transaction } from './db.js'
 import {
-  newSessionHandle,
+  generateSessionHandle,
   recordSession,
-  sessionRegistryEnabled,
+  isSessionRegistryEnabled,
   sessionTable,
 } from './session_registry.js'
 import { hashToken } from './tokens.js'
@@ -45,7 +45,7 @@ export async function establishCredential<Credential>(
   options: IssuanceOptions
 ): Promise<Credential> {
   const label = options.label?.slice(0, 255) || null
-  const handle = sessionRegistryEnabled(deps.config) ? newSessionHandle() : undefined
+  const handle = isSessionRegistryEnabled(deps.config) ? generateSessionHandle() : undefined
   const replaced = handle && guard.strategy === 'session' ? guard.previousHandle?.() : undefined
   let credential: Credential | undefined
   try {

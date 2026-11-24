@@ -6,7 +6,7 @@ import type { ResolvedConfig, Trx, UserId, UsersAdapterMetadata } from './types.
 export type UsersStorage = Pick<ResolvedConfig, 'users' | 'usersTable' | 'emailConstraint'>
 
 /** Physical metadata is explicit for custom adapters and model-derived for the maintained adapter. */
-export async function userMetadata(config: UsersStorage): Promise<UsersAdapterMetadata> {
+export async function requireUserMetadata(config: UsersStorage): Promise<UsersAdapterMetadata> {
   const metadata = config.users.resolveMetadata
     ? await config.users.resolveMetadata()
     : {
@@ -28,6 +28,6 @@ export async function lockRow(trx: Trx, table: string, id: UserId): Promise<void
 }
 
 export async function lockUser(trx: Trx, config: UsersStorage, id: UserId): Promise<void> {
-  const metadata = await userMetadata(config)
+  const metadata = await requireUserMetadata(config)
   await lockRow(trx, metadata.table, id)
 }

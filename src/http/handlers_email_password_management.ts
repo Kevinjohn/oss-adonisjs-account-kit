@@ -3,15 +3,15 @@ import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { buildAccountProjection } from '../account_projection.js'
 import { passwordChangeRevision } from '../password_change_revision.js'
-import { correctionRevision } from '../profile_correction_revision.js'
-import { invalidProof, sendPasswordPolicyErrorResponse } from './response_helpers.js'
+import { takeCorrectionRevision } from '../profile_correction_revision.js'
+import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.js'
 import { passwordChangeValidator, profileUpdateValidator } from './validators.js'
 
 export const emailPasswordManagementHandlers = {
   'auth.emailChange.inspect': async ({ context, kit, options }) =>
     (await kit.emailPasswordManagement.inspectEmailChange({ token: context.params.token }))
       ? context.response.ok({ valid: true })
-      : invalidProof(context, 'email', options.extensions?.message),
+      : sendInvalidProofResponse(context, 'email', options.extensions?.message),
   'auth.emailChange.complete': async ({ context, kit, representIssued }) => {
     const user = await kit.emailPasswordManagement.completeEmailChange({
       token: context.params.token,
@@ -34,7 +34,7 @@ export const emailPasswordManagementHandlers = {
     // A new address on an account that is not yet active advances the credential revision; the
     // caller keeps this sign-in, so a session stores the revision the correction committed.
     const keepSession = async (outcome: unknown) => {
-      const committed = correctionRevision(outcome)
+      const committed = takeCorrectionRevision(outcome)
       if (committed !== undefined && guard.strategy === 'session') await guard.refresh?.(committed)
     }
     const user = await kit.emailPasswordManagement

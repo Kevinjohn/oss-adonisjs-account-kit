@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { lazyImportPath, parseSetupSource, walk } from './ts_source.js'
+import { extractLazyImportPath, parseSetupSource, walk } from './ts_source.js'
 
 /** Check static lazy-import entries in defineConfig({ commands: [...] }). */
 export async function hasRegisteredCommand(
@@ -28,5 +28,5 @@ export async function hasRegisteredCommand(
   if (!commandsProperty || !ts.isPropertyAssignment(commandsProperty)) return false
   const commands = commandsProperty.initializer
   if (!ts.isArrayLiteralExpression(commands)) return false
-  return commands.elements.some((entry) => lazyImportPath(source, entry) === commandPath)
+  return commands.elements.some((entry) => extractLazyImportPath(source, entry) === commandPath)
 }

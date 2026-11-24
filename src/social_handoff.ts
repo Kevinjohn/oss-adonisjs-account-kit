@@ -40,7 +40,7 @@ export async function createHandoff(
   return code
 }
 
-async function usableHandoffAssociation(
+async function getUsableHandoffProvider(
   trx: Trx,
   config: ResolvedConfig,
   userId: UserId,
@@ -97,7 +97,7 @@ export async function redeemSocialHandoff<Credential>(
     if (!user || !requireAccountAccessDecision(await auth.canAccess(user, trx)))
       throw new SocialTransactionError()
     const currentRevision = await revision(trx, deps.config, user.id)
-    const establishedProvider = await usableHandoffAssociation(
+    const establishedProvider = await getUsableHandoffProvider(
       trx,
       deps.config,
       user.id,
@@ -114,7 +114,7 @@ export async function redeemSocialHandoff<Credential>(
   })
   const credential = await establishCredential(deps, auth, input.guard, verified, {
     stillValid: async (trx, user) =>
-      (await usableHandoffAssociation(trx, deps.config, user.id, verified.socialIdentityId)) ===
+      (await getUsableHandoffProvider(trx, deps.config, user.id, verified.socialIdentityId)) ===
       verified.provider,
     rejected: () => new SocialTransactionError(),
     cleanupFailed: 'Social credential cleanup failed',

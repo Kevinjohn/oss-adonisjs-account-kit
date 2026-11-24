@@ -1,22 +1,22 @@
-import { migrationNames, migrationSchema } from './migration_definitions.js'
-import { orderedMigrations } from './migration_order.js'
+import { migrationNames, buildMigrationSchema } from './migration_definitions.js'
+import { orderMigrations } from './migration_order.js'
 import { defaultMigrationDirectory } from './migration_paths.js'
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupPlan } from './types.js'
-import { parseSetupChoices } from './parse.js'
+import { requireSetupChoices } from './parse.js'
 import { parseSetupSource } from './ts_source.js'
-import { hasEmailFlow, selectedManagedRoutes, addSetupDiagnostic, envName } from './shared.js'
+import { hasEmailFlow, planSelectedManagedRoutes, addSetupDiagnostic, envName } from './shared.js'
 import { collectSetupDiagnostics } from './validate.js'
 import {
-  generatedEnv,
+  generateEnvironmentTemplate,
   migrationContent,
-  migrationTemplate,
+  requireMigrationTemplatePath,
   addChange,
-  ownedChange,
+  recordOwnedChange,
 } from './changes.js'
 import {
-  retainedGeneratedChoices,
-  allyConfigSource,
-  accountConfigSource,
+  readRetainedSetupChoices,
+  generateAllyConfigSource,
+  generateAccountConfigSource,
 } from './generated_sources.js'
 import { planManagedFiles } from './plan_managed_files.js'
 import {
@@ -52,7 +52,7 @@ export async function planSetup(
     env?: NodeJS.ProcessEnv
   } = {}
 ): Promise<SetupPlan> {
-  choices = parseSetupChoices(choices)
+  choices = requireSetupChoices(choices)
   const env = options.env ?? process.env
   const selectedOrigins: SelectedSetupOrigins = { values: {}, errors: {} }
   const originNames = new Set<string>()
@@ -94,7 +94,10 @@ export async function planSetup(
   // Generators assume valid choices. When validation has already reported an error for the
   // choices a generator reads, its failure leaves the file out instead of hiding that report.
   // Any other failure is a setup bug and still throws.
-  const generated = async <T>(reads: string[], build: () => T | Promise<T>): Promise<T | null> => {
+  const generateIfInputsAllow = async <T>(
+    reads: string[],
+    build: () => T | Promise<T>
+  ): Promise<T | null> => {
     try {
       return await build()
     } catch (error) {
@@ -111,40 +114,40 @@ export async function planSetup(
   await planMail(choices, state, diagnostics, env)
   await planUserModel(choices, state, diagnostics)
   const changes: SetupFileChange[] = []
-  const retainedChoices = retainedGeneratedChoices(state)
+  const retainedChoices = readRetainedSetupChoices(state)
   const priorGenerated = state.existingChoices?.authentication
     ? state.existingChoices
     : retainedChoices
   const previousChoices = state.existingChoices
-  let previousConfig = previousChoices ? accountConfigSource(previousChoices) : null
+  let previousConfig = previousChoices ? generateAccountConfigSource(previousChoices) : null
   if (previousChoices) {
     // Older guided files omitted the diagnostic label. Match the entire old template
     // before treating the file as setup-owned.
-    const legacyConfig = accountConfigSource(previousChoices, {
+    const legacyConfig = generateAccountConfigSource(previousChoices, {
       includeBackendOriginSetting: false,
     })
     if (state.files['config/account_kit.ts'] === legacyConfig) previousConfig = legacyConfig
   }
-  ownedChange(
+  recordOwnedChange(
     changes,
     state,
     'config/account_kit.ts',
-    accountConfigSource(choices),
+    generateAccountConfigSource(choices),
     previousConfig,
     'Configure selected services, account access callbacks and notification adapters'
   )
-  ownedChange(
+  recordOwnedChange(
     changes,
     state,
     '.env.account-kit.example',
-    generatedEnv(choices),
-    state.existingChoices ? generatedEnv(state.existingChoices) : null,
+    generateEnvironmentTemplate(choices),
+    state.existingChoices ? generateEnvironmentTemplate(state.existingChoices) : null,
     'Document deployment references'
   )
   await planSessionConfigIntegration(changes, state, choices, diagnostics, env)
   if (choices.social.status === 'enabled') {
     if (state.files['config/ally.ts'] === undefined) {
-      const ally = await generated(['social.'], () => allyConfigSource(choices))
+      const ally = await generateIfInputsAllow(['social.'], () => generateAllyConfigSource(choices))
       if (ally !== null)
         addChange(
           changes,
@@ -154,9 +157,9 @@ export async function planSetup(
           'Configure selected Ally providers using deployment references and exact callbacks'
         )
     } else if (await ownsAllyConfig(state, choices)) {
-      const ally = await generated(['social.'], () => allyConfigSource(choices))
+      const ally = await generateIfInputsAllow(['social.'], () => generateAllyConfigSource(choices))
       if (ally !== null)
-        ownedChange(
+        recordOwnedChange(
           changes,
           state,
           'config/ally.ts',
@@ -198,18 +201,18 @@ export async function planSetup(
     await planSession(choices, state, diagnostics, { ...options, env })
   }
   const migrationTimestamp = options.timestamp ?? Date.now()
-  const schema = await generated(['user.'], () =>
-    migrationSchema(choices.user.table, choices.user.idType)
+  const schema = await generateIfInputsAllow(['user.'], () =>
+    buildMigrationSchema(choices.user.table, choices.user.idType)
   )
-  // Template reads sit outside `generated` and run without a schema: no reported choice explains
+  // Template reads sit outside `generateIfInputsAllow` and run without a schema: no reported choice explains
   // a read failure.
   const templates = new Map(
     await Promise.all(
-      migrationNames.map(async (name) => [name, await migrationTemplate(name)] as const)
+      migrationNames.map(async (name) => [name, await requireMigrationTemplatePath(name)] as const)
     )
   )
   const migrationDirectory = state.migrationDirectory ?? defaultMigrationDirectory
-  let migrations: ReturnType<typeof orderedMigrations> = []
+  let migrations: ReturnType<typeof orderMigrations> = []
   if (state.migrationDirectoryError)
     addSetupDiagnostic(
       diagnostics,
@@ -218,7 +221,7 @@ export async function planSetup(
     )
   else
     try {
-      migrations = orderedMigrations(state.migrationNames, migrationTimestamp)
+      migrations = orderMigrations(state.migrationNames, migrationTimestamp)
     } catch (error) {
       addSetupDiagnostic(diagnostics, migrationDirectory, (error as Error).message)
     }
@@ -240,7 +243,7 @@ export async function planSetup(
     await planRouteImport(changes, state, diagnostics)
   // Commit the selection only after every dependent file. This preserves the previous
   // generated-content baseline when an interrupted application is replayed.
-  ownedChange(
+  recordOwnedChange(
     changes,
     state,
     'config/account_kit_setup.json',
@@ -290,7 +293,7 @@ export async function planSetup(
   }
   let plannedEndpointLocations: Array<{ name: string; method: string; path: string }> = []
   try {
-    plannedEndpointLocations = selectedManagedRoutes(choices).map(({ name, method, path }) => ({
+    plannedEndpointLocations = planSelectedManagedRoutes(choices).map(({ name, method, path }) => ({
       name,
       method,
       path,
@@ -328,7 +331,7 @@ async function ownsAllyConfig(state: SetupInspection, choices: SetupChoices): Pr
   for (const selection of [choices, state.existingChoices]) {
     if (selection?.social.status !== 'enabled') continue
     try {
-      if (allyConfigSource(selection) === existing) return true
+      if (generateAllyConfigSource(selection) === existing) return true
     } catch {
       // Saved choices this version cannot render do not claim the file.
     }

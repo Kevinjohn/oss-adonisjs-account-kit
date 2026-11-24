@@ -4,17 +4,21 @@ import fsPromises from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { SetupFileChange, SetupPlan } from './types.js'
 import { SetupApplyInterruptedError } from './apply_interrupted_error.js'
-import { readRegularFile, safeSetupPath } from './safe_path.js'
+import { readRegularFile, requireSafeSetupPath } from './safe_path.js'
 
-function failureMessage(error: unknown): string {
+function formatFailureMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
 function combineFailures(failures: unknown[], message: string): unknown {
   if (failures.length === 1) return failures[0]
-  return new AggregateError(failures, `${message}: ${failures.map(failureMessage).join('; ')}`, {
-    cause: failures[0],
-  })
+  return new AggregateError(
+    failures,
+    `${message}: ${failures.map(formatFailureMessage).join('; ')}`,
+    {
+      cause: failures[0],
+    }
+  )
 }
 
 async function assertNoConflict(
@@ -65,11 +69,11 @@ export async function applySetup(
     await lock.writeFile(`${process.pid} ${new Date().toISOString()}\n`)
     for (const change of plan.changes) await assertNoConflict(root, change)
     for (const change of plan.changes) {
-      const path = await safeSetupPath(root, change.path)
+      const path = await requireSafeSetupPath(root, change.path)
       const action = await assertNoConflict(root, change)
       if (action === 'unchanged') continue
       await mkdir(dirname(path), { recursive: true })
-      await safeSetupPath(root, change.path)
+      await requireSafeSetupPath(root, change.path)
       const temp = `${path}.account-kit-${process.pid}-${randomUUID()}.tmp`
       const fileFailures: unknown[] = []
       try {

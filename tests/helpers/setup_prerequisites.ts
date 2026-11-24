@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defaultSetupChoices } from '../../src/setup/defaults.js'
+import { buildDefaultSetupChoices } from '../../src/setup/defaults.js'
 import type { SetupChoices, SetupInspection } from '../../src/setup/types.js'
 import { setupVersions } from './setup_versions.js'
 import { clearSelectorEnv } from './selector_env.js'
@@ -19,7 +19,7 @@ export async function prerequisiteFixture() {
     join(root, 'package.json'),
     JSON.stringify({ imports: { '#models/*': './app/models/*.js' } })
   )
-  const choices = defaultSetupChoices()
+  const choices = buildDefaultSetupChoices()
   choices.policy.accessRestrictionHook = true
   choices.mail.integration = 'custom'
   choices.mail.senderEnv = null

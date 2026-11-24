@@ -119,14 +119,15 @@ package does not generate that page.
 ## Verify the reset and revocation
 
 Use the committed [acceptance spec](../../examples/api/tests/recipes/api-password-reset.spec.ts)
-and [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/api-password-reset.patch). From the repository root, run:
+and `api-password-reset.patch` from the [matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches).
+To run the recipe harness, use the repository root:
 
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset --database=sqlite
 ```
 
-For a previously packed candidate, supply both flags; the harness installs that archive without
-building or packing another one:
+For a previously packed candidate, run from the matching checkout and supply both flags. The
+harness installs that archive directly:
 
 ```sh
 pnpm test:recipe -- --recipe=api-password-reset --database=sqlite \

@@ -48,7 +48,7 @@ const publicMessages: Record<string, string> = {
 
 const rejectedMessage = 'Account request rejected.'
 
-function identity(status: number, code: string): PublicIdentity {
+function buildPublicErrorIdentity(status: number, code: string): PublicIdentity {
   return { status, code, message: publicMessages[code] ?? rejectedMessage }
 }
 
@@ -56,28 +56,30 @@ function identity(status: number, code: string): PublicIdentity {
  * Maps an Account Kit error to what a client may see. Every 5xx becomes one operation-failed
  * response; the masks keep invitation and authorization details from revealing which case applies.
  */
-export function publicIdentity(
+export function mapPublicErrorIdentity(
   error: AccountKitError,
   options: { proof?: ProofKind } = {}
 ): PublicIdentity {
   if (error.status >= 500) {
-    const failed = identity(500, OPERATION_FAILED)
+    const failed = buildPublicErrorIdentity(500, OPERATION_FAILED)
     return error instanceof PostCommitError ? { ...failed, committed: true } : failed
   }
-  if (error instanceof InvalidSessionError) return identity(401, 'E_INVALID_CREDENTIALS')
+  if (error instanceof InvalidSessionError)
+    return buildPublicErrorIdentity(401, 'E_INVALID_CREDENTIALS')
   if (error instanceof InvitationManagementDeniedError || error instanceof InvitationNotFoundError)
-    return identity(404, 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND')
+    return buildPublicErrorIdentity(404, 'E_ACCOUNT_KIT_INVITATION_NOT_FOUND')
   if (error instanceof InvalidTokenError)
-    return identity(
+    return buildPublicErrorIdentity(
       400,
       options.proof ? invalidTokenCodes[options.proof] : 'E_ACCOUNT_KIT_INVALID_TOKEN'
     )
-  if (error instanceof AuthorizationError) return identity(403, 'E_ACCOUNT_KIT_FORBIDDEN')
-  return identity(error.status, error.code)
+  if (error instanceof AuthorizationError)
+    return buildPublicErrorIdentity(403, 'E_ACCOUNT_KIT_FORBIDDEN')
+  return buildPublicErrorIdentity(error.status, error.code)
 }
 
 /** Headers every package error response carries: no caching, and `Retry-After` when throttled. */
-export function publicHeaders(error: AccountKitError): Record<string, string> {
+export function buildPublicErrorHeaders(error: AccountKitError): Record<string, string> {
   return {
     'Cache-Control': 'no-store',
     ...(error instanceof ThrottledError

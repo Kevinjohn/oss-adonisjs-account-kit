@@ -29,7 +29,10 @@ const allowedFrom: Record<AdmissionTransition, ReadonlyArray<Decided | null>> = 
 }
 
 /** The new status, or `AdmissionDecisionError` when the transition is not allowed from `from`. */
-export function nextApprovalStatus(from: Decided | null, transition: AdmissionTransition): Decided {
+export function resolveNextApprovalStatus(
+  from: Decided | null,
+  transition: AdmissionTransition
+): Decided {
   if (!allowedFrom[transition].includes(from))
     throw new AdmissionDecisionError(
       `Cannot ${transition} an account whose approval is ${from ?? 'pending'}`
@@ -45,7 +48,7 @@ export async function applyTransition(
   actorId: UserId | null
 ): Promise<AdmissionRecord> {
   const row = await readAdmissionRow(trx, subject.id)
-  const status = nextApprovalStatus(row?.approval_status ?? null, transition)
+  const status = resolveNextApprovalStatus(row?.approval_status ?? null, transition)
   const now = sqlTimestamp(trx)
   const updated = await upsertAdmissionRow(
     trx,

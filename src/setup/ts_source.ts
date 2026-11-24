@@ -84,7 +84,11 @@ export function hasAmbiguousRuntimeModuleImports(source: SetupSource, module: st
   return new Set(exports).size !== exports.length
 }
 
-export function importedName(source: SetupSource, module: string, imported: string): string | null {
+export function getImportedBindingName(
+  source: SetupSource,
+  module: string,
+  imported: string
+): string | null {
   if (hasAmbiguousRuntimeModuleImports(source, module)) return null
   const { ts, file } = source
   const matches = file.statements
@@ -106,7 +110,7 @@ export function importedName(source: SetupSource, module: string, imported: stri
   return matches.length === 1 ? matches[0] : null
 }
 
-export function defaultImportName(source: SetupSource, module: string): string | null {
+export function getDefaultImportName(source: SetupSource, module: string): string | null {
   if (hasAmbiguousRuntimeModuleImports(source, module)) return null
   const { ts, file } = source
   const matches = file.statements
@@ -119,7 +123,7 @@ export function defaultImportName(source: SetupSource, module: string): string |
   return matches.length === 1 ? matches[0] : null
 }
 
-export function directProperty(
+export function getDirectProperty(
   source: SetupSource,
   object: TypeScript.ObjectLiteralExpression,
   name: string
@@ -155,7 +159,7 @@ export function hasUnsafeObjectEntries(
   return false
 }
 
-export function directObject(
+export function matchDirectObject(
   source: SetupSource,
   node: TypeScript.Node
 ): TypeScript.ObjectLiteralExpression | null {
@@ -164,7 +168,7 @@ export function directObject(
     : null
 }
 
-export function exactCall(
+export function isExactCall(
   source: SetupSource,
   node: TypeScript.Node,
   receiver: string,
@@ -235,7 +239,7 @@ export function isTypeOnlyReference(source: SetupSource, node: TypeScript.Node):
   return false
 }
 
-export function directClassBaseHeritage(
+export function isDirectClassBaseReference(
   source: SetupSource,
   reference: TypeScript.Identifier
 ): boolean {
@@ -250,9 +254,9 @@ export function directClassBaseHeritage(
   )
 }
 
-export function safeEnvGetter(source: SetupSource, binding: string): boolean {
+export function hasSafeEnvironmentGetter(source: SetupSource, binding: string): boolean {
   return !hasUnsafeBindingReferences(source, binding, (call) =>
-    exactCall(source, call, binding, 'get')
+    isExactCall(source, call, binding, 'get')
   )
 }
 
@@ -273,7 +277,7 @@ export function unwrapStaticExpression(
   return expression
 }
 
-export function defaultExpression(source: SetupSource): {
+export function inspectDefaultExportExpression(source: SetupSource): {
   expression: TypeScript.Expression
   declaration: TypeScript.VariableDeclaration | null
   exportAssignment: TypeScript.ExportAssignment
@@ -309,11 +313,11 @@ export function defaultExpression(source: SetupSource): {
   return { expression: initializer, declaration, exportAssignment: exports[0] }
 }
 
-export function exportedObject(
+export function getExportedObject(
   source: SetupSource,
   allowedFactory?: string
 ): TypeScript.ObjectLiteralExpression | null {
-  const target = defaultExpression(source)
+  const target = inspectDefaultExportExpression(source)
   if (!target) return null
   let expression = target.expression
   if (source.ts.isCallExpression(expression)) {
@@ -329,7 +333,7 @@ export function exportedObject(
   return source.ts.isObjectLiteralExpression(expression) ? expression : null
 }
 
-export function topLevelConfig(
+export function inspectTopLevelConfig(
   source: SetupSource,
   defineConfigName: string
 ): {
@@ -337,7 +341,7 @@ export function topLevelConfig(
   declaration: TypeScript.VariableDeclaration | null
   exportAssignment: TypeScript.ExportAssignment
 } | null {
-  const target = defaultExpression(source)
+  const target = inspectDefaultExportExpression(source)
   const initializer = target?.expression
   if (!target || !initializer || !source.ts.isCallExpression(initializer)) return null
   if (!source.ts.isIdentifier(initializer.expression)) return null
@@ -358,7 +362,7 @@ export function walk(source: SetupSource, visitor: (node: TypeScript.Node) => vo
 }
 
 /** The path of `() => import('x')`, also written with a block body that returns the import. */
-export function lazyImportPath(source: SetupSource, node: TypeScript.Node): string | null {
+export function extractLazyImportPath(source: SetupSource, node: TypeScript.Node): string | null {
   const { ts } = source
   if (!ts.isArrowFunction(node)) return null
   let call: TypeScript.Expression | undefined = node.body as TypeScript.Expression
@@ -387,7 +391,7 @@ export function callArray(
   const matches: TypeScript.ArrayLiteralExpression[] = []
   walk(source, (node) => {
     if (
-      exactCall(source, node, receiver, method) &&
+      isExactCall(source, node, receiver, method) &&
       source.ts.isExpressionStatement(node.parent) &&
       node.parent.parent === source.file &&
       node.arguments.length === 1 &&

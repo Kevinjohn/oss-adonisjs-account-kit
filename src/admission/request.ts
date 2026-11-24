@@ -1,6 +1,6 @@
 // A signed-in person asks for approval.
 import { randomUUID } from 'node:crypto'
-import { currentInTransaction } from '../authentication.js'
+import { requireCurrentAccountInTransaction } from '../authentication.js'
 import { transaction } from '../db.js'
 import { InvalidSessionError, UnverifiedEmailError } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
@@ -25,7 +25,11 @@ export async function requestAdmission(
   const { record } = await withAdmissionEvent(
     deps.config,
     transaction(deps.db, async (trx) => {
-      const account = await currentInTransaction({ config: deps.accountConfig }, input, trx)
+      const account = await requireCurrentAccountInTransaction(
+        { config: deps.accountConfig },
+        input,
+        trx
+      )
       if (!account.active) throw new UnverifiedEmailError()
       const user = await deps.accountConfig.users.findById(input.userId, trx)
       if (!user) throw new InvalidSessionError()

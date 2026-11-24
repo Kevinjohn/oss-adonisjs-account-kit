@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { consumeRows, deleteReturning, deletedCount } from '../src/consume_rows.js'
+import { consumeRows, deleteReturning, countDeletedRowsFromResult } from '../src/consume_rows.js'
 import { transaction } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
@@ -60,8 +60,8 @@ test.group('consuming single-use rows', (group) => {
   })
 
   test('counts deleted rows from either driver shape', ({ assert }) => {
-    assert.equal(deletedCount(3), 3)
-    assert.equal(deletedCount([2]), 2)
+    assert.equal(countDeletedRowsFromResult(3), 3)
+    assert.equal(countDeletedRowsFromResult([2]), 2)
   })
 
   test('deleteReturning normalises both driver result shapes', async ({ assert }) => {

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { SocialLinkRefusedError } from '../src/errors.js'
-import { managedErrorResponse } from '../src/http/responses.js'
+import { mapManagedErrorResponse } from '../src/http/responses.js'
 import type { AccountUser, SocialLinkProfile } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
@@ -80,8 +80,8 @@ test.group('social link acceptance', (group) => {
     assert.instanceOf(refused, SocialLinkRefusedError)
     assert.equal(refused.code, 'E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED')
     assert.equal(refused.status, 403)
-    assert.deepEqual(managedErrorResponse(refused)?.status, 403)
-    assert.deepEqual(managedErrorResponse(refused)?.body, {
+    assert.deepEqual(mapManagedErrorResponse(refused)?.status, 403)
+    assert.deepEqual(mapManagedErrorResponse(refused)?.body, {
       errors: [{ code: 'E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED', message: 'Account request rejected.' }],
     })
     assert.lengthOf(await kit.db.from('social_identities'), 0)

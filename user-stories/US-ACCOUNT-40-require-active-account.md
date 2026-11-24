@@ -35,7 +35,7 @@ flowchart TD
  M["managedAccountMiddleware with active true asserts guard and reads current input"] --> A
  N["executeManagedRequest on an active managed route asserts guard and reads current input"] --> O{"verificationRequired is false?"}
  O -->|Yes| P["Use authentication.current; dispatch on success"]
- O -->|No| A["requireActive runs currentInTransaction checks from US-ACCOUNT-39 and commits"]
+ O -->|No| A["requireActive runs requireCurrentAccountInTransaction checks from US-ACCOUNT-39 and commits"]
  A -->|Failure| D["Propagate credential or transaction error"]
  A --> E{"CurrentAccount.active?"}
  E -->|No| F["Throw UnverifiedEmailError"]

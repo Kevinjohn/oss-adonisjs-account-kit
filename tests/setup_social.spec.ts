@@ -4,7 +4,7 @@ import { test } from '@japa/runner'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { planSetup } from '../src/setup/plan.js'
 import { applySetup } from '../src/setup/apply.js'
-import { allyConfigSource } from '../src/setup/generated_ally_config.js'
+import { generateAllyConfigSource } from '../src/setup/generated_ally_config.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 
 /** The severity of the diagnostic on `field`; retirement must block with `error`. */
@@ -135,7 +135,7 @@ test.group('setup social providers', (group) => {
       },
     }
     await mkdir(join(root, 'config'), { recursive: true })
-    await writeFile(join(root, 'config/ally.ts'), allyConfigSource(choices))
+    await writeFile(join(root, 'config/ally.ts'), generateAllyConfigSource(choices))
     await writeFile(join(root, 'config/account_kit_setup.json'), JSON.stringify(choices))
     const same = await planSetup(choices, await inspectSetup(root), { timestamp: 1234 })
     assert.equal(same.changes.find(({ path }) => path === 'config/ally.ts')?.action, 'unchanged')

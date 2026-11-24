@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { SocialUserNotFoundError } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import type { SocialProvider } from '../src/types.js'
@@ -33,7 +34,9 @@ test.group('social unlink atomicity', (group) => {
     return relation
   }
 
-  test('get works when taken off the service object', async ({ assert }) => {
+  test('get requires a confirmed link and works when taken off the service object', async ({
+    assert,
+  }) => {
     const user = await insertUser(kit)
     const { account } = makeService(kit, {
       enabled: ['socialAuthentication', 'emailVerification'],
@@ -44,6 +47,10 @@ test.group('social unlink atomicity', (group) => {
     const relation = await linkGoogle(account, user.id)
     const { get } = account.socialAuthentication
     assert.deepEqual(await get({ current: current(user.id), identityId: relation.id }), relation)
+    await assert.rejects(
+      () => get({ current: current(user.id), identityId: relation.id + 1 }),
+      SocialUserNotFoundError
+    )
   })
 
   test('unlink advances the credential revision and ends the caller session', async ({

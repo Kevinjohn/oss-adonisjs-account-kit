@@ -1,6 +1,6 @@
 import { posix } from 'node:path'
 import {
-  accountKitMigrationSuffix,
+  formatMigrationSuffix,
   matchesAccountKitMigration,
   migrationNames,
 } from './migration_definitions.js'
@@ -24,7 +24,7 @@ function runsBefore(first: string, second: string) {
  * existing ones, without writing anything. Existing files keep their relative paths. Throws when
  * the order cannot be established.
  */
-export function orderedMigrations(files: string[], now: number, names = migrationNames) {
+export function orderMigrations(files: string[], now: number, names = migrationNames) {
   const hasTimestamp = (file: string) => /^[0-9]+_/.test(posix.basename(file))
   const timestamped = files.filter(hasTimestamp).sort()
   const last = timestamped.at(-1)
@@ -45,7 +45,7 @@ export function orderedMigrations(files: string[], now: number, names = migratio
       throw new Error('Migration timestamp exceeds safe integer range')
     return {
       name,
-      filename: posix.join(directory, `${timestamp++}${accountKitMigrationSuffix(name)}`),
+      filename: posix.join(directory, `${timestamp++}${formatMigrationSuffix(name)}`),
       existing: false,
     }
   })

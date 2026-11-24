@@ -15,17 +15,17 @@ export function normalizeScope(value: unknown): string | null {
 }
 
 /** The column value: unscoped invitations store `''` so `(email, scope)` stays unique. */
-export function scopeColumn(scope: string | null): string {
+export function encodeScopeColumn(scope: string | null): string {
   return scope ?? ''
 }
 
 /** The scope an `account_invitations` row carries, `''` meaning unscoped. */
-export function scopeFromColumn(value: string): string | null {
+export function decodeScopeColumn(value: string): string | null {
   return value === '' ? null : value
 }
 
 /** Ascending scope order (code units), unscoped first; stable for equal scopes. */
-export function byScope<Row extends { scope: string }>(a: Row, b: Row): number {
+export function compareScopes<Row extends { scope: string }>(a: Row, b: Row): number {
   if (a.scope < b.scope) return -1
   return a.scope > b.scope ? 1 : 0
 }

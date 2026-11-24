@@ -5,22 +5,22 @@ import type { ManagedGuard } from './managed_types.js'
 import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.js'
 import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
 
-function managedUser(value: unknown): ManagedUser {
+function requireManagedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
   const id = (value as { id?: unknown }).id
   if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
   return value as ManagedUser
 }
-function normalizedIdentifier(value: unknown): UserId {
+function requireTokenIdentifierValue(value: unknown): UserId {
   if (typeof value === 'bigint') return value.toString()
   if (typeof value !== 'number' && typeof value !== 'string') throw new InvalidSessionError()
   return value
 }
-function tokenIdentifier(value: unknown): UserId {
+function requireCurrentTokenIdentifier(value: unknown): UserId {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
   const token = (value as { currentAccessToken?: unknown }).currentAccessToken
   if (!token || typeof token !== 'object') throw new InvalidSessionError()
-  return normalizedIdentifier((token as { identifier?: unknown }).identifier)
+  return requireTokenIdentifierValue((token as { identifier?: unknown }).identifier)
 }
 async function authenticate<User>(guard: { authenticate(): Promise<User> }): Promise<User> {
   try {
@@ -55,11 +55,14 @@ export function createTokenGuard<User>(
       const auth = (context as TokenContext<User>).auth
       const user = await authenticate(auth.use(options.name))
       await markAuthenticated(auth, options.name)
-      return { userId: managedUser(user).id, tokenId: tokenIdentifier(user) }
+      return { userId: requireManagedUser(user).id, tokenId: requireCurrentTokenIdentifier(user) }
     },
     async logoutCredential(context) {
       const user = await authenticate((context as TokenContext<User>).auth.use(options.name))
-      return { userId: managedUser(user).id, identifier: tokenIdentifier(user) }
+      return {
+        userId: requireManagedUser(user).id,
+        identifier: requireCurrentTokenIdentifier(user),
+      }
     },
     forRequest(_context) {
       return {
@@ -81,7 +84,7 @@ export function createTokenGuard<User>(
             throw new AdapterContractError('Token guard did not return a token')
           let identifier: UserId
           try {
-            identifier = normalizedIdentifier(token.identifier)
+            identifier = requireTokenIdentifierValue(token.identifier)
           } catch (error) {
             // An invalid identifier cannot safely identify a token for cleanup.
             throw new AdapterContractError('Token guard did not return a token identifier', {

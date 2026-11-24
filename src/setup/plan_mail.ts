@@ -1,7 +1,7 @@
 // Setup planning phase: Mail mailer selection diagnostics for email flows.
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
 import { hasEmailFlow, addSetupDiagnostic } from './shared.js'
-import { mailerSelectionState } from './config_inspection.js'
+import { classifyMailerSelection } from './config_inspection.js'
 
 export async function planMail(
   choices: SetupChoices,
@@ -14,7 +14,7 @@ export async function planMail(
     choices.mail.integration === 'adonisjs-mail' &&
     state.files['config/mail.ts']
   ) {
-    const selection = await mailerSelectionState(
+    const selection = await classifyMailerSelection(
       state.files['config/mail.ts'],
       state.root,
       choices.mail.transportEnv,

@@ -29,7 +29,7 @@ Scope: the selected guard supplies trusted credential data. Account Kit checks c
 
 ```mermaid
 flowchart TD
- A["authentication.current calls currentInTransaction"] --> B["currentWithSessionInTransaction locks and loads account"]
+ A["authentication.current calls requireCurrentAccountInTransaction"] --> B["requireCurrentAccountAndSession locks and loads account"]
  B --> S{"Configured strategy?"}
  S -->|Session| R["Check captured revision and requireLiveSession if tracking is enabled"]
  S -->|Access tokens| T["Check tokenId names a row owned by this user"]

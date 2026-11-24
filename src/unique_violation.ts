@@ -1,9 +1,9 @@
 // Unique-violation detection: recognizing duplicate-key errors across MySQL, PostgreSQL and SQLite.
 import type { Database } from '@adonisjs/lucid/database'
-import { userMetadata, type UsersStorage } from './user_lock.js'
+import { requireUserMetadata, type UsersStorage } from './user_lock.js'
 
 /** The `table.index` a MySQL duplicate-key error names, or undefined for any other error. */
-export function mysqlDuplicateKey(error: unknown): string | undefined {
+export function extractMysqlDuplicateKey(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined
   const details = error as { code?: unknown; sqlMessage?: unknown }
   if (details.code !== 'ER_DUP_ENTRY' || typeof details.sqlMessage !== 'string') return undefined
@@ -23,7 +23,7 @@ export function isUniqueViolation(
   if (typeof error !== 'object' || error === null) return false
   const columns = Array.isArray(column) ? column : [column]
   const index = `${table}_${columns.join('_')}_unique`
-  const mysqlKey = mysqlDuplicateKey(error)
+  const mysqlKey = extractMysqlDuplicateKey(error)
   if (mysqlKey !== undefined) return mysqlKey === `${table}.${index}`
 
   const details = error as { code?: unknown; constraint?: unknown; message?: unknown }
@@ -52,10 +52,10 @@ export async function isUserEmailUniqueViolation(
 ): Promise<boolean> {
   if (!error || typeof error !== 'object') return false
   const details = error as { code?: string; constraint?: string }
-  const mysqlKey = mysqlDuplicateKey(error)
+  const mysqlKey = extractMysqlDuplicateKey(error)
   if (mysqlKey !== undefined) return isMysqlEmailKey(mysqlKey, config, db)
   if (details.code !== '23505' && details.code !== 'SQLITE_CONSTRAINT_UNIQUE') return false
-  const metadata = await userMetadata(config)
+  const metadata = await requireUserMetadata(config)
   if (details.code !== '23505') return isUniqueViolation(error, metadata.table, 'email')
   const explicit = config.emailConstraint ?? metadata.emailConstraint
   if (explicit !== undefined) return details.constraint === explicit
@@ -76,7 +76,7 @@ export async function isUserEmailUniqueViolation(
 
 /** MySQL names the key as `table.index`; the index must be the users table's unique email index. */
 async function isMysqlEmailKey(key: string, config: UsersStorage, db: Database): Promise<boolean> {
-  const metadata = await userMetadata(config)
+  const metadata = await requireUserMetadata(config)
   const prefix = `${metadata.table}.`
   if (!key.startsWith(prefix)) return false
   const index = key.slice(prefix.length)

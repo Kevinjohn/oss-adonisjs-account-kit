@@ -4,7 +4,7 @@ import { join, relative, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { parseEnv } from 'node:util'
 import { envName } from './diagnostics.js'
-import { safeSetupPath } from './safe_path.js'
+import { requireSafeSetupPath } from './safe_path.js'
 
 /** A selected assignment is empty, repeated, malformed or indirect: unresolved, not unsafe. */
 export class SelectedEnvironmentValueError extends Error {}
@@ -22,7 +22,7 @@ function hasClosingQuote(text: string, quote: string): boolean {
 }
 
 /** Match AdonisJS EnvLoader precedence without changing global process.env to select a profile. */
-function selectedDotenvPaths(root: string, env: NodeJS.ProcessEnv): string[] {
+function listDotenvPaths(root: string, env: NodeJS.ProcessEnv): string[] {
   const base = resolve(root, env.ENV_PATH || '')
   const mode = env.NODE_ENV
   return [
@@ -45,9 +45,9 @@ async function resolveEnvironmentValue(
   const assignmentStart = new RegExp(`^\\s*(?:export\\s+)?${escapedVariable}\\b`)
   const assignmentValue = new RegExp(`^\\s*(?:export\\s+)?${escapedVariable}\\s*=`)
   if (Object.hasOwn(env, variable)) return env[variable] ?? null
-  for (const candidate of selectedDotenvPaths(root, env)) {
+  for (const candidate of listDotenvPaths(root, env)) {
     const name = relative(root, candidate)
-    const path = await safeSetupPath(root, name)
+    const path = await requireSafeSetupPath(root, name)
     let stat
     try {
       stat = await lstat(path)

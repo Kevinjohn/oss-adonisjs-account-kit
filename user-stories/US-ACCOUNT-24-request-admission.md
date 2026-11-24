@@ -38,7 +38,7 @@ The runnable API example traces the controller and middleware entry in its [admi
 flowchart TD
  A["AccountAdmission.request(input) calls requestAdmission"] --> B{"requireApproval passes?"}
  B -->|No| X["Throw CapabilityDisabledError"]
- B -->|Yes| C{"In transaction, currentInTransaction succeeds, account is active and users.findById finds user?"}
+ B -->|Yes| C{"In transaction, requireCurrentAccountInTransaction succeeds, account is active and users.findById finds user?"}
  C -->|No| Y["Reject credential or activation before an admission write"]
  C -->|Yes| D["readAdmissionRow"]
  D --> E{"First request?"}

@@ -22,7 +22,10 @@ export interface RoutePatternToken {
   matcher?: RegExp
 }
 
-function pathTokens(path: string, matchers: ExistingRoute['matchers'] = {}): RoutePatternToken[] {
+function tokenizeRoutePath(
+  path: string,
+  matchers: ExistingRoute['matchers'] = {}
+): RoutePatternToken[] {
   return path
     .replace(/\/+$/, '')
     .split('/')
@@ -66,9 +69,9 @@ function overlapsSegment(left: RoutePatternToken, right: RoutePatternToken): boo
   return left.end.endsWith(right.end) || right.end.endsWith(left.end)
 }
 
-export function overlappingPaths(existing: ExistingRoute, managedPath: string): boolean {
-  const left = existing.tokens ?? pathTokens(existing.path, existing.matchers)
-  const right = pathTokens(managedPath)
+export function doPathsOverlap(existing: ExistingRoute, managedPath: string): boolean {
+  const left = existing.tokens ?? tokenizeRoutePath(existing.path, existing.matchers)
+  const right = tokenizeRoutePath(managedPath)
   const visited = new Set<string>()
 
   // The tree matcher can traverse missing parameter segments at the end of a
@@ -103,7 +106,7 @@ export function overlappingPaths(existing: ExistingRoute, managedPath: string): 
 }
 
 /** The error message for a managed route that overlaps an application route. */
-export function collisionMessage(route: ManagedRoute, collision: ExistingRoute): string {
+export function formatCollisionMessage(route: ManagedRoute, collision: ExistingRoute): string {
   return `Managed route collision: ${route.method} ${route.path} overlaps ${collision.name ?? 'an application route'}`
 }
 
@@ -117,8 +120,8 @@ export function assertManagedRouteCollisions(
       (candidate) =>
         candidate.name !== `accountKit.${route.name}` &&
         candidate.method.toUpperCase() === route.method &&
-        overlappingPaths(candidate, route.path)
+        doPathsOverlap(candidate, route.path)
     )
-    if (collision) throw new InvalidArgumentsException(collisionMessage(route, collision))
+    if (collision) throw new InvalidArgumentsException(formatCollisionMessage(route, collision))
   }
 }

@@ -5,7 +5,7 @@ import type { ManagedSessionGuardOptions, ManagedUser } from './guard.js'
 import { assertManagedSessionStore } from './session_store_protection.js'
 import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
 
-function managedUser(value: unknown): ManagedUser {
+function requireManagedUser(value: unknown): ManagedUser {
   if (!value || typeof value !== 'object') throw new InvalidSessionError()
   const id = (value as { id?: unknown }).id
   if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
@@ -60,7 +60,7 @@ export function createSessionGuard<User>(
       const handle = ctx.session.get(handleKey)
       if (handle !== undefined && typeof handle !== 'string') throw new InvalidSessionError()
       return {
-        userId: managedUser(user).id,
+        userId: requireManagedUser(user).id,
         ...(stored === undefined ? {} : { revision: stored === '' ? null : stored }),
         ...(handle ? { sessionHandle: handle } : {}),
       }

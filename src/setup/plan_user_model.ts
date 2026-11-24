@@ -1,13 +1,13 @@
 // Setup planning phase: static analysis of the selected Lucid user model.
 import { lstat, readFile } from 'node:fs/promises'
-import { safeSetupPath } from './safe_path.js'
+import { requireSafeSetupPath } from './safe_path.js'
 import type { SetupChoices, SetupInspection, SetupDiagnostic } from './types.js'
 import {
-  defaultImportName,
-  directClassBaseHeritage,
-  exactCall,
+  getDefaultImportName,
+  isDirectClassBaseReference,
+  isExactCall,
   hasUnsafeBindingReferences,
-  importedName,
+  getImportedBindingName,
   InvalidSetupSourceError,
   isTypeOnlyReference,
   parseSetupSource,
@@ -17,12 +17,12 @@ import {
 } from './ts_source.js'
 import { addSetupDiagnostic } from './shared.js'
 import {
-  classColumns,
+  inspectClassColumns,
   hasUnsafeStaticMetadata,
-  staticMembers,
-  unsupportedClassRuntime,
+  listStaticMembers,
+  hasUnsupportedClassRuntime,
 } from './model_inspection.js'
-import { conventionalSetupImport } from './package_imports.js'
+import { hasConventionalSetupImport } from './package_imports.js'
 import { inspectUserSchema } from './user_schema_inspection.js'
 import type * as TypeScript from 'typescript'
 
@@ -39,7 +39,7 @@ export async function planUserModel(
     const modelPath = `app/models/${choices.user.model.slice('#models/'.length)}.ts`
     try {
       if (
-        !conventionalSetupImport(
+        !hasConventionalSetupImport(
           state.files['package.json'],
           choices.user.model,
           '#models/*',
@@ -52,7 +52,7 @@ export async function planUserModel(
           'user.model',
           `Setup cannot resolve ${choices.user.model} to the inspected model`
         )
-      const modelFile = await safeSetupPath(state.root, modelPath)
+      const modelFile = await requireSafeSetupPath(state.root, modelPath)
       const modelStat = await lstat(modelFile)
       if (!modelStat.isFile())
         throw new Error(`Setup cannot inspect non-regular model ${modelPath}`)
@@ -69,12 +69,16 @@ export async function planUserModel(
           )
       )
       const selectedClass = classes.length === 1 ? classes[0] : null
-      const baseModelBinding = importedName(model, '@adonisjs/lucid/orm', 'BaseModel')
-      const schemaBinding = importedName(model, '#database/schema', 'UserSchema')
-      const composeBinding = importedName(model, '@adonisjs/core/helpers', 'compose')
-      const authFinderBinding = importedName(model, '@adonisjs/auth/mixins/lucid', 'withAuthFinder')
-      const hashBinding = defaultImportName(model, '@adonisjs/core/services/hash')
-      const providerBinding = importedName(
+      const baseModelBinding = getImportedBindingName(model, '@adonisjs/lucid/orm', 'BaseModel')
+      const schemaBinding = getImportedBindingName(model, '#database/schema', 'UserSchema')
+      const composeBinding = getImportedBindingName(model, '@adonisjs/core/helpers', 'compose')
+      const authFinderBinding = getImportedBindingName(
+        model,
+        '@adonisjs/auth/mixins/lucid',
+        'withAuthFinder'
+      )
+      const hashBinding = getDefaultImportName(model, '@adonisjs/core/services/hash')
+      const providerBinding = getImportedBindingName(
         model,
         '@adonisjs/auth/access_tokens',
         'DbAccessTokensProvider'
@@ -90,7 +94,7 @@ export async function planUserModel(
           'user.model',
           'Selected Lucid model must expose a default model class'
         )
-      const staticMember = (name: string) => staticMembers(model, selectedClass, name)
+      const listModelStaticMembers = (name: string) => listStaticMembers(model, selectedClass, name)
       const unsafeMetadata = hasUnsafeStaticMetadata(model, selectedClass, [
         'table',
         'connection',
@@ -99,7 +103,7 @@ export async function planUserModel(
         'accessTokens',
       ])
       let mutatedModel = false
-      const nativeProvider = staticMember('accessTokens')[0]
+      const nativeProvider = listModelStaticMembers('accessTokens')[0]
       const nativeProviderCall =
         nativeProvider && ts.isPropertyDeclaration(nativeProvider)
           ? nativeProvider.initializer && unwrapStaticExpression(model, nativeProvider.initializer)
@@ -107,7 +111,7 @@ export async function planUserModel(
       const supportedTokenProvider = Boolean(
         nativeProviderCall &&
         providerBinding &&
-        exactCall(model, nativeProviderCall, providerBinding, 'forModel') &&
+        isExactCall(model, nativeProviderCall, providerBinding, 'forModel') &&
         nativeProviderCall.arguments.length === 1 &&
         ts.isIdentifier(nativeProviderCall.arguments[0]) &&
         nativeProviderCall.arguments[0].text === selectedClass?.name?.text &&
@@ -115,10 +119,10 @@ export async function planUserModel(
           model,
           providerBinding,
           (call) =>
-            call === nativeProviderCall && exactCall(model, call, providerBinding, 'forModel')
+            call === nativeProviderCall && isExactCall(model, call, providerBinding, 'forModel')
         )
       )
-      const safeSelfReference = (node: TypeScript.Identifier) =>
+      const isSafeSelfReference = (node: TypeScript.Identifier) =>
         Boolean(
           node.parent &&
           ts.isCallExpression(node.parent) &&
@@ -126,12 +130,12 @@ export async function planUserModel(
           node.parent.arguments[0] === node &&
           node.parent === nativeProviderCall &&
           providerBinding &&
-          exactCall(model, node.parent, providerBinding, 'forModel') &&
+          isExactCall(model, node.parent, providerBinding, 'forModel') &&
           !hasUnsafeBindingReferences(
             model,
             providerBinding,
             (call) =>
-              call === nativeProviderCall && exactCall(model, call, providerBinding, 'forModel')
+              call === nativeProviderCall && isExactCall(model, call, providerBinding, 'forModel')
           )
         )
       if (selectedClass?.name)
@@ -141,14 +145,14 @@ export async function planUserModel(
             node.text === selectedClass.name!.text &&
             node !== selectedClass.name &&
             !isTypeOnlyReference(model, node) &&
-            !safeSelfReference(node)
+            !isSafeSelfReference(node)
           )
             mutatedModel = true
         })
       if (
         unsafeMetadata ||
         mutatedModel ||
-        (selectedClass && unsupportedClassRuntime(model, selectedClass, false))
+        (selectedClass && hasUnsupportedClassRuntime(model, selectedClass, false))
       )
         addSetupDiagnostic(
           diagnostics,
@@ -188,7 +192,7 @@ export async function planUserModel(
           finderCall.arguments[0].text === hashBinding
         )
       const composed = composeCall && finderCall && composesWith(schemaBinding)
-      const onlyImportedReference = (
+      const isSoleImportedReference = (
         binding: string | null,
         expected: TypeScript.Node | undefined
       ) => {
@@ -218,14 +222,14 @@ export async function planUserModel(
         composed &&
         !hasUnsafeBindingReferences(model, composeBinding!, (call) => call === composeCall) &&
         !hasUnsafeBindingReferences(model, authFinderBinding!, (call) => call === finderCall) &&
-        onlyImportedReference(schemaBinding, composeCall.arguments[0]) &&
-        onlyImportedReference(hashBinding, finderCall.arguments[0])
+        isSoleImportedReference(schemaBinding, composeCall.arguments[0]) &&
+        isSoleImportedReference(hashBinding, finderCall.arguments[0])
       const composedBase = composeCall && finderCall && composesWith(baseModelBinding)
       const safeBaseComposition =
         composedBase &&
         !hasUnsafeBindingReferences(model, composeBinding!, (call) => call === composeCall) &&
         !hasUnsafeBindingReferences(model, authFinderBinding!, (call) => call === finderCall) &&
-        onlyImportedReference(hashBinding, finderCall.arguments[0])
+        isSoleImportedReference(hashBinding, finderCall.arguments[0])
       if (
         baseModelBinding &&
         hasUnsafeBindingReferences(
@@ -233,7 +237,7 @@ export async function planUserModel(
           baseModelBinding,
           () => false,
           (reference) =>
-            (directClassBaseHeritage(model, reference) &&
+            (isDirectClassBaseReference(model, reference) &&
               reference.parent.parent.parent === selectedClass) ||
             Boolean(safeBaseComposition && reference === composeCall?.arguments[0])
         )
@@ -249,22 +253,25 @@ export async function planUserModel(
           state.files['package.json'],
           diagnostics
         ))
-      const inheritedMember = (name: string) =>
-        schemaSource ? staticMembers(schemaSource, schemaClass, name) : []
-      const modelColumns = selectedClass ? classColumns(model, selectedClass) : null
+      const listInheritedStaticMembers = (name: string) =>
+        schemaSource ? listStaticMembers(schemaSource, schemaClass, name) : []
+      const modelColumns = selectedClass ? inspectClassColumns(model, selectedClass) : null
       const inheritedColumns =
-        schemaClass && schemaSource ? classColumns(schemaSource, schemaClass) : null
-      const primaryKeyMember = (member: TypeScript.Node | undefined) =>
+        schemaClass && schemaSource ? inspectClassColumns(schemaSource, schemaClass) : null
+      const matchesPrimaryKeyMember = (member: TypeScript.Node | undefined) =>
         member &&
         ts.isPropertyDeclaration(member) &&
         member.initializer &&
         ts.isStringLiteral(member.initializer) &&
         member.initializer.text === 'id'
-      const declaredKeys = [...staticMember('primaryKey'), ...inheritedMember('primaryKey')]
+      const declaredKeys = [
+        ...listModelStaticMembers('primaryKey'),
+        ...listInheritedStaticMembers('primaryKey'),
+      ]
       if (
-        declaredKeys.some((member) => !primaryKeyMember(member)) ||
-        staticMember('namingStrategy').length ||
-        inheritedMember('namingStrategy').length
+        declaredKeys.some((member) => !matchesPrimaryKeyMember(member)) ||
+        listModelStaticMembers('namingStrategy').length ||
+        listInheritedStaticMembers('namingStrategy').length
       )
         addSetupDiagnostic(
           diagnostics,
@@ -302,7 +309,7 @@ export async function planUserModel(
             'Model must expose one physical id primary column with the selected TypeScript id type'
           )
       }
-      const tableMember = staticMember('table')
+      const tableMember = listModelStaticMembers('table')
       const tableInitializer =
         tableMember.length === 1 && ts.isPropertyDeclaration(tableMember[0])
           ? tableMember[0].initializer
@@ -321,7 +328,10 @@ export async function planUserModel(
           'user.table',
           `Model table ${table} differs from selected ${choices.user.table}`
         )
-      if (staticMember('connection').length || inheritedMember('connection').length)
+      if (
+        listModelStaticMembers('connection').length ||
+        listInheritedStaticMembers('connection').length
+      )
         addSetupDiagnostic(
           diagnostics,
           'user.connection',
@@ -340,8 +350,8 @@ export async function planUserModel(
           'Default Lucid User table is users; declare a model-owned table for another name'
         )
       if (
-        inheritedMember('table').length &&
-        inheritedMember('table').some(
+        listInheritedStaticMembers('table').length &&
+        listInheritedStaticMembers('table').some(
           (member) =>
             ts.isPropertyDeclaration(member) &&
             member.initializer &&

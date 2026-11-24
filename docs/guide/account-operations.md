@@ -73,8 +73,10 @@ acceptance receives the normal used-link refusal. It does not recheck the invite
 permission or disabled state. The `role` and `scope` are opaque application data; use
 `onInvitationAccepted(user, invitation, trx)` for required membership or role writes in the
 acceptance transaction. Closed ordinary registration does not disable invitation acceptance.
-Listing takes a `scope` and passes it to `authorize.listInvitations`, so one workspace's pending
-invitations can be listed without an application query. MySQL's default collation compares scopes
+`kit.invitations.list` returns a page with `items` and `nextCursor`. Pass a returned cursor as
+`cursor` for the next page. A null `nextCursor` marks the final page. Account Kit passes the
+requested scope to `authorize.listInvitations`, which must return exactly `true` to allow access.
+MySQL's default collation compares scopes
 without regard to case or accents, so on MySQL use scopes that differ in more than case. The
 [workspace invitation recipe](../recipes/multi-tenant.md) keeps creation, listing and management
 permissions bound to the selected workspace.

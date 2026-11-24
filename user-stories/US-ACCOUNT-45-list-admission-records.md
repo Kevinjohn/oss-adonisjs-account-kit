@@ -38,7 +38,7 @@ The runnable API example traces the controller and middleware entry in its [admi
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.list calls listAdmissions"] --> B{"Approval enabled, and limit, status and cursor valid?"}
+ A["AccountAdmission.list calls paginateAdmissions"] --> B{"Approval enabled, and limit, status and cursor valid?"}
  B -->|No| E["Throw capability or input error"]
  B -->|Yes| C{"Actor found and admitted, and authorize.list(actor, empty context) returns true?"}
  C -->|No| H["Throw unknown actor or authorisation error"]
@@ -47,4 +47,4 @@ flowchart TD
  I --> G["Return items and nextCursor from source page position, or null"]
 ```
 
-**Code references:** [`AccountAdmission.list`](../src/admission/service.ts), [`listAdmissions`](../src/admission/listing.ts), [`listing tests`](../tests/admission_listing.spec.ts)
+**Code references:** [`AccountAdmission.list`](../src/admission/service.ts), [`paginateAdmissions`](../src/admission/listing.ts), [`listing tests`](../tests/admission_listing.spec.ts)

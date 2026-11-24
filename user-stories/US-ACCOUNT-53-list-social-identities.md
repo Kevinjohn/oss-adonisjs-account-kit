@@ -41,7 +41,7 @@ flowchart TD
  B["Transaction validates current and loads confirmed owned rows ordered by ID"] -->|Refusal| X["Propagate current-account error"]
  B -->|Success| C{"Caller?"}
  C -->|Service list| S["Return SocialIdentity list"]
- C -->|Managed list| H["Map safeIdentity and return 200 with identities"]
+ C -->|Managed list| H["Map projectSocialIdentity and return 200 with identities"]
  C -->|Service detail| F{"Exact identityId in confirmed list?"}
  F -->|No| G["Throw SocialUserNotFoundError"]
  F -->|Yes| I["Return one SocialIdentity"]

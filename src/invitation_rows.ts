@@ -1,7 +1,7 @@
 import type { DateTime } from 'luxon'
 import type { Invitation, UserId } from './types.js'
 import { readTimestamp } from './timestamps.js'
-import { scopeFromColumn } from './invitation_scope.js'
+import { decodeScopeColumn } from './invitation_scope.js'
 
 type DatabaseDate = Date | string
 
@@ -26,7 +26,7 @@ export function toInvitation(row: InvitationDatabaseRow): Invitation {
     id: row.id,
     email: row.email,
     role: row.role,
-    scope: scopeFromColumn(row.scope),
+    scope: decodeScopeColumn(row.scope),
     inviterId: row.inviter_id,
     expiresAt: toDateTime(row.expires_at),
     createdAt: toDateTime(row.created_at),

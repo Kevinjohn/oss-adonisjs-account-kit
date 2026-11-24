@@ -1,6 +1,6 @@
 /** Constant-size browser binding shared by outstanding managed magic links. */
 import { isClientVerifier } from '../client_challenge.js'
-import { newVerifier } from './pkce_verifier.js'
+import { generateVerifierAndChallenge } from './pkce_verifier.js'
 import type { SessionStore } from './session_access.js'
 
 const key = 'accountKit.magicLink.verifier'
@@ -24,10 +24,10 @@ function read(session: SessionStore): Binding | undefined {
   if (value !== undefined) session.forget(key)
 }
 
-export function magicLinkVerifier(session: SessionStore, create: false): string | undefined
-export function magicLinkVerifier(session: SessionStore, create?: true): string
-export function magicLinkVerifier(session: SessionStore, create = true): string | undefined {
-  return read(session)?.verifier ?? (create ? newVerifier().verifier : undefined)
+export function resolveMagicLinkVerifier(session: SessionStore, create: false): string | undefined
+export function resolveMagicLinkVerifier(session: SessionStore, create?: true): string
+export function resolveMagicLinkVerifier(session: SessionStore, create = true): string | undefined {
+  return read(session)?.verifier ?? (create ? generateVerifierAndChallenge().verifier : undefined)
 }
 
 export function acknowledgeMagicLink(session: SessionStore, verifier: string, expiresAt: number) {

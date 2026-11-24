@@ -148,6 +148,10 @@ guard strategies. To also sign the person out, call `kit.authentication.changeRe
 `input` is the same `CurrentAccountInput` your guard returns: a credential check always comes
 first, so an expired session fails with `InvalidSessionError` before admission is evaluated.
 
+`list` returns `{ items, nextCursor }`. Pass a returned cursor as `cursor` for the next page.
+A null `nextCursor` marks the final page. The existing `approval.authorize.list` callback
+must return exactly `true` to allow listing.
+
 The decision names only the enabled requirements:
 
 ```ts

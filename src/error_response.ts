@@ -1,6 +1,10 @@
 import { HttpRequest } from '@adonisjs/core/http'
 import { AccountKitError } from './errors.js'
-import { publicHeaders, publicIdentity, type ProofKind } from './error_identity.js'
+import {
+  buildPublicErrorHeaders,
+  mapPublicErrorIdentity,
+  type ProofKind,
+} from './error_identity.js'
 import type { AccountKitTranslator } from './translator.js'
 
 const JSON_API = 'application/vnd.api+json'
@@ -40,14 +44,14 @@ export function negotiateRequest(
 }
 
 /** The error's own `field` name, such as `email` on a duplicate registration email. */
-function ownField(error: AccountKitError): string | undefined {
+function getOwnErrorField(error: AccountKitError): string | undefined {
   if (!Object.hasOwn(error, 'field')) return undefined
   const field = (error as { field?: unknown }).field
   return typeof field === 'string' ? field : undefined
 }
 
 /** Package errors are deliberately translated without exposing internal messages or causes. */
-export function managedErrorResponse(
+export function mapManagedErrorResponse(
   error: unknown,
   options: {
     accept?: string
@@ -58,7 +62,7 @@ export function managedErrorResponse(
   } = {}
 ): ManagedErrorResponse | null {
   if (!(error instanceof AccountKitError)) return null
-  const identity = publicIdentity(error, { proof: options.proof })
+  const identity = mapPublicErrorIdentity(error, { proof: options.proof })
   const translated =
     options.i18n?.t(`errors.${identity.code}`, {}, identity.message) ?? identity.message
   const message = options.message?.(identity.code, translated) ?? translated
@@ -66,11 +70,12 @@ export function managedErrorResponse(
     ? negotiateRequest(options.request)
     : negotiate(options.accept)
   const committed = identity.committed ? { committed: true as const } : {}
-  const field = identity.code === error.code && identity.status < 500 ? ownField(error) : undefined
+  const field =
+    identity.code === error.code && identity.status < 500 ? getOwnErrorField(error) : undefined
   return {
     status: identity.status,
     contentType,
-    headers: { Vary: 'Accept', ...publicHeaders(error) },
+    headers: { Vary: 'Accept', ...buildPublicErrorHeaders(error) },
     body: {
       errors: [
         contentType === JSON_API
@@ -140,7 +145,7 @@ export function accountErrorResponse(
   error: unknown,
   options: { i18n?: AccountKitTranslator; accept?: string; proof?: ProofKind } = {}
 ): AccountErrorResponse | null {
-  return managedErrorResponse(error, {
+  return mapManagedErrorResponse(error, {
     i18n: options.i18n,
     accept: options.accept,
     proof: options.proof,

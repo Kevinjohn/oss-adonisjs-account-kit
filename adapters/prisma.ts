@@ -1,6 +1,6 @@
 import type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
 import { InvalidConfigurationError } from '../src/errors.js'
-import { deferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
+import { createDeferredSqlUsersAdapter } from '../src/deferred_sql_adapter.js'
 import { canonicalUserColumns } from '../src/user_columns.js'
 
 export type { SqlUsersAdapter, SqlUsersAdapterOptions } from './sql.js'
@@ -15,7 +15,7 @@ export interface PrismaModelDefinition {
 }
 
 /** Resolve `@@map` and `@map` and check the user columns. */
-function prismaUsersTable(model: PrismaModelDefinition): string {
+function requirePrismaUsersTable(model: PrismaModelDefinition): string {
   if (!model || typeof model.name !== 'string' || !Array.isArray(model.fields))
     throw new InvalidConfigurationError(
       'model',
@@ -41,5 +41,5 @@ export function createPrismaAdapter(
   model: PrismaModelDefinition,
   options: PrismaAdapterOptions = {}
 ): SqlUsersAdapter {
-  return deferredSqlUsersAdapter(() => prismaUsersTable(model), options)
+  return createDeferredSqlUsersAdapter(() => requirePrismaUsersTable(model), options)
 }

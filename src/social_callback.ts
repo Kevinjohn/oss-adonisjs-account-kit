@@ -41,12 +41,12 @@ import type {
 } from './types.js'
 
 import {
-  checkedProfile,
+  requireProviderProfile,
   createAccount,
   createAssociation,
   type ProviderProfile,
 } from './social_account_creation.js'
-export { checkedProfile, createAccount } from './social_account_creation.js'
+export { requireProviderProfile, createAccount } from './social_account_creation.js'
 
 interface SocialTransactionRow {
   hash: string
@@ -93,7 +93,7 @@ function freshAuthenticationMatches(
   )
 }
 
-export function provider(deps: Dependencies, name: SocialProviderName) {
+export function requireSocialProvider(deps: Dependencies, name: SocialProviderName) {
   const selected = deps.config.socialAuthentication?.providers[name]
   if (!selected || !isSocialProviderName(name))
     throw new InvalidInputError('Unsupported social provider')
@@ -117,7 +117,7 @@ export function isIdentityConflict(error: unknown): boolean {
 }
 
 /** Consumes the state once, resolves the provider profile and returns the outcome. */
-export async function socialCallback(
+export async function completeSocialCallback(
   deps: Dependencies,
   input: SocialCallbackInput
 ): Promise<SocialCallbackResult> {
@@ -133,8 +133,8 @@ export async function socialCallback(
   let profile: ProviderProfile
   let freshEvidence: VerifiedSocialAuthentication | null = null
   try {
-    const adapter = provider(deps, name)
-    profile = checkedProfile(await adapter.resolve(input.callback))
+    const adapter = requireSocialProvider(deps, name)
+    profile = requireProviderProfile(await adapter.resolve(input.callback))
     if (candidate.intent === 'reauth') {
       if (!adapter.verifyFreshAuthentication) throw new SocialProofError()
       freshEvidence = await adapter.verifyFreshAuthentication(input.callback, {

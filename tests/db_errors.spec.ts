@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { isUniqueViolation, mysqlDuplicateKey } from '../src/db.js'
+import { isUniqueViolation, extractMysqlDuplicateKey } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { resetSchema } from './helpers/schema.js'
 
@@ -78,15 +78,19 @@ test.group('database helper error recognition', (group) => {
       sqlMessage: `Duplicate entry '${value}' for key '${key}'`,
     })
     assert.equal(
-      mysqlDuplicateKey(duplicate('users.users_email_unique')),
+      extractMysqlDuplicateKey(duplicate('users.users_email_unique')),
       'users.users_email_unique'
     )
     assert.equal(
-      mysqlDuplicateKey(duplicate('users.users_email_unique', "x' for key 'users.other")),
+      extractMysqlDuplicateKey(duplicate('users.users_email_unique', "x' for key 'users.other")),
       'users.users_email_unique'
     )
-    assert.isUndefined(mysqlDuplicateKey({ code: '23505', constraint: 'users_email_unique' }))
-    assert.isUndefined(mysqlDuplicateKey({ code: 'ER_DUP_ENTRY', sqlMessage: 'Duplicate entry' }))
+    assert.isUndefined(
+      extractMysqlDuplicateKey({ code: '23505', constraint: 'users_email_unique' })
+    )
+    assert.isUndefined(
+      extractMysqlDuplicateKey({ code: 'ER_DUP_ENTRY', sqlMessage: 'Duplicate entry' })
+    )
     assert.isTrue(isUniqueViolation(duplicate('users.users_email_unique'), 'users', 'email'))
     assert.isFalse(isUniqueViolation(duplicate('users.users_email_alias_unique'), 'users', 'email'))
     assert.isFalse(isUniqueViolation(duplicate('accounts.users_email_unique'), 'users', 'email'))

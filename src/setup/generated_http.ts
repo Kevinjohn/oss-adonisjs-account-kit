@@ -1,7 +1,7 @@
 import type { SetupChoices } from './types.js'
-import { managedExclusions } from './shared.js'
+import { listManagedExclusions } from './shared.js'
 
-export function managedGuardSource(choices: SetupChoices): string {
+export function generateManagedGuardSource(choices: SetupChoices): string {
   const auth = choices.authentication!
   return [
     "import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'",
@@ -15,7 +15,7 @@ export function managedGuardSource(choices: SetupChoices): string {
   ].join('\n')
 }
 
-export function managedAccessMiddlewareSource(choices: SetupChoices): string {
+export function generateAccessMiddlewareSource(choices: SetupChoices): string {
   return [
     "import type { HttpContext } from '@adonisjs/core/http'",
     "import app from '@adonisjs/core/services/app'",
@@ -38,7 +38,7 @@ export function managedAccessMiddlewareSource(choices: SetupChoices): string {
   ].join('\n')
 }
 
-export function proofHeadersMiddlewareSource(choices: SetupChoices): string {
+export function generateProofHeadersMiddlewareSource(choices: SetupChoices): string {
   return [
     "import type { HttpContext } from '@adonisjs/core/http'",
     "import { managedProofHeadersMiddleware } from '@kevinjohn/adonisjs-account-kit/http'",
@@ -47,7 +47,7 @@ export function proofHeadersMiddlewareSource(choices: SetupChoices): string {
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  strategy: ${JSON.stringify(choices.authentication?.strategy ?? 'session')},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
-    `  except: ${JSON.stringify(managedExclusions(choices))},`,
+    `  except: ${JSON.stringify(listManagedExclusions(choices))},`,
     '})',
     '',
     'export default class AccountKitProofHeadersMiddleware {',

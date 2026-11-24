@@ -1,15 +1,15 @@
 import {
-  directProperty,
-  defaultImportName,
+  getDirectProperty,
+  getDefaultImportName,
   hasUnsafeBindingReferences,
   hasUnsafeObjectEntries,
-  importedName,
+  getImportedBindingName,
   parseSetupSource,
-  topLevelConfig,
+  inspectTopLevelConfig,
 } from './ts_source.js'
-import { selectedEnvName } from './selected_environment.js'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
 
-export async function limiterConfigurationState(
+export async function inspectLimiterConfiguration(
   text: string,
   root: string,
   env?: NodeJS.ProcessEnv
@@ -20,12 +20,12 @@ export async function limiterConfigurationState(
   } catch {
     return 'invalid'
   }
-  const defineConfigName = importedName(source, '@adonisjs/limiter', 'defineConfig')
-  const storesName = importedName(source, '@adonisjs/limiter', 'stores')
-  const config = defineConfigName && topLevelConfig(source, defineConfigName)?.object
+  const defineConfigName = getImportedBindingName(source, '@adonisjs/limiter', 'defineConfig')
+  const storesName = getImportedBindingName(source, '@adonisjs/limiter', 'stores')
+  const config = defineConfigName && inspectTopLevelConfig(source, defineConfigName)?.object
   if (!config || !storesName || hasUnsafeObjectEntries(source, config)) return 'invalid'
-  const selected = directProperty(source, config, 'default')?.initializer
-  const stores = directProperty(source, config, 'stores')?.initializer
+  const selected = getDirectProperty(source, config, 'default')?.initializer
+  const stores = getDirectProperty(source, config, 'stores')?.initializer
   if (!selected || !stores || !source.ts.isObjectLiteralExpression(stores)) return 'invalid'
   if (hasUnsafeObjectEntries(source, stores)) return 'invalid'
   let name: string | null = null
@@ -33,10 +33,10 @@ export async function limiterConfigurationState(
   else {
     try {
       name =
-        (await selectedEnvName(
+        (await resolveEnvironmentNameFromGetter(
           source,
           root,
-          defaultImportName(source, '#start/env'),
+          getDefaultImportName(source, '#start/env'),
           selected,
           undefined,
           env
@@ -46,7 +46,7 @@ export async function limiterConfigurationState(
     }
   }
   if (!name) return 'unresolved'
-  const factory = directProperty(source, stores, name)?.initializer
+  const factory = getDirectProperty(source, stores, name)?.initializer
   if (
     !factory ||
     !source.ts.isCallExpression(factory) ||

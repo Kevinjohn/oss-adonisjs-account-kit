@@ -1,13 +1,13 @@
 import { realpath } from 'node:fs/promises'
 import { readRegularFile } from './safe_path.js'
 import type { SetupChoices, SetupInspection } from './types.js'
-import { parseSetupChoices } from './parse.js'
+import { requireSetupChoices } from './parse.js'
 import { inspectGuards } from './guard_inspection.js'
 import { inspectDatabaseKind } from './database_inspection.js'
-import { staticRouteDefinitions } from './route_inspection.js'
-import { installedPackageVersions } from './installed_packages.js'
+import { readStaticRouteDefinitions } from './route_inspection.js'
+import { readInstalledPackageVersions } from './installed_packages.js'
 import {
-  guidedMigrationDefault,
+  resolveDefaultMigrationDirectory,
   inspectMigrationDirectory,
   MigrationDirectoryError,
 } from './migration_paths.js'
@@ -60,7 +60,7 @@ export async function inspectSetup(
     ...Object.keys(packageJson.dependencies ?? {}),
     ...Object.keys(packageJson.devDependencies ?? {}),
   ]
-  const installedVersions = await installedPackageVersions(root, declaredPackages)
+  const installedVersions = await readInstalledPackageVersions(root, declaredPackages)
   const installedPackages = Object.keys(installedVersions)
   let migrationNames: string[] = []
   let migrationDirectory: string | undefined
@@ -72,7 +72,7 @@ export async function inspectSetup(
       files['config/database.ts'] ?? '',
       options.migrationDirectory,
       options.env,
-      await guidedMigrationDefault(files['adonisrc.ts'] ?? '')
+      await resolveDefaultMigrationDirectory(files['adonisrc.ts'] ?? '')
     )
     migrationDirectory = directory.path
     migrationNames = directory.names
@@ -89,14 +89,14 @@ export async function inspectSetup(
   let existingChoices: SetupChoices | null = null
   if (files['config/account_kit_setup.json']) {
     try {
-      existingChoices = parseSetupChoices(JSON.parse(files['config/account_kit_setup.json']))
+      existingChoices = requireSetupChoices(JSON.parse(files['config/account_kit_setup.json']))
     } catch (error) {
       if (!options.onInvalidSavedChoices) throw error
       options.onInvalidSavedChoices(error)
     }
   }
   const existingPrefix = existingChoices?.routePrefix ?? null
-  const routeDefinitions = await staticRouteDefinitions(files['start/routes.ts'] ?? '')
+  const routeDefinitions = await readStaticRouteDefinitions(files['start/routes.ts'] ?? '')
   const routePaths = routeDefinitions.map(({ path }) => path)
   const { strategies, models, tokenProviders } = await inspectGuards(files['config/auth.ts'] ?? '')
   return {

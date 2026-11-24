@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { actionUrlBackendOrigins } from './action_urls.js'
 import { CapabilityDisabledError, InvalidConfigurationError } from './errors.js'
-import { budget } from './config_budget.js'
+import { resolveThrottleBudget } from './config_budget.js'
 import { assertObject } from './config_assert.js'
 import { isSqlIdentifier } from './sql_identifier.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from './capabilities.js'
@@ -10,7 +10,7 @@ import { resolvePasswordPolicy } from './config_password_policy.js'
 import { resolveAccountDeletion } from './config_account_deletion.js'
 import { resolveSessionManagement } from './config_session_management.js'
 import { assertSocialAuthenticationConfig } from './config_social_authentication.js'
-import { configuredExpiresAt } from './config_ttl.js'
+import { computeConfiguredExpiry } from './config_ttl.js'
 import type {
   AccountKitConfig,
   AuthorizationCallbacks,
@@ -21,34 +21,34 @@ import type {
 } from './types.js'
 import { freezeResolved } from './config_freeze.js'
 
-function disabled(): never {
+function rejectDisabledCapability(): never {
   throw new CapabilityDisabledError('This account capability is disabled')
 }
 
-const disabledAuthorize: Record<keyof AuthorizationCallbacks, typeof disabled> = {
-  invite: disabled,
-  manageInvitation: disabled,
-  listInvitations: disabled,
+const disabledAuthorize: Record<keyof AuthorizationCallbacks, typeof rejectDisabledCapability> = {
+  invite: rejectDisabledCapability,
+  manageInvitation: rejectDisabledCapability,
+  listInvitations: rejectDisabledCapability,
 }
-const disabledUrls: Record<keyof UrlCallbacks, typeof disabled> = {
-  passwordReset: disabled,
-  emailVerification: disabled,
-  invitation: disabled,
-  emailChange: disabled,
-  magicLink: disabled,
+const disabledUrls: Record<keyof UrlCallbacks, typeof rejectDisabledCapability> = {
+  passwordReset: rejectDisabledCapability,
+  emailVerification: rejectDisabledCapability,
+  invitation: rejectDisabledCapability,
+  emailChange: rejectDisabledCapability,
+  magicLink: rejectDisabledCapability,
 }
-const disabledNotify: Record<keyof NotificationCallbacks, typeof disabled> = {
-  passwordResetProvision: disabled,
-  passwordResetCompleted: disabled,
-  accountActivationProvision: disabled,
-  invitationProvision: disabled,
-  emailChangeProvision: disabled,
-  emailChanged: disabled,
-  passwordChanged: disabled,
-  socialIdentityLinked: disabled,
-  socialIdentityUnlinked: disabled,
-  magicLinkProvision: disabled,
-  accountDeleted: disabled,
+const disabledNotify: Record<keyof NotificationCallbacks, typeof rejectDisabledCapability> = {
+  passwordResetProvision: rejectDisabledCapability,
+  passwordResetCompleted: rejectDisabledCapability,
+  accountActivationProvision: rejectDisabledCapability,
+  invitationProvision: rejectDisabledCapability,
+  emailChangeProvision: rejectDisabledCapability,
+  emailChanged: rejectDisabledCapability,
+  passwordChanged: rejectDisabledCapability,
+  socialIdentityLinked: rejectDisabledCapability,
+  socialIdentityUnlinked: rejectDisabledCapability,
+  magicLinkProvision: rejectDisabledCapability,
+  accountDeleted: rejectDisabledCapability,
 }
 
 /**
@@ -221,13 +221,17 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     magicLink: config.expiresIn?.magicLink ?? '15m',
   })
   for (const [name, value] of Object.entries(expiresIn))
-    configuredExpiresAt(`expiresIn.${name}`, DateTime.utc(), value)
-  const throttle = budget(config.throttle, { requests: 5, duration: '15m' }, 'throttle')
+    computeConfiguredExpiry(`expiresIn.${name}`, DateTime.utc(), value)
+  const throttle = resolveThrottleBudget(
+    config.throttle,
+    { requests: 5, duration: '15m' },
+    'throttle'
+  )
   const invitationThrottle = freezeResolved(
     Object.fromEntries(
       ['sendActor', 'sendRecipient', 'resendActor', 'resendInvitation'].map((name) => [
         name,
-        budget(
+        resolveThrottleBudget(
           config.invitationThrottle?.[name as keyof InvitationThrottle],
           { requests: name.endsWith('Actor') ? 10 : 3, duration: '1h' },
           `invitationThrottle.${name}`
@@ -325,6 +329,6 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     onInvitationAccepted:
       typeof config.onInvitationAccepted === 'function'
         ? config.onInvitationAccepted.bind(config)
-        : disabled,
+        : rejectDisabledCapability,
   })
 }

@@ -2,7 +2,7 @@ import type { SetupChoices } from './types.js'
 import { hasEmailFlow } from './shared.js'
 import { requiredEnvHelperLines } from './generated_env_helpers.js'
 
-export function accountConfigSource(
+export function generateAccountConfigSource(
   choices: SetupChoices,
   { includeBackendOriginSetting = true } = {}
 ): string {

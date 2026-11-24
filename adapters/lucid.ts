@@ -137,14 +137,14 @@ export function createLucidAdapter<Model extends LucidModelRow>(
   options: LucidAdapterOptions<Model> = {}
 ): LucidUsersAdapter {
   let modelPromise: Promise<AccountModel> | undefined
-  const model = async (): Promise<AccountModel> => {
+  const loadUserModel = async (): Promise<AccountModel> => {
     modelPromise ??= loadModel().then((User) => User as unknown as AccountModel)
     const User = await modelPromise
-    metadataFor(User)
+    readUserModelMetadata(User)
     return User
   }
 
-  const metadataFor = (User: AccountModel): UsersAdapterMetadata => {
+  const readUserModelMetadata = (User: AccountModel): UsersAdapterMetadata => {
     User.boot()
 
     if (User.connection) {
@@ -188,9 +188,10 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     }
   }
 
-  const resolveMetadata = async (): Promise<UsersAdapterMetadata> => metadataFor(await model())
+  const resolveMetadata = async (): Promise<UsersAdapterMetadata> =>
+    readUserModelMetadata(await loadUserModel())
 
-  const find = async (builder: Query, column: string, value: unknown) =>
+  const getByColumn = async (builder: Query, column: string, value: unknown) =>
     builder.where(column, value).first()
 
   const updateUser = async (
@@ -198,8 +199,8 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     trx: Trx,
     change: (user: LucidModelRow) => void
   ): Promise<void> => {
-    const User = await model()
-    const user = await find(query(User, trx), 'id', id)
+    const User = await loadUserModel()
+    const user = await getByColumn(query(User, trx), 'id', id)
     if (!user) return
     change(user)
     user.useTransaction(trx)
@@ -208,7 +209,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
 
   // A ready hash is written with a query, not the model, so the model's hashing hook never sees it.
   const writeHash = async (id: UserId, passwordHash: string, trx: Trx): Promise<void> => {
-    const User = await model()
+    const User = await loadUserModel()
     const update = (
       User.query as unknown as (options: { client: Trx }) => {
         where(column: string, value: unknown): { update(values: object): Promise<unknown> }
@@ -232,24 +233,28 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     },
 
     async findByEmail(email, trx) {
-      const user = await find(query(await model(), trx), 'email', normalizeEmail(email))
+      const user = await getByColumn(
+        query(await loadUserModel(), trx),
+        'email',
+        normalizeEmail(email)
+      )
       return user ? toAccountUser(user) : null
     },
 
     async findById(id, trx) {
-      const user = await find(query(await model(), trx), 'id', id)
+      const user = await getByColumn(query(await loadUserModel(), trx), 'id', id)
       return user ? toAccountUser(user) : null
     },
 
     async listVisibleIds(after, limit) {
-      const listing = query(await model())
+      const listing = query(await loadUserModel())
       if (after !== undefined) listing.where('id', '>', after)
       const users = await listing.select('id').orderBy('id', 'asc').limit(limit).exec()
       return users.map(({ id }) => id)
     },
 
     async create(attrs, trx) {
-      const User = await model()
+      const User = await loadUserModel()
       const user = new User() as unknown as LucidModelRow
       const before = {
         id: user.id,
@@ -313,8 +318,8 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     async updateRegistrationData(id, data, trx) {
       if (!options.mapRegistrationData)
         throw new Error('account_kit: registrationData requires mapRegistrationData')
-      const User = await model()
-      const user = await find(query(User, trx), 'id', id)
+      const User = await loadUserModel()
+      const user = await getByColumn(query(User, trx), 'id', id)
       if (!user) return
       const before = {
         id: user.id,
@@ -347,7 +352,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     },
 
     async verifyPassword(id, password, trx) {
-      const user = await find(query(await model(), trx), 'id', id)
+      const user = await getByColumn(query(await loadUserModel(), trx), 'id', id)
       if (typeof user?.password !== 'string') return false
       if (options.verifyPassword) return options.verifyPassword(user.password, password)
       const { default: hash } = await import('@adonisjs/core/services/hash')
@@ -355,7 +360,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     },
 
     async delete(id, trx) {
-      const user = await find(query(await model(), trx), 'id', id)
+      const user = await getByColumn(query(await loadUserModel(), trx), 'id', id)
       if (!user) return
       user.useTransaction(trx)
       if (typeof user.forceDelete === 'function') await user.forceDelete()

@@ -1,20 +1,20 @@
 // Setup planning phase: static analysis of the UserSchema class the user model composes.
 import { lstat, readFile } from 'node:fs/promises'
-import { safeSetupPath } from './safe_path.js'
+import { requireSafeSetupPath } from './safe_path.js'
 import type { SetupDiagnostic } from './types.js'
 import {
-  directClassBaseHeritage,
-  exactCall,
+  isDirectClassBaseReference,
+  isExactCall,
   hasUnsafeBindingReferences,
-  importedName,
+  getImportedBindingName,
   isTypeOnlyReference,
   parseSetupSource,
   walk,
   type SetupSource,
 } from './ts_source.js'
 import { addSetupDiagnostic } from './shared.js'
-import { conventionalSetupImport } from './package_imports.js'
-import { hasUnsafeStaticMetadata, unsupportedClassRuntime } from './model_inspection.js'
+import { hasConventionalSetupImport } from './package_imports.js'
+import { hasUnsafeStaticMetadata, hasUnsupportedClassRuntime } from './model_inspection.js'
 import type * as TypeScript from 'typescript'
 
 /** Resolve #database/schema to a UserSchema class that is safe to read column metadata from. */
@@ -29,7 +29,7 @@ export async function inspectUserSchema(
   const schemaPath = 'database/schema.ts'
   try {
     if (
-      !conventionalSetupImport(
+      !hasConventionalSetupImport(
         manifestText,
         '#database/schema',
         '#database/*',
@@ -38,13 +38,13 @@ export async function inspectUserSchema(
       )
     )
       throw new Error('Setup cannot resolve #database/schema to the inspected schema')
-    const path = await safeSetupPath(root, schemaPath)
+    const path = await requireSafeSetupPath(root, schemaPath)
     const schemaStat = await lstat(path)
     if (!schemaStat.isFile())
       throw new Error(`Setup cannot inspect non-regular schema ${schemaPath}`)
     const parsed = await parseSetupSource(await readFile(path, 'utf8'))
-    const base = importedName(parsed, '@adonisjs/lucid/orm', 'BaseModel')
-    const column = importedName(parsed, '@adonisjs/lucid/orm', 'column')
+    const base = getImportedBindingName(parsed, '@adonisjs/lucid/orm', 'BaseModel')
+    const column = getImportedBindingName(parsed, '@adonisjs/lucid/orm', 'column')
     const matches = parsed.file.statements.filter(
       (node): node is TypeScript.ClassDeclaration =>
         parsed.ts.isClassDeclaration(node) &&
@@ -67,7 +67,7 @@ export async function inspectUserSchema(
         parsed,
         base,
         () => false,
-        (reference) => directClassBaseHeritage(parsed, reference)
+        (reference) => isDirectClassBaseReference(parsed, reference)
       )
     )
     const unsafeColumn =
@@ -78,8 +78,8 @@ export async function inspectUserSchema(
         (call) =>
           parsed.ts.isDecorator(call.parent) &&
           ((parsed.ts.isIdentifier(call.expression) && call.expression.text === column) ||
-            exactCall(parsed, call, column, 'dateTime') ||
-            exactCall(parsed, call, column, 'date'))
+            isExactCall(parsed, call, column, 'dateTime') ||
+            isExactCall(parsed, call, column, 'date'))
       )
     let escaped = false
     if (candidate?.name)
@@ -117,7 +117,7 @@ export async function inspectUserSchema(
       !escaped &&
       !metadataUnsafe &&
       candidate &&
-      !unsupportedClassRuntime(parsed, candidate, true)
+      !hasUnsupportedClassRuntime(parsed, candidate, true)
     ) {
       return { schemaClass: candidate, schemaSource: parsed }
     }

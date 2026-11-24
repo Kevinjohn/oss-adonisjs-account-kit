@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { defaultImportName, parseSetupSource, walk, type SetupSource } from './ts_source.js'
+import { getDefaultImportName, parseSetupSource, walk, type SetupSource } from './ts_source.js'
 
 /** AdonisJS joins a prefix and a pattern without doubled or trailing slashes. */
 function dropSlash(input: string): string {
@@ -16,7 +16,7 @@ function withPrefix(prefix: string, path: string): string {
  * The literal `.prefix('...')` calls chained on `call`, in call order. Null when a prefix is not a
  * string literal, so the final path is unknown.
  */
-function chainedPrefixes(source: SetupSource, call: TypeScript.Node): string[] | null {
+function extractChainedPrefixes(source: SetupSource, call: TypeScript.Node): string[] | null {
   const { ts } = source
   const prefixes: string[] = []
   let current = call
@@ -36,13 +36,13 @@ function chainedPrefixes(source: SetupSource, call: TypeScript.Node): string[] |
   return prefixes
 }
 
-export async function staticRouteDefinitions(
+export async function readStaticRouteDefinitions(
   sourceText: string
 ): Promise<Array<{ method: string; path: string }>> {
   if (!sourceText) return []
   const source = await parseSetupSource(sourceText)
   const { ts } = source
-  const router = defaultImportName(source, '@adonisjs/core/services/router')
+  const router = getDefaultImportName(source, '@adonisjs/core/services/router')
   if (!router) return []
   const isRouterCall = (
     node: TypeScript.Node,
@@ -62,14 +62,14 @@ export async function staticRouteDefinitions(
       return
     let path = node.arguments[0].text
     // Later prefixes wrap earlier ones, and outer groups wrap inner groups.
-    const own = chainedPrefixes(source, node)
+    const own = extractChainedPrefixes(source, node)
     if (!own) return
     for (const prefix of own) path = withPrefix(prefix, path)
     for (let scope = node.parent; scope; scope = scope.parent) {
       if (!ts.isArrowFunction(scope) && !ts.isFunctionExpression(scope)) continue
       const group = scope.parent
       if (!isRouterCall(group, ['group']) || group.arguments[0] !== scope) continue
-      const prefixes = chainedPrefixes(source, group)
+      const prefixes = extractChainedPrefixes(source, group)
       if (!prefixes) return
       for (const prefix of prefixes) path = withPrefix(prefix, path)
     }

@@ -2,15 +2,15 @@ import { lstat, readdir } from 'node:fs/promises'
 import { join, relative, sep } from 'node:path'
 import { inspectDatabaseConnection } from './database_inspection.js'
 import {
-  directObject,
-  directProperty,
-  exportedObject,
+  matchDirectObject,
+  getDirectProperty,
+  getExportedObject,
   hasUnsafeObjectEntries,
-  importedName,
+  getImportedBindingName,
   InvalidSetupSourceError,
   parseSetupSource,
 } from './ts_source.js'
-import { safeSetupPath } from './safe_path.js'
+import { requireSafeSetupPath } from './safe_path.js'
 import { matchesAccountKitMigration, migrationNames } from './migration_definitions.js'
 
 /** The AdonisJS default Lucid migration directory, relative to the application root. */
@@ -42,7 +42,7 @@ async function withinDirectory<T>(directory: string, action: () => Promise<T>): 
  * custom config directory, because guided setup writes conventional config files, and for
  * directories it cannot read statically.
  */
-export async function guidedMigrationDefault(rc: string): Promise<string> {
+export async function resolveDefaultMigrationDirectory(rc: string): Promise<string> {
   if (!rc) return defaultMigrationDirectory
   let source
   try {
@@ -51,9 +51,9 @@ export async function guidedMigrationDefault(rc: string): Promise<string> {
     if (error instanceof InvalidSetupSourceError) return defaultMigrationDirectory
     throw error
   }
-  const config = exportedObject(
+  const config = getExportedObject(
     source,
-    importedName(source, '@adonisjs/core/app', 'defineConfig') ?? undefined
+    getImportedBindingName(source, '@adonisjs/core/app', 'defineConfig') ?? undefined
   )
   // Other setup checks report an unsupported RC shape.
   if (!config) return defaultMigrationDirectory
@@ -62,21 +62,21 @@ export async function guidedMigrationDefault(rc: string): Promise<string> {
       'Guided setup cannot establish directory settings from an ambiguous adonisrc.ts config; expose its directories statically before setup',
       'adonisrc.ts'
     )
-  const directories = directProperty(source, config, 'directories')?.initializer
+  const directories = getDirectProperty(source, config, 'directories')?.initializer
   if (!directories) return defaultMigrationDirectory
-  const object = directObject(source, directories)
+  const object = matchDirectObject(source, directories)
   if (!object)
     throw new MigrationDirectoryError(
       'Guided setup requires statically inspectable adonisrc.ts directories',
       'adonisrc.ts'
     )
-  const configPath = directProperty(source, object, 'config')?.initializer
+  const configPath = getDirectProperty(source, object, 'config')?.initializer
   if (configPath && (!source.ts.isStringLiteral(configPath) || configPath.text !== 'config'))
     throw new MigrationDirectoryError(
       'Guided setup requires the conventional config directory; use configure or reconcile setup manually',
       'adonisrc.ts'
     )
-  const migrationsPath = directProperty(source, object, 'migrations')?.initializer
+  const migrationsPath = getDirectProperty(source, object, 'migrations')?.initializer
   if (!migrationsPath) return defaultMigrationDirectory
   if (!source.ts.isStringLiteral(migrationsPath))
     throw new MigrationDirectoryError(
@@ -103,12 +103,12 @@ export async function inspectMigrationDirectory(
   let directory: string | undefined = config ? undefined : (explicit ?? fallbackDirectory)
   if (inspected) {
     const { source, connection } = inspected
-    const migrations = directProperty(source, connection, 'migrations')?.initializer
+    const migrations = getDirectProperty(source, connection, 'migrations')?.initializer
     if (!migrations) directory = fallbackDirectory
     else {
-      const settings = directObject(source, migrations)
+      const settings = matchDirectObject(source, migrations)
       if (settings && !hasUnsafeObjectEntries(source, settings)) {
-        const paths = directProperty(source, settings, 'paths')?.initializer
+        const paths = getDirectProperty(source, settings, 'paths')?.initializer
         if (!paths) directory = fallbackDirectory
         else if (source.ts.isArrayLiteralExpression(paths)) {
           const configured = paths.elements.map((path) =>
@@ -158,7 +158,7 @@ async function normalizeMigrationDirectory(root: string, name: string) {
       'Use a plain application-relative Lucid migration directory',
       name
     )
-  const path = await withinDirectory(name, () => safeSetupPath(root, name))
+  const path = await withinDirectory(name, () => requireSafeSetupPath(root, name))
   return relative(root, path).split(sep).join('/')
 }
 
@@ -258,7 +258,7 @@ function readMigrationNames(root: string, directory: string): Promise<string[]> 
 }
 
 async function readDirectoryMigrationNames(root: string, directory: string): Promise<string[]> {
-  const path = await safeSetupPath(root, directory)
+  const path = await requireSafeSetupPath(root, directory)
   const stat = await lstat(path).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== 'ENOENT') throw error
     return null

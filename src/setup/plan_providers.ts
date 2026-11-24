@@ -1,8 +1,8 @@
 import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
 import {
-  defaultExpression,
-  directProperty,
-  importedName,
+  inspectDefaultExportExpression,
+  getDirectProperty,
+  getImportedBindingName,
   parseSetupSource,
   type SetupSource,
 } from './ts_source.js'
@@ -24,7 +24,7 @@ export async function planArrayImports(
   } catch {
     /* the diagnostic below identifies the supported shape */
   }
-  const target = source && defaultExpression(source)
+  const target = source && inspectDefaultExportExpression(source)
   let object: TypeScript.ObjectLiteralExpression | null = null
   if (source && target) {
     if (source.ts.isObjectLiteralExpression(target.expression)) object = target.expression
@@ -32,7 +32,7 @@ export async function planArrayImports(
       source.ts.isCallExpression(target.expression) &&
       source.ts.isIdentifier(target.expression.expression) &&
       target.expression.expression.text ===
-        importedName(source, '@adonisjs/core/app', 'defineConfig') &&
+        getImportedBindingName(source, '@adonisjs/core/app', 'defineConfig') &&
       target.expression.arguments.length === 1 &&
       source.ts.isObjectLiteralExpression(target.expression.arguments[0])
     )
@@ -40,7 +40,7 @@ export async function planArrayImports(
   }
   // Setup reads only plain objects, so a spread or a duplicate key leaves the property unread.
   const read = (entry: TypeScript.ObjectLiteralExpression, name: string) =>
-    directProperty(source!, entry, name)
+    getDirectProperty(source!, entry, name)
   const providers =
     source && object && inspectProviders(source, object, { config: read, entry: read })
   if (!previous || !source || !providers || providers.status !== 'array') {

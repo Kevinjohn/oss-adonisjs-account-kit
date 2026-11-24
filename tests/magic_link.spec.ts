@@ -9,7 +9,7 @@ import {
   PostCommitError,
   ThrottledError,
 } from '../src/errors.js'
-import { clientChallengeFor } from '../src/magic_link.js'
+import { deriveClientChallenge } from '../src/magic_link.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountKitConfig, AccountUser, LifecycleEvent, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -22,7 +22,7 @@ import {
 } from './helpers/fakes.js'
 
 const verifier = 'v'.repeat(43)
-const challenge = clientChallengeFor(verifier)
+const challenge = deriveClientChallenge(verifier)
 const enabled: AccountKitConfig['enabled'] = [
   'passwordReset',
   'emailVerification',

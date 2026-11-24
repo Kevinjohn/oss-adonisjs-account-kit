@@ -1,6 +1,6 @@
 /** Builds an OpenAPI 3.1 document for exactly the managed routes registered on one router. */
 import { managedEndpointSchemas, ref } from './openapi_schemas.js'
-import { sharedSchemas } from './openapi_components.js'
+import { buildSharedSchemas } from './openapi_components.js'
 import type {
   JsonSchema,
   ManagedOpenApiOptions,
@@ -57,7 +57,7 @@ function openApiPath(path: string): string {
   return path.replace(/:([A-Za-z_]\w*)/g, '{$1}')
 }
 
-function pathParameters(route: ManagedRoute, providers: readonly string[]): JsonSchema[] {
+function buildPathParameters(route: ManagedRoute, providers: readonly string[]): JsonSchema[] {
   return [...route.path.matchAll(/:([A-Za-z_]\w*)/g)].map(([, name]) => ({
     name,
     in: 'path',
@@ -87,7 +87,11 @@ function security(route: ManagedRoute, strategy: ManagedRouteRegistration['strat
   return schemas.optionalAuth && !schemas.providerCallback ? [{}, { bearerToken: [] }] : []
 }
 
-function errorResponse(description: string, json: JsonSchema, headers: JsonSchema): JsonSchema {
+function buildErrorResponseSchema(
+  description: string,
+  json: JsonSchema,
+  headers: JsonSchema
+): JsonSchema {
   return {
     description,
     headers: { Vary: { $ref: '#/components/headers/VaryAccept' }, ...headers },
@@ -98,12 +102,12 @@ function errorResponse(description: string, json: JsonSchema, headers: JsonSchem
   }
 }
 
-function errorResponses(route: ManagedRoute, hasInput: boolean, conflict: boolean) {
+function buildErrorResponses(route: ManagedRoute, hasInput: boolean, conflict: boolean) {
   const headers = route.proof
     ? proofHeaders
     : { 'Cache-Control': { $ref: '#/components/headers/NoStore' } }
   const error = (description: string, json: JsonSchema = ref('ManagedErrorBody')) =>
-    errorResponse(description, json, headers)
+    buildErrorResponseSchema(description, json, headers)
   const schemas = managedEndpointSchemas[route.name]
   const authenticates =
     route.access !== 'public' || Boolean(schemas.authenticates || schemas.optionalAuth)
@@ -120,7 +124,7 @@ function errorResponses(route: ManagedRoute, hasInput: boolean, conflict: boolea
     responses[422] = error('The request was rejected.', {
       oneOf: [ref('ManagedErrorBody'), ref('ValidationErrorBody')],
     })
-  responses[429] = errorResponse('Too many requests.', ref('ManagedErrorBody'), {
+  responses[429] = buildErrorResponseSchema('Too many requests.', ref('ManagedErrorBody'), {
     ...headers,
     'Retry-After': { $ref: '#/components/headers/RetryAfter' },
   })
@@ -128,7 +132,7 @@ function errorResponses(route: ManagedRoute, hasInput: boolean, conflict: boolea
   return responses
 }
 
-function successResponses(
+function buildSuccessResponses(
   route: ManagedRoute,
   strategy: ManagedRouteRegistration['strategy']
 ): Record<string, JsonSchema> {
@@ -162,7 +166,7 @@ function successResponses(
   return responses
 }
 
-function requestBody(
+function buildRequestBodySchema(
   route: ManagedRoute,
   input: ManagedOpenApiInput,
   requestBodies: ManagedOpenApiOptions['requestBodies']
@@ -188,9 +192,9 @@ export function generateManagedOpenApi(input: ManagedOpenApiInput): OpenApiDocum
 
   for (const route of registration.routes) {
     const schemas = managedEndpointSchemas[route.name]
-    const body = requestBody(route, input, requestBodies)
+    const body = buildRequestBodySchema(route, input, requestBodies)
     const parameters = [
-      ...pathParameters(route, registration.socialProviders),
+      ...buildPathParameters(route, registration.socialProviders),
       ...(schemas.query ?? []).map((parameter) => ({ in: 'query', ...parameter })),
     ]
     tags.add(route.capability)
@@ -203,8 +207,12 @@ export function generateManagedOpenApi(input: ManagedOpenApiInput): OpenApiDocum
       ...(parameters.length ? { parameters } : {}),
       ...(body ? { requestBody: body } : {}),
       responses: {
-        ...successResponses(route, registration.strategy),
-        ...errorResponses(route, Boolean(body || parameters.length), Boolean(schemas.conflict)),
+        ...buildSuccessResponses(route, registration.strategy),
+        ...buildErrorResponses(
+          route,
+          Boolean(body || parameters.length),
+          Boolean(schemas.conflict)
+        ),
       },
     }
     const path = openApiPath(route.path)
@@ -225,7 +233,7 @@ export function generateManagedOpenApi(input: ManagedOpenApiInput): OpenApiDocum
     paths,
     components: {
       schemas: {
-        ...sharedSchemas(),
+        ...buildSharedSchemas(),
         Account: accountSchema ?? ref('SafeAccount'),
         IssuedAccount: accountSchema
           ? {

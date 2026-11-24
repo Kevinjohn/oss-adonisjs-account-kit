@@ -1,14 +1,14 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { AdapterContractError, InvalidCredentialsError, InvalidTokenError } from '../src/errors.js'
-import { clientChallengeFor } from '../src/magic_link.js'
+import { deriveClientChallenge } from '../src/magic_link.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
 
 const verifier = 'v'.repeat(43)
-const challenge = clientChallengeFor(verifier)
+const challenge = deriveClientChallenge(verifier)
 const enabled: AccountKitConfig['enabled'] = [
   'passwordReset',
   'emailVerification',

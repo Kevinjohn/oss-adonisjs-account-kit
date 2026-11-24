@@ -2,8 +2,8 @@
 
 This guide shows the focused changes made to a pinned AdonisJS API starter to add password reset
 while keeping its original login route, user model, `/api/v1` namespace and `api` guard. It pairs
-the [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/api-password-reset.patch) with the complete generated-file
-inventory [recorded below](#generated-files).
+`api-password-reset.patch` from the [matching Account Kit revision](password-reset-existing-app.md#recipe-patches)
+with the complete generated-file inventory [recorded below](#generated-files).
 The [existing-application guide](password-reset-existing-app.md) explains the shared requirements and
 the reset lifecycle.
 
@@ -110,8 +110,8 @@ a prerequisite for the configured database store.
 ## Hand edits
 
 The patch changes six paths. One is generated config and one is the starter's email rule; the other
-four are new route or middleware files, or a small registration in an existing file. The [unified patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/api-password-reset.patch)
-is the source for these before/after notes. The evidence below used its revision at
+four are new route or middleware files, or a small registration in an existing file.
+The evidence below used the patch at
 `402d5e91f94c4a4acfd8ad45da546fbb4a10d0cf` (SHA-256
 `ecae3e6bdc2cf8f179e6ba27fe48fb81c5f8bfffd5a3cf14506db6e339ae3a0b`), before the email rule was
 added.

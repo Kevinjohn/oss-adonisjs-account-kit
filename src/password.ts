@@ -11,7 +11,7 @@ export function isPasswordShaped(value: unknown): value is string {
   )
 }
 
-function strengthScore(estimatedBits: number): 0 | 1 | 2 | 3 | 4 {
+function scorePasswordStrength(estimatedBits: number): 0 | 1 | 2 | 3 | 4 {
   if (estimatedBits < 28) return 0
   if (estimatedBits < 50) return 1
   if (estimatedBits < 80) return 2
@@ -37,5 +37,5 @@ export function isPasswordAllowed(value: unknown, policy: PasswordPolicy): value
   const characterPool =
     Number(lower) * 26 + Number(upper) * 26 + Number(numbers) * 10 + Number(symbols) * 33
   const estimatedBits = value.length * Math.log2(characterPool)
-  return strengthScore(estimatedBits) >= policy.minScore
+  return scorePasswordStrength(estimatedBits) >= policy.minScore
 }

@@ -24,10 +24,10 @@ import { rememberManagedMethod } from './last_used_method.js'
 import {
   forgetSessionState,
   rememberSessionState,
-  sessionState,
+  requireSessionState,
   type SessionSocialState,
 } from './social_session_state.js'
-import { newVerifier } from './pkce_verifier.js'
+import { generateVerifierAndChallenge } from './pkce_verifier.js'
 import {
   managedSocialAccountHandlers,
   type SocialHandler,
@@ -54,13 +54,16 @@ export interface ManagedSocialExtension {
   ): Promise<void>
 }
 
-function providerName(value: string, enabled: readonly SocialProviderName[]): SocialProviderName {
+function requireEnabledProviderName(
+  value: string,
+  enabled: readonly SocialProviderName[]
+): SocialProviderName {
   if (!isSocialProviderName(value) || !enabled.includes(value))
     throw new InvalidInputError('Unsupported social provider')
   return value
 }
 
-function safeResult(result: SocialCallbackResult): Record<string, unknown> {
+function projectSocialCallbackResult(result: SocialCallbackResult): Record<string, unknown> {
   if (result.status === 'reauthenticated') return { status: result.status, proof: result.proof }
   if (result.status === 'link_required') return { status: result.status }
   if ('continuation' in result) return { status: 'new', continuation: result.continuation }
@@ -70,12 +73,12 @@ function safeResult(result: SocialCallbackResult): Record<string, unknown> {
 }
 
 /** Session guards get a server-held verifier; token guards must supply their own challenge. */
-function newChallenge<Credential>(
+function resolveClientChallenge<Credential>(
   guard: ManagedGuard<Credential>,
   clientChallenge?: string
 ): { verifier: string | null; clientChallenge: string } {
   if (guard.strategy === 'session') {
-    const { verifier, challenge } = newVerifier()
+    const { verifier, challenge } = generateVerifierAndChallenge()
     return { verifier, clientChallenge: challenge }
   }
   if (!clientChallenge) throw new InvalidInputError('Client challenge is required')
@@ -108,10 +111,10 @@ async function finishHandoff<Credential>({
     }
     return response.ok({ status: result.status, code: result.handoffCode })
   }
-  return response.ok(safeResult(result))
+  return response.ok(projectSocialCallbackResult(result))
 }
 
-const oauthCallback: SocialHandler = async ({
+const completeOAuthCallback: SocialHandler = async ({
   name,
   context,
   social,
@@ -120,7 +123,7 @@ const oauthCallback: SocialHandler = async ({
   methodsEnabled,
 }) => {
   const { request, params } = context
-  const provider = providerName(params.provider, extension.providers)
+  const provider = requireEnabledProviderName(params.provider, extension.providers)
   const isPost = name === 'auth.oauth.complete'
   const providerCode = request.input('code')
   if (request.input('error') || typeof providerCode !== 'string' || !providerCode)
@@ -133,7 +136,7 @@ const oauthCallback: SocialHandler = async ({
       }
   if (typeof input.state !== 'string') throw new SocialTransactionError()
   if (isPost && input.intent && !isSocialIntent(input.intent)) throw new SocialTransactionError()
-  const saved = guard.strategy === 'session' ? sessionState(context, input.state) : null
+  const saved = guard.strategy === 'session' ? requireSessionState(context, input.state) : null
   if (saved && saved.provider !== provider) throw new SocialTransactionError()
   const intent = saved?.intent ?? (input.intent as SocialIntent | undefined) ?? 'login'
   const current: CurrentAccountInput | undefined =
@@ -163,7 +166,7 @@ const socialHandlers = {
   ...managedSocialAccountHandlers,
   'auth.oauth.redirect': async ({ context, social, guard, extension }) => {
     const { request, response, params } = context
-    const provider = providerName(params.provider, extension.providers)
+    const provider = requireEnabledProviderName(params.provider, extension.providers)
     const input = await request.validateUsing(socialBeginValidator)
     if (!isSocialBeginIntent(input.intent ?? 'login'))
       throw new InvalidInputError('Invalid social intent')
@@ -171,7 +174,7 @@ const socialHandlers = {
       throw new InvalidInputError('Invalid social proof purpose')
     const intent = (input.intent ?? 'login') as SocialBeginInput['intent']
     const current = intent === 'login' ? undefined : await guard.current(context)
-    const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
+    const { verifier, clientChallenge } = resolveClientChallenge(guard, input.clientChallenge)
     const beginInput = {
       provider,
       intent,
@@ -187,9 +190,9 @@ const socialHandlers = {
   },
   'auth.oauth.confirmation': async ({ context, social, guard, extension }) => {
     const { request, response, params } = context
-    const provider = providerName(params.provider, extension.providers)
+    const provider = requireEnabledProviderName(params.provider, extension.providers)
     const input = await request.validateUsing(socialConfirmationValidator)
-    const { verifier, clientChallenge } = newChallenge(guard, input.clientChallenge)
+    const { verifier, clientChallenge } = resolveClientChallenge(guard, input.clientChallenge)
     const confirmation = {
       provider,
       verificationToken: input.verificationToken,
@@ -201,11 +204,12 @@ const socialHandlers = {
       rememberSessionState(context, result.state, { verifier, intent: 'confirm', provider })
     return response.ok({ authorizationUrl: result.url })
   },
-  'auth.oauth.callback': oauthCallback,
-  'auth.oauth.complete': oauthCallback,
+  'auth.oauth.callback': completeOAuthCallback,
+  'auth.oauth.complete': completeOAuthCallback,
   'auth.oauth.registration': async ({ context, social, guard, extension, methodsEnabled }) => {
     const input = await context.request.validateUsing(socialRegistrationValidator)
-    const saved = guard.strategy === 'session' ? sessionState(context, input.continuation) : null
+    const saved =
+      guard.strategy === 'session' ? requireSessionState(context, input.continuation) : null
     const result = await social.completeRegistration({
       continuation: input.continuation,
       email: input.email,
@@ -250,7 +254,13 @@ export async function executeManagedSocial<Credential>({
   return socialHandlers[name]({ ...request, name, methodsEnabled })
 }
 
-const managedSocialRoute: ManagedHandler = ({ route, context, kit, options, methodsEnabled }) =>
+const executeManagedSocialRoute: ManagedHandler = ({
+  route,
+  context,
+  kit,
+  options,
+  methodsEnabled,
+}) =>
   executeManagedSocial({
     name: route.name as ManagedSocialEndpointName,
     context,
@@ -262,5 +272,5 @@ const managedSocialRoute: ManagedHandler = ({ route, context, kit, options, meth
 
 /** The managed router's entries for every social endpoint, keyed like `socialHandlers`. */
 export const managedSocialHandlers = Object.fromEntries(
-  Object.keys(socialHandlers).map((name) => [name, managedSocialRoute])
+  Object.keys(socialHandlers).map((name) => [name, executeManagedSocialRoute])
 ) as Record<ManagedSocialEndpointName, ManagedHandler>

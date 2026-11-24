@@ -1,14 +1,14 @@
 export {
-  managedRoutesSource,
-  disabledManagedRoutesSource,
-  selectedRouteSource,
-  retainedGeneratedChoices,
+  generateManagedRoutesSource,
+  generateDisabledRoutesSource,
+  resolveRouteSource,
+  readRetainedSetupChoices,
 } from './generated_routes.js'
-export { allyConfigSource } from './generated_ally_config.js'
+export { generateAllyConfigSource } from './generated_ally_config.js'
 export {
-  managedGuardSource,
-  managedAccessMiddlewareSource,
-  proofHeadersMiddlewareSource,
+  generateManagedGuardSource,
+  generateAccessMiddlewareSource,
+  generateProofHeadersMiddlewareSource,
 } from './generated_http.js'
-export { accountConfigSource } from './generated_account_config.js'
-export { generatedEnv } from './generated_environment.js'
+export { generateAccountConfigSource } from './generated_account_config.js'
+export { generateEnvironmentTemplate } from './generated_environment.js'

@@ -11,7 +11,7 @@ import {
 } from './errors.js'
 import { sendSocialActivation } from './social_activation.js'
 import { consumeState, isIdentityConflict } from './social_callback.js'
-import { checkedProfile, createAccount } from './social_account_creation.js'
+import { requireProviderProfile, createAccount } from './social_account_creation.js'
 import {
   listEnabledSocialProviders,
   type Dependencies,
@@ -42,7 +42,7 @@ export async function completeRegistration(
           throw new SocialTransactionError()
         const email = state.email ?? input.email
         if (!email || !isEmailShaped(email)) throw new SocialEmailMissingError()
-        const profile = checkedProfile({
+        const profile = requireProviderProfile({
           subject: state.provider_user_id,
           email,
           emailVerified: state.email !== null && Boolean(state.email_verified),

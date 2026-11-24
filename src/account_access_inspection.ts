@@ -1,6 +1,6 @@
 // Account access inspection: eligibility and credential revision of one account, read under its lock, with no credential for it.
 import { requireAccountAccessDecision } from './account_access_decision.js'
-import { transaction, userMetadata } from './db.js'
+import { transaction, requireUserMetadata } from './db.js'
 import { readIsoTimestamp } from './timestamps.js'
 import { requireAuthentication } from './authentication_config.js'
 import { buildAccountProjection } from './account_projection.js'
@@ -42,7 +42,7 @@ export async function inspectAccountAccess(
     throw new InvalidInputError('Invalid account access input')
   const auth = requireAuthentication(deps.config)
   return transaction(deps.db, async (trx) => {
-    const { table } = await guardDependency(() => userMetadata(deps.config))
+    const { table } = await guardDependency(() => requireUserMetadata(deps.config))
     let query = trx.from(table).select('id', 'credentials_changed_at').where('id', userId)
     if (trx.dialect.name !== 'better-sqlite3') query = query.forUpdate()
     const witness = await query.first()

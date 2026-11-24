@@ -48,11 +48,11 @@ Scope: host service and managed strategy entry points through sign-in. See [US-A
 flowchart TD
  A["Host begin or auth.oauth.redirect; managed session generates challenge and verifier"] --> B["begin validates provider and challenge, inserts login state and returns provider URL; managed session retains verifier"]
  B -->|Refusal| X["Return error"]
- B --> C["Host passes state and provider callback context; oauthCallback reads code and state and restores saved session context"]
+ B --> C["Host passes state and provider callback context; completeOAuthCallback reads code and state and restores saved session context"]
  Y["Host beginConfirmation or auth.oauth.confirmation checks activation proof and pending identity, then stores confirm state and returns provider URL"] --> C
  Y -->|Refusal| X
  C -->|Refusal or denial| X
- C --> B2["socialCallback checks candidate state and resolves the provider profile"]
+ C --> B2["completeSocialCallback checks candidate state and resolves the provider profile"]
  B2 -->|Refusal| X
  B2 --> D["Lock bound or associated account when present and consume state"]
  D -->|Confirm| E["Match pending subject; completeActivationByHash consumes email proof and confirms association"]

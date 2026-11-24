@@ -10,7 +10,8 @@ Limiter setup and every generated migration. The setup schema is shared across c
 `enabled: ['passwordReset']` does not generate a reset-only schema. See the
 [session integration](sessions.md) for the guard contract.
 
-The [hand-edit patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/inertia-react-password-reset.patch) applies after configure to the
+After configure, apply `inertia-react-password-reset.patch` from the
+[matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches) to the
 [pinned starter](../maintainers/verification.md#starter-baselines). It supplies
 application controllers, validators, pages and session wiring; it contains no generated migration,
 generated schema, dependency entry, lockfile or archive. Its handwritten `sessions` migration

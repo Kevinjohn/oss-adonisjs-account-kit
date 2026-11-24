@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import {
-  correctionRevision,
+  takeCorrectionRevision,
   rememberCorrectionRevision,
 } from '../src/profile_correction_revision.js'
 
@@ -9,8 +9,8 @@ test.group('profile correction revision', () => {
     // A caching adapter can hand back the same account object on a later profile update.
     const account = { id: 1 }
     rememberCorrectionRevision(account, '2026-11-06T00:00:00.000Z')
-    assert.equal(correctionRevision(account), '2026-11-06T00:00:00.000Z')
-    assert.isUndefined(correctionRevision(account))
-    assert.isUndefined(correctionRevision(undefined))
+    assert.equal(takeCorrectionRevision(account), '2026-11-06T00:00:00.000Z')
+    assert.isUndefined(takeCorrectionRevision(account))
+    assert.isUndefined(takeCorrectionRevision(undefined))
   })
 })

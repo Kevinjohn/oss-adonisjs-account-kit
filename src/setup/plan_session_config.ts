@@ -1,8 +1,8 @@
 // Setup planning phase: wrap or retire the managed session store verification in config/session.ts.
 import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
 import {
-  defaultExpression,
-  importedName,
+  inspectDefaultExportExpression,
+  getImportedBindingName,
   InvalidSetupSourceError,
   parseSetupSource,
   type SetupSource,
@@ -10,7 +10,7 @@ import {
 import { addSetupDiagnostic } from './shared.js'
 import {
   type NativeSessionConfiguration,
-  nativeSessionConfiguration,
+  inspectNativeSessionConfiguration,
   renderManagedSessionConfig,
   unwrapManagedSessionConfig,
 } from './session_config.js'
@@ -52,8 +52,8 @@ export async function planSessionConfigIntegration(
     )
     return
   }
-  const existingWrapper = defaultExpression(parsed)
-  const wrapperBinding = importedName(
+  const existingWrapper = inspectDefaultExportExpression(parsed)
+  const wrapperBinding = getImportedBindingName(
     parsed,
     '@kevinjohn/adonisjs-account-kit/http',
     'protectManagedSessionConfig'
@@ -77,7 +77,7 @@ export async function planSessionConfigIntegration(
   let inspected: NativeSessionConfiguration | null = null
   if (wantsManagedSession) {
     try {
-      inspected = await nativeSessionConfiguration(base, state.root, env)
+      inspected = await inspectNativeSessionConfiguration(base, state.root, env)
     } catch {
       addSetupDiagnostic(
         diagnostics,

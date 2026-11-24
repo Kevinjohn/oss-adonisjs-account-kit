@@ -100,8 +100,9 @@ Adapt only the files needed for your application:
 | Reset URL and notification callback                                        | `config/account_kit.ts`                                                                                                                                                                                      |
 | Use a server-side session store                                            | `.env.example`, `config/session.ts`, app-owned `sessions` migration                                                                                                                                          |
 
-The committed [recipe patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/inertia-vue-password-reset.patch)
-is the application-owned change set used by the clean-starter check. The accompanying browser spec is
+The clean-starter check uses the application edits in `inertia-vue-password-reset.patch`.
+Use the patch from the [matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches).
+The accompanying browser spec is
 [`inertia-vue-password-reset.spec.ts`](../../examples/inertia-vue/tests/recipes/inertia-vue-password-reset.spec.ts).
 
 | Failure or invariant                                                                                                           | Browser evidence                                                                                                                                                                                       |

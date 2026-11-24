@@ -94,6 +94,19 @@ test('absolute links to the main branch point at tracked paths', async ({ assert
   assert.deepEqual(broken, [])
 })
 
+test('recipe guides direct readers to patches from their Account Kit revision', async ({
+  assert,
+}) => {
+  const movingPatch =
+    'https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches'
+  const broken: string[] = []
+  for (const document of trackedMarkdown(['docs/guide/**/*.md', 'docs/recipes/**/*.md'])) {
+    const source = await readFile(join(repoRoot, document), 'utf8')
+    if (source.includes(movingPatch)) broken.push(document)
+  }
+  assert.deepEqual(broken, [])
+})
+
 const siteMarkdown = createMarkdownRenderer(join(repoRoot, 'docs'))
 
 /** Published guides use VitePress anchors; repository-only readers use GitHub anchors. */

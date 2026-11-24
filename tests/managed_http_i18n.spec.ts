@@ -9,7 +9,7 @@ import {
 } from '../src/errors.js'
 import { accountErrorResponse } from '../src/error_response.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { managedErrorResponse } from '../src/http/responses.js'
+import { mapManagedErrorResponse } from '../src/http/responses.js'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
 const french: Record<string, string> = {
@@ -138,7 +138,7 @@ test.group('managed HTTP translation', () => {
       },
     }
     const error = new InvitationManagementDeniedError('invitation 42 belongs to another account')
-    const managed = managedErrorResponse(error, { accept: 'application/json', i18n: keyed })!
+    const managed = mapManagedErrorResponse(error, { accept: 'application/json', i18n: keyed })!
     const helper = accountErrorResponse(error, { i18n: keyed })!
     assert.deepEqual(managed.body.errors, [
       {

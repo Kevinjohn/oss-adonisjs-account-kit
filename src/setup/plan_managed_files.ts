@@ -1,12 +1,12 @@
 import type { SetupChoices, SetupFileChange, SetupInspection, SetupDiagnostic } from './types.js'
 import { addSetupDiagnostic } from './shared.js'
-import { ownedChange } from './changes.js'
+import { recordOwnedChange } from './changes.js'
 import {
-  disabledManagedRoutesSource,
-  selectedRouteSource,
-  managedGuardSource,
-  managedAccessMiddlewareSource,
-  proofHeadersMiddlewareSource,
+  generateDisabledRoutesSource,
+  resolveRouteSource,
+  generateManagedGuardSource,
+  generateAccessMiddlewareSource,
+  generateProofHeadersMiddlewareSource,
 } from './generated_sources.js'
 
 export function planManagedFiles(
@@ -32,43 +32,43 @@ export function planManagedFiles(
     choices.authentication &&
     (choices.managed.length || state.files['app/services/account_kit_guard.ts'])
   ) {
-    ownedChange(
+    recordOwnedChange(
       changes,
       state,
       'app/services/account_kit_guard.ts',
-      managedGuardSource(choices),
-      priorGenerated?.authentication ? managedGuardSource(priorGenerated) : null,
+      generateManagedGuardSource(choices),
+      priorGenerated?.authentication ? generateManagedGuardSource(priorGenerated) : null,
       'Adapt the selected existing AdonisJS guard'
     )
-    ownedChange(
+    recordOwnedChange(
       changes,
       state,
       'app/middleware/account_kit_access_middleware.ts',
-      managedAccessMiddlewareSource(choices),
-      priorGenerated?.authentication ? managedAccessMiddlewareSource(priorGenerated) : null,
+      generateAccessMiddlewareSource(choices),
+      priorGenerated?.authentication ? generateAccessMiddlewareSource(priorGenerated) : null,
       'Offer the same account revision and restriction gate to application-owned routes'
     )
   }
   if (choices.managed.length && choices.authentication) {
-    ownedChange(
+    recordOwnedChange(
       changes,
       state,
       'start/account_kit_routes.ts',
-      selectedRouteSource(choices),
+      resolveRouteSource(choices),
       state.existingChoices?.authentication && state.existingChoices.managed.length
-        ? selectedRouteSource(state.existingChoices)
+        ? resolveRouteSource(state.existingChoices)
         : retainedChoices
-          ? disabledManagedRoutesSource(retainedChoices)
+          ? generateDisabledRoutesSource(retainedChoices)
           : null,
       'Mount selected maintained endpoints through the existing guard'
     )
   } else if (state.existingChoices?.managed.length && state.existingChoices.authentication) {
-    ownedChange(
+    recordOwnedChange(
       changes,
       state,
       'start/account_kit_routes.ts',
-      disabledManagedRoutesSource(state.existingChoices),
-      selectedRouteSource(state.existingChoices),
+      generateDisabledRoutesSource(state.existingChoices),
+      resolveRouteSource(state.existingChoices),
       'Retire the managed route mount without changing application routes or account data'
     )
   }
@@ -76,12 +76,12 @@ export function planManagedFiles(
     choices.managed.length ||
     state.files['app/middleware/account_kit_proof_headers_middleware.ts']
   ) {
-    ownedChange(
+    recordOwnedChange(
       changes,
       state,
       'app/middleware/account_kit_proof_headers_middleware.ts',
-      proofHeadersMiddlewareSource(choices),
-      state.existingChoices ? proofHeadersMiddlewareSource(state.existingChoices) : null,
+      generateProofHeadersMiddlewareSource(choices),
+      state.existingChoices ? generateProofHeadersMiddlewareSource(state.existingChoices) : null,
       'Protect proof responses before parser and CSRF failures'
     )
   }

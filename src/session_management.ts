@@ -1,11 +1,11 @@
 // Lists and revokes the places a user is signed in, for session and access-token guards.
 import { randomUUID } from 'node:crypto'
-import { currentInTransaction } from './authentication.js'
-import { credentialsChanged } from './credential_revision.js'
+import { requireCurrentAccountInTransaction } from './authentication.js'
+import { invalidateChangedCredentials } from './credential_revision.js'
 import { requireAuthentication } from './authentication_config.js'
 import { deleteReturning } from './consume_rows.js'
 import { transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { CapabilityDisabledError, InvalidSessionError, SessionNotFoundError } from './errors.js'
 import { recordRevocation } from './session_revocation.js'
 import { sessionTable } from './session_registry.js'
@@ -103,9 +103,9 @@ async function deleteSignIns(
   return ids
 }
 
-export function sessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
+export function createSessionManagementService(deps: Pick<ServiceDependencies, 'config' | 'db'>) {
   /** Authenticate the caller and run `mutate` in one transaction under the account lock. */
-  async function asCurrent<T>(
+  async function withCurrentSession<T>(
     current: CurrentAccountInput,
     mutate: (
       trx: Trx,
@@ -115,19 +115,24 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
   ): Promise<T> {
     const auth = requireSessionManagement(deps)
     return transaction(deps.db, async (trx) => {
-      const account = await currentInTransaction(deps, current, trx)
+      const account = await requireCurrentAccountInTransaction(deps, current, trx)
       return mutate(trx, await requireSignInStorage(trx, auth, current), account.id)
     })
   }
 
   async function announce(userId: UserId, count: number, operationId: string): Promise<void> {
     await postCommit('Sign-ins revoked but a follow-up failed', [
-      lifecycle(deps.config, { type: 'sessions.revoked', userId, operationId, count }),
+      createLifecycleEffect(deps.config, { type: 'sessions.revoked', userId, operationId, count }),
     ])
   }
 
   /** Run `onSessionsRevokedTransaction` for rows this call deleted. */
-  async function revoked(trx: Trx, userId: UserId, operationId: string, signInIds: number[]) {
+  async function notifySessionsRevoked(
+    trx: Trx,
+    userId: UserId,
+    operationId: string,
+    signInIds: number[]
+  ) {
     if (!deps.config.onSessionsRevokedTransaction) return
     const user = (await deps.config.users.findById(userId, trx))!
     await deps.config.onSessionsRevokedTransaction(
@@ -140,7 +145,7 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
   return {
     /** Every live sign-in of the caller, newest first, with the caller's own marked `current`. */
     list(input: { current: CurrentAccountInput }): Promise<SignIn[]> {
-      return asCurrent(input.current, async (trx, target, userId) => {
+      return withCurrentSession(input.current, async (trx, target, userId) => {
         const rows = await trx
           .from(target.table)
           .select('id', target.label, 'created_at', target.lastSeen, 'expires_at')
@@ -168,10 +173,10 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
       const id = requireSignInId(input.id)
       const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
-        asCurrent(input.current, async (trx, target, userId) => {
+        withCurrentSession(input.current, async (trx, target, userId) => {
           const ids = await deleteSignIns(trx, target, userId, 'only', id)
           if (ids.length !== 1) throw new SessionNotFoundError()
-          await revoked(trx, userId, operationId, ids)
+          await notifySessionsRevoked(trx, userId, operationId, ids)
           return { userId, current: isSameId(id, target.currentId) }
         })
       )
@@ -188,9 +193,9 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
     async revokeOthers(input: { current: CurrentAccountInput }): Promise<{ count: number }> {
       const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
-        asCurrent(input.current, async (trx, target, userId) => {
+        withCurrentSession(input.current, async (trx, target, userId) => {
           const ids = await deleteSignIns(trx, target, userId, 'except', target.currentId)
-          if (ids.length > 0) await revoked(trx, userId, operationId, ids)
+          if (ids.length > 0) await notifySessionsRevoked(trx, userId, operationId, ids)
           return { userId, count: ids.length }
         })
       )
@@ -204,10 +209,10 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
     async revokeAll(input: { current: CurrentAccountInput }): Promise<void> {
       const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
-        asCurrent(input.current, async (trx, _target, userId) => {
+        withCurrentSession(input.current, async (trx, _target, userId) => {
           const user = (await deps.config.users.findById(userId, trx))!
           const context = { operation: 'sign_out_everywhere' as const, operationId, userId }
-          await credentialsChanged(trx, deps.config, user, context)
+          await invalidateChangedCredentials(trx, deps.config, user, context)
           return { user, context }
         })
       )
@@ -217,7 +222,7 @@ export function sessionManagementService(deps: Pick<ServiceDependencies, 'config
             kind: 'observer',
             run: () => deps.config.onCredentialsChanged?.(value.user, value.context),
           },
-          lifecycle(deps.config, {
+          createLifecycleEffect(deps.config, {
             type: 'sessions.revoked_all',
             userId: value.user.id,
             operationId,

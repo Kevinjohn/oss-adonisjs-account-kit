@@ -1,7 +1,7 @@
 import type { SetupChoices } from './types.js'
 
 /** Reviewable starter selection; callers must still supply application-specific values. */
-export function defaultSetupChoices(): SetupChoices {
+export function buildDefaultSetupChoices(): SetupChoices {
   return {
     version: 1,
     mode: 'managed',

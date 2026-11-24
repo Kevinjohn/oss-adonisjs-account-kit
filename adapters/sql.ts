@@ -78,15 +78,15 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
       'account_kit: the users table must be a plain SQL identifier'
     )
 
-  const database = async (): Promise<Database> => {
+  const resolveDatabase = async (): Promise<Database> => {
     if (typeof options.db === 'function') return options.db()
     if (options.db) return options.db
     const { default: db } = await import('@adonisjs/lucid/services/db')
     return db
   }
-  const client = async (trx?: Trx): Promise<QueryClientContract> => {
+  const resolveQueryClient = async (trx?: Trx): Promise<QueryClientContract> => {
     if (trx) return trx
-    const db = await database()
+    const db = await resolveDatabase()
     return db.connection()
   }
   const hash = async (password: string): Promise<string> => {
@@ -99,7 +99,7 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     const { default: hasher } = await import('@adonisjs/core/services/hash')
     return hasher.verify(hashed, password)
   }
-  const registrationColumns = async (
+  const mapRegistrationColumns = async (
     data: unknown,
     context: RegistrationContext
   ): Promise<RegistrationColumns> => {
@@ -116,8 +116,8 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     }
     return columns
   }
-  const find = async (column: 'id' | 'email', value: UserId, trx?: Trx) => {
-    const query = await client(trx)
+  const getUserByColumn = async (column: 'id' | 'email', value: UserId, trx?: Trx) => {
+    const query = await resolveQueryClient(trx)
     return toAccountUser(await query.from(table).select(userColumns).where(column, value).first())
   }
   const update = async (id: UserId, values: Record<string, unknown>, trx: Trx) => {
@@ -134,18 +134,18 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     },
 
     async findByEmail(email, trx) {
-      return find('email', normalizeEmail(email), trx)
+      return getUserByColumn('email', normalizeEmail(email), trx)
     },
 
     async findById(id, trx) {
-      return find('id', id, trx)
+      return getUserByColumn('id', id, trx)
     },
 
     async create(attrs, trx) {
       const extra =
         attrs.registrationData === undefined
           ? {}
-          : await registrationColumns(attrs.registrationData, { operation: 'create' })
+          : await mapRegistrationColumns(attrs.registrationData, { operation: 'create' })
       const email = normalizeEmail(attrs.email)
       await trx.table(table).insert({
         ...extra,
@@ -158,7 +158,7 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
         email_verified_at: null,
       })
       // Re-read inside the transaction rather than relying on RETURNING or an insert id.
-      const created = await find('email', email, trx)
+      const created = await getUserByColumn('email', email, trx)
       if (!created) throw new Error('account_kit: the created user could not be read back')
       return created
     },
@@ -184,7 +184,7 @@ export function createSqlUsersAdapter(options: SqlUsersAdapterOptions): SqlUsers
     },
 
     async updateRegistrationData(id, data, trx) {
-      const columns = await registrationColumns(data, { operation: 'update', id })
+      const columns = await mapRegistrationColumns(data, { operation: 'update', id })
       if (Object.keys(columns).length > 0) await update(id, columns, trx)
     },
 

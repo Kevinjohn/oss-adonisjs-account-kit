@@ -1,8 +1,8 @@
 import type { SetupChoices, SetupInspection } from './types.js'
-import { parseSetupChoices } from './parse.js'
-import { managedExclusions } from './shared.js'
+import { requireSetupChoices } from './parse.js'
+import { listManagedExclusions } from './shared.js'
 
-export function managedRoutesSource(choices: SetupChoices): string {
+export function generateManagedRoutesSource(choices: SetupChoices): string {
   const social =
     choices.social.status === 'enabled' && choices.managed.includes('socialAuthentication')
       ? choices.social
@@ -17,8 +17,8 @@ export function managedRoutesSource(choices: SetupChoices): string {
     'registerManagedRoutes(router, {',
     `  prefix: ${JSON.stringify(choices.routePrefix)},`,
     `  enabled: ${JSON.stringify(choices.managed)},`,
-    ...('managedExcept' in choices || managedExclusions(choices).length
-      ? [`  except: ${JSON.stringify(managedExclusions(choices))},`]
+    ...('managedExcept' in choices || listManagedExclusions(choices).length
+      ? [`  except: ${JSON.stringify(listManagedExclusions(choices))},`]
       : []),
     `  verificationRequired: ${choices.policy.verificationRequired},`,
     '  kit: () => app.container.make(AccountKit),',
@@ -31,17 +31,17 @@ export function managedRoutesSource(choices: SetupChoices): string {
   ].join('\n')
 }
 
-export function disabledManagedRoutesSource(previous: SetupChoices): string {
+export function generateDisabledRoutesSource(previous: SetupChoices): string {
   return `// Account Kit managed endpoints are disabled by setup.\n// Previous generated selection: ${Buffer.from(JSON.stringify(previous)).toString('base64url')}\n`
 }
 
-export function selectedRouteSource(choices: SetupChoices): string {
+export function resolveRouteSource(choices: SetupChoices): string {
   return choices.authentication?.applicationRouteRevocation
-    ? managedRoutesSource(choices)
-    : disabledManagedRoutesSource(choices)
+    ? generateManagedRoutesSource(choices)
+    : generateDisabledRoutesSource(choices)
 }
 
-export function retainedGeneratedChoices(state: SetupInspection): SetupChoices | null {
+export function readRetainedSetupChoices(state: SetupInspection): SetupChoices | null {
   const marker = state.files['start/account_kit_routes.ts']
   const encoded = marker?.match(
     /^\/\/ Account Kit managed endpoints are disabled by setup\.\n\/\/ Previous generated selection: ([A-Za-z0-9_-]+)\n$/
@@ -51,8 +51,8 @@ export function retainedGeneratedChoices(state: SetupInspection): SetupChoices |
     // Compare the decoded selection itself: a marker from an earlier version may list fields
     // that parsing now drops, and re-encoding the parsed copy would no longer match it.
     const previous = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as SetupChoices
-    parseSetupChoices(previous)
-    return marker === disabledManagedRoutesSource(previous) ? previous : null
+    requireSetupChoices(previous)
+    return marker === generateDisabledRoutesSource(previous) ? previous : null
   } catch {
     return null
   }

@@ -1,7 +1,7 @@
 import type { SetupChoices } from './types.js'
 import { planManagedRoutes, type ExistingRoute, type ManagedRoute } from '../http/routes.js'
 
-export function managedExclusions(choices: SetupChoices): ManagedRoute['name'][] {
+export function listManagedExclusions(choices: SetupChoices): ManagedRoute['name'][] {
   return [
     ...new Set([
       ...(choices.managedExcept ?? []),
@@ -14,7 +14,7 @@ export function managedExclusions(choices: SetupChoices): ManagedRoute['name'][]
   ]
 }
 
-export function selectedManagedRoutes(
+export function planSelectedManagedRoutes(
   choices: SetupChoices,
   existing: readonly ExistingRoute[] = []
 ): ManagedRoute[] {
@@ -24,7 +24,7 @@ export function selectedManagedRoutes(
       prefix: choices.routePrefix,
       strategy: choices.authentication.strategy,
       enabled: choices.managed,
-      except: managedExclusions(choices),
+      except: listManagedExclusions(choices),
     },
     existing
   )

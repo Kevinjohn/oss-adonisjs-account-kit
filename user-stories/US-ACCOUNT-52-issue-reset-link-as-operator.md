@@ -46,4 +46,4 @@ flowchart TD
  H --> G["Warn for unverified account; reportOperatorOutcome prints JSON and exits 1 for committed fault"]
 ```
 
-**Code references:** [`ResetLink command`](../commands/reset_link.ts), [`operatorResetLink`](../src/operator.ts), [`reportOperatorOutcome`](../commands/operator_output.ts), [`operator command tests`](../tests/operator_commands.spec.ts)
+**Code references:** [`ResetLink command`](../commands/reset_link.ts), [`issueOperatorResetLink`](../src/operator.ts), [`reportOperatorOutcome`](../commands/operator_output.ts), [`operator command tests`](../tests/operator_commands.spec.ts)

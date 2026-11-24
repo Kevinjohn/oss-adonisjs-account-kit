@@ -5,7 +5,7 @@ import { InvalidConfigurationError } from './errors.js'
 import type { ThrottleBudget } from './types.js'
 import { freezeResolved } from './config_freeze.js'
 
-export function budget(
+export function resolveThrottleBudget(
   input: Partial<ThrottleBudget> | undefined,
   defaults: ThrottleBudget,
   name: string,

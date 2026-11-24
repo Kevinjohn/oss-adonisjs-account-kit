@@ -1,10 +1,10 @@
 // Login-method retirement impact: counts accounts that would lose every way to sign in.
-import { userMetadata } from './db.js'
+import { requireUserMetadata } from './db.js'
 import { isSocialProviderName } from './social_providers.js'
 import type { SocialProviderName, UserId } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-export async function retirementImpact(
+export async function assessRetirementImpact(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: {
     passwordLogin: boolean
@@ -50,7 +50,7 @@ export async function retirementImpact(
     }
 
   const users = deps.config.users
-  const { table } = await userMetadata(deps.config)
+  const { table } = await requireUserMetadata(deps.config)
   let inspectedAccounts = 0
   let affectedAccounts = 0
   let lastId: UserId | undefined

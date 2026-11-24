@@ -1,19 +1,19 @@
 import {
-  defaultImportName,
-  defaultExpression,
-  directProperty,
+  getDefaultImportName,
+  inspectDefaultExportExpression,
+  getDirectProperty,
   hasAmbiguousRuntimeModuleImports,
   hasUnsafeBindingReferences,
   hasUnsafeObjectEntries,
-  importedName,
+  getImportedBindingName,
   parseSetupSource,
-  safeEnvGetter,
+  hasSafeEnvironmentGetter,
   unwrapStaticExpression,
 } from './ts_source.js'
-import { selectedEnvName } from './selected_environment.js'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
 import { nativeMailTransports } from './shared.js'
 
-export async function mailerSelectionState(
+export async function classifyMailerSelection(
   text: string,
   root: string,
   transportEnv: string | null,
@@ -32,12 +32,13 @@ export async function mailerSelectionState(
   )
     return 'unsafe'
   const envBinding =
-    defaultImportName(source, '#start/env') ?? importedName(source, '#start/env', 'default')
-  if (envBinding && !safeEnvGetter(source, envBinding)) return 'unsafe'
-  const exported = defaultExpression(source)?.expression
+    getDefaultImportName(source, '#start/env') ??
+    getImportedBindingName(source, '#start/env', 'default')
+  if (envBinding && !hasSafeEnvironmentGetter(source, envBinding)) return 'unsafe'
+  const exported = inspectDefaultExportExpression(source)?.expression
   if (!exported) return 'unsafe'
   const target = unwrapStaticExpression(source, exported)
-  const factory = importedName(source, '@adonisjs/mail', 'defineConfig')
+  const factory = getImportedBindingName(source, '@adonisjs/mail', 'defineConfig')
   if (
     factory &&
     hasUnsafeBindingReferences(
@@ -61,25 +62,32 @@ export async function mailerSelectionState(
         ? target.arguments[0]
         : null
   if (!object || hasUnsafeObjectEntries(source, object)) return 'unsafe'
-  const mailersValue = directProperty(source, object, 'mailers')?.initializer
+  const mailersValue = getDirectProperty(source, object, 'mailers')?.initializer
   const mailers = mailersValue && unwrapStaticExpression(source, mailersValue)
   if (!mailers || !ts.isObjectLiteralExpression(mailers) || hasUnsafeObjectEntries(source, mailers))
     return 'unsafe'
   if (mailers.properties.length === 0) return 'missing'
-  const selectorValue = directProperty(source, object, 'default')?.initializer
+  const selectorValue = getDirectProperty(source, object, 'default')?.initializer
   const selector = selectorValue && unwrapStaticExpression(source, selectorValue)
   let selected: string | null = null
   if (selector && ts.isStringLiteral(selector)) selected = selector.text
   else if (selector && transportEnv) {
     try {
       selected =
-        (await selectedEnvName(source, root, envBinding, selector, transportEnv, env)) ?? null
+        (await resolveEnvironmentNameFromGetter(
+          source,
+          root,
+          envBinding,
+          selector,
+          transportEnv,
+          env
+        )) ?? null
     } catch {
       return 'unsafe'
     }
   }
   if (!selected) return 'unsafe'
-  const mailer = directProperty(source, mailers, selected)
+  const mailer = getDirectProperty(source, mailers, selected)
   if (!mailer) return 'missing'
   const value = unwrapStaticExpression(source, mailer.initializer)
   if (
@@ -99,7 +107,7 @@ export async function mailerSelectionState(
     ts.isPrefixUnaryExpression(value)
   )
     return 'invalid'
-  const transports = importedName(source, '@adonisjs/mail', 'transports')
+  const transports = getImportedBindingName(source, '@adonisjs/mail', 'transports')
   if (
     transports &&
     hasUnsafeBindingReferences(

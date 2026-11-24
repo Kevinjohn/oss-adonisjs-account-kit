@@ -1,6 +1,6 @@
 import type { Database } from '@adonisjs/lucid/database'
-import { actionUrlBackendOrigins, trustedOrigin } from './action_urls.js'
-import { userMetadata } from './db.js'
+import { actionUrlBackendOrigins, requireTrustedOrigin } from './action_urls.js'
+import { requireUserMetadata } from './db.js'
 import { packageTables } from './package_tables.js'
 import { userOwnedRows } from './user_rows.js'
 import type { Capability, ResolvedConfig } from './types.js'
@@ -50,7 +50,7 @@ const capabilityTables: Record<Capability, string[]> = {
 const migrationFix =
   'Run `node ace configure @kevinjohn/adonisjs-account-kit`, then `node ace migration:run`'
 
-function backendOriginCheck(
+function checkBackendOrigin(
   name: string,
   value: string | undefined,
   environment: DoctorInput['environment']
@@ -73,7 +73,7 @@ function backendOriginCheck(
   if (environment === 'production' && url.protocol !== 'https:')
     return { name, ok: false, detail: 'must use HTTPS in production', fix: 'Use an https:// URL' }
   try {
-    trustedOrigin(value, environment)
+    requireTrustedOrigin(value, environment)
   } catch (error) {
     return {
       name,
@@ -85,7 +85,7 @@ function backendOriginCheck(
   return { name, ok: true, detail: url.origin }
 }
 
-async function tableChecks(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
+async function checkPackageTables(db: Database, config: ResolvedConfig): Promise<DoctorCheck[]> {
   const required = new Set(config.enabled.flatMap((capability) => capabilityTables[capability]))
   if (config.authentication?.strategy === 'access_tokens')
     required.add(config.authentication.tokenTable)
@@ -126,11 +126,11 @@ async function tableChecks(db: Database, config: ResolvedConfig): Promise<Doctor
   return [{ name: 'Package tables', ok: true, detail: `${required.size} present` }]
 }
 
-async function usersCheck(db: Database, config: ResolvedConfig): Promise<DoctorCheck> {
+async function checkUsersTable(db: Database, config: ResolvedConfig): Promise<DoctorCheck> {
   const name = 'Users table'
   let table: string
   try {
-    const metadata = await userMetadata(config)
+    const metadata = await requireUserMetadata(config)
     table = metadata.table
   } catch (error) {
     return { name, ok: false, detail: (error as Error).message }
@@ -196,17 +196,17 @@ export async function runDoctor(input: DoctorInput): Promise<DoctorCheck[]> {
   const backendOrigin = input.config && actionUrlBackendOrigins.get(input.config.urls)
   checks.push(
     backendOrigin
-      ? backendOriginCheck(
+      ? checkBackendOrigin(
           backendOrigin.setting ??
             (backendOrigin.value === input.appUrl ? 'APP_URL' : 'urls.backendOrigin'),
           backendOrigin.value,
           input.environment
         )
-      : backendOriginCheck('APP_URL', input.appUrl, input.environment)
+      : checkBackendOrigin('APP_URL', input.appUrl, input.environment)
   )
   if (input.config) {
-    checks.push(...(await tableChecks(input.db, input.config)))
-    checks.push(await usersCheck(input.db, input.config))
+    checks.push(...(await checkPackageTables(input.db, input.config)))
+    checks.push(await checkUsersTable(input.db, input.config))
   }
   return checks
 }

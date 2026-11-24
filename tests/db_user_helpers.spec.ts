@@ -1,6 +1,11 @@
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
-import { isUserEmailUniqueViolation, lockUser, transaction, userMetadata } from '../src/db.js'
+import {
+  isUserEmailUniqueViolation,
+  lockUser,
+  transaction,
+  requireUserMetadata,
+} from '../src/db.js'
 import type { UsersAdapterMetadata } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { makeConfig, makeUsersAdapter } from './helpers/fakes.js'
@@ -23,7 +28,7 @@ test.group('database user helpers', (group) => {
         },
       })
     )
-    assert.deepEqual(await userMetadata(validConfig), {
+    assert.deepEqual(await requireUserMetadata(validConfig), {
       table: 'metadata_accounts',
       primaryKey: 'id',
       emailConstraint: 'metadata_accounts_email_unique',
@@ -41,7 +46,7 @@ test.group('database user helpers', (group) => {
           },
         })
       )
-      await assert.rejects(() => userMetadata(invalidConfig), /adapter metadata/)
+      await assert.rejects(() => requireUserMetadata(invalidConfig), /adapter metadata/)
     }
   })
 

@@ -163,9 +163,14 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
     passwordResetCompleted: (user) => send('passwordResetCompleted', user.email),
     passwordChanged: (user) => send('passwordChanged', user.email),
     socialIdentityLinked: (user, identity) =>
-      send('socialIdentityLinked', user.email, undefined, providerLabel(identity.provider)),
+      send('socialIdentityLinked', user.email, undefined, resolveProviderLabel(identity.provider)),
     socialIdentityUnlinked: (user, identity) =>
-      send('socialIdentityUnlinked', user.email, undefined, providerLabel(identity.provider)),
+      send(
+        'socialIdentityUnlinked',
+        user.email,
+        undefined,
+        resolveProviderLabel(identity.provider)
+      ),
     magicLinkProvision: (user, url) => {
       const message = new MagicLinkProvision(user.email, url)
       return send(message.kind, message.recipient, message.actionUrl)
@@ -174,6 +179,6 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
   }
 }
 
-function providerLabel(provider: string): string {
+function resolveProviderLabel(provider: string): string {
   return isSocialProviderName(provider) ? socialProviderLabels[provider] : 'Social'
 }

@@ -17,7 +17,7 @@ export async function deleteReturning<Row>(
 }
 
 /** The number of rows a delete removed, whatever shape the driver reports it in. */
-export function deletedCount(result: unknown): number {
+export function countDeletedRowsFromResult(result: unknown): number {
   return Number(Array.isArray(result) ? result[0] : result)
 }
 
@@ -69,7 +69,7 @@ export async function consumeRows<Row>(
       rows.map((row) => row.id)
     )
     .delete()
-  if (deletedCount(deleted) !== rows.length)
+  if (countDeletedRowsFromResult(deleted) !== rows.length)
     throw new Error(`account_kit: ${table} rows changed while they were consumed`)
   return rows
 }

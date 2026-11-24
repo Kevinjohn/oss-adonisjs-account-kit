@@ -1,6 +1,6 @@
 import { sqlTimestamp } from './timestamps.js'
 import type { Database } from '@adonisjs/lucid/database'
-import { deletedCount } from './consume_rows.js'
+import { countDeletedRowsFromResult } from './consume_rows.js'
 import { packageTables, type PackageTable } from './package_tables.js'
 
 /**
@@ -84,7 +84,7 @@ export async function pruneExpiredWithScanStatus(db: Database, input: PruneInput
           .count('* as total')
         counts[key] += Number(total)
       } else {
-        counts[key] += deletedCount(
+        counts[key] += countDeletedRowsFromResult(
           await db.from(table).whereIn('id', ids).where('expires_at', '<=', cutoff).delete()
         )
       }

@@ -50,4 +50,4 @@ flowchart TD
  H --> G["reportOperatorOutcome prints JSON; follow-up fault also sets exit code 1"]
 ```
 
-**Code references:** [implementation](../commands/invite.ts), [`operatorInvite`](../src/operator.ts), [`reportOperatorOutcome`](../commands/operator_output.ts), [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)
+**Code references:** [implementation](../commands/invite.ts), [`issueStandaloneOperatorInvitation`](../src/operator.ts), [`reportOperatorOutcome`](../commands/operator_output.ts), [`tests/operator_commands.spec.ts`](../tests/operator_commands.spec.ts)

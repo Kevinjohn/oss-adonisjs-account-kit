@@ -49,6 +49,16 @@ test.group('admission listing', (group) => {
     )
   })
 
+  test('returns an empty page when no records match the requested status', async ({ assert }) => {
+    const actor = await insertUser(kit)
+    await writeAdmissionRow(kit, actor.id, { approval: 'approved' })
+    const { admission } = makeAdmission(kit, approvalOnly)
+    assert.deepEqual(await admission.list({ actorId: actor.id, status: 'pending' }), {
+      items: [],
+      nextCursor: null,
+    })
+  })
+
   test('pages in creation order with a cursor and rejects a forged cursor', async ({ assert }) => {
     const { actor } = await seed()
     const { admission } = makeAdmission(kit, approvalOnly)

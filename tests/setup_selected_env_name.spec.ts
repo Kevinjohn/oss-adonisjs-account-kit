@@ -2,19 +2,23 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from '@japa/runner'
-import { selectedEnvName } from '../src/setup/selected_environment.js'
-import { defaultExpression, defaultImportName, parseSetupSource } from '../src/setup/ts_source.js'
+import { resolveEnvironmentNameFromGetter } from '../src/setup/selected_environment.js'
+import {
+  inspectDefaultExportExpression,
+  getDefaultImportName,
+  parseSetupSource,
+} from '../src/setup/ts_source.js'
 import { clearSelectorEnv } from './helpers/selector_env.js'
 
 async function select(root: string, expression: string, variable?: string, extra = '') {
   const source = await parseSetupSource(
     `import env from '#start/env'\n${extra}export default ${expression}\n`
   )
-  return selectedEnvName(
+  return resolveEnvironmentNameFromGetter(
     source,
     root,
-    defaultImportName(source, '#start/env'),
-    defaultExpression(source)!.expression,
+    getDefaultImportName(source, '#start/env'),
+    inspectDefaultExportExpression(source)!.expression,
     variable
   )
 }

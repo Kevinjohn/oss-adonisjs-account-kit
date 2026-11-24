@@ -7,7 +7,7 @@ import {
   signupValidator,
 } from '../src/http/validators.js'
 import { InvalidInputError } from '../src/errors.js'
-import { managedErrorResponse } from '../src/http/responses.js'
+import { mapManagedErrorResponse } from '../src/http/responses.js'
 
 test.group('managed request validation', () => {
   test('default field validators preserve configured registration data for service mapping', async ({
@@ -53,7 +53,7 @@ test.group('managed request validation', () => {
   })
 
   test('password-policy rejection is never misreported as invalid proof', ({ assert }) => {
-    const response = managedErrorResponse(new InvalidInputError('Invalid password'), {
+    const response = mapManagedErrorResponse(new InvalidInputError('Invalid password'), {
       proof: 'password',
     })
     assert.equal(response?.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_INPUT')

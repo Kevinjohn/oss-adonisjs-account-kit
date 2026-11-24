@@ -9,7 +9,7 @@ import {
   isUniqueViolation,
   isUserEmailUniqueViolation,
 } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { isInvitationRole } from './invitation_input.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
@@ -24,7 +24,7 @@ import { isPasswordAllowed } from './password.js'
 import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
-import { normalizeScope, scopeColumn } from './invitation_scope.js'
+import { normalizeScope, encodeScopeColumn } from './invitation_scope.js'
 import { applyInvitations, emitInvitationAccepted } from './invitation_match.js'
 import { consumeRows } from './consume_rows.js'
 import { requireUser } from './actor_confirmation.js'
@@ -40,7 +40,7 @@ import type {
 } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
-export { resendInvitation, revokeInvitation, listInvitations } from './invitation_management.js'
+export { resendInvitation, revokeInvitation, paginateInvitations } from './invitation_management.js'
 
 export async function acceptInvitation(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
@@ -182,7 +182,7 @@ export async function sendInvitation(
         run: () =>
           deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
       },
-      lifecycle(deps.config, {
+      createLifecycleEffect(deps.config, {
         type: 'invitation.sent',
         invitationId: invitation.id,
         operationId,
@@ -221,7 +221,7 @@ export async function storeInvitation(
           if (!inviter) throw new AuthorizationError()
         }
         const now = DateTime.utc()
-        const scope = scopeColumn(input.scope)
+        const scope = encodeScopeColumn(input.scope)
         const stale = trx
           .from('account_invitations')
           .where('email', input.email)

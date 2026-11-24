@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import { relative, resolve, sep } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
-import { migrationSchema, type UserIdType } from '../src/setup/migration_definitions.js'
+import { buildMigrationSchema, type UserIdType } from '../src/setup/migration_definitions.js'
 import { inspectMigrationDirectory } from '../src/setup/migration_paths.js'
-import { orderedMigrations } from '../src/setup/migration_order.js'
+import { orderMigrations } from '../src/setup/migration_order.js'
 import { readRegularFile } from '../src/setup/safe_path.js'
 import { hasRegisteredCommand } from '../src/setup/commands_inspection.js'
 import { stubsRoot } from '../stubs/main.js'
@@ -33,11 +33,11 @@ export default class InstallAdmission extends BaseCommand {
 
   async run(): Promise<void> {
     const root = resolve(this.app.makePath(''))
-    let schema: ReturnType<typeof migrationSchema>
+    let schema: ReturnType<typeof buildMigrationSchema>
     let migrationPath: string
     let existing: boolean
     try {
-      schema = migrationSchema(
+      schema = buildMigrationSchema(
         this.usersTable ?? 'users',
         (this.userIdType ?? 'integer') as UserIdType
       )
@@ -49,7 +49,7 @@ export default class InstallAdmission extends BaseCommand {
         relative(root, this.app.migrationsPath()).split(sep).join('/'),
         [admissionMigration]
       )
-      const [migration] = orderedMigrations(directory.names, Date.now(), [admissionMigration])
+      const [migration] = orderMigrations(directory.names, Date.now(), [admissionMigration])
       migrationPath = `${directory.path}/${migration.filename}`
       existing = migration.existing
     } catch (error) {

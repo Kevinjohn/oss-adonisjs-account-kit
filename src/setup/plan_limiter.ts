@@ -1,14 +1,14 @@
 // Setup planning phase: limiter store diagnostics.
 import type { SetupInspection, SetupDiagnostic } from './types.js'
 import { addSetupDiagnostic } from './shared.js'
-import { limiterConfigurationState } from './config_inspection.js'
+import { inspectLimiterConfiguration } from './config_inspection.js'
 
 export async function planLimiter(
   state: SetupInspection,
   diagnostics: SetupDiagnostic[],
   env?: NodeJS.ProcessEnv
 ): Promise<void> {
-  const limiter = await limiterConfigurationState(
+  const limiter = await inspectLimiterConfiguration(
     state.files['config/limiter.ts'] ?? '',
     state.root,
     env

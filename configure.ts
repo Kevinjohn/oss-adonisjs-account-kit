@@ -2,9 +2,9 @@ import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import { relative, resolve, sep } from 'node:path'
 import type Configure from '@adonisjs/core/commands/configure'
 import type * as TypeScript from 'typescript'
-import { migrationSchema } from './src/setup/migration_definitions.js'
+import { buildMigrationSchema } from './src/setup/migration_definitions.js'
 import { inspectMigrationDirectory } from './src/setup/migration_paths.js'
-import { orderedMigrations } from './src/setup/migration_order.js'
+import { orderMigrations } from './src/setup/migration_order.js'
 import { readRegularFile } from './src/setup/safe_path.js'
 import { hasRegisteredCommand } from './src/setup/commands_inspection.js'
 import { inspectProviders } from './src/setup/providers_inspection.js'
@@ -18,7 +18,7 @@ import { stubsRoot } from './stubs/main.js'
 
 export {
   migrationNames,
-  migrationSchema,
+  buildMigrationSchema as migrationSchema,
   type UserIdType,
 } from './src/setup/migration_definitions.js'
 
@@ -59,30 +59,34 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
     throw new UnsupportedConfigShape('defineConfig does not receive a static object literal')
 
   // A property's name as written, so `'providers'` (quoted) is not the providers property.
-  const nameOf = (property: TypeScript.ObjectLiteralElementLike) =>
+  const readPropertyName = (property: TypeScript.ObjectLiteralElementLike) =>
     ts.isSpreadAssignment(property) ? undefined : property.name.getText(file)
   const isComputed = (property: TypeScript.ObjectLiteralElementLike) =>
     !ts.isSpreadAssignment(property) && ts.isComputedPropertyName(property.name)
-  const lastSpreadIndex = (object: TypeScript.ObjectLiteralExpression) =>
+  const locateLastSpread = (object: TypeScript.ObjectLiteralExpression) =>
     object.properties.findLastIndex((property) => ts.isSpreadAssignment(property))
 
   if (config.properties.some(isComputed)) {
     throw new UnsupportedConfigShape('computed config properties cannot be inspected safely')
   }
 
-  const configSpread = lastSpreadIndex(config)
+  const configSpread = locateLastSpread(config)
   // After a spread, only properties written after the last spread are known.
   const findProperty = (object: TypeScript.ObjectLiteralExpression, name: string) =>
     configSpread >= 0
-      ? object.properties.slice(configSpread + 1).findLast((property) => nameOf(property) === name)
-      : object.properties.find((property) => nameOf(property) === name)
+      ? object.properties
+          .slice(configSpread + 1)
+          .findLast((property) => readPropertyName(property) === name)
+      : object.properties.find((property) => readPropertyName(property) === name)
   const findFile = (entry: TypeScript.ObjectLiteralExpression, name: string) => {
-    const entrySpread = lastSpreadIndex(entry)
+    const entrySpread = locateLastSpread(entry)
     return entrySpread >= 0
       ? entry.properties
           .slice(entrySpread + 1)
-          .findLast((property) => ts.isPropertyAssignment(property) && nameOf(property) === name)
-      : entry.properties.find((property) => nameOf(property) === name)
+          .findLast(
+            (property) => ts.isPropertyAssignment(property) && readPropertyName(property) === name
+          )
+      : entry.properties.find((property) => readPropertyName(property) === name)
   }
   if (
     configSpread >= 0 &&
@@ -148,9 +152,9 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
  * command while preserving the existing entries.
  */
 export async function configure(command: Configure) {
-  let schema: ReturnType<typeof migrationSchema>
+  let schema: ReturnType<typeof buildMigrationSchema>
   try {
-    schema = migrationSchema(
+    schema = buildMigrationSchema(
       command.parsedFlags['users-table'] ?? 'users',
       command.parsedFlags['user-id-type'] ?? 'integer'
     )
@@ -204,7 +208,7 @@ export async function configure(command: Configure) {
 
   const root = resolve(command.app.makePath(''))
   let directory: Awaited<ReturnType<typeof inspectMigrationDirectory>>
-  let migrations: ReturnType<typeof orderedMigrations>
+  let migrations: ReturnType<typeof orderMigrations>
   try {
     directory = await inspectMigrationDirectory(
       root,
@@ -213,7 +217,7 @@ export async function configure(command: Configure) {
       process.env,
       relative(root, command.app.migrationsPath()).split(sep).join('/')
     )
-    migrations = orderedMigrations(directory.names, Date.now())
+    migrations = orderMigrations(directory.names, Date.now())
   } catch (error) {
     command.exitCode = 1
     command.logger.logError(

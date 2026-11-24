@@ -2,7 +2,7 @@
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import {
-  invalidProof,
+  sendInvalidProofResponse,
   sendPasswordPolicyErrorResponse,
   reportCommittedFailure,
   translate,
@@ -29,7 +29,7 @@ export const passwordResetHandlers = {
   'auth.passwordReset.inspect': async ({ context, kit, options }) =>
     (await kit.passwordReset.inspect({ token: context.params.token }))
       ? context.response.ok({ valid: true })
-      : invalidProof(context, 'password', options.extensions?.message),
+      : sendInvalidProofResponse(context, 'password', options.extensions?.message),
   'auth.passwordReset.complete': async ({ context, kit }) => {
     const { request, response, params } = context
     const { password } = await request.validateUsing(newPasswordValidator)

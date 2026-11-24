@@ -8,7 +8,7 @@ import type { ManagedEndpointName } from './routes.js'
 import type { ManagedSocialExtension } from './social.js'
 import { socialPasswordProofValidator, socialUnlinkValidator } from './validators.js'
 import { requirePositiveId } from './positive_id.js'
-import { optionalSession } from './session_access.js'
+import { getOptionalSession } from './session_access.js'
 
 export interface SocialRequest<Credential> {
   name: ManagedEndpointName
@@ -20,7 +20,7 @@ export interface SocialRequest<Credential> {
 }
 export type SocialHandler = <Credential>(request: SocialRequest<Credential>) => Promise<unknown>
 
-function safeIdentity(identity: {
+function projectSocialIdentity(identity: {
   id: number
   provider: SocialProviderName
   email: string | null
@@ -36,7 +36,7 @@ function safeIdentity(identity: {
 
 export const managedSocialAccountHandlers = {
   'auth.methods': async ({ context, extension }) => {
-    const stored = optionalSession(context)?.get('accountKit.social.lastUsedMethod')
+    const stored = getOptionalSession(context)?.get('accountKit.social.lastUsedMethod')
     const hinted = extension.lastUsedMethod ? await extension.lastUsedMethod(context) : stored
     const lastUsedMethod =
       hinted === 'password' || extension.providers.includes(hinted as SocialProviderName)
@@ -60,7 +60,7 @@ export const managedSocialAccountHandlers = {
   },
   'account.socialIdentities.list': async ({ context, social, guard }) => {
     const identities = await social.list({ current: await guard.current(context) })
-    return context.response.ok({ identities: identities.map(safeIdentity) })
+    return context.response.ok({ identities: identities.map(projectSocialIdentity) })
   },
   'account.socialIdentities.unlink': async ({ context, social, guard }) => {
     const input = await context.request.validateUsing(socialUnlinkValidator)

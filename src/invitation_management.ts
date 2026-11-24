@@ -2,7 +2,7 @@ import { DateTime } from 'luxon'
 import { readIsoTimestamp, sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { lockRow, lockUser, transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import {
   EmailAlreadyRegisteredError,
   AuthorizationError,
@@ -12,7 +12,7 @@ import {
 } from './errors.js'
 import { invitationPageSize } from './invitation_input.js'
 import { toInvitation } from './invitation_rows.js'
-import { normalizeScope, scopeColumn } from './invitation_scope.js'
+import { normalizeScope, encodeScopeColumn } from './invitation_scope.js'
 import { requireUser } from './actor_confirmation.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -123,7 +123,7 @@ export async function resendInvitation(
         run: () =>
           deps.config.notify.invitationProvision(invitation, deps.config.urls.invitation(token)),
       },
-      lifecycle(deps.config, {
+      createLifecycleEffect(deps.config, {
         type: 'invitation.resent',
         invitationId: invitation.id,
         operationId,
@@ -148,7 +148,7 @@ export async function revokeInvitation(
   )
   await finishCommitted(fault, 'Invitation revoked but follow-ups failed', () =>
     postCommit('Invitation follow-up failed', [
-      lifecycle(deps.config, {
+      createLifecycleEffect(deps.config, {
         type: 'invitation.revoked',
         invitationId: input.invitationId,
         operationId,
@@ -157,7 +157,7 @@ export async function revokeInvitation(
   )
 }
 
-export async function listInvitations(
+export async function paginateInvitations(
   deps: Pick<ServiceDependencies, 'config' | 'db'>,
   input: InvitationsListInput
 ): Promise<InvitationPage> {
@@ -178,7 +178,7 @@ export async function listInvitations(
   if ((await deps.config.authorize.listInvitations(actor, context)) !== true)
     throw new AuthorizationError()
   const query = deps.db.from('account_invitations').where('expires_at', '>', sqlTimestamp(deps.db))
-  if (scope !== undefined) query.where('scope', scopeColumn(scope))
+  if (scope !== undefined) query.where('scope', encodeScopeColumn(scope))
   query
     .orderBy('created_at', 'asc')
     .orderBy('id', 'asc')

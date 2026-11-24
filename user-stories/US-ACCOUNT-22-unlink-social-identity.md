@@ -36,7 +36,7 @@ flowchart TD
  H["Host calls socialAuthentication.unlink"] --> A
  M["Managed DELETE checks current account, validates proof and parses positive identity ID"] --> A
  A["unlinkSocialIdentity transaction validates current and finds owned identity"] --> P["Consume social_unlink proof and check remaining password or enabled confirmed provider"]
- P --> F["Delete identity and call credentialsChanged"]
+ P --> F["Delete identity and call invalidateChangedCredentials"]
  A -->|Refusal| E["Abort transaction and propagate error"]
  P -->|Refusal| E
  F -->|Pre-commit fault| E

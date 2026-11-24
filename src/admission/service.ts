@@ -1,7 +1,7 @@
 // The admission service: evaluates admission and gates protected application routes.
 import type { Database } from '@adonisjs/lucid/database'
 import type { AccountKit } from '../account_kit.js'
-import { currentInTransaction } from '../authentication.js'
+import { requireCurrentAccountInTransaction } from '../authentication.js'
 import { transaction } from '../db.js'
 import { normalizeEmail } from '../email.js'
 import { InvalidSessionError, UnverifiedEmailError } from '../errors.js'
@@ -15,7 +15,7 @@ import type {
   UserId,
 } from '../types.js'
 import { evaluateAdmission } from './decision.js'
-import { domainAllowed, domainOf } from './domain.js'
+import { isDomainAllowed, extractEmailDomain } from './domain.js'
 import { AdmissionRequiredError } from './errors.js'
 import { readAdmissionRow, toAdmissionRecord } from './rows.js'
 import type {
@@ -26,9 +26,9 @@ import type {
 } from './types.js'
 import { requestAdmission } from './request.js'
 import { decideAdmission } from './decisions.js'
-import { listAdmissions, type AdmissionPage } from './listing.js'
-import { operatorDecision, operatorGrantInvitation } from './operator.js'
-import { cancelBootstrap, operatorBootstrap } from './bootstrap.js'
+import { paginateAdmissions, type AdmissionPage } from './listing.js'
+import { applyOperatorDecision, grantOperatorInvitation } from './operator.js'
+import { cancelBootstrap, bootstrapOperatorInvitation } from './bootstrap.js'
 
 /** The dependencies the admission service is built from; the provider supplies them. */
 export interface AdmissionDependencies {
@@ -71,7 +71,11 @@ export class AccountAdmission {
     input: CurrentAccountInput
   ): Promise<{ account: CurrentAccount; decision: AdmissionDecision }> {
     return transaction(this.deps.db, async (trx) => {
-      const account = await currentInTransaction({ config: this.deps.accountConfig }, input, trx)
+      const account = await requireCurrentAccountInTransaction(
+        { config: this.deps.accountConfig },
+        input,
+        trx
+      )
       const user = await this.deps.accountConfig.users.findById(input.userId, trx)
       if (!user) throw new InvalidSessionError()
       return { account, decision: await this.decide(user, trx) }
@@ -123,8 +127,8 @@ export class AccountAdmission {
     const rule = this.deps.config.domain
     if (!rule) return true
     if (typeof email !== 'string') return false
-    const domain = domainOf(normalizeEmail(email))
-    return domain !== null && domainAllowed(domain, rule)
+    const domain = extractEmailDomain(normalizeEmail(email))
+    return domain !== null && isDomainAllowed(domain, rule)
   }
 
   /**
@@ -157,7 +161,7 @@ export class AccountAdmission {
     cursor?: string
     limit?: number
   }): Promise<AdmissionPage> {
-    return listAdmissions(this.deps, input)
+    return paginateAdmissions(this.deps, input)
   }
 
   /**
@@ -167,17 +171,17 @@ export class AccountAdmission {
   get operator() {
     return {
       approve: (input: { email: string }): Promise<AdmissionRecord> =>
-        operatorDecision(this.deps, input, 'approve'),
+        applyOperatorDecision(this.deps, input, 'approve'),
       revoke: (input: { email: string }): Promise<AdmissionRecord> =>
-        operatorDecision(this.deps, input, 'revoke'),
+        applyOperatorDecision(this.deps, input, 'revoke'),
       grantInvitation: (input: { email: string; role?: string }): Promise<AdmissionRecord> =>
-        operatorGrantInvitation(this.deps, input),
+        grantOperatorInvitation(this.deps, input),
       /**
        * Issues an operator invitation and an approval waiting for the account it creates; that
        * account lands admitted once its invitation evidence is recorded.
        */
       bootstrap: (input: { email: string; role: string }): Promise<OperatorInviteResult> =>
-        operatorBootstrap(this.deps, input),
+        bootstrapOperatorInvitation(this.deps, input),
       /** Deletes the waiting approval for `email`; returns whether there was one. */
       cancelBootstrap: (input: { email: string }): Promise<boolean> =>
         cancelBootstrap(this.deps, input.email),

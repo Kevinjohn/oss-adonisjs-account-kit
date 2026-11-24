@@ -3,7 +3,7 @@ import type { ManagedEndpointName } from './routes.js'
 import type { ManagedHandler } from './managed_types.js'
 import { requirePositiveId } from './positive_id.js'
 import { buildAccountProjection } from '../account_projection.js'
-import { invalidProof, sendPasswordPolicyErrorResponse } from './response_helpers.js'
+import { sendInvalidProofResponse, sendPasswordPolicyErrorResponse } from './response_helpers.js'
 import {
   invitationAcceptValidator,
   invitationListValidator,
@@ -15,7 +15,7 @@ export const invitationHandlers = {
     const preview = await kit.invitations.inspect({ token: context.params.token })
     return preview
       ? context.response.ok(preview)
-      : invalidProof(context, 'invitation', options.extensions?.message)
+      : sendInvalidProofResponse(context, 'invitation', options.extensions?.message)
   },
   'auth.invitation.accept': async ({ context, kit, options, representIssued }) => {
     const { request, response, params } = context

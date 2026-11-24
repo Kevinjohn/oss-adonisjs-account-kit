@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { defaultSetupChoices } from '../src/setup/defaults.js'
-import { parseSetupChoices } from '../src/setup/parse.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
+import { requireSetupChoices } from '../src/setup/parse.js'
 import { collectSetupChoices } from '../src/setup/prompts.js'
 import type { SetupChoices } from '../src/setup/types.js'
 import { interactive } from './helpers/interactive_choices.js'
@@ -26,7 +26,7 @@ function collectFromSavedChoices(
 }
 
 function savedNonDefaultChoices(): SetupChoices {
-  const choices = defaultSetupChoices()
+  const choices = buildDefaultSetupChoices()
   choices.features = [
     'registration',
     'authentication',
@@ -119,31 +119,31 @@ test.group('setup prompt values', () => {
     assert.equal(choices.mode, 'managed')
     assert.equal(choices.policy.registration, 'closed')
     assert.equal(choices.mail.frontendOriginEnv, 'MY_FRONTEND_URL')
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(requireSetupChoices(choices), choices)
 
     const defaults = await interactive({ 'Enabled services': '   ' })
     assert.equal(defaults.mode, 'managed')
     assert.equal(defaults.policy.registration, 'open')
-    assert.deepEqual(defaults.features, defaultSetupChoices().features)
+    assert.deepEqual(defaults.features, buildDefaultSetupChoices().features)
     assert.isTrue(defaults.policy.verificationRequired)
     assert.equal(defaults.mail.frontendOriginEnv, 'FRONTEND_URL')
-    assert.equal(defaultSetupChoices().mail.frontendOriginEnv, 'FRONTEND_URL')
+    assert.equal(buildDefaultSetupChoices().mail.frontendOriginEnv, 'FRONTEND_URL')
   })
 
   test('interactive and JSON choices both reject unknown mode and registration', async ({
     assert,
   }) => {
     await assert.rejects(() => interactive({ 'Consumption mode': 'unknown' }), /mode/)
-    const invalidMode = { ...defaultSetupChoices(), mode: 'unknown' }
-    assert.throws(() => parseSetupChoices(invalidMode), /mode/)
+    const invalidMode = { ...buildDefaultSetupChoices(), mode: 'unknown' }
+    assert.throws(() => requireSetupChoices(invalidMode), /mode/)
 
     await assert.rejects(
       () => interactive({ 'Registration policy': 'unknown' }),
       /policy.registration/
     )
-    const invalidRegistration = defaultSetupChoices()
+    const invalidRegistration = buildDefaultSetupChoices()
     Object.assign(invalidRegistration.policy, { registration: 'unknown' })
-    assert.throws(() => parseSetupChoices(invalidRegistration), /policy.registration/)
+    assert.throws(() => requireSetupChoices(invalidRegistration), /policy.registration/)
   })
 
   test('interactive token answers produce complete parseable choices including invitation destination', async ({
@@ -169,7 +169,7 @@ test.group('setup prompt values', () => {
     assert.isFalse(Object.hasOwn(choices.authentication!, 'session'))
     assert.equal(choices.mail.destinations.invitation, 'invites/accept')
     assert.lengthOf(choices.policy.registrationFields, 1)
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(requireSetupChoices(choices), choices)
   })
 
   test('services without email flows do not ask mail or origin questions', async ({ assert }) => {
@@ -180,9 +180,9 @@ test.group('setup prompt values', () => {
 
     assert.deepEqual(choices.features, ['authentication'])
     assert.equal(choices.mode, 'services')
-    assert.equal(choices.mail.integration, defaultSetupChoices().mail.integration)
-    assert.equal(choices.mail.delivery, defaultSetupChoices().mail.delivery)
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.equal(choices.mail.integration, buildDefaultSetupChoices().mail.integration)
+    assert.equal(choices.mail.delivery, buildDefaultSetupChoices().mail.delivery)
+    assert.deepEqual(requireSetupChoices(choices), choices)
     assert.deepEqual(
       questions.filter((question) =>
         /^(Delivery integration|Delivery guarantee|Application queue worker|Mail sender|Mail transport|Application name|Trusted backend origin|Trusted frontend origin)|relative frontend path/.test(
@@ -204,7 +204,7 @@ test.group('setup prompt values', () => {
         .filter((name): name is string => name !== undefined)
 
       assert.deepEqual(destinations, expected)
-      assert.deepEqual(parseSetupChoices(choices), choices)
+      assert.deepEqual(requireSetupChoices(choices), choices)
     }
   })
 
@@ -228,7 +228,7 @@ test.group('setup prompt values', () => {
     assert.isTrue(questions.some((question) => question.startsWith('Social callback origin')))
     assert.isTrue(questions.some((question) => question.startsWith('google client ID')))
     assert.isTrue(questions.some((question) => question.startsWith('google client secret')))
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(requireSetupChoices(choices), choices)
   })
 
   test('disabling capabilities clears their stale choices', async ({ assert }) => {
@@ -250,9 +250,9 @@ test.group('setup prompt values', () => {
 
     assert.deepEqual(choices.features, ['authentication'])
     assert.deepEqual(choices.managed, [])
-    assert.equal(choices.mail.integration, defaultSetupChoices().mail.integration)
-    assert.equal(choices.mail.delivery, defaultSetupChoices().mail.delivery)
-    assert.deepEqual(choices.mail.destinations, defaultSetupChoices().mail.destinations)
+    assert.equal(choices.mail.integration, buildDefaultSetupChoices().mail.integration)
+    assert.equal(choices.mail.delivery, buildDefaultSetupChoices().mail.delivery)
+    assert.deepEqual(choices.mail.destinations, buildDefaultSetupChoices().mail.destinations)
     assert.equal(choices.policy.registration, 'closed')
     assert.deepEqual(choices.policy.registrationFields, [])
     assert.isFalse(choices.policy.verificationRequired)
@@ -262,13 +262,13 @@ test.group('setup prompt values', () => {
     assert.isFalse(questions.some((question) => question.startsWith('Registration policy')))
     assert.isFalse(questions.some((question) => question.startsWith('Additional profile fields')))
     assert.isFalse(questions.some((question) => question.startsWith('Require verified email')))
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(requireSetupChoices(choices), choices)
   })
 
   test('newly enabled email flows receive defaults without replacing saved destinations', async ({
     assert,
   }) => {
-    const saved = defaultSetupChoices()
+    const saved = buildDefaultSetupChoices()
     saved.features = ['passwordReset']
     saved.managed = ['passwordReset']
     saved.mail.integration = 'custom'
@@ -284,7 +284,7 @@ test.group('setup prompt values', () => {
 
     assert.equal(choices.mail.destinations.passwordReset, 'members/recover')
     assert.equal(choices.mail.destinations.emailChange, 'account/email-change')
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(requireSetupChoices(choices), choices)
   })
 
   test('profile fields stay enabled for every capability that consumes registration data', async ({
@@ -306,7 +306,7 @@ test.group('setup prompt values', () => {
       )
 
       assert.deepEqual(choices.policy.registrationFields, saved.policy.registrationFields)
-      assert.deepEqual(parseSetupChoices(choices), choices)
+      assert.deepEqual(requireSetupChoices(choices), choices)
     }
   })
 
@@ -326,7 +326,7 @@ test.group('setup prompt values', () => {
     )
 
     assert.deepEqual(choices.managedExcept, [])
-    assert.deepEqual(parseSetupChoices(choices), choices)
+    assert.deepEqual(requireSetupChoices(choices), choices)
   })
 
   test('social provider lists ignore empty comma-separated values', async ({ assert }) => {
@@ -342,7 +342,7 @@ test.group('setup prompt values', () => {
         status: 'enabled',
         providers: input === 'google,' ? ['google'] : ['google', 'github'],
       })
-      assert.deepEqual(parseSetupChoices(choices), choices)
+      assert.deepEqual(requireSetupChoices(choices), choices)
     }
   })
 
@@ -364,7 +364,7 @@ test.group('setup prompt values', () => {
     const choices = await interactive(answers)
     assert.equal(choices.features.filter((name) => name === 'socialAuthentication').length, 1)
     assert.equal(choices.managed.filter((name) => name === 'socialAuthentication').length, 1)
-    assert.doesNotThrow(() => parseSetupChoices(choices))
+    assert.doesNotThrow(() => requireSetupChoices(choices))
   })
 
   test('social sign-in without ordinary registration keeps an application policy', async ({
@@ -426,7 +426,7 @@ test.group('setup prompt values', () => {
 
   test('a changed route prefix replaces a saved session callback path', async ({ assert }) => {
     const saved = savedNonDefaultChoices()
-    saved.authentication = defaultSetupChoices().authentication
+    saved.authentication = buildDefaultSetupChoices().authentication
     const social = saved.social as Extract<SetupChoices['social'], { status: 'enabled' }>
     social.callbackPath = '/members/auth/oauth/{provider}/callback'
     const answers: Record<string, string> = { 'Managed route prefix': '/auth' }

@@ -37,8 +37,7 @@ with a server-side store in step 5.
 
 Follow the [root install instructions](../../README.md#install) for the released archive and
 configuration command. For development verification, install the archive built and packed from
-the source revision being checked, and record its digest; keep release and development evidence
-separate.
+the source revision being checked and record its digest.
 
 The required peers are AdonisJS Core 7, Lucid, Limiter and Luxon within the declared
 [compatibility ranges](../reference/compatibility.md). The application supplies its database driver. Preserve
@@ -51,6 +50,17 @@ Run `node ace configure @kevinjohn/adonisjs-account-kit` once after archive inst
 schema, pass `--users-table=members` and the matching `--user-id-type=integer`, `string` or `uuid`.
 Configuration preserves existing generated files; inspect conflicts instead of assuming it has
 rewritten an old installation.
+
+### Recipe patches
+
+Choose the named patch from the Account Kit revision that generated your configuration. If you
+installed a release archive, open the [matching release tag](https://github.com/Kevinjohn/oss-adonisjs-account-kit/tags)
+and find the recipe file under `docs/recipes/patches`.
+
+For source verification, use `docs/recipes/patches` in your checkout. The recipe harness builds and
+installs the package from that checkout by default. If you pass `--candidate-tarball` and
+`--candidate-revision`, run from the checkout matching that archive. The supplied archive
+generates the configuration, and the checkout supplies the patch.
 
 ### Configuration output
 

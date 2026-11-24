@@ -46,7 +46,7 @@ flowchart TD
  H["Host or managed auth.oauth.redirect calls begin with intent reauth"] --> I["Validate purpose, fresh-auth hook and current account; store state with account and revision"]
  I -->|Refusal| E
  I --> J["Return provider URL; managed session keeps intent for GET callback"]
- J --> K["Host callback or managed GET or bearer POST calls socialCallback with current and state"]
+ J --> K["Host code or managed GET or bearer POST calls socialAuthentication.callback with current and state"]
  K --> L["Resolve provider profile and verifyFreshAuthentication evidence before transaction"]
  L --> N["Lock account, consume state and validate actor, matching fresh subject, revision and confirmed passwordless relationship"]
  L -->|Refusal| E

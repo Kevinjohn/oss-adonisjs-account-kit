@@ -12,12 +12,12 @@ export function isClientVerifier(value: unknown): value is string {
 }
 
 /** The challenge a client sends for `verifier`. */
-export function clientChallengeFor(verifier: string): string {
+export function deriveClientChallenge(verifier: string): string {
   return createHash('sha256').update(verifier).digest('base64url')
 }
 
 export function verifierMatches(verifier: string, challenge: string): boolean {
   const expected = Buffer.from(challenge)
-  const actual = Buffer.from(clientChallengeFor(verifier))
+  const actual = Buffer.from(deriveClientChallenge(verifier))
   return expected.length === actual.length && timingSafeEqual(expected, actual)
 }

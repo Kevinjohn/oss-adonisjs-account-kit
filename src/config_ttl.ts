@@ -3,7 +3,11 @@ import type { DateTime } from 'luxon'
 import { InvalidConfigurationError, InvalidInputError } from './errors.js'
 import { expiresAt } from './ttl.js'
 
-export function configuredExpiresAt(field: string, now: DateTime, ttl: string | number): DateTime {
+export function computeConfiguredExpiry(
+  field: string,
+  now: DateTime,
+  ttl: string | number
+): DateTime {
   try {
     return expiresAt(now, ttl)
   } catch (error) {

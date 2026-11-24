@@ -10,7 +10,7 @@ export function rememberCorrectionRevision(value: object, revision: string | nul
  * The committed revision for a correction's result or follow-up error; `undefined` otherwise.
  * Reading it clears it, so an adapter that returns the same object again cannot replay it.
  */
-export function correctionRevision(value: unknown): string | null | undefined {
+export function takeCorrectionRevision(value: unknown): string | null | undefined {
   if (value === null || typeof value !== 'object') return undefined
   const revision = revisions.get(value)
   revisions.delete(value)

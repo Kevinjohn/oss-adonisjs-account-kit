@@ -2,20 +2,23 @@
 import { DateTime } from 'luxon'
 import { expiresAt } from './ttl.js'
 import { AuthorizationError } from './errors.js'
-import { isPasswordAllowed } from './password.js'
+import { isPasswordAllowed as matchesPasswordPolicy } from './password.js'
 import type { Throttler } from './throttle.js'
 import type { ResolvedConfig } from './types.js'
 
 type Dependencies = { config: ResolvedConfig; throttler: Throttler }
 
-export function managedHttpService(deps: Dependencies) {
+export function createManagedHttpService(deps: Dependencies) {
+  const computeMagicLinkExpiry = (): number =>
+    expiresAt(DateTime.utc(), deps.config.expiresIn.magicLink).toMillis()
+  const isPasswordAllowed = (value: unknown): value is string =>
+    matchesPasswordPolicy(value, deps.config.passwordPolicy)
+
   return {
     /** Local retention deadline for acknowledged managed magic-link requests. */
-    magicLinkExpiresAt: (): number =>
-      expiresAt(DateTime.utc(), deps.config.expiresIn.magicLink).toMillis(),
+    magicLinkExpiresAt: computeMagicLinkExpiry,
     /** Whether `value` is a string that meets the configured password policy. */
-    passwordAllowed: (value: unknown): value is string =>
-      isPasswordAllowed(value, deps.config.passwordPolicy),
+    passwordAllowed: isPasswordAllowed,
     /** Throws `AuthorizationError` unless registration availability is `open`. */
     assertPublicRegistration: (): void => {
       if (deps.config.registration.availability !== 'open')

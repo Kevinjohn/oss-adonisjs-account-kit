@@ -14,7 +14,7 @@ import {
   ThrottledError,
 } from '../src/errors.js'
 import { accountErrorResponse, type AccountErrorResponse } from '../src/error_response.js'
-import { managedErrorResponse } from '../src/http/responses.js'
+import { mapManagedErrorResponse } from '../src/http/responses.js'
 
 const operationFailed = 'E_ACCOUNT_KIT_OPERATION_FAILED'
 
@@ -76,7 +76,7 @@ test.group('account HTTP error mapping', () => {
   test('masks an adapter contract violation as the generic operation failure', ({ assert }) => {
     const error = new AdapterContractError('account_kit: canAccess must resolve to a boolean')
     assert.equal(error.code, 'E_ACCOUNT_KIT_ADAPTER_CONTRACT')
-    const response = managedErrorResponse(error)!
+    const response = mapManagedErrorResponse(error)!
     assert.equal(response.status, 500)
     assert.deepEqual(response.body, {
       errors: [{ code: operationFailed, message: 'Account operation failed.' }],
@@ -133,7 +133,7 @@ test.group('account HTTP error mapping', () => {
           ? new errors.ThrottledError(1)
           : new (ErrorClass as new () => Error)()
       const helper = accountErrorResponse(error)!
-      const managed = managedErrorResponse(error)!
+      const managed = mapManagedErrorResponse(error)!
       assert.deepEqual(helper, managed, ErrorClass.name)
     }
   })

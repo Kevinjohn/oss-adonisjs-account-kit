@@ -2,7 +2,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { ManagedEndpointName } from './routes.js'
 import type { ManagedGuard } from './managed_types.js'
-import { recoveryDiagnostic } from './response_helpers.js'
+import { logRecoveryDiagnostic } from './response_helpers.js'
 
 /**
  * End the caller's browser session once the operation has committed. Token guards need nothing:
@@ -18,6 +18,6 @@ export async function endSessionAfterCommit<Credential>(
   try {
     await guard.forRequest(context).terminate()
   } catch {
-    recoveryDiagnostic(context, operation, 'session_end_failed')
+    logRecoveryDiagnostic(context, operation, 'session_end_failed')
   }
 }

@@ -46,4 +46,4 @@ flowchart TD
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints granted, userId and email, role"]
 ```
 
-**Code references:** [`operatorGrantInvitation`](../src/admission/operator.ts), [`grant command`](../src/admission/commands/grant_invitation.ts), [`operator tests`](../tests/admission_operator.spec.ts), [committed events](../src/admission/events.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)
+**Code references:** [`grantOperatorInvitation`](../src/admission/operator.ts), [`grant command`](../src/admission/commands/grant_invitation.ts), [`operator tests`](../tests/admission_operator.spec.ts), [committed events](../src/admission/events.ts), [command output](../commands/operator_output.ts), [operator service entry](../src/admission/service.ts)

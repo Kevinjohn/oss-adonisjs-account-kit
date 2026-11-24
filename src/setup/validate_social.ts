@@ -5,7 +5,7 @@ import { envName, addSetupDiagnostic, addOriginDiagnostics } from './shared.js'
 import type { SelectedSetupOrigins } from './diagnostics.js'
 
 /** The substituted path must survive URL parsing without traversal or encoded separators. */
-function safeCallbackPath(path: string): boolean {
+function isSafeCallbackPath(path: string): boolean {
   if (
     !path.startsWith('/') ||
     path.startsWith('//') ||
@@ -102,7 +102,7 @@ export function addSocialDiagnostics(
         resolutionError: selectedOrigins?.errors[choices.social.callbackOriginEnv],
       }
     )
-    if (!safeCallbackPath(choices.social.callbackPath))
+    if (!isSafeCallbackPath(choices.social.callbackPath))
       addSetupDiagnostic(
         diagnostics,
         'social.callbackPath',

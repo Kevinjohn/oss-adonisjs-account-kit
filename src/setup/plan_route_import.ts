@@ -1,9 +1,9 @@
 import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
 import {
-  defaultImportName,
+  getDefaultImportName,
   hasAmbiguousRuntimeModuleImports,
   hasUnsafeBindingReferences,
-  importedName,
+  getImportedBindingName,
   parseSetupSource,
   walk,
   type SetupSource,
@@ -60,12 +60,12 @@ export async function planRouteImport(
     const bindings = node.importClause?.namedBindings
     return bindings && source.ts.isNamespaceImport(bindings) ? [bindings.name.text] : []
   })
-  const mountBinding = importedName(
+  const mountBinding = getImportedBindingName(
     source,
     '@kevinjohn/adonisjs-account-kit/http',
     'registerManagedRoutes'
   )
-  const routeRouter = defaultImportName(source, '@adonisjs/core/services/router')
+  const routeRouter = getDefaultImportName(source, '@adonisjs/core/services/router')
   if (
     hasAmbiguousRuntimeModuleImports(source, '@adonisjs/core/services/router') ||
     (routeRouter &&

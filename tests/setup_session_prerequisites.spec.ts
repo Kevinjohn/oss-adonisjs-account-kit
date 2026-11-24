@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { planSetup } from '../src/setup/plan.js'
 import {
-  nativeSessionConfiguration,
+  inspectNativeSessionConfiguration,
   renderManagedSessionConfig,
 } from '../src/setup/session_config.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
@@ -36,7 +36,7 @@ test.group('setup session prerequisites', () => {
       'export  default /* session */ sessionConfig',
       '',
     ].join('\n')
-    const inspected = await nativeSessionConfiguration(source, '/nonexistent')
+    const inspected = await inspectNativeSessionConfiguration(source, '/nonexistent')
     const rendered = renderManagedSessionConfig(source, inspected!)
     assert.equal(rendered.split('// account-kit:session-export:end\n')[1], '\n')
   })

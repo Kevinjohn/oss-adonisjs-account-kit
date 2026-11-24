@@ -15,7 +15,7 @@ import {
 } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
 import { generateManagedOpenApi } from '../src/http/openapi.js'
-import { managedErrorResponse } from '../src/http/responses.js'
+import { mapManagedErrorResponse } from '../src/http/responses.js'
 import { managedRouteRegistration } from '../src/http/route_registration.js'
 import { signupValidator } from '../src/http/validators.js'
 import type { CurrentAccount } from '../src/types.js'
@@ -466,7 +466,7 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
     }
     for (const [status, error] of errors)
       for (const accept of [undefined, 'application/vnd.api+json']) {
-        const mapped = managedErrorResponse(error, { accept, proof: 'password' })!
+        const mapped = mapManagedErrorResponse(error, { accept, proof: 'password' })!
         assert.equal(mapped.status, status)
         assert.deepEqual(
           conformance(document, operation[status], mapped, mapped.contentType),

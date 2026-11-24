@@ -1,6 +1,6 @@
 // The caller's linked providers: listing and unlinking.
 import { randomUUID } from 'node:crypto'
-import { credentialsChanged } from './credential_revision.js'
+import { invalidateChangedCredentials } from './credential_revision.js'
 import { hasConfirmedAddress } from './account_projection.js'
 import { transaction } from './db.js'
 import { finishCommitted, postCommit, settleCommitted, type PostCommitEffect } from './effects.js'
@@ -19,7 +19,7 @@ import type {
   UserId,
 } from './types.js'
 
-export function identity(row: Record<string, unknown>): SocialIdentity {
+export function mapSocialIdentityRow(row: Record<string, unknown>): SocialIdentity {
   return {
     id: Number(row.id),
     userId: row.user_id as UserId,
@@ -42,7 +42,7 @@ export async function listSocialIdentities(
       .where('user_id', user.id)
       .whereNotNull('confirmed_at')
       .orderBy('id', 'asc')
-    return rows.map(identity)
+    return rows.map(mapSocialIdentityRow)
   })
 }
 
@@ -86,12 +86,12 @@ export async function unlinkSocialIdentity(
       // one already resolving provider assurance, so a later relink cannot revive it) and
       // sensitive proofs, and run the application's transactional hook.
       changed = (await deps.config.users.findById(user.id, trx)) ?? user
-      await credentialsChanged(trx, deps.config, changed, {
+      await invalidateChangedCredentials(trx, deps.config, changed, {
         operation: 'social_unlink',
         operationId,
         userId: user.id,
       })
-      if (row.confirmed_at) notice = { user, relation: identity(row) }
+      if (row.confirmed_at) notice = { user, relation: mapSocialIdentityRow(row) }
     })
   )
   await finishCommitted(fault, 'Social unlink committed but follow-up failed', async () => {

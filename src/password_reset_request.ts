@@ -3,7 +3,7 @@ import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
 import { lockUser, transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
 import { InvalidInputError } from './errors.js'
 import { waitForFloor } from './timing.js'
@@ -48,7 +48,7 @@ export async function requestPasswordReset(
               deps.config.urls.passwordReset(token)
             ),
         },
-        lifecycle(deps.config, {
+        createLifecycleEffect(deps.config, {
           type: 'password_reset.requested',
           userId: issuedUser.id,
           operationId,

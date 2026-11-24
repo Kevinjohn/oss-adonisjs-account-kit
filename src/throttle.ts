@@ -37,10 +37,10 @@ export function buildLimiterKey(operation: string, key: string, secret: string, 
 /** Limiter, secret and namespace bound once, so callers pass only what varies per call. */
 export interface Throttler {
   consume(operation: string, key: string, budget: ResolvedConfig['throttle']): Promise<void>
-  key(operation: string, value: string): string
+  deriveKey(operation: string, value: string): string
 }
 
-export function makeThrottler(input: {
+export function createThrottler(input: {
   limiter: LimiterService
   secret: string
   namespace: string
@@ -48,6 +48,7 @@ export function makeThrottler(input: {
   return {
     consume: (operation, key, budget) =>
       consume(input.limiter, operation, key, budget, input.secret, input.namespace),
-    key: (operation, value) => buildLimiterKey(operation, value, input.secret, input.namespace),
+    deriveKey: (operation, value) =>
+      buildLimiterKey(operation, value, input.secret, input.namespace),
   }
 }

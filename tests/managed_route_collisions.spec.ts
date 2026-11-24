@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { overlappingPaths } from '../src/http/route_collisions.js'
+import { doPathsOverlap } from '../src/http/route_collisions.js'
 import { assertManagedRouteCollisions, planManagedRoutes } from '../src/http/routes.js'
 import { bootTestApp } from './helpers/app.js'
 
@@ -11,10 +11,10 @@ test.group('managed route plan', () => {
       matchers: { name: { match } },
     })
     const lookahead = /(?=tail$)/y
-    assert.isFalse(overlappingPaths(item(lookahead), '/items/detail'))
-    assert.isTrue(overlappingPaths(item(/tail$/y), '/items/detail'))
+    assert.isFalse(doPathsOverlap(item(lookahead), '/items/detail'))
+    assert.isTrue(doPathsOverlap(item(/tail$/y), '/items/detail'))
     lookahead.lastIndex = 2
-    assert.isTrue(overlappingPaths(item(lookahead), '/items/detail'))
+    assert.isTrue(doPathsOverlap(item(lookahead), '/items/detail'))
     assert.equal(lookahead.lastIndex, 2)
   })
 

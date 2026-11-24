@@ -10,7 +10,7 @@ import {
   PostCommitError,
   ThrottledError,
 } from '../src/errors.js'
-import { managedErrorResponse, proofHeaders } from '../src/http/responses.js'
+import { mapManagedErrorResponse, buildProofHeaders } from '../src/http/responses.js'
 import { sendRuleViolationResponse } from '../src/http/response_helpers.js'
 import type { HttpContext } from '@adonisjs/core/http'
 import { requestWithHeaders } from './helpers/managed_http_fakes.js'
@@ -62,7 +62,7 @@ test.group('managed HTTP responses', () => {
 
   test('maps proof failures to one generic code and hides all causes', ({ assert }) => {
     const error = new InvalidTokenError('database row and token details')
-    assert.deepEqual(managedErrorResponse(error, { proof: 'password' }), {
+    assert.deepEqual(mapManagedErrorResponse(error, { proof: 'password' }), {
       status: 400,
       headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
       contentType: 'application/json',
@@ -76,17 +76,17 @@ test.group('managed HTTP responses', () => {
       },
     })
     assert.deepEqual(
-      managedErrorResponse(new InvalidTokenError('different cause'), { proof: 'password' }),
-      managedErrorResponse(error, { proof: 'password' })
+      mapManagedErrorResponse(new InvalidTokenError('different cause'), { proof: 'password' }),
+      mapManagedErrorResponse(error, { proof: 'password' })
     )
   })
 
   test('maps authentication and rate limits to stable statuses and JSON:API shape', ({
     assert,
   }) => {
-    assert.equal(managedErrorResponse(new InvalidCredentialsError())?.status, 401)
+    assert.equal(mapManagedErrorResponse(new InvalidCredentialsError())?.status, 401)
     assert.deepEqual(
-      managedErrorResponse(new ThrottledError(1.2), { accept: 'application/vnd.api+json' }),
+      mapManagedErrorResponse(new ThrottledError(1.2), { accept: 'application/vnd.api+json' }),
       {
         status: 429,
         headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store', 'Retry-After': '2' },
@@ -102,7 +102,7 @@ test.group('managed HTTP responses', () => {
       'registrationData.fullName must be string',
       'registrationData.password is not allowed',
     ]) {
-      assert.deepEqual(managedErrorResponse(new InvalidInputError(detail)), {
+      assert.deepEqual(mapManagedErrorResponse(new InvalidInputError(detail)), {
         status: 422,
         headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
         contentType: 'application/json',
@@ -116,10 +116,14 @@ test.group('managed HTTP responses', () => {
   test('negotiates JSON for missing, wildcard and HTML Accept values', ({ assert }) => {
     const error = new InvalidCredentialsError()
     for (const accept of [undefined, '*/*', 'application/*', 'text/html']) {
-      assert.equal(managedErrorResponse(error, { accept })?.contentType, 'application/json', accept)
+      assert.equal(
+        mapManagedErrorResponse(error, { accept })?.contentType,
+        'application/json',
+        accept
+      )
     }
     assert.equal(
-      managedErrorResponse(error, { accept: 'application/json;q=0.5, application/vnd.api+json' })
+      mapManagedErrorResponse(error, { accept: 'application/json;q=0.5, application/vnd.api+json' })
         ?.contentType,
       'application/vnd.api+json'
     )
@@ -140,7 +144,7 @@ test.group('managed HTTP responses', () => {
       const error = new InvalidTokenError()
       const request = requestWithHeaders(accept === undefined ? {} : { accept })
       assert.deepEqual(
-        managedErrorResponse(error, { request }),
+        mapManagedErrorResponse(error, { request }),
         accountErrorResponse(error, { accept })
       )
     }
@@ -149,7 +153,7 @@ test.group('managed HTTP responses', () => {
   test('honors quality zero and customizes wording without changing a code', ({ assert }) => {
     const error = new InvalidTokenError()
     assert.deepEqual(
-      managedErrorResponse(error, {
+      mapManagedErrorResponse(error, {
         proof: 'email',
         accept: 'application/vnd.api+json;q=0, application/json;q=1',
         message: (code) => `Public ${code}`,
@@ -169,14 +173,14 @@ test.group('managed HTTP responses', () => {
       }
     )
     assert.equal(
-      managedErrorResponse(error, {
+      mapManagedErrorResponse(error, {
         proof: 'email',
         accept: 'application/*;q=1, application/vnd.api+json;q=0.5',
       })?.contentType,
       'application/json'
     )
     assert.equal(
-      managedErrorResponse(error, {
+      mapManagedErrorResponse(error, {
         proof: 'email',
         accept: 'application/*;q=1, application/vnd.api+json;q=0',
       })?.contentType,
@@ -196,12 +200,12 @@ test.group('managed HTTP responses', () => {
           : fallbackMessage
       },
     }
-    assert.deepEqual(managedErrorResponse(new ThrottledError(1), { i18n })?.body, {
+    assert.deepEqual(mapManagedErrorResponse(new ThrottledError(1), { i18n })?.body, {
       errors: [{ code: 'E_ACCOUNT_KIT_THROTTLED', message: 'Trop de requêtes.' }],
     })
     assert.deepEqual(lookups, [['errors.E_ACCOUNT_KIT_THROTTLED', {}, 'Too many requests.']])
     assert.deepEqual(
-      managedErrorResponse(new InvalidTokenError(), { proof: 'magicLink', i18n })?.body,
+      mapManagedErrorResponse(new InvalidTokenError(), { proof: 'magicLink', i18n })?.body,
       {
         errors: [
           { code: 'E_ACCOUNT_KIT_INVALID_MAGIC_LINK', message: 'This link is invalid or expired.' },
@@ -209,7 +213,7 @@ test.group('managed HTTP responses', () => {
       }
     )
     assert.deepEqual(
-      managedErrorResponse(new ThrottledError(1), {
+      mapManagedErrorResponse(new ThrottledError(1), {
         i18n,
         message: (code, defaultMessage) => `${code}: ${defaultMessage}`,
       })?.body,
@@ -225,7 +229,7 @@ test.group('managed HTTP responses', () => {
   })
 
   test('does not expose committed callback failures as a rolled-back response', ({ assert }) => {
-    assert.deepEqual(managedErrorResponse(new PostCommitError('mail failed'))?.body, {
+    assert.deepEqual(mapManagedErrorResponse(new PostCommitError('mail failed'))?.body, {
       errors: [
         {
           code: 'E_ACCOUNT_KIT_OPERATION_FAILED',
@@ -234,14 +238,14 @@ test.group('managed HTTP responses', () => {
         },
       ],
     })
-    assert.deepEqual(proofHeaders(), {
+    assert.deepEqual(buildProofHeaders(), {
       'Cache-Control': 'no-store',
       'Referrer-Policy': 'no-referrer',
     })
   })
 
   test('distinguishes rejected identity proof from an unverified email', ({ assert }) => {
-    assert.deepEqual(managedErrorResponse(new IdentityNotConfirmedError()), {
+    assert.deepEqual(mapManagedErrorResponse(new IdentityNotConfirmedError()), {
       status: 403,
       headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
       contentType: 'application/json',
@@ -257,7 +261,7 @@ test.group('managed HTTP responses', () => {
   })
 
   test('hides denied invitation management as a missing invitation', ({ assert }) => {
-    assert.deepEqual(managedErrorResponse(new InvitationManagementDeniedError()), {
+    assert.deepEqual(mapManagedErrorResponse(new InvitationManagementDeniedError()), {
       status: 404,
       headers: { 'Vary': 'Accept', 'Cache-Control': 'no-store' },
       contentType: 'application/json',
@@ -289,7 +293,7 @@ test.group('managed HTTP error wording docs', () => {
           ? new errors.ThrottledError(1)
           : new (ErrorClass as new () => Error)()
       for (const proof of ['password', 'email', 'invitation', 'magicLink'] as const) {
-        const body = managedErrorResponse(error, { proof })?.body.errors[0]
+        const body = mapManagedErrorResponse(error, { proof })?.body.errors[0]
         if (body && 'message' in body) actual[body.code] = body.message
       }
     }

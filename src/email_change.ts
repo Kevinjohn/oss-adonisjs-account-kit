@@ -2,9 +2,9 @@
 import { randomUUID } from 'node:crypto'
 import { sqlTimestamp } from './timestamps.js'
 import { DateTime } from 'luxon'
-import { credentialsChanged } from './credential_revision.js'
+import { invalidateChangedCredentials } from './credential_revision.js'
 import { consumeUserToken, isUserEmailUniqueViolation, transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { EmailAlreadyRegisteredError, InvalidTokenError, type PostCommitError } from './errors.js'
 import { clearRecoveryTokens } from './credential_cleanup.js'
 import { hashToken, isTokenShaped } from './tokens.js'
@@ -69,7 +69,7 @@ export async function completeEmailChange(
         await clearRecoveryTokens(trx, user.id, ['password_reset_tokens'])
         const reloaded = await deps.config.users.findById(user.id, trx)
         if (!reloaded) throw new InvalidTokenError()
-        await credentialsChanged(trx, deps.config, reloaded, {
+        await invalidateChangedCredentials(trx, deps.config, reloaded, {
           operation: 'email_change',
           operationId,
           userId: reloaded.id,
@@ -92,7 +92,7 @@ export async function completeEmailChange(
         kind: 'delivery',
         run: () => deps.config.notify.emailChanged(changed.previousEmail, changed.user),
       },
-      lifecycle(deps.config, {
+      createLifecycleEffect(deps.config, {
         type: 'email_change.completed',
         userId: changed.user.id,
         operationId,

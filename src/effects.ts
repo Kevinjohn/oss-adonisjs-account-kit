@@ -1,4 +1,4 @@
-import { committedResult } from './transaction.js'
+import { getCommittedResult } from './transaction.js'
 import { DeliveryError, PostCommitError } from './errors.js'
 import type { LifecycleEvent, ResolvedConfig } from './types.js'
 
@@ -37,7 +37,7 @@ export async function deliver(message: string, send: () => Promise<void>): Promi
 const observer = (run: PostCommitEffect['run']): PostCommitEffect => ({ kind: 'observer', run })
 
 /** Report a lifecycle event after commit; a failing hook surfaces as PostCommitError. */
-export function lifecycle(
+export function createLifecycleEffect(
   config: Pick<ResolvedConfig, 'onLifecycleEvent'>,
   event: LifecycleEvent
 ): PostCommitEffect {
@@ -51,7 +51,7 @@ export async function settleCommitted<T>(
   try {
     return { value: await pending }
   } catch (error) {
-    const saved = committedResult<T>(error)
+    const saved = getCommittedResult<T>(error)
     if (!saved) throw error
     return { value: saved.value, fault: error as PostCommitError }
   }

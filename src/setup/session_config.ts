@@ -1,16 +1,16 @@
-import { selectedEnvName } from './selected_environment.js'
+import { resolveEnvironmentNameFromGetter } from './selected_environment.js'
 import {
-  defaultImportName,
-  directProperty,
-  exactCall,
+  getDefaultImportName,
+  getDirectProperty,
+  isExactCall,
   hasUnsafeObjectEntries,
-  importedName,
+  getImportedBindingName,
   parseSetupSource,
-  topLevelConfig,
+  inspectTopLevelConfig,
   walk,
 } from './ts_source.js'
 
-export { selectedSessionDiagnostic } from './session_diagnostics.js'
+export { inspectSelectedSessionStore } from './session_diagnostics.js'
 
 const sessionImport =
   "// account-kit:session-import:start\nimport { protectManagedSessionConfig } from '@kevinjohn/adonisjs-account-kit/http'\n// account-kit:session-import:end\n"
@@ -42,24 +42,24 @@ export interface NativeSessionConfiguration {
 /** The `stores` factories that keep session data on the server. */
 const serverStores = ['database', 'dynamodb', 'file', 'memory', 'redis']
 
-export async function nativeSessionConfiguration(
+export async function inspectNativeSessionConfiguration(
   text: string,
   root: string,
   env?: NodeJS.ProcessEnv
 ): Promise<NativeSessionConfiguration | null> {
   const source = await parseSetupSource(text)
   const { ts, file } = source
-  const defineConfigName = importedName(source, '@adonisjs/session', 'defineConfig')
-  const storesName = importedName(source, '@adonisjs/session', 'stores')
+  const defineConfigName = getImportedBindingName(source, '@adonisjs/session', 'defineConfig')
+  const storesName = getImportedBindingName(source, '@adonisjs/session', 'stores')
   if (!defineConfigName || !storesName) return null
-  const target = topLevelConfig(source, defineConfigName)
+  const target = inspectTopLevelConfig(source, defineConfigName)
   if (!target?.declaration || hasUnsafeObjectEntries(source, target.object)) return null
   const declaration = target.declaration
   if (!ts.isIdentifier(declaration.name) || declaration.name.text !== 'sessionConfig') return null
   if (!ts.isVariableStatement(declaration.parent.parent)) return null
   if (!(declaration.parent.flags & ts.NodeFlags.Const)) return null
-  const store = directProperty(source, target.object, 'store')
-  const stores = directProperty(source, target.object, 'stores')
+  const store = getDirectProperty(source, target.object, 'store')
+  const stores = getDirectProperty(source, target.object, 'stores')
   if (!store || !stores || !ts.isObjectLiteralExpression(stores.initializer)) return null
   if (hasUnsafeObjectEntries(source, stores.initializer)) return null
   const allowedStores: NativeSessionConfiguration['allowedStores'] = []
@@ -72,7 +72,7 @@ export async function nativeSessionConfiguration(
         : null
     if (!name) return null
     for (const kind of [...serverStores, 'cookie']) {
-      if (!exactCall(source, property.initializer, storesName, kind)) continue
+      if (!isExactCall(source, property.initializer, storesName, kind)) continue
       kinds.set(name, kind)
       if (kind !== 'cookie') allowedStores.push({ name, kind })
     }
@@ -80,10 +80,10 @@ export async function nativeSessionConfiguration(
   let selectedName: string | null = null
   if (ts.isStringLiteral(store.initializer)) selectedName = store.initializer.text
   else {
-    const name = await selectedEnvName(
+    const name = await resolveEnvironmentNameFromGetter(
       source,
       root,
-      defaultImportName(source, '#start/env'),
+      getDefaultImportName(source, '#start/env'),
       store.initializer,
       undefined,
       env
@@ -198,6 +198,6 @@ export async function unwrapManagedSessionConfig(
     .replace(selectionMatch[0], '')
     .replace('store: accountKitSelectedSessionStore', `store: ${selectionMatch[1]}`)
     .replace(exportMatch[0], 'export default sessionConfig')
-  const inspected = await nativeSessionConfiguration(base, root, env)
+  const inspected = await inspectNativeSessionConfiguration(base, root, env)
   return inspected && renderManagedSessionConfig(base, inspected) === source ? base : null
 }

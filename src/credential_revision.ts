@@ -1,6 +1,6 @@
 // Credential revision: reading and advancing `credentials_changed_at`, and the credential-change transition.
 import { DateTime } from 'luxon'
-import { userMetadata } from './db.js'
+import { requireUserMetadata } from './db.js'
 import { clearSocialPending } from './credential_cleanup.js'
 import { sessionTable } from './session_registry.js'
 import { InvalidCredentialsError } from './errors.js'
@@ -13,7 +13,7 @@ export async function revision(
   config: ResolvedConfig,
   userId: UserId
 ): Promise<string | null> {
-  const metadata = await userMetadata(config)
+  const metadata = await requireUserMetadata(config)
   const table = metadata.table
   const row = await trx.from(table).select('credentials_changed_at').where('id', userId).first()
   if (!row) throw new InvalidCredentialsError()
@@ -33,7 +33,7 @@ export async function advanceCredentialRevision(
   userId: UserId,
   keep?: KeptCredential
 ): Promise<void> {
-  const metadata = await userMetadata(config)
+  const metadata = await requireUserMetadata(config)
   const table = metadata.table
   const previous = await revision(trx, config, userId)
   const next = DateTime.fromMillis(Math.max(Date.now(), previous ? Date.parse(previous) + 1 : 0), {
@@ -60,7 +60,7 @@ export async function advanceCredentialRevision(
   }
 }
 
-export async function credentialsChanged(
+export async function invalidateChangedCredentials(
   trx: Trx,
   config: ResolvedConfig,
   user: AccountUser,

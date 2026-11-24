@@ -42,7 +42,7 @@ flowchart TD
  B -->|Yes| D["In transaction, lock actor and subject in ID order"]
  D --> E{"Subject and distinct admitted actor exist, and authorize.decide returns true with trx?"}
  E -->|No| F["Abort with lookup or authorisation error"]
- E -->|Yes| G{"nextApprovalStatus sees approved?"}
+ E -->|Yes| G{"resolveNextApprovalStatus sees approved?"}
  G -->|No| H["Throw AdmissionDecisionError"]
  G -->|Yes| I["applyTransition upserts revoked decision, actor and time"]
  I --> J["Commit; withAdmissionEvent invokes configured observer"]

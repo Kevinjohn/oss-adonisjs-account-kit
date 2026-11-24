@@ -41,7 +41,7 @@ flowchart TD
  C -->|No| X["Ace retains error; completed prints one diagnostic and exits nonzero"]
  C -->|Yes| D["Delete matching bootstrap_email row where user_id is null"]
  D -->|Write fails| X
- D -->|Write succeeds| E{"deletedCount greater than zero?"}
+ D -->|Write succeeds| E{"countDeletedRowsFromResult greater than zero?"}
  E -->|No| F["Return false; writeResult outputs none and email"]
  E -->|Yes| G["Return true; writeResult outputs cancelled and email"]
 ```

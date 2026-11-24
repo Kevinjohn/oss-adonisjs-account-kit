@@ -1,5 +1,5 @@
 import type * as TypeScript from 'typescript'
-import { exactCall, safeEnvGetter, type SetupSource } from './ts_source.js'
+import { isExactCall, hasSafeEnvironmentGetter, type SetupSource } from './ts_source.js'
 import { resolveSelectedEnvironment } from './selected_environment_values.js'
 
 export {
@@ -15,7 +15,7 @@ export {
  * when neither the environment nor the fallback names anything. `variable` pins the allowed
  * name; without it, the name must be an upper-case environment variable.
  */
-export async function selectedEnvName(
+export async function resolveEnvironmentNameFromGetter(
   source: SetupSource,
   root: string,
   envBinding: string | null,
@@ -26,8 +26,8 @@ export async function selectedEnvName(
   const { ts } = source
   if (
     !envBinding ||
-    !exactCall(source, expression, envBinding, 'get') ||
-    !safeEnvGetter(source, envBinding)
+    !isExactCall(source, expression, envBinding, 'get') ||
+    !hasSafeEnvironmentGetter(source, envBinding)
   )
     return undefined
   const args = expression.arguments

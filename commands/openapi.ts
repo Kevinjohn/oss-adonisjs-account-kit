@@ -37,7 +37,7 @@ export default class ManagedOpenApi extends BaseCommand {
     const host = await readFile(this.app.makePath('package.json'), 'utf8')
       .then((text) => JSON.parse(text) as { name?: string; version?: string })
       .catch(() => ({}) as { name?: string; version?: string })
-    const sessionCookieName = await this.sessionCookieName()
+    const sessionCookieName = await this.readSessionCookieName()
     let document
     try {
       document = generateManagedOpenApi({
@@ -64,7 +64,7 @@ export default class ManagedOpenApi extends BaseCommand {
   }
 
   /** `config/session.ts` exports a lazy config provider, so it must be resolved for the name. */
-  private async sessionCookieName(): Promise<string | undefined> {
+  private async readSessionCookieName(): Promise<string | undefined> {
     const session = this.app.config.get<unknown>('session', undefined)
     const resolved = (await configProvider.resolve(this.app, session)) ?? session
     return (resolved as { cookieName?: string } | undefined)?.cookieName

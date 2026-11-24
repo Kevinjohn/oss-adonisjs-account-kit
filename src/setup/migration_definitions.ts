@@ -17,7 +17,7 @@ export const migrationNames = [
 ]
 
 /** The file-name ending that identifies an Account Kit migration, after its timestamp. */
-export function accountKitMigrationSuffix(name: string): string {
+export function formatMigrationSuffix(name: string): string {
   return `_account_kit_${name}.ts`
 }
 
@@ -26,19 +26,19 @@ export function accountKitMigrationSuffix(name: string): string {
  * with this name, whatever its timestamp or subdirectory.
  */
 export function matchesAccountKitMigration(file: string, name: string): boolean {
-  return file.replace(/\.(?:[cm]?js|ts)$/, '.ts').endsWith(accountKitMigrationSuffix(name))
+  return file.replace(/\.(?:[cm]?js|ts)$/, '.ts').endsWith(formatMigrationSuffix(name))
 }
 
 const userIdTypes = ['integer', 'string', 'uuid'] as const
 export type UserIdType = (typeof userIdTypes)[number]
 
 /** Metadata for newly generated migrations; existing application files are never rewritten. */
-export function migrationSchema(usersTable = 'users', userIdType: UserIdType = 'integer') {
+export function buildMigrationSchema(usersTable = 'users', userIdType: UserIdType = 'integer') {
   if (!isSqlIdentifier(usersTable))
     throw new RuntimeException('account_kit: users-table must be a plain SQL identifier')
   if (!userIdTypes.includes(userIdType))
     throw new RuntimeException('account_kit: user-id-type must be integer, string or uuid')
-  const column = (name: string) =>
+  const formatColumnDeclaration = (name: string) =>
     userIdType === 'integer'
       ? `table.integer('${name}').unsigned()`
       : userIdType === 'uuid'
@@ -46,9 +46,9 @@ export function migrationSchema(usersTable = 'users', userIdType: UserIdType = '
         : `table.string('${name}', 254)`
   return {
     usersTable: JSON.stringify(usersTable),
-    userIdColumn: column('user_id'),
-    tokenableIdColumn: column('tokenable_id'),
-    inviterIdColumn: column('inviter_id'),
-    actorIdColumn: column('approval_actor_id'),
+    userIdColumn: formatColumnDeclaration('user_id'),
+    tokenableIdColumn: formatColumnDeclaration('tokenable_id'),
+    inviterIdColumn: formatColumnDeclaration('inviter_id'),
+    actorIdColumn: formatColumnDeclaration('approval_actor_id'),
   }
 }

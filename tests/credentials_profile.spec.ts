@@ -10,7 +10,7 @@ import {
 } from './helpers/fakes.js'
 import { credentialsFixtures } from './helpers/credentials.js'
 import { resetSchema } from './helpers/schema.js'
-import { correctionRevision } from '../src/profile_correction_revision.js'
+import { takeCorrectionRevision } from '../src/profile_correction_revision.js'
 test.group('emailPasswordManagement', (group) => {
   const kit = useTestApp(group)
   const { createUser, service } = credentialsFixtures(kit)
@@ -35,7 +35,7 @@ test.group('emailPasswordManagement', (group) => {
             email: 'corrected@example.test',
           })
           assert.equal(updated.email, 'corrected@example.test')
-          assert.isUndefined(correctionRevision(updated))
+          assert.isUndefined(takeCorrectionRevision(updated))
         } else {
           await account.emailPasswordManagement.requestEmailChange({
             ...actor,

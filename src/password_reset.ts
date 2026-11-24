@@ -1,11 +1,11 @@
 import { sqlTimestamp } from './timestamps.js'
 import { randomUUID } from 'node:crypto'
 import { DateTime } from 'luxon'
-import { credentialsChanged } from './credential_revision.js'
+import { invalidateChangedCredentials } from './credential_revision.js'
 import { isActiveAccount } from './account_projection.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import { consumeUserToken, transaction } from './db.js'
-import { finishCommitted, lifecycle, postCommit, settleCommitted } from './effects.js'
+import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { InvalidInputError, InvalidTokenError } from './errors.js'
 import { emitInvitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
@@ -76,7 +76,7 @@ export async function completePasswordReset(
       await clearRecoveryTokens(trx, row.tokenable_id, ['email_verification_tokens'])
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
       if (!reloaded) throw new InvalidTokenError()
-      await credentialsChanged(trx, deps.config, reloaded, {
+      await invalidateChangedCredentials(trx, deps.config, reloaded, {
         operation: 'password_reset',
         operationId,
         userId: reloaded.id,
@@ -91,7 +91,7 @@ export async function completePasswordReset(
     postCommit('Credentials changed but a follow-up failed', [
       { kind: 'observer', run: () => deps.config.onCredentialsChanged?.(user, context) },
       { kind: 'delivery', run: () => deps.config.notify.passwordResetCompleted(user, context) },
-      lifecycle(deps.config, { type: 'password.reset', userId: user.id, operationId }),
+      createLifecycleEffect(deps.config, { type: 'password.reset', userId: user.id, operationId }),
       ...emitInvitationAccepted(deps.config, reset.invitationIds, user.id, operationId),
     ])
   )

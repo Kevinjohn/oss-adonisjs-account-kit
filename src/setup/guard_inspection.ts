@@ -1,22 +1,25 @@
 import type { SetupInspection } from './types.js'
 import {
-  directObject,
-  directProperty,
+  matchDirectObject,
+  getDirectProperty,
   hasUnsafeObjectEntries,
-  importedName,
+  getImportedBindingName,
   parseSetupSource,
-  topLevelConfig,
+  inspectTopLevelConfig,
   type SetupSource,
 } from './ts_source.js'
 import type * as TypeScript from 'typescript'
 
-function propertyName(source: SetupSource, property: TypeScript.PropertyAssignment): string | null {
+function getPropertyName(
+  source: SetupSource,
+  property: TypeScript.PropertyAssignment
+): string | null {
   const { ts } = source
   if (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) return property.name.text
   return null
 }
 
-function directCall(
+function matchDirectCall(
   source: SetupSource,
   node: TypeScript.Node,
   name: string | null
@@ -31,12 +34,12 @@ function directCall(
     : null
 }
 
-function directModel(
+function extractDirectModelPath(
   source: SetupSource,
   provider: TypeScript.ObjectLiteralExpression
 ): string | null {
   const { ts } = source
-  const model = directProperty(source, provider, 'model')?.initializer
+  const model = getDirectProperty(source, provider, 'model')?.initializer
   if (
     !model ||
     !ts.isArrowFunction(model) ||
@@ -60,45 +63,50 @@ export async function inspectGuards(sourceText: string): Promise<{
   const tokenProviders: SetupInspection['guardTokenProviders'] = {}
   if (!sourceText) return { strategies, models, tokenProviders }
   const source = await parseSetupSource(sourceText)
-  const configName = importedName(source, '@adonisjs/auth', 'defineConfig')
-  const config = configName && topLevelConfig(source, configName)?.object
+  const configName = getImportedBindingName(source, '@adonisjs/auth', 'defineConfig')
+  const config = configName && inspectTopLevelConfig(source, configName)?.object
   const guards =
-    config && directObject(source, directProperty(source, config, 'guards')?.initializer ?? config)
+    config &&
+    matchDirectObject(source, getDirectProperty(source, config, 'guards')?.initializer ?? config)
   if (!config || !guards || guards === config || hasUnsafeObjectEntries(source, guards))
     return { strategies, models, tokenProviders }
   const bindings = [
     {
       kind: 'session' as const,
-      guard: importedName(source, '@adonisjs/auth/session', 'sessionGuard'),
-      provider: importedName(source, '@adonisjs/auth/session', 'sessionUserProvider'),
+      guard: getImportedBindingName(source, '@adonisjs/auth/session', 'sessionGuard'),
+      provider: getImportedBindingName(source, '@adonisjs/auth/session', 'sessionUserProvider'),
     },
     {
       kind: 'access_tokens' as const,
-      guard: importedName(source, '@adonisjs/auth/access_tokens', 'tokensGuard'),
-      provider: importedName(source, '@adonisjs/auth/access_tokens', 'tokensUserProvider'),
+      guard: getImportedBindingName(source, '@adonisjs/auth/access_tokens', 'tokensGuard'),
+      provider: getImportedBindingName(
+        source,
+        '@adonisjs/auth/access_tokens',
+        'tokensUserProvider'
+      ),
     },
   ]
   for (const entry of guards.properties) {
     if (!source.ts.isPropertyAssignment(entry)) continue
-    const name = propertyName(source, entry)
+    const name = getPropertyName(source, entry)
     if (!name) continue
-    const binding = bindings.find(({ guard }) => directCall(source, entry.initializer, guard))
+    const binding = bindings.find(({ guard }) => matchDirectCall(source, entry.initializer, guard))
     if (!binding) continue
     strategies[name] = binding.kind
-    const guardCall = directCall(source, entry.initializer, binding.guard)!
-    const guardOptions = directObject(source, guardCall.arguments[0])
+    const guardCall = matchDirectCall(source, entry.initializer, binding.guard)!
+    const guardOptions = matchDirectObject(source, guardCall.arguments[0])
     const providerCall =
       guardOptions &&
-      directCall(
+      matchDirectCall(
         source,
-        directProperty(source, guardOptions, 'provider')?.initializer ?? guardOptions,
+        getDirectProperty(source, guardOptions, 'provider')?.initializer ?? guardOptions,
         binding.provider
       )
-    const providerOptions = providerCall && directObject(source, providerCall.arguments[0])
-    const model = providerOptions && directModel(source, providerOptions)
+    const providerOptions = providerCall && matchDirectObject(source, providerCall.arguments[0])
+    const model = providerOptions && extractDirectModelPath(source, providerOptions)
     if (model) models[name] = model
     if (binding.kind === 'access_tokens' && providerOptions) {
-      const tokens = directProperty(source, providerOptions, 'tokens')?.initializer
+      const tokens = getDirectProperty(source, providerOptions, 'tokens')?.initializer
       if (tokens && source.ts.isStringLiteral(tokens)) tokenProviders[name] = tokens.text
     }
   }

@@ -6,7 +6,7 @@ import { IgnitorFactory } from '@adonisjs/core/factories'
 import { pathToFileURL } from 'node:url'
 import { stripVTControlCharacters } from 'node:util'
 import SetupAccountKit from '../commands/setup.js'
-import { defaultSetupChoices } from '../src/setup/defaults.js'
+import { buildDefaultSetupChoices } from '../src/setup/defaults.js'
 import { inspectSetup } from '../src/setup/inspect.js'
 import { collectSetupChoices } from '../src/setup/prompts.js'
 import type { SetupChoices, SetupPlan } from '../src/setup/types.js'
@@ -313,7 +313,7 @@ test.group('setup Ace command', (group) => {
     }
 
     assert.isUndefined(receivedSeed)
-    assert.deepEqual(promptedChoices, defaultSetupChoices())
+    assert.deepEqual(promptedChoices, buildDefaultSetupChoices())
 
     const input = join(root, 'recovered.json')
     await writeFile(input, `${JSON.stringify(choices)}\n`)

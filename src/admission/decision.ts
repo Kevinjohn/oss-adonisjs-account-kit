@@ -1,7 +1,7 @@
 // Evaluates the enabled admission requirements for one user and their admission row.
 import type { AccountUser } from '../types.js'
 import { hasConfirmedAddress } from '../account_projection.js'
-import { domainAllowed, domainOf } from './domain.js'
+import { isDomainAllowed, extractEmailDomain } from './domain.js'
 import type { AdmissionRow } from './rows.js'
 import type { AdmissionDecision, ResolvedAdmissionConfig } from './types.js'
 
@@ -15,9 +15,9 @@ export function evaluateAdmission(
   if (config.domain) {
     if (!hasConfirmedAddress(user)) requirements.domain = { met: false, reason: 'unverified' }
     else {
-      const domain = domainOf(user.email)
+      const domain = extractEmailDomain(user.email)
       requirements.domain =
-        domain !== null && domainAllowed(domain, config.domain)
+        domain !== null && isDomainAllowed(domain, config.domain)
           ? { met: true }
           : { met: false, reason: 'not_allowed' }
     }

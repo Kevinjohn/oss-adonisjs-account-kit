@@ -49,7 +49,7 @@ export class AccountKitSessionGuard<
     this.#app = app
   }
 
-  #managed() {
+  #createManagedGuard() {
     return createSessionGuard({
       strategy: 'session',
       name: this.#name,
@@ -138,12 +138,12 @@ export class AccountKitSessionGuard<
 
   /** The verified sign-in for `authentication.current` / `withCurrent`; `ManagedGuard.current` without a context. */
   current(): Promise<CurrentAccountInput> {
-    return this.#managed().current(this.#ctx)
+    return this.#createManagedGuard().current(this.#ctx)
   }
 
   /** The request adapter for `authentication.login` / `logout`; `ManagedGuard.forRequest` without a context. */
   forRequest(): AuthenticationGuard<undefined> {
-    return this.#managed().forRequest(this.#ctx)
+    return this.#createManagedGuard().forRequest(this.#ctx)
   }
 }
 

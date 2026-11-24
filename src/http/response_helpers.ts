@@ -4,7 +4,7 @@ import { DeliveryError, InvalidTokenError, isCommittedFailure } from '../errors.
 import type { CurrentAccount } from '../types.js'
 import {
   applyMappedHeaders,
-  managedErrorResponse,
+  mapManagedErrorResponse,
   negotiateRequest,
   type ManagedMessage,
 } from './responses.js'
@@ -13,25 +13,25 @@ import type { ManagedEndpointName } from './routes.js'
 import type { ManagedRequest } from './managed_types.js'
 
 /** The request's `@adonisjs/i18n` instance, set by its locale middleware, when the app has one. */
-export function requestTranslator(context: HttpContext): AccountKitTranslator | undefined {
+export function getRequestTranslator(context: HttpContext): AccountKitTranslator | undefined {
   return 'i18n' in context ? (context.i18n as AccountKitTranslator) : undefined
 }
 
 /** User-facing text looked up through the request's `@adonisjs/i18n` instance, with English as the fallback. */
 export function translate(context: HttpContext, key: string, fallbackMessage: string): string {
-  return requestTranslator(context)?.t(key, {}, fallbackMessage) ?? fallbackMessage
+  return getRequestTranslator(context)?.t(key, {}, fallbackMessage) ?? fallbackMessage
 }
 
-export function invalidProof(
+export function sendInvalidProofResponse(
   context: HttpContext,
   proof: 'password' | 'email' | 'invitation' | 'magicLink',
   message?: ManagedMessage
 ): unknown {
-  const mapped = managedErrorResponse(new InvalidTokenError(), {
+  const mapped = mapManagedErrorResponse(new InvalidTokenError(), {
     proof,
     request: context.request,
     message,
-    i18n: requestTranslator(context),
+    i18n: getRequestTranslator(context),
   })!
   applyMappedHeaders(context, mapped)
   return context.response.status(mapped.status).send(mapped.body)
@@ -48,7 +48,7 @@ export function sendRuleViolationResponse(
   rule: string,
   fallbackMessage: string
 ): unknown {
-  const i18n = requestTranslator(context)
+  const i18n = getRequestTranslator(context)
   const message = i18n
     ? i18n.t(
         `validator.shared.messages.${rule}`,
@@ -110,7 +110,7 @@ export function signInLabel(context: HttpContext): string | undefined {
   return context.request.header('user-agent') || undefined
 }
 
-export function recoveryDiagnostic(
+export function logRecoveryDiagnostic(
   context: HttpContext,
   operation: ManagedEndpointName,
   outcome:
@@ -133,7 +133,7 @@ export function reportCommittedFailure(
   error: unknown
 ): boolean {
   if (!isCommittedFailure(error)) return false
-  recoveryDiagnostic(
+  logRecoveryDiagnostic(
     context,
     operation,
     error instanceof DeliveryError ? 'delivery_failed' : 'followup_failed'

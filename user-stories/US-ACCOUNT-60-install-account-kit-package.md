@@ -46,17 +46,17 @@ Scope: the exported `configure` function and its Assembler codemods. The host ow
 
 ```mermaid
 flowchart TD
-    A["configure(command)"] --> B["migrationSchema validates users-table and user-id-type"]
+    A["configure(command)"] --> B["buildMigrationSchema validates users-table and user-id-type"]
     B --> C{"Flags valid?"}
     C -->|No| D["Log error and set exitCode 1"]
     C -->|Yes| E["hasRegisteredProvider inspects adonisrc.ts"]
     E --> F{"Config inspectable, and providers inspectable or provider-registered given?"}
     F -->|No| G["Log the inspection error (with restructuring guidance for an unsupported shape) and set exitCode 1"]
-    F -->|Yes| M{"inspectMigrationDirectory and orderedMigrations succeed?"}
+    F -->|Yes| M{"inspectMigrationDirectory and orderMigrations succeed?"}
     M -->|No| D
     M -->|Yes| H["makeUsingStub writes config and migrations; existing files are kept"]
     H --> I["updateRcFile adds provider when absent, and the commands entry"]
     I --> J["defineEnvValidations declares APP_URL and FRONTEND_URL"]
 ```
 
-**Code references:** [`configure`](../configure.ts), [`migrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)
+**Code references:** [`configure`](../configure.ts), [`buildMigrationSchema`](../src/setup/migration_definitions.ts), [`providers inspection`](../src/setup/providers_inspection.ts), [command registration inspection](../src/setup/commands_inspection.ts), [migration directory](../src/setup/migration_paths.ts), [migration ordering](../src/setup/migration_order.ts), [`config stub`](../stubs/config/account_kit.stub), [`tests/configure.spec.ts`](../tests/configure.spec.ts)
