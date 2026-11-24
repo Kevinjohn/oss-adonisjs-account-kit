@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { SetupDiagnostic, SetupFileChange, SetupInspection } from './types.js'
 import { stripSourceComments } from './strip_source_comments.js'
 import {
@@ -182,7 +183,7 @@ export async function planRouterMiddleware(
     const currentPaths = array.elements.map((entry) => extractLazyImportPath(source, entry))
     if (currentPaths.includes(ordered[position])) continue
     const preceding = currentPaths.indexOf(ordered[position - 1])
-    if (preceding < 0) throw new Error('Missing previously planned router middleware')
+    if (preceding < 0) throw new RuntimeException('Missing previously planned router middleware')
     content = insertAfterArrayElement(source, array, preceding, ordered[position])
     try {
       source = await parseSetupSource(content)

@@ -73,26 +73,71 @@ export type ManagedTokenGuardOptions<User> = {
 
 /**
  * Adapts an existing session guard for the managed routes. The session store must be server-side.
+ *
+ * @example
+ * ```ts
+ * import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
+ *
+ * const guard = createManagedGuard({
+ *   strategy: 'session',
+ *   name: 'web',
+ *   loadUser: async () => (await import('#models/user')).default,
+ * })
+ * ```
  */
 export function createManagedGuard<User>(options: ManagedSessionGuardOptions<User>): Omit<
   ManagedGuard<undefined>,
   'strategy' | 'forRequest'
 > & {
   strategy: 'session'
-  /** The guard bound to one request's session. */
+  /**
+   * The guard bound to one request's session.
+   *
+   * @example
+   * ```ts
+   * const sessionGuard = guard.forRequest(context)
+   * ```
+   */
   forRequest(context: HttpContext): Extract<AuthenticationGuard<undefined>, { strategy: 'session' }>
 }
-/** Adapts an existing access-token guard for the managed routes. */
+/**
+ * Adapts an existing access-token guard for the managed routes.
+ *
+ * @example
+ * ```ts
+ * import { createManagedGuard } from '@kevinjohn/adonisjs-account-kit/http'
+ *
+ * const guard = createManagedGuard({
+ *   strategy: 'access_tokens',
+ *   name: 'api',
+ *   loadUser: async () => (await import('#models/user')).default,
+ * })
+ * ```
+ */
 export function createManagedGuard<User>(options: ManagedTokenGuardOptions<User>): Omit<
   ManagedGuard<ManagedTokenCredential>,
   'strategy' | 'forRequest' | 'logoutCredential'
 > & {
   strategy: 'access_tokens'
-  /** The guard bound to one request's bearer token. */
+  /**
+   * The guard bound to one request's bearer token.
+   *
+   * @example
+   * ```ts
+   * const requestGuard = tokenGuard.forRequest(context)
+   * ```
+   */
   forRequest(
     context: HttpContext
   ): Extract<AuthenticationGuard<ManagedTokenCredential>, { strategy: 'access_tokens' }>
-  /** The token that authenticated the request, for `terminate` on logout. */
+  /**
+   * The token that authenticated the request, for `terminate` on logout.
+   *
+   * @example
+   * ```ts
+   * const credential = await tokenGuard.logoutCredential(context)
+   * ```
+   */
   logoutCredential(context: HttpContext): Promise<ManagedTokenCredential>
   /** The plaintext token to return to the client, released once. */
   publicCredential(credential: ManagedTokenCredential): string

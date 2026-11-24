@@ -1,6 +1,6 @@
 // One-use token consumption: deleting a live token row, under the user's lock when user-bound.
 import { sqlTimestamp } from './timestamps.js'
-import { InvalidTokenError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
 import { hashToken } from './tokens.js'
 import { consumeRows } from './consume_rows.js'
 import { lockUser, type UsersStorage } from './user_lock.js'
@@ -52,11 +52,11 @@ export async function consumeUserTokenHash<Row extends { tokenable_id: UserId }>
   validForUser: (row: Row, user: AccountUser) => boolean
 ): Promise<{ row: Row; user: AccountUser }> {
   const candidate = await trx.from(table).select('tokenable_id').where('hash', tokenHash).first()
-  if (!candidate) throw new InvalidTokenError()
+  if (!candidate) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   await lockUser(trx, config, candidate.tokenable_id)
   const user = await config.users.findById(candidate.tokenable_id, trx)
   const row = await consumeToken<Row>(trx, table, tokenHash, sqlTimestamp(trx))
   if (!row || row.tokenable_id !== candidate.tokenable_id || !user || !validForUser(row, user))
-    throw new InvalidTokenError()
+    throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   return { row, user }
 }

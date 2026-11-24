@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
-import { CapabilityDisabledError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../src/errors.js'
 import { capabilities, capabilityRegistry, defaultCapabilities } from '../src/capabilities.js'
 import type { Capability } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -81,7 +81,7 @@ test.group('capability configuration', (group) => {
     ]
     try {
       for (const operation of operations) {
-        await assert.rejects(operation, CapabilityDisabledError)
+        await assert.rejects(operation, E_ACCOUNT_KIT_CAPABILITY_DISABLED)
       }
     } finally {
       knex.off('query', onQuery)

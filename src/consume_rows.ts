@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Deletes single-use rows and returns them, on engines with and without DELETE ... RETURNING.
 import type { Database } from '@adonisjs/lucid/database'
 import { readTimestamp } from './timestamps.js'
@@ -70,6 +71,6 @@ export async function consumeRows<Row>(
     )
     .delete()
   if (countDeletedRowsFromResult(deleted) !== rows.length)
-    throw new Error(`account_kit: ${table} rows changed while they were consumed`)
+    throw new RuntimeException(`account_kit: ${table} rows changed while they were consumed`)
   return rows
 }

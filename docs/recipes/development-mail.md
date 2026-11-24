@@ -89,7 +89,7 @@ commits. That call queues the message; it does not wait for SMTP acceptance or r
 AdonisJS Mail 10's default messenger is an in-memory queue: it dispatches in the web process, needs
 no separate worker, and loses pending messages if the process stops before sending. A later SMTP
 error is emitted by Mail as `queued:mail:error`; it is not automatically converted to an Account Kit
-`DeliveryError` for the already-returned HTTP request. Subscribe to that event and monitor transport
+`E_ACCOUNT_KIT_DELIVERY` for the already-returned HTTP request. Subscribe to that event and monitor transport
 outcomes. For production, use a persistent messenger such as the documented AdonisJS Queue
 integration, deploy its worker with the web app, and configure retries and terminal-failure
 handling. Queue acceptance is still not recipient delivery. See

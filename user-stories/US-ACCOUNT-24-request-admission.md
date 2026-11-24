@@ -12,7 +12,7 @@ As a signed-in account holder, I want to request admission when configured requi
 ## Acceptance criteria
 
 - `request(input)` takes the guard's `CurrentAccountInput` (see [credential evidence](US-ACCOUNT-56-read-current-admission-status.md)). Approval must be enabled and the account active. Domain and invitation requirements are outside this action.
-- The first request sets `requestedAt`, including for an account with a decision. Repeated requests return the record with its original timestamp. Only the first undecided request generates `admission.requested`. If the configured observer fails, the caller gets `PostCommitError` and the timestamp is saved.
+- The first request sets `requestedAt`, including for an account with a decision. Repeated requests return the record with its original timestamp. Only the first undecided request generates `admission.requested`. If the configured observer fails, the caller gets `E_ACCOUNT_KIT_POST_COMMIT` and the timestamp is saved.
 
 ## User flow
 
@@ -37,7 +37,7 @@ The runnable API example traces the controller and middleware entry in its [admi
 ```mermaid
 flowchart TD
  A["AccountAdmission.request(input) calls requestAdmission"] --> B{"requireApproval passes?"}
- B -->|No| X["Throw CapabilityDisabledError"]
+ B -->|No| X["Throw E_ACCOUNT_KIT_CAPABILITY_DISABLED"]
  B -->|Yes| C{"In transaction, requireCurrentAccountInTransaction succeeds, account is active and users.findById finds user?"}
  C -->|No| Y["Reject credential or activation before an admission write"]
  C -->|Yes| D["readAdmissionRow"]
@@ -49,7 +49,7 @@ flowchart TD
  H --> I
  I --> J{"Post-commit follow-ups succeed?"}
  J -->|Yes| K["Return AdmissionRecord"]
- J -->|No| L["Throw PostCommitError with committed state"]
+ J -->|No| L["Throw E_ACCOUNT_KIT_POST_COMMIT with committed state"]
 ```
 
 **Code references:** [implementation](../src/admission/request.ts), [`tests/admission_request.spec.ts`](../tests/admission_request.spec.ts), [service entry](../src/admission/service.ts), [credential check](../src/authentication.ts), [committed events](../src/admission/events.ts)

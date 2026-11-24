@@ -1,4 +1,8 @@
-import { DeliveryError, InvalidTokenError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import {
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import { proofFailure, proofHeaders } from '#services/http_responses'
@@ -26,10 +30,10 @@ export default class EmailChangesController {
         verified: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
       })
     } catch (error) {
-      if (error instanceof InvalidTokenError) {
+      if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN) {
         return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_EMAIL_TOKEN')
       }
-      if (error instanceof DeliveryError || error instanceof PostCommitError) {
+      if (error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT) {
         reportCommittedFailure(ctx.logger, error, 'email_change.complete')
         return ctx.response.ok({ changed: true })
       }

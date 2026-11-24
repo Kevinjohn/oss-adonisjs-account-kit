@@ -1,6 +1,6 @@
 // Resolves and validates the sign-in idle expiry for session management.
 import { DateTime } from 'luxon'
-import { InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 import { sessionTouchIntervalMs } from './session_registry.js'
 import { computeConfiguredExpiry } from './config_ttl.js'
 import type { AccountKitConfig, ResolvedConfig } from './types.js'
@@ -11,7 +11,7 @@ export function resolveSessionManagement(
 ): ResolvedConfig['sessionManagement'] {
   const value = config.sessionManagement
   if (value !== undefined && (!value || typeof value !== 'object' || Array.isArray(value)))
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'sessionManagement',
       'account_kit: sessionManagement must be an object'
     )
@@ -22,7 +22,7 @@ export function resolveSessionManagement(
       now.toMillis() <=
     sessionTouchIntervalMs
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'sessionManagement.idleExpiry',
       `account_kit: sessionManagement.idleExpiry must be longer than ${sessionTouchIntervalMs / 60_000} minutes`
     )

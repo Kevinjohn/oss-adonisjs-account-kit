@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 // Action URLs: builds email links from configured origins and relative page paths.
 import type { UrlCallbacks } from './types.js'
 
@@ -30,7 +31,7 @@ export function requireTrustedOrigin(
   try {
     url = new URL(value)
   } catch {
-    throw new Error('account_kit: invalid configured origin')
+    throw new InvalidArgumentsException('account_kit: invalid configured origin')
   }
   if (
     !['http:', 'https:'].includes(url.protocol) ||
@@ -40,22 +41,38 @@ export function requireTrustedOrigin(
     url.hash ||
     !url.hostname
   )
-    throw new Error('account_kit: invalid configured origin')
+    throw new InvalidArgumentsException('account_kit: invalid configured origin')
   if (environment === 'production' && url.protocol !== 'https:')
-    throw new Error('account_kit: public production origins require HTTPS')
+    throw new InvalidArgumentsException('account_kit: public production origins require HTTPS')
   if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
-    throw new Error('account_kit: HTTP is restricted to loopback development origins')
+    throw new InvalidArgumentsException(
+      'account_kit: HTTP is restricted to loopback development origins'
+    )
   return url
 }
 
-/** Build links only from configured values; request Host and forwarded headers are never inputs. */
+/**
+ * Build links only from configured values; request Host and forwarded headers are never inputs.
+ *
+ * @example
+ * ```ts
+ * import { createActionUrls } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const urls = createActionUrls({
+ *   backendOrigin: 'https://api.example.test',
+ *   appFrontendUrl: 'https://app.example.test',
+ *   destinations: { passwordReset: 'reset-password' },
+ *   environment: 'production',
+ * })
+ * ```
+ */
 export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
   const { backendOrigin, backendOriginSetting } = options
   try {
     requireTrustedOrigin(backendOrigin, options.environment)
   } catch (error) {
     if (!(error instanceof Error) || !options.backendOriginSetting) throw error
-    throw new Error(
+    throw new InvalidArgumentsException(
       `account_kit: ${backendOriginSetting}: ${error.message.replace('account_kit: ', '')}`,
       {
         cause: error,
@@ -78,7 +95,9 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
       /^[a-z][a-z\d+.-]*:/i.test(destination) ||
       destination.startsWith('//')
     )
-      throw new Error(`account_kit: ${name} destination must be a relative path`)
+      throw new InvalidArgumentsException(
+        `account_kit: ${name} destination must be a relative path`
+      )
     try {
       if (
         destination.split('/').some((segment) => {
@@ -88,16 +107,16 @@ export function createActionUrls(options: ActionUrlOptions): UrlCallbacks {
           )
         })
       )
-        throw new Error('unsafe path segment')
+        throw new InvalidArgumentsException('unsafe path segment')
       const resolved = new URL(
         `${destination.replace(/\/?$/, '/')}${encodeURIComponent(token)}`,
         base
       )
       if (resolved.origin !== base.origin || !resolved.pathname.startsWith(base.pathname))
-        throw new Error('outside configured frontend')
+        throw new InvalidArgumentsException('outside configured frontend')
       return resolved.toString()
     } catch {
-      throw new Error(
+      throw new InvalidArgumentsException(
         `account_kit: ${name} destination must stay below the configured frontend path`
       )
     }

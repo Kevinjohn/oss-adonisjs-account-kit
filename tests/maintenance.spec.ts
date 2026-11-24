@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import type { Database } from '@adonisjs/lucid/database'
@@ -320,16 +321,16 @@ test.group('expired-token pruning', (group) => {
   })
 
   test('rejects invalid batch sizes before querying', async ({ assert }) => {
-    // Any use of this database fails with a different error, so a RangeError proves no query ran.
+    // Any use of this database fails with a different error, so an InvalidArgumentsException proves no query ran.
     const untouched = new Proxy({} as typeof kit.db, {
       get() {
         throw new Error('database used')
       },
     })
     for (const batchSize of [0, -1, 1.5, 1001, Number.NaN])
-      await assert.rejects(() => pruneExpired(untouched, { batchSize }), RangeError)
+      await assert.rejects(() => pruneExpired(untouched, { batchSize }), InvalidArgumentsException)
     for (const maxBatches of [0, -1, 1.5, 1001, Number.NaN])
-      await assert.rejects(() => pruneExpired(untouched, { maxBatches }), RangeError)
+      await assert.rejects(() => pruneExpired(untouched, { maxBatches }), InvalidArgumentsException)
     await assert.rejects(() => pruneExpired(untouched, {}), 'database used')
   })
 })

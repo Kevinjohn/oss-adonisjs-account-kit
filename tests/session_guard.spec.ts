@@ -3,7 +3,7 @@ import { configProvider } from '@adonisjs/core'
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import { accountKitSessionGuard } from '../src/auth/session_guard.js'
-import { InvalidCredentialsError, InvalidSessionError } from '../src/errors.js'
+import { E_INVALID_CREDENTIALS, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
 import type { AccountUser, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeConfig, makeUsersAdapter } from './helpers/fakes.js'
@@ -124,7 +124,7 @@ test.group('accountKitSessionGuard', (group) => {
     const user = await insertUser(kit)
     denied.add(user.id)
     const { guard } = await request({})
-    await assert.rejects(() => guard.authenticateAsClient(user), InvalidCredentialsError)
+    await assert.rejects(() => guard.authenticateAsClient(user), E_INVALID_CREDENTIALS)
     assert.lengthOf(await kit.db.from('account_sessions').where('user_id', user.id), 0)
   })
 
@@ -146,7 +146,7 @@ test.group('accountKitSessionGuard', (group) => {
     await adapter.establish(user.id, 'next', 'handle')
     assert.equal(values.get('accountKitRevision'), 'next')
     assert.equal(values.get('auth_web'), user.id)
-    await assert.rejects(() => adapter.establish(999999, null), InvalidSessionError)
+    await assert.rejects(() => adapter.establish(999999, null), E_ACCOUNT_KIT_INVALID_SESSION)
   })
 
   test('the factory builds from a frozen empty context without touching it', async ({ assert }) => {

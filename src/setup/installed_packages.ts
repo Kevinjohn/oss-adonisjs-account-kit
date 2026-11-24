@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { readFile, lstat, realpath } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
@@ -24,7 +25,7 @@ async function readInstalledVersion(root: string, name: string): Promise<string 
       const metadata = join(await realpath(join(directory, 'node_modules', name)), 'package.json')
       const metadataStat = await lstat(metadata)
       if (!metadataStat.isFile())
-        throw new Error(`Setup cannot inspect non-regular file ${metadata}`)
+        throw new RuntimeException(`Setup cannot inspect non-regular file ${metadata}`)
       const installed = JSON.parse(await readFile(metadata, 'utf8')) as { version?: string }
       return typeof installed.version === 'string' ? installed.version : null
     } catch (error) {

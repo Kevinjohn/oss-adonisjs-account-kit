@@ -1,7 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
-import { InvalidSessionError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '@kevinjohn/adonisjs-account-kit'
 import { accountKitSessionGuard } from '#services/session_guard'
 
 /**
@@ -20,7 +20,7 @@ export default class SessionRevisionMiddleware {
           ...(revision === undefined ? {} : { revision: revision === '' ? null : revision }),
         })
       } catch (error) {
-        if (!(error instanceof InvalidSessionError)) throw error
+        if (!(error instanceof E_ACCOUNT_KIT_INVALID_SESSION)) throw error
         await accountKitSessionGuard(ctx).terminate()
       }
     }

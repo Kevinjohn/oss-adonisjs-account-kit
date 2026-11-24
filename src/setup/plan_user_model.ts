@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Setup planning phase: static analysis of the selected Lucid user model.
 import { lstat, readFile } from 'node:fs/promises'
 import { requireSafeSetupPath } from './safe_path.js'
@@ -8,13 +9,13 @@ import {
   isExactCall,
   hasUnsafeBindingReferences,
   getImportedBindingName,
-  InvalidSetupSourceError,
   isTypeOnlyReference,
   parseSetupSource,
   unwrapStaticExpression,
   walk,
   type SetupSource,
 } from './ts_source.js'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.js'
 import { addSetupDiagnostic } from './shared.js'
 import {
   inspectClassColumns,
@@ -55,7 +56,7 @@ export async function planUserModel(
       const modelFile = await requireSafeSetupPath(state.root, modelPath)
       const modelStat = await lstat(modelFile)
       if (!modelStat.isFile())
-        throw new Error(`Setup cannot inspect non-regular model ${modelPath}`)
+        throw new RuntimeException(`Setup cannot inspect non-regular model ${modelPath}`)
       const model = await parseSetupSource(await readFile(modelFile, 'utf8'))
       const { ts } = model
       const classes = model.file.statements.filter(
@@ -380,7 +381,7 @@ export async function planUserModel(
           'Resolve the imported Lucid BaseModel inheritance before using this model for generated migrations'
         )
     } catch (error) {
-      if (error instanceof InvalidSetupSourceError)
+      if (error instanceof E_ACCOUNT_KIT_INVALID_SETUP_SOURCE)
         addSetupDiagnostic(
           diagnostics,
           'user.model',

@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { AdapterContractError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeNotify, makeService } from './helpers/fakes.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
@@ -81,7 +81,7 @@ test.group('managed HTTP verification policy with live account state', (group) =
       errors: [{ code: 'E_ACCOUNT_KIT_OPERATION_FAILED', message: 'Account operation failed.' }],
     })
     assert.lengthOf(logged, 1)
-    assert.instanceOf(logged[0].err, AdapterContractError)
+    assert.instanceOf(logged[0].err, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
     assert.equal(
       (logged[0].err as Error).message,
       'account_kit: canAccess must resolve to a boolean'

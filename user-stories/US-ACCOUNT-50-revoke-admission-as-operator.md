@@ -13,7 +13,7 @@ As an application operator, I want to revoke an approved account from the truste
 
 - The email identifies an existing approved account and approval must be enabled. The decision stores a null actor ID and the decision time. It preserves credentials, and later admission gates refuse the account while approval is required and revoked.
 - On success the service returns the admission record and the command prints `result: 'revoked'`, `userId` and `email`. The configured observer receives `admission.revoked` with operator source after commit. The command reports a committed observer failure on stderr with exit code 1 and the write saved.
-- A thrown runtime error, including a `PostCommitError`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
+- A thrown runtime error, including an `E_ACCOUNT_KIT_POST_COMMIT`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
 
 ## User flow
 
@@ -43,7 +43,7 @@ flowchart TD
  D -->|Yes| E["applyTransition stores revoked status, decision time and null actor ID"]
  E --> F["Commit; withAdmissionEvent invokes configured admission.revoked observer"]
  F --> G{"Follow-ups succeed?"}
- G -->|No| H["Ace retains PostCommitError; completed prints one diagnostic and exits nonzero"]
+ G -->|No| H["Ace retains E_ACCOUNT_KIT_POST_COMMIT; completed prints one diagnostic and exits nonzero"]
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints revoked, userId and email"]
 ```
 

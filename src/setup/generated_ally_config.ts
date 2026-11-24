@@ -1,13 +1,16 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import type { SetupChoices } from './types.js'
 import { requiredEnvHelperLines } from './generated_env_helpers.js'
 
 export function generateAllyConfigSource(choices: SetupChoices): string {
-  if (choices.social.status !== 'enabled') throw new Error('Social providers are not selected')
+  if (choices.social.status !== 'enabled')
+    throw new RuntimeException('Social providers are not selected')
   const social = choices.social
   const origin = social.callbackOriginEnv
   return [
     "import { defineConfig, services } from '@adonisjs/ally'",
     "import type { InferSocialProviders } from '@adonisjs/ally/types'",
+    "import { InvalidArgumentsException } from '@adonisjs/core/exceptions'",
     '',
     ...requiredEnvHelperLines,
     '',

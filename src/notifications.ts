@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import type { NotificationCallbacks } from './types.js'
 import type { AccountKitTranslator } from './translator.js'
 import { isSocialProviderName, socialProviderLabels } from './social_providers.js'
@@ -53,7 +54,19 @@ export interface MailNotificationOptions {
   i18n?: AccountKitTranslator | (() => AccountKitTranslator)
 }
 
-/** Maintained action-link values; pass their rendered content through createMailNotifications. */
+/**
+ * Maintained action-link values; pass their rendered content through createMailNotifications.
+ *
+ * @example
+ * ```ts
+ * import { PasswordResetProvision } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const provision = new PasswordResetProvision(
+ *   'sam@example.test',
+ *   'https://app.example.test/reset-password/example-token'
+ * )
+ * ```
+ */
 export class PasswordResetProvision {
   readonly kind = 'passwordResetProvision' as const
   constructor(
@@ -61,7 +74,19 @@ export class PasswordResetProvision {
     readonly actionUrl: string
   ) {}
 }
-/** An account activation email to send: recipient and action URL. */
+/**
+ * An account activation email to send: recipient and action URL.
+ *
+ * @example
+ * ```ts
+ * import { AccountActivationProvision } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const provision = new AccountActivationProvision(
+ *   'sam@example.test',
+ *   'https://app.example.test/activate/example-token'
+ * )
+ * ```
+ */
 export class AccountActivationProvision {
   readonly kind = 'accountActivationProvision' as const
   constructor(
@@ -69,7 +94,19 @@ export class AccountActivationProvision {
     readonly actionUrl: string
   ) {}
 }
-/** An invitation email to send: recipient and action URL. */
+/**
+ * An invitation email to send: recipient and action URL.
+ *
+ * @example
+ * ```ts
+ * import { InvitationProvision } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const provision = new InvitationProvision(
+ *   'sam@example.test',
+ *   'https://app.example.test/accept-invitation/example-token'
+ * )
+ * ```
+ */
 export class InvitationProvision {
   readonly kind = 'invitationProvision' as const
   constructor(
@@ -77,7 +114,19 @@ export class InvitationProvision {
     readonly actionUrl: string
   ) {}
 }
-/** An email-change confirmation to send: recipient and action URL. */
+/**
+ * An email-change confirmation to send: recipient and action URL.
+ *
+ * @example
+ * ```ts
+ * import { EmailChangeProvision } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const provision = new EmailChangeProvision(
+ *   'sam@example.test',
+ *   'https://app.example.test/confirm-email/example-token'
+ * )
+ * ```
+ */
 export class EmailChangeProvision {
   readonly kind = 'emailChangeProvision' as const
   constructor(
@@ -86,7 +135,19 @@ export class EmailChangeProvision {
   ) {}
 }
 
-/** A magic sign-in link email to send: recipient and action URL. */
+/**
+ * A magic sign-in link email to send: recipient and action URL.
+ *
+ * @example
+ * ```ts
+ * import { MagicLinkProvision } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const provision = new MagicLinkProvision(
+ *   'sam@example.test',
+ *   'https://app.example.test/sign-in/example-token'
+ * )
+ * ```
+ */
 export class MagicLinkProvision {
   readonly kind = 'magicLinkProvision' as const
   constructor(
@@ -111,6 +172,16 @@ async function resolveMail(option: MailNotificationOptions['mail']): Promise<Acc
 /**
  * Implements every notification callback with AdonisJS Mail and the built-in templates.
  * Messages are queued with `sendLater`.
+ *
+ * @example
+ * ```ts
+ * import { createMailNotifications } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const notify = createMailNotifications({
+ *   from: 'accounts@example.test',
+ *   brandName: 'Example Studio',
+ * })
+ * ```
  */
 export function createMailNotifications(options: MailNotificationOptions): NotificationCallbacks {
   if (
@@ -119,7 +190,7 @@ export function createMailNotifications(options: MailNotificationOptions): Notif
     /[\r\n]/.test(options.from) ||
     /[\r\n]/.test(options.brandName)
   )
-    throw new Error('account_kit: from and brandName are required')
+    throw new InvalidArgumentsException('account_kit: from and brandName are required')
   async function send(
     kind: AccountMessageKind,
     recipient: string,

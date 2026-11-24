@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
@@ -7,7 +8,7 @@ export default class extends BaseSchema {
       const [{ version }] = await this.db.rawQuery('select sqlite_version() as version')
       const [major, minor] = String(version).split('.').map(Number)
       if (major < 3 || (major === 3 && minor < 53))
-        throw new Error(
+        throw new RuntimeException(
           'account_kit: SQLite ' +
             version +
             ' cannot make the users password column nullable; upgrade better-sqlite3 to 12.10 or later (SQLite 3.53)'

@@ -4,8 +4,8 @@ import { column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 import { createLucidAdapter } from '../adapters/lucid.js'
 import {
-  InvalidConfigurationError,
-  RegistrationEmailAlreadyRegisteredError,
+  E_ACCOUNT_KIT_INVALID_CONFIGURATION,
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
 } from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import type { Trx, UsersAdapter } from '../src/types.js'
@@ -127,7 +127,7 @@ test.group('maintained Lucid adapter', (group) => {
       adapter: brokenAdapter({
         async create(attributes, trx) {
           if (await adapter.findByEmail(attributes.email, trx))
-            throw new RegistrationEmailAlreadyRegisteredError()
+            throw new E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
           return adapter.create(attributes, trx)
         },
       }),
@@ -364,9 +364,12 @@ test.group('maintained Lucid adapter', (group) => {
       assert.isFalse(loaded)
       const error = await adapter.resolveMetadata().catch((caught: unknown) => caught)
       assert.isTrue(loaded)
-      assert.instanceOf(error, InvalidConfigurationError)
-      assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
-      assert.equal((error as InvalidConfigurationError).field, field)
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).code,
+        'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
+      )
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field, field)
       assert.equal((error as Error).message, message)
       assert.isUndefined((error as Error).cause)
     }
@@ -381,9 +384,15 @@ test.group('maintained Lucid adapter', (group) => {
     }
     const adapter = createLucidAdapter(async () => AlternatePendingColumnUser)
     const error = await adapter.resolveMetadata().catch((caught: unknown) => caught)
-    assert.instanceOf(error, InvalidConfigurationError)
-    assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
-    assert.equal((error as InvalidConfigurationError).field, 'model.columns.unverifiedEmail')
+    assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
+    assert.equal(
+      (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).code,
+      'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
+    )
+    assert.equal(
+      (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field,
+      'model.columns.unverifiedEmail'
+    )
     assert.equal(
       (error as Error).message,
       'account_kit: Lucid user models must use the unverifiedEmail attribute mapped to the unverified_email column'

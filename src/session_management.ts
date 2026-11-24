@@ -6,7 +6,11 @@ import { requireAuthentication } from './authentication_config.js'
 import { deleteReturning } from './consume_rows.js'
 import { transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { CapabilityDisabledError, InvalidSessionError, SessionNotFoundError } from './errors.js'
+import {
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_SESSION_NOT_FOUND,
+} from './errors.js'
 import { recordRevocation } from './session_revocation.js'
 import { sessionTable } from './session_registry.js'
 import { readIsoTimestamp } from './timestamps.js'
@@ -24,7 +28,7 @@ function requireSessionManagement(
   deps: Pick<ServiceDependencies, 'config' | 'db'>
 ): ResolvedAuthenticationConfig {
   if (!deps.config.enabled.includes('sessionManagement'))
-    throw new CapabilityDisabledError('Session management is disabled')
+    throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('Session management is disabled')
   return requireAuthentication(deps.config)
 }
 
@@ -32,7 +36,7 @@ function requireSessionManagement(
 function requireSignInId(value: unknown): number {
   const id = typeof value === 'string' && /^[1-9]\d*$/.test(value) ? Number(value) : value
   if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0)
-    throw new SessionNotFoundError()
+    throw new E_ACCOUNT_KIT_SESSION_NOT_FOUND()
   return id
 }
 
@@ -59,7 +63,7 @@ async function requireSignInStorage(
     .where('handle_hash', hashToken(current.sessionHandle!))
     .first()
   // A concurrent sign-out can delete the row after the caller was authenticated.
-  if (!row) throw new InvalidSessionError()
+  if (!row) throw new E_ACCOUNT_KIT_INVALID_SESSION()
   return {
     table: sessionTable,
     owner: 'user_id',
@@ -143,7 +147,14 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
   }
 
   return {
-    /** Every live sign-in of the caller, newest first, with the caller's own marked `current`. */
+    /**
+     * Every live sign-in of the caller, newest first, with the caller's own marked `current`.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.sessions.list({ current })
+     * ```
+     */
     list(input: { current: CurrentAccountInput }): Promise<SignIn[]> {
       return withCurrentSession(input.current, async (trx, target, userId) => {
         const rows = await trx
@@ -165,7 +176,14 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
       })
     },
 
-    /** Sign out one sign-in. Unknown ids and other users' ids are indistinguishable. */
+    /**
+     * Sign out one sign-in. Unknown ids and other users' ids are indistinguishable.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.sessions.revoke({ current, id: signInId })
+     * ```
+     */
     async revoke(input: {
       current: CurrentAccountInput
       id: unknown
@@ -175,7 +193,7 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
       const { value, fault } = await settleCommitted(
         withCurrentSession(input.current, async (trx, target, userId) => {
           const ids = await deleteSignIns(trx, target, userId, 'only', id)
-          if (ids.length !== 1) throw new SessionNotFoundError()
+          if (ids.length !== 1) throw new E_ACCOUNT_KIT_SESSION_NOT_FOUND()
           await notifySessionsRevoked(trx, userId, operationId, ids)
           return { userId, current: isSameId(id, target.currentId) }
         })
@@ -189,7 +207,14 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
       return result
     },
 
-    /** Sign out every other sign-in; the caller's own stays valid. */
+    /**
+     * Sign out every other sign-in; the caller's own stays valid.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.sessions.revokeOthers({ current })
+     * ```
+     */
     async revokeOthers(input: { current: CurrentAccountInput }): Promise<{ count: number }> {
       const operationId = randomUUID()
       const { value, fault } = await settleCommitted(
@@ -205,7 +230,14 @@ export function createSessionManagementService(deps: Pick<ServiceDependencies, '
       return { count: value.count }
     },
 
-    /** Sign out everywhere, including here: a credential change with its usual hooks. */
+    /**
+     * Sign out everywhere, including here: a credential change with its usual hooks.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.sessions.revokeAll({ current })
+     * ```
+     */
     async revokeAll(input: { current: CurrentAccountInput }): Promise<void> {
       const operationId = randomUUID()
       const { value, fault } = await settleCommitted(

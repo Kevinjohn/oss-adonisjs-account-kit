@@ -59,7 +59,24 @@ export const managedHandlers: Record<ManagedEndpointName, ManagedHandler> = {
   ...accountDataHandlers,
 }
 
-/** Explicitly register one selected managed route group. Never called by the package root. */
+/**
+ * Explicitly register one selected managed route group. Never called by the package root.
+ *
+ * @example
+ * ```ts
+ * import { registerManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
+ * import router from '@adonisjs/core/services/router'
+ * import app from '@adonisjs/core/services/app'
+ * import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * registerManagedRoutes(router, {
+ *   prefix: '/account',
+ *   enabled: ['passwordReset'],
+ *   kit: () => app.container.make(AccountKit),
+ *   guard,
+ * })
+ * ```
+ */
 export function registerManagedRoutes<Credential>(
   router: Router,
   options: ManagedRoutesOptions<Credential>

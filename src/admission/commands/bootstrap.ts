@@ -4,9 +4,11 @@ import {
   completeOperatorCommand,
   writeResult,
 } from '../../../commands/operator_output.js'
-import { InvalidInputError } from '../../errors.js'
+import {
+  E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+} from '../../errors.js'
 import { invitationRoleLength } from '../../invitation_input.js'
-import { BootstrapApprovalChangedError } from '../errors.js'
 import { AccountAdmission } from '../service.js'
 
 /** First administrator in one step: an operator invitation that lands its account approved. */
@@ -36,7 +38,7 @@ export default class BootstrapAdmission extends BaseCommand {
       writeResult(this, { result: cancelled ? 'cancelled' : 'none', email: this.email })
       return
     }
-    if (this.role === undefined) throw new InvalidInputError('Invalid role')
+    if (this.role === undefined) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
     const result = await admission.operator.bootstrap({ email: this.email, role: this.role })
     this.failure = reportOperatorOutcome(this, {
       result,
@@ -53,8 +55,8 @@ export default class BootstrapAdmission extends BaseCommand {
   }
 
   completed(): boolean {
-    if (this.error instanceof BootstrapApprovalChangedError) {
-      const { code, diagnostic } = BootstrapApprovalChangedError
+    if (this.error instanceof E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED) {
+      const { code, message: diagnostic } = E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED
       this.logger.error(`${code}: ${diagnostic}`)
       this.failure = this.error.code
       return true

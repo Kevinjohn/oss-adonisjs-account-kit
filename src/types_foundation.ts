@@ -60,20 +60,49 @@ export interface UsersAdapter {
   /**
    * Returns the table and constraint metadata. Omit it to use `usersTable` and `emailConstraint`
    * from the config.
+   *
+   * @example
+   * ```ts
+   * await users.resolveMetadata?.()
+   * ```
    */
   resolveMetadata?(): Promise<UsersAdapterMetadata>
-  /** Finds a user by normalized email, or returns null. */
+  /**
+   * Finds a user by normalized email, or returns null.
+   *
+   * @example
+   * ```ts
+   * await users.findByEmail('sam@example.test')
+   * ```
+   */
   findByEmail(email: string, trx?: Trx): Promise<AccountUser | null>
-  /** Finds a user by id, or returns null. */
+  /**
+   * Finds a user by id, or returns null.
+   *
+   * @example
+   * ```ts
+   * await users.findById(userId, trx)
+   * ```
+   */
   findById(id: UserId, trx?: Trx): Promise<AccountUser | null>
   /**
    * Lists visible user ids in ascending primary-key order, strictly after `after`, up to `limit`.
    * Adapters with model-level visibility rules can implement this for complete inventories.
+   *
+   * @example
+   * ```ts
+   * await users.listVisibleIds?.(undefined, 100)
+   * ```
    */
   listVisibleIds?(after: UserId | undefined, limit: number): Promise<UserId[]>
   /**
    * Creates a user through `trx` and returns it. `registrationData` is untrusted input for your own
    * mapping.
+   *
+   * @example
+   * ```ts
+   * await users.create({ email: 'sam@example.test', unverifiedEmail: null, password }, trx)
+   * ```
    */
   create(
     attrs: {
@@ -87,28 +116,89 @@ export interface UsersAdapter {
     },
     trx: Trx
   ): Promise<AccountUser>
-  /** Hashes and stores a new password through `trx`. */
+  /**
+   * Hashes and stores a new password through `trx`.
+   *
+   * @example
+   * ```ts
+   * await users.setPassword(userId, password, trx)
+   * ```
+   */
   setPassword(id: UserId, password: string, trx: Trx): Promise<void>
   /**
    * Hashes a password outside any transaction. When present, Account Kit hashes every new
    * password before it opens the write transaction and passes the result to `create` as
    * `passwordHash` or to `setPasswordHash`, so a slow hash never holds the transaction open.
    * Requires `setPasswordHash`.
+   *
+   * @example
+   * ```ts
+   * await users.hashPassword?.(password)
+   * ```
    */
   hashPassword?(password: string): Promise<string>
-  /** Stores a hash from `hashPassword` as is, through `trx`. Required with `hashPassword`. */
+  /**
+   * Stores a hash from `hashPassword` as is, through `trx`. Required with `hashPassword`.
+   *
+   * @example
+   * ```ts
+   * await users.setPasswordHash?.(userId, hash, trx)
+   * ```
+   */
   setPasswordHash?(id: UserId, hash: string, trx: Trx): Promise<void>
-  /** Stores a confirmed email address through `trx`. */
+  /**
+   * Stores a confirmed email address through `trx`.
+   *
+   * @example
+   * ```ts
+   * await users.setEmail(userId, 'sam@example.test', trx)
+   * ```
+   */
   setEmail(id: UserId, email: string, trx: Trx): Promise<void>
-  /** Stores or clears the address waiting for confirmation, through `trx`. */
+  /**
+   * Stores or clears the address waiting for confirmation, through `trx`.
+   *
+   * @example
+   * ```ts
+   * await users.setUnverifiedEmail(userId, 'sam@example.test', trx)
+   * ```
+   */
   setUnverifiedEmail(id: UserId, email: string | null, trx: Trx): Promise<void>
-  /** Applies trusted profile fields through `trx`. Needed for profile updates with extra fields. */
+  /**
+   * Applies trusted profile fields through `trx`. Needed for profile updates with extra fields.
+   *
+   * @example
+   * ```ts
+   * await users.updateRegistrationData?.(userId, { displayName: 'Sam Example' }, trx)
+   * ```
+   */
   updateRegistrationData?(id: UserId, data: Record<string, unknown>, trx: Trx): Promise<void>
-  /** Records when the address was confirmed, through `trx`. */
+  /**
+   * Records when the address was confirmed, through `trx`.
+   *
+   * @example
+   * ```ts
+   * await users.markEmailVerified(userId, verifiedAt, trx)
+   * ```
+   */
   markEmailVerified(id: UserId, at: DateTime, trx: Trx): Promise<void>
-  /** Returns whether the password matches the stored hash. */
+  /**
+   * Returns whether the password matches the stored hash.
+   *
+   * @example
+   * ```ts
+   * await users.verifyPassword(userId, password, trx)
+   * ```
+   */
   verifyPassword(id: UserId, password: string, trx: Trx): Promise<boolean>
-  /** Required by `accountDeletion`. Delete the user row through trx; model hooks may run. */
+  /**
+   * Required by `accountDeletion`. Delete the user row through trx; model hooks may run.
+   *
+   * @example
+   * ```ts
+   * await users.delete?.(userId, trx)
+   * ```
+   */
   delete?(id: UserId, trx: Trx): Promise<void>
 }
 
@@ -137,7 +227,7 @@ export interface Invitation {
 
 /**
  * A feature you can turn on in `enabled`. Operations for a capability that is not enabled throw
- * `CapabilityDisabledError`.
+ * `E_ACCOUNT_KIT_CAPABILITY_DISABLED`.
  */
 export type Capability =
   | 'passwordReset'
@@ -224,15 +314,50 @@ export interface AuthorizationCallbacks {
  * normally to a page on your frontend.
  */
 export interface UrlCallbacks {
-  /** The reset-password page. */
+  /**
+   * The reset-password page.
+   *
+   * @example
+   * ```ts
+   * urls.passwordReset(token)
+   * ```
+   */
   passwordReset(token: string): string
-  /** The confirm-email page. */
+  /**
+   * The confirm-email page.
+   *
+   * @example
+   * ```ts
+   * urls.emailVerification(token)
+   * ```
+   */
   emailVerification(token: string): string
-  /** The accept-invitation page. */
+  /**
+   * The accept-invitation page.
+   *
+   * @example
+   * ```ts
+   * urls.invitation(token)
+   * ```
+   */
   invitation(token: string): string
-  /** The confirm-new-email page. */
+  /**
+   * The confirm-new-email page.
+   *
+   * @example
+   * ```ts
+   * urls.emailChange(token)
+   * ```
+   */
   emailChange(token: string): string
-  /** The magic-link sign-in page. */
+  /**
+   * The magic-link sign-in page.
+   *
+   * @example
+   * ```ts
+   * urls.magicLink(token)
+   * ```
+   */
   magicLink(token: string): string
 }
 
@@ -241,27 +366,104 @@ export interface UrlCallbacks {
  * user something changed. `createMailNotifications` implements all of them with AdonisJS Mail.
  */
 export interface NotificationCallbacks {
-  /** Send the reset link. */
+  /**
+   * Send the reset link.
+   *
+   * @example
+   * ```ts
+   * await notify.passwordResetProvision(user, actionUrl)
+   * ```
+   */
   passwordResetProvision(user: AccountUser, url: string): Promise<void>
-  /** Send the link that confirms a new account's address. */
+  /**
+   * Send the link that confirms a new account's address.
+   *
+   * @example
+   * ```ts
+   * await notify.accountActivationProvision(user, actionUrl)
+   * ```
+   */
   accountActivationProvision(user: AccountUser, url: string): Promise<void>
-  /** Send the invitation link. */
+  /**
+   * Send the invitation link.
+   *
+   * @example
+   * ```ts
+   * await notify.invitationProvision(invitation, actionUrl)
+   * ```
+   */
   invitationProvision(invitation: Invitation, url: string): Promise<void>
-  /** Send the confirmation link to the new address. */
+  /**
+   * Send the confirmation link to the new address.
+   *
+   * @example
+   * ```ts
+   * await notify.emailChangeProvision(user, 'sam@example.test', actionUrl)
+   * ```
+   */
   emailChangeProvision(user: AccountUser, newEmail: string, url: string): Promise<void>
-  /** Tell the previous address that the email changed. */
+  /**
+   * Tell the previous address that the email changed.
+   *
+   * @example
+   * ```ts
+   * await notify.emailChanged('old-address@example.test', user)
+   * ```
+   */
   emailChanged(previousEmail: string, user: AccountUser): Promise<void>
-  /** Tell the user their password was reset. */
+  /**
+   * Tell the user their password was reset.
+   *
+   * @example
+   * ```ts
+   * await notify.passwordResetCompleted(user, change)
+   * ```
+   */
   passwordResetCompleted(user: AccountUser, context: CredentialChangeContext): Promise<void>
-  /** Tell the user their password was changed. */
+  /**
+   * Tell the user their password was changed.
+   *
+   * @example
+   * ```ts
+   * await notify.passwordChanged(user, change)
+   * ```
+   */
   passwordChanged(user: AccountUser, context: CredentialChangeContext): Promise<void>
-  /** Tell the user a provider was linked. Sent only to a confirmed address. */
+  /**
+   * Tell the user a provider was linked. Sent only to a confirmed address.
+   *
+   * @example
+   * ```ts
+   * await notify.socialIdentityLinked(user, identity)
+   * ```
+   */
   socialIdentityLinked(user: AccountUser, identity: SocialIdentity): Promise<void>
-  /** Tell the user a provider was unlinked. Sent only to a confirmed address. */
+  /**
+   * Tell the user a provider was unlinked. Sent only to a confirmed address.
+   *
+   * @example
+   * ```ts
+   * await notify.socialIdentityUnlinked(user, identity)
+   * ```
+   */
   socialIdentityUnlinked(user: AccountUser, identity: SocialIdentity): Promise<void>
-  /** Send the magic sign-in link. */
+  /**
+   * Send the magic sign-in link.
+   *
+   * @example
+   * ```ts
+   * await notify.magicLinkProvision(user, actionUrl)
+   * ```
+   */
   magicLinkProvision(user: AccountUser, url: string): Promise<void>
-  /** Sent after commit to the address the deleted account had. */
+  /**
+   * Sent after commit to the address the deleted account had.
+   *
+   * @example
+   * ```ts
+   * await notify.accountDeleted(account)
+   * ```
+   */
   accountDeleted(account: DeletedAccount): Promise<void>
 }
 

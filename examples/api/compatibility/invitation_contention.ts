@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { performance } from 'node:perf_hooks'
 import type { AccountKit } from '@kevinjohn/adonisjs-account-kit'
-import { InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from '@kevinjohn/adonisjs-account-kit'
 import type dbService from '@adonisjs/lucid/services/db'
 import type UserModel from './user.js'
 
@@ -53,7 +53,9 @@ export async function runInvitationContention({
   assert.equal(accepts.filter((result) => result.status === 'fulfilled').length, 1)
   const rejected = accepts.find((result) => result.status === 'rejected')
   assert.equal(rejected?.status, 'rejected')
-  assert.ok(rejected?.status === 'rejected' && rejected.reason instanceof InvalidTokenError)
+  assert.ok(
+    rejected?.status === 'rejected' && rejected.reason instanceof E_ACCOUNT_KIT_INVALID_TOKEN
+  )
   const invited = await User.findByOrFail('email', 'invited@example.test')
   const invitedName = invited.fullName
   assert.equal(invitedName, 'Invited Member')

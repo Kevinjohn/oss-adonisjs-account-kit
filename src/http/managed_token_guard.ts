@@ -1,25 +1,26 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { AdapterContractError, InvalidSessionError } from '../errors.js'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
 import type { UserId } from '../types.js'
 import type { ManagedGuard } from './managed_types.js'
 import type { ManagedTokenGuardOptions, ManagedTokenCredential, ManagedUser } from './guard.js'
 import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
 
 function requireManagedUser(value: unknown): ManagedUser {
-  if (!value || typeof value !== 'object') throw new InvalidSessionError()
+  if (!value || typeof value !== 'object') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   const id = (value as { id?: unknown }).id
-  if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
+  if (typeof id !== 'number' && typeof id !== 'string') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   return value as ManagedUser
 }
 function requireTokenIdentifierValue(value: unknown): UserId {
   if (typeof value === 'bigint') return value.toString()
-  if (typeof value !== 'number' && typeof value !== 'string') throw new InvalidSessionError()
+  if (typeof value !== 'number' && typeof value !== 'string')
+    throw new E_ACCOUNT_KIT_INVALID_SESSION()
   return value
 }
 function requireCurrentTokenIdentifier(value: unknown): UserId {
-  if (!value || typeof value !== 'object') throw new InvalidSessionError()
+  if (!value || typeof value !== 'object') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   const token = (value as { currentAccessToken?: unknown }).currentAccessToken
-  if (!token || typeof token !== 'object') throw new InvalidSessionError()
+  if (!token || typeof token !== 'object') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   return requireTokenIdentifierValue((token as { identifier?: unknown }).identifier)
 }
 async function authenticate<User>(guard: { authenticate(): Promise<User> }): Promise<User> {
@@ -32,7 +33,7 @@ async function authenticate<User>(guard: { authenticate(): Promise<User> }): Pro
       'code' in error &&
       error.code === 'E_UNAUTHORIZED_ACCESS'
     )
-      throw new InvalidSessionError()
+      throw new E_ACCOUNT_KIT_INVALID_SESSION()
     throw error
   }
 }
@@ -48,7 +49,7 @@ export function createTokenGuard<User>(
     name: options.name,
     publicCredential(credential: ManagedTokenCredential) {
       if (typeof credential.value !== 'string' || !credential.value)
-        throw new AdapterContractError('Token guard did not return a bearer value')
+        throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
       return credential.value
     },
     async current(context) {
@@ -81,22 +82,25 @@ export function createTokenGuard<User>(
             Object.keys(createOptions).length ? createOptions : undefined
           )
           if (!token || typeof token !== 'object')
-            throw new AdapterContractError('Token guard did not return a token')
+            throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a token')
           let identifier: UserId
           try {
             identifier = requireTokenIdentifierValue(token.identifier)
           } catch (error) {
             // An invalid identifier cannot safely identify a token for cleanup.
-            throw new AdapterContractError('Token guard did not return a token identifier', {
-              cause: error,
-            })
+            throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT(
+              'Token guard did not return a token identifier',
+              {
+                cause: error,
+              }
+            )
           }
           try {
             if (!token.value || typeof token.value.release !== 'function')
-              throw new AdapterContractError('Token guard did not return a bearer value')
+              throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
             const value = token.value.release()
             if (typeof value !== 'string' || !value)
-              throw new AdapterContractError('Token guard did not return a bearer value')
+              throw new E_ACCOUNT_KIT_ADAPTER_CONTRACT('Token guard did not return a bearer value')
             return { userId, identifier, value }
           } catch (error) {
             try {

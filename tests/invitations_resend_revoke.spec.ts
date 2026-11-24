@@ -2,13 +2,13 @@ import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
-  AuthorizationError,
-  EmailAlreadyRegisteredError,
-  DeliveryError,
-  InvalidInputError,
-  InvitationNotFoundError,
-  InvalidTokenError,
-  PostCommitError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { transaction } from '../src/db.js'
@@ -78,7 +78,7 @@ test.group('invitations.resend', (group) => {
     })
     await assert.rejects(
       () => account.invitations.accept({ token: oldToken, password: 'password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const accepted = await account.invitations.accept({ token: newToken, password: 'password123' })
     assert.equal(accepted.email, original.email)
@@ -91,7 +91,7 @@ test.group('invitations.resend', (group) => {
     await insertUser(kit, { email: invitation.email })
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     assert.lengthOf(recorder.calls, 1)
   })
@@ -120,11 +120,11 @@ test.group('invitations.resend', (group) => {
     })
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      InvitationNotFoundError
+      E_ACCOUNT_KIT_INVITATION_NOT_FOUND
     )
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: 99999 }),
-      InvitationNotFoundError
+      E_ACCOUNT_KIT_INVITATION_NOT_FOUND
     )
   })
 
@@ -157,7 +157,7 @@ test.group('invitations.resend', (group) => {
     }).account
     await assert.rejects(
       () => managedDenied.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     const roles: string[] = []
     const grantDenied = service({
@@ -171,7 +171,7 @@ test.group('invitations.resend', (group) => {
     }).account
     await assert.rejects(
       () => grantDenied.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     assert.deepEqual(roles, ['admin'])
     const missingGrant = service({
@@ -179,11 +179,11 @@ test.group('invitations.resend', (group) => {
     }).account
     await assert.rejects(
       () => missingGrant.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     await assert.rejects(
       () => sender.invitations.resend({ actorId: 99999, invitationId: invitation.id }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     const unchanged = await kit.db.from('account_invitations').where('id', invitation.id).first()
     assert.equal(unchanged.token_hash, initial.token_hash)
@@ -242,7 +242,7 @@ test.group('invitations.resend', (group) => {
     armed = true
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     armed = false
     assert.deepEqual(
@@ -277,7 +277,7 @@ test.group('invitations.resend', (group) => {
     armed = true
     await assert.rejects(
       () => account.invitations.resend({ actorId: deletedActor.id, invitationId: pending.id }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     armed = false
     unchanged = await kit.db.from('account_invitations').where('id', pending.id).first()
@@ -299,8 +299,8 @@ test.group('invitations.resend', (group) => {
       await account.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
       assert.fail('expected delivery failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.instanceOf((error as DeliveryError).cause, Error)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.instanceOf((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, Error)
     }
     const newToken = tokenFrom(recorder.calls[1].args[1])
     assert.isNull(await account.invitations.inspect({ token: oldToken }))
@@ -322,8 +322,8 @@ test.group('invitations.resend', (group) => {
       await broken.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
       assert.fail('expected URL failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, urlFailure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, urlFailure)
     }
     assert.isNull(await account.invitations.inspect({ token: newToken }))
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
@@ -359,9 +359,9 @@ test.group('invitations.resend', (group) => {
       await faulty.invitations.resend({ actorId: actor.id, invitationId: invitation.id })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
@@ -428,7 +428,7 @@ test.group('invitations.resend', (group) => {
       await attemptedDelete
       releaseManage()
       const rotated = await resending
-      await assert.rejects(() => accepting, InvalidTokenError)
+      await assert.rejects(() => accepting, E_ACCOUNT_KIT_INVALID_TOKEN)
       assert.equal(rotated.id, invitation.id)
       assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
       assert.isNull(await account.invitations.inspect({ token }))

@@ -1,8 +1,8 @@
 import { test } from '@japa/runner'
 import {
-  InvalidInputError,
-  InvitationManagementDeniedError,
-  InvitationNotFoundError,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
+  E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
 } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { allowAll, insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
@@ -20,14 +20,14 @@ test.group('invitation management contracts', (group) => {
     })
     await assert.rejects(
       () => account.invitations.revoke({ actorId: actor.id, invitationId: 99999 }),
-      InvitationNotFoundError
+      E_ACCOUNT_KIT_INVITATION_NOT_FOUND
     )
     const denied = makeService(kit, {
       authorize: { ...allowAll, manageInvitation: async () => false },
     }).account
     await assert.rejects(
       () => denied.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      InvitationManagementDeniedError
+      E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED
     )
   })
 
@@ -77,7 +77,7 @@ test.group('invitation management contracts', (group) => {
       for (const operation of ['resend', 'revoke'] as const) {
         await assert.rejects(
           () => account.invitations[operation]({ actorId: actor.id, invitationId: bad as number }),
-          InvalidInputError
+          E_ACCOUNT_KIT_INVALID_INPUT
         )
       }
     }

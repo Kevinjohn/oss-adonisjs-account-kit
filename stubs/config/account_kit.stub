@@ -1,5 +1,6 @@
 {{{ exports({ to: app.configPath('account_kit.ts') }) }}}
 import env from '#start/env'
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import app from '@adonisjs/core/services/app'
 import {
   createActionUrls,
@@ -16,7 +17,7 @@ const users = createLucidAdapter(async () => {
 })
 
 const createUnconfiguredNotifier = (method: string) => async () => {
-  throw new Error('account_kit: configure notify.' + method)
+  throw new RuntimeException('account_kit: configure notify.' + method)
 }
 
 export default defineConfig({
@@ -82,13 +83,17 @@ export default defineConfig({
    * Applications without revocable credentials may deliberately replace this with a no-op.
    */
   onCredentialsChangedTransaction: async () => {
-    throw new Error('account_kit: implement the application credential-revocation policy')
+    throw new RuntimeException(
+      'account_kit: implement the application credential-revocation policy'
+    )
   },
 
   /**
    * Grants the invited role inside the acceptance transaction.
    */
   onInvitationAccepted: async (_user: AccountUser, _invitation: Invitation, _trx: Trx) => {
-    throw new Error('account_kit: implement onInvitationAccepted in config/account_kit.ts')
+    throw new RuntimeException(
+      'account_kit: implement onInvitationAccepted in config/account_kit.ts'
+    )
   },
 })

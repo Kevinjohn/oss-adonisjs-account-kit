@@ -1,6 +1,9 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AdapterContractError, SocialTransactionError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+} from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
@@ -141,7 +144,7 @@ test.group('social continuation and handoff', (group) => {
     ])
       await assert.rejects(
         () => account.socialAuthentication.redeemHandoff({ code, verifier, guard: guard as never }),
-        SocialTransactionError
+        E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
       )
     assert.lengthOf(await kit.db.from('social_handoff_codes'), 1)
     await kit.db
@@ -149,7 +152,7 @@ test.group('social continuation and handoff', (group) => {
       .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     await assert.rejects(
       () => account.socialAuthentication.redeemHandoff({ code, verifier, guard: sessionGuard }),
-      SocialTransactionError
+      E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
     )
   })
 
@@ -373,7 +376,7 @@ test.group('social policy contract routing', (group) => {
                 guard,
               })
         ).catch((caught: unknown) => caught)
-        assert.instanceOf(error, AdapterContractError)
+        assert.instanceOf(error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
         assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
         assert.equal(established, boundary === 'issuance')
         assert.equal(terminated, boundary === 'issuance')

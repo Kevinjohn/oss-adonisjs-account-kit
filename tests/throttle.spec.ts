@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { ThrottledError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_THROTTLED } from '../src/errors.js'
 import { consume, buildLimiterKey } from '../src/throttle.js'
 import { useTestApp } from './helpers/app.js'
 test.group('operation throttling', (group) => {
@@ -16,10 +16,11 @@ test.group('operation throttling', (group) => {
       await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32), 'default')
       assert.fail('expected throttle rejection')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
-      assert.isAbove((error as ThrottledError).retryAfterSeconds, 0)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
+      assert.isAbove((error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).retryAfterSeconds, 0)
       assert.equal(
-        (error as ThrottledError).cause && (error as { cause: { code: string } }).cause.code,
+        (error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).cause &&
+          (error as { cause: { code: string } }).cause.code,
         'E_TOO_MANY_REQUESTS'
       )
     }
@@ -34,7 +35,7 @@ test.group('operation throttling', (group) => {
       await consume(kit.limiter, 'recovery:client', 'same', options, 'a'.repeat(32), 'default')
       assert.fail('expected the existing budget to remain exhausted')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
     }
     assert.equal(buildLimiterKey('recovery:client', 'same', 'a'.repeat(32), 'default'), storedKey)
   })

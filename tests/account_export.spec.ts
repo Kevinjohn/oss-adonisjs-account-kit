@@ -1,12 +1,12 @@
 import { test } from '@japa/runner'
 import { exportFault } from '../src/account_export.js'
 import {
-  CapabilityDisabledError,
-  IdentityNotConfirmedError,
-  NoPasswordError,
-  PostCommitError,
-  SocialProofError,
-  ThrottledError,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_NO_PASSWORD,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import type { AccountKitConfig, AccountUser, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -329,7 +329,7 @@ test.group('account data export', (group) => {
     assert.deepEqual(document.application, { ok: true })
     assert.equal(document.account.id, user.id)
     const fault = exportFault(document)
-    assert.instanceOf(fault, PostCommitError)
+    assert.instanceOf(fault, E_ACCOUNT_KIT_POST_COMMIT)
     assert.equal(fault!.cause, failure)
     const clean = await service().account.accountData.export({
       actorId: user.id,
@@ -350,24 +350,24 @@ test.group('account data export', (group) => {
     const exportOf = (recentProof?: string) =>
       account.accountData.export({ actorId: user.id, recentProof })
 
-    await assert.rejects(() => exportOf(), IdentityNotConfirmedError)
+    await assert.rejects(() => exportOf(), E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
     const wrongPurpose = await issueRecentProof(kit, config, user.id, 'account_delete')
-    await assert.rejects(() => exportOf(wrongPurpose), SocialProofError)
+    await assert.rejects(() => exportOf(wrongPurpose), E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID)
     const theirs = await issueRecentProof(kit, config, other.id, 'account_export')
-    await assert.rejects(() => exportOf(theirs), SocialProofError)
+    await assert.rejects(() => exportOf(theirs), E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID)
     const expired = await issueRecentProof(kit, config, user.id, 'account_export')
     await kit.db.from('social_sensitive_proofs').update({ expires_at: past(kit) })
-    await assert.rejects(() => exportOf(expired), SocialProofError)
+    await assert.rejects(() => exportOf(expired), E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID)
 
     const proof = await issueRecentProof(kit, config, user.id, 'account_export')
     const document = await exportOf(proof)
     assert.isFalse(document.account.hasPassword)
-    await assert.rejects(() => exportOf(proof), SocialProofError)
+    await assert.rejects(() => exportOf(proof), E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID)
 
     const { account: withoutSocial } = service()
     await assert.rejects(
       () => withoutSocial.accountData.export({ actorId: user.id, recentProof: proof }),
-      NoPasswordError
+      E_ACCOUNT_KIT_NO_PASSWORD
     )
   })
 
@@ -378,12 +378,12 @@ test.group('account data export', (group) => {
     const { account } = service({ throttle: { requests: 2, duration: '1m' } })
     await assert.rejects(
       () => account.accountData.export({ actorId: user.id, currentPassword: 'wrong-password' }),
-      IdentityNotConfirmedError
+      E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
     )
     await account.accountData.export({ actorId: user.id, currentPassword: 'password123' })
     await assert.rejects(
       () => account.accountData.export({ actorId: user.id, currentPassword: 'password123' }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
   })
 
@@ -392,7 +392,7 @@ test.group('account data export', (group) => {
     const { account } = makeService(kit)
     await assert.rejects(
       () => account.accountData.export({ actorId: user.id, currentPassword: 'password123' }),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
   })
 })

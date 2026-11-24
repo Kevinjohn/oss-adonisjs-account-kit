@@ -1,8 +1,9 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Transaction engine: SQLite busy-retry, and PostgreSQL and MySQL commit wrapping with committed-fault reporting.
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { performance } from 'node:perf_hooks'
 import type { Database } from '@adonisjs/lucid/database'
-import { PostCommitError } from './errors.js'
+import { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
 import type { Trx } from './types.js'
 
 const SQLITE_RETRY_MS = 10
@@ -34,7 +35,7 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
       (error as { code?: string; message?: string }).code === 'SQLITE_ERROR' &&
       (error as Error).message.includes('no such table: account_transaction_lock')
     ) {
-      throw new Error(
+      throw new RuntimeException(
         'Account kit SQLite transaction lock is missing; run the account_transaction_lock migration',
         { cause: error }
       )
@@ -42,7 +43,9 @@ async function lockSQLiteTransaction(trx: Trx): Promise<void> {
     throw error
   }
   if (rows.length !== 1) {
-    throw new Error('Account kit SQLite transaction lock row is missing; restore singleton id=1')
+    throw new RuntimeException(
+      'Account kit SQLite transaction lock row is missing; restore singleton id=1'
+    )
   }
 }
 
@@ -117,16 +120,21 @@ async function runAndCommit<T>(
   }
 }
 
-const committedResults = new WeakMap<PostCommitError, unknown>()
+const committedResults = new WeakMap<InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>, unknown>()
 
 /** Internal operation data is retained privately, never placed on a public committed error. */
 export function getCommittedResult<T>(error: unknown): { value: T } | null {
-  if (!(error instanceof PostCommitError) || !committedResults.has(error)) return null
+  if (!(error instanceof E_ACCOUNT_KIT_POST_COMMIT) || !committedResults.has(error)) return null
   return { value: committedResults.get(error) as T }
 }
 
-function createCommittedFailure<T>(cause: unknown, result: T): PostCommitError {
-  const error = new PostCommitError('Account change committed but a follow-up failed', { cause })
+function createCommittedFailure<T>(
+  cause: unknown,
+  result: T
+): InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> {
+  const error = new E_ACCOUNT_KIT_POST_COMMIT('Account change committed but a follow-up failed', {
+    cause,
+  })
   committedResults.set(error, result)
   return error
 }
@@ -146,7 +154,7 @@ function requireUtcMysqlClient(db: Database, connectionName: string): void {
   const config = db.manager.get(connectionName)?.config
   const timezone = (config?.connection as { timezone?: string } | undefined)?.timezone
   if (timezone === 'Z' || timezone === '+00:00') return
-  throw new Error(
+  throw new RuntimeException(
     `Account kit requires timezone: 'Z' on the MySQL connection "${connectionName}" (found ${JSON.stringify(timezone ?? 'local')})`
   )
 }
@@ -185,7 +193,7 @@ function trackCommit<T>() {
     onResult: (value: T) => {
       result = value
     },
-    /** A failure after the commit becomes a `PostCommitError`; any other is returned unchanged. */
+    /** A failure after the commit becomes a `E_ACCOUNT_KIT_POST_COMMIT`; any other is returned unchanged. */
     mapTransactionFailure: (error: unknown): unknown =>
       committed ? createCommittedFailure(error, result as T) : error,
   }
@@ -288,13 +296,28 @@ async function runSqliteTransaction<T>(
 /** Set while a package transaction's callback runs, so a nested call fails instead of hanging. */
 const insideTransaction = new AsyncLocalStorage<true>()
 
-/** Run a database-only callback; callers perform notifications after this resolves. */
+/**
+ * Run a database-only callback; callers perform notifications after this resolves.
+ *
+ * @example
+ * ```ts
+ * import { transaction } from '@kevinjohn/adonisjs-account-kit/transaction'
+ * import db from '@adonisjs/lucid/services/db'
+ *
+ * await transaction(db, async (trx) => {
+ *   await trx.from('users').where('id', userId).update({ display_name: 'Sam Example' })
+ * })
+ * ```
+ */
 export async function transaction<T>(db: Database, callback: (trx: Trx) => Promise<T>): Promise<T> {
   const connection = db.connection()
-  if (connection.isTransaction) throw new Error('Account kit requires its own transaction')
+  if (connection.isTransaction)
+    throw new RuntimeException('Account kit requires its own transaction')
   // On SQLite a nested call waits for the outer writer lock; elsewhere it commits on its own.
   if (insideTransaction.getStore())
-    throw new Error('Account kit transactions cannot be nested; use the trx you were given')
+    throw new RuntimeException(
+      'Account kit transactions cannot be nested; use the trx you were given'
+    )
   return insideTransaction.run(true, () => openTransaction(db, connection, callback))
 }
 

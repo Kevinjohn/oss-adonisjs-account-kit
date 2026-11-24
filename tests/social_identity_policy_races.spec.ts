@@ -3,7 +3,10 @@ import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { clientChallenge, provider, current } from './helpers/social_identity.js'
 import { dbTime } from './helpers/db_time.js'
-import { LastLoginMethodError, InvalidSessionError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+} from '../src/errors.js'
 import { readIsoTimestamp } from '../src/timestamps.js'
 import { locksRows } from './helpers/dialect.js'
 import {
@@ -188,7 +191,10 @@ test.group('social policy and method races', (group) => {
     ])
     assert.equal(firstOutcome.status, 'fulfilled')
     assert.equal(secondOutcome.status, 'rejected')
-    assert.instanceOf((secondOutcome as PromiseRejectedResult).reason, InvalidSessionError)
+    assert.instanceOf(
+      (secondOutcome as PromiseRejectedResult).reason,
+      E_ACCOUNT_KIT_INVALID_SESSION
+    )
 
     const after = await kit.db.from('users').where('id', user.id).first()
     const remaining = await kit.db
@@ -231,7 +237,7 @@ test.group('social policy and method races', (group) => {
           identityId: github.id,
           proof: proof.proof,
         }),
-      LastLoginMethodError
+      E_ACCOUNT_KIT_SOCIAL_LAST_LOGIN_METHOD
     )
     assert.lengthOf(await kit.db.from('social_identities').where('user_id', user.id), 1)
   }).timeout(10_000)

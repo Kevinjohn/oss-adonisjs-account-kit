@@ -177,7 +177,7 @@ message, and exits with status 1. Lifecycle events from these commands carry `so
 
 Replace the `./commands` entry in the `commands` array of `adonisrc.ts`
 with `defineCommands`, which loads the same commands without the ones you name. It imports the
-commands only when Ace first needs them, and throws `InvalidConfigurationError` (field
+commands only when Ace first needs them, and throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION` (field
 `commands.exclude`) for an unknown or repeated name.
 
 ```ts
@@ -206,15 +206,15 @@ integration and verification are complete.
 
 ### Recover from committed notification or observer failures
 
-`DeliveryError` identifies a committed delivery-only failure and does not
-add a `committed` field to the mapped error body. `PostCommitError` identifies a failed observer or
+`E_ACCOUNT_KIT_DELIVERY` identifies a committed delivery-only failure and does not
+add a `committed` field to the mapped error body. `E_ACCOUNT_KIT_POST_COMMIT` identifies a failed observer or
 commit listener and maps with `committed: true`; if a delivery also fails, its cause is included.
 For example, reset-link delivery and notice-only failures on reset completion or password change
-can produce `DeliveryError`. An observer or commit-listener failure produces `PostCommitError`,
+can produce `E_ACCOUNT_KIT_DELIVERY`. An observer or commit-listener failure produces `E_ACCOUNT_KIT_POST_COMMIT`,
 including when a notice also fails. Handle either at the operation boundary: record only a redacted operation name
 and failure kind, then return that operation's normal success or partial-success response. Do not
 repeat a mutation because its follow-up failed. Other package-defined errors extend
-`AccountKitError`; database and application callback errors may propagate unchanged and should
+`E_ACCOUNT_KIT`; database and application callback errors may propagate unchanged and should
 continue through normal application reporting.
 
 The API example's `account_kit_outbox` stores password-reset-completion and password-change notices

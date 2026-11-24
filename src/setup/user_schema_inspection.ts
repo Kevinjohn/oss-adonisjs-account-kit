@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Setup planning phase: static analysis of the UserSchema class the user model composes.
 import { lstat, readFile } from 'node:fs/promises'
 import { requireSafeSetupPath } from './safe_path.js'
@@ -37,11 +38,11 @@ export async function inspectUserSchema(
         './database/schema.js'
       )
     )
-      throw new Error('Setup cannot resolve #database/schema to the inspected schema')
+      throw new RuntimeException('Setup cannot resolve #database/schema to the inspected schema')
     const path = await requireSafeSetupPath(root, schemaPath)
     const schemaStat = await lstat(path)
     if (!schemaStat.isFile())
-      throw new Error(`Setup cannot inspect non-regular schema ${schemaPath}`)
+      throw new RuntimeException(`Setup cannot inspect non-regular schema ${schemaPath}`)
     const parsed = await parseSetupSource(await readFile(path, 'utf8'))
     const base = getImportedBindingName(parsed, '@adonisjs/lucid/orm', 'BaseModel')
     const column = getImportedBindingName(parsed, '@adonisjs/lucid/orm', 'column')

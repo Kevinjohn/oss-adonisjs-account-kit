@@ -1,16 +1,18 @@
 // Refuses admission operations whose requirement is not configured.
-import { CapabilityDisabledError } from '../errors.js'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from '../errors.js'
 import type { ResolvedAdmissionConfig } from './types.js'
 
-/** The approval settings, or `CapabilityDisabledError` when approval is not configured. */
+/** The approval settings, or `E_ACCOUNT_KIT_CAPABILITY_DISABLED` when approval is not configured. */
 export function requireApproval(
   config: ResolvedAdmissionConfig
 ): NonNullable<ResolvedAdmissionConfig['approval']> {
-  if (!config.approval) throw new CapabilityDisabledError('admission approval is disabled')
+  if (!config.approval)
+    throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('admission approval is disabled')
   return config.approval
 }
 
-/** `CapabilityDisabledError` when the invitation requirement is not configured. */
+/** `E_ACCOUNT_KIT_CAPABILITY_DISABLED` when the invitation requirement is not configured. */
 export function requireInvitationRequirement(config: ResolvedAdmissionConfig): void {
-  if (!config.invitation) throw new CapabilityDisabledError('admission invitation is disabled')
+  if (!config.invitation)
+    throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('admission invitation is disabled')
 }

@@ -1,9 +1,9 @@
 /** Parses a managed route's numeric `:id` parameter in canonical positive decimal form as a safe integer. */
-import { InvalidInputError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../errors.js'
 
 export function requirePositiveId(value: string, label: string): number {
   const id = Number(value)
   if (!Number.isSafeInteger(id) || id <= 0 || String(id) !== value)
-    throw new InvalidInputError(`Invalid ${label} ID`)
+    throw new E_ACCOUNT_KIT_INVALID_INPUT(`Invalid ${label} ID`)
   return id
 }

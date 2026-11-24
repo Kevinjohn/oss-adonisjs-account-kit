@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { InvalidSessionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { accessTokenDefaults } from './helpers/access_tokens.js'
@@ -55,7 +55,7 @@ test.group('managed sign-in management routes', (group) => {
         }) as never,
       // Like the managed session guard: no signed-in user is an invalid session.
       current: async () => {
-        if (!caller) throw new InvalidSessionError()
+        if (!caller) throw new E_ACCOUNT_KIT_INVALID_SESSION()
         return caller
       },
       publicCredential: (credential: string) => `public:${credential}`,

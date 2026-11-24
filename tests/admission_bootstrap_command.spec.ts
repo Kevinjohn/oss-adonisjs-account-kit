@@ -1,9 +1,11 @@
 import { test } from '@japa/runner'
 import BootstrapAdmission from '../src/admission/commands/bootstrap.js'
-import { BootstrapApprovalChangedError } from '../src/admission/errors.js'
+import {
+  E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+} from '../src/errors.js'
 import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
 import { AccountAdmission } from '../src/admission/service.js'
-import { InvalidInputError } from '../src/errors.js'
 import { aceKernel } from './helpers/ace_kernel.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allRequirements, makeAdmission } from './helpers/admission.js'
@@ -39,7 +41,7 @@ test.group('admission bootstrap', (group) => {
       ['boss@example.test']
     )
     assert.equal(missingRole.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
-    assert.instanceOf(missingRole.error, InvalidInputError)
+    assert.instanceOf(missingRole.error, E_ACCOUNT_KIT_INVALID_INPUT)
     assert.equal(missingRole.exitCode, 1)
     assert.lengthOf(stdout(), 2)
     const stderr = logs().filter((entry) => entry.stream === 'stderr')
@@ -78,9 +80,10 @@ test.group('admission bootstrap', (group) => {
 
     assert.isTrue(cancelled)
     assert.isString(url)
-    assert.instanceOf(command.error, BootstrapApprovalChangedError)
-    assert.instanceOf(command.error, InvalidInputError)
-    assert.equal(command.error.name, 'InvalidInputError')
+    assert.instanceOf(command.error, E_ACCOUNT_KIT_BOOTSTRAP_APPROVAL_CHANGED)
+    assert.instanceOf(command.error, E_ACCOUNT_KIT_INVALID_INPUT)
+    assert.equal(command.error.code, 'E_ACCOUNT_KIT_INVALID_INPUT')
+    assert.equal(command.error.status, 422)
     assert.equal(command.failure, 'E_ACCOUNT_KIT_INVALID_INPUT')
     assert.equal(command.exitCode, 1)
     assert.lengthOf(logs(), 1)

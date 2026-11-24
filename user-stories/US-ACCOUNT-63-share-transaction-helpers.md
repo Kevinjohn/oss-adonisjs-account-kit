@@ -46,7 +46,7 @@ flowchart TD
     K -->|No| U["Propagate pre-commit failure"]
     B -->|Yes| F{"Committed cleanup or listener failure?"}
     F -->|No| C["Return callback result"]
-    F -->|Yes| E["Report PostCommitError; do not replay committed write"]
+    F -->|Yes| E["Report E_ACCOUNT_KIT_POST_COMMIT; do not replay committed write"]
 ```
 
 **Code references:** [transaction](../src/transaction.ts), [lockRow](../src/user_lock.ts), [timestamp helpers](../src/timestamps.ts)

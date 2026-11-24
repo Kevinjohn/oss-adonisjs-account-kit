@@ -641,7 +641,7 @@ server used UTC and was stopped afterward. MySQL remains experimental because it
 the per-change CI matrix.
 
 Installed consumers both compiled with `skipLibCheck: false` and booted the service. They verify
-the public inspection types and method, the denial export, and `InvalidInputError` before a
+the public inspection types and method, the denial export, and `E_ACCOUNT_KIT_INVALID_INPUT` before a
 transaction can reach the intentionally absent account schema. Auth, Session, Shield, Tuyau,
 Mail and Ally packages are absent in both installations. SQLite reports 3.53.2.
 
@@ -683,7 +683,7 @@ each failure was checked against its named test rather than an empty test run or
 | Touch the limiter during inspection               | Typecheck passes; all four INS-06 tests fail with `limiter touched`                                                                       |
 | Remove witness `.forUpdate()`                     | PostgreSQL's reader-lock probe test fails because `55P03` is absent; both SQLite tests still pass under its transaction-start writer lock |
 
-The changelog includes `AccountAccessDeniedError` and
+The changelog includes `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED` and
 `authentication.inspectAccountAccess`. These archives are consumable candidate artefacts; no
 package version was changed and nothing was published to the package registry.
 

@@ -2,7 +2,11 @@
 import { randomUUID } from 'node:crypto'
 import { lockUser, transaction } from '../db.js'
 import { isEmailShaped, normalizeEmail } from '../email.js'
-import { InvalidInputError, UserNotFoundError } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_DECISION,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { AccountUser } from '../types.js'
 import { requireApproval, requireInvitationRequirement } from './capability.js'
@@ -11,24 +15,23 @@ import {
   approvalStatusByTransition,
   type AdmissionTransition,
 } from './decisions.js'
-import { AdmissionDecisionError } from './errors.js'
 import { withAdmissionEvent } from './events.js'
 import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.js'
 import type { AdmissionContext } from './service.js'
 import type { AdmissionRecord } from './types.js'
 
-/** Lock and load the account an operator names by email, or `UserNotFoundError`. */
+/** Lock and load the account an operator names by email, or `E_ACCOUNT_KIT_USER_NOT_FOUND`. */
 async function lockSubject(
   deps: AdmissionContext,
   trx: Parameters<typeof lockUser>[0],
   email: unknown
 ): Promise<AccountUser> {
-  if (!isEmailShaped(email)) throw new InvalidInputError('Invalid email')
+  if (!isEmailShaped(email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
   const found = await deps.accountConfig.users.findByEmail(normalizeEmail(email), trx)
-  if (!found) throw new UserNotFoundError()
+  if (!found) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
   await lockUser(trx, deps.accountConfig, found.id)
   const subject = await deps.accountConfig.users.findById(found.id, trx)
-  if (!subject) throw new UserNotFoundError()
+  if (!subject) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
   return subject
 }
 
@@ -69,7 +72,7 @@ export async function grantOperatorInvitation(
     input.role !== undefined &&
     (typeof input.role !== 'string' || input.role.length < 1 || input.role.length > 64)
   )
-    throw new InvalidInputError('Invalid role')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
   const operationId = randomUUID()
   return withAdmissionEvent(
     deps.config,
@@ -77,7 +80,7 @@ export async function grantOperatorInvitation(
       const subject = await lockSubject(deps, trx, input.email)
       const existing = await readAdmissionRow(trx, subject.id)
       if (existing && existing.invitation_recorded_at !== null)
-        throw new AdmissionDecisionError('Invitation evidence is already recorded')
+        throw new E_ACCOUNT_KIT_ADMISSION_DECISION('Invitation evidence is already recorded')
       const now = sqlTimestamp(trx)
       const row = await upsertAdmissionRow(
         trx,

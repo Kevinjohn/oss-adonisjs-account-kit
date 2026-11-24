@@ -3,7 +3,7 @@ import type { ApplicationService } from '@adonisjs/core/types'
 import { AccountKitCallbackRegistry } from './callback_registry.js'
 import { assertObject } from './config_assert.js'
 import { configInputs, resolveConfig } from './config.js'
-import { InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 import type { AccountKitCallbacks, AccountKitConfig, ResolvedConfig } from './types.js'
 
 const resolutions = new WeakMap<
@@ -12,7 +12,7 @@ const resolutions = new WeakMap<
 >()
 
 function rejectDuplicateSetting(field: string): never {
-  throw new InvalidConfigurationError(
+  throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
     field,
     `account_kit: ${field} is set in both config/account_kit.ts and the registered callbacks`
   )

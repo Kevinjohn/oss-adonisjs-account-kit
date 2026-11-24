@@ -6,7 +6,7 @@ import {
   profileUpdateValidator,
   signupValidator,
 } from '../src/http/validators.js'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { mapManagedErrorResponse } from '../src/http/responses.js'
 
 test.group('managed request validation', () => {
@@ -53,7 +53,7 @@ test.group('managed request validation', () => {
   })
 
   test('password-policy rejection is never misreported as invalid proof', ({ assert }) => {
-    const response = mapManagedErrorResponse(new InvalidInputError('Invalid password'), {
+    const response = mapManagedErrorResponse(new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password'), {
       proof: 'password',
     })
     assert.equal(response?.body.errors[0].code, 'E_ACCOUNT_KIT_INVALID_INPUT')

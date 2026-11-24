@@ -2,11 +2,11 @@ import { test, timeTravel } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { defineConfig } from '../src/account_kit.js'
 import {
-  DeliveryError,
-  InvalidInputError,
-  InvalidTokenError,
-  PostCommitError,
-  ThrottledError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import { lockRow, transaction } from '../src/db.js'
 import { generateToken, hashToken } from '../src/tokens.js'
@@ -90,7 +90,7 @@ test.group('emailVerification.send', (group) => {
     timeTravel(new Date(new Date(secondProof.expires_at).valueOf() + 1))
     await assert.rejects(
       () => account.emailVerification.complete({ token: secondToken, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -115,7 +115,10 @@ test.group('emailVerification.send', (group) => {
     assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
     const token = tokenFrom(recorder.calls[0].args[1])
     assert.equal(await account.emailVerification.send({ userId: id }), 'sent')
-    await assert.rejects(() => account.emailVerification.send({ userId: id }), ThrottledError)
+    await assert.rejects(
+      () => account.emailVerification.send({ userId: id }),
+      E_ACCOUNT_KIT_THROTTLED
+    )
     assert.lengthOf(recorder.calls, 1)
     assert.isTrue(await account.emailVerification.inspect({ token }))
   })
@@ -180,7 +183,10 @@ test.group('emailVerification.send', (group) => {
     )
     const failure = new Error('listener failed after commit')
     const account = accountKit({ ...kit, db: faultAfterCommit(kit.db, failure) }, config)
-    await assert.rejects(() => account.emailVerification.send({ userId: id }), PostCommitError)
+    await assert.rejects(
+      () => account.emailVerification.send({ userId: id }),
+      E_ACCOUNT_KIT_POST_COMMIT
+    )
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
       ['accountActivationProvision']
@@ -193,7 +199,10 @@ test.group('emailVerification.send', (group) => {
   }) => {
     const id = await createUser(true)
     const { account, recorder } = service()
-    await assert.rejects(() => account.emailVerification.send({ userId: 99999 }), InvalidInputError)
+    await assert.rejects(
+      () => account.emailVerification.send({ userId: 99999 }),
+      E_ACCOUNT_KIT_INVALID_INPUT
+    )
     for (let index = 0; index < 6; index++)
       assert.equal(await account.emailVerification.send({ userId: id }), 'already_verified')
     assert.lengthOf(recorder.calls, 0)
@@ -215,8 +224,8 @@ test.group('emailVerification.send', (group) => {
       await account.emailVerification.send({ userId: id })
       assert.fail('expected throttle')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
-      assert.isAbove((error as ThrottledError).retryAfterSeconds, 0)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
+      assert.isAbove((error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).retryAfterSeconds, 0)
     }
     assert.lengthOf(recorder.calls, 5)
   })
@@ -230,8 +239,11 @@ test.group('emailVerification.send', (group) => {
       await account.emailVerification.send({ userId: id })
       assert.fail('expected delivery failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause instanceof Error, true)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause instanceof Error,
+        true
+      )
     }
     // An immediate retry sends a new link rather than reporting the undelivered one as sent.
     recorder.failOn(null)
@@ -261,8 +273,8 @@ test.group('emailVerification.send', (group) => {
       await brokenUrl.emailVerification.send({ userId: id })
       assert.fail('expected URL failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, failure)
     }
   })
 })
@@ -296,7 +308,7 @@ test.group('emailVerification.complete', (group) => {
     assert.isNotNull(verified.email_verified_at)
     await assert.rejects(
       () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.equal(callbacks, 1)
   })
@@ -318,7 +330,7 @@ test.group('emailVerification.complete', (group) => {
     )
     await assert.rejects(
       () => account.passwordReset.reset({ token: resetToken, password: 'newPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.lengthOf(await kit.db.from('password_reset_tokens').where('tokenable_id', id), 0)
   })
@@ -364,8 +376,8 @@ test.group('emailVerification.complete', (group) => {
       await account.emailVerification.complete({ token, password: 'NewPassword123' })
       assert.fail('expected committed cleanup failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
     }
     const user = await kit.db.from('users').where('id', id).first()
     assert.isNotNull(user.email_verified_at)
@@ -378,7 +390,7 @@ test.group('emailVerification.complete', (group) => {
     await assert.rejects(
       () =>
         makeService(kit).account.emailVerification.complete({ token, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -388,7 +400,7 @@ test.group('emailVerification.complete', (group) => {
     const wrongPurpose = generateToken()
     await assert.rejects(
       () => account.emailVerification.complete({ token: wrongPurpose, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
@@ -399,7 +411,7 @@ test.group('emailVerification.complete', (group) => {
     timeTravel(new Date(Date.now() + 3_600_001))
     await assert.rejects(
       () => account.emailVerification.complete({ token: expired, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
@@ -412,12 +424,12 @@ test.group('emailVerification.complete', (group) => {
       await assert.rejects(
         () =>
           account.emailVerification.complete({ token: value as never, password: 'NewPassword123' }),
-        InvalidTokenError
+        E_ACCOUNT_KIT_INVALID_TOKEN
       )
     await assert.rejects(
       () =>
         account.emailVerification.complete({ token: 'a'.repeat(43), password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
@@ -431,14 +443,14 @@ test.group('emailVerification.complete', (group) => {
       .update({ email: 'changed@example.test', unverified_email: 'changed@example.test' })
     await assert.rejects(
       () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const row = await kit.db.from('users').where('id', id).first()
     assert.isNull(row.email_verified_at)
     await kit.db.from('users').where('id', id).delete()
     await assert.rejects(
       () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -530,7 +542,7 @@ test.group('emailVerification.complete', (group) => {
       await attemptedLock
       releaseChange()
       await changing
-      await assert.rejects(() => verifying, InvalidTokenError)
+      await assert.rejects(() => verifying, E_ACCOUNT_KIT_INVALID_TOKEN)
       const row = await kit.db.from('users').where('id', id).first()
       assert.equal(row.email, 'changed@example.test')
       assert.isNull(row.email_verified_at)

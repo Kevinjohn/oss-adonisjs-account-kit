@@ -1,6 +1,10 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { AdapterContractError, InvalidCredentialsError, InvalidTokenError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+} from '../src/errors.js'
 import { deriveClientChallenge } from '../src/magic_link.js'
 import type { AccountKitConfig, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -73,7 +77,7 @@ test.group('magicLink.complete', (group) => {
             },
           }
         ),
-      InvalidCredentialsError
+      E_INVALID_CREDENTIALS
     )
     assert.deepEqual(events.at(-1), ['terminate', `session:${user.id}`])
   })
@@ -113,7 +117,7 @@ test.group('magicLink.complete', (group) => {
     assert.isFalse(await account.magicLink.inspect({ token }))
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -141,17 +145,17 @@ test.group('magicLink.complete', (group) => {
     for (const bad of ['', 'short', `${verifier}!`, undefined as never])
       await assert.rejects(
         () => account.magicLink.complete({ token, verifier: bad }, sessionGuard()),
-        InvalidTokenError
+        E_ACCOUNT_KIT_INVALID_TOKEN
       )
     assert.isTrue(await account.magicLink.inspect({ token }))
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier: 'w'.repeat(43) }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.isFalse(await account.magicLink.inspect({ token }))
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -163,14 +167,14 @@ test.group('magicLink.complete', (group) => {
     assert.isFalse(await account.magicLink.inspect({ token }))
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const next = await reissue(user.email)
     await kit.db.from('users').where('id', user.id).update({ email: 'moved@example.test' })
     assert.isFalse(await account.magicLink.inspect({ token: next }))
     await assert.rejects(
       () => account.magicLink.complete({ token: next, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -199,7 +203,7 @@ test.group('magicLink.complete', (group) => {
     )
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.equal(accessChecks, 2)
     assert.lengthOf(await kit.db.from('login_link_tokens'), 0)
@@ -210,7 +214,7 @@ test.group('magicLink.complete', (group) => {
     assert.isFalse(await account.magicLink.inspect({ token: next }))
     await assert.rejects(
       () => account.magicLink.complete({ token: next, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -236,7 +240,7 @@ test.group('magicLink.complete', (group) => {
     const events: unknown[] = []
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard(events)),
-      InvalidCredentialsError
+      E_INVALID_CREDENTIALS
     )
     assert.deepEqual(events, [
       ['establish', user.id, null],
@@ -276,7 +280,7 @@ test.group('magicLink.complete', (group) => {
       1
     )
     const rejected = results.find((result) => result.status === 'rejected') as PromiseRejectedResult
-    assert.instanceOf(rejected.reason, InvalidTokenError)
+    assert.instanceOf(rejected.reason, E_ACCOUNT_KIT_INVALID_TOKEN)
   })
 
   test('access-token guards receive the configured abilities and lifetime', async ({ assert }) => {
@@ -380,7 +384,7 @@ test.group('magic links and credential changes', (group) => {
     assert.isFalse(await account.magicLink.inspect({ token }))
     await assert.rejects(
       () => account.magicLink.complete({ token, verifier }, sessionGuard()),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 })
@@ -435,9 +439,9 @@ test.group('magic-link policy contract routing', (group) => {
             .complete({ token, verifier }, guard)
             .catch((caught: unknown) => caught)
         }
-        assert.instanceOf(error, AdapterContractError)
-        assert.notInstanceOf(error, InvalidTokenError)
-        assert.notInstanceOf(error, InvalidCredentialsError)
+        assert.instanceOf(error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
+        assert.notInstanceOf(error, E_ACCOUNT_KIT_INVALID_TOKEN)
+        assert.notInstanceOf(error, E_INVALID_CREDENTIALS)
         assert.equal((error as Error).message, 'account_kit: canAccess must resolve to a boolean')
         assert.equal(established, boundary === 'issuance')
         assert.equal(terminated, boundary === 'issuance')

@@ -19,8 +19,8 @@ export default class SessionController {
       )
       active = account.active
     } catch (error) {
-      // ThrottledError reaches the exception handler, which asks the person to wait.
-      if (!(error instanceof errors.InvalidCredentialsError)) throw error
+      // E_ACCOUNT_KIT_THROTTLED reaches the exception handler, which asks the person to wait.
+      if (!(error instanceof errors.E_INVALID_CREDENTIALS)) throw error
       ctx.session.flash(
         'error',
         'The email or password is incorrect. Check your details and try again.'

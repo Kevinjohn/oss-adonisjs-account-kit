@@ -3,10 +3,10 @@ import type { SetupChoices, SetupDiagnostic, SetupFileChange, SetupInspection } 
 import {
   inspectDefaultExportExpression,
   getImportedBindingName,
-  InvalidSetupSourceError,
   parseSetupSource,
   type SetupSource,
 } from './ts_source.js'
+import { E_ACCOUNT_KIT_INVALID_SETUP_SOURCE } from '../errors.js'
 import { addSetupDiagnostic } from './shared.js'
 import {
   type NativeSessionConfiguration,
@@ -36,7 +36,7 @@ export async function planSessionConfigIntegration(
     base = wasManaged ? await unwrapManagedSessionConfig(previous, state.root, env) : previous
     parsed = await parseSetupSource(previous)
   } catch (error) {
-    if (!(error instanceof InvalidSetupSourceError)) throw error
+    if (!(error instanceof E_ACCOUNT_KIT_INVALID_SETUP_SOURCE)) throw error
     addSetupDiagnostic(
       diagnostics,
       path,

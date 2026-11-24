@@ -1,5 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError, InvalidTokenError } from '@kevinjohn/adonisjs-account-kit'
+import {
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+} from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import {
   invitationAcceptValidator,
@@ -11,7 +14,8 @@ import { committedFollowUp } from '#services/committed_failure_diagnostic'
 
 function invitationIdParam(value: string): number {
   const id = Number(value)
-  if (!Number.isSafeInteger(id) || id <= 0) throw new InvalidInputError('Invalid invitation ID')
+  if (!Number.isSafeInteger(id) || id <= 0)
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid invitation ID')
   return id
 }
 
@@ -62,7 +66,7 @@ export default class InvitationsController {
         verified: user.unverifiedEmail === null || user.unverifiedEmail !== user.email,
       })
     } catch (error) {
-      if (error instanceof InvalidTokenError) {
+      if (error instanceof E_ACCOUNT_KIT_INVALID_TOKEN) {
         return proofFailure(ctx, 'E_ACCOUNT_KIT_INVALID_TOKEN')
       }
       throw error

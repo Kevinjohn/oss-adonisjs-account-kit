@@ -1,3 +1,9 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
+import {
+  E_ACCOUNT_KIT_INVALID_SETUP_SOURCE,
+  E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE,
+  E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION,
+} from './src/errors.js'
 import type { CodeTransformer } from '@adonisjs/assembler/code_transformer'
 import { relative, resolve, sep } from 'node:path'
 import type Configure from '@adonisjs/core/commands/configure'
@@ -8,12 +14,7 @@ import { orderMigrations } from './src/setup/migration_order.js'
 import { readRegularFile } from './src/setup/safe_path.js'
 import { hasRegisteredCommand } from './src/setup/commands_inspection.js'
 import { inspectProviders } from './src/setup/providers_inspection.js'
-import {
-  InvalidSetupSourceError,
-  parseSetupSource,
-  walk,
-  type SetupSource,
-} from './src/setup/ts_source.js'
+import { parseSetupSource, walk, type SetupSource } from './src/setup/ts_source.js'
 import { stubsRoot } from './stubs/main.js'
 
 export {
@@ -24,9 +25,6 @@ export {
 
 const providerPath = '@kevinjohn/adonisjs-account-kit/account_kit_provider'
 
-class UnsupportedProvidersConfiguration extends Error {}
-class UnsupportedConfigShape extends Error {}
-
 type AssemblerProject = CodeTransformer['project']
 
 /**
@@ -35,15 +33,16 @@ type AssemblerProject = CodeTransformer['project']
  */
 async function hasRegisteredProvider(project: AssemblerProject, rcPath: string): Promise<boolean> {
   const rcFile = project.getSourceFile(rcPath)
-  if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
+  if (!rcFile)
+    throw new RuntimeException('could not load adonisrc.ts from the Assembler TypeScript project')
   if (project.getProgram().getSyntacticDiagnostics(rcFile).length)
-    throw new Error('adonisrc.ts contains TypeScript syntax errors')
+    throw new RuntimeException('adonisrc.ts contains TypeScript syntax errors')
   let source: SetupSource
   try {
     source = await parseSetupSource(rcFile.getFullText())
   } catch (error) {
-    if (error instanceof InvalidSetupSourceError)
-      throw new Error('adonisrc.ts contains TypeScript syntax errors')
+    if (error instanceof E_ACCOUNT_KIT_INVALID_SETUP_SOURCE)
+      throw new RuntimeException('adonisrc.ts contains TypeScript syntax errors')
     throw error
   }
   const { ts, file } = source
@@ -53,10 +52,13 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
     if (!call && ts.isCallExpression(node) && node.expression.getText(file) === 'defineConfig')
       call = node
   })
-  if (!call) throw new UnsupportedConfigShape('could not locate the defineConfig call')
+  if (!call)
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE('could not locate the defineConfig call')
   const config = call.arguments[0]
   if (!config || !ts.isObjectLiteralExpression(config))
-    throw new UnsupportedConfigShape('defineConfig does not receive a static object literal')
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE(
+      'defineConfig does not receive a static object literal'
+    )
 
   // A property's name as written, so `'providers'` (quoted) is not the providers property.
   const readPropertyName = (property: TypeScript.ObjectLiteralElementLike) =>
@@ -67,7 +69,9 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
     object.properties.findLastIndex((property) => ts.isSpreadAssignment(property))
 
   if (config.properties.some(isComputed)) {
-    throw new UnsupportedConfigShape('computed config properties cannot be inspected safely')
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE(
+      'computed config properties cannot be inspected safely'
+    )
   }
 
   const configSpread = locateLastSpread(config)
@@ -95,7 +99,7 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
       return property !== undefined && ts.isPropertyAssignment(property)
     })
   ) {
-    throw new UnsupportedConfigShape(
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE(
       'a config with object spreads must explicitly expose providers and commands after its last spread'
     )
   }
@@ -106,17 +110,21 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
     (!ts.isPropertyAssignment(commandsProperty) ||
       !ts.isArrayLiteralExpression(commandsProperty.initializer))
   ) {
-    throw new UnsupportedConfigShape('the commands property is not a static array assignment')
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE(
+      'the commands property is not a static array assignment'
+    )
   }
 
   const providers = inspectProviders(source, config, { config: findProperty, entry: findFile })
   if (providers.status === 'absent') return false
   if (providers.status === 'not-assignment')
-    throw new UnsupportedProvidersConfiguration(
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION(
       'the providers property is not a static array assignment'
     )
   if (providers.status === 'not-array')
-    throw new UnsupportedProvidersConfiguration('the providers property is not a static array')
+    throw new E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION(
+      'the providers property is not a static array'
+    )
 
   let providerFound = false
   for (const entry of providers.entries) {
@@ -125,7 +133,7 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
       ts.isObjectLiteralExpression(entry.node) &&
       entry.node.properties.some(isComputed)
     ) {
-      throw new UnsupportedProvidersConfiguration(
+      throw new E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION(
         'computed provider object properties cannot be inspected safely'
       )
     }
@@ -133,7 +141,7 @@ async function hasRegisteredProvider(project: AssemblerProject, rcPath: string):
       const message = entry.isObject
         ? 'a providers object must have a static file lazy import'
         : 'a providers entry is not a supported lazy import'
-      throw new UnsupportedProvidersConfiguration(message)
+      throw new E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION(message)
     }
     if (entry.path === providerPath) providerFound = true
   }
@@ -170,24 +178,25 @@ export async function configure(command: Configure) {
   let registeredCommand = false
   try {
     const project = await codemods.getTsMorphProject()
-    if (!project) throw new Error('the Assembler TypeScript project is unavailable')
+    if (!project) throw new RuntimeException('the Assembler TypeScript project is unavailable')
     const rcPath = command.app.makePath('adonisrc.ts')
     registeredProvider = await hasRegisteredProvider(project, rcPath)
     const rcFile = project.getSourceFile(rcPath)
-    if (!rcFile) throw new Error('could not load adonisrc.ts from the Assembler TypeScript project')
+    if (!rcFile)
+      throw new RuntimeException('could not load adonisrc.ts from the Assembler TypeScript project')
     registeredCommand = await hasRegisteredCommand(
       rcFile.getFullText(),
       '@kevinjohn/adonisjs-account-kit/commands'
     )
   } catch (error) {
-    if (error instanceof UnsupportedConfigShape) {
+    if (error instanceof E_ACCOUNT_KIT_UNSUPPORTED_CONFIG_SHAPE) {
       command.exitCode = 1
       command.logger.logError(
         `Unable to inspect adonisrc.ts: ${error.message}. Pass the config as an object literal, preserving its fields and exposing commands and providers explicitly (for example, defineConfig({ ...applicationConfig, commands: [...(applicationConfig.commands ?? [])], providers: applicationConfig.providers })). Ensure the provider list registers Account Kit exactly once: retain @kevinjohn/adonisjs-account-kit/account_kit_provider if present, and add it only if it is not registered. Then rerun node ace configure @kevinjohn/adonisjs-account-kit --provider-registered.`
       )
       return
     }
-    if (error instanceof UnsupportedProvidersConfiguration) {
+    if (error instanceof E_ACCOUNT_KIT_UNSUPPORTED_PROVIDERS_CONFIGURATION) {
       if (command.parsedFlags['provider-registered'] === true) {
         command.logger.info(
           'Assuming adonisrc.ts already registers the Account Kit provider; provider registration will not be changed.'

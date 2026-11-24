@@ -84,26 +84,26 @@ function admissionValidator(idType: UserIdType) {
       ? `/** Ids are UUIDs, stored in lower case, so a database never receives a malformed id. */
 export function userIdParam(value: unknown): string {
   if (typeof value !== 'string' || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value))
-    throw new InvalidInputError('Invalid user ID')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid user ID')
   return value.toLowerCase()
 }`
       : idType === 'integer'
         ? `/** Integer ids must be positive integers, so a database never receives a malformed id. */
 export function userIdParam(value: unknown): number {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
-    throw new InvalidInputError('Invalid user ID')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid user ID')
   const id = /^[1-9]\\d*$/.test(value) ? Number(value) : Number.NaN
-  if (!Number.isSafeInteger(id)) throw new InvalidInputError('Invalid user ID')
+  if (!Number.isSafeInteger(id)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid user ID')
   return id
 }`
         : `/** Ids are opaque strings; a database never receives an empty or oversized id. */
 export function userIdParam(value: unknown): string {
   if (typeof value !== 'string' || value.length === 0 || value.length > 64)
-    throw new InvalidInputError('Invalid user ID')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid user ID')
   return value
 }`
   return `import vine from '@vinejs/vine'
-import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit'
 
 export const admissionListValidator = vine.create({
   status: vine.enum(['pending', 'approved', 'rejected', 'revoked'] as const).optional(),

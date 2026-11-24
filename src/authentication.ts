@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { errors } from '@adonisjs/limiter'
@@ -21,10 +22,10 @@ import { hashToken } from './tokens.js'
 import { assessRetirementImpact } from './login_method_retirement.js'
 import { finishCommitted, postCommit, settleCommitted } from './effects.js'
 import {
-  InvalidCredentialsError,
-  InvalidSessionError,
-  ThrottledError,
-  UnverifiedEmailError,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_THROTTLED,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
 } from './errors.js'
 import type {
   AccountAccessInput,
@@ -59,7 +60,7 @@ async function requireCurrentAccountAndSession(
   const auth = requireAuthentication(deps.config)
   await lockUser(trx, deps.config, input.userId)
   const user = await deps.config.users.findById(input.userId, trx)
-  if (!user) throw new InvalidSessionError()
+  if (!user) throw new E_ACCOUNT_KIT_INVALID_SESSION()
   let session: LiveSession | undefined
   if (auth.strategy === 'session') {
     // Absence is different from the valid pre-first-change null stamp.
@@ -67,7 +68,7 @@ async function requireCurrentAccountAndSession(
       !Object.hasOwn(input, 'revision') ||
       input.revision !== (await revision(trx, deps.config, input.userId))
     )
-      throw new InvalidSessionError()
+      throw new E_ACCOUNT_KIT_INVALID_SESSION()
     if (isSessionRegistryEnabled(deps.config))
       session = await requireLiveSession(trx, input.userId, input.sessionHandle)
   } else {
@@ -79,10 +80,10 @@ async function requireCurrentAccountAndSession(
         .where('tokenable_id', input.userId)
         .first())
     )
-      throw new InvalidSessionError()
+      throw new E_ACCOUNT_KIT_INVALID_SESSION()
   }
   if (!requireAccountAccessDecision(await auth.canAccess(user, trx)))
-    throw new InvalidSessionError()
+    throw new E_ACCOUNT_KIT_INVALID_SESSION()
   if (session) await touchSession(trx, deps.config, session)
   return { account: buildAccountProjection(user), session }
 }
@@ -106,10 +107,10 @@ async function lockSignIn(
       : [sessionTable, session?.id]
   if (id === undefined) return
   if (!(await trx.from(table).select('id').where('id', id).forUpdate().first()))
-    throw new InvalidSessionError()
+    throw new E_ACCOUNT_KIT_INVALID_SESSION()
 }
 
-/** Atomically take one attempt from a budget, or throw `ThrottledError` when none is left. */
+/** Atomically take one attempt from a budget, or throw `E_ACCOUNT_KIT_THROTTLED` when none is left. */
 async function reserveAttempt(
   limiter: ReturnType<ServiceDependencies['limiter']['use']>,
   key: string
@@ -121,7 +122,7 @@ async function reserveAttempt(
       // A store that refuses still counts the attempt; give it back so only failures stay counted.
       // An in-memory block refuses without touching the store and reports nothing consumed.
       if (error.response.consumed > 0) await limiter.decrement(key)
-      throw new ThrottledError(error.response.availableIn, undefined, { cause: error })
+      throw new E_ACCOUNT_KIT_THROTTLED(error.response.availableIn, { cause: error })
     }
     throw error
   }
@@ -129,7 +130,14 @@ async function reserveAttempt(
 
 export function createAuthenticationService(deps: ServiceDependencies) {
   return {
-    /** Read-only impact of the login methods that remain after a proposed change. */
+    /**
+     * Read-only impact of the login methods that remain after a proposed change.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.retirementImpact({ passwordLogin: true, providers: ['github'] })
+     * ```
+     */
     async retirementImpact(input: {
       passwordLogin: boolean
       providers?: readonly SocialProviderName[]
@@ -157,10 +165,15 @@ export function createAuthenticationService(deps: ServiceDependencies) {
     /**
      * Looks up the account, checks its password and `canAccess`, then signs in through `guard`.
      * Unknown accounts, passwordless accounts, wrong passwords and access-decision denials throw
-     * `InvalidCredentialsError`, count against failed-login limits and wait out `minRequestMs`.
-     * Malformed input also throws `InvalidCredentialsError`, without counting or waiting.
+     * `E_INVALID_CREDENTIALS`, count against failed-login limits and wait out `minRequestMs`.
+     * Malformed input also throws `E_INVALID_CREDENTIALS`, without counting or waiting.
      * Guard/configuration errors, throttling, infrastructure failures and credential-establishment
      * failures have their own outcomes.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.login({ email: 'sam@example.test', password, clientKey: request.ip() }, requestGuard)
+     * ```
      */
     async login<Credential>(
       input: PasswordLoginInput,
@@ -168,14 +181,14 @@ export function createAuthenticationService(deps: ServiceDependencies) {
     ): Promise<{ account: CurrentAccount; credential: Credential }> {
       const auth = requireAuthentication(deps.config)
       if (guard.strategy !== auth.strategy || guard.name !== auth.guard)
-        throw new Error(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
+        throw new RuntimeException(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
       if (
         typeof input.email !== 'string' ||
         typeof input.password !== 'string' ||
         typeof input.clientKey !== 'string' ||
         input.clientKey.length === 0
       )
-        throw new InvalidCredentialsError()
+        throw new E_INVALID_CREDENTIALS()
 
       const email = normalizeEmail(input.email)
       const key = deps.throttler.deriveKey
@@ -199,7 +212,7 @@ export function createAuthenticationService(deps: ServiceDependencies) {
       try {
         verified = await transaction(deps.db, async (trx) => {
           const candidate = await deps.config.users.findByEmail(email, trx)
-          if (!candidate?.hasPassword) throw new InvalidCredentialsError()
+          if (!candidate?.hasPassword) throw new E_INVALID_CREDENTIALS()
           await lockUser(trx, deps.config, candidate.id)
           const user = await deps.config.users.findById(candidate.id, trx)
           if (
@@ -209,14 +222,14 @@ export function createAuthenticationService(deps: ServiceDependencies) {
             !(await deps.config.users.verifyPassword(user.id, input.password, trx)) ||
             !requireAccountAccessDecision(await auth.canAccess(user, trx))
           )
-            throw new InvalidCredentialsError()
+            throw new E_INVALID_CREDENTIALS()
           return {
             account: buildAccountProjection(user),
             revision: await revision(trx, deps.config, user.id),
           }
         })
       } catch (error) {
-        if (error instanceof InvalidCredentialsError) {
+        if (error instanceof E_INVALID_CREDENTIALS) {
           const identity = await identityLimiter.get(identityKey)
           if (identity && identity.consumed >= identity.limit)
             await identityLimiter.block(identityKey, auth.identityLimit.blockDuration)
@@ -235,26 +248,38 @@ export function createAuthenticationService(deps: ServiceDependencies) {
       const credential = await establishCredential(deps, auth, guard, verified, {
         label: typeof input.sessionLabel === 'string' ? input.sessionLabel : undefined,
         stillValid: async (_trx, user) => user.email === email,
-        rejected: () => new InvalidCredentialsError(),
+        rejected: () => new E_INVALID_CREDENTIALS(),
         cleanupFailed: 'Login failed and credential cleanup failed',
       })
       return { account: verified.account, credential }
     },
 
     /**
-     * Safe account data for the signed-in credential. Throws `InvalidSessionError` if it was
+     * Safe account data for the signed-in credential. Throws `E_ACCOUNT_KIT_INVALID_SESSION` if it was
      * revoked or is older than the latest credential change.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.current(current)
+     * ```
      */
     current(input: CurrentAccountInput): Promise<CurrentAccount> {
       return transaction(deps.db, (trx) => requireCurrentAccountInTransaction(deps, input, trx))
     },
 
-    /** Like `current`, and also throws `UnverifiedEmailError` until the address is confirmed. */
+    /**
+     * Like `current`, and also throws `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` until the address is confirmed.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.requireActive(current)
+     * ```
+     */
     async requireActive(input: CurrentAccountInput): Promise<CurrentAccount> {
       const account = await transaction(deps.db, (trx) =>
         requireCurrentAccountInTransaction(deps, input, trx)
       )
-      if (!account.active) throw new UnverifiedEmailError()
+      if (!account.active) throw new E_ACCOUNT_KIT_UNVERIFIED_EMAIL()
       return account
     },
 
@@ -265,8 +290,15 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * registry row has nothing to lock. `trx` is the Kit's transaction: use it for every write, keep
      * `run` database-only (SQLite may retry it), and lock your own rows inside `run`, never before
      * calling this. `signInId` is the caller's row in the sign-in table under the session strategy
-     * with the registry enabled, else undefined. Throws `InvalidSessionError` exactly as `current`
+     * with the registry enabled, else undefined. Throws `E_ACCOUNT_KIT_INVALID_SESSION` exactly as `current`
      * does; a throw from `run` rolls everything back and surfaces unchanged.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.withCurrent(current, async ({ account, trx }) => {
+     *   await trx.from('user_preferences').where('user_id', account.id).update({ theme: 'dark' })
+     * })
+     * ```
      */
     withCurrent<T>(
       input: CurrentAccountInput,
@@ -291,14 +323,26 @@ export function createAuthenticationService(deps: ServiceDependencies) {
      * callback or while your own transaction holds that account's row; it opens its own transaction
      * and waits for any in-progress change to the same account. Adapters and `canAccess` must be
      * read-only through the supplied transaction and safe to retry. Missing, restricted and (when
-     * required) inactive accounts share `AccountAccessDeniedError`. A `PostCommitError` discards
+     * required) inactive accounts share `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED`. A `E_ACCOUNT_KIT_POST_COMMIT` discards
      * the snapshot; retry is safe under that dependency contract.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.inspectAccountAccess({ userId, requireActive: true })
+     * ```
      */
     inspectAccountAccess(input: AccountAccessInput): Promise<AccountAccessSnapshot> {
       return inspectAccountAccess(deps, input)
     },
 
-    /** Pass `current` to also remove this session from the sign-in list. */
+    /**
+     * Pass `current` to also remove this session from the sign-in list.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.logout(requestGuard, undefined, current)
+     * ```
+     */
     async logout<Credential>(
       guard: Pick<AuthenticationGuard<Credential>, 'terminate'>,
       credential?: Credential,
@@ -317,6 +361,16 @@ export function createAuthenticationService(deps: ServiceDependencies) {
     /**
      * Runs `change` to update your restriction state under the account lock, then ends the user's
      * sessions and tokens in the same transaction.
+     *
+     * @example
+     * ```ts
+     * await kit.authentication.changeRestriction({
+     *   userId,
+     *   async change(user, trx) {
+     *     await trx.from('users').where('id', user.id).update({ restricted: true })
+     *   },
+     * })
+     * ```
      */
     async changeRestriction(input: {
       userId: UserId
@@ -328,7 +382,7 @@ export function createAuthenticationService(deps: ServiceDependencies) {
         transaction(deps.db, async (trx) => {
           await lockUser(trx, deps.config, input.userId)
           const current = await deps.config.users.findById(input.userId, trx)
-          if (!current) throw new InvalidCredentialsError()
+          if (!current) throw new E_INVALID_CREDENTIALS()
           const context = {
             operation: 'access_restriction' as const,
             operationId,

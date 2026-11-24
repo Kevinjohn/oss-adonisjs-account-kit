@@ -1,6 +1,9 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvitationManagementDeniedError, ThrottledError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
+  E_ACCOUNT_KIT_THROTTLED,
+} from '../src/errors.js'
 import { renderAccountKitError } from '../src/http/responses.js'
 import { fakeManagedHttp } from './helpers/managed_http_fakes.js'
 
@@ -23,10 +26,10 @@ function recordingContext(accept?: string) {
   return { ctx, sent }
 }
 
-test.group('AccountKitError self-handling', () => {
+test.group('E_ACCOUNT_KIT self-handling', () => {
   test('handle writes the envelope, status and headers for a masked error', async ({ assert }) => {
     const { ctx, sent } = recordingContext()
-    const error = new InvitationManagementDeniedError('hidden invitation')
+    const error = new E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED('hidden invitation')
     await error.handle(error, ctx)
     assert.equal(sent.status, 404)
     assert.deepEqual(sent.body, {
@@ -41,7 +44,7 @@ test.group('AccountKitError self-handling', () => {
     assert,
   }) => {
     const { ctx, sent } = recordingContext('application/vnd.api+json')
-    const error = new ThrottledError(1.2)
+    const error = new E_ACCOUNT_KIT_THROTTLED(1.2)
     await error.handle(error, ctx)
     assert.equal(sent.status, 429)
     assert.deepEqual(sent.body, {

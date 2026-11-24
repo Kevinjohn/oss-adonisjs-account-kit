@@ -34,6 +34,21 @@ export interface NotificationReadinessInput {
 /**
  * Checks that account email will actually reach people in this environment. Returns `ready`, a
  * delivery classification, and the problems and notes to show an operator.
+ *
+ * @example
+ * ```ts
+ * import { notificationReadiness } from '@kevinjohn/adonisjs-account-kit'
+ *
+ * const result = notificationReadiness({
+ *   environment: 'production',
+ *   delivery: 'best-effort',
+ *   transport: 'delivery',
+ *   backendOrigin: 'https://api.example.test',
+ *   actionOrigin: 'https://app.example.test',
+ *   enabled: ['passwordReset'],
+ *   destinations: { passwordReset: 'reset-password' },
+ * })
+ * ```
  */
 export function notificationReadiness(input: NotificationReadinessInput) {
   const problems: string[] = []

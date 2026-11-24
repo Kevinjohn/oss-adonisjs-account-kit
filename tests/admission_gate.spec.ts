@@ -1,10 +1,13 @@
 import { test } from '@japa/runner'
-import { AdmissionRequiredError } from '../src/admission/errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_REQUIRED,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
+} from '../src/errors.js'
 import { admissionMiddleware } from '../src/admission/middleware.js'
 import { advanceCredentialRevision } from '../src/credential_revision.js'
 import { transaction } from '../src/db.js'
 import { accountErrorResponse } from '../src/error_response.js'
-import { InvalidSessionError, UnverifiedEmailError } from '../src/errors.js'
 import type { AuthenticationConfig, CurrentAccountInput, Trx, UserId } from '../src/types.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
@@ -50,7 +53,7 @@ test.group('admission gate', (group) => {
       assert.equal(pending.account.id, person.id)
       assert.isFalse(pending.decision.admitted)
       const error = await admission.require(input).catch((caught) => caught)
-      assert.instanceOf(error, AdmissionRequiredError)
+      assert.instanceOf(error, E_ACCOUNT_KIT_ADMISSION_REQUIRED)
       assert.deepEqual(error.decision, pending.decision)
 
       await writeAdmissionRow(kit, person.id, { approval: 'approved' })
@@ -66,8 +69,8 @@ test.group('admission gate', (group) => {
       await transaction(kit.db, (trx) => advanceCredentialRevision(trx, config, person.id))
       // A pending account fails the credential check first, not the admission check.
       await writeAdmissionRow(kit, person.id, {})
-      await assert.rejects(() => admission.require(input), InvalidSessionError)
-      await assert.rejects(() => admission.current(input), InvalidSessionError)
+      await assert.rejects(() => admission.require(input), E_ACCOUNT_KIT_INVALID_SESSION)
+      await assert.rejects(() => admission.current(input), E_ACCOUNT_KIT_INVALID_SESSION)
     })
   }
 
@@ -77,10 +80,13 @@ test.group('admission gate', (group) => {
     })
     const person = await insertUser(kit, { verified: false })
     const input = { userId: person.id, revision: null }
-    await assert.rejects(() => admission.require(input), UnverifiedEmailError)
-    await assert.rejects(() => admission.require(input, { active: false }), AdmissionRequiredError)
+    await assert.rejects(() => admission.require(input), E_ACCOUNT_KIT_UNVERIFIED_EMAIL)
+    await assert.rejects(
+      () => admission.require(input, { active: false }),
+      E_ACCOUNT_KIT_ADMISSION_REQUIRED
+    )
     await writeAdmissionRow(kit, person.id, { approval: 'approved' })
-    await assert.rejects(() => admission.require(input), UnverifiedEmailError)
+    await assert.rejects(() => admission.require(input), E_ACCOUNT_KIT_UNVERIFIED_EMAIL)
     const passed = await admission.require(input, { active: false })
     assert.isFalse(passed.account.active)
   })
@@ -160,7 +166,7 @@ test.group('admission gate', (group) => {
       const handler = admissionMiddleware({ admission: async () => admission, guard })
       await assert.rejects(
         () => handler({} as never, async () => reached++),
-        AdmissionRequiredError
+        E_ACCOUNT_KIT_ADMISSION_REQUIRED
       )
       await writeAdmissionRow(kit, person.id, { approval: 'approved' })
       await handler({} as never, async () => reached++)
@@ -195,7 +201,7 @@ test.group('admission gate', (group) => {
         admissionMiddleware({ admission: async () => admission, guard })({} as never, async () => {
           reached = true
         }),
-      UnverifiedEmailError
+      E_ACCOUNT_KIT_UNVERIFIED_EMAIL
     )
     await admissionMiddleware({ admission: async () => admission, guard, active: false })(
       {} as never,

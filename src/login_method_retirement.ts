@@ -1,3 +1,4 @@
+import { InvalidArgumentsException, RuntimeException } from '@adonisjs/core/exceptions'
 // Login-method retirement impact: counts accounts that would lose every way to sign in.
 import { requireUserMetadata } from './db.js'
 import { isSocialProviderName } from './social_providers.js'
@@ -19,15 +20,19 @@ export async function assessRetirementImpact(
   currentPasswordLogin: boolean
 }> {
   if (typeof input.passwordLogin !== 'boolean')
-    throw new Error('Remaining password-login policy must be selected explicitly')
+    throw new InvalidArgumentsException(
+      'Remaining password-login policy must be selected explicitly'
+    )
   if (input.onlyWhenRetiring !== undefined && typeof input.onlyWhenRetiring !== 'boolean')
-    throw new Error('Retirement-only inventory option must be a boolean')
+    throw new InvalidArgumentsException('Retirement-only inventory option must be a boolean')
   if (
     input.providers &&
     (new Set(input.providers).size !== input.providers.length ||
       input.providers.some((provider) => !isSocialProviderName(provider)))
   )
-    throw new Error('Remaining provider inventory must use unique supported providers')
+    throw new InvalidArgumentsException(
+      'Remaining provider inventory must use unique supported providers'
+    )
   const currentProviders = new Set(
     deps.config.enabled.includes('socialAuthentication')
       ? (Object.keys(deps.config.socialAuthentication?.providers ?? {}) as SocialProviderName[])
@@ -78,7 +83,7 @@ export async function assessRetirementImpact(
     const loginMethodsByUserId = new Map<string, Set<string>>()
     for (const identity of identities) {
       if (!isSocialProviderName(identity.provider))
-        throw new Error('Unknown confirmed provider in login inventory')
+        throw new RuntimeException('Unknown confirmed provider in login inventory')
       const key = String(identity.user_id)
       const values = loginMethodsByUserId.get(key) ?? new Set<string>()
       values.add(identity.provider)
@@ -87,9 +92,11 @@ export async function assessRetirementImpact(
     for (const row of rows) {
       const id = row.id as UserId
       const user = await users.findById(id)
-      if (!user) throw new Error('Account adapter could not resolve an inventoried user')
+      if (!user) throw new RuntimeException('Account adapter could not resolve an inventoried user')
       if (typeof user.hasPassword !== 'boolean')
-        throw new Error('Account adapter must report whether each inventoried user has a password')
+        throw new RuntimeException(
+          'Account adapter must report whether each inventoried user has a password'
+        )
       inspectedAccounts++
       const confirmed = loginMethodsByUserId.get(String(id)) ?? new Set<string>()
       const hadUsableMethod =

@@ -13,7 +13,7 @@ As an application operator, I want to record invitation evidence for an existing
 
 - The email identifies an existing account. Role is optional and accepts 1–64 characters; when omitted it is stored as null. The invitation requirement must be enabled. Existing evidence causes refusal. The record preserves any approval decision and stores evidence with `source: 'operator'` and a null invitation ID. The role records history and confers no host permission.
 - On success the service returns the admission record and the command prints `result: 'granted'`, `userId` and `email` and role (or null). The configured observer receives `admission.invitation_granted` with operator source after commit. The command reports a committed observer failure on stderr with exit code 1 and the write saved.
-- A thrown runtime error, including a `PostCommitError`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
+- A thrown runtime error, including an `E_ACCOUNT_KIT_POST_COMMIT`, stays on Ace's `command.error` and produces one safe diagnostic on stderr with exit code 1.
 
 ## User flow
 
@@ -42,7 +42,7 @@ flowchart TD
  D -->|Yes| E["Upsert invitation evidence with operator source and decision preserved"]
  E --> F["Commit; withAdmissionEvent invokes configured admission.invitation_granted observer"]
  F --> G{"Follow-ups succeed?"}
- G -->|No| H["Ace retains PostCommitError; completed prints one diagnostic and exits nonzero"]
+ G -->|No| H["Ace retains E_ACCOUNT_KIT_POST_COMMIT; completed prints one diagnostic and exits nonzero"]
  G -->|Yes| I["Service returns AdmissionRecord and writeResult prints granted, userId and email, role"]
 ```
 

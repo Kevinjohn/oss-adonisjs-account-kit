@@ -33,7 +33,7 @@ export default class PasswordsController {
         'Password changed but a follow-up failed'
       )
       followUp =
-        error instanceof errors.DeliveryError
+        error instanceof errors.E_ACCOUNT_KIT_DELIVERY
           ? ' The notification email could not be sent.'
           : ' A follow-up step failed.'
     }

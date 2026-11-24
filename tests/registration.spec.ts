@@ -3,12 +3,12 @@ import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import {
-  AuthorizationError,
-  CapabilityDisabledError,
-  DeliveryError,
-  RegistrationEmailAlreadyRegisteredError,
-  InvalidInputError,
-  InvalidTokenError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
 } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { dbTime } from './helpers/db_time.js'
@@ -80,7 +80,7 @@ test.group('registration', (group) => {
           password: 'password123',
           registrationData: { role: 'admin' },
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     for (const field of ['role', 'credentials_changed_at', 'credentialsChangedAt']) {
       const mapped = makeService(kit, {
@@ -94,7 +94,7 @@ test.group('registration', (group) => {
             password: 'password123',
             registrationData: {},
           }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     }
     assert.equal((await kit.db.from('users')).length, 0)
@@ -106,7 +106,7 @@ test.group('registration', (group) => {
       registration: {
         availability: 'open',
         mapFields: async (input) => {
-          if (!input) throw new InvalidInputError('Profile is required')
+          if (!input) throw new E_ACCOUNT_KIT_INVALID_INPUT('Profile is required')
           return input as Record<string, unknown>
         },
       },
@@ -117,7 +117,7 @@ test.group('registration', (group) => {
           email: 'missing@example.test',
           password: 'password123',
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.lengthOf(await kit.db.from('users'), 0)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
@@ -135,7 +135,7 @@ test.group('registration', (group) => {
           password: 'password123',
           registrationData: {},
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.lengthOf(await kit.db.from('users'), 0)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
@@ -154,7 +154,7 @@ test.group('registration', (group) => {
           email: 'person@example.test',
           password: 'password123',
         }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     const disabled = makeService(kit, {
       enabled: ['emailVerification'],
@@ -166,7 +166,7 @@ test.group('registration', (group) => {
           email: 'person@example.test',
           password: 'password123',
         }),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
     assert.equal((await kit.db.from('users')).length, 0)
   })
@@ -216,7 +216,7 @@ test.group('registration', (group) => {
     const token = tokenFrom(notification.args[1])
     await assert.rejects(
       () => service.account.emailVerification.complete({ token, password: 'password123' }),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
   })
 
@@ -272,11 +272,11 @@ test.group('registration', (group) => {
             email: 'PERSON@example.test',
             password: 'password123',
           }),
-        RegistrationEmailAlreadyRegisteredError
+        E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED
       )
     }
     assert.equal((await kit.db.from('users')).length, 1)
-    assert.equal(RegistrationEmailAlreadyRegisteredError.status, 422)
+    assert.equal(E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED.status, 422)
   })
 
   test('maps a database uniqueness race after an empty email precheck', async ({ assert }) => {
@@ -300,7 +300,7 @@ test.group('registration', (group) => {
           email: 'RACE@example.test',
           password: 'password123',
         }),
-      RegistrationEmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED
     )
     assert.lengthOf(await kit.db.from('users'), 1)
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
@@ -329,7 +329,7 @@ test.group('registration', (group) => {
       results.filter(
         (result) =>
           result.status === 'rejected' &&
-          result.reason instanceof RegistrationEmailAlreadyRegisteredError
+          result.reason instanceof E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED
       ).length,
       1
     )
@@ -353,7 +353,7 @@ test.group('registration', (group) => {
           email: 'person@example.test',
           password: 'password123',
         }),
-      DeliveryError
+      E_ACCOUNT_KIT_DELIVERY
     )
     const row = await kit.db.from('users').where('email', 'person@example.test').first()
     assert.exists(row)
@@ -394,7 +394,7 @@ test.group('registration', (group) => {
           token: failedToken,
           password: 'newpassword123',
         }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.isTrue(await service.account.emailVerification.inspect({ token: deliveredToken }))
     assert.equal(
@@ -421,7 +421,7 @@ test.group('registration', (group) => {
           email: 'person@example.test',
           password: 'password123',
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     const user = await service.account.registration.register({
       email: 'person@example.test',
@@ -456,7 +456,7 @@ test.group('registration', (group) => {
           email: 'new@example.test',
           password: 'lowercase123',
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
   })
 })

@@ -12,7 +12,7 @@ As an application operator, I want an authorised host workflow to inspect anothe
 ## Acceptance criteria
 
 - Input is the target `userId` and required `requireActive` boolean; success returns `{ account, revision }`, a point-in-time snapshot. It accepts no target credential and does not authorise the host caller.
-- Missing, denied or required-inactive targets produce `AccountAccessDeniedError`. Malformed input produces `InvalidInputError`. Dependency and adapter errors remain faults. Treat the snapshot as point-in-time data. If a follow-up fails after commit, retry the read.
+- Missing, denied or required-inactive targets produce `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED`. Malformed input produces `E_ACCOUNT_KIT_INVALID_INPUT`. Dependency and adapter errors remain faults. Treat the snapshot as point-in-time data. If a follow-up fails after commit, retry the read.
 
 ## User flow
 
@@ -35,9 +35,9 @@ The [API example recipe](../docs/recipes/account-access-inspection.md) passes th
 ```mermaid
 flowchart TD
  A["authentication.inspectAccountAccess delegates to inspectAccountAccess"] --> B["Validate userId and requireActive; require authentication configuration"]
- B -->|Invalid input| I["Throw InvalidInputError"]
+ B -->|Invalid input| I["Throw E_ACCOUNT_KIT_INVALID_INPUT"]
  B --> W["Read revision from locked witness row, then load matching adapter account"]
- W -->|Missing target| D["Throw AccountAccessDeniedError"]
+ W -->|Missing target| D["Throw E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED"]
  W --> P["Evaluate canAccess and require active projection when requested"]
  P -->|Denied or required-inactive| D
  P -->|Allowed| E["Commit, then return account plus revision"]

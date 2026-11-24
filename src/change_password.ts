@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { invalidateChangedCredentials, revision } from './credential_revision.js'
 import { transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { InvalidInputError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { rememberPasswordChangeRevision } from './password_change_revision.js'
 import { preparePassword, storePassword } from './password_hashing.js'
@@ -17,7 +17,7 @@ export async function changePassword(
   input: ChangePasswordInput
 ): Promise<{ revision: string | null }> {
   if (!isPasswordAllowed(input.newPassword, deps.config.passwordPolicy))
-    throw new InvalidInputError('Invalid new password')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid new password')
 
   await deps.throttler.consume('identity:user', String(input.actorId), deps.config.throttle)
   const operationId = randomUUID()

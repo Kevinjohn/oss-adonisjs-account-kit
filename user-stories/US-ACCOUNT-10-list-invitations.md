@@ -32,7 +32,7 @@ flowchart TD
   M["Managed route resolves actor and validates limit, cursor and scope"] --> A["invitations.list"]
   A --> B["Check capability; validate limit, decode cursor, normalise scope and load actor"]
   B --> C{"authorize.listInvitations permits request?"}
-  C -->|No| D["Throw AuthorizationError"]
+  C -->|No| D["Throw E_ACCOUNT_KIT_AUTHORIZATION"]
   C -->|Yes| E["Query unexpired rows in scope after cursor, in creation-time and ID order"]
   E --> F["Return page and nextCursor or null; managed handler returns same page with 200"]
 ```

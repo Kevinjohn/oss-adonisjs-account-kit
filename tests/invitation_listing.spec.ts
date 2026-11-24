@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { dbTime } from './helpers/db_time.js'
@@ -92,15 +92,15 @@ test.group('invitation management contracts', (group) => {
     const { account } = makeService(kit)
     await assert.rejects(
       () => account.invitations.list({ actorId: actor.id, limit: 101 }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     await assert.rejects(
       () => account.invitations.list({ actorId: actor.id, cursor: 'invalid' }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     await assert.rejects(
       () => account.invitations.list({ actorId: actor.id, cursor: 'a'.repeat(513) }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     for (const bad of ['invalid', Buffer.from('[1,2]').toString('base64url'), 'a'.repeat(513)])
       await assert.rejects(
@@ -132,7 +132,7 @@ test.group('invitation management contracts', (group) => {
     try {
       await assert.rejects(
         () => account.invitations.list({ actorId: actor.id, cursor }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     } finally {
       Buffer.from = originalFrom

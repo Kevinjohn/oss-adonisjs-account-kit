@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { SocialIdentityAlreadyLinkedError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import { clientChallenge, provider, current } from './helpers/social_identity.js'
@@ -65,7 +65,7 @@ test.group('social races and post-commit effects', (group) => {
     const rejected = outcomes.filter((outcome) => outcome.status === 'rejected')
     assert.lengthOf(rejected, 1)
     // Whether the loser sees the stored row or the unique violation, it gets the same refusal.
-    assert.instanceOf(rejected[0].reason, SocialIdentityAlreadyLinkedError)
+    assert.instanceOf(rejected[0].reason, E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED)
     const rows = await kit.db.from('social_identities')
     assert.lengthOf(rows, 1)
     assert.include([a.id, b.id], rows[0].user_id)

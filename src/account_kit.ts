@@ -1,5 +1,5 @@
 import { pruneExpired, type PruneInput } from './maintenance.js'
-import { CapabilityDisabledError } from './errors.js'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED } from './errors.js'
 import type { Database } from '@adonisjs/lucid/database'
 import type { LimiterService } from '@adonisjs/limiter/types'
 import {
@@ -74,10 +74,19 @@ export { defineConfig } from './config.js'
 
 /**
  * The account service. Resolve it from the container with `app.container.make(AccountKit)`. Each
- * capability group throws `CapabilityDisabledError` when its capability is not in `enabled`.
+ * capability group throws `E_ACCOUNT_KIT_CAPABILITY_DISABLED` when its capability is not in `enabled`.
  * The `authentication` group depends on the `authentication` config block, except `sessions`, which
  * needs `sessionManagement`, and `retirementImpact`, which returns an empty inventory without
  * scanning accounts when no login methods are configured. `maintenance` is always available.
+ *
+ * @example
+ * ```ts
+ * import { AccountKit } from '@kevinjohn/adonisjs-account-kit'
+ * import app from '@adonisjs/core/services/app'
+ *
+ * const kit = await app.container.make(AccountKit)
+ * await kit.maintenance.prune({ batchSize: 100 })
+ * ```
  */
 export class AccountKit {
   private readonly deps: {
@@ -102,7 +111,7 @@ export class AccountKit {
 
   private runEnabledCapability<T>(capability: Capability, run: () => Promise<T>): Promise<T> {
     if (!this.deps.config.enabled.includes(capability))
-      return Promise.reject(new CapabilityDisabledError(`${capability} is disabled`))
+      return Promise.reject(new E_ACCOUNT_KIT_CAPABILITY_DISABLED(`${capability} is disabled`))
     return run()
   }
 
@@ -111,6 +120,11 @@ export class AccountKit {
     /**
      * Deletes expired tokens, invitations, social states and sign-ins in batches. `account-
      * kit:prune` calls it.
+     *
+     * @example
+     * ```ts
+     * await kit.maintenance.prune({ batchSize: 100 })
+     * ```
      */
     prune: (input: PruneInput = {}) => pruneExpired(this.deps.db, input),
   }
@@ -128,10 +142,12 @@ export class AccountKit {
    * Login, the current account, restrictions, and signed-in devices. Needs the `authentication`
    * config.
    */
-  get authentication() {
+  get authentication(): ReturnType<typeof createAuthenticationService> & {
+    /** Where the user is signed in; requires `sessionManagement`. */
+    sessions: ReturnType<typeof createSessionManagementService>
+  } {
     return {
       ...createAuthenticationService(this.deps),
-      /** Where the user is signed in; requires `sessionManagement`. */
       sessions: createSessionManagementService(this.deps),
     }
   }
@@ -140,16 +156,21 @@ export class AccountKit {
   readonly registration = {
     /**
      * Creates an account when registration availability allows it and sends the confirmation link.
-     * Throws `RegistrationEmailAlreadyRegisteredError` for a taken address.
+     * Throws `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` for a taken address.
+     *
+     * @example
+     * ```ts
+     * await kit.registration.register({ email: 'sam@example.test', password })
+     * ```
      */
     register: (input: RegistrationInput): Promise<AccountUser> =>
       this.runEnabledCapability('registration', () => register(this.deps, input)),
   }
 
   /** Google and GitHub sign-in, linking and recent proof, for `socialAuthentication`. */
-  get socialAuthentication() {
+  get socialAuthentication(): ReturnType<typeof createSocialIdentityService> {
     if (!this.deps.config.enabled.includes('socialAuthentication'))
-      throw new CapabilityDisabledError('Social authentication is disabled')
+      throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('Social authentication is disabled')
     return createSocialIdentityService(this.deps)
   }
 
@@ -158,18 +179,33 @@ export class AccountKit {
     /**
      * Emails a sign-in link. Answers the same way, after `minRequestMs`, whether or not the address
      * has an account.
+     *
+     * @example
+     * ```ts
+     * await kit.magicLink.request({ email: 'sam@example.test', clientKey: request.ip(), clientChallenge })
+     * ```
      */
     request: (input: MagicLinkRequestInput): Promise<void> =>
       this.runEnabledCapability('magicLinkLogin', () => requestMagicLink(this.deps, input)),
     /**
      * Checks that the stored link exists, is unexpired, and still matches the account's email and
      * active state. This read-only check does not evaluate `canAccess` or guarantee sign-in.
+     *
+     * @example
+     * ```ts
+     * await kit.magicLink.inspect({ token })
+     * ```
      */
     inspect: (input: MagicLinkInspectInput): Promise<boolean> =>
       this.runEnabledCapability('magicLinkLogin', () => inspectMagicLink(this.deps, input)),
     /**
      * Uses the link once and signs the user in through `guard`. The verifier must match the
      * challenge sent with the request.
+     *
+     * @example
+     * ```ts
+     * await kit.magicLink.complete({ token, verifier }, requestGuard)
+     * ```
      */
     complete: <Credential>(
       input: MagicLinkCompleteInput,
@@ -183,15 +219,32 @@ export class AccountKit {
     /**
      * Emails a reset link to a known address. Answers the same way, after `minRequestMs`, whether
      * or not the address has an account.
+     *
+     * @example
+     * ```ts
+     * await kit.passwordReset.request({ email: 'sam@example.test', clientKey: request.ip() })
+     * ```
      */
     request: (input: PasswordResetRequestInput): Promise<void> =>
       this.runEnabledCapability('passwordReset', () => requestPasswordReset(this.deps, input)),
-    /** Whether a reset link is still usable, without using it up. */
+    /**
+     * Whether a reset link is still usable, without using it up.
+     *
+     * @example
+     * ```ts
+     * await kit.passwordReset.inspect({ token })
+     * ```
+     */
     inspect: (input: PasswordResetInspectInput): Promise<boolean> =>
       this.runEnabledCapability('passwordReset', () => inspectPasswordReset(this.deps, input)),
     /**
      * Uses the link once, sets the new password, ends older sessions and tokens, and sends the
-     * completed notice. Throws `InvalidTokenError` for a bad link.
+     * completed notice. Throws `E_ACCOUNT_KIT_INVALID_TOKEN` for a bad link.
+     *
+     * @example
+     * ```ts
+     * await kit.passwordReset.reset({ token, password })
+     * ```
      */
     reset: (input: PasswordResetCompleteInput): Promise<AccountUser> =>
       this.runEnabledCapability('passwordReset', () => completePasswordReset(this.deps, input)),
@@ -201,40 +254,97 @@ export class AccountKit {
     /**
      * Ensures an activation link is current, or returns `already_verified`. A `sent` result
      * inside the one-minute resend cooldown reuses the link without delivering another message.
+     *
+     * @example
+     * ```ts
+     * await kit.emailVerification.send({ userId })
+     * ```
      */
     send: (input: VerificationSendInput): Promise<'sent' | 'already_verified'> =>
       this.runEnabledCapability('emailVerification', () => sendVerification(this.deps, input)),
-    /** Whether an activation link is still usable, without using it up. */
+    /**
+     * Whether an activation link is still usable, without using it up.
+     *
+     * @example
+     * ```ts
+     * await kit.emailVerification.inspect({ token })
+     * ```
+     */
     inspect: (input: VerificationInspectInput): Promise<boolean> =>
       this.runEnabledCapability('emailVerification', () => inspectVerification(this.deps, input)),
-    /** Uses the link once, confirms the address and sets the password. */
+    /**
+     * Uses the link once, confirms the address and sets the password.
+     *
+     * @example
+     * ```ts
+     * await kit.emailVerification.complete({ token, password })
+     * ```
+     */
     complete: (input: VerificationCompleteInput): Promise<'verified'> =>
       this.runEnabledCapability('emailVerification', () => completeVerification(this.deps, input)),
   }
   /** Invitations with roles, for `invitations`. */
   readonly invitations = {
-    /** Invites an address with a role and emails the link; checks `authorize.invite`. */
+    /**
+     * Invites an address with a role and emails the link; checks `authorize.invite`.
+     *
+     * @example
+     * ```ts
+     * await kit.invitations.send({ actorId, email: 'sam@example.test', role: 'member' })
+     * ```
+     */
     send: (input: InvitationsSendInput): Promise<Invitation> =>
       this.runEnabledCapability('invitations', () => sendInvitation(this.deps, input)),
-    /** Lists pending invitations a page at a time; checks `authorize.listInvitations`. */
+    /**
+     * Lists pending invitations a page at a time; checks `authorize.listInvitations`.
+     *
+     * @example
+     * ```ts
+     * await kit.invitations.list({ actorId, limit: 20 })
+     * ```
+     */
     list: (input: InvitationsListInput): Promise<InvitationPage> =>
       this.runEnabledCapability('invitations', () => paginateInvitations(this.deps, input)),
-    /** The email and role from a valid invitation token, or null, without using the link. */
+    /**
+     * The email and role from a valid invitation token, or null, without using the link.
+     *
+     * @example
+     * ```ts
+     * await kit.invitations.inspect({ token })
+     * ```
+     */
     inspect: (input: InvitationsInspectInput): Promise<Pick<Invitation, 'email' | 'role'> | null> =>
       this.runEnabledCapability('invitations', () => inspectInvitation(this.deps.db, input)),
     /**
      * Uses the invitation token once, creates the account and runs `onInvitationAccepted` in the
      * same transaction. It does not call an actor authorization callback.
+     *
+     * @example
+     * ```ts
+     * await kit.invitations.accept({ token, password })
+     * ```
      */
     accept: (input: InvitationsAcceptInput): Promise<AccountUser> =>
       this.runEnabledCapability('invitations', () => acceptInvitation(this.deps, input)),
     /**
      * Replaces the invitation's link and emails it again; checks `authorize.manageInvitation` and
      * `authorize.invite` for the invitation's role.
+     *
+     * @example
+     * ```ts
+     * await kit.invitations.resend({ actorId, invitationId })
+     * ```
      */
     resend: (input: InvitationsResendInput): Promise<Invitation> =>
       this.runEnabledCapability('invitations', () => resendInvitation(this.deps, input)),
-    /** Deletes a pending invitation; checks `authorize.manageInvitation`. */
+    /**
+     * Deletes a pending invitation; checks `authorize.manageInvitation`.
+     *
+     * @example
+     * ```ts
+     * await kit.invitations.revoke({ actorId, invitationId })
+     * ```
+     */
     revoke: (input: InvitationsRevokeInput): Promise<void> =>
       this.runEnabledCapability('invitations', () => revokeInvitation(this.deps, input)),
   }
@@ -243,12 +353,26 @@ export class AccountKit {
    * throttles apply; never expose these methods to an HTTP request.
    */
   readonly operator = {
-    /** Send an invitation on behalf of the system, without an inviting user. */
+    /**
+     * Send an invitation on behalf of the system, without an inviting user.
+     *
+     * @example
+     * ```ts
+     * await kit.operator.invite({ email: 'sam@example.test', role: 'member', deliver: 'send' })
+     * ```
+     */
     invite: (input: OperatorInviteInput): Promise<OperatorInviteResult> =>
       this.runEnabledCapability('invitations', () =>
         issueStandaloneOperatorInvitation(this.deps, input)
       ),
-    /** Issue a password reset link for an address, without the public throttle. */
+    /**
+     * Issue a password reset link for an address, without the public throttle.
+     *
+     * @example
+     * ```ts
+     * await kit.operator.resetLink({ email: 'sam@example.test', deliver: 'send' })
+     * ```
+     */
     resetLink: (input: OperatorResetLinkInput): Promise<OperatorResetLinkResult> =>
       this.runEnabledCapability('passwordReset', () => issueOperatorResetLink(this.deps, input)),
   }
@@ -257,20 +381,46 @@ export class AccountKit {
    * proof for a social-only account.
    */
   readonly emailPasswordManagement = {
-    /** Changes the password, ends older sessions and tokens, and sends the changed notice. */
+    /**
+     * Changes the password, ends older sessions and tokens, and sends the changed notice.
+     *
+     * @example
+     * ```ts
+     * await kit.emailPasswordManagement.changePassword({ actorId, currentPassword, newPassword })
+     * ```
+     */
     changePassword: (input: ChangePasswordInput): Promise<{ revision: string | null }> =>
       this.runEnabledCapability('emailPasswordManagement', () => changePassword(this.deps, input)),
     /**
      * Emails a confirmation link to the new address. The email changes only when it is confirmed.
+     *
+     * @example
+     * ```ts
+     * await kit.emailPasswordManagement.requestEmailChange({ actorId, currentPassword, newEmail: 'new-address@example.test' })
+     * ```
      */
     requestEmailChange: (input: RequestEmailChangeInput): Promise<void> =>
       this.runEnabledCapability('emailPasswordManagement', () =>
         requestEmailChange(this.deps, input)
       ),
-    /** Updates profile fields, and starts an email change when `email` differs. */
+    /**
+     * Updates profile fields, and starts an email change when `email` differs.
+     *
+     * @example
+     * ```ts
+     * await kit.emailPasswordManagement.updateProfile({ actorId, currentPassword, registrationData: { displayName: 'Sam Example' } })
+     * ```
+     */
     updateProfile: (input: UpdateProfileInput): Promise<AccountUser> =>
       this.runEnabledCapability('emailPasswordManagement', () => updateProfile(this.deps, input)),
-    /** Whether an email-change link is still usable, without using it up. */
+    /**
+     * Whether an email-change link is still usable, without using it up.
+     *
+     * @example
+     * ```ts
+     * await kit.emailPasswordManagement.inspectEmailChange({ token })
+     * ```
+     */
     inspectEmailChange: (input: InspectEmailChangeInput): Promise<boolean> =>
       this.runEnabledCapability('emailPasswordManagement', () =>
         inspectEmailChange(this.deps, input)
@@ -278,6 +428,11 @@ export class AccountKit {
     /**
      * Uses the link once, switches the address, ends older sessions and tokens, and tells the old
      * address.
+     *
+     * @example
+     * ```ts
+     * await kit.emailPasswordManagement.completeEmailChange({ token })
+     * ```
      */
     completeEmailChange: (input: CompleteEmailChangeInput): Promise<AccountUser> =>
       this.runEnabledCapability('emailPasswordManagement', () =>
@@ -289,12 +444,24 @@ export class AccountKit {
    * password or a recent proof.
    */
   readonly accountData = {
-    /** Returns a JSON export of the account, merged with `exportAccountData`. */
+    /**
+     * Returns a JSON export of the account, merged with `exportAccountData`.
+     *
+     * @example
+     * ```ts
+     * await kit.accountData.export({ actorId, currentPassword })
+     * ```
+     */
     export: (input: AccountDataInput): Promise<AccountExport> =>
       this.runEnabledCapability('dataExport', () => exportAccountData(this.deps, input)),
     /**
      * Deletes the user and every row Account Kit owns, runs `onAccountDeletingTransaction` first,
      * and sends the confirmation email.
+     *
+     * @example
+     * ```ts
+     * await kit.accountData.delete({ actorId, currentPassword })
+     * ```
      */
     delete: (input: AccountDataInput): Promise<void> =>
       this.runEnabledCapability('accountDeletion', () => deleteAccount(this.deps, input)),

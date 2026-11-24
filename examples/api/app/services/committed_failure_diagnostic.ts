@@ -1,5 +1,5 @@
 import { channel } from 'node:diagnostics_channel'
-import { DeliveryError, PostCommitError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from '@kevinjohn/adonisjs-account-kit'
 
 type SafeLogger = { error: (details: object, message: string) => void }
 type Failure = 'delivery' | 'post_commit' | 'credential_establishment'
@@ -14,8 +14,13 @@ function reportFailure(logger: SafeLogger, operation: string, failure: Failure) 
 
 /** Report follow-up failures without recording an address, proof, credential, or raw exception. */
 export function reportCommittedFailure(logger: SafeLogger, error: unknown, operation: string) {
-  if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
-  reportFailure(logger, operation, error instanceof DeliveryError ? 'delivery' : 'post_commit')
+  if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
+    throw error
+  reportFailure(
+    logger,
+    operation,
+    error instanceof E_ACCOUNT_KIT_DELIVERY ? 'delivery' : 'post_commit'
+  )
 }
 
 /**
@@ -31,7 +36,8 @@ export async function committedFollowUp<T>(
   try {
     return await run()
   } catch (error) {
-    if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+    if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
+      throw error
     reportCommittedFailure(logger, error, operation)
     return undefined
   }

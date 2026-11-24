@@ -3,7 +3,7 @@ import type { DateTime } from 'luxon'
 import { consumeRows } from './consume_rows.js'
 import { createLifecycleEffect, type PostCommitEffect } from './effects.js'
 import { normalizeEmail } from './email.js'
-import { InvalidTokenError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
 import { toInvitation, type InvitationDatabaseRow } from './invitation_rows.js'
 import { compareScopes } from './invitation_scope.js'
 import { sqlTimestamp } from './timestamps.js'
@@ -47,7 +47,7 @@ export async function matchInvitation(
   )
   if (rows.length === 0) return []
   const accepted = await config.users.findById(user.id, trx)
-  if (!accepted) throw new InvalidTokenError()
+  if (!accepted) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   return applyInvitations(config, trx, accepted, rows)
 }
 

@@ -1,6 +1,10 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
-import { DeliveryError, InvalidTokenError, PostCommitError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from '../src/errors.js'
 import { generateToken, hashToken } from '../src/tokens.js'
 import type { CredentialChangeContext, LifecycleEvent } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -145,8 +149,8 @@ test.group('credential and lifecycle effects', (group) => {
     } catch (caught) {
       error = caught
     }
-    assert.instanceOf(error, PostCommitError)
-    const cause = (error as PostCommitError).cause
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+    const cause = (error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
     assert.instanceOf(cause, AggregateError)
     assert.deepEqual((cause as AggregateError).errors, failures)
     assert.deepEqual(
@@ -179,7 +183,7 @@ test.group('credential and lifecycle effects', (group) => {
     })
     await assert.rejects(
       () => account.passwordReset.request({ email: user.email, clientKey: 'client-one' }),
-      DeliveryError
+      E_ACCOUNT_KIT_DELIVERY
     )
     assert.deepEqual(
       events.map((event) => event.type),
@@ -206,7 +210,7 @@ test.group('credential and lifecycle effects', (group) => {
     )
     await assert.rejects(
       () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.deepEqual(
       events.map((event) => event.type),
@@ -276,8 +280,8 @@ test.group('credential and lifecycle effects', (group) => {
     } catch (caught) {
       failure = caught
     }
-    assert.instanceOf(failure, PostCommitError)
-    assert.equal((failure as PostCommitError).cause, listenerFailure)
+    assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.equal((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, listenerFailure)
     assert.deepEqual(
       events.map((event) => event.type),
       ['email_change.requested']
@@ -327,8 +331,11 @@ test.group('credential and lifecycle effects', (group) => {
     } catch (caught) {
       failure = caught
     }
-    assert.instanceOf(failure, PostCommitError)
-    assert.deepEqual(((failure as PostCommitError).cause as AggregateError).errors, [first, last])
+    assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.deepEqual(
+      ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError).errors,
+      [first, last]
+    )
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
   })
@@ -372,8 +379,11 @@ test.group('credential and lifecycle effects', (group) => {
     } catch (caught) {
       failure = caught
     }
-    assert.instanceOf(failure, PostCommitError)
-    assert.deepEqual(((failure as PostCommitError).cause as AggregateError).errors, errors)
+    assert.instanceOf(failure, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.deepEqual(
+      ((failure as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause as AggregateError).errors,
+      errors
+    )
     assert.deepEqual(order, ['legacy', 'notice', 'event'])
     const changed = await kit.db.from('users').where('id', user.id).first()
     assert.equal(changed.email, 'next@example.test')

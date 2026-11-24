@@ -6,7 +6,7 @@ import { isActiveAccount } from './account_projection.js'
 import { clearPendingSocialIdentities, clearRecoveryTokens } from './credential_cleanup.js'
 import { consumeUserToken, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
-import { InvalidInputError, InvalidTokenError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_INVALID_TOKEN } from './errors.js'
 import { emitInvitationAccepted, matchInvitation } from './invitation_match.js'
 import { isPasswordAllowed } from './password.js'
 import { preparePassword, storePassword } from './password_hashing.js'
@@ -42,8 +42,8 @@ export async function completePasswordReset(
   input: PasswordResetCompleteInput
 ): Promise<AccountUser> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
-    throw new InvalidInputError('Invalid password')
-  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')
+  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
 
@@ -75,7 +75,7 @@ export async function completePasswordReset(
       }
       await clearRecoveryTokens(trx, row.tokenable_id, ['email_verification_tokens'])
       const reloaded = await deps.config.users.findById(row.tokenable_id, trx)
-      if (!reloaded) throw new InvalidTokenError()
+      if (!reloaded) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
       await invalidateChangedCredentials(trx, deps.config, reloaded, {
         operation: 'password_reset',
         operationId,

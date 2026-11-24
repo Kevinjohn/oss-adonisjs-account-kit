@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { actionUrlBackendOrigins } from './action_urls.js'
-import { CapabilityDisabledError, InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_CAPABILITY_DISABLED, E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 import { resolveThrottleBudget } from './config_budget.js'
 import { assertObject } from './config_assert.js'
 import { isSqlIdentifier } from './sql_identifier.js'
@@ -22,7 +22,7 @@ import type {
 import { freezeResolved } from './config_freeze.js'
 
 function rejectDisabledCapability(): never {
-  throw new CapabilityDisabledError('This account capability is disabled')
+  throw new E_ACCOUNT_KIT_CAPABILITY_DISABLED('This account capability is disabled')
 }
 
 const disabledAuthorize: Record<keyof AuthorizationCallbacks, typeof rejectDisabledCapability> = {
@@ -72,6 +72,22 @@ export const configInputs = new WeakMap<ResolvedConfig, AccountKitConfig>()
  * a missing callback an enabled capability needs or an out-of-range value. `users`, `authorize` and
  * `onInvitationAccepted` may be left out for `AccountKitCallbackRegistry` to supply; they are
  * checked when the service is first resolved.
+ *
+ * @example
+ * ```ts
+ * import { defineConfig } from '@kevinjohn/adonisjs-account-kit'
+ * import env from '#start/env'
+ * import { createLucidAdapter } from '@kevinjohn/adonisjs-account-kit/adapters/lucid'
+ *
+ * export default defineConfig({
+ *   enabled: [],
+ *   users: createLucidAdapter(async () => (await import('#models/user')).default),
+ *   urls: {},
+ *   notify: {},
+ *   limiterSecret: env.get('APP_KEY'),
+ *   registration: { availability: 'closed' },
+ * })
+ * ```
  */
 export function defineConfig(config: AccountKitConfig): ResolvedConfig {
   const resolved = resolveConfig(config, true)
@@ -90,12 +106,15 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     (!(deferCallbacks && config.users === undefined) &&
       (!config.users || typeof config.users !== 'object'))
   )
-    throw new InvalidConfigurationError('users', 'account_kit: users adapter must be configured')
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+      'users',
+      'account_kit: users adapter must be configured'
+    )
   if (
     config.delivery !== undefined &&
     !['best-effort', 'durable', 'capture'].includes(config.delivery)
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'delivery',
       'account_kit: delivery must be best-effort, durable, or capture'
     )
@@ -105,12 +124,12 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     new Set(enabled).size !== enabled.length ||
     enabled.some((name) => !capabilities.includes(name))
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'enabled',
       'account_kit: enabled must contain unique supported capability names'
     )
   if (enabled.includes('emailPasswordManagement') && !enabled.includes('emailVerification'))
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'emailPasswordManagement',
       'account_kit: emailPasswordManagement requires emailVerification'
     )
@@ -119,12 +138,12 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
   }
   if (config.users?.hashPassword !== undefined) {
     if (typeof config.users.hashPassword !== 'function')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'users.hashPassword',
         'account_kit: users.hashPassword must be a function'
       )
     if (typeof config.users.setPasswordHash !== 'function')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'users.setPasswordHash',
         'account_kit: users.setPasswordHash must be a function when users.hashPassword is set'
       )
@@ -132,7 +151,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
   for (const capability of enabled) {
     for (const method of capabilityRegistry[capability].adapterMethods) {
       if (config.users && typeof config.users[method] !== 'function')
-        throw new InvalidConfigurationError(
+        throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
           `users.${method}`,
           `account_kit: users.${method} must be a function`
         )
@@ -148,14 +167,17 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
       const parent =
         parts.length === 1 ? config : config[parts[0] as 'urls' | 'notify' | 'authorize']
       if (typeof (parent as Record<string, unknown> | undefined)?.[parts.at(-1)!] !== 'function')
-        throw new InvalidConfigurationError(path, `account_kit: ${path} must be a function`)
+        throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
+          path,
+          `account_kit: ${path} must be a function`
+        )
     }
   }
   if (
     !config.registration ||
     !['open', 'closed', 'application'].includes(config.registration.availability)
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'registration.availability',
       'account_kit: registration.availability must be open, closed, or application'
     )
@@ -163,12 +185,12 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     config.registration.mapFields !== undefined &&
     typeof config.registration.mapFields !== 'function'
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'registration.mapFields',
       'account_kit: registration.mapFields must be a function'
     )
   if (enabled.includes('magicLinkLogin') && !config.authentication)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'magicLinkLogin',
       'account_kit: magicLinkLogin requires authentication'
     )
@@ -184,13 +206,13 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     'onAccountDeletingTransaction',
   ] as const) {
     if (config[hook] !== undefined && typeof config[hook] !== 'function')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         hook,
         `account_kit: ${hook} must be a function when supplied`
       )
   }
   if (config.onCredentialsChanged && config.onCredentialsChangedTransaction)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'onCredentialsChanged',
       'account_kit: credential revocation hooks are mutually exclusive'
     )
@@ -199,7 +221,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
       ? config.limiterSecret
       : config.limiterSecret?.release?.()
   if (typeof limiterSecret !== 'string' || Buffer.byteLength(limiterSecret) < 32)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'limiterSecret',
       'account_kit: limiterSecret must be a stable shared secret of at least 32 bytes'
     )
@@ -209,7 +231,7 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     limiterNamespace.length === 0 ||
     limiterNamespace.length > 128
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'limiterNamespace',
       'account_kit: limiterNamespace must be a non-empty string of at most 128 characters'
     )
@@ -241,20 +263,20 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
   ) as unknown as InvitationThrottle
   const minRequestMs = config.minRequestMs ?? 300
   if (!Number.isFinite(minRequestMs) || minRequestMs < 0)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'minRequestMs',
       'account_kit: minRequestMs must be a finite non-negative number'
     )
   const tokenSecretLength = config.tokenSecretLength ?? 40
   if (!Number.isSafeInteger(tokenSecretLength) || tokenSecretLength < 16 || tokenSecretLength > 64)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'tokenSecretLength',
       'account_kit: tokenSecretLength must be an integer from 16 to 64'
     )
   const passwordPolicy = resolvePasswordPolicy(config)
   const authentication = resolveAuthentication(config)
   if (enabled.includes('sessionManagement') && !authentication)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'sessionManagement',
       'account_kit: sessionManagement requires authentication'
     )
@@ -264,12 +286,12 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     config.users?.resolveMetadata !== undefined &&
     typeof config.users.resolveMetadata !== 'function'
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'users.resolveMetadata',
       'account_kit: users.resolveMetadata must be a function'
     )
   if (config.users?.resolveMetadata && config.usersTable !== undefined)
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'usersTable',
       'account_kit: usersTable is for custom adapters; the Lucid adapter derives its table'
     )
@@ -277,13 +299,13 @@ export function resolveConfig(config: AccountKitConfig, deferCallbacks: boolean)
     config.emailConstraint !== undefined &&
     (typeof config.emailConstraint !== 'string' || config.emailConstraint.trim() === '')
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'emailConstraint',
       'account_kit: emailConstraint must be a non-empty constraint name'
     )
   const usersTable = config.usersTable ?? 'users'
   if (!isSqlIdentifier(usersTable))
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'usersTable',
       'account_kit: usersTable must be a plain SQL identifier'
     )

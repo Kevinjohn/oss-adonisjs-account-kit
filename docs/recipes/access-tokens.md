@@ -109,7 +109,7 @@ export default class AccessTokensController {
 }
 ```
 
-Failed logins throw `InvalidCredentialsError` with one generic message for every cause. Map it to
+Failed logins throw `E_INVALID_CREDENTIALS` with one generic message for every cause. Map it to
 401 in your exception handler; see the [error reference](../reference/errors.md).
 
 ## 4. Protect routes

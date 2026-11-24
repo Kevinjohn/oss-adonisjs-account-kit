@@ -4,7 +4,12 @@ import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import { requestPasswordReset } from '../src/password_reset.js'
 import { hashToken } from '../src/tokens.js'
-import { DeliveryError, InvalidInputError, PostCommitError, ThrottledError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_THROTTLED,
+} from '../src/errors.js'
 import type { AccountKitConfig } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
 import { serviceDependencies } from './helpers/service_dependencies.js'
@@ -168,15 +173,18 @@ test.group('passwordReset.request', (group) => {
     }
 
     const deliveryOnly = await run(true, false)
-    assert.instanceOf(deliveryOnly.error, DeliveryError)
+    assert.instanceOf(deliveryOnly.error, E_ACCOUNT_KIT_DELIVERY)
 
     const observerOnly = await run(false, true)
-    assert.instanceOf(observerOnly.error, PostCommitError)
-    assert.equal((observerOnly.error as PostCommitError).cause, observerFault)
+    assert.instanceOf(observerOnly.error, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.equal(
+      (observerOnly.error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause,
+      observerFault
+    )
 
     const combined = await run(true, true)
-    assert.instanceOf(combined.error, PostCommitError)
-    const cause = (combined.error as PostCommitError).cause
+    assert.instanceOf(combined.error, E_ACCOUNT_KIT_POST_COMMIT)
+    const cause = (combined.error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause
     assert.instanceOf(cause, AggregateError)
     assert.deepEqual(
       (cause as AggregateError).errors.map((error: Error) => error.message),
@@ -208,8 +216,8 @@ test.group('passwordReset.request', (group) => {
       await account.passwordReset.request({ email: user.email, clientKey: 'first' })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.equal(hooks, 1)
     assert.equal(lifecycle, 1)
@@ -282,8 +290,8 @@ test.group('passwordReset.request', (group) => {
       await account.passwordReset.request({ email: 'unknown5@example.test', clientKey: 'same' })
       assert.fail('expected throttle')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
-      assert.isAbove((error as ThrottledError).retryAfterSeconds, 0)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
+      assert.isAbove((error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).retryAfterSeconds, 0)
     }
     assert.equal(lookups, 5)
     assert.lengthOf(recorder.calls, 0)
@@ -320,8 +328,8 @@ test.group('passwordReset.request', (group) => {
       })
       assert.fail('expected throttle')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
-      assert.isAbove((error as ThrottledError).retryAfterSeconds, 0)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
+      assert.isAbove((error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).retryAfterSeconds, 0)
     }
     assert.equal(lookups, 5)
   })
@@ -335,9 +343,9 @@ test.group('passwordReset.request', (group) => {
       await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
       assert.fail('expected delivery failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
       assert.equal(
-        ((error as DeliveryError).cause as Error).message,
+        ((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause as Error).message,
         'notify.passwordResetProvision failed'
       )
     }
@@ -359,8 +367,8 @@ test.group('passwordReset.request', (group) => {
       await account.passwordReset.request({ email: 'person@example.test', clientKey: 'first' })
       assert.fail('expected URL failure')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, failure)
     }
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 1)
   })
@@ -409,21 +417,21 @@ test.group('passwordReset.request', (group) => {
           email: 'invalid',
           clientKey: 'fast',
         })
-        assert.fail('expected InvalidInputError')
+        assert.fail('expected E_ACCOUNT_KIT_INVALID_INPUT')
       } catch (error) {
-        assert.instanceOf(error, InvalidInputError)
+        assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_INPUT)
       }
       assert.isAtLeast(performance.now() - started, 20)
     }
   }).timeout(4000)
 
-  test('invalid email throws InvalidInputError', async ({ assert }) => {
+  test('invalid email throws E_ACCOUNT_KIT_INVALID_INPUT', async ({ assert }) => {
     const recorder = makeNotify()
     const { account } = service({ notify: recorder.notify })
     for (const email of ['invalid', '@ab', 'ab@', '  @  ', 'a b@example.test'])
       await assert.rejects(
         () => account.passwordReset.request({ email, clientKey: 'first' }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     assert.lengthOf(await kit.db.from('password_reset_tokens'), 0)
     assert.lengthOf(recorder.calls, 0)
@@ -438,7 +446,7 @@ test.group('passwordReset.request', (group) => {
         await account.passwordReset.request({ email: 'person@example.test', clientKey } as never)
         assert.fail('expected invalid input')
       } catch (error) {
-        assert.instanceOf(error, InvalidInputError)
+        assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_INPUT)
       }
     }
     // The address keeps its whole budget: five requests from separate clients all pass.

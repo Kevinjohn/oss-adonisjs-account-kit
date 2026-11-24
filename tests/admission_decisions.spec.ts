@@ -1,16 +1,16 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Keep each assertion next to the operation it inspects. */
 
 import { test } from '@japa/runner'
-import { AdmissionDecisionError } from '../src/admission/errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_DECISION,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../src/errors.js'
 import type { AdmissionEvent } from '../src/admission/types.js'
 import { deriveClientChallenge } from '../src/magic_link.js'
-import {
-  AuthorizationError,
-  CapabilityDisabledError,
-  InvalidInputError,
-  PostCommitError,
-  UserNotFoundError,
-} from '../src/errors.js'
 import type { AccountUser } from '../src/types.js'
 import { useAdmissionApp } from './helpers/admission_schema.js'
 import { allowDecisions, makeAdmission, writeAdmissionRow } from './helpers/admission.js'
@@ -53,11 +53,11 @@ test.group('admission decisions', (group) => {
     assert.equal(approved.email, 'subject@example.test')
     await assert.rejects(
       () => admission.approve({ actorId: actor.id, userId: subject.id }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     await assert.rejects(
       () => admission.reject({ actorId: actor.id, userId: subject.id }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
       (await admission.revoke({ actorId: actor.id, userId: subject.id })).approval?.status,
@@ -65,7 +65,7 @@ test.group('admission decisions', (group) => {
     )
     await assert.rejects(
       () => admission.revoke({ actorId: actor.id, userId: subject.id }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
       (await admission.approve({ actorId: actor.id, userId: subject.id })).approval?.status,
@@ -75,7 +75,7 @@ test.group('admission decisions', (group) => {
     const fresh = await insertUser(kit, { email: 'fresh@example.test' })
     await assert.rejects(
       () => admission.revoke({ actorId: actor.id, userId: fresh.id }),
-      AdmissionDecisionError
+      E_ACCOUNT_KIT_ADMISSION_DECISION
     )
     assert.equal(
       (await admission.reject({ actorId: actor.id, userId: fresh.id })).approval?.status,
@@ -100,18 +100,18 @@ test.group('admission decisions', (group) => {
     const { admission } = makeAdmission(kit, approvalOnly)
     await assert.rejects(
       () => admission.approve({ actorId: actor.id, userId: actor.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
 
     const pending = await insertUser(kit, { email: 'pending@example.test' })
     await assert.rejects(
       () => admission.approve({ actorId: pending.id, userId: subject.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     await writeAdmissionRow(kit, actor.id, { approval: 'revoked' })
     await assert.rejects(
       () => admission.approve({ actorId: actor.id, userId: subject.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     await writeAdmissionRow(kit, actor.id, { approval: 'approved' })
 
@@ -130,7 +130,7 @@ test.group('admission decisions', (group) => {
     })
     await assert.rejects(
       () => denying.approve({ actorId: actor.id, userId: subject.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     assert.deepEqual(seen, [[actor.id, subject.id, true]])
     assert.isNull(await status(subject))
@@ -143,12 +143,12 @@ test.group('admission decisions', (group) => {
     const { admission } = makeAdmission(kit, approvalOnly)
     await assert.rejects(
       () => admission.approve({ actorId: actor.id, userId: 999_999 }),
-      UserNotFoundError
+      E_ACCOUNT_KIT_USER_NOT_FOUND
     )
     const subject = await insertUser(kit, { email: 'subject@example.test' })
     await assert.rejects(
       () => admission.approve({ actorId: 999_999, userId: subject.id }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     const { admission: noApproval } = makeAdmission(kit, { invitation: { required: true } })
     for (const run of [
@@ -160,10 +160,10 @@ test.group('admission decisions', (group) => {
       () => noApproval.operator.approve({ email: subject.email }),
       () => noApproval.operator.revoke({ email: subject.email }),
     ])
-      await assert.rejects(run, CapabilityDisabledError)
+      await assert.rejects(run, E_ACCOUNT_KIT_CAPABILITY_DISABLED)
   })
 
-  test('a failing event hook is a PostCommitError with the decision committed', async ({
+  test('a failing event hook is a E_ACCOUNT_KIT_POST_COMMIT with the decision committed', async ({
     assert,
   }) => {
     const actor = await owner()
@@ -177,7 +177,7 @@ test.group('admission decisions', (group) => {
     const error = await admission
       .approve({ actorId: actor.id, userId: subject.id })
       .catch((caught) => caught)
-    assert.instanceOf(error, PostCommitError)
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
     assert.equal(await status(subject), 'approved')
   })
 
@@ -197,7 +197,8 @@ test.group('admission decisions', (group) => {
       ])
       const won = results.filter((result) => result.status === 'fulfilled')
       for (const result of results)
-        if (result.status === 'rejected') assert.instanceOf(result.reason, AdmissionDecisionError)
+        if (result.status === 'rejected')
+          assert.instanceOf(result.reason, E_ACCOUNT_KIT_ADMISSION_DECISION)
       assert.lengthOf(await kit.db.from('account_admissions').where('user_id', subject.id), 1)
       const final = await status(subject)
       if (left === right) {
@@ -227,7 +228,7 @@ test.group('admission decisions', (group) => {
         1
       )
       const refused = results.find((result) => result.status === 'rejected')
-      assert.instanceOf((refused as PromiseRejectedResult).reason, AuthorizationError)
+      assert.instanceOf((refused as PromiseRejectedResult).reason, E_ACCOUNT_KIT_AUTHORIZATION)
       assert.include(['approved', 'revoked'], await status(first))
       assert.include(['approved', 'revoked'], await status(second))
       assert.notEqual(await status(first), await status(second))
@@ -307,7 +308,7 @@ test.group('admission decisions', (group) => {
         const results = await Promise.allSettled([firstTracked.operation, secondTracked.operation])
         assert.equal(results[0].status, 'fulfilled')
         assert.equal(results[1].status, 'rejected')
-        assert.instanceOf((results[1] as PromiseRejectedResult).reason, AuthorizationError)
+        assert.instanceOf((results[1] as PromiseRejectedResult).reason, E_ACCOUNT_KIT_AUTHORIZATION)
         assert.equal(await status(first), 'approved')
         assert.equal(await status(second), 'revoked')
       } finally {

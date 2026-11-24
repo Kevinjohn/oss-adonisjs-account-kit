@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { IdentityNotConfirmedError, ThrottledError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED, E_ACCOUNT_KIT_THROTTLED } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { makeUsersAdapter } from './helpers/fakes.js'
 import { credentialsFixtures } from './helpers/credentials.js'
@@ -36,7 +36,7 @@ test.group('emailPasswordManagement', (group) => {
             currentPassword: 'wrong',
             newPassword: 'newPassword123',
           }),
-        IdentityNotConfirmedError
+        E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       )
     try {
       await account.emailPasswordManagement.requestEmailChange({
@@ -46,8 +46,8 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected throttle')
     } catch (error) {
-      assert.instanceOf(error, ThrottledError)
-      assert.isAbove((error as ThrottledError).retryAfterSeconds, 0)
+      assert.instanceOf(error, E_ACCOUNT_KIT_THROTTLED)
+      assert.isAbove((error as InstanceType<typeof E_ACCOUNT_KIT_THROTTLED>).retryAfterSeconds, 0)
     }
     assert.equal(lookups, 5)
     assert.equal(proofs, 5)

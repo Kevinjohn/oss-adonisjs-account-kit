@@ -3,12 +3,12 @@ import { createLucidAdapter } from '../adapters/lucid.js'
 import SoftDeletingUser from './fixtures/soft_deleting_user.js'
 import { defineConfig } from '../src/config.js'
 import {
-  CapabilityDisabledError,
-  DeliveryError,
-  IdentityNotConfirmedError,
-  PostCommitError,
-  SocialProofError,
-  ThrottledError,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import type { AccountKitConfig, AccountUser, LifecycleEvent, Trx } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -209,7 +209,7 @@ test.group('account deletion', (group) => {
     const { account } = service()
     await assert.rejects(
       () => account.accountData.delete({ actorId: user.id, currentPassword: 'wrong-password' }),
-      IdentityNotConfirmedError
+      E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
     )
     assert.isNotNull(await kit.db.from('users').where('id', user.id).first())
   })
@@ -219,9 +219,9 @@ test.group('account deletion', (group) => {
     const { account } = service({ throttle: { requests: 1, duration: '1m' } })
     await assert.rejects(
       () => account.accountData.delete({ actorId: user.id, currentPassword: 'wrong-password' }),
-      IdentityNotConfirmedError
+      E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
     )
-    await assert.rejects(() => remove(account, user.id), ThrottledError)
+    await assert.rejects(() => remove(account, user.id), E_ACCOUNT_KIT_THROTTLED)
     assert.isNotNull(await kit.db.from('users').where('id', user.id).first())
   })
 
@@ -235,7 +235,7 @@ test.group('account deletion', (group) => {
     const exportProof = await issueRecentProof(kit, config, user.id, 'account_export')
     await assert.rejects(
       () => account.accountData.delete({ actorId: user.id, recentProof: exportProof }),
-      SocialProofError
+      E_ACCOUNT_KIT_SOCIAL_PROOF_INVALID
     )
     assert.isNotNull(await kit.db.from('users').where('id', user.id).first())
     const proof = await issueRecentProof(kit, config, user.id, 'account_delete')
@@ -249,7 +249,7 @@ test.group('account deletion', (group) => {
     const user = await insertUser(kit)
     const { account, recorder } = service()
     recorder.failOn('accountDeleted')
-    await assert.rejects(() => remove(account, user.id), DeliveryError)
+    await assert.rejects(() => remove(account, user.id), E_ACCOUNT_KIT_DELIVERY)
     assert.isNull(await kit.db.from('users').where('id', user.id).first())
     assert.lengthOf(events, 1)
   })
@@ -263,7 +263,7 @@ test.group('account deletion', (group) => {
         throw new Error('observer down')
       },
     })
-    await assert.rejects(() => remove(account, user.id), PostCommitError)
+    await assert.rejects(() => remove(account, user.id), E_ACCOUNT_KIT_POST_COMMIT)
     assert.isNull(await kit.db.from('users').where('id', user.id).first())
     assert.lengthOf(recorder.calls, 1)
   })
@@ -279,8 +279,8 @@ test.group('account deletion', (group) => {
       },
     })
     const error = await remove(account, user.id).catch((caught: unknown) => caught)
-    assert.instanceOf(error, PostCommitError)
-    assert.equal((error as PostCommitError).cause, failure)
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+    assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     assert.isNull(await kit.db.from('users').where('id', user.id).first())
     assert.lengthOf(recorder.calls, 1)
     assert.lengthOf(events, 1)
@@ -288,7 +288,10 @@ test.group('account deletion', (group) => {
 
   test('deletion needs the capability, an adapter delete and the email', async ({ assert }) => {
     const user = await insertUser(kit)
-    await assert.rejects(() => remove(makeService(kit).account, user.id), CapabilityDisabledError)
+    await assert.rejects(
+      () => remove(makeService(kit).account, user.id),
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
+    )
     const users = makeUsersAdapter(kit.db, kit.hash)
     const config = (overrides: Partial<AccountKitConfig>) =>
       defineConfig(makeConfig({ users, enabled: ['accountDeletion'], ...overrides }))

@@ -1,6 +1,6 @@
 // Session sign-in registry: one row per signed-in browser session, keyed by a hashed handle.
 import { DateTime } from 'luxon'
-import { InvalidSessionError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from './errors.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
 import type { ResolvedConfig, Trx, UserId } from './types.js'
@@ -51,7 +51,7 @@ export async function requireLiveSession(
   userId: UserId,
   handle: string | undefined
 ): Promise<LiveSession> {
-  if (typeof handle !== 'string' || handle === '') throw new InvalidSessionError()
+  if (typeof handle !== 'string' || handle === '') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   const row = await trx
     .from(sessionTable)
     .select('id', 'user_id', 'last_seen_at', 'expires_at')
@@ -63,7 +63,7 @@ export async function requireLiveSession(
     String(row.user_id) !== String(userId) ||
     Date.parse(readIsoTimestamp(row.expires_at)!) <= now.toMillis()
   )
-    throw new InvalidSessionError()
+    throw new E_ACCOUNT_KIT_INVALID_SESSION()
   return { id: row.id as number, lastSeenAt: readIsoTimestamp(row.last_seen_at)! }
 }
 

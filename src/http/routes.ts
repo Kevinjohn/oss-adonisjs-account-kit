@@ -421,6 +421,17 @@ const definitions: readonly (Omit<ManagedRoute, 'path'> & { suffix: string })[] 
 /**
  * Lists the routes `registerManagedRoutes` would mount, and throws if one collides with an existing
  * route.
+ *
+ * @example
+ * ```ts
+ * import { planManagedRoutes } from '@kevinjohn/adonisjs-account-kit/http'
+ *
+ * const routes = planManagedRoutes({
+ *   prefix: '/account',
+ *   strategy: 'session',
+ *   enabled: ['passwordReset'],
+ * })
+ * ```
  */
 export function planManagedRoutes(
   selection: ManagedRouteSelection,

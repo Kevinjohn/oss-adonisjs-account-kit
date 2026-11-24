@@ -55,7 +55,7 @@ are off by default and require the `authentication` config; see [magic-link sign
 see [account export and deletion](account-data.md). When omitted, registration and invitations are
 disabled; applications select either explicitly. Every configuration supplies
 `registration.availability`, even when registration is disabled. Configuration validates callbacks needed by enabled capabilities only;
-calling an operation from a disabled capability rejects with `CapabilityDisabledError`.
+calling an operation from a disabled capability rejects with `E_ACCOUNT_KIT_CAPABILITY_DISABLED`.
 An `emailVerification`-only adapter needs `findById`, `markEmailVerified`, and `setPassword`, but
 does not need `setEmail`. Inactive activation replaces the earlier password with a fresh one;
 active-account email changes retain their separate proof behaviour.
@@ -153,7 +153,7 @@ links from that configured value, not from request `Host` or forwarded-host head
 
 An invitation carries an opaque `scope` (a team or workspace, or null) next to its opaque `role`.
 A normalised address can hold one pending invitation per scope; a second send for the same address
-and scope throws `InvitationPendingError`. Sending an invitation to an address that already belongs
+and scope throws `E_ACCOUNT_KIT_INVITATION_PENDING`. Sending an invitation to an address that already belongs
 to a user is rejected. `authorize.invite` and `authorize.listInvitations` receive the scope in
 `context.scope`; `invitations.list` filters by `scope` when given and lists every scope otherwise.
 Accepting any invitation applies every pending invitation for the address in the same transaction,
@@ -253,10 +253,10 @@ once and must be repeatable. The lock migration must be applied before package w
 uses row-level locks and does not retry failed transactions. Transient database errors can
 propagate on either dialect.
 
-Notifications and lifecycle callbacks run after commit. A `DeliveryError` means only delivery effects
-failed; a `PostCommitError` means an observer or commit listener failed
+Notifications and lifecycle callbacks run after commit. An `E_ACCOUNT_KIT_DELIVERY` means only delivery effects
+failed; an `E_ACCOUNT_KIT_POST_COMMIT` means an observer or commit listener failed
 and exposes `committed: true`. If delivery also fails, its cause is included in the
-`PostCommitError`. Do not retry a committed account mutation as if it
+`E_ACCOUNT_KIT_POST_COMMIT`. Do not retry a committed account mutation as if it
 had rolled back. If delivery must survive process failure, write an outbox row in the transaction
 and deliver it from an application-owned worker. See the
 [production boundaries](production-boundaries.md#durable-notifications).
@@ -273,29 +273,29 @@ classes retain separate codes for application-side diagnosis.
 These are service exception defaults. The maintained HTTP reference maps proof failures to 400
 with a generic response and retains Vine request validation at 422.
 
-| Error                             | Code                                         | Status |
-| --------------------------------- | -------------------------------------------- | -----: |
-| `InvalidInputError`               | `E_ACCOUNT_KIT_INVALID_INPUT`                |    422 |
-| `InvalidTokenError`               | `E_ACCOUNT_KIT_INVALID_TOKEN`                |    400 |
-| `ThrottledError`                  | `E_ACCOUNT_KIT_THROTTLED`                    |    429 |
-| `AuthorizationError`              | `E_ACCOUNT_KIT_AUTHORIZATION`                |    403 |
-| `InvitationManagementDeniedError` | `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` |    404 |
-| `InvitationNotFoundError`         | `E_ACCOUNT_KIT_INVITATION_NOT_FOUND`         |    404 |
-| `IdentityNotConfirmedError`       | `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`       |    403 |
-| `NoPasswordError`                 | `E_ACCOUNT_KIT_NO_PASSWORD`                  |    403 |
-| `EmailAlreadyRegisteredError`     | `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`     |    409 |
-| `InvitationPendingError`          | `E_ACCOUNT_KIT_INVITATION_PENDING`           |    409 |
-| `DeliveryError`                   | `E_ACCOUNT_KIT_DELIVERY`                     |    500 |
-| `PostCommitError`                 | `E_ACCOUNT_KIT_POST_COMMIT`                  |    500 |
-| `CapabilityDisabledError`         | `E_ACCOUNT_KIT_CAPABILITY_DISABLED`          |    500 |
+| Error                                        | Code                                         | Status |
+| -------------------------------------------- | -------------------------------------------- | -----: |
+| `E_ACCOUNT_KIT_INVALID_INPUT`                | `E_ACCOUNT_KIT_INVALID_INPUT`                |    422 |
+| `E_ACCOUNT_KIT_INVALID_TOKEN`                | `E_ACCOUNT_KIT_INVALID_TOKEN`                |    400 |
+| `E_ACCOUNT_KIT_THROTTLED`                    | `E_ACCOUNT_KIT_THROTTLED`                    |    429 |
+| `E_ACCOUNT_KIT_AUTHORIZATION`                | `E_ACCOUNT_KIT_AUTHORIZATION`                |    403 |
+| `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` | `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED` |    404 |
+| `E_ACCOUNT_KIT_INVITATION_NOT_FOUND`         | `E_ACCOUNT_KIT_INVITATION_NOT_FOUND`         |    404 |
+| `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`       | `E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED`       |    403 |
+| `E_ACCOUNT_KIT_NO_PASSWORD`                  | `E_ACCOUNT_KIT_NO_PASSWORD`                  |    403 |
+| `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`     | `E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED`     |    409 |
+| `E_ACCOUNT_KIT_INVITATION_PENDING`           | `E_ACCOUNT_KIT_INVITATION_PENDING`           |    409 |
+| `E_ACCOUNT_KIT_DELIVERY`                     | `E_ACCOUNT_KIT_DELIVERY`                     |    500 |
+| `E_ACCOUNT_KIT_POST_COMMIT`                  | `E_ACCOUNT_KIT_POST_COMMIT`                  |    500 |
+| `E_ACCOUNT_KIT_CAPABILITY_DISABLED`          | `E_ACCOUNT_KIT_CAPABILITY_DISABLED`          |    500 |
 
-`ThrottledError` also exposes `retryAfterSeconds`. `PostCommitError` exposes `committed: true`.
-`CapabilityDisabledError` usually indicates a route or operation is enabled without its
+`E_ACCOUNT_KIT_THROTTLED` also exposes `retryAfterSeconds`. `E_ACCOUNT_KIT_POST_COMMIT` exposes `committed: true`.
+`E_ACCOUNT_KIT_CAPABILITY_DISABLED` usually indicates a route or operation is enabled without its
 corresponding capability; it is generally an application configuration issue and should not be
 returned as a generic server detail.
 
 Password reset request endpoints must always return the same generic acknowledgement for known and unknown
-accounts. Suppress both `DeliveryError` and `PostCommitError` for that operation at the HTTP
+accounts. Suppress both `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` for that operation at the HTTP
 boundary, then return the acknowledgement. Do not return error codes, delivery status, or callback
 details to the requester. `minRequestMs` defaults to 300ms as a mitigation against timing
 differences; it is not a guarantee that all requests take the same time.

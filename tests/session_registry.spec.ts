@@ -1,9 +1,9 @@
 import { test } from '@japa/runner'
 import { DateTime, Settings } from 'luxon'
 import {
-  InvalidCredentialsError,
-  InvalidSessionError,
-  UnverifiedEmailError,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
 } from '../src/errors.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { hashToken } from '../src/tokens.js'
@@ -119,7 +119,7 @@ test.group('session registry', (group) => {
     // A session from before the capability was enabled has no handle.
     await assert.rejects(
       () => account.authentication.current({ userId: user.id, revision: null }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     await assert.rejects(
       () =>
@@ -127,7 +127,7 @@ test.group('session registry', (group) => {
           ...mine.input(user.id),
           sessionHandle: theirs.input(other.id).sessionHandle,
         }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     await kit.db
       .from('account_sessions')
@@ -135,7 +135,7 @@ test.group('session registry', (group) => {
       .update({ expires_at: dbTime(kit, minutesAgo(1)) })
     await assert.rejects(
       () => account.authentication.current(mine.input(user.id)),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     assert.lengthOf(await kit.db.from('account_sessions'), 2)
     const stillSignedIn = await account.authentication.current(theirs.input(other.id))
@@ -165,7 +165,7 @@ test.group('session registry', (group) => {
     allowed = false
     await assert.rejects(
       () => account.authentication.current(session.input(user.id)),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     const untouched = await row()
     assert.equal(new Date(untouched.last_seen_at).getTime(), staleSeen.toMillis())
@@ -196,7 +196,7 @@ test.group('session registry', (group) => {
     now += 6 * 60 * 1000
     await assert.rejects(
       () => account.authentication.requireActive(session.input(user.id)),
-      UnverifiedEmailError
+      E_ACCOUNT_KIT_UNVERIFIED_EMAIL
     )
     const after = await kit.db.from('account_sessions').first()
     assert.equal(new Date(after.last_seen_at).getTime(), now)
@@ -232,7 +232,7 @@ test.group('session registry', (group) => {
             terminate: async (credential?: string) => void terminated.push(credential),
           }
         ),
-      InvalidCredentialsError
+      E_INVALID_CREDENTIALS
     )
     assert.deepEqual(terminated, ['cookie'])
     assert.lengthOf(await kit.db.from('account_sessions'), 0)

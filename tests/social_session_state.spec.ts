@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
-import { SocialTransactionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID } from '../src/errors.js'
 import {
   forgetSessionState,
   rememberSessionState,
@@ -31,17 +31,26 @@ test.group('social session state', () => {
     assert.include(requireSessionState(context, 'state-1'), saved)
     forgetSessionState(context, 'state-1')
     assert.isFalse(store.has(stateKey('state-1')))
-    assert.throws(() => requireSessionState(context, 'state-1'), SocialTransactionError)
+    assert.throws(
+      () => requireSessionState(context, 'state-1'),
+      E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
+    )
   })
 
   test('refuses unknown, unlisted, malformed and expired states', ({ assert }) => {
     const { context, store } = sessionContext()
-    assert.throws(() => requireSessionState(context, 'never-issued'), SocialTransactionError)
+    assert.throws(
+      () => requireSessionState(context, 'never-issued'),
+      E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
+    )
 
     // Stored, but missing from the pending list.
     rememberSessionState(context, 'unlisted', saved)
     store.set('accountKit.social.pendingStates', [])
-    assert.throws(() => requireSessionState(context, 'unlisted'), SocialTransactionError)
+    assert.throws(
+      () => requireSessionState(context, 'unlisted'),
+      E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
+    )
 
     // Each value differs from a valid record in one field only.
     const valid = { ...saved, expiresAt: Date.now() + 60_000 }
@@ -58,17 +67,26 @@ test.group('social session state', () => {
       const state = `malformed-${index}`
       rememberSessionState(context, state, saved)
       store.set(stateKey(state), value)
-      assert.throws(() => requireSessionState(context, state), SocialTransactionError)
+      assert.throws(
+        () => requireSessionState(context, state),
+        E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
+      )
     }
 
     // Listed as live, but the stored value has expired.
     rememberSessionState(context, 'expired', { ...saved, expiresAt: Date.now() + 60_000 })
     store.set(stateKey('expired'), { ...saved, expiresAt: Date.now() - 1 })
-    assert.throws(() => requireSessionState(context, 'expired'), SocialTransactionError)
+    assert.throws(
+      () => requireSessionState(context, 'expired'),
+      E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
+    )
 
     // Expired in the pending list: the stored value is dropped too.
     rememberSessionState(context, 'lapsed', { ...saved, expiresAt: Date.now() - 1 })
-    assert.throws(() => requireSessionState(context, 'lapsed'), SocialTransactionError)
+    assert.throws(
+      () => requireSessionState(context, 'lapsed'),
+      E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID
+    )
     assert.isFalse(store.has(stateKey('lapsed')))
   })
 })

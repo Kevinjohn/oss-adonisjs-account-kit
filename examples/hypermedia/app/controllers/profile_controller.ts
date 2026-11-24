@@ -20,8 +20,8 @@ export default class ProfileController {
       })
     } catch (error) {
       if (
-        !(error instanceof errors.InvalidCredentialsError) &&
-        !(error instanceof errors.IdentityNotConfirmedError)
+        !(error instanceof errors.E_INVALID_CREDENTIALS) &&
+        !(error instanceof errors.E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED)
       )
         throw error
       ctx.session.flash('error', 'Your current password is incorrect. Check it and try again.')

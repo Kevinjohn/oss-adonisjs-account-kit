@@ -1,6 +1,7 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import type { DateTime } from 'luxon'
 import type { LucidModel } from '@adonisjs/lucid/types/model'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import { normalizeEmail } from '../src/email.js'
 import type { AccountUser, Trx, UserId, UsersAdapter, UsersAdapterMetadata } from '../src/types.js'
 
@@ -71,9 +72,21 @@ export type LucidUsersAdapter = UsersAdapter & {
   /**
    * Inserts through the model so its save hooks run. Prepared hashes bypass model password
    * hashing; the verify-only compatibility path lets the model hash the supplied password.
+   *
+   * @example
+   * ```ts
+   * await users.create({ email: 'sam@example.test', unverifiedEmail: null, password }, trx)
+   * ```
    */
   create(attrs: LucidCreateAttributes, trx: Trx): Promise<AccountUser>
-  /** The model's table name, primary key and email constraint. */
+  /**
+   * The model's table name, primary key and email constraint.
+   *
+   * @example
+   * ```ts
+   * const metadata = await lucidUsers.resolveMetadata()
+   * ```
+   */
   resolveMetadata(): Promise<UsersAdapterMetadata>
 }
 
@@ -121,7 +134,7 @@ function assertSafeRegistrationMapping(
     values.role !== before.role ||
     values.credentialsChangedAt !== before.credentialsChangedAt
   ) {
-    throw new Error(
+    throw new InvalidArgumentsException(
       'account_kit: mapRegistrationData cannot assign id, email, unverifiedEmail, password, emailVerifiedAt, credentialsChangedAt, or role'
     )
   }
@@ -131,6 +144,13 @@ function assertSafeRegistrationMapping(
  * Build the package-maintained adapter around an application-owned Lucid model loader.
  * The loader runs only when an adapter operation needs the model, so application models
  * are never imported as a package side effect.
+ *
+ * @example
+ * ```ts
+ * import { createLucidAdapter } from '@kevinjohn/adonisjs-account-kit/adapters/lucid'
+ *
+ * const users = createLucidAdapter(async () => (await import('#models/user')).default)
+ * ```
  */
 export function createLucidAdapter<Model extends LucidModelRow>(
   loadModel: LucidModelLoader<Model>,
@@ -148,7 +168,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     User.boot()
 
     if (User.connection) {
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'model.connection',
         'account_kit: Lucid user models must use the default database connection'
       )
@@ -157,7 +177,7 @@ export function createLucidAdapter<Model extends LucidModelRow>(
     const primaryKey = User.primaryKey
     const physicalPrimaryKey = User.$getColumn(primaryKey)?.columnName
     if (primaryKey !== 'id' || physicalPrimaryKey !== 'id') {
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'model.primaryKey',
         'account_kit: Lucid user models must use the id attribute mapped to the id column'
       )
@@ -169,14 +189,14 @@ export function createLucidAdapter<Model extends LucidModelRow>(
       ['emailVerifiedAt', 'email_verified_at'],
     ] as const) {
       if (User.$getColumn(attribute)?.columnName !== column) {
-        throw new InvalidConfigurationError(
+        throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
           `model.columns.${attribute}`,
           `account_kit: Lucid user models must use the ${attribute} attribute mapped to the ${column} column`
         )
       }
     }
     if (!User.table)
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         'model.table',
         'account_kit: Lucid user model must define a table'
       )
@@ -268,7 +288,9 @@ export function createLucidAdapter<Model extends LucidModelRow>(
 
       if (attrs.registrationData !== undefined) {
         if (!options.mapRegistrationData) {
-          throw new Error('account_kit: registrationData requires mapRegistrationData')
+          throw new InvalidArgumentsException(
+            'account_kit: registrationData requires mapRegistrationData'
+          )
         }
         await options.mapRegistrationData(attrs.registrationData, user as Model)
         assertSafeRegistrationMapping(user, before)
@@ -317,7 +339,9 @@ export function createLucidAdapter<Model extends LucidModelRow>(
 
     async updateRegistrationData(id, data, trx) {
       if (!options.mapRegistrationData)
-        throw new Error('account_kit: registrationData requires mapRegistrationData')
+        throw new InvalidArgumentsException(
+          'account_kit: registrationData requires mapRegistrationData'
+        )
       const User = await loadUserModel()
       const user = await getByColumn(query(User, trx), 'id', id)
       if (!user) return

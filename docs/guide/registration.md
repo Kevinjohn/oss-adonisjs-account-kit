@@ -6,7 +6,7 @@ The generated configuration enables `registration` and sets `registration.availa
 Every configuration must include availability explicitly, even when registration is disabled.
 When `enabled` is omitted, both registration and invitations are disabled; applications must
 select either capability explicitly.
-Choose `open`, `closed`, or `application`. `open` is the recommended public default. `closed` rejects creation with `AuthorizationError` (403);
+Choose `open`, `closed`, or `application`. `open` is the recommended public default. `closed` rejects creation with `E_ACCOUNT_KIT_AUTHORIZATION` (403);
 `application` lets the application own the signup decision and call the service after its own
 checks. The package does not install a public registration route. Enable `emailVerification` and configure
 `urls.emailVerification` and `notify.accountActivationProvision` to deliver activation proofs.
@@ -53,7 +53,7 @@ length and character variety; a long passphrase can score higher without mixed c
 `registration.register({ email, password, registrationData? })` normalises the address and creates
 an inactive account with `email` and `unverifiedEmail` equal. The account and a hashed one-use
 activation proof commit in one transaction. A unique email constraint decides concurrent attempts;
-all duplicate account states produce `RegistrationEmailAlreadyRegisteredError` (422). An HTTP
+all duplicate account states produce `E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED` (422). An HTTP
 controller should translate it to the same `email` field error using the `unique` rule, regardless
 of whether the account is verified, inactive, passwordless, or restricted.
 

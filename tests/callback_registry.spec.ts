@@ -6,7 +6,7 @@ import AdmissionProvider from '../src/admission/provider.js'
 import { AccountAdmission } from '../src/admission/service.js'
 import type { AdmissionConfig } from '../src/admission/types.js'
 import { AccountKitCallbackRegistry } from '../src/callback_registry.js'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import type { AccountKitCallbacks, AccountKitConfig } from '../src/types.js'
 import { bootTestApp, type TestApp } from './helpers/app.js'
 import { allowDecisions } from './helpers/admission.js'
@@ -40,14 +40,16 @@ async function withApp(run: (app: TestApp) => Promise<void>): Promise<void> {
   }
 }
 
-async function rejection(run: () => Promise<unknown>): Promise<InvalidConfigurationError> {
+async function rejection(
+  run: () => Promise<unknown>
+): Promise<InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>> {
   try {
     await run()
   } catch (error) {
-    if (error instanceof InvalidConfigurationError) return error
+    if (error instanceof E_ACCOUNT_KIT_INVALID_CONFIGURATION) return error
     throw error
   }
-  throw new Error('Expected an InvalidConfigurationError')
+  throw new Error('Expected an E_ACCOUNT_KIT_INVALID_CONFIGURATION')
 }
 
 test.group('callback registry', () => {

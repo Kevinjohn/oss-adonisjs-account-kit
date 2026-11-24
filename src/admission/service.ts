@@ -4,7 +4,11 @@ import type { AccountKit } from '../account_kit.js'
 import { requireCurrentAccountInTransaction } from '../authentication.js'
 import { transaction } from '../db.js'
 import { normalizeEmail } from '../email.js'
-import { InvalidSessionError, UnverifiedEmailError } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_REQUIRED,
+  E_ACCOUNT_KIT_INVALID_SESSION,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
+} from '../errors.js'
 import type {
   AccountUser,
   OperatorInviteResult,
@@ -16,7 +20,6 @@ import type {
 } from '../types.js'
 import { evaluateAdmission } from './decision.js'
 import { isDomainAllowed, extractEmailDomain } from './domain.js'
-import { AdmissionRequiredError } from './errors.js'
 import { readAdmissionRow, toAdmissionRecord } from './rows.js'
 import type {
   AdmissionApprovalStatus,
@@ -46,6 +49,15 @@ export type AdmissionContext = Omit<AdmissionDependencies, 'kit'>
 /**
  * Admission: whether a verified account may use the application. Resolve it with
  * `app.container.make(AccountAdmission)`. The decision is read from the database on every call.
+ *
+ * @example
+ * ```ts
+ * import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+ * import app from '@adonisjs/core/services/app'
+ *
+ * const admission = await app.container.make(AccountAdmission)
+ * const record = await admission.record(userId)
+ * ```
  */
 export class AccountAdmission {
   /** The account service this module works with. */
@@ -58,7 +70,14 @@ export class AccountAdmission {
     this.deps = rest
   }
 
-  /** Evaluates the enabled requirements for `user`. The caller holds the user lock in `trx`. */
+  /**
+   * Evaluates the enabled requirements for `user`. The caller holds the user lock in `trx`.
+   *
+   * @example
+   * ```ts
+   * const decision = await admission.decide(user, trx)
+   * ```
+   */
   async decide(user: AccountUser, trx: Trx): Promise<AdmissionDecision> {
     return evaluateAdmission(this.deps.config, user, await readAdmissionRow(trx, user.id))
   }
@@ -66,6 +85,11 @@ export class AccountAdmission {
   /**
    * Checks the credential like `kit.authentication.current`, then evaluates admission, in one
    * transaction. Use it for the status read the limited surface shows.
+   *
+   * @example
+   * ```ts
+   * const { account, decision } = await admission.current(current)
+   * ```
    */
   current(
     input: CurrentAccountInput
@@ -77,28 +101,39 @@ export class AccountAdmission {
         trx
       )
       const user = await this.deps.accountConfig.users.findById(input.userId, trx)
-      if (!user) throw new InvalidSessionError()
+      if (!user) throw new E_ACCOUNT_KIT_INVALID_SESSION()
       return { account, decision: await this.decide(user, trx) }
     })
   }
 
   /**
-   * The gate for protected routes. Like `current`, then throws `UnverifiedEmailError` for an
-   * unconfirmed account (unless `active: false`) and `AdmissionRequiredError` unless admitted.
+   * The gate for protected routes. Like `current`, then throws `E_ACCOUNT_KIT_UNVERIFIED_EMAIL` for an
+   * unconfirmed account (unless `active: false`) and `E_ACCOUNT_KIT_ADMISSION_REQUIRED` unless admitted.
+   *
+   * @example
+   * ```ts
+   * const { account } = await admission.require(current)
+   * ```
    */
   async require(
     input: CurrentAccountInput,
     options: { active?: boolean } = {}
   ): Promise<{ account: CurrentAccount; decision: AdmissionDecision }> {
     const result = await this.current(input)
-    if (options.active !== false && !result.account.active) throw new UnverifiedEmailError()
-    if (!result.decision.admitted) throw new AdmissionRequiredError(result.decision)
+    if (options.active !== false && !result.account.active)
+      throw new E_ACCOUNT_KIT_UNVERIFIED_EMAIL()
+    if (!result.decision.admitted) throw new E_ACCOUNT_KIT_ADMISSION_REQUIRED(result.decision)
     return result
   }
 
   /**
    * Whether the user is admitted; false for an unknown user. For `authorize` and
    * `exportAccountData` callbacks: pass their `trx` when they have one.
+   *
+   * @example
+   * ```ts
+   * const admitted = await admission.isAdmitted(userId, trx)
+   * ```
    */
   async isAdmitted(userId: UserId, trx?: Trx): Promise<boolean> {
     const user = await this.deps.accountConfig.users.findById(userId, trx)
@@ -111,6 +146,11 @@ export class AccountAdmission {
    * The user's admission record, or null for an unknown user or one with no admission row. Pass the
    * caller's `trx` to see its uncommitted writes. Ids reach the users adapter as given, as in
    * `isAdmitted`.
+   *
+   * @example
+   * ```ts
+   * const record = await admission.record(userId)
+   * ```
    */
   async record(userId: UserId, trx?: Trx): Promise<AdmissionRecord | null> {
     const user = await this.deps.accountConfig.users.findById(userId, trx)
@@ -122,6 +162,11 @@ export class AccountAdmission {
   /**
    * Whether `email` would meet the domain requirement once confirmed. True when the requirement is
    * off; false, never throwing, for a malformed address.
+   *
+   * @example
+   * ```ts
+   * const eligible = admission.eligibleDomain('sam@example.test')
+   * ```
    */
   eligibleDomain(email: string): boolean {
     const rule = this.deps.config.domain
@@ -134,27 +179,60 @@ export class AccountAdmission {
   /**
    * Records that the signed-in person asked for approval, so `list({ status: 'pending' })` shows
    * them. Idempotent; emits `admission.requested` once. Refuses an unconfirmed account.
+   *
+   * @example
+   * ```ts
+   * const record = await admission.request(current)
+   * ```
    */
   request(input: CurrentAccountInput): Promise<AdmissionRecord> {
     return requestAdmission(this.deps, input)
   }
 
-  /** Approves `userId`. The actor must be admitted, not the subject, and allowed by `decide`. */
+  /**
+   * Approves `userId`. The actor must be admitted, not the subject, and allowed by `decide`.
+   *
+   * @example
+   * ```ts
+   * await admission.approve({ actorId, userId })
+   * ```
+   */
   approve(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
     return decideAdmission(this.deps, input, 'approve')
   }
 
-  /** Rejects `userId`, who has no decision yet. Same actor rules as `approve`. */
+  /**
+   * Rejects `userId`, who has no decision yet. Same actor rules as `approve`.
+   *
+   * @example
+   * ```ts
+   * await admission.reject({ actorId, userId })
+   * ```
+   */
   reject(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
     return decideAdmission(this.deps, input, 'reject')
   }
 
-  /** Revokes an approved `userId`. Sessions stay; the next gated request is refused. */
+  /**
+   * Revokes an approved `userId`. Sessions stay; the next gated request is refused.
+   *
+   * @example
+   * ```ts
+   * await admission.revoke({ actorId, userId })
+   * ```
+   */
   revoke(input: { actorId: UserId; userId: UserId }): Promise<AdmissionRecord> {
     return decideAdmission(this.deps, input, 'revoke')
   }
 
-  /** Admission records a page at a time, after `authorize.list` allows the actor. */
+  /**
+   * Admission records a page at a time, after `authorize.list` allows the actor.
+   *
+   * @example
+   * ```ts
+   * const page = await admission.list({ actorId, status: 'pending', limit: 20 })
+   * ```
+   */
   list(input: {
     actorId: UserId
     status?: AdmissionApprovalStatus
@@ -170,19 +248,55 @@ export class AccountAdmission {
    */
   get operator() {
     return {
+      /**
+       * Approve a person from the operator console.
+       *
+       * @example
+       * ```ts
+       * await admission.operator.approve({ email: 'sam@example.test' })
+       * ```
+       */
       approve: (input: { email: string }): Promise<AdmissionRecord> =>
         applyOperatorDecision(this.deps, input, 'approve'),
+      /**
+       * Revoke admission from the operator console.
+       *
+       * @example
+       * ```ts
+       * await admission.operator.revoke({ email: 'sam@example.test' })
+       * ```
+       */
       revoke: (input: { email: string }): Promise<AdmissionRecord> =>
         applyOperatorDecision(this.deps, input, 'revoke'),
+      /**
+       * Record operator-provided invitation evidence.
+       *
+       * @example
+       * ```ts
+       * await admission.operator.grantInvitation({ email: 'sam@example.test' })
+       * ```
+       */
       grantInvitation: (input: { email: string; role?: string }): Promise<AdmissionRecord> =>
         grantOperatorInvitation(this.deps, input),
       /**
        * Issues an operator invitation and an approval waiting for the account it creates; that
        * account lands admitted once its invitation evidence is recorded.
+       *
+       * @example
+       * ```ts
+       * await admission.operator.bootstrap({ email: 'sam@example.test', role: 'admin' })
+       * ```
        */
       bootstrap: (input: { email: string; role: string }): Promise<OperatorInviteResult> =>
         bootstrapOperatorInvitation(this.deps, input),
-      /** Deletes the waiting approval for `email`; returns whether there was one. */
+      /**
+       * Deletes the waiting approval for `email`; returns whether there was one.
+       *
+       * @example
+       * ```ts
+       * await admission.operator.cancelBootstrap({ email: 'sam@example.test' })
+       * ```
+       */
       cancelBootstrap: (input: { email: string }): Promise<boolean> =>
         cancelBootstrap(this.deps, input.email),
     }

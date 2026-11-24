@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit'
 import { authStrategy } from '#services/auth_strategy'
 
 /** The browser's PKCE verifier, kept in the session between redirect and callback. */
@@ -40,7 +40,7 @@ export function pendingBrowserTransaction(
 ): BrowserTransaction | undefined {
   if (!isBrowser()) return undefined
   const pending = ctx.session.get(transactionKey) as BrowserTransaction | undefined
-  if (pending?.state !== state) throw new InvalidInputError('Invalid social transaction')
+  if (pending?.state !== state) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid social transaction')
   return pending
 }
 
@@ -65,7 +65,7 @@ export function pendingBrowserContinuation(
   if (!isBrowser()) return undefined
   const pending = ctx.session.get(continuationKey) as BrowserContinuation | undefined
   if (pending?.continuation !== continuation) {
-    throw new InvalidInputError('Invalid social continuation')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid social continuation')
   }
   return pending
 }

@@ -1,5 +1,5 @@
 // Leaves the application's Authenticator authenticated for the guard the package just checked.
-import { InvalidSessionError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
 
 /** The slice of `ctx.auth` that records which guard authenticated the request. */
 export interface MarkableAuthenticator {
@@ -24,7 +24,7 @@ export async function markAuthenticated(auth: MarkableAuthenticator, guard: stri
       'code' in error &&
       error.code === 'E_UNAUTHORIZED_ACCESS'
     )
-      throw new InvalidSessionError()
+      throw new E_ACCOUNT_KIT_INVALID_SESSION()
     throw error
   }
 }

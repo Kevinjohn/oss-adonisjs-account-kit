@@ -1,12 +1,16 @@
 // Approve, reject and revoke: the approval transitions and who may make them.
 import { randomUUID } from 'node:crypto'
 import { lockUser, transaction } from '../db.js'
-import { AuthorizationError, InvalidInputError, UserNotFoundError } from '../errors.js'
+import {
+  E_ACCOUNT_KIT_ADMISSION_DECISION,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_USER_NOT_FOUND,
+} from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { AccountUser, Trx, UserId } from '../types.js'
 import { requireApproval } from './capability.js'
 import { evaluateAdmission } from './decision.js'
-import { AdmissionDecisionError } from './errors.js'
 import { withAdmissionEvent } from './events.js'
 import { readAdmissionRow, toAdmissionRecord, upsertAdmissionRow } from './rows.js'
 import type { AdmissionContext } from './service.js'
@@ -28,13 +32,13 @@ const allowedFrom: Record<AdmissionTransition, ReadonlyArray<Decided | null>> = 
   revoke: ['approved'],
 }
 
-/** The new status, or `AdmissionDecisionError` when the transition is not allowed from `from`. */
+/** The new status, or `E_ACCOUNT_KIT_ADMISSION_DECISION` when the transition is not allowed from `from`. */
 export function resolveNextApprovalStatus(
   from: Decided | null,
   transition: AdmissionTransition
 ): Decided {
   if (!allowedFrom[transition].includes(from))
-    throw new AdmissionDecisionError(
+    throw new E_ACCOUNT_KIT_ADMISSION_DECISION(
       `Cannot ${transition} an account whose approval is ${from ?? 'pending'}`
     )
   return approvalStatusByTransition[transition]
@@ -81,13 +85,15 @@ export async function decideAdmission(
       ))
         await lockUser(trx, deps.accountConfig, id)
       const subject = await users.findById(input.userId, trx)
-      if (!subject) throw new UserNotFoundError()
+      if (!subject) throw new E_ACCOUNT_KIT_USER_NOT_FOUND()
       const actor = await users.findById(input.actorId, trx)
-      if (!actor) throw new InvalidInputError('Unknown actor')
-      if (String(actor.id) === String(subject.id)) throw new AuthorizationError()
+      if (!actor) throw new E_ACCOUNT_KIT_INVALID_INPUT('Unknown actor')
+      if (String(actor.id) === String(subject.id)) throw new E_ACCOUNT_KIT_AUTHORIZATION()
       const actorRow = await readAdmissionRow(trx, actor.id)
-      if (!evaluateAdmission(deps.config, actor, actorRow).admitted) throw new AuthorizationError()
-      if ((await authorize.decide(actor, subject, { trx })) !== true) throw new AuthorizationError()
+      if (!evaluateAdmission(deps.config, actor, actorRow).admitted)
+        throw new E_ACCOUNT_KIT_AUTHORIZATION()
+      if ((await authorize.decide(actor, subject, { trx })) !== true)
+        throw new E_ACCOUNT_KIT_AUTHORIZATION()
       return applyTransition(trx, subject, transition, actor.id)
     }),
     (record) => ({

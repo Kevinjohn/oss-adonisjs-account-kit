@@ -6,9 +6,9 @@ import { replaceBootstrapInvitation } from '../src/bootstrap_invitation.js'
 import { withInvitationEvidence } from '../src/admission/invitation_evidence.js'
 import { transaction } from '../src/db.js'
 import {
-  CapabilityDisabledError,
-  EmailAlreadyRegisteredError,
-  InvalidInputError,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
 } from '../src/errors.js'
 import type { Invitation } from '../src/types.js'
 import { locksRows } from './helpers/dialect.js'
@@ -176,14 +176,14 @@ test.group('admission bootstrap', (group) => {
     await insertUser(kit, { email: 'taken@example.test' })
     await assert.rejects(
       () => admission.operator.bootstrap({ email: 'taken@example.test', role: 'owner' }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     for (const input of [
       { email: 'boss@example.test', role: '' },
       { email: 'boss@example.test', role: 'x'.repeat(65) },
       { email: 'not-an-email', role: 'owner' },
     ])
-      await assert.rejects(() => admission.operator.bootstrap(input), InvalidInputError)
+      await assert.rejects(() => admission.operator.bootstrap(input), E_ACCOUNT_KIT_INVALID_INPUT)
     // The earlier waiting approval for the taken address is left as it was.
     assert.deepEqual(
       (await kit.db.from('account_admissions')).map((row) => row.bootstrap_email),
@@ -320,7 +320,7 @@ test.group('admission bootstrap', (group) => {
       },
     })
     const issued = await admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' })
-    assert.equal(issued.fault?.name, 'PostCommitError')
+    assert.equal(issued.fault?.name, 'PostCommitException')
     const user = await account.invitations.accept({
       token: tokenFrom(issued.url),
       password: 'ownerPassword1',
@@ -332,7 +332,7 @@ test.group('admission bootstrap', (group) => {
     const { admission } = makeAdmission(kit, allRequirements, { enabled: [] })
     await assert.rejects(
       () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'owner' }),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
     assert.lengthOf(await waiting(), 0)
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
@@ -357,7 +357,7 @@ test.group('admission bootstrap', (group) => {
     try {
       await assert.rejects(
         () => admission.operator.bootstrap({ email: 'boss@example.test', role: 'admin' }),
-        EmailAlreadyRegisteredError
+        E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
       )
     } finally {
       config.users.findByEmail = find

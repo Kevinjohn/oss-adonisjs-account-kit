@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { CurrentAccount } from '../types.js'
-import { InvalidSessionError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
 import { applyProofHeaders } from './proof_headers.js'
 import { logRecoveryDiagnostic, buildPublicAccountBody } from './response_helpers.js'
 import type { ManagedHandler, ManagedRoutesOptions } from './managed_types.js'
@@ -53,7 +53,7 @@ export async function executeManagedRequest<Credential>({
     if (
       route.name !== 'account.logout' ||
       options.guard.strategy !== 'session' ||
-      !(error instanceof InvalidSessionError)
+      !(error instanceof E_ACCOUNT_KIT_INVALID_SESSION)
     )
       throw error
     await options.guard.forRequest(context).terminate()

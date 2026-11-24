@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { sqlTimestamp } from './timestamps.js'
 import type { Database } from '@adonisjs/lucid/database'
 import { countDeletedRowsFromResult } from './consume_rows.js'
@@ -51,10 +52,10 @@ export async function pruneExpired(db: Database, input: PruneInput = {}): Promis
 export async function pruneExpiredWithScanStatus(db: Database, input: PruneInput) {
   const batchSize = input.batchSize ?? 100
   if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 1000)
-    throw new RangeError('batchSize must be an integer from 1 to 1000')
+    throw new InvalidArgumentsException('batchSize must be an integer from 1 to 1000')
   const maxBatches = input.maxBatches ?? 100
   if (!Number.isSafeInteger(maxBatches) || maxBatches < 1 || maxBatches > 1000)
-    throw new RangeError('maxBatches must be an integer from 1 to 1000')
+    throw new InvalidArgumentsException('maxBatches must be an integer from 1 to 1000')
   const cutoff = sqlTimestamp(db)
   const counts = Object.fromEntries(TABLES.map(([key]) => [key, 0])) as unknown as PruneCounts
   const cursorsByTable = new Map<PackageTable, number>()

@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Account deletion: re-authenticate, run the application hook, delete every package row, then
 // the user row, all in one transaction under the user lock.
 import { randomUUID } from 'node:crypto'
@@ -14,7 +15,7 @@ export async function deleteAccount(
 ): Promise<void> {
   const { config } = deps
   const remove = config.users.delete
-  if (!remove) throw new Error('account_kit: users.delete must be a function')
+  if (!remove) throw new RuntimeException('account_kit: users.delete must be a function')
   await deps.throttler.consume('identity:user', String(input.actorId), config.throttle)
   const operationId = randomUUID()
   const { value: deleted, fault } = await settleCommitted(

@@ -8,6 +8,13 @@ type AccountDeleting = (user: AccountUser, trx: Trx) => Promise<void>
  * Returns an `onAccountDeletingTransaction` callback that deletes the user's admission row and
  * clears them as the approver of other rows, then runs `next`. It does not rely on foreign-key
  * cascades, which a custom schema may lack.
+ *
+ * @example
+ * ```ts
+ * import { withAdmissionCleanup } from '@kevinjohn/adonisjs-account-kit/admission'
+ *
+ * const callbacks = { onAccountDeletingTransaction: withAdmissionCleanup() }
+ * ```
  */
 export function withAdmissionCleanup(next?: AccountDeleting): AccountDeleting {
   return async (user, trx) => {

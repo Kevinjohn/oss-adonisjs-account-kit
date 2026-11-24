@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { requireCurrentAccountInTransaction } from '../authentication.js'
 import { transaction } from '../db.js'
-import { InvalidSessionError, UnverifiedEmailError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_UNVERIFIED_EMAIL } from '../errors.js'
 import { sqlTimestamp } from '../timestamps.js'
 import type { CurrentAccountInput } from '../types.js'
 import { requireApproval } from './capability.js'
@@ -30,9 +30,9 @@ export async function requestAdmission(
         input,
         trx
       )
-      if (!account.active) throw new UnverifiedEmailError()
+      if (!account.active) throw new E_ACCOUNT_KIT_UNVERIFIED_EMAIL()
       const user = await deps.accountConfig.users.findById(input.userId, trx)
-      if (!user) throw new InvalidSessionError()
+      if (!user) throw new E_ACCOUNT_KIT_INVALID_SESSION()
       let row = await readAdmissionRow(trx, user.id)
       const firstRequest = !row || row.requested_at === null
       // A decided account has nothing for an approver to act on, so it records but does not notify.

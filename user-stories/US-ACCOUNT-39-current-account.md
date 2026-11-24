@@ -12,7 +12,7 @@ As a signed-in account holder, I want the application to check my current accoun
 ## Acceptance criteria
 
 - `CurrentAccountInput` includes `userId` and the strategy-specific credential data: an explicit `revision` (initially `null`) for session guards, plus `sessionHandle` when session management is enabled, or `tokenId` for access-token guards. `current` returns only id, email, unverifiedEmail, hasPassword and active.
-- A missing account, stale revision, invalid sign-in row or denied `canAccess(user, trx)` produces `InvalidSessionError`. An invalid decision value raises `AdapterContractError`. The selected host guard authenticates the incoming request and checks token expiry.
+- A missing account, stale revision, invalid sign-in row or denied `canAccess(user, trx)` produces `E_ACCOUNT_KIT_INVALID_SESSION`. An invalid decision value raises `E_ACCOUNT_KIT_ADAPTER_CONTRACT`. The selected host guard authenticates the incoming request and checks token expiry.
 
 ## User flow
 
@@ -35,11 +35,11 @@ flowchart TD
  S -->|Access tokens| T["Check tokenId names a row owned by this user"]
  R --> P["Evaluate canAccess under the same transaction"]
  T --> P
- B -->|Missing account| D["Throw InvalidSessionError"]
+ B -->|Missing account| D["Throw E_ACCOUNT_KIT_INVALID_SESSION"]
  R -->|Invalid sign-in| D
  T -->|Invalid sign-in| D
  P -->|Denied| D
- P -->|Invalid decision| V["Throw AdapterContractError"]
+ P -->|Invalid decision| V["Throw E_ACCOUNT_KIT_ADAPTER_CONTRACT"]
  P -->|Allowed| E["Touch tracked session if due, project CurrentAccount and return after commit"]
 ```
 

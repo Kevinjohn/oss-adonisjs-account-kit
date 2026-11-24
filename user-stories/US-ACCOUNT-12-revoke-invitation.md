@@ -11,7 +11,7 @@ As an authorised inviter, I want to cancel an outstanding invitation so that I c
 
 ## Acceptance criteria
 
-- **Inputs and result:** `invitations.revoke({ actorId, invitationId })` returns `void`. `authorize.manageInvitation` must allow the actor; the invitation row with that id is locked and deleted, whether it is still pending or already expired, and its token can no longer be accepted. A missing row throws `InvitationNotFoundError`; a refusal from `manageInvitation` throws `InvitationManagementDeniedError`.
+- **Inputs and result:** `invitations.revoke({ actorId, invitationId })` returns `void`. `authorize.manageInvitation` must allow the actor; the invitation row with that id is locked and deleted, whether it is still pending or already expired, and its token can no longer be accepted. A missing row throws `E_ACCOUNT_KIT_INVITATION_NOT_FOUND`; a refusal from `manageInvitation` throws `E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED`.
 
 - The transaction calls `manageInvitation(actor, invitation, { trx })`. Managed success returns 204. A lifecycle failure can surface after deletion commits.
 - If the managed write recognises a committed follow-up failure, it returns 202 with `{ committed: true }`.
@@ -33,9 +33,9 @@ flowchart TD
   M["Managed route resolves actor and parses positive invitation ID"] --> A["invitations.revoke"]
   A --> B["Check capability and ID; load actor; transaction locks actor and invitation row"]
   B --> C{"Row found?"}
-  C -->|No| D["Throw InvitationNotFoundError"]
+  C -->|No| D["Throw E_ACCOUNT_KIT_INVITATION_NOT_FOUND"]
   C -->|Yes| P{"authorize.manageInvitation allows?"}
-  P -->|No| N["Throw InvitationManagementDeniedError"]
+  P -->|No| N["Throw E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED"]
   P -->|Yes| E["Delete row and commit"]
   E --> F["Emit lifecycle event; return void or managed 204 on success; surface committed failure otherwise"]
 ```

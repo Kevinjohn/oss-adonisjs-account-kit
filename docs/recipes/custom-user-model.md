@@ -95,7 +95,7 @@ const users = createLucidAdapter(loadUser, {
   mapRegistrationData(data, user) {
     const fields = data as { fullName?: string; displayName?: string }
     if (!user.$isPersisted && fields.fullName === undefined)
-      throw new InvalidInputError('A full name is required to create an account')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('A full name is required to create an account')
     if (fields.fullName !== undefined) user.fullName = fields.fullName
     if (fields.displayName !== undefined) user.displayName = fields.displayName
   },
@@ -110,22 +110,22 @@ registration: {
   availability: 'open',
   mapFields(data) {
     if (!data || typeof data !== 'object' || Array.isArray(data))
-      throw new InvalidInputError('Invalid profile fields')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid profile fields')
     const fields = data as Record<string, unknown>
     if (Object.keys(fields).some((key) => !['fullName', 'displayName'].includes(key)))
-      throw new InvalidInputError('Invalid profile fields')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid profile fields')
 
     const mapped: { fullName?: string; displayName?: string } = {}
     if (fields.fullName !== undefined) {
       const fullName = registrationFullName(data)
       if (!fullName || fullName.length > 100)
-        throw new InvalidInputError('A full name of at most 100 characters is required')
+        throw new E_ACCOUNT_KIT_INVALID_INPUT('A full name of at most 100 characters is required')
       mapped.fullName = fullName
     }
     const value = fields.displayName
     if (value !== undefined) {
       if (typeof value !== 'string' || !value.trim() || value.trim().length > 80)
-        throw new InvalidInputError('Invalid display name')
+        throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid display name')
       mapped.displayName = value.trim()
     }
     return mapped
@@ -133,7 +133,7 @@ registration: {
 },
 ```
 
-Import `InvalidInputError` from `@kevinjohn/adonisjs-account-kit`. Keep the application's signup validator
+Import `E_ACCOUNT_KIT_INVALID_INPUT` from `@kevinjohn/adonisjs-account-kit`. Keep the application's signup validator
 responsible for requiring its existing `fullName`. The service mapper independently rejects
 unrecognised keys and invalid values from non-HTTP callers, and the adapter rejects a new account
 without `fullName`, which managed signup, invitation and social registration can otherwise send. The adapter never mass-assigns a

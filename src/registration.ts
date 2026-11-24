@@ -5,16 +5,16 @@ import { transaction, isUserEmailUniqueViolation } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { normalizeEmail, isEmailShaped } from './email.js'
 import {
-  AuthorizationError,
-  RegistrationEmailAlreadyRegisteredError,
-  InvalidInputError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
 import { mapRegistrationFields } from './registration_fields.js'
 import { generateToken, hashToken } from './tokens.js'
 import { expiresAt } from './ttl.js'
-import type { PostCommitError } from './errors.js'
+import type { E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
 import type { AccountUser, RegistrationInput } from './types.js'
 import type { ServiceDependencies } from './service_dependencies.js'
 
@@ -24,11 +24,11 @@ export async function register(
   input: RegistrationInput
 ): Promise<AccountUser> {
   if (deps.config.registration?.availability === 'closed')
-    throw new AuthorizationError('Registration is closed')
-  if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
+    throw new E_ACCOUNT_KIT_AUTHORIZATION('Registration is closed')
+  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
   const email = normalizeEmail(input.email)
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
-    throw new InvalidInputError('Invalid password')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')
 
   const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
 
@@ -36,12 +36,12 @@ export async function register(
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
   let created: AccountUser
-  let fault: PostCommitError | undefined
+  let fault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined
   try {
     ;({ value: created, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
         if (await deps.config.users.findByEmail(email, trx))
-          throw new RegistrationEmailAlreadyRegisteredError()
+          throw new E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
         const user = await deps.config.users.create(
           {
             email,
@@ -66,7 +66,7 @@ export async function register(
     ))
   } catch (error) {
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
-      throw new RegistrationEmailAlreadyRegisteredError()
+      throw new E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
     throw error
   }
 

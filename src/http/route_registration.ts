@@ -38,7 +38,17 @@ export function recordManagedRegistration(
   registrations.set(router, registration)
 }
 
-/** The managed routes registered on this router, or `undefined` when none were registered. */
+/**
+ * The managed routes registered on this router, or `undefined` when none were registered.
+ *
+ * @example
+ * ```ts
+ * import { managedRouteRegistration } from '@kevinjohn/adonisjs-account-kit/http'
+ * import router from '@adonisjs/core/services/router'
+ *
+ * const registration = managedRouteRegistration(router)
+ * ```
+ */
 export function managedRouteRegistration(router: Router): ManagedRouteRegistration | undefined {
   return registrations.get(router)
 }

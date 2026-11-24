@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { AdapterContractError, InvalidSessionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_ADAPTER_CONTRACT, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
 import { createManagedGuard, managedAccountMiddleware } from '../src/http/guard.js'
 import { admissionMiddleware } from '../src/admission/middleware.js'
 import { fakeAuthenticator } from './helpers/managed_http_fakes.js'
@@ -27,7 +27,7 @@ test.group('managed existing-guard adapters', () => {
       auth: { use: () => ({ authenticate: async () => ({}) }) },
       session: { config, get: () => undefined },
     }) as never
-    await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
+    await assert.rejects(() => adapter.current(ctx), E_ACCOUNT_KIT_INVALID_SESSION)
   })
   test('reads Lucid proxy user and token IDs even when property membership is hidden', async ({
     assert,
@@ -105,7 +105,7 @@ test.group('managed existing-guard adapters', () => {
     })
     await assert.rejects(
       () => adapter.forRequest({} as never).establish(42, ['*'], null),
-      AdapterContractError
+      E_ACCOUNT_KIT_ADAPTER_CONTRACT
     )
     assert.deepEqual(deleted, [18])
   })
@@ -142,7 +142,7 @@ test.group('managed existing-guard adapters', () => {
       assert.strictEqual(error, releaseFailure)
     }
     value = { release: () => 1 }
-    await assert.rejects(establish, AdapterContractError)
+    await assert.rejects(establish, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
     value = {
       release: () => {
         throw releaseFailure
@@ -177,9 +177,9 @@ test.group('managed existing-guard adapters', () => {
       }),
     })
     const establish = () => adapter.forRequest({} as never).establish(42, ['*'], null)
-    await assert.rejects(establish, AdapterContractError)
+    await assert.rejects(establish, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
     issued = { identifier: null, value: { release: () => 'token' } }
-    await assert.rejects(establish, AdapterContractError)
+    await assert.rejects(establish, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
     assert.isFalse(deleted)
   })
   test('refuses sessions without the protected configuration before issuing or trusting a credential', async ({
@@ -307,7 +307,7 @@ test.group('managed existing-guard adapters', () => {
       sessionHandle: 'handle-1',
     })
     values.set('accountKitSession', 7)
-    await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
+    await assert.rejects(() => adapter.current(ctx), E_ACCOUNT_KIT_INVALID_SESSION)
   })
 
   test('token login names the token only when a label is given', async ({ assert }) => {
@@ -354,7 +354,7 @@ test.group('managed existing-guard adapters', () => {
       }),
     })
     const ctx = { auth: { use: () => ({ authenticate: async () => user }) } } as never
-    await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
+    await assert.rejects(() => adapter.current(ctx), E_ACCOUNT_KIT_INVALID_SESSION)
   })
 
   test('selected guard rejection becomes one package 401 without losing operational failures', async ({
@@ -379,7 +379,7 @@ test.group('managed existing-guard adapters', () => {
         }),
       },
     }) as never
-    await assert.rejects(() => adapter.current(ctx), InvalidSessionError)
+    await assert.rejects(() => adapter.current(ctx), E_ACCOUNT_KIT_INVALID_SESSION)
     const databaseFailure = new Error('database offline')
     const { context: outageContext, config: outageConfig } = await protectedContext()
     const outage = Object.assign(outageContext, {
@@ -482,7 +482,7 @@ test.group('managed guard adapters leave ctx.auth authenticated', () => {
         throw Object.assign(new Error('nope'), { code: 'E_UNAUTHORIZED_ACCESS' })
       },
     })
-    await assert.rejects(() => adapter.current({ auth } as never), InvalidSessionError)
+    await assert.rejects(() => adapter.current({ auth } as never), E_ACCOUNT_KIT_INVALID_SESSION)
     assert.isUndefined(auth.marked)
     assert.isUndefined(auth.user)
   })

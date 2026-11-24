@@ -12,7 +12,7 @@ As an authorised application approver, I want to revoke an admitted account’s 
 ## Acceptance criteria
 
 - `revoke({ actorId, userId })` requires enabled approval and the same distinct, admitted actor and `authorize.decide(actor, subject, { trx })` check as [US-ACCOUNT-26](US-ACCOUNT-26-decide-admission.md). The subject must exist and be `approved`; a refused transition preserves the existing decision.
-- Success returns the record with revoked status, actor and decision time. The configured observer receives `admission.revoked` after commit. Its failure reports `PostCommitError` with revocation saved. Existing credentials remain valid subject to their own checks, and future admission gates refuse the account while approval is required and revoked.
+- Success returns the record with revoked status, actor and decision time. The configured observer receives `admission.revoked` after commit. Its failure reports `E_ACCOUNT_KIT_POST_COMMIT` with revocation saved. Existing credentials remain valid subject to their own checks, and future admission gates refuse the account while approval is required and revoked.
 
 ## User flow
 
@@ -38,17 +38,17 @@ The runnable API example traces the controller and middleware entry in its [admi
 ```mermaid
 flowchart TD
  A["AccountAdmission.revoke calls decideAdmission with revoke"] --> B{"requireApproval passes?"}
- B -->|No| C["Throw CapabilityDisabledError"]
+ B -->|No| C["Throw E_ACCOUNT_KIT_CAPABILITY_DISABLED"]
  B -->|Yes| D["In transaction, lock actor and subject in ID order"]
  D --> E{"Subject and distinct admitted actor exist, and authorize.decide returns true with trx?"}
  E -->|No| F["Abort with lookup or authorisation error"]
  E -->|Yes| G{"resolveNextApprovalStatus sees approved?"}
- G -->|No| H["Throw AdmissionDecisionError"]
+ G -->|No| H["Throw E_ACCOUNT_KIT_ADMISSION_DECISION"]
  G -->|Yes| I["applyTransition upserts revoked decision, actor and time"]
  I --> J["Commit; withAdmissionEvent invokes configured observer"]
  J --> K{"Follow-ups succeed?"}
  K -->|Yes| L["Return updated AdmissionRecord"]
- K -->|No| M["Throw PostCommitError with revocation saved"]
+ K -->|No| M["Throw E_ACCOUNT_KIT_POST_COMMIT with revocation saved"]
  J --> N["On a later gated request, require reevaluates the stored approval"]
 ```
 

@@ -1,3 +1,4 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 // Passwordless sign-in by a one-use email link bound to the client that asked for it.
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
@@ -10,7 +11,11 @@ import { establishCredential } from './credential_issuance.js'
 import { consumeUserToken, lockUser, transaction } from './db.js'
 import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } from './effects.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
-import { InvalidCredentialsError, InvalidInputError, InvalidTokenError } from './errors.js'
+import {
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+} from './errors.js'
 import { waitForFloor } from './timing.js'
 import { generateToken, hashToken, isTokenShaped } from './tokens.js'
 import { expiresAt } from './ttl.js'
@@ -41,11 +46,11 @@ export async function requestMagicLink(
   const started = performance.now()
   try {
     const auth = requireAuthentication(deps.config)
-    if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
+    if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
     if (typeof input.clientKey !== 'string' || input.clientKey.trim() === '')
-      throw new InvalidInputError('Invalid client key')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client key')
     if (!isClientChallenge(input.clientChallenge))
-      throw new InvalidInputError('Invalid client challenge')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid client challenge')
     const email = normalizeEmail(input.email)
 
     await deps.throttler.consume('magic:client', input.clientKey, deps.config.throttle)
@@ -135,9 +140,9 @@ export async function completeMagicLink<Credential>(
 ): Promise<{ account: CurrentAccount; credential: Credential }> {
   const auth = requireAuthentication(deps.config)
   if (guard.strategy !== auth.strategy || guard.name !== auth.guard)
-    throw new Error(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
+    throw new RuntimeException(`account_kit: expected ${auth.guard} ${auth.strategy} guard`)
   if (!isTokenShaped(input.token) || !isClientVerifier(input.verifier))
-    throw new InvalidTokenError()
+    throw new E_ACCOUNT_KIT_INVALID_TOKEN()
 
   const verified = await transaction(deps.db, async (trx) => {
     const { row, user } = await consumeUserToken<LinkRow>(
@@ -159,10 +164,10 @@ export async function completeMagicLink<Credential>(
       email: user.email,
     }
   })
-  if (!verified) throw new InvalidTokenError()
+  if (!verified) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   const credential = await establishCredential(deps, auth, guard, verified, {
     stillValid: async (_trx, user) => user.email === verified.email,
-    rejected: () => new InvalidCredentialsError(),
+    rejected: () => new E_INVALID_CREDENTIALS(),
     cleanupFailed: 'Magic-link sign-in failed and credential cleanup failed',
   })
   return { account: verified.account, credential }

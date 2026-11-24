@@ -9,6 +9,13 @@ type InvitationAccepted = (user: AccountUser, invitation: Invitation, trx: Trx) 
  * Returns an `onInvitationAccepted` callback that records invitation evidence through `trx`, then
  * runs `next`. A throwing `next` rolls back the evidence and the account together. Evidence already
  * on the account is kept: the first invitation is the history.
+ *
+ * @example
+ * ```ts
+ * import { withInvitationEvidence } from '@kevinjohn/adonisjs-account-kit/admission'
+ *
+ * const callbacks = { onInvitationAccepted: withInvitationEvidence() }
+ * ```
  */
 export function withInvitationEvidence(next?: InvitationAccepted): InvitationAccepted {
   return async (user, invitation, trx) => {

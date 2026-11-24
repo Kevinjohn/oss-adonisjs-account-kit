@@ -5,9 +5,9 @@ import { emitInvitationAccepted } from './invitation_match.js'
 import { isEmailShaped } from './email.js'
 import { createHandoff } from './social_handoff.js'
 import {
-  SocialEmailMissingError,
-  SocialIdentityAlreadyLinkedError,
-  SocialTransactionError,
+  E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING,
+  E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
 } from './errors.js'
 import { sendSocialActivation } from './social_activation.js'
 import { consumeState, isIdentityConflict } from './social_callback.js'
@@ -37,11 +37,11 @@ export async function completeRegistration(
       transaction(deps.db, async (trx): Promise<SocialTransactionResult> => {
         const state = await consumeState(trx, input.continuation)
         if (state.intent !== 'registration' || !state.provider_user_id)
-          throw new SocialTransactionError()
+          throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
         if (!listEnabledSocialProviders(deps.config).includes(state.provider))
-          throw new SocialTransactionError()
+          throw new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()
         const email = state.email ?? input.email
-        if (!email || !isEmailShaped(email)) throw new SocialEmailMissingError()
+        if (!email || !isEmailShaped(email)) throw new E_ACCOUNT_KIT_SOCIAL_EMAIL_MISSING()
         const profile = requireProviderProfile({
           subject: state.provider_user_id,
           email,
@@ -88,7 +88,7 @@ export async function completeRegistration(
       })
     )
   } catch (error) {
-    if (isIdentityConflict(error)) throw new SocialIdentityAlreadyLinkedError()
+    if (isIdentityConflict(error)) throw new E_ACCOUNT_KIT_SOCIAL_IDENTITY_ALREADY_LINKED()
     if (await isUserEmailUniqueViolation(error, deps.config, deps.db))
       return { status: 'link_required' }
     throw error

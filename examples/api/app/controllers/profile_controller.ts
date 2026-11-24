@@ -1,4 +1,8 @@
-import { DeliveryError, PostCommitError, type AccountUser } from '@kevinjohn/adonisjs-account-kit'
+import {
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  type AccountUser,
+} from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import type { HttpContext } from '@adonisjs/core/http'
 import { accountInput } from '#middleware/account_access_middleware'
@@ -34,7 +38,8 @@ export default class ProfileController {
       })
       return ctx.serialize(safeAccount(updated))
     } catch (error) {
-      if (!(error instanceof DeliveryError || error instanceof PostCommitError)) throw error
+      if (!(error instanceof E_ACCOUNT_KIT_DELIVERY || error instanceof E_ACCOUNT_KIT_POST_COMMIT))
+        throw error
       reportCommittedFailure(ctx.logger, error, 'profile.update')
       return ctx.response.ok({ updated: true })
     }

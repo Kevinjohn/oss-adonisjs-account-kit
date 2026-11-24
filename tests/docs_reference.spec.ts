@@ -3,11 +3,11 @@ import { test } from '@japa/runner'
 import * as errors from '../src/errors.js'
 import { planManagedRoutes, type ManagedCapability } from '../src/http/routes.js'
 
-function isErrorClass(value: unknown): value is typeof errors.AccountKitError {
+function isErrorClass(value: unknown): value is typeof errors.E_ACCOUNT_KIT {
   return (
     typeof value === 'function' &&
-    (value === errors.AccountKitError ||
-      value.prototype instanceof errors.AccountKitError ||
+    (value === errors.E_ACCOUNT_KIT ||
+      value.prototype instanceof errors.E_ACCOUNT_KIT ||
       'code' in value)
   )
 }
@@ -26,7 +26,7 @@ test('the error reference lists every exported error with its code and status', 
     if (
       !line ||
       !line.includes(`| \`${value.code}\``) ||
-      !new RegExp(`\\|\\s+${value.status} \\|`).test(line)
+      !new RegExp(`\\|\\s+${value.status}\\s+\\|`).test(line)
     )
       missing.push(`${name} ${value.code} ${value.status}`)
   }
@@ -37,7 +37,7 @@ test('committed-failure errors tell the reader to report the committed outcome',
   assert,
 }) => {
   const reference = await read('docs/reference/errors.md')
-  for (const name of ['PostCommitError', 'DeliveryError']) {
+  for (const name of ['E_ACCOUNT_KIT_POST_COMMIT', 'E_ACCOUNT_KIT_DELIVERY']) {
     const line = reference.split('\n').find((candidate) => candidate.startsWith(`| \`${name}\` `))
     assert.match(line ?? '', /report its committed outcome/i, name)
   }

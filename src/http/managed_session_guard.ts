@@ -1,14 +1,14 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidSessionError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../errors.js'
 import type { ManagedGuard } from './managed_types.js'
 import type { ManagedSessionGuardOptions, ManagedUser } from './guard.js'
 import { assertManagedSessionStore } from './session_store_protection.js'
 import { markAuthenticated, type MarkableAuthenticator } from './authenticator_mark.js'
 
 function requireManagedUser(value: unknown): ManagedUser {
-  if (!value || typeof value !== 'object') throw new InvalidSessionError()
+  if (!value || typeof value !== 'object') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   const id = (value as { id?: unknown }).id
-  if (typeof id !== 'number' && typeof id !== 'string') throw new InvalidSessionError()
+  if (typeof id !== 'number' && typeof id !== 'string') throw new E_ACCOUNT_KIT_INVALID_SESSION()
   return value as ManagedUser
 }
 async function authenticate<User>(guard: { authenticate(): Promise<User> }): Promise<User> {
@@ -21,7 +21,7 @@ async function authenticate<User>(guard: { authenticate(): Promise<User> }): Pro
       'code' in error &&
       error.code === 'E_UNAUTHORIZED_ACCESS'
     )
-      throw new InvalidSessionError()
+      throw new E_ACCOUNT_KIT_INVALID_SESSION()
     throw error
   }
 }
@@ -56,9 +56,11 @@ export function createSessionGuard<User>(
       const user = await authenticate(ctx.auth.use(options.name))
       await markAuthenticated(ctx.auth, options.name)
       const stored = ctx.session.get(revisionKey)
-      if (stored !== undefined && typeof stored !== 'string') throw new InvalidSessionError()
+      if (stored !== undefined && typeof stored !== 'string')
+        throw new E_ACCOUNT_KIT_INVALID_SESSION()
       const handle = ctx.session.get(handleKey)
-      if (handle !== undefined && typeof handle !== 'string') throw new InvalidSessionError()
+      if (handle !== undefined && typeof handle !== 'string')
+        throw new E_ACCOUNT_KIT_INVALID_SESSION()
       return {
         userId: requireManagedUser(user).id,
         ...(stored === undefined ? {} : { revision: stored === '' ? null : stored }),

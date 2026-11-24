@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import { InvalidInputError } from '@kevinjohn/adonisjs-account-kit'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '@kevinjohn/adonisjs-account-kit'
 import accountKit from '@kevinjohn/adonisjs-account-kit/services/main'
 import User from '#models/user'
 import UserTransformer from '#transformers/user_transformer'
@@ -12,7 +12,7 @@ export default class OauthTokenController {
   async redeem(ctx: HttpContext) {
     ctx.response.header('Cache-Control', 'no-store')
     if (authStrategy() !== 'access_tokens')
-      throw new InvalidInputError('Token exchange is unavailable')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Token exchange is unavailable')
     const { code, verifier } = await ctx.request.validateUsing(tokenRedeemValidator)
     const result = await accountKit.socialAuthentication.redeemHandoff({
       code,

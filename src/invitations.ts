@@ -13,12 +13,12 @@ import { finishCommitted, createLifecycleEffect, postCommit, settleCommitted } f
 import { isInvitationRole } from './invitation_input.js'
 import { isEmailShaped, normalizeEmail } from './email.js'
 import {
-  AuthorizationError,
-  EmailAlreadyRegisteredError,
-  InvalidInputError,
-  InvitationPendingError,
-  InvalidTokenError,
-  type PostCommitError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVITATION_PENDING,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  type E_ACCOUNT_KIT_POST_COMMIT,
 } from './errors.js'
 import { isPasswordAllowed } from './password.js'
 import { buildPasswordAttributes, preparePassword } from './password_hashing.js'
@@ -47,14 +47,14 @@ export async function acceptInvitation(
   input: InvitationsAcceptInput
 ): Promise<AccountUser> {
   if (!isPasswordAllowed(input.password, deps.config.passwordPolicy))
-    throw new InvalidInputError('Invalid password')
-  if (!isTokenShaped(input.token)) throw new InvalidTokenError()
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid password')
+  if (!isTokenShaped(input.token)) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
   const registrationData = await mapRegistrationFields(deps.config, input.registrationData)
   const operationId = randomUUID()
   const password = await preparePassword(deps.config.users, input.password)
 
   let result: { user: AccountUser; invitationIds: number[] }
-  let fault: PostCommitError | undefined
+  let fault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined
   try {
     ;({ value: result, fault } = await settleCommitted(
       transaction(deps.db, async (trx) => {
@@ -65,9 +65,9 @@ export async function acceptInvitation(
           .where('expires_at', '>', sqlTimestamp(trx))
           .select('email')
           .first()
-        if (!candidate) throw new InvalidTokenError()
+        if (!candidate) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
         if (await deps.config.users.findByEmail(candidate.email, trx))
-          throw new EmailAlreadyRegisteredError()
+          throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
         // Claim the unique user email before consuming invitation rows, matching automatic
         // invitation acceptance during social signup. A failed proof recheck rolls this back.
         const user = await deps.config.users.create(
@@ -86,7 +86,7 @@ export async function acceptInvitation(
           tokenHash,
           sqlTimestamp(trx, now)
         )
-        if (!row || row.email !== candidate.email) throw new InvalidTokenError()
+        if (!row || row.email !== candidate.email) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
         // The other scopes' pending invitations for the address join the same acceptance.
         const others = await consumeRows<InvitationDatabaseRow>(
           trx,
@@ -97,22 +97,23 @@ export async function acceptInvitation(
 
         await deps.config.users.markEmailVerified(user.id, now, trx)
         const reloaded = await deps.config.users.findById(user.id, trx)
-        if (!reloaded) throw new InvalidTokenError()
+        if (!reloaded) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
         const invitationIds = await applyInvitations(deps.config, trx, reloaded, [row, ...others])
         const accepted = await deps.config.users.findById(user.id, trx)
-        if (!accepted) throw new InvalidTokenError()
+        if (!accepted) throw new E_ACCOUNT_KIT_INVALID_TOKEN()
         return { user: accepted, invitationIds }
       })
     ))
   } catch (error) {
     if (
-      error instanceof EmailAlreadyRegisteredError ||
+      error instanceof E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED ||
       (await isUserEmailUniqueViolation(error, deps.config, deps.db))
     ) {
       // Recheck after rollback: another acceptance consumes all scopes, while plain signup
       // leaves a still-live invitation and keeps the existing registered-address refusal.
-      if (!(await inspectInvitation(deps.db, { token: input.token }))) throw new InvalidTokenError()
-      throw new EmailAlreadyRegisteredError()
+      if (!(await inspectInvitation(deps.db, { token: input.token })))
+        throw new E_ACCOUNT_KIT_INVALID_TOKEN()
+      throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
     }
     throw error
   }
@@ -143,20 +144,20 @@ export async function sendInvitation(
   deps: ServiceDependencies,
   input: InvitationsSendInput
 ): Promise<Invitation> {
-  if (!isEmailShaped(input.email)) throw new InvalidInputError('Invalid email')
-  if (!isInvitationRole(input.role)) throw new InvalidInputError('Invalid role')
+  if (!isEmailShaped(input.email)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid email')
+  if (!isInvitationRole(input.role)) throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid role')
   const scope = normalizeScope(input.scope)
   const email = normalizeEmail(input.email)
   const actor = await requireUser(deps.config, input.actorId)
   if ((await deps.config.authorize.invite(actor, input.role, { scope })) !== true)
-    throw new AuthorizationError()
+    throw new E_ACCOUNT_KIT_AUTHORIZATION()
   // Spend the actor's budget first: the registered-address answer below must not be free to probe.
   await deps.throttler.consume(
     'invitation:send:actor',
     String(actor.id),
     deps.config.invitationThrottle.sendActor
   )
-  if (await deps.config.users.findByEmail(email)) throw new EmailAlreadyRegisteredError()
+  if (await deps.config.users.findByEmail(email)) throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
   await deps.throttler.consume(
     'invitation:send:recipient',
     email,
@@ -195,7 +196,7 @@ export async function sendInvitation(
 /**
  * Insert an invitation row for a normalized email and scope. Expired rows for the address and
  * scope are removed first; `replacePending` also removes a live one (operator reissue). Shared by
- * the actor and operator paths; a pending invitation otherwise surfaces as InvitationPendingError.
+ * the actor and operator paths; a pending invitation otherwise surfaces as E_ACCOUNT_KIT_INVITATION_PENDING.
  * `recheckInvite` locks the inviter row and runs `authorize.invite` again with `trx` and the
  * scope. Lock order: inviter, invitation, then whatever the application locks in `invite`.
  */
@@ -210,7 +211,7 @@ export async function storeInvitation(
     replacePending: boolean
     recheckInvite?: boolean
   }
-): Promise<{ invitation: Invitation; fault?: PostCommitError }> {
+): Promise<{ invitation: Invitation; fault?: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> }> {
   try {
     return await settleCommitted(
       transaction(deps.db, async (trx) => {
@@ -218,7 +219,7 @@ export async function storeInvitation(
         if (input.recheckInvite && input.inviterId !== null) {
           await lockUser(trx, deps.config, input.inviterId)
           inviter = await deps.config.users.findById(input.inviterId, trx)
-          if (!inviter) throw new AuthorizationError()
+          if (!inviter) throw new E_ACCOUNT_KIT_AUTHORIZATION()
         }
         const now = DateTime.utc()
         const scope = encodeScopeColumn(input.scope)
@@ -235,7 +236,7 @@ export async function storeInvitation(
             scope: input.scope,
           })) !== true
         )
-          throw new AuthorizationError()
+          throw new E_ACCOUNT_KIT_AUTHORIZATION()
         await trx.table('account_invitations').insert({
           email: input.email,
           role: input.role,
@@ -257,7 +258,7 @@ export async function storeInvitation(
     ).then(({ value, fault }) => ({ invitation: value, fault }))
   } catch (error) {
     if (isUniqueViolation(error, 'account_invitations', ['email', 'scope']))
-      throw new InvitationPendingError()
+      throw new E_ACCOUNT_KIT_INVITATION_PENDING()
     throw error
   }
 }

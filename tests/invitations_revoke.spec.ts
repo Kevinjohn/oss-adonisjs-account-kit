@@ -1,11 +1,11 @@
 import { test } from '@japa/runner'
 import { defineConfig } from '../src/account_kit.js'
 import {
-  AuthorizationError,
-  InvalidInputError,
-  InvitationNotFoundError,
-  InvalidTokenError,
-  PostCommitError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import type { AccountUser, Trx } from '../src/types.js'
@@ -67,9 +67,9 @@ test.group('invitations.revoke', (group) => {
       await faulty.invitations.revoke({ actorId: actor.id, invitationId: invitation.id })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(events, ['invitation.revoked'])
     assert.isNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
@@ -86,7 +86,7 @@ test.group('invitations.revoke', (group) => {
     }).account
     await assert.rejects(
       () => denied.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     const missingPermission = service({
       authorize: { ...allowAll, manageInvitation: async () => undefined as never },
@@ -94,7 +94,7 @@ test.group('invitations.revoke', (group) => {
     await assert.rejects(
       () =>
         missingPermission.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      AuthorizationError
+      E_ACCOUNT_KIT_AUTHORIZATION
     )
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
     assert.isUndefined(
@@ -103,19 +103,19 @@ test.group('invitations.revoke', (group) => {
     assert.lengthOf(await kit.db.from('account_invitations').where('id', invitation.id), 0)
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'password123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     await assert.rejects(
       () => account.invitations.revoke({ actorId: actor.id, invitationId: invitation.id }),
-      InvitationNotFoundError
+      E_ACCOUNT_KIT_INVITATION_NOT_FOUND
     )
     await assert.rejects(
       () => account.invitations.revoke({ actorId: actor.id, invitationId: 99999 }),
-      InvitationNotFoundError
+      E_ACCOUNT_KIT_INVITATION_NOT_FOUND
     )
     await assert.rejects(
       () => account.invitations.revoke({ actorId: 99999, invitationId: invitation.id }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
   })
 
@@ -173,7 +173,7 @@ test.group('invitations.revoke', (group) => {
       }
       await kit.db.from('users').where('id', actor.id).update({ email: 'demoted@other.test' })
       releaseRead()
-      await assert.rejects(() => revoke, AuthorizationError)
+      await assert.rejects(() => revoke, E_ACCOUNT_KIT_AUTHORIZATION)
     } finally {
       releaseRead()
       await revoke.catch(() => {})

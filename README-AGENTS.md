@@ -102,7 +102,7 @@ Commands:
 
 Leaving out a command: replace the `./commands` entry in the `commands` array of `adonisrc.ts`
 with `defineCommands`, which loads the same commands without the ones you name. It imports the
-commands only when Ace first needs them, and throws `InvalidConfigurationError` (field
+commands only when Ace first needs them, and throws `E_ACCOUNT_KIT_INVALID_CONFIGURATION` (field
 `commands.exclude`) for an unknown or repeated name.
 
 ```ts
@@ -113,12 +113,12 @@ export default defineConfig({
 })
 ```
 
-Every account operation and request error extends `AccountKitError` and has a stable `code` and
-HTTP `status`; `InvalidConfigurationError`, raised for invalid configuration, is separate. See the
+Every account operation and request error extends `E_ACCOUNT_KIT` and has a stable `code` and
+HTTP `status`; `E_ACCOUNT_KIT_INVALID_CONFIGURATION`, raised for invalid configuration, is separate. See the
 [error reference](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/reference/errors.md)
-for the full table and fixes. Common errors include `InvalidTokenError` (expired, used or unknown
-link), `ThrottledError` (429, `retryAfterSeconds`), `InvalidCredentialsError`,
-`InvalidSessionError` (sign the user out) and `CapabilityDisabledError`.
+for the full table and fixes. Common errors include `E_ACCOUNT_KIT_INVALID_TOKEN` (expired, used or unknown
+link), `E_ACCOUNT_KIT_THROTTLED` (429, `retryAfterSeconds`), `E_INVALID_CREDENTIALS`,
+`E_ACCOUNT_KIT_INVALID_SESSION` (sign the user out) and `E_ACCOUNT_KIT_CAPABILITY_DISABLED`.
 
 ## Invariants: do not break these
 
@@ -126,7 +126,7 @@ link), `ThrottledError` (429, `retryAfterSeconds`), `InvalidCredentialsError`,
    directly skips credential revocation and token cleanup.
 2. **Never wrap Account Kit calls in your own transaction.** Each operation owns its transaction
    and passes `trx` to your callbacks; it rejects an active global transaction.
-3. **Treat `DeliveryError` and `PostCommitError` as committed.** The change happened; only an email
+3. **Treat `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` as committed.** The change happened; only an email
    or hook failed. On `passwordReset.request` and `passwordReset.reset`, catch both, log, and return
    the normal response. Never retry the operation.
 4. **Keep proof URLs secret.** They are bearer tokens: keep them out of logs, analytics and error

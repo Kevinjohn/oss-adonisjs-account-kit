@@ -1,10 +1,10 @@
 /* eslint-disable @unicorn/no-await-expression-member -- Inspect database results directly in focused registration assertions. */
 import { test } from '@japa/runner'
 import {
-  UnverifiedEmailError,
-  InvalidInputError,
-  InvalidCredentialsError,
-  InvalidSessionError,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_SESSION,
 } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { accessTokenDefaults } from './helpers/access_tokens.js'
@@ -34,7 +34,7 @@ test.group('registration', (group) => {
     const token = tokenFrom(service.recorder.calls[0].args[1])
     await assert.rejects(
       () => service.account.emailVerification.complete({ token } as never),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.equal((await kit.db.from('email_verification_tokens')).length, 1)
     await service.account.emailVerification.complete({ token, password: 'VictimPassword123' })
@@ -86,7 +86,7 @@ test.group('registration', (group) => {
           userId: user.id,
           tokenId: limited.credential.id,
         }),
-      UnverifiedEmailError
+      E_ACCOUNT_KIT_UNVERIFIED_EMAIL
     )
     const inFlight = service.account.authentication.login(
       { email: user.email, password: 'attackerPassword123', clientKey: 'second' },
@@ -99,12 +99,12 @@ test.group('registration', (group) => {
         },
       }
     )
-    await assert.rejects(() => inFlight, InvalidCredentialsError)
+    await assert.rejects(() => inFlight, E_INVALID_CREDENTIALS)
     assert.lengthOf(await kit.db.from('auth_access_tokens'), 0)
     await assert.rejects(
       () =>
         service.account.authentication.current({ userId: user.id, tokenId: limited.credential.id }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     await assert.rejects(
       () =>
@@ -112,7 +112,7 @@ test.group('registration', (group) => {
           { email: user.email, password: 'attackerPassword123', clientKey: 'third' },
           guard
         ),
-      InvalidCredentialsError
+      E_INVALID_CREDENTIALS
     )
   })
 
@@ -146,13 +146,13 @@ test.group('registration', (group) => {
           userId: user.id,
           revision: limited.credential,
         }),
-      UnverifiedEmailError
+      E_ACCOUNT_KIT_UNVERIFIED_EMAIL
     )
     await service.account.emailVerification.complete({ token, password: 'VictimPassword123' })
     await assert.rejects(
       () =>
         service.account.authentication.current({ userId: user.id, revision: limited.credential }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     await assert.rejects(
       () =>
@@ -160,7 +160,7 @@ test.group('registration', (group) => {
           { email: user.email, password: 'attackerPassword123', clientKey: 'second' },
           guard
         ),
-      InvalidCredentialsError
+      E_INVALID_CREDENTIALS
     )
   })
 })

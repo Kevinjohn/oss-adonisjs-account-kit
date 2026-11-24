@@ -1,5 +1,5 @@
 // Validates and defaults the passwordPolicy option.
-import { InvalidConfigurationError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from './errors.js'
 import type { AccountKitConfig, PasswordPolicy } from './types.js'
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from './password.js'
 import { freezeResolved } from './config_freeze.js'
@@ -22,7 +22,7 @@ export function resolvePasswordPolicy(
       typeof config.passwordPolicy !== 'object' ||
       Array.isArray(config.passwordPolicy))
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'passwordPolicy',
       'account_kit: passwordPolicy must be an object'
     )
@@ -35,7 +35,7 @@ export function resolvePasswordPolicy(
         passwordPolicy.maxLength > MAX_PASSWORD_LENGTH ||
         passwordPolicy.maxLength < passwordPolicy.minLength))
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'passwordPolicy',
       `account_kit: passwordPolicy lengths must stay within ${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} and minLength must not exceed maxLength`
     )
@@ -44,13 +44,13 @@ export function resolvePasswordPolicy(
     passwordPolicy.minScore < 0 ||
     passwordPolicy.minScore > 4
   )
-    throw new InvalidConfigurationError(
+    throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
       'passwordPolicy.minScore',
       'account_kit: passwordPolicy.minScore must be an integer from 0 to 4'
     )
   for (const key of ['letters', 'mixedCase', 'numbers', 'symbols'] as const)
     if (typeof passwordPolicy[key] !== 'boolean')
-      throw new InvalidConfigurationError(
+      throw new E_ACCOUNT_KIT_INVALID_CONFIGURATION(
         `passwordPolicy.${key}`,
         `account_kit: passwordPolicy.${key} must be boolean`
       )

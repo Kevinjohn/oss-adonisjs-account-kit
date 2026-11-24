@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import {
-  DeliveryError,
+  E_ACCOUNT_KIT_DELIVERY,
   errors,
-  InvalidInputError,
-  PostCommitError,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '@kevinjohn/adonisjs-account-kit'
 import kit from '@kevinjohn/adonisjs-account-kit/services/main'
 import { errors as vineErrors } from '@vinejs/vine'
@@ -65,7 +65,7 @@ test.group('Signup recovery', () => {
     let loggedIn = false
     const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
       registered = true
-      throw new DeliveryError('private mail transport detail')
+      throw new E_ACCOUNT_KIT_DELIVERY('private mail transport detail')
     })
     const restoreAuthentication = replaceMethod(kit, 'authentication', {
       login: async () => {
@@ -95,7 +95,7 @@ test.group('Signup recovery', () => {
   test('a signup that loses an address race gets the email field error', async ({ assert }) => {
     const { ctx, flashes, routes } = makeContext()
     const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
-      throw new errors.RegistrationEmailAlreadyRegisteredError()
+      throw new errors.E_ACCOUNT_KIT_REGISTRATION_EMAIL_ALREADY_REGISTERED()
     })
     try {
       const error = await new NewAccountController().store(ctx).catch((caught: unknown) => caught)
@@ -116,7 +116,7 @@ test.group('Signup recovery', () => {
     const { ctx, flashes, routes } = makeContext()
     let loggedIn = false
     const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
-      throw new InvalidInputError('Registration was rejected')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Registration was rejected')
     })
     const restoreAuthentication = replaceMethod(kit, 'authentication', {
       login: async () => {
@@ -141,7 +141,7 @@ test.group('Signup recovery', () => {
   }) => {
     const { ctx, flashes, routes } = makeContext()
     const restoreRegistration = replaceMethod(kit.registration, 'register', async () => {
-      throw new PostCommitError('private observer detail')
+      throw new E_ACCOUNT_KIT_POST_COMMIT('private observer detail')
     })
     const restoreAuthentication = replaceMethod(kit, 'authentication', {
       login: async () => {},
@@ -162,7 +162,7 @@ test.group('Signup recovery', () => {
     assert.notInclude(flashes[0]![1], 'private observer detail')
   })
 
-  for (const Failure of [DeliveryError, PostCommitError]) {
+  for (const Failure of [E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT]) {
     test(`${Failure.name} preserves truthful signup feedback when sign in also fails`, async ({
       assert,
     }) => {
@@ -185,7 +185,8 @@ test.group('Signup recovery', () => {
       assert.include(flashes[0]![1], 'Your account was created')
       assert.include(flashes[0]![1], 'Please sign in')
       assert.notInclude(flashes[0]![1], 'private')
-      if (Failure === PostCommitError) assert.notInclude(flashes[0]![1], 'could not be sent')
+      if (Failure === E_ACCOUNT_KIT_POST_COMMIT)
+        assert.notInclude(flashes[0]![1], 'could not be sent')
       else assert.include(flashes[0]![1], 'after one minute')
     })
   }

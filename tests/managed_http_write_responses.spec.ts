@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { type AccountKit } from '../src/account_kit.js'
-import { DeliveryError, InvalidSessionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
 import { registerManagedRoutes } from '../src/http/managed.js'
 import type { ManagedQuery, ManagedSuccessBody } from '../src/http/contracts.js'
 import { fakeManagedHttp, stubGuard } from './helpers/managed_http_fakes.js'
@@ -14,7 +14,7 @@ test.group('managed HTTP dispatch', () => {
       managedHttp: { assertGuard: () => {}, consume: async () => {} },
       socialAuthentication: {
         callback: async () => {
-          throw new DeliveryError('Notification failed after commit')
+          throw new E_ACCOUNT_KIT_DELIVERY('Notification failed after commit')
         },
       },
     } as unknown as AccountKit
@@ -54,7 +54,7 @@ test.group('managed HTTP dispatch', () => {
       authentication: { current: async () => account },
       socialAuthentication: {
         unlink: async () => {
-          throw new DeliveryError('Notification failed after unlink commit')
+          throw new E_ACCOUNT_KIT_DELIVERY('Notification failed after unlink commit')
         },
       },
     } as unknown as AccountKit
@@ -217,7 +217,7 @@ test.group('managed HTTP dispatch', () => {
       },
       emailVerification: {
         send: async () => {
-          throw new DeliveryError('private mail failure')
+          throw new E_ACCOUNT_KIT_DELIVERY('private mail failure')
         },
       },
     } as unknown as AccountKit
@@ -252,7 +252,7 @@ test.group('managed HTTP dispatch', () => {
           managedHttp: { assertGuard: () => {} },
           passwordReset: {
             request: async () => {
-              throw new DeliveryError('private delivery detail')
+              throw new E_ACCOUNT_KIT_DELIVERY('private delivery detail')
             },
           },
         }) as unknown as AccountKit,
@@ -307,7 +307,7 @@ test.group('managed HTTP dispatch', () => {
       guard: stubGuard({
         strategy: 'access_tokens',
         current: async () => {
-          throw new InvalidSessionError()
+          throw new E_ACCOUNT_KIT_INVALID_SESSION()
         },
       }),
       enabled: ['invitations'],

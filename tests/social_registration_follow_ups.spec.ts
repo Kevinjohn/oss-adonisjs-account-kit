@@ -1,5 +1,9 @@
 import { test } from '@japa/runner'
-import { DeliveryError, PostCommitError, SocialTransactionError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_POST_COMMIT,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+} from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { makeService, makeUsersAdapter } from './helpers/fakes.js'
 import { clientChallenge, provider } from './helpers/social_identity.js'
@@ -49,16 +53,16 @@ test.group('social registration follow-ups', (group) => {
         }
         const thrown = await signup().catch((error) => error)
         if (stage === 'lookup') {
-          assert.instanceOf(thrown, PostCommitError)
+          assert.instanceOf(thrown, E_ACCOUNT_KIT_POST_COMMIT)
           assert.strictEqual(thrown.cause, failure)
         } else {
-          assert.instanceOf(thrown, DeliveryError)
+          assert.instanceOf(thrown, E_ACCOUNT_KIT_DELIVERY)
         }
         assert.lengthOf(await kit.db.from('users').where('email', 'signup@example.test'), 1)
         assert.lengthOf(await kit.db.from('social_identities').whereNull('confirmed_at'), 1)
         assert.lengthOf(await kit.db.from('social_transactions'), 0)
         assert.lengthOf(await kit.db.from('email_verification_tokens'), stage === 'lookup' ? 0 : 1)
-        await assert.rejects(signup, SocialTransactionError)
+        await assert.rejects(signup, E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID)
       })
     }
   }

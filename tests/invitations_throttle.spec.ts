@@ -4,9 +4,9 @@ import { LimiterManager, stores } from '@adonisjs/limiter'
 import { AccountKit, defineConfig } from '../src/account_kit.js'
 import { accountErrorResponse } from '../src/error_response.js'
 import {
-  InvitationManagementDeniedError,
-  InvitationNotFoundError,
-  ThrottledError,
+  E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED,
+  E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import { bootTestApp, useTestApp } from './helpers/app.js'
 import {
@@ -40,7 +40,7 @@ test.group('invitation budgets', (group) => {
     const currentToken = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
       () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     assert.deepEqual(await account.invitations.inspect({ token: currentToken }), {
       email: invitation.email,
@@ -57,7 +57,7 @@ test.group('invitation budgets', (group) => {
     await assert.rejects(
       () =>
         account.invitations.send({ actorId: actor.id, email: 'second@example.test', role: 'user' }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
   })
@@ -81,7 +81,7 @@ test.group('invitation budgets', (group) => {
           email: 'INVITEE@example.test',
           role: 'user',
         }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     assert.lengthOf(await kit.db.from('account_invitations'), 0)
   })
@@ -101,7 +101,7 @@ test.group('invitation budgets', (group) => {
     const currentToken = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
       () => account.invitations.resend({ actorId: second.id, invitationId: invitation.id }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
     assert.isNotNull(await account.invitations.inspect({ token: currentToken }))
   })
@@ -122,10 +122,10 @@ test.group('invitation budgets', (group) => {
     const denial = await denied.invitations
       .resend({ actorId: actor.id, invitationId: invitation.id })
       .catch((error: unknown) => error)
-    assert.instanceOf(denial, InvitationManagementDeniedError)
+    assert.instanceOf(denial, E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED)
     assert.deepEqual(
       accountErrorResponse(denial),
-      accountErrorResponse(new InvitationNotFoundError())
+      accountErrorResponse(new E_ACCOUNT_KIT_INVITATION_NOT_FOUND())
     )
     const resent = await account.invitations.resend({
       actorId: actor.id,
@@ -178,7 +178,7 @@ test.group('invitation budgets', (group) => {
       })
       await assert.rejects(
         () => account.invitations.resend({ actorId: actor.id, invitationId: invitation.id }),
-        InvitationManagementDeniedError
+        E_ACCOUNT_KIT_INVITATION_MANAGEMENT_DENIED
       )
       assert.equal(charges, 2)
       assert.isNotNull(await account.invitations.inspect({ token: originalToken }))

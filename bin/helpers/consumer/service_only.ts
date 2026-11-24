@@ -124,11 +124,11 @@ import { defineConfig as defineDatabaseConfig } from '@adonisjs/lucid'
 import { defineConfig as defineLimiterConfig, stores } from '@adonisjs/limiter'
 import { AccountKit, defineConfig, type UsersAdapter } from '@kevinjohn/adonisjs-account-kit'
 import type { AccountAccessInput, AccountAccessSnapshot } from '@kevinjohn/adonisjs-account-kit/types'
-import { AccountAccessDeniedError, DeliveryError, InvalidInputError, PostCommitError, isCommittedFailure } from '@kevinjohn/adonisjs-account-kit/errors'
+import { E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED, E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_INVALID_INPUT, E_ACCOUNT_KIT_POST_COMMIT, isCommittedFailure } from '@kevinjohn/adonisjs-account-kit/errors'
 
 if (
-  !isCommittedFailure(new DeliveryError()) ||
-  !isCommittedFailure(new PostCommitError()) ||
+  !isCommittedFailure(new E_ACCOUNT_KIT_DELIVERY()) ||
+  !isCommittedFailure(new E_ACCOUNT_KIT_POST_COMMIT()) ||
   isCommittedFailure(new Error('database write failed'))
 ) throw new Error('Committed failure classification differs from the public contract')
 
@@ -174,9 +174,9 @@ try {
   if (await service.emailVerification.send({ userId: 1 }) !== 'already_verified') throw new Error('Service did not boot')
   const inspect: (input: AccountAccessInput) => Promise<AccountAccessSnapshot> =
     (input) => service.authentication.inspectAccountAccess(input)
-  if (AccountAccessDeniedError.code !== 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED') throw new Error('Denial export missing')
+  if (E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED.code !== 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED') throw new Error('Denial export missing')
   try { await inspect({ userId: '', requireActive: true }); throw new Error('Inspection accepted invalid input') }
-  catch (error) { if (!(error instanceof InvalidInputError)) throw error }
+  catch (error) { if (!(error instanceof E_ACCOUNT_KIT_INVALID_INPUT)) throw error }
   let databaseVersion: string
 ${
   selectedDatabase === 'sqlite'

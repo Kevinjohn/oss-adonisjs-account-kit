@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 // Interactive setup questionnaire: turns prompt answers into SetupChoices.
 import { buildDefaultSetupChoices } from './defaults.js'
 import {
@@ -31,7 +32,7 @@ function requireSelectedOptions<const T extends string>(
 ): T[] {
   const names = list(value)
   if (names.some((name) => !options.includes(name as T)))
-    throw new Error(`${field}: choose from ${options.join(', ')}`)
+    throw new InvalidArgumentsException(`${field}: choose from ${options.join(', ')}`)
   return names as T[]
 }
 
@@ -43,7 +44,8 @@ function answerChoice<const T extends string>(
 ): T {
   const answer = value.trim()
   if (!answer) return fallback
-  if (!options.includes(answer as T)) throw new Error(`${field}: choose from ${options.join(', ')}`)
+  if (!options.includes(answer as T))
+    throw new InvalidArgumentsException(`${field}: choose from ${options.join(', ')}`)
   return answer as T
 }
 
@@ -65,7 +67,7 @@ export async function collectSetupChoices(
     const input = await ask(question)
     const answer = input.trim().toLowerCase()
     if (answer && !['yes', 'y', 'no', 'n'].includes(answer))
-      throw new Error(`${question}: choose yes or no`)
+      throw new InvalidArgumentsException(`${question}: choose yes or no`)
     if (!answer) return fallback
     return answer === 'yes' || answer === 'y'
   }

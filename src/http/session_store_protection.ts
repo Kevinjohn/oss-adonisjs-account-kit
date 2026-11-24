@@ -23,6 +23,16 @@ const setupError =
 /**
  * Resolve the session configuration before Adonis creates SessionMiddleware. The selected
  * factory is called exactly once by Adonis; its actual result is checked and returned.
+ *
+ * @example
+ * ```ts
+ * import { protectManagedSessionConfig } from '@kevinjohn/adonisjs-account-kit/http'
+ * import { isTrustedRevocableSessionStore } from '#services/session_store_policy'
+ *
+ * export default protectManagedSessionConfig(sessionConfig, {
+ *   verifyStore: isTrustedRevocableSessionStore,
+ * })
+ * ```
  */
 export function protectManagedSessionConfig<Config extends ManagedSessionConfiguration>(
   provider: ConfigProvider<Config>,

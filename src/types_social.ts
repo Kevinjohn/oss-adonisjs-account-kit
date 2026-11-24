@@ -21,9 +21,23 @@ export interface VerifiedSocialAuthentication {
 
 /** The application uses Ally at this boundary. Provider credentials never reach Account Kit. */
 export interface SocialProvider {
-  /** Returns the provider's authorization URL carrying Account Kit's `state`. */
+  /**
+   * Returns the provider's authorization URL carrying Account Kit's `state`.
+   *
+   * @example
+   * ```ts
+   * await provider.authorizationUrl(state, context)
+   * ```
+   */
   authorizationUrl(state: string, context?: unknown): Promise<string>
-  /** Reads the provider profile from the callback request. Provider tokens must not be returned. */
+  /**
+   * Reads the provider profile from the callback request. Provider tokens must not be returned.
+   *
+   * @example
+   * ```ts
+   * await provider.resolve(context)
+   * ```
+   */
   resolve(callback: unknown): Promise<{
     subject: string
     email: string | null
@@ -32,7 +46,14 @@ export interface SocialProvider {
     nickname?: string | null
     avatarUrl?: string | null
   }>
-  /** Omit when this provider cannot attest a fresh authentication event. */
+  /**
+   * Omit when this provider cannot attest a fresh authentication event.
+   *
+   * @example
+   * ```ts
+   * await provider.verifyFreshAuthentication?.(context, { state, subject })
+   * ```
+   */
   verifyFreshAuthentication?(
     callback: unknown,
     expected: { state: string; subject: string }
@@ -45,7 +66,7 @@ export interface SocialAuthenticationConfig {
   providers: Partial<Record<SocialProviderName, SocialProvider>>
   /**
    * Refuses a provider account before it is linked to a signed-in account: throw
-   * `SocialLinkRefusedError` to refuse. Runs inside the link transaction, under the user lock,
+   * `E_ACCOUNT_KIT_SOCIAL_LINK_REFUSED` to refuse. Runs inside the link transaction, under the user lock,
    * with the locked user. Decide from the arguments only: no database reads or writes and no
    * remote side effects. It may run more than once for one callback.
    */

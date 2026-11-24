@@ -7,7 +7,7 @@ export type { AdmissionPage } from './listing.js'
 export { admissionMiddleware } from './middleware.js'
 export { withInvitationEvidence } from './invitation_evidence.js'
 export { withAdmissionCleanup } from './cleanup.js'
-export { AdmissionDecisionError, AdmissionRequiredError } from './errors.js'
+export { E_ACCOUNT_KIT_ADMISSION_DECISION, E_ACCOUNT_KIT_ADMISSION_REQUIRED } from '../errors.js'
 export type {
   AdmissionApprovalStatus,
   AdmissionAuthorizeCallbacks,

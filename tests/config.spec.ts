@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import { RuntimeException } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
-import { InvalidConfigurationError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_CONFIGURATION } from '../src/errors.js'
 import { defineConfig } from '../src/account_kit.js'
 import { resolveConfig } from '../src/config.js'
 import { expiresAt } from '../src/ttl.js'
@@ -159,10 +159,13 @@ test.group('account kit configuration and service surface', (group) => {
     } catch (caught) {
       error = caught
     }
-    assert.instanceOf(error, InvalidConfigurationError)
+    assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
     assert.instanceOf(error, RuntimeException)
-    assert.equal((error as InvalidConfigurationError).code, 'E_ACCOUNT_KIT_INVALID_CONFIGURATION')
-    assert.equal((error as InvalidConfigurationError).field, 'users')
+    assert.equal(
+      (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).code,
+      'E_ACCOUNT_KIT_INVALID_CONFIGURATION'
+    )
+    assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field, 'users')
   })
 
   test('preserves the cause when a throttle duration cannot be parsed', ({ assert }) => {
@@ -173,8 +176,11 @@ test.group('account kit configuration and service surface', (group) => {
     } catch (caught) {
       error = caught
     }
-    assert.instanceOf(error, InvalidConfigurationError)
-    assert.equal((error as InvalidConfigurationError).field, 'throttle.duration')
+    assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION)
+    assert.equal(
+      (error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field,
+      'throttle.duration'
+    )
     assert.instanceOf((error as Error).cause, Error)
   })
 
@@ -212,8 +218,8 @@ test.group('account kit configuration and service surface', (group) => {
       } catch (caught) {
         error = caught
       }
-      assert.instanceOf(error, InvalidConfigurationError, field)
-      assert.equal((error as InvalidConfigurationError).field, field)
+      assert.instanceOf(error, E_ACCOUNT_KIT_INVALID_CONFIGURATION, field)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_INVALID_CONFIGURATION>).field, field)
     }
   })
 

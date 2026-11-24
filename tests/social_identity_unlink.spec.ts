@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { SocialUserNotFoundError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND } from '../src/errors.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService } from './helpers/fakes.js'
 import type { SocialProvider } from '../src/types.js'
@@ -49,7 +49,7 @@ test.group('social unlink atomicity', (group) => {
     assert.deepEqual(await get({ current: current(user.id), identityId: relation.id }), relation)
     await assert.rejects(
       () => get({ current: current(user.id), identityId: relation.id + 1 }),
-      SocialUserNotFoundError
+      E_ACCOUNT_KIT_SOCIAL_USER_NOT_FOUND
     )
   })
 

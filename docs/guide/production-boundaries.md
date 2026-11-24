@@ -49,9 +49,9 @@ durable, an application must capture the previous recipient inside the email-upd
 and persist a distinct notice intent. The captured test transport simulates an idempotent receiver;
 production delivery requires durable receiver deduplication and coordinated worker claims.
 
-If a post-commit callback fails, the operation may already have committed. `PostCommitError` marks
+If a post-commit callback fails, the operation may already have committed. `E_ACCOUNT_KIT_POST_COMMIT` marks
 this with `committed: true`; do not blindly retry the mutation. Password reset request handlers are the
-exception: suppress both `DeliveryError` and `PostCommitError` and return the generic accepted
+exception: suppress both `E_ACCOUNT_KIT_DELIVERY` and `E_ACCOUNT_KIT_POST_COMMIT` and return the generic accepted
 response to preserve account-existence privacy.
 
 ### Session, token, and membership lifecycle

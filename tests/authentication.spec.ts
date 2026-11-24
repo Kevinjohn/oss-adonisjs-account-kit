@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
-import { InvalidSessionError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION } from '../src/errors.js'
 import { readIsoTimestamp } from '../src/timestamps.js'
 import type { CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -131,7 +131,7 @@ test.group('authentication contract', (group) => {
     const input = { userId: user.id, revision: null }
     assert.deepEqual(await account.authentication.current(input), result.account)
     authentication.deny()
-    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(input), E_ACCOUNT_KIT_INVALID_SESSION)
   })
 
   test('allows a limited inactive login but denies protected access', async ({ assert }) => {
@@ -422,7 +422,7 @@ test.group('authentication.withCurrent', (group) => {
       assert.isAbove(Date.parse(readIsoTimestamp(row.last_seen_at)!), stale.toMillis() + 60_000)
       await trx.from('account_sessions').where('id', signInId!).delete()
     })
-    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(input), E_ACCOUNT_KIT_INVALID_SESSION)
   }).timeout(5_000)
 
   test('touches the session', async ({ assert }) => {
@@ -450,7 +450,7 @@ test.group('authentication.withCurrent', (group) => {
     let ran = false
     await assert.rejects(
       () => account.authentication.withCurrent(input, async () => void (ran = true)),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     assert.isFalse(ran)
   })
@@ -501,7 +501,7 @@ test.group('authentication.withCurrent', (group) => {
     }
     await Promise.all([writer, revoke])
     assert.deepEqual(order, ['run', 'revoke'])
-    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(input), E_ACCOUNT_KIT_INVALID_SESSION)
   })
     .skip(!locksRows, 'only engines that lock rows')
     .timeout(10_000)
@@ -537,7 +537,7 @@ test.group('authentication.withCurrent', (group) => {
     }
     await Promise.all([writer, logout])
     assert.deepEqual(order, ['run', 'logout'])
-    await assert.rejects(() => account.authentication.current(input), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(input), E_ACCOUNT_KIT_INVALID_SESSION)
   })
     .skip(!locksRows, 'only engines that lock rows')
     .timeout(10_000)
@@ -564,7 +564,7 @@ test.group('authentication.withCurrent', (group) => {
     let ran = false
     await assert.rejects(
       () => account.authentication.withCurrent(signedIn, async () => void (ran = true)),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     assert.isFalse(ran)
   })

@@ -32,10 +32,8 @@ import { planMail } from './plan_mail.js'
 import { planDependencies } from './plan_dependencies.js'
 import { planLimiter } from './plan_limiter.js'
 import { planSummary } from './plan_summary.js'
-import {
-  IndirectEnvironmentValueError,
-  resolveSelectedEnvironmentValue,
-} from './selected_environment.js'
+import { resolveSelectedEnvironmentValue } from './selected_environment.js'
+import { E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE } from '../errors.js'
 import type { SelectedSetupOrigins } from './diagnostics.js'
 
 export async function planSetup(
@@ -78,7 +76,7 @@ export async function planSetup(
         } catch (error) {
           selectedOrigins.errors[name] = {
             message: error instanceof Error ? error.message : 'environment value is ambiguous',
-            indirect: error instanceof IndirectEnvironmentValueError,
+            indirect: error instanceof E_ACCOUNT_KIT_INDIRECT_ENVIRONMENT_VALUE,
           }
         }
       })

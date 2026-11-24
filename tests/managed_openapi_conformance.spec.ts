@@ -2,16 +2,16 @@ import { test } from '@japa/runner'
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../src/account_kit.js'
 import {
-  AuthorizationError,
-  DeliveryError,
-  EmailAlreadyRegisteredError,
-  InvalidCredentialsError,
-  InvalidInputError,
-  InvalidTokenError,
-  InvitationNotFoundError,
-  SocialTransactionError,
-  ThrottledError,
-  UnverifiedEmailError,
+  E_ACCOUNT_KIT_AUTHORIZATION,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_INVALID_CREDENTIALS,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_INVITATION_NOT_FOUND,
+  E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID,
+  E_ACCOUNT_KIT_THROTTLED,
+  E_ACCOUNT_KIT_UNVERIFIED_EMAIL,
 } from '../src/errors.js'
 import { registerManagedRoutes, type ManagedRoutesOptions } from '../src/http/managed.js'
 import { generateManagedOpenApi } from '../src/http/openapi.js'
@@ -323,15 +323,15 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
       authentication: { current: async () => account, requireActive: async () => account },
       emailPasswordManagement: {
         changePassword: async () => {
-          throw new DeliveryError('delivery failed')
+          throw new E_ACCOUNT_KIT_DELIVERY('delivery failed')
         },
         updateProfile: async () => {
-          throw new EmailAlreadyRegisteredError()
+          throw new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()
         },
       },
       passwordReset: {
         request: async () => {
-          throw new DeliveryError('delivery failed')
+          throw new E_ACCOUNT_KIT_DELIVERY('delivery failed')
         },
       },
     } as unknown as AccountKit
@@ -445,15 +445,15 @@ test.group('managed responses conform to the OpenAPI document', (group) => {
   }) => {
     const { document } = mount('session', {} as AccountKit, undefined)
     const errors: Array<[number, Error]> = [
-      [400, new InvalidTokenError()],
-      [400, new SocialTransactionError()],
-      [401, new InvalidCredentialsError()],
-      [403, new UnverifiedEmailError()],
-      [403, new AuthorizationError()],
-      [404, new InvitationNotFoundError()],
-      [409, new EmailAlreadyRegisteredError()],
-      [422, new InvalidInputError('bad')],
-      [429, new ThrottledError(3)],
+      [400, new E_ACCOUNT_KIT_INVALID_TOKEN()],
+      [400, new E_ACCOUNT_KIT_SOCIAL_TRANSACTION_INVALID()],
+      [401, new E_INVALID_CREDENTIALS()],
+      [403, new E_ACCOUNT_KIT_UNVERIFIED_EMAIL()],
+      [403, new E_ACCOUNT_KIT_AUTHORIZATION()],
+      [404, new E_ACCOUNT_KIT_INVITATION_NOT_FOUND()],
+      [409, new E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED()],
+      [422, new E_ACCOUNT_KIT_INVALID_INPUT('bad')],
+      [429, new E_ACCOUNT_KIT_THROTTLED(3)],
     ]
     const operation: Record<number, string> = {
       400: 'auth.oauth.redirect',

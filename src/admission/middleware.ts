@@ -5,7 +5,19 @@ import type { AccountAdmission } from './service.js'
 
 /**
  * Checks the selected guard, the credential revision and admission before `next`. With `active`
- * (the default) an unconfirmed account is refused first with `UnverifiedEmailError`.
+ * (the default) an unconfirmed account is refused first with `E_ACCOUNT_KIT_UNVERIFIED_EMAIL`.
+ *
+ * @example
+ * ```ts
+ * import { admissionMiddleware } from '@kevinjohn/adonisjs-account-kit/admission'
+ * import app from '@adonisjs/core/services/app'
+ * import { AccountAdmission } from '@kevinjohn/adonisjs-account-kit/admission'
+ *
+ * const requireAdmission = admissionMiddleware({
+ *   admission: () => app.container.make(AccountAdmission),
+ *   guard,
+ * })
+ * ```
  */
 export function admissionMiddleware<Credential>(options: {
   admission(): Promise<Pick<AccountAdmission, 'kit' | 'require'>>

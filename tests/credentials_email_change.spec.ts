@@ -1,13 +1,13 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import {
-  DeliveryError,
-  EmailAlreadyRegisteredError,
-  IdentityNotConfirmedError,
-  InvalidInputError,
-  InvalidTokenError,
-  NoPasswordError,
-  ThrottledError,
+  E_ACCOUNT_KIT_DELIVERY,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_NO_PASSWORD,
+  E_ACCOUNT_KIT_THROTTLED,
 } from '../src/errors.js'
 import { hashToken } from '../src/tokens.js'
 import { useTestApp } from './helpers/app.js'
@@ -164,7 +164,7 @@ test.group('emailPasswordManagement', (group) => {
     const token = tokenFrom(recorder.calls[0].args[1])
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const { account: verification } = makeService(kit, { notify: recorder.notify })
     assert.equal(
@@ -198,7 +198,7 @@ test.group('emailPasswordManagement', (group) => {
             currentPassword: 'oldPassword123',
             newEmail: newEmail as never,
           }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
     assert.lengthOf(recorder.calls, 0)
@@ -210,7 +210,7 @@ test.group('emailPasswordManagement', (group) => {
             currentPassword: currentPassword as never,
             newEmail: 'new@example.test',
           }),
-        IdentityNotConfirmedError
+        E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
       )
     await assert.rejects(
       () =>
@@ -219,7 +219,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           newEmail: 'new@example.test',
         }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
@@ -236,7 +236,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'anything',
           newEmail: 'new@example.test',
         }),
-      NoPasswordError
+      E_ACCOUNT_KIT_NO_PASSWORD
     )
     await kit.db
       .table('users')
@@ -254,7 +254,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           newEmail: 'new@example.test',
         }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
   })
@@ -270,7 +270,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'wrong',
           newEmail: ' PERSON@EXAMPLE.TEST ',
         }),
-      IdentityNotConfirmedError
+      E_ACCOUNT_KIT_IDENTITY_NOT_CONFIRMED
     )
     assert.isUndefined(
       await account.emailPasswordManagement.requestEmailChange({
@@ -294,7 +294,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           newEmail: user.email,
         }),
-      ThrottledError
+      E_ACCOUNT_KIT_THROTTLED
     )
   })
 
@@ -325,7 +325,7 @@ test.group('emailPasswordManagement', (group) => {
     assert.isFalse(Object.values(rows[0]).includes(second))
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: first }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: second })
     assert.equal(changed.email, 'other@example.test')
@@ -343,7 +343,7 @@ test.group('emailPasswordManagement', (group) => {
           currentPassword: 'oldPassword123',
           newEmail: 'new@example.test',
         }),
-      DeliveryError
+      E_ACCOUNT_KIT_DELIVERY
     )
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
     assert.lengthOf(recorder.calls, 1)
@@ -379,8 +379,8 @@ test.group('emailPasswordManagement', (group) => {
       })
       assert.fail('expected delivery error')
     } catch (error) {
-      assert.instanceOf(error, DeliveryError)
-      assert.equal((error as DeliveryError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_DELIVERY)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_DELIVERY>).cause, failure)
     }
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 1)
   })

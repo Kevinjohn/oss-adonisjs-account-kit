@@ -1,5 +1,5 @@
 // The opaque invitation scope: validation, its stored form and the order invitations apply in.
-import { InvalidInputError } from './errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from './errors.js'
 import { invitationScopeLength } from './invitation_input.js'
 
 /** Omitted and null values resolve to unscoped; supplied scope text is opaque. */
@@ -10,7 +10,7 @@ export function normalizeScope(value: unknown): string | null {
     value.length < invitationScopeLength.minLength ||
     value.length > invitationScopeLength.maxLength
   )
-    throw new InvalidInputError('Invalid scope')
+    throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid scope')
   return value
 }
 

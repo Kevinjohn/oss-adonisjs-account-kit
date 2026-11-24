@@ -3,7 +3,11 @@ import { DateTime } from 'luxon'
 import { consumeUserToken, transaction } from '../src/db.js'
 import { useTestApp } from './helpers/app.js'
 import { insertUser, makeService, makeUsersAdapter, tokenFrom } from './helpers/fakes.js'
-import { EmailAlreadyRegisteredError, InvalidTokenError, PostCommitError } from '../src/errors.js'
+import {
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
+} from '../src/errors.js'
 import { dbTime } from './helpers/db_time.js'
 
 test.group('identity creation contract', (group) => {
@@ -26,7 +30,7 @@ test.group('identity creation contract', (group) => {
     )
     await assert.rejects(
       () => account.emailVerification.complete({ token, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -76,7 +80,7 @@ test.group('identity creation contract', (group) => {
       await consumeUserToken(trx, config, 'email_verification_tokens', token, () => true)
       await assert.rejects(
         () => consumeUserToken(trx, config, 'email_verification_tokens', token, () => true),
-        InvalidTokenError
+        E_ACCOUNT_KIT_INVALID_TOKEN
       )
     })
   })
@@ -99,12 +103,12 @@ test.group('identity creation contract', (group) => {
     assert.isNull(pending.email_verified_at)
     await assert.rejects(
       () => account.emailVerification.complete({ token: oldProof, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const newProof = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: newProof }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.equal(
       await account.emailVerification.complete({ token: newProof, password: 'NewPassword123' }),
@@ -189,8 +193,8 @@ test.group('identity creation contract', (group) => {
       })
       assert.fail('expected committed observer failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
     }
     assert.deepEqual(
       recorder.calls.map((call) => call.method),
@@ -244,7 +248,7 @@ test.group('identity creation contract', (group) => {
           currentPassword: 'password123',
           newEmail: 'taken@example.test',
         }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
   })
 
@@ -261,7 +265,7 @@ test.group('identity creation contract', (group) => {
     assert.equal(recorder.calls.length, 1)
     await assert.rejects(
       () => account.emailVerification.complete({ token: proof, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const changed = await account.emailPasswordManagement.completeEmailChange({ token: proof })
     assert.equal(changed.email, 'next@example.test')
@@ -290,7 +294,7 @@ test.group('identity creation contract', (group) => {
     const activationProof = tokenFrom(recorder.calls.at(-1)!.args[1])
     await assert.rejects(
       () => account.emailVerification.complete({ token: oldProof, password: 'NewPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.equal(
       await account.emailVerification.complete({
@@ -318,7 +322,7 @@ test.group('identity creation contract', (group) => {
       .update({ purpose: 'activation' })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: proof }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const after = await kit.db.from('users').where('id', user.id).first()
     assert.equal(after.email, user.email)
@@ -337,7 +341,7 @@ test.group('identity creation contract', (group) => {
     await kit.db.from('users').where('id', user.id).update({ email: 'other@example.test' })
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: proof }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -363,7 +367,7 @@ test.group('identity creation contract', (group) => {
     assert.lengthOf(await kit.db.from('email_verification_tokens'), 0)
     await assert.rejects(
       () => account.emailPasswordManagement.completeEmailChange({ token: proof }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 

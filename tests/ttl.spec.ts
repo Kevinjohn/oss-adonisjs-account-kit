@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import { expiresAt } from '../src/ttl.js'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 
 test.group('expiration helper', () => {
   test('adds parsed TTL seconds to a DateTime', async ({ assert }) => {
@@ -14,9 +14,13 @@ test.group('expiration helper', () => {
 
   test('rejects non-positive and unparseable TTL values', async ({ assert }) => {
     const now = DateTime.utc()
-    assert.throws(() => expiresAt(now, '0s'), InvalidInputError, /TTL must/)
-    assert.throws(() => expiresAt(now, 'soon'), InvalidInputError, /TTL must/)
-    assert.throws(() => expiresAt(now, '100000000000000000000d'), InvalidInputError, /TTL must/)
+    assert.throws(() => expiresAt(now, '0s'), E_ACCOUNT_KIT_INVALID_INPUT, /TTL must/)
+    assert.throws(() => expiresAt(now, 'soon'), E_ACCOUNT_KIT_INVALID_INPUT, /TTL must/)
+    assert.throws(
+      () => expiresAt(now, '100000000000000000000d'),
+      E_ACCOUNT_KIT_INVALID_INPUT,
+      /TTL must/
+    )
     for (const seconds of [
       0,
       -1,
@@ -24,7 +28,7 @@ test.group('expiration helper', () => {
       Number.POSITIVE_INFINITY,
       Number.MAX_SAFE_INTEGER + 1,
     ]) {
-      assert.throws(() => expiresAt(now, seconds), InvalidInputError, /TTL must/)
+      assert.throws(() => expiresAt(now, seconds), E_ACCOUNT_KIT_INVALID_INPUT, /TTL must/)
     }
   })
 })

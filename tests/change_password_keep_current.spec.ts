@@ -3,7 +3,7 @@
 import { test } from '@japa/runner'
 import { DateTime } from 'luxon'
 import { registerManagedRoutes } from '../src/http/managed.js'
-import { InvalidSessionError, PostCommitError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_SESSION, E_ACCOUNT_KIT_POST_COMMIT } from '../src/errors.js'
 import { passwordChangeRevision } from '../src/password_change_revision.js'
 import type { AccountKitConfig, CurrentAccountInput, UserId } from '../src/types.js'
 import { useTestApp } from './helpers/app.js'
@@ -64,10 +64,10 @@ test.group('password change keeps the current session', (group) => {
     assert.notEqual(revision, mine.revision)
     const kept = { ...mine, revision }
     assert.equal((await account.authentication.current(kept)).id, user.id)
-    await assert.rejects(() => account.authentication.current(mine), InvalidSessionError)
+    await assert.rejects(() => account.authentication.current(mine), E_ACCOUNT_KIT_INVALID_SESSION)
     await assert.rejects(
       () => account.authentication.current({ ...other, revision }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
     assert.lengthOf(await account.authentication.sessions.list({ current: kept }), 1)
     assert.lengthOf(await kit.db.from('account_sessions'), 1)
@@ -84,7 +84,7 @@ test.group('password change keeps the current session', (group) => {
     assert.lengthOf(await kit.db.from('account_sessions'), 0)
     await assert.rejects(
       () => account.authentication.current({ ...mine, revision }),
-      InvalidSessionError
+      E_ACCOUNT_KIT_INVALID_SESSION
     )
 
     await signIn(account, 'newPassword123')
@@ -108,13 +108,13 @@ test.group('password change keeps the current session', (group) => {
     const error = await account.emailPasswordManagement
       .changePassword({ actorId: mine.userId, ...change, keepCurrent: mine })
       .catch((caught: unknown) => caught)
-    assert.instanceOf(error, PostCommitError)
+    assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
     const committed = passwordChangeRevision(error)
     assert.isString(committed)
     assert.notEqual(committed, mine.revision)
     const kept = await account.authentication.current({ ...mine, revision: committed! })
     assert.equal(kept.id, mine.userId)
-    assert.isUndefined(passwordChangeRevision(new PostCommitError('other')))
+    assert.isUndefined(passwordChangeRevision(new E_ACCOUNT_KIT_POST_COMMIT('other')))
     assert.isUndefined(passwordChangeRevision(new Error('other')))
   })
 

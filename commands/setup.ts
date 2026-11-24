@@ -1,3 +1,4 @@
+import { InvalidArgumentsException } from '@adonisjs/core/exceptions'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { BaseCommand, flags } from '@adonisjs/core/ace'
@@ -44,7 +45,9 @@ export default class SetupAccountKit extends BaseCommand {
     initialChoices?: SetupChoices
   ): Promise<SetupChoices> {
     if (!process.stdin.isTTY && !askOverride)
-      throw new Error('Missing --input: provide a JSON choices file for noninteractive setup')
+      throw new InvalidArgumentsException(
+        'Missing --input: provide a JSON choices file for noninteractive setup'
+      )
     const ask = askOverride ?? ((question: string) => this.prompt.ask(question))
     return collectSetupChoices(ask, (message) => this.logger.info(message), initialChoices)
   }
@@ -53,7 +56,9 @@ export default class SetupAccountKit extends BaseCommand {
   private async loadChoices(root: string, state: SetupInspection): Promise<SetupChoices> {
     if (this.check) {
       if (!state.existingChoices)
-        throw new Error('No config/account_kit_setup.json exists; run setup first')
+        throw new InvalidArgumentsException(
+          'No config/account_kit_setup.json exists; run setup first'
+        )
       return state.existingChoices
     }
     if (this.input) {

@@ -1,10 +1,10 @@
 import { test } from '@japa/runner'
 import { AccountKit } from '../src/account_kit.js'
 import {
-  AccountAccessDeniedError,
-  AdapterContractError,
-  CapabilityDisabledError,
-  InvalidInputError,
+  E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED,
+  E_ACCOUNT_KIT_ADAPTER_CONTRACT,
+  E_ACCOUNT_KIT_CAPABILITY_DISABLED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
 } from '../src/errors.js'
 import { readIsoTimestamp } from '../src/timestamps.js'
 import type { AccountKitConfig, Trx } from '../src/types.js'
@@ -94,7 +94,7 @@ test.group('account access inspection', (group) => {
     const error = await failure(() =>
       service().authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.notInstanceOf(error, AccountAccessDeniedError)
+    assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     assert.equal(error.message, 'account_kit: unreadable timestamp value')
   }).skip(testEngine !== 'sqlite')
 
@@ -114,10 +114,13 @@ test.group('account access inspection', (group) => {
       ),
     ])
     for (const error of errors) {
-      assert.instanceOf(error, AccountAccessDeniedError)
+      assert.instanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
       assert.equal(error.message, 'Account access denied')
-      assert.equal((error as AccountAccessDeniedError).code, 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED')
-      assert.equal((error as AccountAccessDeniedError).status, 403)
+      assert.equal(
+        (error as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).code,
+        'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED'
+      )
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).status, 403)
       assert.isUndefined(error.cause)
     }
   })
@@ -196,8 +199,8 @@ test.group('account access inspection', (group) => {
           authentication: { ...authentication, canAccess: async () => value as never },
         }).authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
       )
-      assert.notInstanceOf(error, AccountAccessDeniedError)
-      assert.instanceOf(error, AdapterContractError)
+      assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
+      assert.instanceOf(error, E_ACCOUNT_KIT_ADAPTER_CONTRACT)
       assert.equal(error.message, 'account_kit: canAccess must resolve to a boolean')
     }
   })
@@ -206,7 +209,7 @@ test.group('account access inspection', (group) => {
     const user = await insertUser(kit)
     const base = makeUsersAdapter(kit.db, kit.hash)
     const deny = async (): Promise<never> => {
-      throw new AccountAccessDeniedError()
+      throw new E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED()
     }
     for (const overrides of [
       { authentication: { ...authentication, canAccess: deny } },
@@ -219,9 +222,9 @@ test.group('account access inspection', (group) => {
           requireActive: true,
         })
       )
-      assert.notInstanceOf(error, AccountAccessDeniedError)
+      assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
       assert.equal(error.message, 'account_kit: dependency threw the inspection denial error')
-      assert.instanceOf(error.cause, AccountAccessDeniedError)
+      assert.instanceOf(error.cause, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     }
   })
 
@@ -273,7 +276,7 @@ test.group('account access inspection', (group) => {
     const error = await failure(() =>
       account.authentication.inspectAccountAccess({ userId: a.id, requireActive: true })
     )
-    assert.notInstanceOf(error, AccountAccessDeniedError)
+    assert.notInstanceOf(error, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     assert.equal(
       error.message,
       'account_kit: users adapter returned a different account than requested'
@@ -291,16 +294,19 @@ test.group('account access inspection', (group) => {
         users: { ...base, findById: async () => null },
       }).authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.instanceOf(absent, AccountAccessDeniedError)
+    assert.instanceOf(absent, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     assert.equal(absent.message, 'Account access denied')
-    assert.equal((absent as AccountAccessDeniedError).code, 'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED')
-    assert.equal((absent as AccountAccessDeniedError).status, 403)
+    assert.equal(
+      (absent as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).code,
+      'E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED'
+    )
+    assert.equal((absent as InstanceType<typeof E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED>).status, 403)
     const malformed = await failure(() =>
       service({
         users: { ...base, findById: async () => ({ ...user, id: ['1'] as never }) },
       }).authentication.inspectAccountAccess({ userId: user.id, requireActive: true })
     )
-    assert.notInstanceOf(malformed, AccountAccessDeniedError)
+    assert.notInstanceOf(malformed, E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED)
     assert.equal(malformed.message, 'account_kit: users adapter returned a malformed account id')
   })
 
@@ -351,7 +357,7 @@ test.group('account access inspection', (group) => {
     ]) {
       assert.instanceOf(
         await failure(() => account.authentication.inspectAccountAccess(input as never)),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     }
     assert.deepEqual([lookups, metadata, transactions], [0, 0, 0])
@@ -363,13 +369,13 @@ test.group('account access inspection', (group) => {
       await failure(() =>
         account.authentication.inspectAccountAccess({ userId: 1, requireActive: true })
       ),
-      CapabilityDisabledError
+      E_ACCOUNT_KIT_CAPABILITY_DISABLED
     )
     assert.instanceOf(
       await failure(() =>
         account.authentication.inspectAccountAccess({ userId: '', requireActive: true })
       ),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
   })
 
@@ -404,7 +410,7 @@ test.group('account access inspection', (group) => {
     }
     assert.instanceOf(
       await failure(() => service().authentication.inspectAccountAccess(input)),
-      AccountAccessDeniedError
+      E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED
     )
     assert.deepEqual([ids, active], [1, 1])
   })

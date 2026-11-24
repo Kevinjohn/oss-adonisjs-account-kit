@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import type { AccountKit } from '../account_kit.js'
-import { InvalidInputError } from '../errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../errors.js'
 import { isSensitivePurpose } from '../social_enums.js'
 import type { SensitivePurpose, SocialProviderName } from '../types.js'
 import type { ManagedGuard } from './managed_types.js'
@@ -50,7 +50,7 @@ export const managedSocialAccountHandlers = {
   'account.socialProof.password': async ({ context, social, guard }) => {
     const input = await context.request.validateUsing(socialPasswordProofValidator)
     if (!isSensitivePurpose(input.purpose))
-      throw new InvalidInputError('Invalid social proof purpose')
+      throw new E_ACCOUNT_KIT_INVALID_INPUT('Invalid social proof purpose')
     const proof = await social.provePassword({
       current: await guard.current(context),
       password: input.password,

@@ -1,10 +1,10 @@
 import { DateTime } from 'luxon'
 import { test } from '@japa/runner'
 import {
-  EmailAlreadyRegisteredError,
-  InvalidInputError,
-  InvalidTokenError,
-  PostCommitError,
+  E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED,
+  E_ACCOUNT_KIT_INVALID_INPUT,
+  E_ACCOUNT_KIT_INVALID_TOKEN,
+  E_ACCOUNT_KIT_POST_COMMIT,
 } from '../src/errors.js'
 import { transaction } from '../src/db.js'
 import type { AccountUser } from '../src/types.js'
@@ -36,7 +36,7 @@ test.group('invitations.accept', (group) => {
     const { token } = await issue(account, recorder, actor.id)
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'password123' }),
-      InvalidInputError
+      E_ACCOUNT_KIT_INVALID_INPUT
     )
     assert.lengthOf(await kit.db.from('account_invitations'), 1)
     await account.invitations.accept({ token, password: 'LongerPassword12345' })
@@ -113,9 +113,9 @@ test.group('invitations.accept', (group) => {
       await account.invitations.accept({ token, password: 'newPassword123' })
       assert.fail('expected committed failure')
     } catch (error) {
-      assert.instanceOf(error, PostCommitError)
-      assert.isTrue((error as PostCommitError).committed)
-      assert.equal((error as PostCommitError).cause, failure)
+      assert.instanceOf(error, E_ACCOUNT_KIT_POST_COMMIT)
+      assert.isTrue((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).committed)
+      assert.equal((error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT>).cause, failure)
     }
     assert.deepEqual(events, ['invitation.accepted'])
     assert.isNotNull(await kit.db.from('users').where('email', 'person@example.test').first())
@@ -131,16 +131,16 @@ test.group('invitations.accept', (group) => {
     for (const password of [null, 'short', 'x'.repeat(257)])
       await assert.rejects(
         () => account.invitations.accept({ token: 'bad', password: password as never }),
-        InvalidInputError
+        E_ACCOUNT_KIT_INVALID_INPUT
       )
     await assert.rejects(
       () => account.invitations.accept({ token: 'bad', password: '😀'.repeat(128) }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     for (const value of [null, 42, 'bad', 'a'.repeat(43)])
       await assert.rejects(
         () => account.invitations.accept({ token: value as never, password: 'newPassword123' }),
-        InvalidTokenError
+        E_ACCOUNT_KIT_INVALID_TOKEN
       )
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
     await kit.db
@@ -149,20 +149,20 @@ test.group('invitations.accept', (group) => {
       .update({ expires_at: dbTime(kit, DateTime.utc().minus({ seconds: 1 })) })
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'newPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 0)
     const fresh = await issue(account, recorder, actor.id, 'fresh@example.test')
     await kit.db.from('account_invitations').where('id', fresh.invitation.id).delete()
     await assert.rejects(
       () => account.invitations.accept({ token: fresh.token, password: 'newPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
     const again = await issue(account, recorder, actor.id, 'again@example.test')
     await account.invitations.accept({ token: again.token, password: 'newPassword123' })
     await assert.rejects(
       () => account.invitations.accept({ token: again.token, password: 'newPassword123' }),
-      InvalidTokenError
+      E_ACCOUNT_KIT_INVALID_TOKEN
     )
   })
 
@@ -192,7 +192,7 @@ test.group('invitations.accept', (group) => {
     )
     await assert.rejects(
       () => account.invitations.accept({ token, password: 'newPassword123' }),
-      EmailAlreadyRegisteredError
+      E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED
     )
     assert.equal(attemptedCreate, 0)
     assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
@@ -298,7 +298,7 @@ test.group('invitations.accept', (group) => {
       (result) => result.status === 'rejected'
     ) as PromiseRejectedResult[]
     assert.lengthOf(failures, 1)
-    assert.instanceOf(failures[0].reason, InvalidTokenError)
+    assert.instanceOf(failures[0].reason, E_ACCOUNT_KIT_INVALID_TOKEN)
     assert.lengthOf(await kit.db.from('users').where('email', 'person@example.test'), 1)
     assert.lengthOf(
       await kit.db.from('account_invitations').where('email', 'person@example.test'),
@@ -366,7 +366,7 @@ test.group('invitations.accept', (group) => {
     }
     const outcomes = await Promise.allSettled([acceptance, callback!])
     assert.equal(outcomes[0].status, 'rejected')
-    assert.instanceOf((outcomes[0] as PromiseRejectedResult).reason, InvalidTokenError)
+    assert.instanceOf((outcomes[0] as PromiseRejectedResult).reason, E_ACCOUNT_KIT_INVALID_TOKEN)
     assert.equal(outcomes[1].status, 'fulfilled')
     assert.lengthOf(await kit.db.from('users').where('email', 'person@example.test'), 1)
     assert.lengthOf(
@@ -393,7 +393,7 @@ test.group('invitations.accept', (group) => {
     )
     const rejected = results.filter((item) => item.status === 'rejected') as PromiseRejectedResult[]
     assert.lengthOf(rejected, 1)
-    assert.instanceOf(rejected[0].reason, InvalidTokenError)
+    assert.instanceOf(rejected[0].reason, E_ACCOUNT_KIT_INVALID_TOKEN)
     assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 1)
     assert.lengthOf(await kit.db.from('account_invitations').where('id', invitation.id), 0)
   })
@@ -425,7 +425,7 @@ test.group('invitations.accept', (group) => {
     const rejected = results.filter((item) => item.status === 'rejected') as PromiseRejectedResult[]
     assert.lengthOf(rejected, 1)
     const acceptWon = results[0].status === 'fulfilled'
-    if (!acceptWon) assert.instanceOf(rejected[0].reason, EmailAlreadyRegisteredError)
+    if (!acceptWon) assert.instanceOf(rejected[0].reason, E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED)
     assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 1)
     assert.lengthOf(
       await kit.db.from('account_invitations').where('id', invitation.id),
@@ -475,7 +475,7 @@ test.group('invitations.accept', (group) => {
       } finally {
         release()
       }
-      await assert.rejects(() => accepting, EmailAlreadyRegisteredError)
+      await assert.rejects(() => accepting, E_ACCOUNT_KIT_EMAIL_ALREADY_REGISTERED)
       assert.lengthOf(await kit.db.from('users').where('email', invitation.email), 1)
       assert.isNotNull(await kit.db.from('account_invitations').where('id', invitation.id).first())
     })

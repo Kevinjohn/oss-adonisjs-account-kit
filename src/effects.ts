@@ -1,5 +1,5 @@
 import { getCommittedResult } from './transaction.js'
-import { DeliveryError, PostCommitError } from './errors.js'
+import { E_ACCOUNT_KIT_DELIVERY, E_ACCOUNT_KIT_POST_COMMIT } from './errors.js'
 import type { LifecycleEvent, ResolvedConfig } from './types.js'
 
 export interface PostCommitEffect {
@@ -21,22 +21,22 @@ export async function postCommit(message: string, effects: PostCommitEffect[]): 
   }
   if (failures.length === 0) return
   const cause = failures.length === 1 ? failures[0] : new AggregateError(failures)
-  if (observerFailed) throw new PostCommitError(message, { cause })
-  throw new DeliveryError(message, { cause })
+  if (observerFailed) throw new E_ACCOUNT_KIT_POST_COMMIT(message, { cause })
+  throw new E_ACCOUNT_KIT_DELIVERY(message, { cause })
 }
 
-/** Send a notification after commit; a failure surfaces as DeliveryError. */
+/** Send a notification after commit; a failure surfaces as E_ACCOUNT_KIT_DELIVERY. */
 export async function deliver(message: string, send: () => Promise<void>): Promise<void> {
   try {
     await send()
   } catch (cause) {
-    throw new DeliveryError(message, { cause })
+    throw new E_ACCOUNT_KIT_DELIVERY(message, { cause })
   }
 }
 
 const observer = (run: PostCommitEffect['run']): PostCommitEffect => ({ kind: 'observer', run })
 
-/** Report a lifecycle event after commit; a failing hook surfaces as PostCommitError. */
+/** Report a lifecycle event after commit; a failing hook surfaces as E_ACCOUNT_KIT_POST_COMMIT. */
 export function createLifecycleEffect(
   config: Pick<ResolvedConfig, 'onLifecycleEvent'>,
   event: LifecycleEvent
@@ -47,19 +47,19 @@ export function createLifecycleEffect(
 /** Await a package transaction; a committed fault still yields its result. */
 export async function settleCommitted<T>(
   pending: Promise<T>
-): Promise<{ value: T; fault?: PostCommitError }> {
+): Promise<{ value: T; fault?: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> }> {
   try {
     return { value: await pending }
   } catch (error) {
     const saved = getCommittedResult<T>(error)
     if (!saved) throw error
-    return { value: saved.value, fault: error as PostCommitError }
+    return { value: saved.value, fault: error as InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> }
   }
 }
 
 /** Run follow-ups, then rethrow a committed fault combined with any follow-up failure. */
 export async function finishCommitted(
-  fault: PostCommitError | undefined,
+  fault: InstanceType<typeof E_ACCOUNT_KIT_POST_COMMIT> | undefined,
   message: string,
   followUps: () => Promise<void>
 ): Promise<void> {
@@ -67,7 +67,7 @@ export async function finishCommitted(
     await followUps()
   } catch (error) {
     if (!fault) throw error
-    throw new PostCommitError(message, {
+    throw new E_ACCOUNT_KIT_POST_COMMIT(message, {
       cause: new AggregateError([fault.cause, (error as Error).cause ?? error]),
     })
   }

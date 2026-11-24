@@ -16,7 +16,7 @@ import { bootTestApp } from './helpers/app.js'
 import { pruneExpired } from '../src/maintenance.js'
 import { migrationNames } from '../configure.js'
 import { socialRegistrationValidator } from '../src/http/validators.js'
-import { InvalidInputError } from '../src/errors.js'
+import { E_ACCOUNT_KIT_INVALID_INPUT } from '../src/errors.js'
 import { mapManagedErrorResponse } from '../src/http/responses.js'
 import { fixture, registerSetupTeardown } from './helpers/setup_project_fixture.js'
 import { withFixture } from './helpers/setup_prerequisites.js'
@@ -435,9 +435,9 @@ test.group('setup generated sources', (group) => {
     const executable = ts.transpileModule(`${mapper}\nreturn mapRegistrationFields`, {
       compilerOptions: { target: ts.ScriptTarget.ES2022 },
     }).outputText
-    const map = new Function('InvalidInputError', executable)(InvalidInputError) as (
-      input: unknown
-    ) => Record<string, unknown>
+    const map = new Function('E_ACCOUNT_KIT_INVALID_INPUT', executable)(
+      E_ACCOUNT_KIT_INVALID_INPUT
+    ) as (input: unknown) => Record<string, unknown>
     const validate = async (registrationData: unknown) => {
       const input = await socialRegistrationValidator.validate({
         continuation: 'pending-registration',
@@ -460,8 +460,8 @@ test.group('setup generated sources', (group) => {
       } catch (error) {
         caught = error
       }
-      assert.instanceOf(caught, InvalidInputError)
-      assert.include((caught as InvalidInputError).message, field)
+      assert.instanceOf(caught, E_ACCOUNT_KIT_INVALID_INPUT)
+      assert.include((caught as InstanceType<typeof E_ACCOUNT_KIT_INVALID_INPUT>).message, field)
       assert.deepEqual(mapManagedErrorResponse(caught), {
         status: 422,
         contentType: 'application/json',
@@ -585,7 +585,7 @@ test.group('setup generated sources', (group) => {
         config.indexOf('const users =')
       )
       const file = join(root, 'mapper.ts')
-      await writeFile(file, `class InvalidInputError extends Error {}\n${mapper}`)
+      await writeFile(file, `class E_ACCOUNT_KIT_INVALID_INPUT extends Error {}\n${mapper}`)
       const program = ts.createProgram([file], {
         strict: true,
         noEmit: true,
@@ -614,7 +614,7 @@ test.group('setup generated sources', (group) => {
         config.indexOf('const users =')
       )
       const runnable = ts.transpileModule(
-        `class InvalidInputError extends Error {}\n${mapper}\nreturn mapRegistrationFields`,
+        `class E_ACCOUNT_KIT_INVALID_INPUT extends Error {}\n${mapper}\nreturn mapRegistrationFields`,
         { compilerOptions: { target: ts.ScriptTarget.ES2022 } }
       ).outputText
       const map = new Function(runnable)() as (input: unknown) => Record<string, unknown>

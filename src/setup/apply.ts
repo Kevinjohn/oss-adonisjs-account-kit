@@ -1,9 +1,10 @@
+import { RuntimeException } from '@adonisjs/core/exceptions'
 import { randomUUID } from 'node:crypto'
 import { link, mkdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
 import fsPromises from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { SetupFileChange, SetupPlan } from './types.js'
-import { SetupApplyInterruptedError } from './apply_interrupted_error.js'
+import { E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED } from '../errors.js'
 import { readRegularFile, requireSafeSetupPath } from './safe_path.js'
 
 function formatFailureMessage(error: unknown): string {
@@ -28,12 +29,12 @@ async function assertNoConflict(
   const existing = await readRegularFile(root, change.path)
   if (existing === null) {
     if (change.action === 'update')
-      throw new Error(`Setup conflict at ${change.path}: application file disappeared`)
+      throw new RuntimeException(`Setup conflict at ${change.path}: application file disappeared`)
     return 'create'
   }
   if (existing === change.content) return 'unchanged'
   if (change.action === 'update' && existing === change.expected) return 'update'
-  throw new Error(
+  throw new RuntimeException(
     `Setup conflict at ${change.path}: existing file differs; resolve manually before retry`
   )
 }
@@ -45,10 +46,11 @@ export async function applySetup(
   options: { beforePublish?: (temporary: string, destination: string) => Promise<void> } = {}
 ): Promise<string[]> {
   root = await realpath(root)
-  if (plan.preview) throw new Error('Setup is in preview mode; pass --apply to write files')
+  if (plan.preview)
+    throw new RuntimeException('Setup is in preview mode; pass --apply to write files')
   const blocking = plan.diagnostics.filter((item) => item.severity === 'error')
   if (blocking.length)
-    throw new Error(
+    throw new RuntimeException(
       `Setup has blocking diagnostics: ${blocking.map((item) => item.field).join(', ')}`
     )
   for (const change of plan.changes) await assertNoConflict(root, change)
@@ -58,7 +60,7 @@ export async function applySetup(
     lock = await fsPromises.open(lockPath, 'wx', 0o600)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST')
-      throw new Error(
+      throw new RuntimeException(
         `Setup is already applying or was interrupted; inspect and remove ${lockPath} before retrying`
       )
     throw error
@@ -113,7 +115,7 @@ export async function applySetup(
 
   if (failures.length) {
     const failure = combineFailures(failures, 'Setup and cleanup failed')
-    if (written.length) throw new SetupApplyInterruptedError(written, failure)
+    if (written.length) throw new E_ACCOUNT_KIT_SETUP_APPLY_INTERRUPTED(written, failure)
     throw failure
   }
   return written

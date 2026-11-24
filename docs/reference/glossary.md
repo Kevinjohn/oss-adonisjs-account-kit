@@ -17,15 +17,15 @@ The default. Compare _managed mode_.
 
 **Capability.** One feature area you switch on in `enabled`: `passwordReset`,
 `emailVerification`, `emailPasswordManagement`, `invitations`, `registration`,
-`socialAuthentication`, `magicLinkLogin`, `sessionManagement`, `dataExport` or `accountDeletion`. Calling a disabled capability throws `CapabilityDisabledError`.
+`socialAuthentication`, `magicLinkLogin`, `sessionManagement`, `dataExport` or `accountDeletion`. Calling a disabled capability throws `E_ACCOUNT_KIT_CAPABILITY_DISABLED`.
 
 **Client key.** A value that identifies the caller for rate limiting, usually `request.ip()` after
 trusted proxies are configured. Never accept one from the request body.
 
-**Committed.** For a mutating operation, `DeliveryError` means delivery failed after the change
-committed; `PostCommitError` means a follow-up observer failed and does not establish that delivery
+**Committed.** For a mutating operation, `E_ACCOUNT_KIT_DELIVERY` means delivery failed after the change
+committed; `E_ACCOUNT_KIT_POST_COMMIT` means a follow-up observer failed and does not establish that delivery
 failed. Do not blindly repeat the mutation. Read-only account inspection discards its snapshot on
-`PostCommitError`; retry only when its adapter and policy dependencies satisfy the documented
+`E_ACCOUNT_KIT_POST_COMMIT`; retry only when its adapter and policy dependencies satisfy the documented
 read-only, retry-safe contract. See [errors](errors.md).
 
 **Credential revision.** The `users.credentials_changed_at` timestamp. Every credential change

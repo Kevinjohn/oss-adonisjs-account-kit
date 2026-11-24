@@ -82,7 +82,7 @@ this.accountKit.authentication.inspectAccountAccess({ userId: targetUserId, requ
 An unauthorised operator is stopped by the application policy before inspection. A missing target
 uses the same generic response as an unavailable or restricted target; the controller uses
 `User.find` so a framework `NotFound` error cannot produce a different body. Missing and restricted
-targets raise the same `AccountAccessDeniedError` at the package boundary, which the service maps to
+targets raise the same `E_ACCOUNT_KIT_ACCOUNT_ACCESS_DENIED` at the package boundary, which the service maps to
 that response. This example passes `requireActive: false`, so an inactive target is allowed and its
 snapshot reports `active: false`. Use `requireActive: true` when inactive accounts must be denied.
 Other errors propagate so the application's normal error handler can report operational failures.
