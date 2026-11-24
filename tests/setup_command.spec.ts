@@ -140,7 +140,7 @@ test.group('setup Ace command', (group) => {
     let receivedSeed: SetupChoices | undefined
     let promptedChoices: SetupChoices | undefined
     class ScriptedSetup extends SetupAccountKit {
-      override async collectInteractiveChoices(
+      override async interactiveChoices(
         _askOverride?: (question: string) => Promise<string>,
         initialChoices?: SetupChoices
       ) {
@@ -192,7 +192,7 @@ test.group('setup Ace command', (group) => {
     const before = await inspectSetup(root)
     let prompted = false
     class NoPromptSetup extends SetupAccountKit {
-      override async collectInteractiveChoices(): Promise<never> {
+      override async interactiveChoices(): Promise<never> {
         prompted = true
         throw new Error('--check must not start the interactive wizard')
       }
@@ -281,7 +281,7 @@ test.group('setup Ace command', (group) => {
     let receivedSeed: SetupChoices | undefined
     let promptedChoices: SetupChoices | undefined
     class ScriptedSetup extends SetupAccountKit {
-      override async collectInteractiveChoices(
+      override async interactiveChoices(
         _askOverride?: (question: string) => Promise<string>,
         initialChoices?: SetupChoices
       ) {

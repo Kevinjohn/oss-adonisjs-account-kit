@@ -39,7 +39,7 @@ export default class SetupAccountKit extends BaseCommand {
   })
   declare retirementMaintenanceWindow: boolean
 
-  async collectInteractiveChoices(
+  async interactiveChoices(
     askOverride?: (question: string) => Promise<string>,
     initialChoices?: SetupChoices
   ): Promise<SetupChoices> {
@@ -60,7 +60,7 @@ export default class SetupAccountKit extends BaseCommand {
       const content = await readFile(resolve(root, this.input), 'utf8')
       return requireSetupChoices(JSON.parse(content))
     }
-    return this.collectInteractiveChoices(undefined, state.existingChoices ?? undefined)
+    return this.interactiveChoices(undefined, state.existingChoices ?? undefined)
   }
 
   /** Count accounts the choices would retire, through the booted read-only inventory command. */

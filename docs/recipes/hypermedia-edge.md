@@ -123,8 +123,8 @@ typecheck and full lint passed after formatting setup/generated files. These run
 Chromium and local notification capture; the earlier dated records below remain historical.
 
 Historical verification on 22 October 2026 predates the supplementary recovery and method-boundary
-changes validated above. Apply the [hand-written patch](https://github.com/Kevinjohn/oss-adonisjs-account-kit/blob/main/docs/recipes/patches/hypermedia-password-reset.patch)
-after configuration; the [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
+changes validated above. After configuration, apply `hypermedia-password-reset.patch` from the
+[matching Account Kit revision](../guide/password-reset-existing-app.md#recipe-patches). The [acceptance spec](../../examples/hypermedia/tests/recipes/hypermedia-password-reset.spec.ts)
 uses the pinned starter's native login, dashboard, forms and CSRF protection. The scaffold command is:
 
 ```sh
