@@ -31,7 +31,7 @@ The runnable API example traces the controller and middleware entry in its [admi
 
 ```mermaid
 flowchart TD
- A["AccountAdmission.current starts transaction and calls currentInTransaction"] --> B{"Authentication enabled?"}
+ A["AccountAdmission.current starts transaction and calls requireCurrentAccountInTransaction"] --> B{"Authentication enabled?"}
  B -->|No| L["Throw CapabilityDisabledError"]
  B -->|Yes| M{"Lock and find user?"}
  M -->|No| G
@@ -51,4 +51,4 @@ flowchart TD
  J --> K["Commit and return account and decision"]
 ```
 
-**Code references:** [`AccountAdmission.current` and `decide`](../src/admission/service.ts), [`currentInTransaction`](../src/authentication.ts), [`admission gate tests`](../tests/admission_gate.spec.ts), [requirement evaluation](../src/admission/decision.ts), [credential types](../src/types_authentication.ts), [access decision validation](../src/account_access_decision.ts)
+**Code references:** [`AccountAdmission.current` and `decide`](../src/admission/service.ts), [`requireCurrentAccountInTransaction`](../src/authentication.ts), [`admission gate tests`](../tests/admission_gate.spec.ts), [requirement evaluation](../src/admission/decision.ts), [credential types](../src/types_authentication.ts), [access decision validation](../src/account_access_decision.ts)

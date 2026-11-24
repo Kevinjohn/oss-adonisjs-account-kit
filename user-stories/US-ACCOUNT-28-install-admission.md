@@ -32,7 +32,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 
 ```mermaid
 flowchart TD
- A["InstallAdmission.run"] --> B{"migrationSchema, inspectMigrationDirectory and orderedMigrations succeed?"}
+ A["InstallAdmission.run"] --> B{"buildMigrationSchema, inspectMigrationDirectory and orderMigrations succeed?"}
  B -->|No| C["Set exitCode 1 and log that nothing was written"]
  B -->|Yes| D["makeUsingStub generates config with overwriteExisting false"]
  D --> E{"Admission migration already exists at chosen destination?"}

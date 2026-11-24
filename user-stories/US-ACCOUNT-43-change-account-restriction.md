@@ -38,7 +38,7 @@ flowchart TD
  B --> B1{"Target found?"}
  B1 -->|No| F
  B1 -->|Yes| C["Run host change(user, trx)"]
- C --> D["credentialsChanged clears pending social state when enabled and sign-in links, advances revision, removes tracked sessions and configured access tokens, then runs the transaction hook"]
+ C --> D["invalidateChangedCredentials clears pending social state when enabled and sign-in links, advances revision, removes tracked sessions and configured access tokens, then runs the transaction hook"]
  D --> E{"Did a pre-commit operation fail?"}
  E -->|Yes| F["Roll back restriction and revocation; propagate error (InvalidCredentialsError for a missing target)"]
  E -->|No| G["Commit restriction and revocation; settleCommitted captures any committed fault"]

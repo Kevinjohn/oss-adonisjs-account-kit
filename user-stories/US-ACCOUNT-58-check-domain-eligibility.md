@@ -34,8 +34,8 @@ flowchart TD
  B -->|No| C["Return true without input validation"]
  B -->|Yes| D{"Is email a string?"}
  D -->|No| F["Return false"]
- D -->|Yes| E["normalizeEmail then domainOf extracts a valid address's domain"]
- E --> H{"Domain exists and domainAllowed matches the configured rule?"}
+ D -->|Yes| E["normalizeEmail then extractEmailDomain extracts a valid address's domain"]
+ E --> H{"Domain exists and isDomainAllowed matches the configured rule?"}
  H -->|No| F
  H -->|Yes| G["Return true"]
 ```

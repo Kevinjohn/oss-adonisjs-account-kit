@@ -35,7 +35,7 @@ Scope: the callback executes inside the Account Kit transaction and uses its `tr
 
 ```mermaid
 flowchart TD
- A["authentication.withCurrent(current, run)"] --> B["currentWithSessionInTransaction validates account and can touch a tracked session"]
+ A["authentication.withCurrent(current, run)"] --> B["requireCurrentAccountAndSession validates account and can touch a tracked session"]
  B -->|Validation failure| V0["Propagate current-account error before callback"]
  B --> C{"Non-SQLite and token or tracked-session ID available?"}
  C -->|Yes| D["Lock token or tracked session row"]

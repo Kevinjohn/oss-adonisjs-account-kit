@@ -39,11 +39,11 @@ flowchart TD
   A --> B["Check policy, consume identity throttle and prepare password"]
   B --> C["Confirm actor in locked transaction; consume purpose-bound proof for password-less account"]
   C -->|Refused| E["Abort before password mutation"]
-  C -->|Accepted| F["Store password, clear pending email change and recovery proofs, and run credentialsChanged with keepCurrent"]
+  C -->|Accepted| F["Store password, clear pending email change and recovery proofs, and run invalidateChangedCredentials with keepCurrent"]
   F --> G["Read resulting revision within transaction; commit"]
   G --> H["Run credential observer, password notice and lifecycle callback"]
   H -->|Success| J["Return revision; managed session guard refreshes, then handler returns changed true"]
   H -->|Failure| K["Attach committed revision to error and rethrow; managed session guard refreshes before propagating"]
 ```
 
-**Code references:** [`changePassword`](../src/change_password.ts), [`confirmActor`](../src/actor_confirmation.ts), [`credentialsChanged`](../src/credential_revision.ts), [`managed password handler`](../src/http/handlers_email_password_management.ts), [`password change tests`](../tests/credentials_password_change.spec.ts), [managed committed-failure response](../src/http/managed.ts)
+**Code references:** [`changePassword`](../src/change_password.ts), [`confirmActor`](../src/actor_confirmation.ts), [`invalidateChangedCredentials`](../src/credential_revision.ts), [`managed password handler`](../src/http/handlers_email_password_management.ts), [`password change tests`](../tests/credentials_password_change.spec.ts), [managed committed-failure response](../src/http/managed.ts)

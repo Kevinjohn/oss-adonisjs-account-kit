@@ -72,7 +72,7 @@ export const accountMail = captureNotifications()
 ```
 
 For local work, import `app` and `createLogNotifications` in `config/account_kit.ts`, remove the
-generated `notConfigured` helper, and replace its `notify` block. Declare `testMailModule`
+generated `createUnconfiguredNotifier` helper, and replace its `notify` block. Declare `testMailModule`
 before `defineConfig` so only test runs load the capture:
 
 ```ts

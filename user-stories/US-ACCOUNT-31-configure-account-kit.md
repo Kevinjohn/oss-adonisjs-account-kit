@@ -41,7 +41,7 @@ Scope: this is the Account Kit service/command path. Host UI, route policy and e
 ```mermaid
 flowchart TD
  A["account-kit:setup"] --> B["Inspect project files and load interactive or JSON choices"]
- B --> C["With saved choices, run runtimeInventory for the proposed retirement"]
+ B --> C["With saved choices, run readRetirementInventory for the proposed retirement"]
  C --> R["planSetup validates choices; log JSON report"]
  R --> D{"Check, preview or apply?"}
  D -->|--check| E["Exit with configuration-validity result; no writes"]

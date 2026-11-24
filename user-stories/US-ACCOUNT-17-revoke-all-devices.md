@@ -32,7 +32,7 @@ flowchart TD
   M["Managed route resolves current credential"] --> A["authentication.sessions.revokeAll"]
   A --> B["Require configuration; transaction rechecks credential and resolves its sign-in"]
   B -->|Refused| X["Propagate current-credential refusal"]
-  B -->|Accepted| C["credentialsChanged advances revision and invalidates existing credentials"]
+  B -->|Accepted| C["invalidateChangedCredentials advances revision and invalidates existing credentials"]
   C --> D["Commit; run credential observer and lifecycle event"]
   D --> E["Return void or surface committed follow-up failure"]
   E -->|Managed| F["Attempt browser termination after commit; return 204 on success or rethrow for the managed committed-failure response"]

@@ -48,7 +48,7 @@ flowchart TD
  H --> B
  MG --> B
  MT --> B
- B["socialCallback checks candidate state and resolves provider profile"] --> T["Lock account; consume state; bind and validate current actor"]
+ B["completeSocialCallback checks candidate state and resolves provider profile"] --> T["Lock account; consume state; bind and validate current actor"]
  T --> P["Consume state-bound or host-supplied proof; check active account and unique provider subject"]
  P --> L["Run optional acceptLink and insert confirmed relation"]
  B -->|Provider or state refusal| X["Propagate callback refusal"]
