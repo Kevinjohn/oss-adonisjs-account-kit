@@ -2,8 +2,16 @@
 
 ## Unreleased
 
+## 0.6.1 - 2026-11-24
+
 - Report Ace operator failures once with safe guidance while preserving the original command error.
 - Align the invitation OpenAPI fields with shared input bounds and managed role trimming.
+- Align internal callable names with their behaviour and update the corresponding user story flows.
+- Name the generated notification factory `createUnconfiguredNotifier` and keep the five
+  cookbook patches aligned with the generated configuration. Use the patch from the same
+  Account Kit release or checkout that generated the configuration.
+- Preserve the existing `interactiveChoices` setup override, including dispatch from the
+  noninteractive command path when a subclass supplies its own choices.
 
 ## 0.6.0 - 2026-11-23
 
